@@ -65,3 +65,25 @@ body {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 999px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+.dark body { background: #0f172a; color: #e2e8f0; }
+.dark .card {
+  background: #1e293b;
+  border-color: rgba(255,255,255,0.06);
+  box-shadow: 0 12px 32px -16px rgba(0,0,0,0.45);
+}
+.dark .btn-secondary {
+  background: #1e293b;
+  border-color: rgba(129,140,248,0.35);
+  color: #c7d2fe;
+}
+.dark .page-title { color: #f1f5f9; }
+.dark .page-subtitle { color: #94a3b8; }
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  animation: confetti-fall 2.6s ease-in forwards;
+}
