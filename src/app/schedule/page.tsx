@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Clock, MapPin, Zap } from "lucide-react";
 import { weekSchedule, todaySchedule, examSummary, currentUser } from "@/lib/mock-data";
 import type { ScheduleEntry } from "@/types";
@@ -23,21 +23,36 @@ function colorFor(subject: string) {
   return pastel[h];
 }
 
+function nowLineTop(): number | null {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const start = 8 * 60 + 30;
+  const end = 16 * 60 + 25;
+  if (mins < start || mins > end) return null;
+  return ((mins - start) / (end - start)) * 100;
+}
+
 function findEntry(dayIndex: number, slotIndex: number): ScheduleEntry | undefined {
   return weekSchedule.find((e) => e.dayIndex === dayIndex && e.slotIndex === slotIndex);
 }
 
 export default function SchedulePage() {
   const [view, setView] = useState<"day" | "week" | "month" | "semester">("week");
+  const [nowTop, setNowTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    const tick = () => setNowTop(nowLineTop());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="page-title">Расписание</h1>
-          <p className="page-subtitle">
-            Группа {currentUser.groupName} · Курс {currentUser.course} · Семестр {currentUser.semester}
-          </p>
+          <p className="page-subtitle">Группа {currentUser.groupName} · Курс {currentUser.course} · Семестр {currentUser.semester}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {([["day", "День"], ["week", "Неделя"], ["month", "Месяц"], ["semester", "Семестр"]] as const).map(([key, label]) => (
@@ -50,8 +65,14 @@ export default function SchedulePage() {
       </div>
 
       {view === "week" && (
-        <div className="card overflow-x-auto p-4">
-          <div className="min-w-[760px]">
+        <div className="card relative overflow-x-auto p-4">
+          <div className="relative min-w-[760px]">
+            {nowTop != null && (
+              <div className="pointer-events-none absolute left-16 right-0 z-20 flex items-center" style={{ top: `calc(${nowTop}% + 28px)` }}>
+                <span className="mr-1 h-2.5 w-2.5 rounded-full bg-rose-500 shadow" />
+                <div className="h-0.5 flex-1 bg-rose-500/90 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+              </div>
+            )}
             <div className="grid grid-cols-8 gap-2 pb-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
               <div />
               {days.map((d) => <div key={d}>{d}</div>)}
@@ -93,11 +114,8 @@ export default function SchedulePage() {
                 <div>
                   <span className="font-bold">{e.subject}</span>
                   <span className="ml-2 text-sm opacity-70">{e.type}</span>
-                  {e.topic && <p className="mt-1 text-sm opacity-80">{e.topic}</p>}
                 </div>
-                {e.isNonStandard && (
-                  <span className="badge-warning inline-flex items-center gap-1"><Zap className="h-3.5 w-3.5" />нестандартное</span>
-                )}
+                {e.isNonStandard && <span className="badge-warning inline-flex items-center gap-1"><Zap className="h-3.5 w-3.5" />нестандартное</span>}
               </div>
               <div className="mt-2 flex flex-wrap gap-4 text-sm opacity-80">
                 <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />{e.startTime}–{e.endTime}</span>
@@ -109,9 +127,7 @@ export default function SchedulePage() {
       )}
 
       {(view === "month" || view === "semester") && (
-        <div className="card p-12 text-center text-slate-500">
-          Вид «{view === "month" ? "Месяц" : "Семестр"}» — после подключения календаря из API.
-        </div>
+        <div className="card p-12 text-center text-slate-500">Вид «{view === "month" ? "Месяц" : "Семестр"}» — после API календаря.</div>
       )}
 
       <section className="card">
