@@ -8,9 +8,16 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\UserRepository;
 use Medbiohim\Services\SupabaseAuth;
 use Medbiohim\Support\Logger;
+use Medbiohim\Support\RateLimiter;
 
 return static function (Router $router): void {
     $router->post('/api/v1/auth/login', static function (Request $req, array $params): void {
+        $ip = RateLimiter::clientIp();
+        $limit = RateLimiter::attempt('login:' . $ip, 10, 300);
+        if (!$limit['allowed']) {
+            Response::error('RATE_LIMITED', 'Too many login attempts. Try again later.', $req->requestId, 429, ['retry_after' => $limit['retry_after']]);
+            return;
+        }
         $email = trim((string) $req->json('email', ''));
         $password = (string) $req->json('password', '');
         if ($email === '' || $password === '') {
