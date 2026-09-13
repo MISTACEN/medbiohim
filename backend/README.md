@@ -1,19 +1,16 @@
 # MEDBIOHIM Backend (SpaceWeb / PHP 8.4)
 
-## Phases
-| Phase | Status | Contents |
-|-------|--------|----------|
-| A | done | Router, JSON contract, CORS, health, logs |
-| B | done | Auth login/refresh/logout/recover/me, RequireAuth, RequireRole |
-| C | in progress | DB layer, profile ensure, groups, subjects |
+| Phase | Status |
+|-------|--------|
+| A | done |
+| B | done — Auth |
+| C | done — profile, groups, subjects, tests, homework |
+| D | started — files + B2 staging |
 
-## Domain (C)
-- `GET /api/v1/me`
-- `GET /api/v1/groups` / `{id}`
-- `GET /api/v1/subjects` / `{id}`
+## Migrations
+001_initial_schema → 002_tests_homework → 003_seed_demo → 004_rls_basic
 
-Login upserts `public.users` when DB is configured.
-
-## Env
-Auth: SUPABASE_URL + SUPABASE_ANON_KEY
-Phase C: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+## Not done
+- Real B2 SigV4 / presigned download
+- Multipart upload (JSON base64 MVP)
+- Full UI wire for tests/homework
