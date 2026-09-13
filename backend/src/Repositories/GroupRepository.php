@@ -19,8 +19,7 @@ final class GroupRepository
     {
         $stmt = $this->db->query(
             'SELECT id, code, name, course_number, admission_year, is_active, created_at
-             FROM public.groups WHERE is_active = true
-             ORDER BY course_number NULLS LAST, name'
+             FROM public.groups WHERE is_active = true ORDER BY course_number NULLS LAST, name'
         );
         return $stmt->fetchAll() ?: [];
     }
@@ -28,8 +27,7 @@ final class GroupRepository
     public function findById(string $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, code, name, course_number, admission_year, is_active, created_at
-             FROM public.groups WHERE id = :id LIMIT 1'
+            'SELECT id, code, name, course_number, admission_year, is_active, created_at FROM public.groups WHERE id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
@@ -40,12 +38,41 @@ final class GroupRepository
     {
         $stmt = $this->db->prepare(
             'SELECT u.id, u.full_name, u.email, gm.role_in_group, gm.is_active
-             FROM public.group_memberships gm
-             JOIN public.users u ON u.id = gm.user_id
-             WHERE gm.group_id = :gid AND gm.is_active = true
-             ORDER BY gm.role_in_group DESC, u.full_name'
+             FROM public.group_memberships gm JOIN public.users u ON u.id = gm.user_id
+             WHERE gm.group_id = :gid AND gm.is_active = true ORDER BY gm.role_in_group DESC, u.full_name'
         );
         $stmt->execute(['gid' => $groupId]);
         return $stmt->fetchAll() ?: [];
+    }
+
+    public function create(array $data): array
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO public.groups (code, name, course_number, admission_year) VALUES (:code, :name, :course, :year) RETURNING *'
+        );
+        $stmt->execute([
+            'code' => $data['code'] ?? null,
+            'name' => $data['name'],
+            'course' => $data['course_number'] ?? null,
+            'year' => $data['admission_year'] ?? null,
+        ]);
+        $row = $stmt->fetch();
+        if ($row === false) {
+            throw new \RuntimeException('Create group failed');
+        }
+        return $row;
+    }
+
+    public function addMember(string $groupId, string $userId, string $roleInGroup = 'student'): array
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO public.group_memberships (user_id, group_id, role_in_group) VALUES (:uid, :gid, :role) RETURNING *'
+        );
+        $stmt->execute(['uid' => $userId, 'gid' => $groupId, 'role' => $roleInGroup]);
+        $row = $stmt->fetch();
+        if ($row === false) {
+            throw new \RuntimeException('Add member failed');
+        }
+        return $row;
     }
 }
