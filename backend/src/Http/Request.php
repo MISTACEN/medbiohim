@@ -25,8 +25,26 @@ final class Request
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+
+        $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $scriptDir = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+        if ($scriptDir !== '' && $scriptDir !== '/' && str_starts_with($path, $scriptDir)) {
+            $path = substr($path, strlen($scriptDir)) ?: '/';
+        }
+        if (str_ends_with($path, '/index.php')) {
+            $path = substr($path, 0, -strlen('/index.php')) ?: '/';
+        }
+        if ($path === 'index.php' || $path === '/index.php') {
+            $path = '/';
+        }
+        if (($path === '/' || $path === '') && !empty($_SERVER['PATH_INFO'])) {
+            $path = (string) $_SERVER['PATH_INFO'];
+        }
         if ($path !== '/' && str_ends_with($path, '/')) {
             $path = rtrim($path, '/');
+        }
+        if ($path === '' || !str_starts_with($path, '/')) {
+            $path = '/' . ltrim($path, '/');
         }
 
         $headers = [];
