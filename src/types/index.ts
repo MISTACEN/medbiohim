@@ -23,6 +23,8 @@ export interface ScheduleEntry {
   teacher?: string;
   isNonStandard?: boolean;
   topic?: string;
+  dayIndex?: number;
+  slotIndex?: number;
 }
 
 export interface HomeworkItem {
@@ -31,6 +33,9 @@ export interface HomeworkItem {
   subject: string;
   dueAt: string;
   status: "pending" | "submitted" | "graded" | "overdue";
+  description?: string;
+  grade?: number;
+  feedback?: string;
 }
 
 export interface Announcement {
@@ -69,4 +74,30 @@ export interface TestItem {
   questionCount: number;
   course: number;
   status?: string;
+}
+
+export interface ProgressSubject {
+  subject: string;
+  testsDone: number;
+  testsTotal: number;
+  avgScore: number;
+  homeworkDone: number;
+  homeworkTotal: number;
+}
+
+export interface CommunityPost {
+  id: string;
+  author: string;
+  role: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  likes: number;
+  comments: number;
+}
+
+export interface TicketQuestion {
+  number: number;
+  kind: string;
+  text: string;
 }
