@@ -3,8 +3,12 @@ declare(strict_types=1);
 
 namespace Medbiohim\Http;
 
+use Medbiohim\Auth\AuthUser;
+
 final class Request
 {
+    public ?AuthUser $user = null;
+
     public function __construct(
         public readonly string $method,
         public readonly string $path,
@@ -64,5 +68,13 @@ final class Request
             return $m[1];
         }
         return null;
+    }
+
+    public function json(string $key, mixed $default = null): mixed
+    {
+        if ($this->jsonBody === null) {
+            return $default;
+        }
+        return $this->jsonBody[$key] ?? $default;
     }
 }
