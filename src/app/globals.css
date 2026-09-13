@@ -2,36 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 
 :root {
-  --primary: #2B4C7E;
-  --primary-dark: #1E3A8A;
-  --success: #10B981;
-  --danger: #EF4444;
-  --warning: #F59E0B;
-  --background: #F3F4F6;
-  --card: #FFFFFF;
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --violet: #8b5cf6;
+  --success: #10b981;
+  --danger: #f43f5e;
+  --warning: #f59e0b;
+  --background: #f8fafc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
 }
 
+.dark {
+  --background: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+
+html { scroll-behavior: smooth; }
+
 body {
-  font-family: 'Inter', Roboto, system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
   background-color: var(--background);
-  color: #1f2937;
-  line-height: 1.5;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer components {
   .card {
-    @apply bg-card rounded-card shadow-sm border border-gray-100 transition-all duration-200;
+    @apply rounded-card border border-slate-200/80 bg-card p-5 shadow-soft transition-all duration-300;
   }
-  .card:hover {
-    @apply shadow-md -translate-y-0.5;
-  }
+  .card:hover { @apply -translate-y-1 shadow-lift; }
   .btn-primary {
-    @apply bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors;
+    @apply rounded-soft bg-brand-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
   }
   .btn-secondary {
-    @apply bg-white text-primary border border-primary px-4 py-2 rounded-lg font-medium hover:bg-primary/5 transition-colors;
+    @apply rounded-soft border border-primary/20 bg-white px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft;
   }
+  .btn-pill {
+    @apply rounded-pill bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-white shadow-card transition hover:scale-[1.05];
+  }
+  .glass { @apply border border-white/20 bg-white/70 shadow-soft backdrop-blur-xl; }
+  .hero-banner {
+    @apply relative overflow-hidden rounded-card bg-hero-gradient p-6 shadow-soft sm:p-8;
+  }
+  .skeleton { @apply animate-pulse rounded-soft bg-slate-200/80; }
+  .badge-success { @apply rounded-pill bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700; }
+  .badge-danger { @apply rounded-pill bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-600; }
+  .badge-warning { @apply rounded-pill bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700; }
+  .badge-primary { @apply rounded-pill bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700; }
+  .page-title { @apply text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl; }
+  .page-subtitle { @apply mt-1 text-sm text-slate-500; }
 }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
