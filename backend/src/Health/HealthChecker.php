@@ -11,7 +11,6 @@ final class HealthChecker
         'curl', 'json', 'mbstring', 'openssl', 'fileinfo', 'pdo', 'pdo_pgsql',
     ];
 
-    /** @return array{status: string, checks: array, time: string, php: string, service: string, version: string} */
     public function check(): array
     {
         $checks = [
@@ -20,6 +19,7 @@ final class HealthChecker
             'config' => $this->checkConfig(),
             'database' => $this->checkDatabase(),
             'b2' => $this->checkB2Config(),
+            'supabase_auth' => $this->checkSupabaseAuthConfig(),
         ];
 
         $statuses = array_column($checks, 'status');
@@ -33,7 +33,8 @@ final class HealthChecker
         return [
             'status' => $overall,
             'service' => 'medbiohim-api',
-            'version' => '0.1.0-phase-a',
+            'version' => '0.2.0-phase-b',
+            'phase' => 'B',
             'php' => PHP_VERSION,
             'time' => date('c'),
             'checks' => $checks,
@@ -60,17 +61,18 @@ final class HealthChecker
                 $missing[] = $ext;
             }
         }
-        return [
-            'status' => $missing === [] ? 'ok' : 'fail',
-            'loaded' => $loaded,
-            'missing' => $missing,
-        ];
+        $strict = Env::get('APP_ENV') === 'production';
+        $status = 'ok';
+        if ($missing !== []) {
+            $status = $strict ? 'fail' : 'warn';
+        }
+        return ['status' => $status, 'loaded' => $loaded, 'missing' => $missing];
     }
 
     private function checkConfig(): array
     {
         $keys = [
-            'APP_ENV', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY',
+            'APP_ENV', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_ANON_KEY',
             'B2_KEY_ID', 'B2_APPLICATION_KEY', 'B2_BUCKET', 'B2_ENDPOINT', 'CORS_ORIGINS',
         ];
         $present = [];
@@ -84,7 +86,7 @@ final class HealthChecker
             }
         }
         $status = 'ok';
-        if (in_array('SUPABASE_URL', $missing, true) || in_array('SUPABASE_SERVICE_KEY', $missing, true)) {
+        if (in_array('SUPABASE_URL', $missing, true)) {
             $status = 'warn';
         }
         return ['status' => $status, 'present' => $present, 'missing' => $missing];
@@ -97,15 +99,12 @@ final class HealthChecker
         $user = Env::get('DB_USER');
         $pass = Env::get('DB_PASSWORD');
         $port = Env::get('DB_PORT', '5432');
-
         if (!$host || !$name || !$user) {
-            return ['status' => 'warn', 'message' => 'Database not configured (Phase A optional)'];
+            return ['status' => 'warn', 'message' => 'Database not configured (optional until Phase C)'];
         }
-
         if (!extension_loaded('pdo_pgsql')) {
             return ['status' => 'fail', 'message' => 'pdo_pgsql not loaded'];
         }
-
         $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $name);
         try {
             $pdo = new \PDO($dsn, $user, $pass ?? '', [
@@ -127,6 +126,25 @@ final class HealthChecker
             'status' => $configured ? 'ok' : 'warn',
             'configured' => (bool) $configured,
             'message' => $configured ? 'B2 credentials present' : 'B2 not configured (Phase D)',
+        ];
+    }
+
+    private function checkSupabaseAuthConfig(): array
+    {
+        $url = Env::get('SUPABASE_URL');
+        $anon = Env::get('SUPABASE_ANON_KEY');
+        $service = Env::get('SUPABASE_SERVICE_KEY');
+        if (!$url) {
+            return ['status' => 'warn', 'message' => 'SUPABASE_URL missing (Phase B needs it)'];
+        }
+        if (!$anon && !$service) {
+            return ['status' => 'warn', 'message' => 'Need SUPABASE_ANON_KEY and/or SERVICE_KEY'];
+        }
+        return [
+            'status' => 'ok',
+            'message' => 'Supabase Auth config present',
+            'has_anon' => (bool) $anon,
+            'has_service' => (bool) $service,
         ];
     }
 }
