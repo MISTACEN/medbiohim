@@ -3,18 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home,
-  Calendar,
-  ClipboardList,
-  BookOpen,
-  GraduationCap,
-  FileQuestion,
-  FolderOpen,
-  TrendingUp,
-  Users,
-  Settings,
-  HelpCircle,
-  Shield,
+  Home, Calendar, ClipboardList, BookOpen, GraduationCap, FileQuestion,
+  FolderOpen, TrendingUp, Users, Settings, LayoutDashboard, HelpCircle, Shield,
 } from "lucide-react";
 import { currentUser, homeworks } from "@/lib/mock-data";
 import clsx from "clsx";
@@ -32,6 +22,7 @@ const navItems = [
 ];
 
 const bottomItems = [
+  { href: "/admin", label: "Админ", icon: LayoutDashboard },
   { href: "/settings", label: "Настройки", icon: Settings },
   { href: "/help", label: "Помощь", icon: HelpCircle },
 ];
@@ -43,14 +34,16 @@ export function Sidebar() {
   ).length;
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-primary text-white shadow-lg">
+    <aside className="glass fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-indigo-100/60 bg-gradient-to-b from-indigo-600/95 via-indigo-600/90 to-violet-600/95 text-white shadow-lift">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
-          <Shield className="h-6 w-6" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-soft bg-white/15 shadow-inner">
+          <Shield className="h-5 w-5" />
         </div>
         <div>
-          <div className="text-lg font-bold tracking-tight">Медбиохим</div>
-          <div className="text-xs text-white/70">образовательная платформа</div>
+          <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
+          <div className="text-[11px] uppercase tracking-wider text-white/70">
+            образовательная платформа
+          </div>
         </div>
       </div>
 
@@ -67,16 +60,16 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-soft px-3 py-2.5 text-sm font-medium transition-all duration-200",
                     active
-                      ? "bg-white/20 text-white"
+                      ? "bg-white/20 text-white shadow-sm"
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
                   <span className="flex-1">{item.label}</span>
                   {item.badge && pendingHw > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-semibold">
+                    <span className="rounded-pill bg-rose-500 px-2 py-0.5 text-[11px] font-bold">
                       {pendingHw}
                     </span>
                   )}
@@ -90,49 +83,32 @@ export function Sidebar() {
       <div className="border-t border-white/10 px-3 py-3">
         <ul className="space-y-1">
           {bottomItems.map((item) => {
-            const Icon = item.icon;
             const active = pathname.startsWith(item.href);
+            const Icon = item.icon;
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-white/20 text-white"
-                      : "text-white/80 hover:bg-white/10 hover:text-white"
+                    "flex items-center gap-3 rounded-soft px-3 py-2.5 text-sm font-medium transition",
+                    active ? "bg-white/20 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
                   )}
                 >
-                  <Icon className="h-5 w-5" strokeWidth={2} />
+                  <Icon className="h-5 w-5 shrink-0" />
                   {item.label}
                 </Link>
               </li>
             );
           })}
         </ul>
-      </div>
-
-      <div className="border-t border-white/10 p-4">
-        <div className="flex items-center gap-3 rounded-lg bg-white/10 p-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
-            {currentUser.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)}
+        <div className="mt-3 flex items-center gap-3 rounded-soft bg-white/10 px-3 py-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gradient text-xs font-bold">
+            {currentUser.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">
-              {currentUser.name}
-            </div>
-            <div className="text-xs text-white/70 capitalize">
-              {currentUser.role === "student"
-                ? "Студент"
-                : currentUser.role === "teacher"
-                  ? "Преподаватель"
-                  : currentUser.role === "admin"
-                    ? "Админ"
-                    : "Модератор"}
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">{currentUser.name}</div>
+            <div className="text-xs text-white/70">
+              {currentUser.role === "student" ? "Студент" : currentUser.role === "teacher" ? "Преподаватель" : currentUser.role === "admin" ? "Админ" : currentUser.role}
             </div>
           </div>
         </div>
