@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #2B4C7E;
+  --primary-dark: #1E3A8A;
+  --success: #10B981;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --background: #F3F4F6;
+  --card: #FFFFFF;
+}
+
+body {
+  font-family: 'Inter', Roboto, system-ui, sans-serif;
+  background-color: var(--background);
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+@layer components {
+  .card {
+    @apply bg-card rounded-card shadow-sm border border-gray-100 transition-all duration-200;
+  }
+  .card:hover {
+    @apply shadow-md -translate-y-0.5;
+  }
+  .btn-primary {
+    @apply bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors;
+  }
+  .btn-secondary {
+    @apply bg-white text-primary border border-primary px-4 py-2 rounded-lg font-medium hover:bg-primary/5 transition-colors;
+  }
+}
