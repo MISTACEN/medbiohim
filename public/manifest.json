@@ -1,0 +1,11 @@
+{
+  "name": "Медбиохим",
+  "short_name": "Медбиохим",
+  "description": "Образовательная платформа",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3F4F6",
+  "theme_color": "#2B4C7E",
+  "lang": "ru",
+  "icons": []
+}
