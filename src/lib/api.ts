@@ -1,6 +1,6 @@
 /**
  * API client for SpaceWeb backend.
- * Set NEXT_PUBLIC_API_URL=https://your-spaceweb/api/v1
+ * NEXT_PUBLIC_API_URL=https://your-spaceweb/api/v1
  */
 
 const API_URL =
@@ -49,8 +49,7 @@ export async function api<T>(
     headers,
   });
 
-  const json = (await res.json()) as ApiResult<T>;
-  return json;
+  return (await res.json()) as ApiResult<T>;
 }
 
 export async function login(email: string, password: string) {
@@ -59,6 +58,8 @@ export async function login(email: string, password: string) {
     refresh_token: string;
     expires_in: number;
     user: { id: string; email: string; role?: string };
+    profile?: { id: string; full_name: string; email: string };
+    roles?: string[];
   }>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
@@ -66,16 +67,25 @@ export async function login(email: string, password: string) {
 }
 
 export async function me() {
-  return api<{ user: { id: string; email: string; role?: string | null } }>(
-    "/auth/me"
-  );
+  return api<{
+    user: { id: string; email?: string; full_name?: string; role?: string | null };
+    roles?: string[];
+    groups?: unknown[];
+  }>("/me");
 }
 
 export async function health() {
-  return api<{
-    status: string;
-    phase?: string;
-    version?: string;
-    checks?: Record<string, unknown>;
-  }>("/health");
+  return api<{ status: string; phase?: string; version?: string }>("/health");
+}
+
+export async function listSubjects(course?: number, semester?: number) {
+  const q = new URLSearchParams();
+  if (course != null) q.set("course", String(course));
+  if (semester != null) q.set("semester", String(semester));
+  const qs = q.toString();
+  return api<{ items: unknown[] }>(`/subjects${qs ? `?${qs}` : ""}`);
+}
+
+export async function listGroups() {
+  return api<{ items: unknown[] }>("/groups");
 }
