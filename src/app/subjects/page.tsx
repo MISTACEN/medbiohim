@@ -53,8 +53,8 @@ export default function SubjectsPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Предметы</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="page-title">Предметы</h1>
+          <p className="page-subtitle">
             Источник: {source === "api" ? "API" : "mock"}
             {note ? ` · ${note}` : ""}
           </p>
@@ -66,14 +66,14 @@ export default function SubjectsPage() {
           <Link
             key={s.id}
             href={`/subjects/${s.id}`}
-            className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-[#2B4C7E]/40 hover:shadow transition"
+            className="group rounded-card border border-slate-200/80 bg-white p-4 shadow-soft transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
           >
             <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-[#2B4C7E]/10 p-2 text-[#2B4C7E]">
+              <div className="rounded-soft bg-primary/10 p-2 text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-medium text-slate-900 group-hover:text-[#2B4C7E]">{s.name}</div>
+                <div className="font-medium text-slate-900 group-hover:text-primary">{s.name}</div>
                 <div className="mt-1 text-xs text-slate-500">
                   {[
                     s.course_number != null ? `${s.course_number} курс` : null,
@@ -84,7 +84,7 @@ export default function SubjectsPage() {
                     .join(" · ")}
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#2B4C7E]" />
+              <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary" />
             </div>
           </Link>
         ))}
