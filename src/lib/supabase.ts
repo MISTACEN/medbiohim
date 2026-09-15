@@ -1,10 +1,11 @@
 /**
- * Browser-side Supabase Auth helpers (OAuth / session from URL).
- * Uses anon key only — never service_role.
+ * Browser-side Supabase Auth helpers (OAuth).
+ * Uses anon key only - never service_role.
  */
 
 const SUPABASE_URL = (
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gnobvyjywtqbdfeejxmf.supabase.co"
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://gnobvyjywtqbdfeejxmf.supabase.co"
 ).replace(/\/$/, "");
 
 const SUPABASE_ANON =
@@ -18,7 +19,9 @@ export function getSupabaseUrl() {
 /** Redirect browser to Google OAuth via Supabase. */
 export function startGoogleOAuth(redirectTo?: string) {
   if (typeof window === "undefined") return;
-  const redirect = redirectTo || `${window.location.origin}/auth/callback`;
+  const appOrigin =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
+  const redirect = redirectTo || `${appOrigin}/auth/callback`;
   const url =
     `${SUPABASE_URL}/auth/v1/authorize` +
     `?provider=google` +
@@ -26,7 +29,6 @@ export function startGoogleOAuth(redirectTo?: string) {
   window.location.href = url;
 }
 
-/** Parse access/refresh tokens from OAuth callback hash or query. */
 export function parseOAuthTokensFromUrl(href: string): {
   access_token?: string;
   refresh_token?: string;

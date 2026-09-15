@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { AuthHashCatcher } from "@/components/auth/AuthHashCatcher";
 
 export const metadata: Metadata = {
   title: "Медбиохим — образовательная платформа",
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider>
           <AuthProvider>
+            <AuthHashCatcher />
             <AppShell>{children}</AppShell>
           </AuthProvider>
         </ThemeProvider>
