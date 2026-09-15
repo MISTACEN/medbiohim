@@ -9,6 +9,7 @@ use Medbiohim\Middleware\RequireRole;
 use Medbiohim\Repositories\GroupRepository;
 use Medbiohim\Repositories\SubjectRepository;
 use Medbiohim\Repositories\UserRepository;
+use Medbiohim\Services\SupabaseRest;
 
 return static function (Router $router): void {
     $router->get('/api/v1/me', static function (Request $req, array $params): void {
@@ -32,7 +33,12 @@ return static function (Router $router): void {
         try {
             Response::success(['items' => (new GroupRepository())->listActive()], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+            try {
+                Response::success(['items' => SupabaseRest::listGroups()], $req->requestId);
+            } catch (\Throwable $fallback) {
+                \Medbiohim\Support\Logger::error('groups_list_failed', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
+                Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+            }
         }
     });
 
@@ -60,14 +66,26 @@ return static function (Router $router): void {
             return;
         }
         try {
-            $row = (new GroupRepository())->create([
+            $payload = [
                 'name' => $name,
                 'code' => $req->json('code'),
                 'course_number' => $req->json('course_number'),
                 'admission_year' => $req->json('admission_year'),
-            ]);
+            ];
+            try {
+                $row = (new GroupRepository())->create($payload);
+            } catch (\Throwable $dbError) {
+                $row = SupabaseRest::createGroup($payload);
+            }
             Response::success($row, $req->requestId, 201);
+        } catch (\InvalidArgumentException $e) {
+            Response::error('VALIDATION_ERROR', $e->getMessage(), $req->requestId, 422);
         } catch (\Throwable $e) {
+            \Medbiohim\Support\Logger::error('create_group_failed', [
+                'requestId' => $req->requestId,
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
             Response::error('DB_ERROR', 'Could not create group', $req->requestId, 500);
         }
     });
@@ -95,7 +113,12 @@ return static function (Router $router): void {
         try {
             Response::success(['items' => (new SubjectRepository())->listActive($course, $semester)], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+            try {
+                Response::success(['items' => SupabaseRest::listSubjects($course, $semester)], $req->requestId);
+            } catch (\Throwable $fallback) {
+                \Medbiohim\Support\Logger::error('subjects_list_failed', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
+                Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+            }
         }
     });
 
@@ -122,17 +145,23 @@ return static function (Router $router): void {
             return;
         }
         try {
-            $row = (new SubjectRepository())->create([
+            $payload = [
                 'name' => $name,
                 'course_number' => $req->json('course_number'),
                 'semester' => $req->json('semester'),
                 'control_type' => $req->json('control_type'),
                 'lecture_hours' => $req->json('lecture_hours'),
                 'practice_hours' => $req->json('practice_hours'),
-            ]);
+            ];
+            try {
+                $row = (new SubjectRepository())->create($payload);
+            } catch (\Throwable $dbError) {
+                $row = SupabaseRest::createSubject($payload);
+            }
             Response::success($row, $req->requestId, 201);
         } catch (\Throwable $e) {
             Response::error('DB_ERROR', 'Could not create subject', $req->requestId, 500);
         }
     });
 };
+// synced 2026-09-15
