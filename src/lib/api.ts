@@ -1,8 +1,7 @@
 /**
  * API client for SpaceWeb backend.
- * On Vercel: NEXT_PUBLIC_API_URL=/api/v1 (proxy rewrite).
+ * On Vercel: NEXT_PUBLIC_API_URL=/api/v1 (same-origin proxy rewrite).
  */
-
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "/api/v1";
 
@@ -44,21 +43,28 @@ export async function api<T>(
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path.startsWith("/") ? path : `/${path}`}`, {
-    ...options,
-    headers,
-  });
-
-  const text = await res.text();
   try {
-    return JSON.parse(text) as ApiResult<T>;
+    const res = await fetch(`${API_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+      ...options,
+      headers,
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as ApiResult<T>;
+    } catch {
+      return {
+        ok: false,
+        error: {
+          code: "BAD_RESPONSE",
+          message: res.ok ? "Сервер вернул не JSON" : `HTTP ${res.status}`,
+        },
+        requestId: "client",
+      };
+    }
   } catch {
     return {
       ok: false,
-      error: {
-        code: "BAD_RESPONSE",
-        message: res.ok ? "Сервер вернул не JSON" : `HTTP ${res.status}: не удалось связаться с API`,
-      },
+      error: { code: "NETWORK", message: "Сеть недоступна" },
       requestId: "client",
     };
   }
@@ -87,7 +93,15 @@ export async function listSubjects(course?: number, semester?: number) {
   if (course != null) q.set("course", String(course));
   if (semester != null) q.set("semester", String(semester));
   const qs = q.toString();
-  return api<{ items: Array<{ id: string; name: string; course_number?: number; semester?: number; control_type?: string }> }>(`/subjects${qs ? `?${qs}` : ""}`);
+  return api<{
+    items: Array<{
+      id: string;
+      name: string;
+      course_number?: number;
+      semester?: number;
+      control_type?: string;
+    }>;
+  }>(`/subjects${qs ? `?${qs}` : ""}`);
 }
 
 export async function listGroups() {
@@ -98,22 +112,32 @@ export type ApiTest = {
   id: string;
   title?: string;
   name?: string;
-  subject_id?: string;
-  subject_name?: string;
+  description?: string | null;
+  subject_id?: string | null;
+  subject_name?: string | null;
   questions_count?: number;
+  type?: string;
+  is_published?: boolean;
 };
 
 export async function listTests(subjectId?: string) {
-  const q = subjectId ? `?subject_id=${encodeURIComponent(subjectId)}` : "";
-  return api<{ items: ApiTest[] }>(`/tests${q}`);
+  const qs = subjectId ? `?subject_id=${encodeURIComponent(subjectId)}` : "";
+  return api<{ items: ApiTest[] }>(`/tests${qs}`);
 }
 
 export async function getTest(id: string) {
-  return api<{ test: ApiTest; questions?: unknown[] }>(`/tests/${id}`);
+  return api<{
+    test: ApiTest;
+    questions: Array<{ id: string; body?: string; q?: string; options?: string[]; difficulty?: number }>;
+    answers_local?: Array<number | null>;
+  }>(`/tests/${id}`);
 }
 
 export async function startTestAttempt(testId: string) {
-  return api<{ attempt: { id: string } }>(`/tests/${testId}/start`, { method: "POST", body: "{}" });
+  return api<{ attempt: { id: string; status: string } }>(`/tests/${testId}/start`, {
+    method: "POST",
+    body: "{}",
+  });
 }
 
 export async function finishAttempt(attemptId: string, score?: number, maxScore?: number) {
@@ -123,8 +147,20 @@ export async function finishAttempt(attemptId: string, score?: number, maxScore?
   });
 }
 
+export type ApiHomework = {
+  id: string;
+  title: string;
+  description?: string | null;
+  due_at?: string | null;
+  subject_name?: string | null;
+  submission_id?: string | null;
+  submission_status?: string | null;
+  grade?: number | null;
+  submitted_at?: string | null;
+};
+
 export async function listHomeworks() {
-  return api<{ items: unknown[] }>("/homeworks");
+  return api<{ items: ApiHomework[] }>("/homeworks");
 }
 
 export async function submitHomework(id: string, textAnswer?: string, fileId?: string) {
@@ -138,18 +174,47 @@ export async function uploadFile(file: File, groupId?: string) {
   const fd = new FormData();
   fd.append("file", file);
   if (groupId) fd.append("group_id", groupId);
-  return api<{ file: { id: string } }>("/files", { method: "POST", body: fd });
+  return api<{ file: { id: string; object_key?: string; original_name?: string } }>("/files/upload", {
+    method: "POST",
+    body: fd,
+  });
+}
+
+export async function uploadFileBase64(
+  originalName: string,
+  mimeType: string,
+  contentBase64: string
+) {
+  return api<{ file: { id: string } }>("/files/upload", {
+    method: "POST",
+    body: JSON.stringify({
+      original_name: originalName,
+      mime_type: mimeType,
+      content_base64: contentBase64,
+    }),
+  });
+}
+
+export async function getFile(id: string) {
+  return api<{ file: unknown; download?: { url?: string } }>(`/files/${id}`);
 }
 
 export async function register(email: string, password: string, fullName?: string) {
-  return api<{ access_token?: string | null; refresh_token?: string | null; needs_email_confirm?: boolean }>(
-    "/auth/register",
-    { method: "POST", body: JSON.stringify({ email, password, full_name: fullName }) }
-  );
+  return api<{
+    access_token?: string | null;
+    refresh_token?: string | null;
+    needs_email_confirm?: boolean;
+  }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password, full_name: fullName }),
+  });
 }
 
 export async function getSite() {
-  return api<{ site: Record<string, unknown>; announcements: unknown[] }>("/site");
+  return api<{
+    site: Record<string, unknown>;
+    announcements: Array<{ id: string; title: string; body: string; pinned?: boolean }>;
+  }>("/site");
 }
 
 export async function adminOverview() {
@@ -157,11 +222,16 @@ export async function adminOverview() {
 }
 
 export async function adminUpdateSite(data: Record<string, unknown>) {
-  return api<{ site: Record<string, unknown> }>("/admin/site", { method: "PUT", body: JSON.stringify(data) });
+  return api<{ site: Record<string, unknown> }>("/admin/site", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function adminListAnnouncements() {
-  return api<{ items: Array<{ id: string; title: string; body: string; pinned?: boolean }> }>("/admin/announcements");
+  return api<{
+    items: Array<{ id: string; title: string; body: string; pinned?: boolean }>;
+  }>("/admin/announcements");
 }
 
 export async function adminCreateAnnouncement(title: string, body: string, pinned?: boolean) {
@@ -171,12 +241,29 @@ export async function adminCreateAnnouncement(title: string, body: string, pinne
   });
 }
 
+export async function adminUpdateAnnouncement(
+  id: string,
+  patch: { title?: string; body?: string; pinned?: boolean }
+) {
+  return api<{ item: unknown }>(`/admin/announcements/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function adminDeleteAnnouncement(id: string) {
   return api<{ deleted: boolean }>(`/admin/announcements/${id}`, { method: "DELETE" });
 }
 
-export async function createGroup(payload: { name: string; code?: string; course_number?: number }) {
-  return api<Record<string, unknown>>("/groups", { method: "POST", body: JSON.stringify(payload) });
+export async function createGroup(payload: {
+  name: string;
+  code?: string;
+  course_number?: number;
+}) {
+  return api<Record<string, unknown>>("/groups", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createSubject(payload: {
@@ -185,12 +272,19 @@ export async function createSubject(payload: {
   semester?: number;
   control_type?: string;
 }) {
-  return api<Record<string, unknown>>("/subjects", { method: "POST", body: JSON.stringify(payload) });
+  return api<Record<string, unknown>>("/subjects", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getDashboard() {
   return api<{
-    profile: { user: { id: string; full_name?: string; email?: string }; roles: string[]; groups: unknown[] };
+    profile: {
+      user: { id: string; full_name?: string; email?: string };
+      roles: string[];
+      groups: Array<{ id: string; name: string; code?: string }>;
+    };
     announcements: Array<{ id: string; title: string; body: string }>;
     schedule: Array<Record<string, unknown>>;
     homeworks: Array<Record<string, unknown>>;
@@ -215,7 +309,9 @@ export async function listMaterials(groupId?: string) {
 }
 
 export async function listCommunityPosts() {
-  return api<{ items: unknown[] }>("/community/posts");
+  return api<{ items: Array<{ id: string; title: string; body: string; author_name?: string }> }>(
+    "/community/posts"
+  );
 }
 
 export async function createCommunityPost(title: string, body: string) {
@@ -241,7 +337,9 @@ export async function claimAdmin(secret: string) {
 }
 
 export async function adminListUsers() {
-  return api<{ items: Array<{ id: string; email?: string; full_name?: string; roles: string[] }> }>("/admin/users");
+  return api<{ items: Array<{ id: string; email?: string; full_name?: string; roles: string[] }> }>(
+    "/admin/users"
+  );
 }
 
 export async function adminSetUserRole(
@@ -267,7 +365,9 @@ export async function adminSaveCurriculum(items: Array<Record<string, unknown>>)
 }
 
 export async function adminGetTests() {
-  return api<{ items: Array<Record<string, unknown>>; db_items: Array<Record<string, unknown>> }>("/admin/tests");
+  return api<{ items: Array<Record<string, unknown>>; db_items?: Array<Record<string, unknown>> }>(
+    "/admin/tests"
+  );
 }
 
 export async function adminSaveTests(items: Array<Record<string, unknown>>) {
@@ -275,6 +375,10 @@ export async function adminSaveTests(items: Array<Record<string, unknown>>) {
     method: "PUT",
     body: JSON.stringify({ items }),
   });
+}
+
+export async function getCurriculum() {
+  return api<{ items: Array<Record<string, unknown>> }>("/curriculum");
 }
 
 export function hasToken(): boolean {
