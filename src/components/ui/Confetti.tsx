@@ -2,26 +2,40 @@
 
 import { useEffect, useState } from "react";
 
-export function Confetti({ show }: { show: boolean }) {
-  const [pieces, setPieces] = useState<Array<{ id: number; left: number; delay: number; color: string }>>([]);
+const COLORS = ["#6366F1", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E", "#38BDF8"];
+
+/** Accept both `active` and legacy `show` */
+export function Confetti({
+  active,
+  show,
+  duration = 2800,
+}: {
+  active?: boolean;
+  show?: boolean;
+  duration?: number;
+}) {
+  const on = active ?? show ?? false;
+  const [pieces, setPieces] = useState<
+    Array<{ id: number; left: number; delay: number; color: string; rot: number }>
+  >([]);
 
   useEffect(() => {
-    if (!show) {
+    if (!on) {
       setPieces([]);
       return;
     }
-    const colors = ["#6366F1", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E"];
     setPieces(
-      Array.from({ length: 40 }, (_, i) => ({
+      Array.from({ length: 48 }).map((_, i) => ({
         id: i,
         left: Math.random() * 100,
-        delay: Math.random() * 0.8,
-        color: colors[i % colors.length],
+        delay: Math.random() * 0.6,
+        color: COLORS[i % COLORS.length],
+        rot: Math.random() * 360,
       }))
     );
-    const t = setTimeout(() => setPieces([]), 2800);
+    const t = setTimeout(() => setPieces([]), duration);
     return () => clearTimeout(t);
-  }, [show]);
+  }, [on, duration]);
 
   if (!pieces.length) return null;
 
@@ -30,11 +44,12 @@ export function Confetti({ show }: { show: boolean }) {
       {pieces.map((p) => (
         <span
           key={p.id}
-          className="confetti-piece absolute top-0 h-2 w-2 rounded-sm"
+          className="confetti-piece absolute top-0 h-2.5 w-2.5 rounded-sm"
           style={{
             left: `${p.left}%`,
             background: p.color,
             animationDelay: `${p.delay}s`,
+            transform: `rotate(${p.rot}deg)`,
           }}
         />
       ))}
