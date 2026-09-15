@@ -13,7 +13,9 @@ use Medbiohim\Services\SupabaseRest;
 
 return static function (Router $router): void {
     $router->get('/api/v1/me', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
         try {
             $repo = new UserRepository();
             $repo->ensureProfile($req->user->id, $req->user->email);
@@ -29,7 +31,9 @@ return static function (Router $router): void {
     });
 
     $router->get('/api/v1/groups', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
         try {
             Response::success(['items' => (new GroupRepository())->listActive()], $req->requestId);
         } catch (\Throwable $e) {
@@ -43,7 +47,9 @@ return static function (Router $router): void {
     });
 
     $router->get('/api/v1/groups/{id}', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
         try {
             $repo = new GroupRepository();
             $group = $repo->findById($params['id']);
@@ -58,8 +64,12 @@ return static function (Router $router): void {
     });
 
     $router->post('/api/v1/groups', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
+        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) {
+            return;
+        }
         $name = trim((string) $req->json('name', ''));
         if ($name === '') {
             Response::error('VALIDATION_ERROR', 'name is required', $req->requestId, 422);
@@ -75,6 +85,8 @@ return static function (Router $router): void {
             try {
                 $row = (new GroupRepository())->create($payload);
             } catch (\Throwable $dbError) {
+                // SpaceWeb can reach Supabase over HTTPS even when PostgreSQL
+                // pooler connectivity is unavailable. Use the same Supabase DB.
                 $row = SupabaseRest::createGroup($payload);
             }
             Response::success($row, $req->requestId, 201);
@@ -91,15 +103,23 @@ return static function (Router $router): void {
     });
 
     $router->post('/api/v1/groups/{id}/members', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
+        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) {
+            return;
+        }
         $userId = (string) $req->json('user_id', '');
         if ($userId === '') {
             Response::error('VALIDATION_ERROR', 'user_id is required', $req->requestId, 422);
             return;
         }
         try {
-            $row = (new GroupRepository())->addMember($params['id'], $userId, (string) $req->json('role_in_group', 'student'));
+            $row = (new GroupRepository())->addMember(
+                $params['id'],
+                $userId,
+                (string) $req->json('role_in_group', 'student')
+            );
             Response::success($row, $req->requestId, 201);
         } catch (\Throwable $e) {
             Response::error('DB_ERROR', 'Could not add member', $req->requestId, 500);
@@ -107,7 +127,9 @@ return static function (Router $router): void {
     });
 
     $router->get('/api/v1/subjects', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
         $course = isset($req->query['course']) ? (int) $req->query['course'] : null;
         $semester = isset($req->query['semester']) ? (int) $req->query['semester'] : null;
         try {
@@ -123,7 +145,9 @@ return static function (Router $router): void {
     });
 
     $router->get('/api/v1/subjects/{id}', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
         try {
             $detail = (new SubjectRepository())->detailWithModules($params['id']);
             if ($detail === null) {
@@ -137,8 +161,12 @@ return static function (Router $router): void {
     });
 
     $router->post('/api/v1/subjects', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        if (!RequireAuth::handle($req)) {
+            return;
+        }
+        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) {
+            return;
+        }
         $name = trim((string) $req->json('name', ''));
         if ($name === '') {
             Response::error('VALIDATION_ERROR', 'name is required', $req->requestId, 422);
