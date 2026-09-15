@@ -4,8 +4,8 @@
   "description": "Образовательная платформа",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F3F4F6",
-  "theme_color": "#2B4C7E",
+  "background_color": "#F8FAFC",
+  "theme_color": "#6366F1",
   "lang": "ru",
   "icons": []
 }

@@ -1,36 +1,10 @@
-# Медбиохим
+# MEDBIOHIM
 
-Образовательная платформа (Next.js demo UI).
+## Frontend (repo root) → Vercel
+Next.js App Router.
+- Env: `NEXT_PUBLIC_API_URL=https://YOUR-SPACEWEB/public/api/v1`
 
-**Репозиторий:** [github.com/MISTACEN/medbiohim](https://github.com/MISTACEN/medbiohim) (приватный)
+## backend/ → SpaceWeb
+PHP API. Copy `.env.example` → `.env`. Folder `data/` must be writable.
 
-## Запуск локально
-
-```bash
-npm install
-npm run dev
-```
-
-http://localhost:3000
-
-## Деплой на Vercel
-
-1. Откройте [vercel.com/new](https://vercel.com/new)
-2. Import Git Repository → выберите `MISTACEN/medbiohim`
-3. Framework: **Next.js** (auto)
-4. Root Directory: `.` (корень репо)
-5. Deploy
-
-Или CLI:
-
-```bash
-npx vercel
-```
-
-## Стек
-
-- Frontend: Next.js 15 + React 19 + Tailwind + TypeScript
-- Backend (scaffold): PHP 8.4 на SpaceWeb — отдельно
-- Data: Supabase + Backblaze B2 — следующий этап
-
-Сейчас UI работает на **mock-данных**.
+Synced: 2026-09-15
