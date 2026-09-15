@@ -70,6 +70,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as AppThemeId | null;
+    // migrate old mb_theme
     const legacy = localStorage.getItem("mb_theme");
     let initial: AppThemeId = "classic-light";
     if (saved && THEMES.some((t) => t.id === saved)) {
@@ -90,11 +91,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleClassicMode = useCallback(() => {
     setThemeState((prev) => {
       const next: AppThemeId =
-        prev === "classic-dark"
-          ? "classic-light"
-          : prev === "classic-light"
-            ? "classic-dark"
-            : "classic-light";
+        prev === "classic-dark" ? "classic-light" : prev === "classic-light" ? "classic-dark" : "classic-light";
       localStorage.setItem(STORAGE_KEY, next);
       applyDom(next);
       return next;
