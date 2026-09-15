@@ -8,14 +8,15 @@ import {
 } from "@/lib/api";
 
 type Props = { onMessage?: (message: string, error?: boolean) => void };
+type AdminRow = Record<string, any>;
 
 export function AdminMissingTools({ onMessage }: Props) {
   const [section, setSection] = useState<"homework" | "materials" | "community">("homework");
-  const [homeworks, setHomeworks] = useState<Record<string, unknown>[]>([]);
-  const [materials, setMaterials] = useState<Record<string, unknown>[]>([]);
-  const [posts, setPosts] = useState<Record<string, unknown>[]>([]);
-  const [groups, setGroups] = useState<Record<string, unknown>[]>([]);
-  const [subjects, setSubjects] = useState<Record<string, unknown>[]>([]);
+  const [homeworks, setHomeworks] = useState<AdminRow[]>([]);
+  const [materials, setMaterials] = useState<AdminRow[]>([]);
+  const [posts, setPosts] = useState<AdminRow[]>([]);
+  const [groups, setGroups] = useState<AdminRow[]>([]);
+  const [subjects, setSubjects] = useState<AdminRow[]>([]);
   const [title, setTitle] = useState(""); const [description, setDescription] = useState("");
   const [subjectId, setSubjectId] = useState(""); const [groupId, setGroupId] = useState(""); const [dueAt, setDueAt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,7 +26,7 @@ export function AdminMissingTools({ onMessage }: Props) {
     if (kind === "materials") { const r = await adminListMaterials(); if (r.ok) setMaterials(r.data.items || []); }
     if (kind === "community") { const r = await adminListCommunity(); if (r.ok) setPosts(r.data.items || []); }
   }
-  useEffect(() => { void reload(section); void (async()=>{ const [g,s]=await Promise.all([listGroups(),listSubjects()]); if(g.ok)setGroups(g.data.items as Record<string,unknown>[]); if(s.ok)setSubjects(s.data.items as Record<string,unknown>[]); })(); }, [section]);
+  useEffect(() => { void reload(section); void (async()=>{ const [g,s]=await Promise.all([listGroups(),listSubjects()]); if(g.ok)setGroups(g.data.items as AdminRow[]); if(s.ok)setSubjects(s.data.items as AdminRow[]); })(); }, [section]);
 
   async function createHomework() {
     if (!title.trim()) return onMessage?.("Укажите название ДЗ", true); setBusy(true);
