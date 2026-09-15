@@ -12,8 +12,7 @@ export default function HelpPage() {
           или старосте группы.
         </p>
         <p className="text-sm text-gray-500">
-          Это демо-версия интерфейса по новой архитектуре (Vercel + SpaceWeb +
-          Supabase + B2).
+          Архитектура: Vercel + SpaceWeb + Supabase + B2.
         </p>
       </div>
     </div>

@@ -33,9 +33,6 @@ export function Sparkline({
       </defs>
       <path d={area} fill="url(#sparkFill)" />
       <path d={line} fill="none" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="3" className="fill-white stroke-indigo-500" strokeWidth="2" />
-      ))}
     </svg>
   );
 }

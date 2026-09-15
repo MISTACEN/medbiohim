@@ -2,30 +2,26 @@
 
 import { useEffect, useState } from "react";
 
-const COLORS = ["#6366F1", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E", "#38BDF8"];
-
-export function Confetti({ active, duration = 2800 }: { active: boolean; duration?: number }) {
-  const [pieces, setPieces] = useState<
-    Array<{ id: number; left: number; delay: number; color: string; rot: number }>
-  >([]);
+export function Confetti({ show }: { show: boolean }) {
+  const [pieces, setPieces] = useState<Array<{ id: number; left: number; delay: number; color: string }>>([]);
 
   useEffect(() => {
-    if (!active) {
+    if (!show) {
       setPieces([]);
       return;
     }
+    const colors = ["#6366F1", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E"];
     setPieces(
-      Array.from({ length: 48 }).map((_, i) => ({
+      Array.from({ length: 40 }, (_, i) => ({
         id: i,
         left: Math.random() * 100,
-        delay: Math.random() * 0.6,
-        color: COLORS[i % COLORS.length],
-        rot: Math.random() * 360,
+        delay: Math.random() * 0.8,
+        color: colors[i % colors.length],
       }))
     );
-    const t = setTimeout(() => setPieces([]), duration);
+    const t = setTimeout(() => setPieces([]), 2800);
     return () => clearTimeout(t);
-  }, [active, duration]);
+  }, [show]);
 
   if (!pieces.length) return null;
 
@@ -34,7 +30,7 @@ export function Confetti({ active, duration = 2800 }: { active: boolean; duratio
       {pieces.map((p) => (
         <span
           key={p.id}
-          className="confetti-piece absolute top-0 h-2.5 w-2.5 rounded-sm"
+          className="confetti-piece absolute top-0 h-2 w-2 rounded-sm"
           style={{
             left: `${p.left}%`,
             background: p.color,
