@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+
+  // Auth, theme and other client-only state use localStorage.
+  // Keep the server HTML and the first client render identical to avoid React #418.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-background" aria-hidden="true" />;
+  }
   const bare = pathname === "/login" || pathname === "/register";
 
   if (bare) {
@@ -41,3 +52,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+/* synced-2026-09-15 */

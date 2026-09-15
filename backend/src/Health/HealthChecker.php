@@ -33,8 +33,8 @@ final class HealthChecker
         return [
             'status' => $overall,
             'service' => 'medbiohim-api',
-            'version' => '0.2.0-phase-b',
-            'phase' => 'B',
+            'version' => '0.5.0-phase-d',
+            'phase' => 'D',
             'php' => PHP_VERSION,
             'time' => date('c'),
             'checks' => $checks,
@@ -105,11 +105,15 @@ final class HealthChecker
         if (!extension_loaded('pdo_pgsql')) {
             return ['status' => 'fail', 'message' => 'pdo_pgsql not loaded'];
         }
+        $sslmode = Env::get('DB_SSLMODE', 'require');
         $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $name);
+        if ($sslmode !== '') {
+            $dsn .= ';sslmode=' . $sslmode;
+        }
         try {
             $pdo = new \PDO($dsn, $user, $pass ?? '', [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_TIMEOUT => 3,
+                \PDO::ATTR_TIMEOUT => max(3, (int) (Env::get('DB_CONNECT_TIMEOUT', '8') ?: 8)),
             ]);
             $pdo->query('SELECT 1');
             return ['status' => 'ok', 'message' => 'Connected'];
@@ -148,3 +152,4 @@ final class HealthChecker
         ];
     }
 }
+// synced 2026-09-15

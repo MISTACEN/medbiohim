@@ -22,6 +22,8 @@ final class Connection
         $user = Env::get('DB_USER');
         $pass = Env::get('DB_PASSWORD', '') ?? '';
         $port = Env::get('DB_PORT', '5432');
+        $sslmode = Env::get('DB_SSLMODE', 'require');
+        $connectTimeout = (int) (Env::get('DB_CONNECT_TIMEOUT', '8') ?: 8);
 
         if (!$host || !$user) {
             throw new \RuntimeException('Database is not configured (DB_HOST / DB_USER)');
@@ -31,12 +33,25 @@ final class Connection
             throw new \RuntimeException('pdo_pgsql extension is required');
         }
 
-        $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $name);
+        // SpaceWeb is commonly IPv4-only. Supabase direct db.* is IPv6-only
+        // on projects without the IPv4 add-on, so production should use the
+        // Supavisor session pooler (port 5432) with DB_USER=postgres.<project-ref>.
+        $parts = [
+            'pgsql:host=' . $host,
+            'port=' . $port,
+            'dbname=' . $name,
+        ];
+        if ($sslmode !== '') {
+            $parts[] = 'sslmode=' . $sslmode;
+        }
+
+        $dsn = implode(';', $parts);
+
         self::$pdo = new PDO($dsn, $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::ATTR_TIMEOUT => 5,
+            PDO::ATTR_TIMEOUT => max(3, $connectTimeout),
         ]);
 
         return self::$pdo;
@@ -48,7 +63,11 @@ final class Connection
             self::pdo()->query('SELECT 1');
             return true;
         } catch (\Throwable $e) {
-            Logger::error('db_unavailable', ['message' => $e->getMessage()]);
+            Logger::error('db_unavailable', [
+                'message' => $e->getMessage(),
+                'host' => Env::get('DB_HOST', ''),
+                'port' => Env::get('DB_PORT', '5432'),
+            ]);
             return false;
         }
     }
@@ -58,3 +77,4 @@ final class Connection
         self::$pdo = null;
     }
 }
+// synced 2026-09-15
