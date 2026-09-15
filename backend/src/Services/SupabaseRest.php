@@ -6,7 +6,11 @@ namespace Medbiohim\Services;
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
 
-/** HTTPS fallback to Supabase PostgREST when outbound PostgreSQL is unavailable. */
+/**
+ * HTTPS fallback to Supabase PostgREST for hosts where outbound PostgreSQL
+ * (PDO/pooler) is unavailable. This keeps Supabase as the single source of
+ * truth and is used only when the normal repository/DB path fails.
+ */
 final class SupabaseRest
 {
     private static function request(string $method, string $path, ?array $body = null, array $extraHeaders = []): array
@@ -36,8 +40,13 @@ final class SupabaseRest
     public static function createGroup(array $data): array
     {
         $name = trim((string) ($data['name'] ?? ''));
-        if ($name === '') throw new \InvalidArgumentException('Group name is required');
-        $base = trim((string) ($data['code'] ?? '')) ?: self::makeCode($name);
+        if ($name === '') {
+            throw new \InvalidArgumentException('Group name is required');
+        }
+        $base = trim((string) ($data['code'] ?? ''));
+        if ($base === '') {
+            $base = self::makeCode($name);
+        }
         for ($i = 0; $i < 8; $i++) {
             $code = $i === 0 ? $base : $base . '-' . ($i + 1);
             try {
@@ -47,10 +56,14 @@ final class SupabaseRest
                     'course_number' => $data['course_number'] ?? null,
                     'admission_year' => $data['admission_year'] ?? null,
                 ], ['Prefer: return=representation']);
-                if (!isset($rows[0]) || !is_array($rows[0])) throw new \RuntimeException('Supabase REST create group returned no row');
+                if (!isset($rows[0]) || !is_array($rows[0])) {
+                    throw new \RuntimeException('Supabase REST create group returned no row');
+                }
                 return $rows[0];
             } catch (\Throwable $e) {
-                if ($i >= 7 || !str_contains($e->getMessage(), '(409)')) throw $e;
+                if ($i >= 7 || !str_contains($e->getMessage(), '(409)')) {
+                    throw $e;
+                }
             }
         }
         throw new \RuntimeException('Could not create group');
@@ -60,15 +73,22 @@ final class SupabaseRest
     {
         $select = 'id,name,course_number,semester,control_type,lecture_hours,practice_hours,is_active';
         $path = 'subjects?is_active=eq.true&select=' . rawurlencode($select);
-        if ($course !== null) $path .= '&course_number=eq.' . rawurlencode((string) $course);
-        if ($semester !== null) $path .= '&semester=eq.' . rawurlencode((string) $semester);
-        return self::request('GET', $path . '&order=course_number.asc.nullslast,semester.asc.nullslast,name.asc');
+        if ($course !== null) {
+            $path .= '&course_number=eq.' . rawurlencode((string) $course);
+        }
+        if ($semester !== null) {
+            $path .= '&semester=eq.' . rawurlencode((string) $semester);
+        }
+        $path .= '&order=course_number.asc.nullslast,semester.asc.nullslast,name.asc';
+        return self::request('GET', $path);
     }
 
     public static function createSubject(array $data): array
     {
         $name = trim((string) ($data['name'] ?? ''));
-        if ($name === '') throw new \InvalidArgumentException('Subject name is required');
+        if ($name === '') {
+            throw new \InvalidArgumentException('Subject name is required');
+        }
         $rows = self::request('POST', 'subjects', [
             'name' => $name,
             'course_number' => $data['course_number'] ?? null,
@@ -77,13 +97,20 @@ final class SupabaseRest
             'lecture_hours' => $data['lecture_hours'] ?? null,
             'practice_hours' => $data['practice_hours'] ?? null,
         ], ['Prefer: return=representation']);
-        if (!isset($rows[0]) || !is_array($rows[0])) throw new \RuntimeException('Supabase REST create subject returned no row');
+        if (!isset($rows[0]) || !is_array($rows[0])) {
+            throw new \RuntimeException('Supabase REST create subject returned no row');
+        }
         return $rows[0];
     }
 
     private static function makeCode(string $name): string
     {
-        $map = ['а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ё'=>'e','ж'=>'zh','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u','ф'=>'f','х'=>'h','ц'=>'c','ч'=>'ch','ш'=>'sh','щ'=>'sch','ъ'=>'','ы'=>'y','ь'=>'','э'=>'e','ю'=>'yu','я'=>'ya'];
+        $map = [
+            'а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ё'=>'e','ж'=>'zh','з'=>'z',
+            'и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s',
+            'т'=>'t','у'=>'u','ф'=>'f','х'=>'h','ц'=>'c','ч'=>'ch','ш'=>'sh','щ'=>'sch','ъ'=>'',
+            'ы'=>'y','ь'=>'','э'=>'e','ю'=>'yu','я'=>'ya',
+        ];
         $value = strtr(mb_strtolower($name, 'UTF-8'), $map);
         $value = preg_replace('/[^a-z0-9]+/u', '-', $value) ?? '';
         $value = trim($value, '-');
