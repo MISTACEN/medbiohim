@@ -1,15 +1,10 @@
 # Full repository sync
 
 **Date:** 2026-09-15 (CEST)
+**HEAD trigger:** force Vercel rebuild
 
-**Source of truth (local):**
-- `artifacts/frontend/` → Vercel (repo root)
-- `artifacts/backend/` → SpaceWeb (`backend/`)
+**Must build from this commit or later** (not `1b59d1b`):
+- `src/lib/api.ts` includes `adminCreateAnnouncement`, `register`, `hasToken`, `getDashboard`, …
+- `src/app/page.tsx` uses live API
 
-**Included in this refresh:**
-- AuthProvider / me()
-- Live API pages (dashboard, schedule, materials, community, progress, subjects…)
-- Backend platform routes: dashboard, schedule, materials, community, progress
-- ContentStore + FileRepository listActive
-
-If a file is missing after clone, copy from local `artifacts/`.
+Local source of truth: `artifacts/frontend` + `artifacts/backend`.
