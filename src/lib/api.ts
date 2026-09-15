@@ -1,11 +1,14 @@
 /**
  * API client for SpaceWeb backend.
- * NEXT_PUBLIC_API_URL=https://your-spaceweb/api/v1
+ *
+ * On Vercel use same-origin proxy (avoids mixed content HTTPS→HTTP):
+ *   NEXT_PUBLIC_API_URL=/api/v1
+ * Rewrite in next.config.ts proxies to SpaceWeb.
  */
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  "http://ryazansev3.temp.swtest.ru/public/api/v1";
+  "/api/v1";
 
 export type ApiSuccess<T> = { ok: true; data: T; requestId: string };
 export type ApiError = {
@@ -50,7 +53,21 @@ export async function api<T>(
     headers,
   });
 
-  return (await res.json()) as ApiResult<T>;
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as ApiResult<T>;
+  } catch {
+    return {
+      ok: false,
+      error: {
+        code: "BAD_RESPONSE",
+        message: res.ok
+          ? "Сервер вернул не JSON"
+          : `HTTP ${res.status}: не удалось связаться с API`,
+      },
+      requestId: "client",
+    };
+  }
 }
 
 export async function login(email: string, password: string) {
