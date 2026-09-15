@@ -1,5 +1,8 @@
-# MEDBIOHIM Backend
+# MEDBIOHIM backend (SpaceWeb)
 
-Phases A–D: auth (rate-limited), domain CRUD reads/writes, tests, homework, B2 native upload + presign, multipart files.
+1. Upload this folder to hosting
+2. Copy `.env.example` → `.env` and fill secrets
+3. Ensure `data/` is writable
+4. Health: `/public/api/v1/health`
 
-See SPACEWEB.md and .env.example.
+Synced 2026-09-15
