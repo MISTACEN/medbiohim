@@ -10,6 +10,8 @@ Replace the password and the exact Session pooler host copied from Supabase → 
 
 `DB_URL` takes priority over `DB_HOST` / `DB_USER` / `DB_PORT` / `DB_NAME`.
 
+Also set real `SUPABASE_SERVICE_KEY` (service_role) so REST fallbacks work when PDO is down.
+
 Verification: `/public/api/v1/health` should show `database.status=ok`, `message=Connected`. B2 `warn` is acceptable until B2 credentials are configured.
 
 The database already contains the administrator role assignment. Normal student accounts must not bootstrap a second admin.
