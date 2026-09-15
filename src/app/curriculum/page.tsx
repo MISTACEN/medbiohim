@@ -1,86 +1,111 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { subjects } from "@/lib/mock-data";
+import { getCurriculum, hasToken } from "@/lib/api";
+import { SkeletonCards } from "@/components/ui/Skeleton";
+
+type Item = {
+  id: string;
+  subject: string;
+  course?: number;
+  semester?: number;
+  control?: string;
+  progress_pct?: number;
+  modules?: Array<{ title: string; topics?: string[]; done?: boolean }>;
+};
 
 export default function CurriculumPage() {
-  const exams = subjects.filter((s) => s.controlType === "exam").length;
-  const credits = subjects.filter((s) => s.controlType === "credit").length;
-  const lectureHours = subjects.reduce((sum, s) => sum + (s.lectureHours || 0), 0);
-  const practiceHours = subjects.reduce((sum, s) => sum + (s.practiceHours || 0), 0);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!hasToken()) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await getCurriculum();
+        if (cancelled) return;
+        if (res.ok) setItems((res.data.items || []) as Item[]);
+        else setError(res.error.message);
+      } catch {
+        if (!cancelled) setError("Не удалось загрузить план");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!hasToken()) {
+    return (
+      <div className="card p-8 text-center">
+        <p className="text-slate-600">Войдите, чтобы видеть учебный план</p>
+        <Link href="/login" className="btn-primary mt-4 inline-flex">
+          Войти
+        </Link>
+      </div>
+    );
+  }
+
+  if (loading) return <SkeletonCards count={2} />;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Учебный план</h1>
-        <p className="mt-1 text-gray-500">Курс 1–2 · Семестры 1–3</p>
+        <h1 className="page-title">Учебный план</h1>
+        <p className="page-subtitle">Ход учёбы по предметам и модулям</p>
+        {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div className="card p-4 text-center">
-          <div className="text-xl font-bold text-primary">{subjects.length}</div>
-          <div className="text-xs text-gray-500">дисциплин</div>
-        </div>
-        <div className="card p-4 text-center">
-          <div className="text-xl font-bold text-danger">{exams}</div>
-          <div className="text-xs text-gray-500">экзаменов</div>
-        </div>
-        <div className="card p-4 text-center">
-          <div className="text-xl font-bold text-success">{credits}</div>
-          <div className="text-xs text-gray-500">зачётов</div>
-        </div>
-        <div className="card p-4 text-center">
-          <div className="text-xl font-bold text-primary">{lectureHours}</div>
-          <div className="text-xs text-gray-500">лекц. часов</div>
-        </div>
-        <div className="card p-4 text-center">
-          <div className="text-xl font-bold text-primary">{practiceHours}</div>
-          <div className="text-xs text-gray-500">практ. часов</div>
-        </div>
-      </div>
-      <div className="card hidden overflow-x-auto md:block">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50/80 text-gray-500">
-              <th className="px-4 py-3 font-medium">Предмет</th>
-              <th className="px-4 py-3 font-medium">Курс</th>
-              <th className="px-4 py-3 font-medium">Сем.</th>
-              <th className="px-4 py-3 font-medium">Лекции</th>
-              <th className="px-4 py-3 font-medium">Практика</th>
-              <th className="px-4 py-3 font-medium">Контроль</th>
-              <th className="px-4 py-3 font-medium">Действие</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subjects.map((s) => (
-              <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                <td className="px-4 py-3">{s.course}</td>
-                <td className="px-4 py-3">{s.semester}</td>
-                <td className="px-4 py-3">{s.lectureHours ?? "—"}</td>
-                <td className="px-4 py-3">{s.practiceHours ?? "—"}</td>
-                <td className="px-4 py-3">
-                  <span className={s.controlType === "exam" ? "font-medium text-danger" : "font-medium text-success"}>
-                    {s.controlType === "exam" ? "Экзамен" : "Зачёт"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/subjects/${s.id}`} className="font-medium text-primary hover:underline">Открыть</Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="grid gap-3 md:hidden">
-        {subjects.map((s) => (
-          <Link key={s.id} href={`/subjects/${s.id}`} className="card block p-4">
-            <div className="font-semibold text-gray-900">{s.name}</div>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
-              <span>Курс {s.course}</span>
-              <span>Сем. {s.semester}</span>
-              <span>{s.controlType === "exam" ? "Экзамен" : "Зачёт"}</span>
+      {items.length === 0 ? (
+        <div className="card p-10 text-center text-slate-500">План пока пуст</div>
+      ) : (
+        <div className="space-y-4">
+          {items.map((it) => (
+            <div key={it.id} className="card space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="text-lg font-semibold">{it.subject}</div>
+                  <div className="text-sm text-slate-500">
+                    Курс {it.course ?? "—"} · Семестр {it.semester ?? "—"} · {it.control || "—"}
+                  </div>
+                </div>
+                <div className="text-sm font-medium text-blue-600">{it.progress_pct ?? 0}%</div>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500"
+                  style={{ width: `${Math.min(100, Math.max(0, it.progress_pct ?? 0))}%` }}
+                />
+              </div>
+              <ul className="space-y-2">
+                {(it.modules || []).map((m, i) => (
+                  <li
+                    key={i}
+                    className={`rounded-xl border px-3 py-2 text-sm ${
+                      m.done ? "border-emerald-200 bg-emerald-50" : "border-slate-100 bg-slate-50"
+                    }`}
+                  >
+                    <div className="font-medium">
+                      {m.done ? "✓ " : ""}
+                      {m.title}
+                    </div>
+                    {m.topics && m.topics.length > 0 && (
+                      <div className="text-xs text-slate-500">{m.topics.join(" · ")}</div>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </Link>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
