@@ -1,0 +1,25 @@
+name: Build SpaceWeb backend archive
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  archive-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend archive
+        run: |
+          rm -rf /tmp/medbiohim-spaceweb
+          mkdir -p /tmp/medbiohim-spaceweb
+          cp -a backend /tmp/medbiohim-spaceweb/backend
+          rm -f /tmp/medbiohim-spaceweb/backend/.env
+          printf 'MEDBIOHIM SpaceWeb archive\nSource: $GITHUB_SHA\nKeep production backend/.env on SpaceWeb.\n' > /tmp/medbiohim-spaceweb/SPACEWEB-UPDATE.txt
+          cd /tmp/medbiohim-spaceweb
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-spaceweb-${GITHUB_SHA}.zip" backend SPACEWEB-UPDATE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medbiohim-spaceweb-backend-${{ github.sha }}
+          path: medbiohim-spaceweb-${{ github.sha }}.zip
+          if-no-files-found: error
