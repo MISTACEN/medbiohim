@@ -1,1 +1,30 @@
-{"items":[]}
+{
+  "items": [
+    {
+      "id": "bio",
+      "subject": "Биохимия",
+      "course": 2,
+      "semester": 3,
+      "control": "Экзамен",
+      "progress_pct": 35,
+      "modules": [
+        {"title": "Введение в биохимию", "topics": ["Структура клетки", "Вода и буферы"], "done": true},
+        {"title": "Белки и ферменты", "topics": ["Аминокислоты", "Ферментативная кинетика"], "done": false},
+        {"title": "Метаболизм", "topics": ["Гликолиз", "ЦТК"], "done": false}
+      ]
+    },
+    {
+      "id": "anat",
+      "subject": "Анатомия",
+      "course": 1,
+      "semester": 2,
+      "control": "Зачёт",
+      "progress_pct": 60,
+      "modules": [
+        {"title": "Опорно-двигательная система", "topics": ["Кости", "Суставы"], "done": true},
+        {"title": "Сердечно-сосудистая система", "topics": ["Сердце", "Сосуды"], "done": false}
+      ]
+    }
+  ],
+  "updated_at": "2026-09-15T00:00:00Z"
+}
