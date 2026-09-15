@@ -61,11 +61,11 @@ export default function TestsPage() {
         if (res.ok && res.data.items.length > 0) {
           const mapped: UiTest[] = res.data.items.map((t: ApiTest) => ({
             id: t.id,
-            title: t.title,
+            title: t.title || t.name || "Тест",
             subject: t.subject_name || "—",
             type: "test" as const,
-            questionCount: undefined,
-            status: t.is_published ? "доступен" : "черновик",
+            questionCount: t.questions_count,
+            status: "доступен",
             fromApi: true,
           }));
           setItems(mapped);
@@ -88,7 +88,7 @@ export default function TestsPage() {
   const filtered = tab === "all" ? items : items.filter((t) => t.type === tab);
 
   function generateTicket() {
-    const pool = ticketPool[subject] || ticketPool["Биология"];
+    const pool = ticketPool[subject] || ticketPool["Биология"] || [];
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     setTicket(shuffled.slice(0, 4).map((q, i) => ({ ...q, number: i + 1 })));
   }
@@ -106,11 +106,18 @@ export default function TestsPage() {
         setNote(attempt.error.message);
         return;
       }
+      const qs = (detail.data.questions || []).map((q: unknown, i: number) => {
+        const row = q as { id?: string; body?: string; text?: string };
+        return {
+          id: row.id || String(i),
+          body: row.body || row.text || "Вопрос",
+        };
+      });
       setActive({
         testId: id,
         attemptId: attempt.data.attempt.id,
-        questions: detail.data.questions || [],
-        title: detail.data.test.title,
+        questions: qs,
+        title: detail.data.test.title || detail.data.test.name || "Тест",
       });
     } catch {
       setNote("Не удалось начать тест (нужен login + API)");
@@ -146,11 +153,25 @@ export default function TestsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {([["all", "Все"], ["test", "Тесты"], ["ticket", "Билеты"]] as const).map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setTab(key)}
+        {(
+          [
+            ["all", "Все"],
+            ["test", "Тесты"],
+            ["ticket", "Билеты"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
             className={`rounded-pill px-4 py-1.5 text-sm font-semibold transition ${
-              tab === key ? "bg-brand-gradient text-white shadow-card" : "border border-slate-200 bg-white text-slate-600 hover:bg-indigo-50"
-            }`}>{label}</button>
+              tab === key
+                ? "bg-brand-gradient text-white shadow-card"
+                : "border border-slate-200 bg-white text-slate-600 hover:bg-indigo-50"
+            }`}
+          >
+            {label}
+          </button>
         ))}
       </div>
 
@@ -160,12 +181,20 @@ export default function TestsPage() {
           Генератор билетов
         </h2>
         <div className="mt-4 flex flex-wrap gap-2">
-          <select value={subject} onChange={(e) => setSubject(e.target.value)} className="rounded-soft border border-slate-200 bg-white px-3 py-2 text-sm">
+          <select
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="rounded-soft border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
             {Object.keys(ticketPool).map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
-          <button type="button" onClick={generateTicket} className="btn-primary">Сгенерировать</button>
+          <button type="button" onClick={generateTicket} className="btn-primary">
+            Сгенерировать
+          </button>
         </div>
         {ticket && (
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
@@ -180,7 +209,14 @@ export default function TestsPage() {
         <section className="card border border-primary/30">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-semibold">{active.title}</h2>
-            <button type="button" disabled={busy} onClick={completeActive} className="btn-primary disabled:opacity-50">Завершить</button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={completeActive}
+              className="btn-primary disabled:opacity-50"
+            >
+              Завершить
+            </button>
           </div>
           <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm">
             {active.questions.map((q) => (
@@ -199,13 +235,25 @@ export default function TestsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((t) => {
             const pct = t.questionCount
-              ? Math.min(100, ((t.status === "пройден" ? t.questionCount : 0) / t.questionCount) * 100)
-              : t.status === "пройден" ? 100 : 15;
+              ? Math.min(
+                  100,
+                  ((t.status === "пройден" ? t.questionCount : 0) / t.questionCount) * 100
+                )
+              : t.status === "пройден"
+                ? 100
+                : 15;
             return (
-              <div key={t.id} className="group rounded-card border border-white/50 bg-white/75 p-5 shadow-soft backdrop-blur-md transition hover:-translate-y-1 hover:shadow-lift dark:border-white/10 dark:bg-slate-800/60">
+              <div
+                key={t.id}
+                className="group rounded-card border border-white/50 bg-white/75 p-5 shadow-soft backdrop-blur-md transition hover:-translate-y-1 hover:shadow-lift dark:border-white/10 dark:bg-slate-800/60"
+              >
                 <div className="flex items-start gap-3">
                   <div className="rounded-soft bg-brand-gradient p-2.5 text-white shadow-card">
-                    {t.type === "ticket" ? <Ticket className="h-5 w-5" /> : <FileQuestion className="h-5 w-5" />}
+                    {t.type === "ticket" ? (
+                      <Ticket className="h-5 w-5" />
+                    ) : (
+                      <FileQuestion className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold">{t.title}</div>
@@ -216,12 +264,24 @@ export default function TestsPage() {
                       {t.fromApi ? " · API" : " · mock"}
                     </div>
                     <div className="mt-3 h-1.5 overflow-hidden rounded-pill bg-slate-100 dark:bg-slate-700">
-                      <div className="h-full rounded-pill bg-brand-gradient transition-all duration-500" style={{ width: `${pct}%` }} />
+                      <div
+                        className="h-full rounded-pill bg-brand-gradient transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                   </div>
                   {t.fromApi && t.type === "test" && (
-                    <button type="button" disabled={busy} onClick={() => openTest(t.id)} className="btn-pill inline-flex items-center gap-1 text-xs disabled:opacity-50">
-                      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => openTest(t.id)}
+                      className="btn-pill inline-flex items-center gap-1 text-xs disabled:opacity-50"
+                    >
+                      {busy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
                       Пройти
                     </button>
                   )}
