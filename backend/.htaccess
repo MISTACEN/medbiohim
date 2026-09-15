@@ -1,4 +1,15 @@
+DirectoryIndex index.php
+AddDefaultCharset UTF-8
+
 RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ public/index.php [L]
+
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+RewriteRule (^|/)\.env - [F,L]
+RewriteRule (^|/)logs/ - [F,L]
+RewriteRule (^|/)src/ - [F,L]
+RewriteRule (^|/)config/ - [F,L]
+RewriteRule (^|/)data/ - [F,L]
+
+RewriteRule ^api/(.*)$ public/index.php [QSA,L]

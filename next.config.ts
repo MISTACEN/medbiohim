@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
-/** SpaceWeb backend (HTTP). Browser calls same-origin /api/v1 → rewrite avoids mixed content on Vercel HTTPS. */
-const SPACEWEB_API =
-  process.env.SPACEWEB_API_ORIGIN?.replace(/\/$/, "") ||
+/**
+ * Browser calls same-origin /api/v1/* (HTTPS).
+ * Vercel rewrites proxy to SpaceWeb PHP API (avoids mixed content).
+ */
+const SPACEWEB =
+  process.env.SPACEWEB_API_ORIGIN ||
   "http://ryazansev3.temp.swtest.ru/public/api/v1";
 
 const nextConfig: NextConfig = {
@@ -11,7 +14,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/v1/:path*",
-        destination: `${SPACEWEB_API}/:path*`,
+        destination: `${SPACEWEB.replace(/\/$/, "")}/:path*`,
       },
     ];
   },

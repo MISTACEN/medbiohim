@@ -58,6 +58,26 @@ final class Request
             $headers['Content-Type'] = (string) $_SERVER['CONTENT_TYPE'];
         }
 
+        $authCandidates = [
+            $_SERVER['HTTP_AUTHORIZATION'] ?? null,
+            $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null,
+            $_SERVER['Authorization'] ?? null,
+        ];
+        foreach ($authCandidates as $cand) {
+            if (is_string($cand) && $cand !== '') {
+                $headers['Authorization'] = $cand;
+                break;
+            }
+        }
+        if (empty($headers['Authorization']) && function_exists('getallheaders')) {
+            foreach (getallheaders() as $hk => $hv) {
+                if (strcasecmp((string) $hk, 'Authorization') === 0 && is_string($hv) && $hv !== '') {
+                    $headers['Authorization'] = $hv;
+                    break;
+                }
+            }
+        }
+
         $raw = file_get_contents('php://input') ?: '';
         $json = null;
         $ct = $headers['Content-Type'] ?? '';
@@ -81,8 +101,17 @@ final class Request
 
     public function bearerToken(): ?string
     {
-        $auth = $this->headers['Authorization'] ?? '';
-        if (preg_match('/^Bearer\s+(\S+)$/i', $auth, $m)) {
+        $auth = '';
+        foreach ($this->headers as $k => $v) {
+            if (strcasecmp((string) $k, 'Authorization') === 0) {
+                $auth = (string) $v;
+                break;
+            }
+        }
+        if ($auth === '' && isset($this->query['access_token']) && is_string($this->query['access_token'])) {
+            return $this->query['access_token'] !== '' ? $this->query['access_token'] : null;
+        }
+        if (preg_match('/^Bearer\s+(\S+)/i', $auth, $m)) {
             return $m[1];
         }
         return null;
