@@ -37,7 +37,6 @@ export default function SettingsPage() {
                   borderColor: active ? "var(--primary)" : "var(--border)",
                   background: t.dark ? "#0f172a" : "#f8fafc",
                   color: t.dark ? "#e2e8f0" : "#0f172a",
-                  // @ts-expect-error css var for ring
                   ["--tw-ring-color" as string]: "var(--primary)",
                 }}
               >
