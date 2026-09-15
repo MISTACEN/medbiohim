@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await me();
       if (!res.ok) {
+        clearTokens();
         setUser(null);
         return;
       }
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         groups,
       });
     } catch {
+      clearTokens();
       setUser(null);
     } finally {
       setLoading(false);

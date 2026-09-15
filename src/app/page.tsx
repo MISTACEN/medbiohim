@@ -9,7 +9,7 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
-import { getDashboard, hasToken } from "@/lib/api";
+import { clearTokens, getDashboard, hasToken } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
@@ -21,7 +21,7 @@ type Dash = {
 };
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export default function DashboardPage() {
     (async () => {
       if (!hasToken()) {
         setLoading(false);
-        setData({ announcements: [], homeworks: [], schedule: [], tests: [] });
+        setData(null);
         return;
       }
       try {
@@ -46,13 +46,35 @@ export default function DashboardPage() {
           });
           setError(null);
         } else {
-          setError(res.error.message);
-          setData({ announcements: [], homeworks: [], schedule: [], tests: [] });
+          const code = res.error.code || "";
+          const msg = res.error.message || "Ошибка загрузки";
+          if (
+            /token|auth|unauthorized|bearer/i.test(code + msg) ||
+            res.error.message?.includes("Bearer")
+          ) {
+            clearTokens();
+            await refresh();
+            setError(null);
+            setData(null);
+          } else {
+            setError(msg);
+            setData({
+              announcements: [],
+              homeworks: [],
+              schedule: [],
+              tests: [],
+            });
+          }
         }
       } catch {
         if (!cancelled) {
           setError("Не удалось загрузить данные");
-          setData({ announcements: [], homeworks: [], schedule: [], tests: [] });
+          setData({
+            announcements: [],
+            homeworks: [],
+            schedule: [],
+            tests: [],
+          });
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -61,7 +83,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refresh]);
 
   const name = user?.name?.split(" ")[0] || "студент";
   const pendingHw = (data?.homeworks || []).filter((h) => {
@@ -78,16 +100,27 @@ export default function DashboardPage() {
     );
   }
 
-  if (!hasToken()) {
+  if (!hasToken() || !user) {
     return (
-      <div className="card mx-auto max-w-lg p-10 text-center">
-        <h1 className="page-title">Медбиохим</h1>
-        <p className="page-subtitle mt-2">Войдите, чтобы видеть расписание, задания и прогресс</p>
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200/80 bg-white p-10 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-md">
+          <BookOpen className="h-7 w-7" />
+        </div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Медбиохим</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Войдите, чтобы видеть расписание, задания и прогресс
+        </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Link href="/login" className="btn-primary">
+          <Link
+            href="/login"
+            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+          >
             Войти
           </Link>
-          <Link href="/register" className="btn-secondary">
+          <Link
+            href="/register"
+            className="rounded-xl border border-indigo-200 bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+          >
             Регистрация
           </Link>
         </div>
@@ -97,21 +130,27 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="hero-banner">
+      <section className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm sm:p-8">
         <div className="relative z-10 max-w-xl">
           <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Сегодня</p>
           <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
             Привет, {name} 👋
           </h1>
-          <p className="mt-2 text-body text-slate-600">
-            Данные с сервера: задания, объявления и расписание вашей группы.
+          <p className="mt-2 text-sm text-slate-600">
+            Расписание, задания и прогресс — в одном месте.
           </p>
           {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/schedule" className="btn-primary">
+            <Link
+              href="/schedule"
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+            >
               Расписание
             </Link>
-            <Link href="/homework" className="btn-secondary">
+            <Link
+              href="/homework"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
               Задания
             </Link>
           </div>
@@ -121,13 +160,13 @@ export default function DashboardPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-800">Сейчас важно</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="card">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
               <Calendar className="h-4 w-4" /> Ближайшее занятие
             </div>
             {nearest ? (
               <>
-                <div className="text-lg font-semibold">
+                <div className="text-lg font-semibold text-slate-900">
                   {String(nearest.subject || nearest.title || "Занятие")}
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-sm text-slate-600">
@@ -143,24 +182,30 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="card">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
               <ClipboardList className="h-4 w-4" /> Домашние задания
             </div>
-            <div className="text-3xl font-bold text-primary">{pendingHw.length}</div>
+            <div className="text-3xl font-bold text-indigo-600">{pendingHw.length}</div>
             <p className="text-sm text-slate-500">активных</p>
-            <Link href="/homework" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
+            <Link
+              href="/homework"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600"
+            >
               Все задания <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="card">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
               <BookOpen className="h-4 w-4" /> Тесты
             </div>
-            <div className="text-3xl font-bold text-primary">{(data?.tests || []).length}</div>
+            <div className="text-3xl font-bold text-indigo-600">{(data?.tests || []).length}</div>
             <p className="text-sm text-slate-500">доступно</p>
-            <Link href="/tests" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
+            <Link
+              href="/tests"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600"
+            >
               К тестам <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
@@ -168,18 +213,23 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="card">
-          <h3 className="mb-4 font-semibold">Задания</h3>
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 font-semibold text-slate-800">Задания</h3>
           {(data?.homeworks || []).length === 0 ? (
             <p className="text-sm text-slate-500">Пока нет заданий</p>
           ) : (
             <ul className="space-y-3">
               {(data?.homeworks || []).slice(0, 6).map((hw, i) => (
-                <li key={String(hw.id || i)} className="rounded-soft border border-slate-100 bg-slate-50/80 p-3">
-                  <div className="font-medium">{String(hw.title || "Задание")}</div>
+                <li
+                  key={String(hw.id || i)}
+                  className="rounded-xl border border-slate-100 bg-slate-50/80 p-3"
+                >
+                  <div className="font-medium text-slate-900">{String(hw.title || "Задание")}</div>
                   <div className="mt-1 text-xs text-slate-500">
                     {hw.due_at ? `до ${String(hw.due_at).slice(0, 10)}` : ""}
-                    {hw.my_status || hw.status ? ` · ${String(hw.my_status || hw.status)}` : ""}
+                    {hw.my_status || hw.status
+                      ? ` · ${String(hw.my_status || hw.status)}`
+                      : ""}
                   </div>
                 </li>
               ))}
@@ -187,15 +237,18 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="card">
-          <h3 className="mb-4 font-semibold">Объявления</h3>
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 font-semibold text-slate-800">Объявления</h3>
           {(data?.announcements || []).length === 0 ? (
             <p className="text-sm text-slate-500">Нет объявлений</p>
           ) : (
             <ul className="space-y-3">
               {(data?.announcements || []).map((a) => (
-                <li key={a.id} className="rounded-soft border border-slate-100 bg-slate-50/80 p-3">
-                  <div className="font-medium">{a.title}</div>
+                <li
+                  key={a.id}
+                  className="rounded-xl border border-slate-100 bg-slate-50/80 p-3"
+                >
+                  <div className="font-medium text-slate-900">{a.title}</div>
                   <p className="mt-1 line-clamp-2 text-sm text-slate-600">{a.body}</p>
                 </li>
               ))}
