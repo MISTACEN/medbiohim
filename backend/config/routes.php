@@ -16,3 +16,4 @@ return static function (Router $router): void {
         }
     }
 };
+// synced 2026-09-15

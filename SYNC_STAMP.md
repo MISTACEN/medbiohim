@@ -1,8 +1,15 @@
-# Full sync
+# Full repository sync
 
-Date: 2026-09-15
-Source: local artifacts/frontend + artifacts/backend
-Status: complete repository refresh for emergency recovery.
+**Date:** 2026-09-15 (CEST)
 
-Frontend root = Vercel
-Backend folder = SpaceWeb
+**Source of truth (local):**
+- `artifacts/frontend/` → Vercel (repo root)
+- `artifacts/backend/` → SpaceWeb (`backend/`)
+
+**Included in this refresh:**
+- AuthProvider / me()
+- Live API pages (dashboard, schedule, materials, community, progress, subjects…)
+- Backend platform routes: dashboard, schedule, materials, community, progress
+- ContentStore + FileRepository listActive
+
+If a file is missing after clone, copy from local `artifacts/`.
