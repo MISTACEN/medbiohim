@@ -2,12 +2,11 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
 import { register, setTokens } from "@/lib/api";
+import { startGoogleOAuth } from "@/lib/supabase";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,21 +29,28 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const res = await register(email, password, fullName || undefined);
+      const res = await register(email.trim(), password, fullName || undefined);
       if (!res.ok) {
-        setError(res.error.message || "Ошибка регистрации");
+        const msg = res.error.message || "Ошибка регистрации";
+        if (/rate limit/i.test(msg)) {
+          setError("Лимит Supabase на письма. Подождите или войдите через Google / создайте пользователя в Dashboard с Auto Confirm.");
+        } else if (/already|registered|exists/i.test(msg)) {
+          setError("Email уже зарегистрирован — войдите или используйте Google.");
+        } else {
+          setError(msg);
+        }
         return;
       }
       if (res.data.access_token) {
         setTokens(res.data.access_token, res.data.refresh_token || undefined);
-        router.push("/");
+        window.location.href = "/";
         return;
       }
       if (res.data.needs_email_confirm) {
-        setInfo("Аккаунт создан. Подтвердите email (если включено в Supabase), затем войдите.");
+        setInfo("Аккаунт создан. Подтвердите email или включите Auto Confirm в Supabase, затем войдите.");
         return;
       }
-      setInfo("Регистрация прошла успешно. Войдите в аккаунт.");
+      setInfo("Регистрация принята. Попробуйте войти.");
     } catch {
       setError("Не удалось связаться с API");
     } finally {
@@ -52,50 +58,47 @@ export default function RegisterPage() {
     }
   }
 
-  const field =
-    "w-full rounded-soft border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
-
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8FAFC] px-4 py-10">
-      <div aria-hidden className="pointer-events-none absolute -left-20 top-16 h-72 w-72 rounded-full bg-indigo-300/30 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -right-20 bottom-8 h-80 w-80 rounded-full bg-violet-300/25 blur-3xl" />
-
-      <div className="relative w-full max-w-md overflow-hidden rounded-card border border-white/60 bg-white/80 p-8 shadow-lift backdrop-blur-xl">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-soft bg-brand-gradient text-white shadow-card">
-            <Shield className="h-7 w-7" />
+    <div className="relative flex min-h-screen items-center justify-center px-4" style={{ background: "#F8FAFC" }}>
+      <div className="w-full max-w-md rounded-2xl border border-white/60 bg-white/90 p-8 shadow-lg">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
+            <Shield className="h-6 w-6" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Регистрация</h1>
-          <p className="mt-1 text-sm text-slate-500">Создание аккаунта студента</p>
+          <h1 className="text-2xl font-extrabold text-slate-900">Регистрация</h1>
+          <p className="text-sm text-slate-500">Создание аккаунта студента</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <button type="button" onClick={() => startGoogleOAuth()} className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
+          Продолжить с Google
+        </button>
+
+        <form onSubmit={onSubmit} className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">ФИО</label>
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} placeholder="Иванов Иван" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">ФИО</label>
+            <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={field} autoComplete="email" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Пароль</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className={field} autoComplete="new-password" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Пароль</label>
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Повтор пароля</label>
-            <input type="password" required value={password2} onChange={(e) => setPassword2(e.target.value)} className={field} autoComplete="new-password" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Повтор пароля</label>
+            <input type="password" required value={password2} onChange={(e) => setPassword2(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
           </div>
-          {error && <p className="rounded-soft bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-          {info && <p className="rounded-soft bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{info}</p>}
-          <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-60">
+          {error && <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
+          {info && <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div>}
+          <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {loading ? "Создание…" : "Создать аккаунт"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Уже есть аккаунт?{" "}
-          <Link href="/login" className="font-semibold text-primary hover:underline">Войти</Link>
+        <p className="mt-5 text-center text-sm text-slate-500">
+          Уже есть аккаунт? <Link href="/login" className="font-semibold text-blue-600">Войти</Link>
         </p>
       </div>
     </div>
