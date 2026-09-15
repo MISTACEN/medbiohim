@@ -3,19 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home,
-  Calendar,
-  ClipboardList,
-  BookOpen,
-  GraduationCap,
-  FileQuestion,
-  FolderOpen,
-  TrendingUp,
-  Users,
-  Settings,
-  LayoutDashboard,
-  HelpCircle,
-  Shield,
+  Home, Calendar, ClipboardList, BookOpen, GraduationCap, FileQuestion,
+  FolderOpen, TrendingUp, Users, Settings, LayoutDashboard, HelpCircle, Shield,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -43,47 +32,33 @@ export function Sidebar() {
   const { user } = useAuth();
   const displayName = user?.name || "Гость";
   const roleLabel =
-    user?.role === "teacher"
-      ? "Преподаватель"
-      : user?.role === "admin"
-        ? "Админ"
-        : user?.role === "moderator"
-          ? "Модератор"
-          : user
-            ? "Студент"
-            : "Не авторизован";
+    user?.role === "teacher" ? "Преподаватель"
+    : user?.role === "admin" ? "Админ"
+    : user?.role === "moderator" ? "Модератор"
+    : user ? "Студент" : "Не авторизован";
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-[#0B1220] text-white shadow-xl">
+    <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-screen w-64 flex-col shadow-xl">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 shadow-md">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md" style={{ background: "var(--sidebar-active)" }}>
           <Shield className="h-5 w-5" />
         </div>
         <div>
           <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
-          <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-            образовательная платформа
-          </div>
+          <div className="text-[10px] font-medium uppercase tracking-wider opacity-60">образовательная платформа</div>
         </div>
       </div>
-
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
           {navItems.map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={clsx(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                    active
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/40"
-                      : "text-slate-300 hover:bg-white/5 hover:text-white"
-                  )}
-                >
+                <Link href={item.href} className={clsx(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  active ? "app-sidebar-active shadow-md" : "opacity-80 hover:bg-white/10 hover:opacity-100"
+                )}>
                   <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
                   <span className="flex-1">{item.label}</span>
                 </Link>
@@ -92,7 +67,6 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
-
       <div className="border-t border-white/10 px-3 py-3">
         <ul className="space-y-1">
           {bottomItems.map((item) => {
@@ -100,15 +74,10 @@ export function Sidebar() {
             const Icon = item.icon;
             return (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={clsx(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
-                    active
-                      ? "bg-indigo-600/80 text-white"
-                      : "text-slate-400 hover:bg-white/5 hover:text-white"
-                  )}
-                >
+                <Link href={item.href} className={clsx(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                  active ? "app-sidebar-active" : "opacity-70 hover:bg-white/10 hover:opacity-100"
+                )}>
                   <Icon className="h-5 w-5 shrink-0" />
                   {item.label}
                 </Link>
@@ -117,17 +86,12 @@ export function Sidebar() {
           })}
         </ul>
         <div className="mt-3 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold">
-            {displayName
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase() || "?"}
+          <div className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "var(--sidebar-active)" }}>
+            {displayName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
           </div>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{displayName}</div>
-            <div className="text-xs text-slate-400">{roleLabel}</div>
+            <div className="text-xs opacity-60">{roleLabel}</div>
           </div>
         </div>
       </div>
