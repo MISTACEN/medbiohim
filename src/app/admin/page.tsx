@@ -3,244 +3,405 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  adminCreateAnnouncement,
-  adminDeleteAnnouncement,
-  adminListAnnouncements,
   adminOverview,
   adminUpdateSite,
-  createGroup,
-  createSubject,
+  adminListAnnouncements,
+  adminCreateAnnouncement,
+  adminDeleteAnnouncement,
+  adminGetCurriculum,
+  adminSaveCurriculum,
+  adminGetTests,
+  adminSaveTests,
+  adminListUsers,
+  adminSetUserRole,
+  claimAdmin,
   listGroups,
   listSubjects,
+  listSchedule,
+  saveSchedule,
+  createGroup,
+  createSubject,
+  hasToken,
 } from "@/lib/api";
+import { useAuth } from "@/components/auth/AuthProvider";
 
-type Tab = "overview" | "site" | "announcements" | "groups" | "subjects";
-type Announcement = { id: string; title: string; body: string; pinned?: boolean; created_at?: string };
+type Tab =
+  | "overview"
+  | "site"
+  | "announcements"
+  | "schedule"
+  | "curriculum"
+  | "tests"
+  | "groups"
+  | "subjects"
+  | "roles";
+
+type Announcement = { id: string; title: string; body: string };
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "overview", label: "Обзор" },
+  { id: "site", label: "Сайт" },
+  { id: "announcements", label: "Объявления" },
+  { id: "schedule", label: "Расписание" },
+  { id: "curriculum", label: "Учебный план" },
+  { id: "tests", label: "Тесты" },
+  { id: "groups", label: "Группы" },
+  { id: "subjects", label: "Предметы" },
+  { id: "roles", label: "Роли" },
+];
 
 export default function AdminPage() {
+  const { user, refresh } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
-  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [counts, setCounts] = useState({ announcements: 0, groups: 0, subjects: 0 });
+  const [ok, setOk] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [site, setSite] = useState({
     title: "Медбиохим",
     subtitle: "образовательная платформа",
     description: "",
     announcement_banner: "",
-    contacts: { email: "", phone: "", address: "" },
   });
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [aTitle, setATitle] = useState("");
   const [aBody, setABody] = useState("");
-  const [aPinned, setAPinned] = useState(false);
+  const [scheduleJson, setScheduleJson] = useState("[]");
+  const [curriculumJson, setCurriculumJson] = useState("[]");
+  const [testsJson, setTestsJson] = useState("[]");
+  const [groups, setGroups] = useState<unknown[]>([]);
+  const [subjects, setSubjects] = useState<unknown[]>([]);
   const [groupName, setGroupName] = useState("");
   const [groupCode, setGroupCode] = useState("");
   const [subjectName, setSubjectName] = useState("");
   const [subjectCourse, setSubjectCourse] = useState("1");
-  const [groups, setGroups] = useState<unknown[]>([]);
-  const [subjects, setSubjects] = useState<unknown[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [users, setUsers] = useState<
+    Array<{ id: string; email?: string; full_name?: string; roles: string[] }>
+  >([]);
+  const [claimSecret, setClaimSecret] = useState("medbiohim-admin-2026");
 
   async function loadOverview() {
     setError(null);
-    try {
-      const res = await adminOverview();
-      if (!res.ok) {
-        setError(res.error.message + " — нужен вход с ролью teacher/moderator/admin");
-        return;
-      }
-      setCounts(res.data.counts);
-      const s = res.data.site as typeof site;
+    if (!hasToken()) {
+      setError("Нужен вход");
+      return;
+    }
+    const res = await adminOverview();
+    if (!res.ok) {
+      setError(res.error.message + " — откройте вкладку Роли → Стать админом");
+      return;
+    }
+    setCounts(res.data.counts as Record<string, number>);
+    const s = res.data.site as typeof site;
+    if (s) {
       setSite({
         title: String(s.title || "Медбиохим"),
         subtitle: String(s.subtitle || ""),
         description: String(s.description || ""),
         announcement_banner: String(s.announcement_banner || ""),
-        contacts: {
-          email: String((s.contacts as { email?: string })?.email || ""),
-          phone: String((s.contacts as { phone?: string })?.phone || ""),
-          address: String((s.contacts as { address?: string })?.address || ""),
-        },
       });
-    } catch {
-      setError("API недоступен или нет авторизации");
     }
   }
 
   useEffect(() => {
-    loadOverview();
+    void loadOverview();
   }, []);
 
   useEffect(() => {
-    if (tab === "announcements") {
-      adminListAnnouncements().then((res) => {
-        if (res.ok) setAnnouncements(res.data.items);
-      });
-    }
-    if (tab === "groups" || tab === "subjects") {
-      listGroups().then((g) => {
+    setError(null);
+    setOk(null);
+    (async () => {
+      if (tab === "announcements") {
+        const res = await adminListAnnouncements();
+        if (res.ok) setAnnouncements(res.data.items as Announcement[]);
+      }
+      if (tab === "schedule") {
+        const res = await listSchedule();
+        if (res.ok) setScheduleJson(JSON.stringify(res.data.items || [], null, 2));
+      }
+      if (tab === "curriculum") {
+        const res = await adminGetCurriculum();
+        if (res.ok) setCurriculumJson(JSON.stringify(res.data.items || [], null, 2));
+      }
+      if (tab === "tests") {
+        const res = await adminGetTests();
+        if (res.ok) setTestsJson(JSON.stringify(res.data.items || [], null, 2));
+      }
+      if (tab === "groups" || tab === "subjects") {
+        const g = await listGroups();
         if (g.ok) setGroups(g.data.items as unknown[]);
-      });
-      listSubjects().then((s) => {
+        const s = await listSubjects();
         if (s.ok) setSubjects(s.data.items as unknown[]);
-      });
-    }
+      }
+      if (tab === "roles") {
+        const res = await adminListUsers();
+        if (res.ok) setUsers(res.data.items);
+      }
+    })();
   }, [tab]);
 
-  async function saveSite(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setNote(null);
-    setError(null);
-    const res = await adminUpdateSite({
-      title: site.title,
-      subtitle: site.subtitle,
-      description: site.description,
-      announcement_banner: site.announcement_banner,
-      contacts: site.contacts,
-    });
-    setBusy(false);
-    if (!res.ok) setError(res.error.message);
-    else setNote("Настройки сайта сохранены");
+  if (!hasToken()) {
+    return (
+      <div className="card mx-auto max-w-md p-8 text-center">
+        <h1 className="page-title">Админ</h1>
+        <p className="page-subtitle">Сначала войдите</p>
+        <Link href="/login" className="btn-primary mt-4 inline-block">
+          Войти
+        </Link>
+      </div>
+    );
   }
-
-  async function addAnnouncement(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    const res = await adminCreateAnnouncement(aTitle, aBody, aPinned);
-    setBusy(false);
-    if (!res.ok) {
-      setError(res.error.message);
-      return;
-    }
-    setATitle("");
-    setABody("");
-    setAPinned(false);
-    setNote("Объявление добавлено");
-    const list = await adminListAnnouncements();
-    if (list.ok) setAnnouncements(list.data.items);
-    loadOverview();
-  }
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "overview", label: "Обзор" },
-    { id: "site", label: "Сайт" },
-    { id: "announcements", label: "Объявления" },
-    { id: "groups", label: "Группы" },
-    { id: "subjects", label: "Предметы" },
-  ];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="page-title">Админ-панель</h1>
-          <p className="page-subtitle">Контент и справочники · роль teacher / moderator / admin</p>
-        </div>
-        <Link href="/" className="text-sm font-medium text-primary hover:underline">← На главную</Link>
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Админ-панель</h1>
+        <p className="page-subtitle">{user?.name || user?.email || "Пользователь"}</p>
       </div>
 
-      {(error || note) && (
-        <div className={`rounded-soft px-4 py-3 text-sm ${error ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-800"}`}>
-          {error || note}
-        </div>
-      )}
-
       <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button key={t.id} type="button" onClick={() => { setTab(t.id); setNote(null); setError(null); }}
-            className={`rounded-soft px-3 py-1.5 text-sm font-medium transition ${tab === t.id ? "bg-brand-gradient text-white shadow-card" : "border border-slate-200 bg-white text-slate-600 hover:bg-indigo-50"}`}>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={
+              tab === t.id
+                ? "rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
+                : "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600"
+            }
+          >
             {t.label}
           </button>
         ))}
       </div>
 
+      {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {ok && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{ok}</div>}
+
       {tab === "overview" && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="card"><div className="text-xs uppercase tracking-wide text-slate-500">Объявления</div><div className="mt-1 text-2xl font-bold">{counts.announcements}</div></div>
-          <div className="card"><div className="text-xs uppercase tracking-wide text-slate-500">Группы</div><div className="mt-1 text-2xl font-bold">{counts.groups}</div></div>
-          <div className="card"><div className="text-xs uppercase tracking-wide text-slate-500">Предметы</div><div className="mt-1 text-2xl font-bold">{counts.subjects}</div></div>
-        </div>
-      )}
-
-      {tab === "site" && (
-        <form onSubmit={saveSite} className="card space-y-4">
-          <h2 className="font-semibold">Информация о сайте</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">Название<input className="mt-1 w-full rounded-soft border px-3 py-2 text-sm" value={site.title} onChange={(e) => setSite({ ...site, title: e.target.value })} /></label>
-            <label className="block text-sm">Подзаголовок<input className="mt-1 w-full rounded-soft border px-3 py-2 text-sm" value={site.subtitle} onChange={(e) => setSite({ ...site, subtitle: e.target.value })} /></label>
-          </div>
-          <label className="block text-sm">Описание<textarea rows={3} className="mt-1 w-full rounded-soft border px-3 py-2 text-sm" value={site.description} onChange={(e) => setSite({ ...site, description: e.target.value })} /></label>
-          <label className="block text-sm">Баннер<input className="mt-1 w-full rounded-soft border px-3 py-2 text-sm" value={site.announcement_banner} onChange={(e) => setSite({ ...site, announcement_banner: e.target.value })} /></label>
-          <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">Сохранить</button>
-        </form>
-      )}
-
-      {tab === "announcements" && (
-        <div className="space-y-4">
-          <form onSubmit={addAnnouncement} className="card space-y-3">
-            <h2 className="font-semibold">Новое объявление</h2>
-            <input required placeholder="Заголовок" className="w-full rounded-soft border px-3 py-2 text-sm" value={aTitle} onChange={(e) => setATitle(e.target.value)} />
-            <textarea required rows={3} placeholder="Текст" className="w-full rounded-soft border px-3 py-2 text-sm" value={aBody} onChange={(e) => setABody(e.target.value)} />
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={aPinned} onChange={(e) => setAPinned(e.target.checked)} /> Закрепить</label>
-            <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">Опубликовать</button>
-          </form>
-          {announcements.map((a) => (
-            <div key={a.id} className="card flex justify-between gap-3">
-              <div>
-                <div className="font-medium">{a.pinned ? "📌 " : ""}{a.title}</div>
-                <p className="mt-1 text-sm text-slate-600">{a.body}</p>
-              </div>
-              <button type="button" className="text-sm text-rose-600 hover:underline" onClick={async () => {
-                if (!confirm("Удалить?")) return;
-                await adminDeleteAnnouncement(a.id);
-                const list = await adminListAnnouncements();
-                if (list.ok) setAnnouncements(list.data.items);
-              }}>Удалить</button>
+          {Object.entries(counts).map(([k, v]) => (
+            <div key={k} className="card">
+              <div className="text-xs uppercase text-slate-500">{k}</div>
+              <div className="text-2xl font-bold text-blue-600">{v}</div>
             </div>
           ))}
         </div>
       )}
 
+      {tab === "roles" && (
+        <div className="space-y-6">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setBusy(true);
+              setError(null);
+              const res = await claimAdmin(claimSecret);
+              setBusy(false);
+              if (!res.ok) setError(res.error.message);
+              else {
+                setOk("Admin: " + (res.data.roles || []).join(", "));
+                await refresh();
+                await loadOverview();
+              }
+            }}
+            className="card max-w-lg space-y-3"
+          >
+            <h2 className="text-lg font-semibold">Стать админом</h2>
+            <p className="text-sm text-slate-500">
+              Секрет по умолчанию: <code>medbiohim-admin-2026</code>
+            </p>
+            <input
+              value={claimSecret}
+              onChange={(e) => setClaimSecret(e.target.value)}
+              className="w-full rounded-xl border px-3 py-2 text-sm"
+            />
+            <button type="submit" disabled={busy} className="btn-primary">
+              Выдать себе роль admin
+            </button>
+          </form>
+          <div className="card">
+            <h2 className="mb-3 text-lg font-semibold">Пользователи</h2>
+            {users.length === 0 ? (
+              <p className="text-sm text-slate-500">Список после получения admin</p>
+            ) : (
+              <ul className="space-y-2">
+                {users.map((u) => (
+                  <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                    <div>
+                      <div className="font-medium">{u.full_name || u.email}</div>
+                      <div className="text-xs text-slate-500">{(u.roles || []).join(", ") || "—"}</div>
+                    </div>
+                    <div className="flex gap-1">
+                      {["admin", "teacher", "student"].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          className="rounded border bg-white px-2 py-1 text-xs"
+                          onClick={async () => {
+                            const res = await adminSetUserRole(u.id, r, "assign");
+                            if (res.ok) {
+                              setOk(`${r} → ${u.email}`);
+                              const list = await adminListUsers();
+                              if (list.ok) setUsers(list.data.items);
+                            } else setError(res.error.message);
+                          }}
+                        >
+                          +{r}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === "site" && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const res = await adminUpdateSite(site);
+            if (!res.ok) setError(res.error.message);
+            else setOk("Сохранено");
+          }}
+          className="card max-w-xl space-y-3"
+        >
+          {(["title", "subtitle", "description", "announcement_banner"] as const).map((k) => (
+            <div key={k}>
+              <label className="text-sm text-slate-600">{k}</label>
+              <input
+                value={site[k]}
+                onChange={(e) => setSite({ ...site, [k]: e.target.value })}
+                className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+              />
+            </div>
+          ))}
+          <button type="submit" className="btn-primary">
+            Сохранить
+          </button>
+        </form>
+      )}
+
+      {tab === "announcements" && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const res = await adminCreateAnnouncement(aTitle, aBody, false);
+              if (!res.ok) setError(res.error.message);
+              else {
+                setATitle("");
+                setABody("");
+                setOk("Создано");
+                const list = await adminListAnnouncements();
+                if (list.ok) setAnnouncements(list.data.items as Announcement[]);
+              }
+            }}
+            className="card space-y-3"
+          >
+            <input value={aTitle} onChange={(e) => setATitle(e.target.value)} placeholder="Заголовок" className="w-full rounded-xl border px-3 py-2 text-sm" required />
+            <textarea value={aBody} onChange={(e) => setABody(e.target.value)} placeholder="Текст" rows={4} className="w-full rounded-xl border px-3 py-2 text-sm" required />
+            <button type="submit" className="btn-primary">
+              Опубликовать
+            </button>
+          </form>
+          <div className="card space-y-2">
+            {announcements.map((a) => (
+              <div key={a.id} className="rounded-xl bg-slate-50 p-3">
+                <div className="font-medium">{a.title}</div>
+                <p className="text-sm text-slate-600">{a.body}</p>
+                <button type="button" className="text-xs text-rose-600" onClick={async () => {
+                  await adminDeleteAnnouncement(a.id);
+                  const list = await adminListAnnouncements();
+                  if (list.ok) setAnnouncements(list.data.items as Announcement[]);
+                }}>Удалить</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "schedule" && (
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            const items = JSON.parse(scheduleJson);
+            const res = await saveSchedule(items);
+            if (!res.ok) setError(res.error.message);
+            else { setOk("Расписание сохранено"); setScheduleJson(JSON.stringify(res.data.items, null, 2)); }
+          } catch { setError("Неверный JSON"); }
+        }} className="card space-y-3">
+          <p className="text-sm text-slate-500">Массив: day, start_time, end_time, subject, room, type</p>
+          <textarea value={scheduleJson} onChange={(e) => setScheduleJson(e.target.value)} rows={14} className="w-full rounded-xl border px-3 py-2 font-mono text-xs" />
+          <button type="submit" className="btn-primary">Сохранить расписание</button>
+        </form>
+      )}
+
+      {tab === "curriculum" && (
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            const items = JSON.parse(curriculumJson);
+            const res = await adminSaveCurriculum(items);
+            if (!res.ok) setError(res.error.message);
+            else { setOk("План сохранён"); setCurriculumJson(JSON.stringify(res.data.items, null, 2)); }
+          } catch { setError("Неверный JSON"); }
+        }} className="card space-y-3">
+          <p className="text-sm text-slate-500">subject, course, semester, control, modules[].topics</p>
+          <textarea value={curriculumJson} onChange={(e) => setCurriculumJson(e.target.value)} rows={14} className="w-full rounded-xl border px-3 py-2 font-mono text-xs" />
+          <button type="submit" className="btn-primary">Сохранить план</button>
+        </form>
+      )}
+
+      {tab === "tests" && (
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            const items = JSON.parse(testsJson);
+            const res = await adminSaveTests(items);
+            if (!res.ok) setError(res.error.message);
+            else { setOk("Тесты сохранены"); setTestsJson(JSON.stringify(res.data.items, null, 2)); }
+          } catch { setError("Неверный JSON"); }
+        }} className="card space-y-3">
+          <p className="text-sm text-slate-500">title, subject, type, questions[]</p>
+          <textarea value={testsJson} onChange={(e) => setTestsJson(e.target.value)} rows={14} className="w-full rounded-xl border px-3 py-2 font-mono text-xs" />
+          <button type="submit" className="btn-primary">Сохранить тесты</button>
+        </form>
+      )}
+
       {tab === "groups" && (
-        <div className="space-y-4">
+        <div className="grid gap-6 lg:grid-cols-2">
           <form onSubmit={async (e) => {
             e.preventDefault();
-            setBusy(true);
-            const res = await createGroup({ name: groupName, code: groupCode || undefined });
-            setBusy(false);
+            const res = await createGroup({ name: groupName, code: groupCode });
             if (!res.ok) setError(res.error.message);
-            else { setNote("Группа создана"); setGroupName(""); setGroupCode(""); loadOverview(); listGroups().then((g) => g.ok && setGroups(g.data.items as unknown[])); }
-          }} className="card flex flex-wrap gap-2">
-            <input required placeholder="Название" className="rounded-soft border px-3 py-2 text-sm" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
-            <input placeholder="Код" className="rounded-soft border px-3 py-2 text-sm" value={groupCode} onChange={(e) => setGroupCode(e.target.value)} />
-            <button type="submit" className="btn-primary">Добавить</button>
+            else { setOk("Группа создана"); const g = await listGroups(); if (g.ok) setGroups(g.data.items as unknown[]); }
+          }} className="card space-y-3">
+            <input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Название" className="w-full rounded-xl border px-3 py-2 text-sm" required />
+            <input value={groupCode} onChange={(e) => setGroupCode(e.target.value)} placeholder="Код" className="w-full rounded-xl border px-3 py-2 text-sm" />
+            <button type="submit" className="btn-primary">Создать</button>
           </form>
-          <ul className="card divide-y p-0">{(groups as Array<{ name?: string; code?: string }>).map((g, i) => (
-            <li key={i} className="px-4 py-3 text-sm"><span className="font-medium">{g.name}</span>{g.code && <span className="ml-2 text-slate-500">{g.code}</span>}</li>
-          ))}</ul>
+          <pre className="card overflow-auto text-xs">{JSON.stringify(groups, null, 2)}</pre>
         </div>
       )}
 
       {tab === "subjects" && (
-        <div className="space-y-4">
+        <div className="grid gap-6 lg:grid-cols-2">
           <form onSubmit={async (e) => {
             e.preventDefault();
-            setBusy(true);
             const res = await createSubject({ name: subjectName, course_number: Number(subjectCourse) || 1 });
-            setBusy(false);
             if (!res.ok) setError(res.error.message);
-            else { setNote("Предмет создан"); setSubjectName(""); loadOverview(); listSubjects().then((s) => s.ok && setSubjects(s.data.items as unknown[])); }
-          }} className="card flex flex-wrap gap-2">
-            <input required placeholder="Предмет" className="rounded-soft border px-3 py-2 text-sm" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} />
-            <select className="rounded-soft border px-3 py-2 text-sm" value={subjectCourse} onChange={(e) => setSubjectCourse(e.target.value)}>
-              {[1,2,3,4,5,6].map((n) => <option key={n} value={n}>Курс {n}</option>)}
-            </select>
-            <button type="submit" className="btn-primary">Добавить</button>
+            else { setOk("Предмет создан"); const s = await listSubjects(); if (s.ok) setSubjects(s.data.items as unknown[]); }
+          }} className="card space-y-3">
+            <input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="Название" className="w-full rounded-xl border px-3 py-2 text-sm" required />
+            <input value={subjectCourse} onChange={(e) => setSubjectCourse(e.target.value)} placeholder="Курс" className="w-full rounded-xl border px-3 py-2 text-sm" />
+            <button type="submit" className="btn-primary">Создать</button>
           </form>
-          <ul className="card divide-y p-0">{(subjects as Array<{ name?: string; course_number?: number }>).map((s, i) => (
-            <li key={i} className="px-4 py-3 text-sm"><span className="font-medium">{s.name}</span>{s.course_number != null && <span className="ml-2 text-slate-500">· курс {s.course_number}</span>}</li>
-          ))}</ul>
+          <pre className="card overflow-auto text-xs">{JSON.stringify(subjects, null, 2)}</pre>
         </div>
       )}
     </div>
