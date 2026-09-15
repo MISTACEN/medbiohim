@@ -60,8 +60,8 @@ final class GroupRepository
         $baseCode = $requestedCode !== '' ? $requestedCode : $this->makeCode($name);
         $code = $baseCode;
 
-        // public.groups.code is NOT NULL + UNIQUE. Generate a code when the
-        // admin UI omits it, and retry deterministic suffixes on conflicts.
+        // public.groups.code is NOT NULL + UNIQUE in Supabase. The admin UI
+        // intentionally makes the code optional, so generate one when omitted.
         for ($attempt = 0; $attempt < 8; $attempt++) {
             try {
                 $stmt = $this->db->prepare(
@@ -81,6 +81,8 @@ final class GroupRepository
                 }
                 return $row;
             } catch (\PDOException $e) {
+                // PostgreSQL unique violation: generate a deterministic suffix
+                // and retry. Other SQL errors must reach the route for logging.
                 if ($e->getCode() !== '23505' || $attempt >= 7) {
                     throw $e;
                 }
