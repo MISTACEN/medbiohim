@@ -41,7 +41,7 @@ return static function (Router $router): void {
                 Response::success(['items' => SupabaseRest::listGroups()], $req->requestId);
             } catch (\Throwable $fallback) {
                 \Medbiohim\Support\Logger::error('groups_list_failed', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
-                Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+                Response::success(['items' => [], 'note' => 'Database unavailable — set DB_URL (Session pooler) on SpaceWeb'], $req->requestId);
             }
         }
     });
@@ -59,7 +59,7 @@ return static function (Router $router): void {
             }
             Response::success(['group' => $group, 'members' => $repo->members($params['id'])], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+            Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
         }
     });
 
@@ -85,8 +85,6 @@ return static function (Router $router): void {
             try {
                 $row = (new GroupRepository())->create($payload);
             } catch (\Throwable $dbError) {
-                // SpaceWeb can reach Supabase over HTTPS even when PostgreSQL
-                // pooler connectivity is unavailable. Use the same Supabase DB.
                 $row = SupabaseRest::createGroup($payload);
             }
             Response::success($row, $req->requestId, 201);
@@ -138,8 +136,8 @@ return static function (Router $router): void {
             try {
                 Response::success(['items' => SupabaseRest::listSubjects($course, $semester)], $req->requestId);
             } catch (\Throwable $fallback) {
-                \Medbiohim\Support\Logger::error('subjects_list_failed', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
-                Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+                \Medbiohim\Support\Logger::error('subjects_list_soft_empty', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
+                Response::success(['items' => [], 'note' => 'Database unavailable — set DB_URL (Session pooler) on SpaceWeb'], $req->requestId);
             }
         }
     });
@@ -156,7 +154,22 @@ return static function (Router $router): void {
             }
             Response::success($detail, $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
+            try {
+                $detail = \Medbiohim\Services\SupabaseAcademic::subjectDetail($params['id']);
+                if ($detail === null) {
+                    Response::error('NOT_FOUND', 'Subject not found', $req->requestId, 404);
+                    return;
+                }
+                Response::success($detail, $req->requestId);
+            } catch (\Throwable $x) {
+                \Medbiohim\Support\Logger::error('subject_detail_failed', [
+                    'requestId' => $req->requestId,
+                    'id' => $params['id'],
+                    'db' => $e->getMessage(),
+                    'rest' => $x->getMessage(),
+                ]);
+                Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
+            }
         }
     });
 
@@ -192,4 +205,4 @@ return static function (Router $router): void {
         }
     });
 };
-// synced 2026-09-15
+// synced 2026-09-15 P0 soft-fail + subjectDetail fallback
