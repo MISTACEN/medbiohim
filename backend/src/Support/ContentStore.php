@@ -13,8 +13,8 @@ final class ContentStore {
  public function updateAnnouncement(string $id,array $p):?array{$a=$this->listAnnouncements();foreach($a as $i=>$r)if((string)($r['id']??'')===$id){$a[$i]=array_merge($r,$p,['updated_at'=>gmdate('c')]);$this->write('announcements.json',['items'=>$a]);return $a[$i];}return null;}
  public function deleteAnnouncement(string $id):bool{$a=$this->listAnnouncements();$b=array_values(array_filter($a,static fn($r)=>(string)($r['id']??'')!==$id));if(count($a)===count($b))return false;$this->write('announcements.json',['items'=>$b]);return true;}
  public function listCurriculum():array{$master=$this->read('curriculum_master.json',[]);if(isset($master['items'])&&is_array($master['items']))return $master['items'];$d=$this->read('curriculum.json',['items'=>[]]);return isset($d['items'])&&is_array($d['items'])?$d['items']:[];}
- public function saveCurriculum(array $items):array{$this->write('curriculum.json',['version'=>2,'items'=>array_values($items),'updated_at'=>gmdate('c')]);return array_values($items);}
- public function curriculumPlan():array{$d=$this->read('curriculum_master.json',[]);return is_array($d)&&$d? $d:$this->read('curriculum.json',[]);}
+ public function saveCurriculum(array $items):array{$this->write('curriculum_master.json',['version'=>2,'source'=>'admin','courses'=>[1,2,3,4,5,6],'items'=>array_values($items),'updated_at'=>gmdate('c')]);return array_values($items);}
+ public function curriculumPlan():array{$d=$this->read('curriculum_master.json',[]);return is_array($d)&&$d?$d:$this->read('curriculum.json',[]);}
  public function listTestsLocal():array{$d=$this->read('tests.json',[]);return isset($d['items'])&&is_array($d['items'])?$d['items']:(is_array($d)?$d:[]);}
  public function saveTestsLocal(array $items):array{$this->write('tests.json',['items'=>array_values($items),'updated_at'=>gmdate('c')]);return array_values($items);}
  public function listSchedule():array{$d=$this->read('schedule.json',[]);return isset($d['items'])&&is_array($d['items'])?$d['items']:(is_array($d)?$d:[]);}
