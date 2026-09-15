@@ -38,6 +38,7 @@ final class UserRepository
         if ($row === false) {
             throw new \RuntimeException('Failed to ensure user profile');
         }
+
         $this->ensureDefaultStudentRole($userId);
         return $row;
     }
@@ -62,6 +63,54 @@ final class UserRepository
             $codes[] = (string) $row['code'];
         }
         return $codes;
+    }
+
+    public function assignRole(string $userId, string $roleCode): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO public.user_roles (user_id, role_id)
+             SELECT :uid, r.id FROM public.roles r WHERE r.code = :code
+             ON CONFLICT DO NOTHING'
+        );
+        $stmt->execute(['uid' => $userId, 'code' => $roleCode]);
+    }
+
+    public function revokeRole(string $userId, string $roleCode): void
+    {
+        $stmt = $this->db->prepare(
+            'DELETE FROM public.user_roles ur USING public.roles r
+             WHERE ur.role_id = r.id AND ur.user_id = :uid AND r.code = :code'
+        );
+        $stmt->execute(['uid' => $userId, 'code' => $roleCode]);
+    }
+
+    public function countWithRole(string $roleCode): int
+    {
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*)::int AS c FROM public.user_roles ur
+             JOIN public.roles r ON r.id = ur.role_id WHERE r.code = :code'
+        );
+        $stmt->execute(['code' => $roleCode]);
+        $row = $stmt->fetch();
+        return (int) ($row['c'] ?? 0);
+    }
+
+    public function listUsers(int $limit = 50): array
+    {
+        $stmt = $this->db->query(
+            'SELECT id, email, full_name FROM public.users ORDER BY created_at DESC NULLS LAST LIMIT ' . (int) $limit
+        );
+        $users = $stmt->fetchAll() ?: [];
+        $out = [];
+        foreach ($users as $u) {
+            $out[] = [
+                'id' => (string) $u['id'],
+                'email' => $u['email'] ?? null,
+                'full_name' => $u['full_name'] ?? null,
+                'roles' => $this->roleCodesForUser((string) $u['id']),
+            ];
+        }
+        return $out;
     }
 
     private function ensureDefaultStudentRole(string $userId): void
