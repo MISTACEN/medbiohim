@@ -58,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user?: { id?: string; full_name?: string; email?: string; name?: string };
         roles?: string[];
         groups?: Array<{ id: string; name: string; code?: string; course_number?: number }>;
+        course?: number | null;
+        semester?: number | null;
       };
       const u = data.user || {};
       const roles = data.roles || [];
@@ -70,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: roles[0] || "student",
         roles,
         groupName: primary?.name || primary?.code,
-        course: primary?.course_number ?? undefined,
+        course: data.course ?? primary?.course_number ?? undefined,
+        semester: data.semester ?? undefined,
         groups,
       });
     } catch {
