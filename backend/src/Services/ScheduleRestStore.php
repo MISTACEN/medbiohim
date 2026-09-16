@@ -33,23 +33,25 @@ final class ScheduleRestStore
 
     public static function listForUser(string $userId, ?string $from = null, ?string $to = null): array
     {
+        $users = self::request('GET', 'users?id=eq.' . rawurlencode($userId) . '&select=course_number,semester');
+        $userCourse = $users[0]['course_number'] ?? null;
+        $userSemester = isset($users[0]['semester']) && $users[0]['semester'] !== null ? (int) $users[0]['semester'] : null;
+
         $memberships = self::request('GET', 'group_memberships?user_id=eq.' . rawurlencode($userId) . '&is_active=eq.true&select=group_id');
         $groupIds = [];
         foreach ($memberships as $row) if (!empty($row['group_id'])) $groupIds[] = (string) $row['group_id'];
 
-        if (!$groupIds) {
-            $users = self::request('GET', 'users?id=eq.' . rawurlencode($userId) . '&select=course_number');
-            $course = $users[0]['course_number'] ?? null;
-            if ($course !== null) {
-                $groups = self::request('GET', 'groups?course_number=eq.' . (int) $course . '&is_active=eq.true&select=id&order=name.asc');
-                $ids = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), $groups)));
-                if (count($ids) === 1) $groupIds = $ids;
-            }
+        if (!$groupIds && $userCourse !== null) {
+            $groups = self::request('GET', 'groups?course_number=eq.' . (int) $userCourse . '&is_active=eq.true&select=id&order=name.asc');
+            $ids = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), $groups)));
+            if (count($ids) === 1) $groupIds = $ids;
         }
         if (!$groupIds) return [];
 
         $groupFilter = self::inUuidList($groupIds);
-        $schedules = self::request('GET', 'schedules?group_id=in.' . $groupFilter . '&is_active=eq.true&select=id,group_id,semester,version,academic_year,created_at&order=group_id.asc,semester.asc.nullslast,version.desc,created_at.desc');
+        $semesterFilter = $userSemester !== null ? '&semester=eq.' . $userSemester : '';
+        $schedules = self::request('GET', 'schedules?group_id=in.' . $groupFilter . '&is_active=eq.true' . $semesterFilter . '&select=id,group_id,semester,version,academic_year,created_at&order=group_id.asc,semester.asc.nullslast,version.desc,created_at.desc');
+
         $latest = [];
         foreach ($schedules as $schedule) {
             $key = (string) ($schedule['group_id'] ?? '') . ':' . (string) ($schedule['semester'] ?? '0');
@@ -64,11 +66,17 @@ final class ScheduleRestStore
         $entries = self::request('GET', $entryPath);
 
         $groupMap = [];
-        foreach (self::request('GET', 'groups?id=in.' . $groupFilter . '&select=id,name,code,course_number') as $group) $groupMap[(string) ($group['id'] ?? '')] = $group;
+        foreach (self::request('GET', 'groups?id=in.' . $groupFilter . '&select=id,name,code,course_number') as $group) {
+            $groupMap[(string) ($group['id'] ?? '')] = $group;
+        }
 
         $subjectIds = array_values(array_unique(array_filter(array_map(static fn($x) => (string) ($x['subject_id'] ?? ''), $entries))));
         $subjectMap = [];
-        if ($subjectIds) foreach (self::request('GET', 'subjects?id=in.' . self::inUuidList($subjectIds) . '&select=id,name') as $subject) $subjectMap[(string) ($subject['id'] ?? '')] = (string) ($subject['name'] ?? '');
+        if ($subjectIds) {
+            foreach (self::request('GET', 'subjects?id=in.' . self::inUuidList($subjectIds) . '&select=id,name') as $subject) {
+                $subjectMap[(string) ($subject['id'] ?? '')] = (string) ($subject['name'] ?? '');
+            }
+        }
 
         $scheduleMap = [];
         foreach ($latest as $schedule) $scheduleMap[(string) ($schedule['id'] ?? '')] = $schedule;
@@ -81,6 +89,7 @@ final class ScheduleRestStore
             $subjectId = (string) ($entry['subject_id'] ?? '');
             $subjectName = trim((string) ($entry['subject_name'] ?? ''));
             if ($subjectName === '' && $subjectId !== '') $subjectName = $subjectMap[$subjectId] ?? '';
+
             $out[] = [
                 'id' => $entry['id'] ?? null,
                 'schedule_id' => $entry['schedule_id'] ?? null,
@@ -103,7 +112,7 @@ final class ScheduleRestStore
                 'is_cancelled' => (bool) ($entry['is_cancelled'] ?? false),
             ];
         }
-        usort($out, static fn(array $a, array $b): int => ((string)($a['date']??'').' '.(string)($a['start_time']??'')) <=> ((string)($b['date']??'').' '.(string)($b['start_time']??'')));
+        usort($out, static fn(array $a, array $b): int => ((string)($a['date'] ?? '') . ' ' . (string)($a['start_time'] ?? '')) <=> ((string)($b['date'] ?? '') . ' ' . (string)($b['start_time'] ?? '')));
         return $out;
     }
 }
