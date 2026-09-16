@@ -15,9 +15,57 @@ final class ScheduleRepository
         $this->db = Connection::pdo();
     }
 
+    /**
+     * Resolve active groups for a user. If the user has no explicit membership,
+     * use a course default only when that course currently has exactly one active group.
+     */
+    private function userGroupIds(string $userId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT group_id
+               FROM public.group_memberships
+              WHERE user_id = :user_id
+                AND is_active = true'
+        );
+        $stmt->execute(['user_id' => $userId]);
+        $ids = array_values(array_unique(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+        if ($ids) {
+            return $ids;
+        }
+
+        $fallback = $this->db->prepare(
+            'SELECT g.id
+               FROM public.users u
+               JOIN public.groups g
+                 ON g.course_number = u.course_number
+                AND g.is_active = true
+              WHERE u.id = :user_id
+              ORDER BY g.name'
+        );
+        $fallback->execute(['user_id' => $userId]);
+        $defaultIds = array_values(array_unique(array_map('strval', $fallback->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+
+        // Do not guess between multiple groups. This fallback is only safe for a course
+        // that currently has one active group (the demo/initial setup case).
+        return count($defaultIds) === 1 ? $defaultIds : [];
+    }
+
     /** Latest active schedule version for groups the user belongs to. */
     public function listForUser(string $userId, ?string $from = null, ?string $to = null): array
     {
+        $groupIds = $this->userGroupIds($userId);
+        if (!$groupIds) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = ['user_id' => $userId];
+        foreach ($groupIds as $i => $groupId) {
+            $key = 'group_' . $i;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $groupId;
+        }
+
         $sql = <<<'SQL'
 WITH latest AS (
     SELECT s.*,
@@ -26,9 +74,6 @@ WITH latest AS (
                ORDER BY s.version DESC, s.created_at DESC
            ) AS rn
     FROM public.schedules s
-    JOIN public.group_memberships gm
-      ON gm.group_id = s.group_id
-     AND gm.user_id = :user_id
     WHERE s.is_active = true
 )
 SELECT
@@ -37,7 +82,9 @@ SELECT
     ls.group_id,
     g.name AS group_name,
     g.code AS group_code,
+    g.course_number,
     ls.semester,
+    ls.academic_year_id,
     ls.academic_year,
     ls.version,
     se.subject_id,
@@ -56,8 +103,10 @@ JOIN public.schedule_entries se ON se.schedule_id = ls.id
 JOIN public.groups g ON g.id = ls.group_id
 LEFT JOIN public.subjects subj ON subj.id = se.subject_id
 WHERE ls.rn = 1
+  AND ls.group_id IN (
 SQL;
-        $params = ['user_id' => $userId];
+        $sql .= implode(', ', $placeholders) . ")\n";
+
         if ($from !== null) {
             $sql .= ' AND se.date >= :date_from';
             $params['date_from'] = $from;
@@ -208,9 +257,7 @@ SQL;
 
             $saved = 0;
             foreach ($entries as $entry) {
-                if (!is_array($entry)) {
-                    continue;
-                }
+                if (!is_array($entry)) continue;
                 $date = trim((string) ($entry['date'] ?? ''));
                 $start = trim((string) ($entry['start_time'] ?? $entry['startTime'] ?? ''));
                 $end = trim((string) ($entry['end_time'] ?? $entry['endTime'] ?? ''));
@@ -220,9 +267,7 @@ SQL;
 
                 $type = strtolower(trim((string) ($entry['type'] ?? 'other')));
                 $allowed = ['lecture', 'practice', 'laboratory', 'seminar', 'exam', 'credit', 'consultation', 'other'];
-                if (!in_array($type, $allowed, true)) {
-                    $type = 'other';
-                }
+                if (!in_array($type, $allowed, true)) $type = 'other';
 
                 $subjectName = trim((string) ($entry['subject_name'] ?? ''));
                 if ($subjectName === '' && !empty($entry['subject_id'])) {
@@ -258,11 +303,9 @@ SQL;
                 'entries_saved' => $saved,
             ];
         } catch (\Throwable $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
     }
 }
-// synced 2026-09-16
+// synced 2026-09-17
