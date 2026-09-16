@@ -6,27 +6,34 @@
     "group_code": "МБ-201",
     "theory_from": "2026-09-01",
     "theory_to": "2027-01-21",
-    "full_parts": [
-      "backend/data/schedule_parts/schedule_half_1.json",
-      "backend/data/schedule_parts/schedule_half_2.json",
-      "backend/data/schedule_parts/schedule_2026-09.json"
-    ],
-    "note": "Полное расписание в schedule_parts/. Ниже — неделя 14–19.09.2026 для быстрой проверки. Предмет Неорганическая химия (не HOBA)."
+    "semester": 3,
+    "academic_year": "2026/2027",
+    "active_source": "supabase",
+    "fallback_source": "official_timetable_mb_course2_autumn_2026"
   },
-  "count": 12,
+  "count": 21,
   "items": [
-    {"date": "2026-09-15", "start_time": "08:30", "end_time": "10:10", "subject_name": "Физиология", "type": "laboratory", "group_code": "МБ-201", "semester": 3, "hours": 4},
-    {"date": "2026-09-15", "start_time": "10:40", "end_time": "12:20", "subject_name": "Оптика, атомная физика", "type": "lecture", "group_code": "МБ-201", "semester": 3, "hours": 3},
-    {"date": "2026-09-16", "start_time": "08:30", "end_time": "10:10", "subject_name": "История медицины", "type": "lecture", "group_code": "МБ-201", "semester": 3, "hours": 2},
-    {"date": "2026-09-16", "start_time": "10:40", "end_time": "12:20", "subject_name": "Неорганическая химия", "type": "laboratory", "group_code": "МБ-201", "semester": 3, "hours": 3},
-    {"date": "2026-09-16", "start_time": "12:50", "end_time": "14:30", "subject_name": "Органическая и физическая химия", "type": "laboratory", "group_code": "МБ-201", "semester": 3, "hours": 3},
-    {"date": "2026-09-17", "start_time": "08:30", "end_time": "10:10", "subject_name": "Гистология, цитология", "type": "laboratory", "group_code": "МБ-201", "semester": 3, "hours": 3},
-    {"date": "2026-09-17", "start_time": "10:40", "end_time": "12:20", "subject_name": "Информатика, медицинская информатика", "type": "practice", "group_code": "МБ-201", "semester": 3, "hours": 3},
-    {"date": "2026-09-18", "start_time": "08:30", "end_time": "10:10", "subject_name": "Первая медицинская помощь", "type": "practice", "group_code": "МБ-201", "semester": 3, "hours": 2},
-    {"date": "2026-09-18", "start_time": "10:40", "end_time": "12:20", "subject_name": "Оптика, атомная физика", "type": "laboratory", "group_code": "МБ-201", "semester": 3, "hours": 3},
-    {"date": "2026-09-19", "start_time": "08:30", "end_time": "10:10", "subject_name": "Философия", "type": "seminar", "group_code": "МБ-201", "semester": 3, "hours": 2},
-    {"date": "2026-09-14", "start_time": "08:30", "end_time": "10:10", "subject_name": "Физиология", "type": "laboratory", "group_code": "МБ-201", "semester": 3, "hours": 4},
-    {"date": "2026-09-14", "start_time": "10:40", "end_time": "12:20", "subject_name": "Оптика, атомная физика", "type": "lecture", "group_code": "МБ-201", "semester": 3, "hours": 3}
+    {"date":"2026-09-14","start_time":"08:30","end_time":"10:10","subject_name":"Физиология","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-14","start_time":"10:40","end_time":"12:20","subject_name":"Физиология","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-14","start_time":"12:50","end_time":"14:30","subject_name":"Физиология","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-14","start_time":"14:45","end_time":"16:25","subject_name":"Элективные курсы по физической культуре и спорту","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-15","start_time":"10:40","end_time":"12:20","subject_name":"Оптика, атомная физика","type":"lecture","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-15","start_time":"12:50","end_time":"14:30","subject_name":"Оптика, атомная физика","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-16","start_time":"08:30","end_time":"10:10","subject_name":"История медицины","type":"lecture","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-16","start_time":"10:40","end_time":"12:20","subject_name":"Органическая и физическая химия","type":"lecture","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-16","start_time":"12:50","end_time":"14:30","subject_name":"Органическая и физическая химия","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-16","start_time":"14:45","end_time":"16:25","subject_name":"Органическая и физическая химия","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-17","start_time":"08:30","end_time":"10:10","subject_name":"Информатика, медицинская информатика","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-17","start_time":"10:40","end_time":"12:20","subject_name":"Теория вероятности и математическая статистика","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-17","start_time":"12:50","end_time":"14:30","subject_name":"Теория вероятности и математическая статистика","type":"lecture","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-17","start_time":"14:45","end_time":"16:25","subject_name":"Теория вероятности и математическая статистика","type":"lecture","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-18","start_time":"08:30","end_time":"10:10","subject_name":"Гистология, цитология","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-18","start_time":"10:40","end_time":"12:20","subject_name":"Гистология, цитология","type":"laboratory","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-18","start_time":"12:50","end_time":"14:30","subject_name":"Первая медицинская помощь","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-18","start_time":"14:45","end_time":"16:25","subject_name":"Философия","type":"seminar","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-19","start_time":"08:30","end_time":"10:10","subject_name":"Информатика, медицинская информатика","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-19","start_time":"10:40","end_time":"12:20","subject_name":"Первая медицинская помощь","type":"practice","group_code":"МБ-201","semester":3},
+    {"date":"2026-09-19","start_time":"12:50","end_time":"14:30","subject_name":"Философия","type":"seminar","group_code":"МБ-201","semester":3}
   ],
-  "updated_at": "2026-09-16T14:50:00Z"
+  "updated_at": "2026-09-16T23:59:00+10:00"
 }
