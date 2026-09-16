@@ -43,7 +43,7 @@ export async function saveSchedule(items:Array<Record<string,unknown>>){return a
 export async function listMaterials(groupId?:string){return api<{items:unknown[]}>(`/materials${groupId?`?group_id=${encodeURIComponent(groupId)}`:""}`)}
 export async function listCommunityPosts(){return api<{items:Array<{id:string;title:string;body:string;author_name?:string}>}>("/community/posts")}
 export async function createCommunityPost(title:string,body:string){return api<{post:Record<string,unknown>}>("/community/posts",{method:"POST",body:JSON.stringify({title,body})})}
-export async function getProgress(){return api<{homework:unknown;tests:unknown}>("/progress")}
+export async function getProgress(){return api<{overall_pct?:number;homework:unknown;tests:unknown;note?:string}>("/progress")}
 export async function getSubject(id:string){return api<{subject:{id:string;name:string};modules?:unknown[]}>(`/subjects/${id}`)}
 export async function claimAdmin(secret:string){return api<{roles:string[];message:string;session_refresh_required?:boolean;metadata_synced?:boolean}>("/admin/claim-admin",{method:"POST",body:JSON.stringify({secret})})}
 export async function adminListUsers(){return api<{items:Array<{id:string;email?:string;full_name?:string;roles:string[]}>}>("/admin/users")}
@@ -62,3 +62,19 @@ export async function adminListCommunity(){return api<{items:Array<Record<string
 export async function adminUpdateCommunity(id:string,patch:Record<string,unknown>){return api<{post:Record<string,unknown>}>(`/admin/community/${id}`,{method:"PATCH",body:JSON.stringify(patch)})}
 export async function adminDeleteCommunity(id:string){return api<{deleted:boolean}>(`/admin/community/${id}`,{method:"DELETE"})}
 export function hasToken(){return !!getToken()}
+
+export type BankQuestion={id:string;subject:string;subject_slug?:string;topic?:string;type:string;kind?:string;text:string;answer?:string;has_answer?:boolean;options?:string[]|null;correct?:number|null}
+export async function listQuestions(params:Record<string,string|number|undefined>={}){
+  const q=new URLSearchParams();
+  Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});
+  const qs=q.toString();
+  return api<{items:BankQuestion[];total:number;limit:number;offset:number}>(`/questions${qs?`?${qs}`:""}`);
+}
+export async function listQuestionSubjects(){return api<{items:Array<{subject:string;subject_slug:string;count:number;kinds:Record<string,number>}>}>("/questions/subjects")}
+export async function getQuestion(id:string){return api<{question:BankQuestion}>(`/questions/${encodeURIComponent(id)}`)}
+export async function listTicketBanks(){return api<{items:Array<{id:string;title:string;subject:string;count:number}>}>("/tickets")}
+export async function generateTicket(bank_id:string,count=3,mode:"practice"|"exam"="practice"){
+  return api<{bank:{id:string;title:string;subject:string};questions:BankQuestion[];count:number;mode:string}>("/tickets/generate",{method:"POST",body:JSON.stringify({bank_id,count,mode})})
+}
+export async function listTrainers(){return api<{items:Array<{id:string;title:string;subject:string;row_count:number}>}>("/trainers")}
+export async function getTrainer(id:string){return api<{trainer:Record<string,unknown>}>(`/trainers/${encodeURIComponent(id)}`)}
