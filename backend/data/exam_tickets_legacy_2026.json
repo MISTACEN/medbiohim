@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "source_archive": "MEDBIOHIM_legacy_missing_content_curated (1).zip",
+  "source": "legacy archive medbiohim (14).zip",
+  "rules": {
+    "kind": "ticket",
+    "for_exam": true,
+    "for_ticket": true,
+    "inorganic_subject_name": "Неорганическая химия",
+    "inorganic_subject_slug": "inorganic_chemistry"
+  },
+  "banks": {
+    "biology": 35,
+    "chemistry_organic_physical": 20,
+    "inorganic_chemistry": 18,
+    "physics": 22,
+    "history": 24,
+    "mathematical_analysis": 31,
+    "physiology": 0
+  },
+  "total_imported": 150,
+  "notes": [
+    "Only real ticket files present in the supplied curated archive were imported.",
+    "No fabricated physiology ticket questions were created because the archive contains no physiology_tickets.json.",
+    "The archive contains legacy hoba files; they were not imported or exposed as a subject name."
+  ]
+}
