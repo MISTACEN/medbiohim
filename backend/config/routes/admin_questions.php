@@ -6,103 +6,96 @@ use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Middleware\RequireRole;
+use Medbiohim\Services\ExamQuestionStore;
 use Medbiohim\Support\ContentStore;
 
 return static function (Router $r): void {
-    $r->get('/api/v1/admin/questions', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q) || !RequireRole::handle($q, ['admin', 'teacher', 'moderator'])) {
-            return;
+    $manager = static function (Request $q): bool {
+        return RequireAuth::handle($q) && RequireRole::handle($q, ['admin', 'teacher', 'moderator']);
+    };
+
+    $r->get('/api/v1/admin/questions', static function (Request $q, array $p) use ($manager): void {
+        if (!$manager($q)) return;
+        $filters = [
+            'subject_slug' => ($q->query['subject_slug'] ?? ''),
+            'kind' => ($q->query['kind'] ?? 'ticket'),
+            'q' => ($q->query['q'] ?? ''),
+            'subject' => ($q->query['subject'] ?? ''),
+        ];
+        try {
+            $items = ExamQuestionStore::list($filters);
+            $source = 'supabase';
+        } catch (\Throwable $e) {
+            $items = (new ContentStore())->listQuestionsBank();
+            $source = 'local-fallback';
+            if ($filters['kind'] !== '') {
+                $items = array_values(array_filter($items, static fn($x) => (string) ($x['kind'] ?? '') === $filters['kind']));
+            }
         }
-        $items = (new ContentStore())->listQuestionsBank();
-        $slug = (string) ($q->query['subject_slug'] ?? '');
-        $kind = (string) ($q->query['kind'] ?? '');
-        $search = mb_strtolower((string) ($q->query['q'] ?? ''));
-        if ($slug !== '' || $kind !== '' || $search !== '') {
-            $items = array_values(array_filter($items, static function ($item) use ($slug, $kind, $search) {
-                if ($slug !== '' && (string) ($item['subject_slug'] ?? '') !== $slug) {
-                    return false;
-                }
-                if ($kind !== '' && (string) ($item['kind'] ?? '') !== $kind) {
-                    return false;
-                }
-                if ($search !== '' && !str_contains(mb_strtolower((string) ($item['text'] ?? '')), $search)) {
-                    return false;
-                }
-                return true;
-            }));
-        }
-        $limit = max(1, min(100, (int) ($q->query['limit'] ?? 50)));
+        $limit = max(1, min(200, (int) ($q->query['limit'] ?? 50)));
         $offset = max(0, (int) ($q->query['offset'] ?? 0));
         Response::success([
             'items' => array_slice($items, $offset, $limit),
             'total' => count($items),
+            'source' => $source,
         ], $q->requestId);
     });
 
-    $r->post('/api/v1/admin/questions', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q) || !RequireRole::handle($q, ['admin', 'teacher'])) {
-            return;
+    $r->post('/api/v1/admin/questions', static function (Request $q, array $p) use ($manager): void {
+        if (!$manager($q)) return;
+        try {
+            $row = ExamQuestionStore::upsert([
+                'subject' => (string) $q->json('subject', 'Общий'),
+                'subject_name' => (string) $q->json('subject_name', ''),
+                'subject_slug' => (string) $q->json('subject_slug', 'general'),
+                'topic' => (string) $q->json('topic', ''),
+                'type' => (string) $q->json('type', 'open'),
+                'text' => (string) $q->json('text', ''),
+                'answer' => (string) $q->json('answer', ''),
+                'is_published' => (bool) $q->json('is_published', true),
+            ]);
+            Response::success(['question' => $row], $q->requestId, 201);
+        } catch (\InvalidArgumentException $e) {
+            Response::error('VALIDATION_ERROR', $e->getMessage(), $q->requestId, 422);
+        } catch (\Throwable $e) {
+            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
         }
-        $text = trim((string) $q->json('text', ''));
-        if ($text === '') {
-            Response::error('VALIDATION_ERROR', 'text required', $q->requestId, 422);
-            return;
-        }
-        $row = (new ContentStore())->upsertQuestion([
-            'subject' => (string) $q->json('subject', 'Общий'),
-            'subject_slug' => (string) $q->json('subject_slug', 'general'),
-            'topic' => (string) $q->json('topic', ''),
-            'kind' => (string) $q->json('kind', 'main'),
-            'type' => (string) $q->json('type', 'open'),
-            'text' => $text,
-            'answer' => (string) $q->json('answer', ''),
-            'options' => $q->json('options', null),
-            'correct' => $q->json('correct', null),
-            'rubric' => (string) $q->json('rubric', ''),
-            'course' => $q->json('course', null),
-            'semester' => $q->json('semester', null),
-        ]);
-        Response::success(['question' => $row], $q->requestId, 201);
     });
 
-    $r->put('/api/v1/admin/questions/{id}', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q) || !RequireRole::handle($q, ['admin', 'teacher'])) {
-            return;
-        }
+    $r->put('/api/v1/admin/questions/{id}', static function (Request $q, array $p) use ($manager): void {
+        if (!$manager($q)) return;
         $id = (string) ($p['id'] ?? '');
-        $store = new ContentStore();
-        $items = $store->listQuestionsBank();
-        $found = null;
-        foreach ($items as $item) {
-            if ((string) ($item['id'] ?? '') === $id) {
-                $found = $item;
-                break;
+        try {
+            $current = ExamQuestionStore::get($id);
+            if ($current === null) {
+                Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
+                return;
             }
-        }
-        if ($found === null) {
-            Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
-            return;
-        }
-        $patch = ['id' => $id];
-        foreach (['subject', 'subject_slug', 'topic', 'kind', 'type', 'text', 'answer', 'options', 'correct', 'rubric', 'course', 'semester'] as $key) {
-            $v = $q->json($key, null);
-            if ($v !== null) {
-                $patch[$key] = $v;
+            $keys = ['subject', 'subject_name', 'subject_slug', 'topic', 'type', 'text', 'answer', 'is_published'];
+            $patch = $current;
+            foreach ($keys as $key) {
+                $v = $q->json($key, null);
+                if ($v !== null) $patch[$key] = $v;
             }
+            $row = ExamQuestionStore::upsert($patch, $id);
+            Response::success(['question' => $row], $q->requestId);
+        } catch (\Throwable $e) {
+            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
         }
-        $row = $store->upsertQuestion(array_merge($found, $patch));
-        Response::success(['question' => $row], $q->requestId);
     });
 
-    $r->delete('/api/v1/admin/questions/{id}', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q) || !RequireRole::handle($q, ['admin', 'teacher'])) {
-            return;
+    $r->delete('/api/v1/admin/questions/{id}', static function (Request $q, array $p) use ($manager): void {
+        if (!$manager($q)) return;
+        try {
+            $id = (string) ($p['id'] ?? '');
+            if (ExamQuestionStore::get($id) === null) {
+                Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
+                return;
+            }
+            ExamQuestionStore::delete($id);
+            Response::success(['deleted' => true], $q->requestId);
+        } catch (\Throwable $e) {
+            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
         }
-        $ok = (new ContentStore())->deleteQuestion((string) ($p['id'] ?? ''));
-        if (!$ok) {
-            Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
-            return;
-        }
-        Response::success(['deleted' => true], $q->requestId);
     });
 };
