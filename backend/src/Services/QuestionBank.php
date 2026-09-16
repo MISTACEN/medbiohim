@@ -5,7 +5,7 @@ namespace Medbiohim\Services;
 
 /**
  * Unified question bank over ContentStore JSON (works without Postgres).
- * Source: curated legacy migration → data/questions_bank.json etc.
+ * All curated legacy questions are exam ticket questions (kind=ticket).
  */
 final class QuestionBank
 {
@@ -37,29 +37,15 @@ final class QuestionBank
 
         $out = [];
         foreach ($items as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-            if ($slug !== '' && (string) ($item['subject_slug'] ?? '') !== $slug) {
-                continue;
-            }
-            if ($subject !== '' && !str_contains(mb_strtolower((string) ($item['subject'] ?? '')), $subject)) {
-                continue;
-            }
-            if ($kind !== '' && (string) ($item['kind'] ?? '') !== $kind) {
-                continue;
-            }
-            if ($type !== '' && (string) ($item['type'] ?? '') !== $type) {
-                continue;
-            }
-            if ($topic !== '' && !str_contains(mb_strtolower((string) ($item['topic'] ?? '')), $topic)) {
-                continue;
-            }
+            if (!is_array($item)) continue;
+            if ($slug !== '' && (string) ($item['subject_slug'] ?? '') !== $slug) continue;
+            if ($subject !== '' && !str_contains(mb_strtolower((string) ($item['subject'] ?? '')), $subject)) continue;
+            if ($kind !== '' && (string) ($item['kind'] ?? '') !== $kind) continue;
+            if ($type !== '' && (string) ($item['type'] ?? '') !== $type) continue;
+            if ($topic !== '' && !str_contains(mb_strtolower((string) ($item['topic'] ?? '')), $topic)) continue;
             if ($q !== '') {
                 $hay = mb_strtolower((string) ($item['text'] ?? '') . ' ' . (string) ($item['topic'] ?? ''));
-                if (!str_contains($hay, $q)) {
-                    continue;
-                }
+                if (!str_contains($hay, $q)) continue;
             }
             $out[] = $item;
         }
@@ -69,63 +55,96 @@ final class QuestionBank
     public function getQuestion(string $id): ?array
     {
         foreach ($this->allQuestions() as $item) {
-            if ((string) ($item['id'] ?? '') === $id) {
-                return $item;
-            }
+            if ((string) ($item['id'] ?? '') === $id) return $item;
         }
         return null;
     }
 
-    /** @return list<array<string,mixed>> */
     public function ticketBanks(): array
     {
         $d = $this->read('tickets_bank.json');
         $items = $d['items'] ?? [];
-        return is_array($items) ? $items : [];
+        if (!is_array($items)) return [];
+        $out = [];
+        foreach ($items as $b) {
+            if (!is_array($b)) continue;
+            $qs = $b['questions'] ?? [];
+            $ids = $b['question_ids'] ?? [];
+            $count = is_array($qs) && $qs !== [] ? count($qs) : (is_array($ids) ? count($ids) : (int) ($b['count'] ?? 0));
+            $out[] = [
+                'id' => (string) ($b['id'] ?? ''),
+                'title' => (string) ($b['title'] ?? 'Билеты'),
+                'subject' => (string) ($b['subject'] ?? ''),
+                'subject_slug' => (string) ($b['subject_slug'] ?? ''),
+                'count' => $count,
+                'mode' => (string) ($b['mode'] ?? 'exam'),
+            ];
+        }
+        return $out;
     }
 
-    /**
-     * Generate a random ticket: N open questions from a ticket bank.
-     * @return array{bank:array,questions:list<array>}
-     */
-    public function generateTicket(string $bankId, int $count = 3): array
+    public function generateTicket(string $bankId, int $count = 3, string $mode = 'exam'): array
     {
-        $bank = null;
-        foreach ($this->ticketBanks() as $b) {
-            if ((string) ($b['id'] ?? '') === $bankId) {
-                $bank = $b;
-                break;
+        $raw = null;
+        $d = $this->read('tickets_bank.json');
+        foreach (($d['items'] ?? []) as $b) {
+            if (is_array($b) && (string) ($b['id'] ?? '') === $bankId) { $raw = $b; break; }
+        }
+        if ($raw === null) throw new \RuntimeException('Ticket bank not found');
+
+        $pool = [];
+        if (!empty($raw['questions']) && is_array($raw['questions'])) {
+            foreach ($raw['questions'] as $q) {
+                if (!is_array($q)) continue;
+                $text = (string) ($q['text'] ?? '');
+                if ($text === '') continue;
+                $id = (string) ($q['id'] ?? '');
+                $full = $id !== '' ? $this->getQuestion($id) : null;
+                $pool[] = $full ?? [
+                    'id' => $id !== '' ? $id : ('tmp-' . substr(sha1($text), 0, 10)),
+                    'text' => $text,
+                    'answer' => (string) ($q['answer'] ?? ''),
+                    'topic' => (string) ($q['topic'] ?? ''),
+                    'subject' => (string) ($raw['subject'] ?? ''),
+                    'subject_slug' => (string) ($raw['subject_slug'] ?? ''),
+                    'kind' => 'ticket',
+                    'type' => 'open',
+                    'for_exam' => true,
+                    'for_ticket' => true,
+                ];
+            }
+        } elseif (!empty($raw['question_ids']) && is_array($raw['question_ids'])) {
+            foreach ($raw['question_ids'] as $id) {
+                $q = $this->getQuestion((string) $id);
+                if ($q !== null) $pool[] = $q;
             }
         }
-        if ($bank === null) {
-            throw new \RuntimeException('Ticket bank not found');
+        if ($pool === []) throw new \RuntimeException('Ticket bank is empty');
+
+        shuffle($pool);
+        $picked = array_slice($pool, 0, max(1, min($count, count($pool))));
+        if ($mode === 'exam') {
+            $picked = array_map(static function (array $q): array {
+                $q['has_answer'] = !empty($q['answer']);
+                unset($q['answer']);
+                return $q;
+            }, $picked);
         }
-        $ids = $bank['question_ids'] ?? [];
-        if (!is_array($ids) || $ids === []) {
-            throw new \RuntimeException('Ticket bank is empty');
-        }
-        shuffle($ids);
-        $ids = array_slice($ids, 0, max(1, min($count, count($ids))));
-        $questions = [];
-        foreach ($ids as $id) {
-            $q = $this->getQuestion((string) $id);
-            if ($q !== null) {
-                $questions[] = $q;
-            }
-        }
+
         return [
             'bank' => [
-                'id' => $bank['id'],
-                'title' => $bank['title'] ?? '',
-                'subject' => $bank['subject'] ?? '',
+                'id' => (string) ($raw['id'] ?? ''),
+                'title' => (string) ($raw['title'] ?? ''),
+                'subject' => (string) ($raw['subject'] ?? ''),
+                'subject_slug' => (string) ($raw['subject_slug'] ?? ''),
             ],
-            'questions' => $questions,
-            'count' => count($questions),
+            'questions' => array_values($picked),
+            'count' => count($picked),
+            'mode' => $mode,
             'generated_at' => gmdate('c'),
         ];
     }
 
-    /** @return list<array<string,mixed>> */
     public function trainers(): array
     {
         $d = $this->read('trainers_bank.json');
@@ -136,9 +155,7 @@ final class QuestionBank
     public function getTrainer(string $id): ?array
     {
         foreach ($this->trainers() as $t) {
-            if ((string) ($t['id'] ?? '') === $id) {
-                return $t;
-            }
+            if ((string) ($t['id'] ?? '') === $id) return $t;
         }
         return null;
     }
@@ -157,23 +174,18 @@ final class QuestionBank
                 ];
             }
             $map[$slug]['count']++;
-            $k = (string) ($q['kind'] ?? 'main');
+            $k = (string) ($q['kind'] ?? 'ticket');
             $map[$slug]['kinds'][$k] = ($map[$slug]['kinds'][$k] ?? 0) + 1;
         }
         return array_values($map);
     }
 
-    /** @return array<string,mixed> */
     private function read(string $file): array
     {
         $p = $this->dir . '/' . $file;
-        if (!is_file($p)) {
-            return [];
-        }
+        if (!is_file($p)) return [];
         $raw = file_get_contents($p);
-        if ($raw === false || trim($raw) === '') {
-            return [];
-        }
+        if ($raw === false || trim($raw) === '') return [];
         $v = json_decode($raw, true);
         return is_array($v) ? $v : [];
     }
