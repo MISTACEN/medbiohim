@@ -106,7 +106,7 @@ export default function SchedulePage() {
 
   const today = dateKey(new Date());
   const first = items[0];
-  const course = first?.course_number ?? user?.course ?? 2;
+  const course = user?.course ?? 2;
   const semester = first?.semester ?? user?.semester ?? 3;
   const academicYear = first?.academic_year || "2026/2027";
   const groupName = first?.group_name || user?.groupName || "Группа не назначена";
