@@ -4,7 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* —— Classic Light (default, mockup #1) —— */
 :root,
 html[data-theme="classic-light"] {
   --primary: #2563eb;
@@ -24,9 +23,10 @@ html[data-theme="classic-light"] {
   --border: rgba(15, 23, 42, 0.08);
   --hero-from: #eff6ff;
   --hero-to: #f8fafc;
+  --body-art: none;
+  --glass-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
 }
 
-/* —— Classic Dark —— */
 html[data-theme="classic-dark"],
 html.dark[data-theme="classic-dark"] {
   --primary: #3b82f6;
@@ -46,9 +46,10 @@ html.dark[data-theme="classic-dark"] {
   --border: rgba(255, 255, 255, 0.08);
   --hero-from: #0f172a;
   --hero-to: #111827;
+  --body-art: none;
+  --glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
 }
 
-/* —— Midnight (dark only, indigo/violet premium) —— */
 html[data-theme="midnight"],
 html.dark[data-theme="midnight"] {
   --primary: #6366f1;
@@ -68,26 +69,97 @@ html.dark[data-theme="midnight"] {
   --border: rgba(167, 139, 250, 0.12);
   --hero-from: #1e1b4b;
   --hero-to: #0f0a1a;
+  --body-art: none;
+  --glass-shadow: 0 14px 42px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Three new reference themes ===== */
+html[data-theme="aurora-glass"] {
+  --primary: #168cff;
+  --primary-dark: #0b73de;
+  --primary-soft: #e4f7ff;
+  --accent: #20cdb0;
+  --success: #18b783;
+  --danger: #f05270;
+  --warning: #eead39;
+  --background: #eafaff;
+  --card: rgba(255, 255, 255, 0.74);
+  --text: #102b4a;
+  --muted: #6d8298;
+  --sidebar: rgba(248, 253, 255, 0.76);
+  --sidebar-text: #294966;
+  --sidebar-active: #168cff;
+  --border: rgba(66, 176, 224, 0.18);
+  --hero-from: rgba(205, 244, 255, 0.86);
+  --hero-to: rgba(235, 255, 247, 0.84);
+  --body-art: radial-gradient(circle at 8% 12%, rgba(69, 209, 255, 0.28), transparent 31%), radial-gradient(circle at 88% 18%, rgba(42, 224, 188, 0.2), transparent 27%), radial-gradient(circle at 58% 88%, rgba(98, 167, 255, 0.16), transparent 30%);
+  --glass-shadow: 0 18px 55px rgba(31, 141, 191, 0.12);
+}
+
+html[data-theme="medical-glass"] {
+  --primary: #2b74e8;
+  --primary-dark: #205dcc;
+  --primary-soft: #e8f2ff;
+  --accent: #7767ed;
+  --success: #19ad83;
+  --danger: #ed5271;
+  --warning: #eea93a;
+  --background: #eff7ff;
+  --card: rgba(255, 255, 255, 0.83);
+  --text: #10294a;
+  --muted: #71859b;
+  --sidebar: rgba(250, 253, 255, 0.88);
+  --sidebar-text: #294463;
+  --sidebar-active: #2b74e8;
+  --border: rgba(98, 152, 214, 0.18);
+  --hero-from: rgba(216, 236, 255, 0.92);
+  --hero-to: rgba(240, 233, 255, 0.88);
+  --body-art: radial-gradient(circle at 6% 8%, rgba(55, 151, 255, 0.18), transparent 28%), radial-gradient(circle at 92% 12%, rgba(126, 108, 239, 0.16), transparent 25%), linear-gradient(180deg, rgba(255,255,255,0.35), transparent 42%);
+  --glass-shadow: 0 18px 50px rgba(67, 115, 175, 0.12);
+}
+
+html[data-theme="crystal-glass"] {
+  --primary: #198fe7;
+  --primary-dark: #0e75c8;
+  --primary-soft: #e9f8ff;
+  --accent: #5e8df7;
+  --success: #19b690;
+  --danger: #f05a79;
+  --warning: #efb24b;
+  --background: #f3fbff;
+  --card: rgba(255, 255, 255, 0.9);
+  --text: #112b49;
+  --muted: #71849a;
+  --sidebar: rgba(255, 255, 255, 0.9);
+  --sidebar-text: #2b4863;
+  --sidebar-active: #198fe7;
+  --border: rgba(83, 153, 219, 0.15);
+  --hero-from: rgba(225, 248, 255, 0.92);
+  --hero-to: rgba(243, 245, 255, 0.94);
+  --body-art: radial-gradient(circle at 10% 18%, rgba(74, 204, 247, 0.15), transparent 24%), radial-gradient(circle at 88% 17%, rgba(83, 126, 243, 0.12), transparent 24%), radial-gradient(circle at 50% 100%, rgba(94, 231, 196, 0.08), transparent 34%);
+  --glass-shadow: 0 16px 44px rgba(48, 119, 179, 0.09);
 }
 
 html { scroll-behavior: smooth; }
 body {
   font-family: Inter, "Plus Jakarta Sans", system-ui, sans-serif;
   background-color: var(--background);
+  background-image: var(--body-art);
+  background-attachment: fixed;
   color: var(--text);
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color .25s ease, color .25s ease, background-image .25s ease;
 }
 
 @layer components {
-  .card { @apply rounded-2xl border p-5 shadow-sm transition-all duration-300; background: var(--card); border-color: var(--border); color: var(--text); }
+  .card { @apply rounded-2xl border p-5 shadow-sm transition-all duration-300; background: var(--card); border-color: var(--border); color: var(--text); box-shadow: var(--glass-shadow); }
   .card:hover { @apply -translate-y-0.5 shadow-md; }
-  .btn-primary { @apply rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]; background: var(--primary); }
+  .btn-primary { @apply rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]; background: linear-gradient(135deg, var(--primary), var(--accent)); }
   .btn-secondary { @apply rounded-xl border px-4 py-2.5 text-sm font-semibold transition; border-color: var(--border); color: var(--primary); background: var(--card); }
   .btn-pill { @apply rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm; background: linear-gradient(135deg, var(--primary), var(--accent)); }
-  .hero-banner { @apply relative overflow-hidden rounded-2xl p-6 shadow-sm sm:p-8; background: linear-gradient(135deg, var(--hero-from), var(--hero-to)); }
+  .hero-banner { @apply relative overflow-hidden rounded-2xl p-6 shadow-sm sm:p-8; background: linear-gradient(135deg, var(--hero-from), var(--hero-to)); box-shadow: var(--glass-shadow); backdrop-filter: blur(16px); }
   .page-title { @apply text-2xl font-bold tracking-tight sm:text-3xl; color: var(--text); }
   .page-subtitle { @apply mt-1 text-sm; color: var(--muted); }
   .skeleton { @apply animate-pulse rounded-xl; background: color-mix(in srgb, var(--muted) 20%, transparent); }
@@ -96,13 +168,84 @@ body {
   .badge-warning { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
   .badge-primary { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--primary-soft); color: var(--primary); }
   .app-sidebar { background: var(--sidebar); color: var(--sidebar-text); }
-  .app-sidebar-active { background: var(--sidebar-active); color: #fff; }
+  .app-sidebar-active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
 }
+
+/* Reference themes use the airy, frosted surfaces from the supplied mockups. */
+html[data-theme="aurora-glass"] .card,
+html[data-theme="medical-glass"] .card,
+html[data-theme="crystal-glass"] .card,
+html[data-theme="aurora-glass"] .hero-banner,
+html[data-theme="medical-glass"] .hero-banner,
+html[data-theme="crystal-glass"] .hero-banner {
+  backdrop-filter: blur(22px) saturate(130%);
+  -webkit-backdrop-filter: blur(22px) saturate(130%);
+}
+
+html[data-theme="aurora-glass"] .app-sidebar,
+html[data-theme="medical-glass"] .app-sidebar,
+html[data-theme="crystal-glass"] .app-sidebar {
+  border-right: 1px solid var(--border);
+  box-shadow: 16px 0 45px rgba(46, 127, 185, 0.06);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+}
+
+html[data-theme="aurora-glass"] .app-sidebar .border-white\/10,
+html[data-theme="medical-glass"] .app-sidebar .border-white\/10,
+html[data-theme="crystal-glass"] .app-sidebar .border-white\/10 { border-color: var(--border) !important; }
+html[data-theme="aurora-glass"] .app-sidebar .bg-white\/5,
+html[data-theme="medical-glass"] .app-sidebar .bg-white\/5,
+html[data-theme="crystal-glass"] .app-sidebar .bg-white\/5 { background: color-mix(in srgb, var(--primary) 5%, transparent) !important; }
+
+html[data-theme="aurora-glass"] .bg-white,
+html[data-theme="medical-glass"] .bg-white,
+html[data-theme="crystal-glass"] .bg-white { background-color: color-mix(in srgb, var(--card) 92%, transparent) !important; }
+html[data-theme="aurora-glass"] .bg-slate-50,
+html[data-theme="medical-glass"] .bg-slate-50,
+html[data-theme="crystal-glass"] .bg-slate-50,
+html[data-theme="aurora-glass"] .bg-slate-50\/80,
+html[data-theme="medical-glass"] .bg-slate-50\/80,
+html[data-theme="crystal-glass"] .bg-slate-50\/80 { background-color: color-mix(in srgb, var(--card) 72%, var(--primary-soft)) !important; }
+html[data-theme="aurora-glass"] .text-slate-900,
+html[data-theme="medical-glass"] .text-slate-900,
+html[data-theme="crystal-glass"] .text-slate-900,
+html[data-theme="aurora-glass"] .text-slate-800,
+html[data-theme="medical-glass"] .text-slate-800,
+html[data-theme="crystal-glass"] .text-slate-800 { color: var(--text) !important; }
+html[data-theme="aurora-glass"] .text-slate-700,
+html[data-theme="medical-glass"] .text-slate-700,
+html[data-theme="crystal-glass"] .text-slate-700,
+html[data-theme="aurora-glass"] .text-slate-600,
+html[data-theme="medical-glass"] .text-slate-600,
+html[data-theme="crystal-glass"] .text-slate-600,
+html[data-theme="aurora-glass"] .text-slate-500,
+html[data-theme="medical-glass"] .text-slate-500,
+html[data-theme="crystal-glass"] .text-slate-500 { color: var(--muted) !important; }
+html[data-theme="aurora-glass"] .border-slate-200,
+html[data-theme="medical-glass"] .border-slate-200,
+html[data-theme="crystal-glass"] .border-slate-200,
+html[data-theme="aurora-glass"] .border-slate-200\/80,
+html[data-theme="medical-glass"] .border-slate-200\/80,
+html[data-theme="crystal-glass"] .border-slate-200\/80,
+html[data-theme="aurora-glass"] .border-slate-100,
+html[data-theme="medical-glass"] .border-slate-100,
+html[data-theme="crystal-glass"] .border-slate-100 { border-color: var(--border) !important; }
+html[data-theme="aurora-glass"] .bg-indigo-600,
+html[data-theme="medical-glass"] .bg-indigo-600,
+html[data-theme="crystal-glass"] .bg-indigo-600 { background: linear-gradient(135deg, var(--primary), var(--accent)) !important; }
+html[data-theme="aurora-glass"] .text-indigo-600,
+html[data-theme="medical-glass"] .text-indigo-600,
+html[data-theme="crystal-glass"] .text-indigo-600 { color: var(--primary) !important; }
+html[data-theme="aurora-glass"] .border-indigo-100,
+html[data-theme="medical-glass"] .border-indigo-100,
+html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border) !important; }
+
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary) 35%, transparent); border-radius: 999px; }
 
 /* —— Schedule CMS-style calendar —— */
-.schedule-shell{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:var(--card);box-shadow:0 10px 35px color-mix(in srgb,var(--primary) 8%,transparent)}
+.schedule-shell{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:var(--card);box-shadow:var(--glass-shadow)}
 .schedule-scroll{overflow-x:auto}
 .schedule-grid{display:grid;grid-template-columns:76px repeat(6,minmax(140px,1fr));grid-template-rows:64px 693px}
 .schedule-corner{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);background:color-mix(in srgb,var(--primary-soft) 35%,var(--card))}
@@ -137,3 +280,10 @@ body {
 .schedule-day-pill b{color:var(--text)}
 .schedule-day-pill-active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
 @media (max-width:767px){.schedule-grid{grid-template-columns:58px repeat(6,minmax(120px,1fr))}.schedule-day-head strong{font-size:14px}.schedule-tab{padding:7px 10px}}
+
+/* Small screens keep the same glass proportions as the supplied mobile mockups. */
+@media (max-width: 767px) {
+  html[data-theme="aurora-glass"] body,
+  html[data-theme="medical-glass"] body,
+  html[data-theme="crystal-glass"] body { background-attachment: scroll; }
+}
