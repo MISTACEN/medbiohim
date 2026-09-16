@@ -108,7 +108,7 @@ export default function SchedulePage() {
   const first = items[0];
   const course = user?.course ?? 2;
   const semester = first?.semester ?? user?.semester ?? 3;
-  const academicYear = first?.academic_year || "2026/2027";
+  const academicYear = "2026/2027";
   const groupName = first?.group_name || user?.groupName || "Группа не назначена";
   const groupMissing = !first?.group_name && !user?.groupName;
   const currentDayItems = grouped.get(today) || [];
