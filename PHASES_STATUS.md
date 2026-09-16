@@ -1,16 +1,15 @@
-# MEDBIOHIM — статус фаз (2026-09-16)
+# MEDBIOHIM phases status — 2026-09-16
 
-## Сделано в коде
+## Closed
+- Content banks + Question engine + Practice/Tickets/Trainers UI
+- Interactive trainer matching
+- Resume sessions API
+- Notes + favorites
+- Admin CMS questions
 
-### Контент
-- Curated legacy → backend/data/legacy/
-- questions_bank.json (~796), tickets_bank.json (6 banks / 150 qs), trainers_bank.json (41 rows), MC in tests.json
-
-### Question engine
-- QuestionBank service + /api/v1/questions, /tickets, /trainers
-
-### UI
-- /practice, /tickets, /trainers
-
-### Блокер
-SpaceWeb database still Connection failed until pooler .env + backend redeploy.
+## SpaceWeb deploy
+1. Upload full backend/ including data/questions_bank.json
+2. Pooler DB_URL + service_role
+3. health → database.status=ok
+4. Redeploy Vercel
+5. Smoke: /practice /tickets /trainers /admin/questions
