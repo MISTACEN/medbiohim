@@ -15,7 +15,7 @@ final class ScheduleRepository
         $this->db = Connection::pdo();
     }
 
-    /** Latest schedule version for groups the user belongs to. */
+    /** Latest active schedule version for groups the user belongs to. */
     public function listForUser(string $userId, ?string $from = null, ?string $to = null): array
     {
         $sql = <<<'SQL'
@@ -29,6 +29,7 @@ WITH latest AS (
     JOIN public.group_memberships gm
       ON gm.group_id = s.group_id
      AND gm.user_id = :user_id
+    WHERE s.is_active = true
 )
 SELECT
     se.id,
@@ -37,9 +38,10 @@ SELECT
     g.name AS group_name,
     g.code AS group_code,
     ls.semester,
+    ls.academic_year,
     ls.version,
     se.subject_id,
-    subj.name AS subject_name,
+    COALESCE(se.subject_name, subj.name) AS subject_name,
     se.date,
     to_char(se.date, 'Dy') AS weekday_short,
     se.start_time,
@@ -71,7 +73,7 @@ SQL;
         return $stmt->fetchAll() ?: [];
     }
 
-    /** Latest schedules for admin/editor screens. */
+    /** Latest active schedules for admin/editor screens. */
     public function listAll(?string $groupId = null, ?int $semester = null): array
     {
         $sql = <<<'SQL'
@@ -82,6 +84,7 @@ WITH latest AS (
                ORDER BY s.version DESC, s.created_at DESC
            ) AS rn
     FROM public.schedules s
+    WHERE s.is_active = true
 )
 SELECT
     ls.id AS schedule_id,
@@ -89,12 +92,13 @@ SELECT
     g.name AS group_name,
     g.code AS group_code,
     ls.academic_year_id,
-    ay.label AS academic_year,
+    COALESCE(ls.academic_year, ay.label) AS academic_year,
+    ls.is_active,
     ls.semester,
     ls.version,
     se.id,
     se.subject_id,
-    subj.name AS subject_name,
+    COALESCE(se.subject_name, subj.name) AS subject_name,
     se.date,
     se.start_time,
     se.end_time,
@@ -126,7 +130,7 @@ SQL;
         return $stmt->fetchAll() ?: [];
     }
 
-    /** Creates a new immutable schedule version. */
+    /** Creates a new active immutable schedule version and deactivates the previous version. */
     public function replace(array $payload): array
     {
         $groupId = trim((string) ($payload['group_id'] ?? ''));
@@ -146,6 +150,11 @@ SQL;
             throw new \InvalidArgumentException('entries must be an array');
         }
 
+        $academicYear = trim((string) ($payload['academic_year'] ?? '2026/2027'));
+        if ($academicYear === '') {
+            $academicYear = '2026/2027';
+        }
+
         $this->db->beginTransaction();
         try {
             $check = $this->db->prepare('SELECT id FROM public.groups WHERE id = :id AND is_active = true');
@@ -163,14 +172,23 @@ SQL;
             $q->execute(['group_id' => $groupId, 'semester' => $semester]);
             $version = (int) $q->fetchColumn();
 
+            $deactivate = $this->db->prepare(
+                'UPDATE public.schedules
+                    SET is_active = false
+                  WHERE group_id = :group_id
+                    AND COALESCE(semester, 0) = COALESCE(CAST(:semester AS smallint), 0)'
+            );
+            $deactivate->execute(['group_id' => $groupId, 'semester' => $semester]);
+
             $stmt = $this->db->prepare(
-                'INSERT INTO public.schedules (group_id, academic_year_id, semester, version)
-                 VALUES (:group_id, :academic_year_id, :semester, :version)
+                'INSERT INTO public.schedules (group_id, academic_year_id, academic_year, semester, version, is_active)
+                 VALUES (:group_id, :academic_year_id, :academic_year, :semester, :version, true)
                  RETURNING id, version, created_at'
             );
             $stmt->execute([
                 'group_id' => $groupId,
                 'academic_year_id' => $payload['academic_year_id'] ?? null,
+                'academic_year' => $academicYear,
                 'semester' => $semester,
                 'version' => $version,
             ]);
@@ -181,10 +199,10 @@ SQL;
 
             $insert = $this->db->prepare(
                 'INSERT INTO public.schedule_entries
-                    (schedule_id, subject_id, date, start_time, end_time, type, room, building, notes, is_cancelled)
+                    (schedule_id, subject_id, subject_name, date, start_time, end_time, type, room, building, notes, is_cancelled, sort_order)
                  VALUES
-                    (:schedule_id, :subject_id, :date, :start_time, :end_time,
-                     CAST(:type AS public.schedule_type), :room, :building, :notes, :is_cancelled)
+                    (:schedule_id, :subject_id, :subject_name, :date, :start_time, :end_time,
+                     CAST(:type AS public.schedule_type), :room, :building, :notes, :is_cancelled, :sort_order)
                  RETURNING id'
             );
 
@@ -206,9 +224,17 @@ SQL;
                     $type = 'other';
                 }
 
+                $subjectName = trim((string) ($entry['subject_name'] ?? ''));
+                if ($subjectName === '' && !empty($entry['subject_id'])) {
+                    $subjectStmt = $this->db->prepare('SELECT name FROM public.subjects WHERE id = :id LIMIT 1');
+                    $subjectStmt->execute(['id' => $entry['subject_id']]);
+                    $subjectName = (string) ($subjectStmt->fetchColumn() ?: '');
+                }
+
                 $insert->execute([
                     'schedule_id' => $schedule['id'],
                     'subject_id' => ($entry['subject_id'] ?? null) ?: null,
+                    'subject_name' => $subjectName !== '' ? $subjectName : null,
                     'date' => $date,
                     'start_time' => $start,
                     'end_time' => $end,
@@ -217,6 +243,7 @@ SQL;
                     'building' => ($entry['building'] ?? null) !== '' ? ($entry['building'] ?? null) : null,
                     'notes' => ($entry['notes'] ?? null) !== '' ? ($entry['notes'] ?? null) : null,
                     'is_cancelled' => (bool) ($entry['is_cancelled'] ?? false),
+                    'sort_order' => $saved,
                 ]);
                 $saved++;
             }
@@ -226,6 +253,7 @@ SQL;
                 'schedule_id' => $schedule['id'],
                 'group_id' => $groupId,
                 'semester' => $semester,
+                'academic_year' => $academicYear,
                 'version' => $version,
                 'entries_saved' => $saved,
             ];
@@ -237,4 +265,4 @@ SQL;
         }
     }
 }
-// synced 2026-09-15
+// synced 2026-09-16
