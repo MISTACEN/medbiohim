@@ -15,45 +15,101 @@ use Medbiohim\Support\ContentStore;
 use Medbiohim\Services\SupabaseRest;
 
 return static function (Router $router): void {
-    $router->get('/api/v1/dashboard', static function (Request $req, array $params): void {
+    /** Enrich legacy/REST schedule rows so every screen gets the same subject fields. */
+    $normalizeSchedule = static function (array $items): array {
+        $subjectCache = [];
+        $groupCache = [];
+        foreach ($items as &$item) {
+            if (!is_array($item)) continue;
+            if (empty($item['subject_name']) && !empty($item['subject_id'])) {
+                $sid = (string) $item['subject_id'];
+                if (!array_key_exists($sid, $subjectCache)) {
+                    try { $subjectCache[$sid] = SupabaseRest::getSubject($sid); }
+                    catch (\Throwable $e) { $subjectCache[$sid] = null; }
+                }
+                if (is_array($subjectCache[$sid])) {
+                    $item['subject_name'] = $subjectCache[$sid]['name'] ?? null;
+                }
+            }
+            if (!empty($item['group_id'])) {
+                $gid = (string) $item['group_id'];
+                if (!array_key_exists($gid, $groupCache)) {
+                    try { $groupCache[$gid] = SupabaseRest::getGroup($gid); }
+                    catch (\Throwable $e) { $groupCache[$gid] = null; }
+                }
+                $group = is_array($groupCache[$gid]) ? ($groupCache[$gid]['group'] ?? null) : null;
+                if (is_array($group)) {
+                    $item['group_name'] = $group['name'] ?? ($item['group_name'] ?? null);
+                    $item['group_code'] = $group['code'] ?? ($item['group_code'] ?? null);
+                    $item['course_number'] = $group['course_number'] ?? ($item['course_number'] ?? null);
+                }
+            }
+            if (empty($item['subject_name']) && !empty($item['subject'])) {
+                $item['subject_name'] = $item['subject'];
+            }
+        }
+        unset($item);
+        usort($items, static function ($a, $b): int {
+            $ak = (string)($a['date'] ?? '') . ' ' . (string)($a['start_time'] ?? '');
+            $bk = (string)($b['date'] ?? '') . ' ' . (string)($b['start_time'] ?? '');
+            return $ak <=> $bk;
+        });
+        return array_values($items);
+    };
+
+    $router->get('/api/v1/dashboard', static function (Request $req, array $params) use ($normalizeSchedule): void {
         if (!RequireAuth::handle($req)) return;
         $store = new ContentStore(); $homeworks = []; $tests = []; $profile = null;
         try { $profile = (new UserRepository())->profileBundle($req->user->id); } catch (\Throwable $e) { $profile = ['user'=>$req->user->toArray(),'roles'=>$req->user->role?[$req->user->role]:[],'groups'=>[]]; }
         try { $homeworks=(new HomeworkRepository())->listForUser($req->user->id); } catch(\Throwable $e){ try{$homeworks=SupabaseRest::listHomeworksForUser($req->user->id);}catch(\Throwable $x){} }
         try { $tests=(new TestRepository())->listPublished(null); } catch(\Throwable $e) {}
         foreach((new ContentStore())->listTestsLocal() as $lt){if(!is_array($lt))continue;if(isset($lt['is_published'])&&!$lt['is_published'])continue;$tests[]=['id'=>$lt['id']??null,'title'=>$lt['title']??'Тест','subject_name'=>$lt['subject']??null,'source'=>'local'];}
-        $schedule=[];try{$schedule=(new ScheduleRepository())->listForUser($req->user->id);}catch(\Throwable $e){try{$schedule=SupabaseRest::listScheduleForUser($req->user->id);}catch(\Throwable $x){}}
-        if(!is_array($schedule)||count($schedule)===0){
-            $schedule=(new ContentStore())->listSchedule();
+        $schedule=[]; $scheduleDbFailed=false; $scheduleRestFailed=false;
+        try { $schedule=(new ScheduleRepository())->listForUser($req->user->id); }
+        catch(\Throwable $e){
+            $scheduleDbFailed=true;
+            try { $schedule=SupabaseRest::listScheduleForUser($req->user->id); }
+            catch(\Throwable $x){ $scheduleRestFailed=true; }
+        }
+        $schedule=$normalizeSchedule(is_array($schedule)?$schedule:[]);
+        if(count($schedule)===0 && $scheduleDbFailed && $scheduleRestFailed){
+            $schedule=$normalizeSchedule((new ContentStore())->listSchedule());
             $today=gmdate('Y-m-d');
-            // dashboard: nearest 14 days
             $to=gmdate('Y-m-d', time()+14*86400);
             $schedule=array_values(array_filter($schedule, static fn($x)=>(string)($x['date']??'')>=$today && (string)($x['date']??'')<=$to));
         }
         Response::success(['profile'=>$profile,'site'=>$store->getSite(),'announcements'=>array_slice($store->listAnnouncements(),0,10),'schedule'=>$schedule,'homeworks'=>$homeworks,'tests'=>$tests],$req->requestId);
     });
 
-    $router->get('/api/v1/schedule', static function(Request $req,array $params):void{
+    $router->get('/api/v1/schedule', static function(Request $req,array $params) use ($normalizeSchedule): void {
         if(!RequireAuth::handle($req))return;
         $from=isset($req->query['from'])?trim((string)$req->query['from']):null;
         $to=isset($req->query['to'])?trim((string)$req->query['to']):null;
         $from=$from!==''?$from:null; $to=$to!==''?$to:null;
-        $items=[]; $source='db';
+        $items=[]; $source='db'; $dbFailed=false; $restFailed=false;
         try{ $items=(new ScheduleRepository())->listForUser($req->user->id,$from,$to); }
         catch(\Throwable $e){
+            $dbFailed=true;
             try{ $items=SupabaseRest::listScheduleForUser($req->user->id,$from,$to); $source='supabase'; }
-            catch(\Throwable $x){ $items=[]; }
+            catch(\Throwable $x){ $items=[]; $restFailed=true; }
         }
-        if(!is_array($items)||count($items)===0){
+        $items=$normalizeSchedule(is_array($items)?$items:[]);
+        if(count($items)===0 && $dbFailed && $restFailed){
             $store=new ContentStore();
             $items=$store->listSchedule();
             if($from){ $items=array_values(array_filter($items,static fn($x)=>(string)($x['date']??'')>=$from)); }
             if($to){ $items=array_values(array_filter($items,static fn($x)=>(string)($x['date']??'')<=$to)); }
+            $items=$normalizeSchedule($items);
             $source='local';
             Response::success(['items'=>$items,'meta'=>$store->scheduleMeta(),'source'=>$source],$req->requestId);
             return;
         }
-        Response::success(['items'=>$items,'source'=>$source],$req->requestId);
+        $meta=[];
+        if($items){
+            $first=$items[0];
+            $meta=['group_name'=>$first['group_name']??null,'group_code'=>$first['group_code']??null,'course_number'=>$first['course_number']??null,'semester'=>$first['semester']??null,'academic_year'=>$first['academic_year']??'2026/2027','version'=>$first['version']??null];
+        }
+        Response::success(['items'=>$items,'meta'=>$meta,'source'=>$source],$req->requestId);
     });
 
     $router->get('/api/v1/admin/schedule', static function(Request $req,array $params):void{
@@ -76,18 +132,7 @@ return static function (Router $router): void {
         Response::success(['items'=>$items,'source'=>$source],$req->requestId);
     });
 
-    $router->put('/api/v1/admin/schedule/local', static function(Request $req,array $params):void{
-        if(!RequireAuth::handle($req)||!RequireRole::handle($req,['teacher','moderator','admin']))return;
-        $items=$req->json('items');
-        if(!is_array($items)){ Response::error('VALIDATION_ERROR','items array required',$req->requestId,422); return; }
-        $store=new ContentStore();
-        $meta=$store->scheduleMeta();
-        $payload=['meta'=>$meta?:['title'=>'Расписание','group_code'=>'МБ-201'],'items'=>array_values($items),'updated_at'=>gmdate('c'),'count'=>count($items),'source'=>'admin_cms'];
-        $dir=dirname(__DIR__,2).'/data';
-        if(!is_dir($dir)) @mkdir($dir,0775,true);
-        file_put_contents($dir.'/schedule.json', json_encode($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT).PHP_EOL, LOCK_EX);
-        Response::success(['items'=>$items,'count'=>count($items),'source'=>'local'],$req->requestId);
-    });
+    $router->put('/api/v1/admin/schedule/local', static function(Request $req,array $params):void{if(!RequireAuth::handle($req)||!RequireRole::handle($req,['teacher','moderator','admin']))return;$items=$req->json('items');if(!is_array($items)){Response::error('VALIDATION_ERROR','items array required',$req->requestId,422);return;}$store=new ContentStore();$meta=$store->scheduleMeta();$payload=['meta'=>$meta?:['title'=>'Расписание','group_code'=>'МБ-201'],'items'=>array_values($items),'updated_at'=>gmdate('c'),'count'=>count($items),'source'=>'admin_cms'];$dir=dirname(__DIR__,2).'/data';if(!is_dir($dir))@mkdir($dir,0775,true);file_put_contents($dir.'/schedule.json',json_encode($payload,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT).PHP_EOL,LOCK_EX);Response::success(['items'=>$items,'count'=>count($items),'source'=>'local'],$req->requestId);});
 
     $router->put('/api/v1/admin/schedule', static function(Request $req,array $params):void{if(!RequireAuth::handle($req)||!RequireRole::handle($req,['teacher','moderator','admin']))return;try{Response::success((new ScheduleRepository())->replace($req->jsonBody??[]),$req->requestId);}catch(\InvalidArgumentException $e){Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);}catch(\Throwable $e){try{Response::success(SupabaseRest::replaceSchedule($req->jsonBody??[]),$req->requestId);}catch(\InvalidArgumentException $x){Response::error('VALIDATION_ERROR',$x->getMessage(),$req->requestId,422);}catch(\Throwable $x){Response::error('DB_ERROR','Не удалось сохранить расписание',$req->requestId,500);}}});
 
