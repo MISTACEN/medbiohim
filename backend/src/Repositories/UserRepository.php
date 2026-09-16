@@ -98,7 +98,16 @@ final class UserRepository
     public function listUsers(int $limit = 50): array
     {
         $stmt = $this->db->query(
-            'SELECT id, email, full_name FROM public.users ORDER BY created_at DESC NULLS LAST LIMIT ' . (int) $limit
+            'SELECT u.id, u.email, u.full_name, u.course_number, u.semester,
+                    gm.group_id, g.name AS group_name, g.code AS group_code,
+                    g.course_number AS group_course_number
+               FROM public.users u
+               LEFT JOIN public.group_memberships gm
+                 ON gm.user_id = u.id AND gm.is_active = true
+               LEFT JOIN public.groups g
+                 ON g.id = gm.group_id AND g.is_active = true
+              ORDER BY u.created_at DESC NULLS LAST
+              LIMIT ' . (int) $limit
         );
         $users = $stmt->fetchAll() ?: [];
         $out = [];
@@ -108,9 +117,95 @@ final class UserRepository
                 'email' => $u['email'] ?? null,
                 'full_name' => $u['full_name'] ?? null,
                 'roles' => $this->roleCodesForUser((string) $u['id']),
+                'group_id' => $u['group_id'] ?? null,
+                'group_name' => $u['group_name'] ?? null,
+                'group_code' => $u['group_code'] ?? null,
+                'course_number' => $u['group_course_number'] ?? $u['course_number'] ?? null,
+                'semester' => $u['semester'] !== null ? (int) $u['semester'] : null,
             ];
         }
         return $out;
+    }
+
+    /** Assign the user's active group; course is derived from that group, semester is user-specific. */
+    public function setAcademicContext(string $userId, string $groupId, int $semester): array
+    {
+        if ($semester < 1 || $semester > 12) {
+            throw new \InvalidArgumentException('semester must be between 1 and 12');
+        }
+
+        $groupStmt = $this->db->prepare(
+            'SELECT id, name, code, course_number
+               FROM public.groups
+              WHERE id = :id AND is_active = true
+              LIMIT 1'
+        );
+        $groupStmt->execute(['id' => $groupId]);
+        $group = $groupStmt->fetch();
+        if ($group === false) {
+            throw new \InvalidArgumentException('Group not found');
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare(
+                'UPDATE public.group_memberships
+                    SET is_active = false
+                  WHERE user_id = :uid AND is_active = true'
+            )->execute(['uid' => $userId]);
+
+            $existing = $this->db->prepare(
+                'SELECT id FROM public.group_memberships
+                  WHERE user_id = :uid AND group_id = :gid
+                  LIMIT 1'
+            );
+            $existing->execute(['uid' => $userId, 'gid' => $groupId]);
+            $membershipId = $existing->fetchColumn();
+
+            if ($membershipId !== false) {
+                $activate = $this->db->prepare(
+                    'UPDATE public.group_memberships
+                        SET is_active = true, role_in_group = \'student\'
+                      WHERE id = :id'
+                );
+                $activate->execute(['id' => $membershipId]);
+            } else {
+                $insert = $this->db->prepare(
+                    'INSERT INTO public.group_memberships (user_id, group_id, role_in_group, is_active)
+                     VALUES (:uid, :gid, \'student\', true)'
+                );
+                $insert->execute(['uid' => $userId, 'gid' => $groupId]);
+            }
+
+            $user = $this->db->prepare(
+                'UPDATE public.users
+                    SET course_number = :course, semester = :semester, updated_at = now()
+                  WHERE id = :uid
+                  RETURNING id, course_number, semester'
+            );
+            $user->execute([
+                'uid' => $userId,
+                'course' => $group['course_number'] !== null ? (int) $group['course_number'] : null,
+                'semester' => $semester,
+            ]);
+            $updated = $user->fetch();
+            if ($updated === false) {
+                throw new \RuntimeException('User not found');
+            }
+
+            $this->db->commit();
+            return [
+                'user_id' => $userId,
+                'group_id' => $group['id'],
+                'group_name' => $group['name'],
+                'group_code' => $group['code'],
+                'course_number' => $group['course_number'] !== null ? (int) $group['course_number'] : null,
+                'semester' => $semester,
+            ];
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
     }
 
     private function ensureDefaultStudentRole(string $userId): void
@@ -140,6 +235,8 @@ final class UserRepository
         );
         $stmt->execute(['uid' => $userId]);
         $groups = $stmt->fetchAll() ?: [];
+        $course = $user['course_number'] !== null ? (int) $user['course_number'] : null;
+        $semester = $user['semester'] !== null ? (int) $user['semester'] : null;
         return [
             'user' => [
                 'id' => $user['id'],
@@ -149,6 +246,8 @@ final class UserRepository
             ],
             'roles' => $roles,
             'groups' => $groups,
+            'course' => $course,
+            'semester' => $semester,
         ];
     }
 }
