@@ -10,39 +10,75 @@ import {
   type ReactNode,
 } from "react";
 
-/** Three selectable themes (as requested). */
-export type AppThemeId = "classic-light" | "classic-dark" | "midnight";
+/**
+ * Six selectable themes: the original three plus three new reference themes
+ * based on the supplied MedBioHim mockups.
+ */
+export type AppThemeId =
+  | "classic-light"
+  | "classic-dark"
+  | "midnight"
+  | "aurora-glass"
+  | "medical-glass"
+  | "crystal-glass";
 
 export type AppThemeMeta = {
   id: AppThemeId;
   label: string;
   description: string;
-  /** true = dark surface */
   dark: boolean;
-  family: "classic" | "midnight";
+  family: "classic" | "midnight" | "reference";
+  preview: string;
 };
 
 export const THEMES: AppThemeMeta[] = [
   {
+    id: "aurora-glass",
+    label: "Aurora Glass",
+    description: "Стеклянный интерфейс с водой, мятой и мягким голубым свечением",
+    dark: false,
+    family: "reference",
+    preview: "linear-gradient(135deg,#d9f8ff 0%,#ffffff 48%,#dbfff2 100%)",
+  },
+  {
+    id: "medical-glass",
+    label: "Medical Glass",
+    description: "Белое медицинское стекло, индиго и голубые акценты из новых макетов",
+    dark: false,
+    family: "reference",
+    preview: "linear-gradient(135deg,#dceeff 0%,#ffffff 52%,#e8e4ff 100%)",
+  },
+  {
+    id: "crystal-glass",
+    label: "Crystal Glass",
+    description: "Чистая кристальная версия: больше воздуха, света и прозрачных панелей",
+    dark: false,
+    family: "reference",
+    preview: "linear-gradient(135deg,#e9fbff 0%,#ffffff 50%,#edf2ff 100%)",
+  },
+  {
     id: "classic-light",
     label: "Classic · Светлая",
-    description: "Синий медицинский стиль как на макетах, светлый фон",
+    description: "Классический синий медицинский стиль",
     dark: false,
     family: "classic",
+    preview: "linear-gradient(135deg,#2563eb,#60a5fa)",
   },
   {
     id: "classic-dark",
     label: "Classic · Тёмная",
-    description: "Тот же Classic, тёмные поверхности",
+    description: "Классический стиль с тёмными поверхностями",
     dark: true,
     family: "classic",
+    preview: "linear-gradient(135deg,#1e3a5f,#2563eb)",
   },
   {
     id: "midnight",
     label: "Midnight",
-    description: "Только тёмная: индиго / фиолет, премиум",
+    description: "Индиго / фиолетовый премиальный тёмный режим",
     dark: true,
     family: "midnight",
+    preview: "linear-gradient(135deg,#6366f1,#8b5cf6)",
   },
 ];
 
@@ -50,12 +86,11 @@ type ThemeCtx = {
   theme: AppThemeId;
   meta: AppThemeMeta;
   setTheme: (id: AppThemeId) => void;
-  /** Quick toggle only within Classic light ↔ dark */
+  /** Quick toggle only within Classic light ↔ dark. */
   toggleClassicMode: () => void;
 };
 
 const Ctx = createContext<ThemeCtx | null>(null);
-
 const STORAGE_KEY = "mb_app_theme";
 
 function applyDom(id: AppThemeId) {
@@ -66,13 +101,12 @@ function applyDom(id: AppThemeId) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<AppThemeId>("classic-light");
+  const [theme, setThemeState] = useState<AppThemeId>("aurora-glass");
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as AppThemeId | null;
-    // migrate old mb_theme
     const legacy = localStorage.getItem("mb_theme");
-    let initial: AppThemeId = "classic-light";
+    let initial: AppThemeId = "aurora-glass";
     if (saved && THEMES.some((t) => t.id === saved)) {
       initial = saved;
     } else if (legacy === "dark") {
@@ -91,7 +125,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleClassicMode = useCallback(() => {
     setThemeState((prev) => {
       const next: AppThemeId =
-        prev === "classic-dark" ? "classic-light" : prev === "classic-light" ? "classic-dark" : "classic-light";
+        prev === "classic-dark"
+          ? "classic-light"
+          : prev === "classic-light"
+            ? "classic-dark"
+            : "classic-light";
       localStorage.setItem(STORAGE_KEY, next);
       applyDom(next);
       return next;
@@ -99,7 +137,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const meta = THEMES.find((t) => t.id === theme) || THEMES[0];
-
   const value = useMemo(
     () => ({ theme, meta, setTheme, toggleClassicMode }),
     [theme, meta, setTheme, toggleClassicMode]
@@ -110,8 +147,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme() {
   const ctx = useContext(Ctx);
-  if (!ctx) {
-    throw new Error("useTheme must be used within ThemeProvider");
-  }
+  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
