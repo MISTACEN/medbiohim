@@ -76,7 +76,8 @@ export default function SchedulePage() {
     void listSchedule(dateKey(weekStart), dateKey(addDays(weekStart, 6))).then((res) => {
       if (res.ok) {
         setItems(res.data.items || []);
-        setSource(res.data.source || "db");
+        const payload = res.data as { items: ScheduleItem[]; source?: string };
+        setSource(payload.source || "db");
       } else {
         setItems([]);
         setError(res.error.message || "Не удалось загрузить расписание");
