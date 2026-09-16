@@ -78,3 +78,16 @@ export async function generateTicket(bank_id:string,count=3,mode:"practice"|"exa
 }
 export async function listTrainers(){return api<{items:Array<{id:string;title:string;subject:string;row_count:number}>}>("/trainers")}
 export async function getTrainer(id:string){return api<{trainer:Record<string,unknown>}>(`/trainers/${encodeURIComponent(id)}`)}
+
+export async function listSessions(status?:string){const qs=status?`?status=${encodeURIComponent(status)}`:"";return api<{items:Array<Record<string,unknown>>}>(`/sessions${qs}`)}
+export async function createSession(payload:{type:string;ref_id?:string;title?:string;payload?:unknown;current_index?:number;answers?:unknown}){return api<{session:Record<string,unknown>}>("/sessions",{method:"POST",body:JSON.stringify(payload)})}
+export async function updateSession(id:string,patch:Record<string,unknown>){return api<{session:Record<string,unknown>}>(`/sessions/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
+export async function getSession(id:string){return api<{session:Record<string,unknown>}>(`/sessions/${encodeURIComponent(id)}`)}
+export async function listNotes(){return api<{items:Array<{id:string;body:string;target_id?:string}>}>("/notes")}
+export async function createNote(body:string,target_id?:string,target_type="question"){return api<{note:Record<string,unknown>}>("/notes",{method:"POST",body:JSON.stringify({body,target_id,target_type})})}
+export async function listFavorites(){return api<{items:Array<{target_id:string;target_type:string}>}>("/favorites")}
+export async function toggleFavorite(target_id:string,target_type="question"){return api<{favorited:boolean}>("/favorites/toggle",{method:"POST",body:JSON.stringify({target_id,target_type})})}
+export async function adminListQuestions(params:Record<string,string|number|undefined>={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});const qs=q.toString();return api<{items:BankQuestion[];total:number}>(`/admin/questions${qs?`?${qs}`:""}`)}
+export async function adminCreateQuestion(payload:Partial<BankQuestion>&{text:string}){return api<{question:BankQuestion}>("/admin/questions",{method:"POST",body:JSON.stringify(payload)})}
+export async function adminUpdateQuestion(id:string,payload:Partial<BankQuestion>){return api<{question:BankQuestion}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"PUT",body:JSON.stringify(payload)})}
+export async function adminDeleteQuestion(id:string){return api<{deleted:boolean}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"DELETE"})}
