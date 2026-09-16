@@ -171,7 +171,6 @@ body {
   .app-sidebar-active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
 }
 
-/* Reference themes use the airy, frosted surfaces from the supplied mockups. */
 html[data-theme="aurora-glass"] .card,
 html[data-theme="medical-glass"] .card,
 html[data-theme="crystal-glass"] .card,
@@ -257,6 +256,7 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 .schedule-time{height:63px;display:flex;align-items:flex-start;justify-content:center;padding-top:2px;font-size:10px;font-weight:600;color:var(--muted)}
 .schedule-day-column{position:relative;height:693px;border-right:1px solid var(--border);background:linear-gradient(to bottom,transparent 0,transparent 62px,var(--border) 63px);background-size:100% 63px}
 .schedule-hour-line{height:63px;border-bottom:1px dashed color-mix(in srgb,var(--border) 75%,transparent);pointer-events:none}
+.schedule-card{z-index:3}
 .schedule-icon-btn,.schedule-today-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--card);color:var(--text);transition:.2s}
 .schedule-icon-btn{width:38px;height:38px;border-radius:12px}
 .schedule-today-btn{height:38px;border-radius:12px;padding:0 14px;font-size:12px;font-weight:700}
@@ -265,7 +265,6 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 .schedule-tab{border:0;border-radius:9px;padding:7px 14px;font-size:11px;font-weight:700;color:var(--muted);background:transparent}
 .schedule-tab-active{color:#fff;background:linear-gradient(135deg,var(--primary),var(--accent));box-shadow:0 4px 12px color-mix(in srgb,var(--primary) 22%,transparent)}
 .schedule-period{font-size:13px;font-weight:700;color:var(--muted)}
-.schedule-card{border-color:transparent}
 .schedule-lecture{background:color-mix(in srgb,#6366f1 13%,var(--card));border-color:color-mix(in srgb,#6366f1 25%,var(--border));color:var(--text)}
 .schedule-practice{background:color-mix(in srgb,#10b981 13%,var(--card));border-color:color-mix(in srgb,#10b981 25%,var(--border));color:var(--text)}
 .schedule-lab{background:color-mix(in srgb,#f59e0b 15%,var(--card));border-color:color-mix(in srgb,#f59e0b 28%,var(--border));color:var(--text)}
@@ -275,13 +274,14 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 .schedule-consultation{background:color-mix(in srgb,#3b82f6 12%,var(--card));border-color:color-mix(in srgb,#3b82f6 25%,var(--border));color:var(--text)}
 .schedule-other{background:color-mix(in srgb,var(--primary) 10%,var(--card));border-color:var(--border);color:var(--text)}
 .schedule-cancelled{filter:grayscale(.75);opacity:.62;text-decoration-color:currentColor}
+.schedule-config-warning{display:flex;align-items:flex-start;gap:10px;border:1px solid color-mix(in srgb,var(--warning) 28%,var(--border));border-radius:14px;padding:13px 15px;background:color-mix(in srgb,var(--warning) 10%,var(--card));color:var(--text);font-size:12px}
+.schedule-config-warning p{margin-top:2px;color:var(--muted)}
 .schedule-day-picker{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
 .schedule-day-pill{display:flex;min-width:76px;flex-direction:column;align-items:center;border:1px solid var(--border);border-radius:13px;padding:8px 10px;background:var(--card);color:var(--muted)}
 .schedule-day-pill b{color:var(--text)}
 .schedule-day-pill-active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
 @media (max-width:767px){.schedule-grid{grid-template-columns:58px repeat(6,minmax(120px,1fr))}.schedule-day-head strong{font-size:14px}.schedule-tab{padding:7px 10px}}
 
-/* Small screens keep the same glass proportions as the supplied mobile mockups. */
 @media (max-width: 767px) {
   html[data-theme="aurora-glass"] body,
   html[data-theme="medical-glass"] body,
