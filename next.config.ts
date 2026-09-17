@@ -12,6 +12,11 @@ const SPACEWEB =
   process.env.SPACEWEB_API_ORIGIN ||
   "https://ryazansev3.temp.swtest.ru/api/v1";
 
+// This value is deliberately visible in the HTTP response. It lets us prove
+// which source actually serves medbiohim.vercel.app and detect stale Vercel
+// production aliases/deployments without relying on browser cache behavior.
+const BUILD_FINGERPRINT = "f14698a6774e939faa6d9f305b16e4b6768e1595";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   env: {
@@ -27,6 +32,14 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "X-Medbiohim-Build",
+            value: BUILD_FINGERPRINT,
+          },
+          {
+            key: "X-Medbiohim-Api-Mode",
+            value: "same-origin",
           },
         ],
       },
