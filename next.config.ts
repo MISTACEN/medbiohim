@@ -15,7 +15,7 @@ const SPACEWEB =
 // Exact source fingerprint for the production-delivery diagnostic.
 // If this header is absent/different on medbiohim.vercel.app, production is
 // not serving this source tree.
-const BUILD_FINGERPRINT = "817c28a96c68709316718e0826e7d47be9c5fed7";
+const BUILD_FINGERPRINT = "7de8d7b9b8af568bc88ba3ab7c810ba9c1c077a6";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
