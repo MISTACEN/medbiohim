@@ -12,10 +12,10 @@ const SPACEWEB =
   process.env.SPACEWEB_API_ORIGIN ||
   "https://ryazansev3.temp.swtest.ru/api/v1";
 
-// This value is deliberately visible in the HTTP response. It lets us prove
-// which source actually serves medbiohim.vercel.app and detect stale Vercel
-// production aliases/deployments without relying on browser cache behavior.
-const BUILD_FINGERPRINT = "f14698a6774e939faa6d9f305b16e4b6768e1595";
+// Exact source fingerprint for the production-delivery diagnostic.
+// If this header is absent/different on medbiohim.vercel.app, production is
+// not serving this source tree.
+const BUILD_FINGERPRINT = "817c28a96c68709316718e0826e7d47be9c5fed7";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
