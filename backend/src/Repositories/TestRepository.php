@@ -45,10 +45,7 @@ final class TestRepository
         return $row === false ? null : $row;
     }
 
-    /**
-     * The live database uses questions.text/is_published/options.
-     * Return the public test shape (body) without the answer field.
-     */
+    /** Return public question fields using the current questions schema. */
     public function questionsForSubject(?string $subjectId, int $limit = 20): array
     {
         $sql = 'SELECT id, subject_id, module_id, topic_id,
@@ -82,15 +79,14 @@ final class TestRepository
 
     public function finishAttempt(string $attemptId, string $userId, ?float $score, ?float $maxScore): ?array
     {
+        $percent = ($score !== null && $maxScore !== null && $maxScore > 0)
+            ? round(($score / $maxScore) * 100, 2)
+            : null;
         $stmt = $this->db->prepare(
             "UPDATE public.test_attempts
                 SET score = :score,
                     max_score = :max_score,
-                    percent = CASE
-                        WHEN :max_score_percent IS NOT NULL AND :max_score_percent > 0
-                        THEN ROUND((COALESCE(:score_percent, 0) / :max_score_percent) * 100, 2)
-                        ELSE NULL
-                    END,
+                    percent = :percent,
                     finished_at = now(),
                     status = 'submitted'
               WHERE id = :id AND user_id = :uid
@@ -99,8 +95,7 @@ final class TestRepository
         $stmt->execute([
             'score' => $score,
             'max_score' => $maxScore,
-            'max_score_percent' => $maxScore,
-            'score_percent' => $score,
+            'percent' => $percent,
             'id' => $attemptId,
             'uid' => $userId,
         ]);
