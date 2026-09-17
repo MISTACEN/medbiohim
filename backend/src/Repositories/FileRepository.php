@@ -43,7 +43,7 @@ final class FileRepository
 
     public function findById(string $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM public.files WHERE id = :id AND status = 'active' LIMIT 1");
+        $stmt = $this->db->prepare("SELECT * FROM public.files WHERE id = :id AND status <> 'deleted' LIMIT 1");
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
@@ -51,7 +51,7 @@ final class FileRepository
 
     public function softDelete(string $id): bool
     {
-        $stmt = $this->db->prepare("UPDATE public.files SET status = 'deleted' WHERE id = :id");
+        $stmt = $this->db->prepare("UPDATE public.files SET status = 'deleted' WHERE id = :id AND status <> 'deleted'");
         $stmt->execute(['id' => $id]);
         return $stmt->rowCount() > 0;
     }
