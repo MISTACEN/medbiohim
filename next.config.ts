@@ -1,12 +1,16 @@
 import type { NextConfig } from "next";
 
 /**
- * Browser calls same-origin /api/v1/* (HTTPS).
- * Vercel rewrites proxy to SpaceWeb PHP API (avoids mixed content).
+ * Browser calls same-origin /api/v1/* over HTTPS.
+ * SpaceWeb production document root is backend/public, so the PHP API root
+ * is /api/v1 (not /public/api/v1).
+ *
+ * In Vercel, set SPACEWEB_API_ORIGIN to the real HTTPS SpaceWeb API origin.
+ * The fallback is kept only for the current SpaceWeb test host.
  */
 const SPACEWEB =
   process.env.SPACEWEB_API_ORIGIN ||
-  "http://ryazansev3.temp.swtest.ru/public/api/v1";
+  "https://ryazansev3.temp.swtest.ru/api/v1";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
