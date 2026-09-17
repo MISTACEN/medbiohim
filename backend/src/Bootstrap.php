@@ -33,22 +33,29 @@ final class Bootstrap
 
         set_exception_handler(static function (\Throwable $e): void {
             $requestId = bin2hex(random_bytes(8));
-            Logger::error('uncaught', [
-                'requestId' => $requestId,
-                'class' => $e::class,
-                'message' => $e->getMessage(),
-            ]);
-            // Always include class+message so SpaceWeb 500s are diagnosable without APP_DEBUG
-            $msg = $e::class . ': ' . $e->getMessage();
-            $file = $e->getFile();
-            $line = $e->getLine();
-            Response::error(
-                'INTERNAL_ERROR',
-                $msg . ' @' . basename((string)$file) . ':' . $line,
-                $requestId,
-                500,
-                ['file' => basename((string)$file), 'line' => $line]
-            );
+            try {
+                Logger::error('uncaught', [
+                    'requestId' => $requestId,
+                    'class' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $ignored) {
+            }
+            // Message always includes class/file/line (works with old Response::error without $details)
+            $msg = $e::class . ': ' . $e->getMessage()
+                . ' @' . basename((string)$e->getFile()) . ':' . $e->getLine();
+            try {
+                Response::error('INTERNAL_ERROR', $msg, $requestId, 500);
+            } catch (\Throwable $ignored) {
+                http_response_code(500);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'ok' => false,
+                    'error' => ['code' => 'INTERNAL_ERROR', 'message' => $msg],
+                    'requestId' => $requestId,
+                ], JSON_UNESCAPED_UNICODE);
+            }
+            exit;
         });
 
         set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
