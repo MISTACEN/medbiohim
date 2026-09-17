@@ -1,0 +1,30 @@
+/* Current time indicator — Khabarovsk (Asia/Vladivostok) */
+.schedule-now-line{
+  position:absolute;
+  left:0; right:0;
+  height:0;
+  border-top:2px solid #f43f5e;
+  z-index:30;
+  pointer-events:none;
+  box-shadow:0 0 0 1px rgba(244,63,94,.15);
+}
+.schedule-now-dot{
+  position:absolute;
+  left:-5px; top:-5px;
+  width:10px; height:10px;
+  border-radius:999px;
+  background:#f43f5e;
+  box-shadow:0 0 0 3px rgba(244,63,94,.25);
+}
+.schedule-now-label{
+  position:absolute;
+  left:8px; top:-11px;
+  font-size:10px;
+  font-weight:700;
+  line-height:1;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#f43f5e;
+  color:#fff;
+  white-space:nowrap;
+}
