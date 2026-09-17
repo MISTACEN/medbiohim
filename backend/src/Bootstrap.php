@@ -38,12 +38,16 @@ final class Bootstrap
                 'class' => $e::class,
                 'message' => $e->getMessage(),
             ]);
-            $debug = Env::bool('APP_DEBUG', false);
+            // Always include class+message so SpaceWeb 500s are diagnosable without APP_DEBUG
+            $msg = $e::class . ': ' . $e->getMessage();
+            $file = $e->getFile();
+            $line = $e->getLine();
             Response::error(
                 'INTERNAL_ERROR',
-                $debug ? $e->getMessage() : 'Internal server error',
+                $msg . ' @' . basename((string)$file) . ':' . $line,
                 $requestId,
-                500
+                500,
+                ['file' => basename((string)$file), 'line' => $line]
             );
         });
 
