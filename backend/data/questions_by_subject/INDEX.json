@@ -1,0 +1,17 @@
+{
+  "purpose": "exam_tickets",
+  "total": 733,
+  "timezone": "Asia/Vladivostok",
+  "subjects": {
+    "biology": {"subject": "Биология", "count": 163, "file": "questions_by_subject/biology.json"},
+    "chemistry_organic_physical": {"subject": "Органическая и физическая химия", "count": 160, "file": "questions_by_subject/chemistry_organic_physical.json"},
+    "inorganic_chemistry": {"subject": "Неорганическая химия", "count": 161, "file": "questions_by_subject/inorganic_chemistry.json"},
+    "physics": {"subject": "Физика", "count": 110, "file": "questions_by_subject/physics.json"},
+    "history": {"subject": "История России", "count": 82, "file": "questions_by_subject/history.json"},
+    "math": {"subject": "Математика", "count": 31, "file": "questions_by_subject/math.json"},
+    "математический_анализ": {"subject": "Математический анализ", "count": 18, "file": "questions_by_subject/математический_анализ.json"},
+    "physiology": {"subject": "Физиология", "count": 8, "file": "questions_by_subject/physiology.json"}
+  },
+  "updated_at": "2026-09-17",
+  "note": "All questions kind=ticket for_exam=true. No HOBA naming."
+}
