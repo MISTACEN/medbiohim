@@ -5,6 +5,7 @@ use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
+use Medbiohim\Middleware\RequireRole;
 use Medbiohim\Support\ContentStore;
 
 return static function (Router $r): void {
@@ -44,34 +45,23 @@ return static function (Router $r): void {
         $slug = (string) ($q->query['subject_slug'] ?? '');
         $subject = (string) ($q->query['subject'] ?? '');
         $store = new ContentStore();
-        $plan = null;
-        if ($slug !== '') {
-            $plan = $store->getSubjectPlan($slug);
-        } elseif ($subject !== '') {
-            foreach ($store->listSubjectPlans() as $pl) {
-                if (mb_strtolower((string) ($pl['subject'] ?? '')) === mb_strtolower($subject)) {
-                    $plan = $pl;
-                    break;
-                }
-            }
-        }
-        if ($plan === null) {
-            Response::success(['lesson' => null, 'message' => 'План не загружен для этого предмета'], $q->requestId);
+        if (method_exists($store, 'findLessonPlan')) {
+            Response::success($store->findLessonPlan($date !== '' ? $date : null, $subject !== '' ? $subject : null, $slug !== '' ? $slug : null), $q->requestId);
             return;
         }
-        $week = null;
-        if ($date !== '' && !empty($plan['weeks']) && is_array($plan['weeks'])) {
-            foreach ($plan['weeks'] as $w) {
-                if ((string) ($w['date'] ?? '') === $date) {
-                    $week = $w;
-                    break;
-                }
-            }
+        Response::success(['lesson' => null, 'weeks' => [], 'message' => 'findLessonPlan missing'], $q->requestId);
+    });
+
+    $r->put('/api/v1/admin/subject-plans', static function (Request $q, array $p): void {
+        if (!RequireAuth::handle($q)) return;
+        if (!RequireRole::handle($q, ['admin', 'moderator', 'teacher'])) return;
+        $body = $q->jsonBody();
+        $plans = $body['plans'] ?? null;
+        if (!is_array($plans)) {
+            Response::error('VALIDATION', 'plans array required', $q->requestId, 422);
+            return;
         }
-        Response::success(['plan_meta' => [
-            'subject' => $plan['subject'] ?? null,
-            'control' => $plan['control'] ?? null,
-            'semester' => $plan['semester'] ?? null,
-        ], 'lesson' => $week, 'weeks' => $plan['weeks'] ?? []], $q->requestId);
+        $saved = (new ContentStore())->saveSubjectPlans($plans);
+        Response::success(['plans' => $saved, 'count' => count($saved)], $q->requestId);
     });
 };
