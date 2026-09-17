@@ -12,10 +12,10 @@ const SPACEWEB =
   process.env.SPACEWEB_API_ORIGIN ||
   "https://ryazansev3.temp.swtest.ru/api/v1";
 
-// Exact source fingerprint for the production-delivery diagnostic.
-// If this header is absent/different on medbiohim.vercel.app, production is
-// not serving this source tree.
-const BUILD_FINGERPRINT = "7de8d7b9b8af568bc88ba3ab7c810ba9c1c077a6";
+// Stable production-delivery fingerprint. It is intentionally independent of
+// the commit SHA so subsequent diagnostic commits do not change the expected
+// production marker.
+const BUILD_FINGERPRINT = "main-same-origin-2026-09-17";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
