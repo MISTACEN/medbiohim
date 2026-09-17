@@ -10,6 +10,7 @@ final class Response
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     public static function success(mixed $data, string $requestId, int $status = 200): void
@@ -45,5 +46,6 @@ final class Response
     public static function noContent(): void
     {
         http_response_code(204);
+        exit;
     }
 }
