@@ -47,6 +47,31 @@ final class SupabaseAuth
         return ['ok' => true, 'data' => $this->normalizeSession($res['json'])];
     }
 
+    public function register(string $email, string $password, ?string $fullName = null): array
+    {
+        if (!$this->isConfigured()) {
+            return ['ok' => false, 'code' => 'AUTH_NOT_CONFIGURED', 'message' => 'Supabase Auth is not configured on the server', 'status' => 503];
+        }
+        $payload = ['email' => $email, 'password' => $password];
+        if ($fullName !== null && trim($fullName) !== '') {
+            $payload['data'] = ['full_name' => trim($fullName)];
+        }
+        $res = HttpClient::request('POST', $this->baseUrl . '/auth/v1/signup', $payload, [
+            'apikey: ' . $this->apiKey(),
+            'Authorization: Bearer ' . $this->apiKey(),
+        ]);
+        if ($res['status'] === 0) {
+            return ['ok' => false, 'code' => 'AUTH_UPSTREAM_ERROR', 'message' => 'Could not reach Supabase Auth', 'status' => 502];
+        }
+        if ($res['status'] >= 400 || $res['json'] === null) {
+            $msg = $res['json']['msg'] ?? $res['json']['error_description'] ?? $res['json']['error'] ?? 'Registration failed';
+            return ['ok' => false, 'code' => 'AUTH_REGISTER_FAILED', 'message' => is_string($msg) ? $msg : 'Registration failed', 'status' => 422];
+        }
+        $data = $this->normalizeSession($res['json']);
+        $data['needs_email_confirm'] = empty($data['access_token']);
+        return ['ok' => true, 'data' => $data];
+    }
+
     public function refresh(string $refreshToken): array
     {
         if (!$this->isConfigured()) {
@@ -97,30 +122,20 @@ final class SupabaseAuth
 
     public function userFromAccessToken(string $accessToken): ?AuthUser
     {
-        if (!$this->isConfigured() || $accessToken === '') {
-            return null;
-        }
+        if (!$this->isConfigured() || $accessToken === '') return null;
         $url = $this->baseUrl . '/auth/v1/user';
         $res = HttpClient::request('GET', $url, null, [
             'apikey: ' . $this->apiKey(),
             'Authorization: Bearer ' . $accessToken,
         ]);
-        if ($res['status'] !== 200 || $res['json'] === null) {
-            return null;
-        }
+        if ($res['status'] !== 200 || $res['json'] === null) return null;
         $j = $res['json'];
         $id = (string) ($j['id'] ?? '');
         $email = (string) ($j['email'] ?? '');
-        if ($id === '') {
-            return null;
-        }
+        if ($id === '') return null;
         $role = null;
-        if (isset($j['user_metadata']['role']) && is_string($j['user_metadata']['role'])) {
-            $role = $j['user_metadata']['role'];
-        }
-        if (isset($j['app_metadata']['role']) && is_string($j['app_metadata']['role'])) {
-            $role = $j['app_metadata']['role'];
-        }
+        if (isset($j['user_metadata']['role']) && is_string($j['user_metadata']['role'])) $role = $j['user_metadata']['role'];
+        if (isset($j['app_metadata']['role']) && is_string($j['app_metadata']['role'])) $role = $j['app_metadata']['role'];
         return new AuthUser($id, $email, $role, $j);
     }
 
