@@ -3,7 +3,21 @@ declare(strict_types=1);
 use Medbiohim\Http\Request;use Medbiohim\Http\Response;use Medbiohim\Http\Router;use Medbiohim\Middleware\RequireAuth;use Medbiohim\Middleware\RequireRole;use Medbiohim\Repositories\GroupRepository;use Medbiohim\Repositories\FileRepository;use Medbiohim\Repositories\HomeworkRepository;use Medbiohim\Repositories\SubjectRepository;use Medbiohim\Repositories\TestRepository;use Medbiohim\Repositories\UserRepository;use Medbiohim\Support\ContentStore;use Medbiohim\Support\Env;use Medbiohim\Services\SupabaseAuth;use Medbiohim\Services\SupabaseRest;
 return static function(Router $router):void{
 $adminGate=static function(Request $req):bool{if(!RequireAuth::handle($req))return false;return RequireRole::handle($req,['admin','moderator','teacher']);};$strictAdmin=static function(Request $req):bool{if(!RequireAuth::handle($req))return false;return RequireRole::handle($req,['admin']);};
-$router->get('/api/v1/site',static function(Request $req,array $params):void{$store=new ContentStore();Response::success(['site'=>$store->getSite(),'announcements'=>$store->listAnnouncements()],$req->requestId);});
+$router->get('/api/v1/site', static function (Request $req, array $params): void {
+    try {
+        $store = new ContentStore();
+        Response::success([
+            'site' => $store->getSite(),
+            'announcements' => $store->listAnnouncements(),
+        ], $req->requestId);
+    } catch (\Throwable $e) {
+        Response::success([
+            'site' => ['title' => 'Медбиохим', 'subtitle' => 'Учебная платформа'],
+            'announcements' => [],
+            'note' => $e->getMessage(),
+        ], $req->requestId);
+    }
+});
 $router->post('/api/v1/admin/claim-admin',static function(Request $req,array $params):void{if(!RequireAuth::handle($req))return;$secret=trim((string)$req->json('secret',''));$expected=trim((string)Env::get('ADMIN_BOOTSTRAP_SECRET',''));if($expected===''||!hash_equals($expected,$secret)){Response::error('FORBIDDEN','Invalid bootstrap secret',$req->requestId,403);return;}try{$repo=new UserRepository();$repo->assignRole($req->user->id,'admin');$roles=$repo->roleCodesForUser($req->user->id);try{(new SupabaseAuth())->setAppRole($req->user->id,'admin');}catch(\Throwable $e){}Response::success(['roles'=>$roles,'message'=>'Admin role assigned','session_refresh_required'=>true],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
 $router->get('/api/v1/admin/users',static function(Request $req,array $params)use($strictAdmin):void{if(!$strictAdmin($req))return;try{Response::success(['items'=>(new UserRepository())->listUsers(100)],$req->requestId);}catch(\Throwable $e){try{Response::success(['items'=>SupabaseRest::listUsers(100)],$req->requestId);}catch(\Throwable $x){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}}});
 $router->post('/api/v1/admin/users/roles',static function(Request $req,array $params)use($strictAdmin):void{if(!$strictAdmin($req))return;$userId=trim((string)$req->json('user_id',''));$role=trim((string)$req->json('role',''));$action=trim((string)$req->json('action','assign'));if($userId===''||$role===''){Response::error('VALIDATION_ERROR','user_id and role required',$req->requestId,422);return;}if(!in_array($role,['admin','moderator','teacher','student'],true)){Response::error('VALIDATION_ERROR','invalid role',$req->requestId,422);return;}try{$repo=new UserRepository();if($action==='revoke'){if($role==='admin'&&$userId===$req->user->id&&$repo->countWithRole('admin')<=1){Response::error('LAST_ADMIN','Cannot revoke the last administrator role.',$req->requestId,409);return;}$repo->revokeRole($userId,$role);}else{$repo->assignRole($userId,$role);}$roles=$repo->roleCodesForUser($userId);if($role==='admin')(new SupabaseAuth())->setAppRole($userId,in_array('admin',$roles,true)?'admin':null);Response::success(['roles'=>$roles,'session_refresh_required'=>$userId===$req->user->id&&$role==='admin'],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
@@ -21,4 +35,3 @@ $router->get('/api/v1/admin/community',static function(Request $req,array $param
 $router->patch('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$patch=[];if($req->jsonBody!==null)foreach(['title','body','pinned','hidden'] as $k)if(array_key_exists($k,$req->jsonBody))$patch[$k]=$req->jsonBody[$k];$row=(new ContentStore())->updateCommunityPost($params['id'],$patch);if($row===null){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['post'=>$row],$req->requestId);});
 $router->delete('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$ok=(new ContentStore())->deleteCommunityPost($params['id']);if(!$ok){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['deleted'=>true],$req->requestId);});
 };
-// synced 2026-09-15
