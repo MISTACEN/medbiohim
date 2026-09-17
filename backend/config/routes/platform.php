@@ -17,6 +17,42 @@ use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Support\ContentStore;
 
 return static function (Router $router): void {
+
+    // --- ultra-safe probe (no heavy deps) ---
+    $router->get('/api/v1/debug/ping', static function (Request $req, array $params): void {
+        Response::success([
+            'pong' => true,
+            'php' => PHP_VERSION,
+            'time' => date('c'),
+            'has_ContentStore' => class_exists(ContentStore::class),
+            'has_UserRepository' => class_exists(UserRepository::class),
+            'has_ScheduleRepository' => class_exists(ScheduleRepository::class),
+        ], $req->requestId);
+    });
+
+    $router->get('/api/v1/debug/dashboard-probe', static function (Request $req, array $params): void {
+        $out = ['steps' => []];
+        try {
+            $out['steps'][] = 'php:'.PHP_VERSION;
+            $out['steps'][] = 'ContentStore:'.(class_exists(ContentStore::class)?'yes':'no');
+            if (class_exists(ContentStore::class)) {
+                try {
+                    $store = new ContentStore();
+                    $out['steps'][] = 'site:ok';
+                    try { $out['site'] = $store->getSite(); } catch (\Throwable $e) { $out['steps'][] = 'getSite:'.$e->getMessage(); }
+                    try { $out['ann'] = count($store->listAnnouncements()); } catch (\Throwable $e) { $out['steps'][] = 'ann:'.$e->getMessage(); }
+                    try { $out['sched_n'] = count($store->listSchedule()); } catch (\Throwable $e) { $out['steps'][] = 'sched:'.$e->getMessage(); }
+                } catch (\Throwable $e) {
+                    $out['steps'][] = 'ContentStore:'.$e->getMessage();
+                }
+            }
+        } catch (\Throwable $e) {
+            $out['steps'][] = 'fatal:'.$e->getMessage();
+        }
+        Response::success($out, $req->requestId);
+    });
+
+    // --- dashboard always 200 ---
     $router->get('/api/v1/dashboard', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         $profile = [
@@ -77,6 +113,7 @@ return static function (Router $router): void {
         ], $req->requestId);
     });
 
+    // --- schedule ---
     $router->get('/api/v1/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         $items = [];
@@ -93,7 +130,79 @@ return static function (Router $router): void {
             }
         } catch (\Throwable $e) {}
         if (!is_array($items)) $items = [];
+        $from = isset($req->query['from']) ? trim((string)$req->query['from']) : '';
+        $to = isset($req->query['to']) ? trim((string)$req->query['to']) : '';
+        if ($from !== '') {
+            $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
+        }
+        if ($to !== '') {
+            $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
+        }
         Response::success(['items' => $items, 'source' => $source], $req->requestId);
+    });
+
+    // --- admin schedule (was 404) ---
+    $router->get('/api/v1/admin/schedule', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        $groupId = isset($req->query['group_id']) ? trim((string)$req->query['group_id']) : null;
+        $semester = isset($req->query['semester']) && $req->query['semester'] !== '' ? (int)$req->query['semester'] : null;
+        $items = [];
+        $source = 'local';
+        try {
+            $items = (new ScheduleRepository())->listAll($groupId !== '' ? $groupId : null, $semester);
+            if (is_array($items) && count($items) > 0) $source = 'db';
+        } catch (\Throwable $e) {}
+        if (!is_array($items) || count($items) === 0) {
+            try {
+                $store = new ContentStore();
+                $items = $store->listSchedule();
+                $source = 'local';
+                Response::success(['items' => is_array($items)?$items:[], 'meta' => $store->scheduleMeta(), 'source' => $source], $req->requestId);
+                return;
+            } catch (\Throwable $e) {
+                $items = [];
+            }
+        }
+        Response::success(['items' => is_array($items)?$items:[], 'source' => $source], $req->requestId);
+    });
+
+    $router->put('/api/v1/admin/schedule/local', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        $items = $req->json('items');
+        if (!is_array($items)) {
+            Response::error('VALIDATION_ERROR', 'items array required', $req->requestId, 422);
+            return;
+        }
+        try {
+            $store = new ContentStore();
+            $meta = $store->scheduleMeta();
+            $payload = [
+                'meta' => $meta ?: ['title' => 'Расписание', 'group_code' => 'МБ-201'],
+                'items' => array_values($items),
+                'updated_at' => gmdate('c'),
+                'count' => count($items),
+                'source' => 'admin_cms',
+            ];
+            $dir = dirname(__DIR__, 2) . '/data';
+            if (!is_dir($dir)) @mkdir($dir, 0775, true);
+            file_put_contents($dir . '/schedule.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL, LOCK_EX);
+            Response::success(['items' => $items, 'count' => count($items), 'source' => 'local'], $req->requestId);
+        } catch (\Throwable $e) {
+            Response::error('WRITE_ERROR', $e->getMessage(), $req->requestId, 500);
+        }
+    });
+
+    $router->put('/api/v1/admin/schedule', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        try {
+            Response::success((new ScheduleRepository())->replace($req->jsonBody ?? []), $req->requestId);
+        } catch (\Throwable $e) {
+            try {
+                Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
+            } catch (\Throwable $x) {
+                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
+            }
+        }
     });
 
     $router->get('/api/v1/curriculum', static function (Request $req, array $params): void {
@@ -135,18 +244,5 @@ return static function (Router $router): void {
             'tests' => ['attempts' => 0, 'finished' => 0, 'avg_score' => null, 'items' => []],
             'note' => 'degraded',
         ], $req->requestId);
-    });
-
-    $router->get('/api/v1/debug/dashboard-probe', static function (Request $req, array $params): void {
-        $out = ['steps' => []];
-        $uid = isset($req->query['uid']) ? (string)$req->query['uid'] : 'f67a1406-1bfa-4ea7-bd06-b433aceb113d';
-        try {
-            $out['steps'][] = 'profile:'.(is_array((new UserRepository())->profileBundle($uid)) ? 'ok' : 'bad');
-        } catch (\Throwable $e) { $out['steps'][] = 'profile:'.$e->getMessage(); }
-        try {
-            $n = count((new ContentStore())->listSchedule());
-            $out['steps'][] = 'schedule_local:'.$n;
-        } catch (\Throwable $e) { $out['steps'][] = 'schedule:'.$e->getMessage(); }
-        Response::success($out, $req->requestId);
     });
 };
