@@ -45,6 +45,43 @@ return static function (Router $router): void {
         Response::success($data, $req->requestId);
     });
 
+    $router->post('/api/v1/auth/register', static function (Request $req, array $params): void {
+        $ip = RateLimiter::clientIp();
+        $limit = RateLimiter::attempt('register:' . $ip, 5, 900);
+        if (!$limit['allowed']) {
+            Response::error('RATE_LIMITED', 'Too many registration attempts. Try again later.', $req->requestId, 429, ['retry_after' => $limit['retry_after']]);
+            return;
+        }
+        $email = trim((string) $req->json('email', ''));
+        $password = (string) $req->json('password', '');
+        $fullName = trim((string) $req->json('full_name', ''));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Response::error('VALIDATION_ERROR', 'A valid email is required', $req->requestId, 422);
+            return;
+        }
+        if (strlen($password) < 8) {
+            Response::error('VALIDATION_ERROR', 'Password must be at least 8 characters', $req->requestId, 422);
+            return;
+        }
+        $result = (new SupabaseAuth())->register($email, $password, $fullName !== '' ? $fullName : null);
+        if (!$result['ok']) {
+            Response::error($result['code'], $result['message'], $req->requestId, $result['status']);
+            return;
+        }
+        $data = $result['data'];
+        $userId = $data['user']['id'] ?? null;
+        if (is_string($userId) && $userId !== '') {
+            try {
+                $repo = new UserRepository();
+                $repo->ensureProfile($userId, $email, $fullName !== '' ? $fullName : null);
+                $data['roles'] = $repo->roleCodesForUser($userId);
+            } catch (\Throwable $e) {
+                Logger::info('register_profile_sync_skipped', ['requestId' => $req->requestId]);
+            }
+        }
+        Response::success($data, $req->requestId, 201);
+    });
+
     $router->post('/api/v1/auth/refresh', static function (Request $req, array $params): void {
         $refresh = (string) $req->json('refresh_token', '');
         if ($refresh === '') {
@@ -89,6 +126,17 @@ return static function (Router $router): void {
 
     $router->get('/api/v1/auth/me', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
-        Response::success(['user' => $req->user->toArray()], $req->requestId);
+        try {
+            $bundle = (new UserRepository())->profileBundle($req->user->id);
+            Response::success($bundle, $req->requestId);
+        } catch (\Throwable $e) {
+            Response::success([
+                'user' => $req->user->toArray(),
+                'roles' => [],
+                'groups' => [],
+                'course' => null,
+                'semester' => null,
+            ], $req->requestId);
+        }
     });
 };
