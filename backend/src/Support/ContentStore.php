@@ -18,13 +18,9 @@ final class ContentStore
     private function read(string $file, mixed $default): mixed
     {
         $p = $this->dir . '/' . $file;
-        if (!is_file($p)) {
-            return $default;
-        }
+        if (!is_file($p)) return $default;
         $raw = file_get_contents($p);
-        if ($raw === false || trim($raw) === '') {
-            return $default;
-        }
+        if ($raw === false || trim($raw) === '') return $default;
         $v = json_decode($raw, true);
         return $v ?? $default;
     }
@@ -56,9 +52,7 @@ final class ContentStore
     public function updateSite(array $p): array
     {
         $s = $this->getSite();
-        foreach ($p as $k => $v) {
-            $s[$k] = $v;
-        }
+        foreach ($p as $k => $v) $s[$k] = $v;
         $this->write('site.json', ['site' => $s, 'updated_at' => gmdate('c')]);
         return $s;
     }
@@ -95,9 +89,7 @@ final class ContentStore
     {
         $a = $this->listAnnouncements();
         $b = array_values(array_filter($a, static fn($r) => (string) ($r['id'] ?? '') !== $id));
-        if (count($a) === count($b)) {
-            return false;
-        }
+        if (count($a) === count($b)) return false;
         $this->write('announcements.json', ['items' => $b]);
         return true;
     }
@@ -105,9 +97,7 @@ final class ContentStore
     public function listCurriculum(): array
     {
         $master = $this->read('curriculum_master.json', []);
-        if (isset($master['items']) && is_array($master['items'])) {
-            return $master['items'];
-        }
+        if (isset($master['items']) && is_array($master['items'])) return $master['items'];
         $d = $this->read('curriculum.json', ['items' => []]);
         return isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
     }
@@ -145,7 +135,68 @@ final class ContentStore
     public function listSchedule(): array
     {
         $d = $this->read('schedule.json', []);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : (is_array($d) ? $d : []);
+        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : (is_array($d) ? $d : []);
+        $partsDir = $this->dir . '/schedule_parts';
+        if (is_dir($partsDir)) {
+            foreach (glob($partsDir . '/schedule_*.json') ?: [] as $file) {
+                $raw = file_get_contents($file);
+                $j = $raw ? json_decode($raw, true) : null;
+                if (!is_array($j)) continue;
+                $chunk = isset($j['items']) && is_array($j['items']) ? $j['items'] : [];
+                foreach ($chunk as $row) {
+                    if (!is_array($row) || empty($row['date'])) continue;
+                    $key = ($row['date'] ?? '') . '|' . ($row['start_time'] ?? '') . '|' . ($row['subject_name'] ?? '');
+                    $items[$key] = $row;
+                }
+            }
+            $uniq = [];
+            foreach ($items as $row) {
+                if (!is_array($row)) continue;
+                $key = ($row['date'] ?? '') . '|' . ($row['start_time'] ?? '') . '|' . ($row['subject_name'] ?? '');
+                $uniq[$key] = $row;
+            }
+            $items = array_values($uniq);
+        }
+        usort($items, static fn($a, $b) => strcmp((string)($a['date'] ?? ''), (string)($b['date'] ?? '')) ?: strcmp((string)($a['start_time'] ?? ''), (string)($b['start_time'] ?? '')));
+        return $items;
+    }
+
+    public function scheduleMeta(): array
+    {
+        $d = $this->read('schedule.json', []);
+        return isset($d['meta']) && is_array($d['meta']) ? $d['meta'] : [];
+    }
+
+    public function listSubjectsCatalog(): array
+    {
+        $d = $this->read('subjects_catalog.json', []);
+        return isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
+    }
+
+    public function getSubjectPlan(string $slug): ?array
+    {
+        $d = $this->read('subject_plans.json', []);
+        $plans = isset($d['plans']) && is_array($d['plans']) ? $d['plans'] : [];
+        return isset($plans[$slug]) && is_array($plans[$slug]) ? $plans[$slug] : null;
+    }
+
+    public function listSubjectPlans(): array
+    {
+        $d = $this->read('subject_plans.json', []);
+        return isset($d['plans']) && is_array($d['plans']) ? $d['plans'] : [];
+    }
+
+    public function saveSchedule(array $items, ?array $meta = null): array
+    {
+        $payload = [
+            'meta' => $meta ?? $this->scheduleMeta() ?: ['title' => 'Расписание', 'group_code' => 'МБ-201'],
+            'items' => array_values($items),
+            'count' => count($items),
+            'updated_at' => gmdate('c'),
+            'source' => 'admin_cms',
+        ];
+        $this->write('schedule.json', $payload);
+        return array_values($items);
     }
 
     public function listCommunityPosts(): array
@@ -180,9 +231,7 @@ final class ContentStore
     {
         $a = $this->listCommunityPosts();
         $b = array_values(array_filter($a, static fn($r) => (string) ($r['id'] ?? '') !== $id));
-        if (count($a) === count($b)) {
-            return false;
-        }
+        if (count($a) === count($b)) return false;
         $this->write('community.json', ['items' => $b]);
         return true;
     }
@@ -233,9 +282,7 @@ final class ContentStore
     {
         $items = $this->listQuestionsBank();
         $b = array_values(array_filter($items, static fn($r) => (string) ($r['id'] ?? '') !== $id));
-        if (count($items) === count($b)) {
-            return false;
-        }
+        if (count($items) === count($b)) return false;
         $this->saveQuestionsBank($b);
         return true;
     }
@@ -250,9 +297,7 @@ final class ContentStore
     public function getSession(string $userId, string $id): ?array
     {
         foreach ($this->listSessions($userId) as $s) {
-            if ((string) ($s['id'] ?? '') === $id) {
-                return $s;
-            }
+            if ((string) ($s['id'] ?? '') === $id) return $s;
         }
         return null;
     }
@@ -329,11 +374,7 @@ final class ContentStore
         $d = $this->read('favorites.json', ['items' => []]);
         $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
         foreach ($items as $i => $f) {
-            if (
-                (string) ($f['user_id'] ?? '') === $userId
-                && (string) ($f['target_type'] ?? '') === $targetType
-                && (string) ($f['target_id'] ?? '') === $targetId
-            ) {
+            if ((string) ($f['user_id'] ?? '') === $userId && (string) ($f['target_type'] ?? '') === $targetType && (string) ($f['target_id'] ?? '') === $targetId) {
                 array_splice($items, $i, 1);
                 $this->write('favorites.json', ['items' => $items, 'updated_at' => gmdate('c')]);
                 return ['favorited' => false];
@@ -348,5 +389,74 @@ final class ContentStore
         ];
         $this->write('favorites.json', ['items' => $items, 'updated_at' => gmdate('c')]);
         return ['favorited' => true];
+    }
+
+    public function findLessonPlan(?string $date, ?string $subject, ?string $slug = null): array
+    {
+        $plan = null;
+        if ($slug) $plan = $this->getSubjectPlan($slug);
+        if ($plan === null && $subject) {
+            $needle = mb_strtolower(trim($subject));
+            foreach ($this->listSubjectPlans() as $pl) {
+                $name = mb_strtolower((string) ($pl['subject'] ?? ''));
+                if ($name === $needle || str_contains($name, $needle) || str_contains($needle, $name)) {
+                    $plan = $pl;
+                    break;
+                }
+                foreach (($pl['aliases'] ?? []) as $a) {
+                    $al = mb_strtolower((string) $a);
+                    if ($al === $needle || str_contains($needle, $al) || str_contains($al, $needle)) {
+                        $plan = $pl;
+                        break 2;
+                    }
+                }
+            }
+        }
+        if ($plan === null) return ['lesson' => null, 'weeks' => [], 'plan_meta' => null];
+        $weeks = is_array($plan['weeks'] ?? null) ? $plan['weeks'] : [];
+        $week = null;
+        if ($date) {
+            foreach ($weeks as $w) {
+                if ((string) ($w['date'] ?? '') === $date) { $week = $w; break; }
+            }
+            if ($week === null) {
+                $best = null;
+                $bestDiff = 999999;
+                $ts = strtotime($date) ?: 0;
+                foreach ($weeks as $w) {
+                    $wd = (string) ($w['date'] ?? '');
+                    if ($wd === '') continue;
+                    $diff = abs((strtotime($wd) ?: 0) - $ts);
+                    if ($diff <= 4 * 86400 && $diff < $bestDiff) {
+                        $bestDiff = $diff;
+                        $best = $w;
+                    }
+                }
+                $week = $best;
+            }
+        }
+        return [
+            'lesson' => $week,
+            'weeks' => $weeks,
+            'plan_meta' => [
+                'subject' => $plan['subject'] ?? null,
+                'subject_slug' => $plan['subject_slug'] ?? null,
+                'control' => $plan['control'] ?? null,
+                'semester' => $plan['semester'] ?? null,
+            ],
+        ];
+    }
+
+    public function saveSubjectPlans(array $plans): array
+    {
+        $map = [];
+        foreach ($plans as $pl) {
+            if (!is_array($pl)) continue;
+            $slug = (string) ($pl['subject_slug'] ?? '');
+            if ($slug === '') continue;
+            $map[$slug] = $pl;
+        }
+        $this->write('subject_plans.json', ['plans' => $map, 'updated_at' => gmdate('c')]);
+        return array_values($map);
     }
 }
