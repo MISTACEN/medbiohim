@@ -64,15 +64,18 @@ return static function (Router $router): void {
 
     $router->get('/api/v1/dashboard', static function (Request $req, array $params) use ($loadSchedule): void {
         if (!RequireAuth::handle($req)) return;
+        // Always return 200 — mirrors old working shape, never bubble to Bootstrap 500
+        $profile = [
+            'user' => $req->user->toArray(),
+            'roles' => $req->user->role ? [$req->user->role] : [],
+            'groups' => [],
+        ];
+        $homeworks = [];
+        $tests = [];
+        $scheduleResult = ['items' => [], 'source' => 'none'];
+        $site = ['title' => 'Медбиохим'];
+        $announcements = [];
         try {
-            $store = new ContentStore();
-            $homeworks = [];
-            $tests = [];
-            $profile = [
-                'user' => $req->user->toArray(),
-                'roles' => $req->user->role ? [$req->user->role] : [],
-                'groups' => [],
-            ];
             try {
                 $profile = (new UserRepository())->profileBundle($req->user->id);
             } catch (\Throwable $e) {
@@ -89,6 +92,7 @@ return static function (Router $router): void {
                 $tests = [];
             }
             try {
+                $store = new ContentStore();
                 foreach ($store->listTestsLocal() as $lt) {
                     if (!is_array($lt)) continue;
                     if (isset($lt['is_published']) && !$lt['is_published']) continue;
@@ -99,48 +103,29 @@ return static function (Router $router): void {
                         'source' => 'local',
                     ];
                 }
+                try { $site = $store->getSite(); } catch (\Throwable $e) {}
+                try { $announcements = array_slice($store->listAnnouncements(), 0, 10); } catch (\Throwable $e) {}
             } catch (\Throwable $e) {}
-            $scheduleResult = ['items' => [], 'source' => 'none'];
             try {
                 $scheduleResult = $loadSchedule($req->user->id);
             } catch (\Throwable $e) {
                 try {
-                    $scheduleResult = ['items' => array_slice($store->listSchedule(), 0, 40), 'source' => 'local'];
+                    $items = (new ContentStore())->listSchedule();
+                    $scheduleResult = ['items' => array_slice(is_array($items)?$items:[], 0, 40), 'source' => 'local'];
                 } catch (\Throwable $x) {}
             }
-            $site = ['title' => 'Медбиохим'];
-            $announcements = [];
-            try { $site = $store->getSite(); } catch (\Throwable $e) {}
-            try { $announcements = array_slice($store->listAnnouncements(), 0, 10); } catch (\Throwable $e) {}
-            Response::success([
-                'profile' => $profile,
-                'site' => $site,
-                'announcements' => $announcements,
-                'schedule' => is_array($scheduleResult['items'] ?? null) ? $scheduleResult['items'] : [],
-                'schedule_source' => $scheduleResult['source'] ?? 'unknown',
-                'homeworks' => is_array($homeworks) ? $homeworks : [],
-                'tests' => is_array($tests) ? $tests : [],
-            ], $req->requestId);
         } catch (\Throwable $e) {
-            \Medbiohim\Support\Logger::error('dashboard_failed', [
-                'requestId' => $req->requestId,
-                'message' => $e->getMessage(),
-            ]);
-            Response::success([
-                'profile' => [
-                    'user' => $req->user->toArray(),
-                    'roles' => $req->user->role ? [$req->user->role] : [],
-                    'groups' => [],
-                ],
-                'site' => ['title' => 'Медбиохим'],
-                'announcements' => [],
-                'schedule' => [],
-                'schedule_source' => 'error',
-                'homeworks' => [],
-                'tests' => [],
-                'note' => 'dashboard soft-fail: ' . $e->getMessage(),
-            ], $req->requestId);
+            // last resort — still 200
         }
+        Response::success([
+            'profile' => $profile,
+            'site' => is_array($site) ? $site : ['title' => 'Медбиохим'],
+            'announcements' => is_array($announcements) ? $announcements : [],
+            'schedule' => is_array($scheduleResult['items'] ?? null) ? $scheduleResult['items'] : [],
+            'schedule_source' => $scheduleResult['source'] ?? 'unknown',
+            'homeworks' => is_array($homeworks) ? $homeworks : [],
+            'tests' => is_array($tests) ? $tests : [],
+        ], $req->requestId);
     });
 
     $router->get('/api/v1/schedule', static function (Request $req, array $params) use ($loadSchedule): void {
