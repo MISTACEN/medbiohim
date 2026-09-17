@@ -39,6 +39,7 @@ export type ScheduleItem={id:string;schedule_id?:string;group_id?:string;group_n
 export async function listSchedule(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);const qs=q.toString();return api<{items:ScheduleItem[]}>(`/schedule${qs?`?${qs}`:""}`)}
 export async function adminListSchedule(groupId?:string,semester?:number){const q=new URLSearchParams();if(groupId)q.set("group_id",groupId);if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:ScheduleItem[]}>(`/admin/schedule${qs?`?${qs}`:""}`)}
 export async function adminSaveSchedule(payload:{group_id:string;semester?:number|null;academic_year_id?:string|null;entries:Array<Partial<ScheduleItem>>}){return api<{schedule_id:string;group_id:string;semester:number|null;version:number;entries_saved:number}>("/admin/schedule",{method:"PUT",body:JSON.stringify(payload)})}
+export async function adminSaveScheduleLocal(items:Array<Partial<ScheduleItem>>){return api<{items:ScheduleItem[];count:number}>("/admin/schedule/local",{method:"PUT",body:JSON.stringify({items})})}
 export async function saveSchedule(items:Array<Record<string,unknown>>){return api<{items:ScheduleItem[]}>("/schedule",{method:"PUT",body:JSON.stringify({items})})}
 export async function listMaterials(groupId?:string){return api<{items:unknown[]}>(`/materials${groupId?`?group_id=${encodeURIComponent(groupId)}`:""}`)}
 export async function listCommunityPosts(){return api<{items:Array<{id:string;title:string;body:string;author_name?:string}>}>("/community/posts")}
@@ -91,3 +92,14 @@ export async function adminListQuestions(params:Record<string,string|number|unde
 export async function adminCreateQuestion(payload:Partial<BankQuestion>&{text:string}){return api<{question:BankQuestion}>("/admin/questions",{method:"POST",body:JSON.stringify(payload)})}
 export async function adminUpdateQuestion(id:string,payload:Partial<BankQuestion>){return api<{question:BankQuestion}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"PUT",body:JSON.stringify(payload)})}
 export async function adminDeleteQuestion(id:string){return api<{deleted:boolean}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"DELETE"})}
+
+/** Subject lesson plans (official curriculum sheets) */
+export type SubjectPlanWeek={date?:string;week?:number;lecture?:string;practice?:string;study?:string[];control?:string|null;lab_detail?:string|null};
+export type SubjectPlan={subject:string;subject_slug:string;semester?:string;control?:string;weeks:SubjectPlanWeek[]};
+export async function getSubjectPlan(slug:string){return api<{plan:SubjectPlan;schedule_count:number}>(`/subject-plans/${encodeURIComponent(slug)}`)}
+export async function getLessonPlan(params:{date?:string;subject_slug?:string;subject?:string}){
+  const q=new URLSearchParams();
+  Object.entries(params).forEach(([k,v])=>{if(v)q.set(k,v)});
+  return api<{lesson:SubjectPlanWeek|null;weeks:SubjectPlanWeek[];plan_meta?:Record<string,unknown>}>(`/lesson-plan?${q}`);
+}
+export async function adminSaveSubjectPlans(plans:SubjectPlan[]){return api<{plans:SubjectPlan[];count:number}>("/admin/subject-plans",{method:"PUT",body:JSON.stringify({plans})})}
