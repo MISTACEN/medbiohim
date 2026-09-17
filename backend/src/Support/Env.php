@@ -7,6 +7,10 @@ final class Env
 {
     private static bool $loaded = false;
 
+    /**
+     * Load .env file. File values always override existing getenv/$_ENV
+     * so a re-uploaded .env on SpaceWeb actually takes effect.
+     */
     public static function load(string $path): void
     {
         if (self::$loaded) {
@@ -43,10 +47,10 @@ final class Env
             if ($name === '') {
                 continue;
             }
-            if (getenv($name) === false) {
-                putenv("{$name}={$value}");
-                $_ENV[$name] = $value;
-            }
+            // File wins — required on shared hosting where panel may inject stale DB_PASSWORD
+            putenv("{$name}={$value}");
+            $_ENV[$name] = $value;
+            $_SERVER[$name] = $value;
         }
     }
 
