@@ -14,6 +14,11 @@ const SPACEWEB =
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: {
+    // Browser requests must stay same-origin so HTTPS Vercel pages never
+    // attempt a direct HTTP call to SpaceWeb (Mixed Content).
+    NEXT_PUBLIC_API_URL: "/api/v1",
+  },
   async headers() {
     return [
       {
