@@ -21,9 +21,7 @@ return static function (Router $router): void {
                 'description' => $t['description'] ?? null,
                 'subject_name' => $t['subject'] ?? ($t['subject_name'] ?? null),
                 'subject_id' => $t['subject_id'] ?? null,
-                'questions_count' => isset($t['questions']) && is_array($t['questions'])
-                    ? count($t['questions'])
-                    : (int) ($t['questionCount'] ?? 0),
+                'questions_count' => isset($t['questions']) && is_array($t['questions']) ? count($t['questions']) : (int) ($t['questionCount'] ?? 0),
                 'type' => $t['type'] ?? 'test',
                 'source' => 'local-fallback',
             ];
@@ -40,13 +38,10 @@ return static function (Router $router): void {
 
     $findTest = static function (string $id) use ($findLocal): array {
         try {
-            $repo = new TestRepository();
-            $db = $repo->findById($id);
-            if ($db !== null) {
-                return ['source' => 'db', 'test' => $db];
-            }
+            $db = (new TestRepository())->findById($id);
+            if ($db !== null) return ['source' => 'db', 'test' => $db];
         } catch (\Throwable $e) {
-            // fall through to the legacy local store only when DB access fails
+            // fall through to local store
         }
         $local = $findLocal($id);
         return $local === null ? ['source' => 'missing', 'test' => null] : ['source' => 'local-fallback', 'test' => $local];
@@ -60,7 +55,6 @@ return static function (Router $router): void {
             foreach ($items as &$row) $row['source'] = 'db';
             unset($row);
             Response::success(['items' => $items, 'source' => 'db'], $req->requestId);
-            return;
         } catch (\Throwable $e) {
             Response::success(['items' => $listLocal($subjectId), 'source' => 'local-fallback'], $req->requestId);
         }
@@ -75,11 +69,9 @@ return static function (Router $router): void {
         }
         if ($found['source'] === 'db') {
             try {
-                $repo = new TestRepository();
                 $test = $found['test'];
-                $questions = $repo->questionsForSubject($test['subject_id'] ?? null, 15);
-                $safe = array_map(static function ($q) { unset($q['answer_key']); return $q; }, $questions);
-                Response::success(['test' => $test, 'questions' => $safe, 'source' => 'db'], $req->requestId);
+                $questions = (new TestRepository())->questionsForSubject($test['subject_id'] ?? null, 15);
+                Response::success(['test' => $test, 'questions' => $questions, 'source' => 'db'], $req->requestId);
                 return;
             } catch (\Throwable $e) {
                 Response::error('DB_ERROR', 'Test could not be loaded', $req->requestId, 500);
@@ -101,43 +93,32 @@ return static function (Router $router): void {
         ], $req->requestId);
     });
 
-    $router->post('/api/v1/tests/{id}/start', static function (Request $req, array $params) use ($findTest): void {
+    $start = static function (Request $req, string $testId, callable $findTest): void {
         if (!RequireAuth::handle($req)) return;
         try {
-            $test = (new TestRepository())->findById($params['id']);
+            $test = (new TestRepository())->findById($testId);
             if ($test !== null) {
-                $attempt = (new TestRepository())->startAttempt($params['id'], $req->user->id);
+                $attempt = (new TestRepository())->startAttempt($testId, $req->user->id);
                 Response::success(['attempt' => array_merge($attempt, ['source' => 'db'])], $req->requestId, 201);
                 return;
             }
         } catch (\Throwable $e) {
             // local fallback below
         }
-        $local = $findTest($params['id']);
+        $local = $findTest($testId);
         if ($local['source'] !== 'local-fallback') {
             Response::error('NOT_FOUND', 'Test not found', $req->requestId, 404);
             return;
         }
-        Response::success(['attempt' => ['id' => 'local-' . bin2hex(random_bytes(6)), 'test_id' => $params['id'], 'status' => 'in_progress', 'source' => 'local-fallback']], $req->requestId, 201);
+        Response::success(['attempt' => ['id' => 'local-' . bin2hex(random_bytes(6)), 'test_id' => $testId, 'status' => 'in_progress', 'source' => 'local-fallback']], $req->requestId, 201);
+    };
+
+    $router->post('/api/v1/tests/{id}/start', static function (Request $req, array $params) use ($start, $findTest): void {
+        $start($req, $params['id'], $findTest);
     });
 
-    $router->post('/api/v1/tests/{id}/attempts', static function (Request $req, array $params) use ($findTest): void {
-        if (!RequireAuth::handle($req)) return;
-        try {
-            $test = (new TestRepository())->findById($params['id']);
-            if ($test !== null) {
-                $attempt = (new TestRepository())->startAttempt($params['id'], $req->user->id);
-                Response::success(['attempt' => array_merge($attempt, ['source' => 'db'])], $req->requestId, 201);
-                return;
-            }
-        } catch (\Throwable $e) {
-        }
-        $local = $findTest($params['id']);
-        if ($local['source'] !== 'local-fallback') {
-            Response::error('NOT_FOUND', 'Test not found', $req->requestId, 404);
-            return;
-        }
-        Response::success(['attempt' => ['id' => 'local-' . bin2hex(random_bytes(6)), 'test_id' => $params['id'], 'status' => 'in_progress', 'source' => 'local-fallback']], $req->requestId, 201);
+    $router->post('/api/v1/tests/{id}/attempts', static function (Request $req, array $params) use ($start, $findTest): void {
+        $start($req, $params['id'], $findTest);
     });
 
     $router->post('/api/v1/tests/attempts/{id}/finish', static function (Request $req, array $params): void {
@@ -145,7 +126,7 @@ return static function (Router $router): void {
         $score = $req->json('score');
         $maxScore = $req->json('max_score');
         if (str_starts_with($params['id'], 'local-')) {
-            Response::success(['attempt' => ['id' => $params['id'], 'status' => 'finished', 'score' => is_numeric($score) ? (float) $score : null, 'max_score' => is_numeric($maxScore) ? (float) $maxScore : null, 'source' => 'local-fallback']], $req->requestId);
+            Response::success(['attempt' => ['id' => $params['id'], 'status' => 'submitted', 'score' => is_numeric($score) ? (float) $score : null, 'max_score' => is_numeric($maxScore) ? (float) $maxScore : null, 'source' => 'local-fallback']], $req->requestId);
             return;
         }
         try {
@@ -153,7 +134,7 @@ return static function (Router $router): void {
             if ($row === null) { Response::error('NOT_FOUND', 'Attempt not found', $req->requestId, 404); return; }
             Response::success(['attempt' => $row], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $req->requestId, 500);
+            Response::error('DB_ERROR', 'Could not finish attempt', $req->requestId, 500);
         }
     });
 
