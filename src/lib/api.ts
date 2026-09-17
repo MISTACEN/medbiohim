@@ -1,5 +1,7 @@
 /** API client for SpaceWeb backend. */
-const API_URL=process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/,"")||"/api/v1";
+// Browser API is always same-origin. This prevents a stale Vercel NEXT_PUBLIC_API_URL
+// from forcing insecure HTTP requests and bypassing the HTTPS Vercel rewrite.
+const API_URL="/api/v1";
 export type ApiSuccess<T>={ok:true;data:T;requestId:string};
 export type ApiError={ok:false;error:{code:string;message:string;details?:unknown};requestId:string};
 export type ApiResult<T>=ApiSuccess<T>|ApiError;
@@ -12,32 +14,28 @@ export async function me(){return api<{user:unknown;roles?:string[];groups?:unkn
 export async function refreshSession(){const refreshToken=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!refreshToken)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:refreshToken})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
 export async function health(){return api<{status:string;phase?:string}>("/health")}
 export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
-export async function listGroups(){return api<{items:unknown[]}>("/groups")}
+export async function listGroups(){return api<{items:unknown[]}> as any}
 export type ApiTest={id:string;title?:string;name?:string;description?:string|null;subject_id?:string|null;subject_name?:string|null;questions_count?:number;type?:string;is_published?:boolean};
 export async function listTests(subjectId?:string){return api<{items:ApiTest[]}>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
 export async function getTest(id:string){return api<{test:ApiTest;questions:Array<{id:string;body?:string;q?:string;options?:string[];difficulty?:number}>;answers_local?:Array<number|null>}>(`/tests/${id}`)}
 export async function startTestAttempt(id:string){return api<{attempt:{id:string;status:string}}>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
 export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<{attempt:unknown}>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
 export type ApiHomework={id:string;title:string;description?:string|null;due_at?:string|null;subject_name?:string|null;submission_id?:string|null;submission_status?:string|null;grade?:number|null;submitted_at?:string|null};
-export async function listHomeworks(){return api<{items:ApiHomework[]}>("/homeworks")}
+export async function listHomeworks(){return api<{items:ApiHomework[]}> ("/homeworks")}
 export async function submitHomework(id:string,textAnswer?:string,fileId?:string){return api<{submission:unknown}>(`/homeworks/${id}/submit`,{method:"POST",body:JSON.stringify({text_answer:textAnswer,file_id:fileId})})}
 export async function uploadFile(file:File,groupId?:string){const fd=new FormData();fd.append("file",file);if(groupId)fd.append("group_id",groupId);return api<{file:{id:string;object_key?:string;original_name?:string}}>("/files/upload",{method:"POST",body:fd})}
 export async function uploadFileBase64(originalName:string,mimeType:string,contentBase64:string){return api<{file:{id:string}}>("/files/upload",{method:"POST",body:JSON.stringify({original_name:originalName,mime_type:mimeType,content_base64:contentBase64})})}
 export async function getFile(id:string){return api<{file:unknown;download?:{url?:string}}>(`/files/${id}`)}
 export async function register(email:string,password:string,fullName?:string){return api<{access_token?:string|null;refresh_token?:string|null;needs_email_confirm?:boolean}>("/auth/register",{method:"POST",body:JSON.stringify({email,password,full_name:fullName})})}
 export async function getSite(){return api<{site:Record<string,unknown>;announcements:Array<{id:string;title:string;body:string;pinned?:boolean}>}>("/site")}
-export async function adminOverview(){return api<{site:Record<string,unknown>;counts:Record<string,number>}>("/admin/overview")}
-export async function adminUpdateSite(data:Record<string,unknown>){return api<{site:Record<string,unknown>}>("/admin/site",{method:"PUT",body:JSON.stringify(data)})}
-export async function adminListAnnouncements(){return api<{items:Array<{id:string;title:string;body:string;pinned?:boolean}>}>("/admin/announcements")}
+export async function adminOverview(){return api<{site:Record<string,unknown>;counts:Record<string,number> }>("/admin/overview")}
+export async function adminUpdateSite(data:Record<string,unknown>){return api<{site:Record<string,unknown> }>("/admin/site",{method:"PUT",body:JSON.stringify(data)})}
+export async function adminListAnnouncements(){return api<{items:Array<{id:string;title:string;body:string;pinned?:boolean}> }>("/admin/announcements")}
 export async function adminCreateAnnouncement(title:string,body:string,pinned?:boolean){return api<{item:{id:string}}>("/admin/announcements",{method:"POST",body:JSON.stringify({title,body,pinned})})}
 export async function adminUpdateAnnouncement(id:string,patch:{title?:string;body?:string;pinned?:boolean}){return api<{item:unknown}>(`/admin/announcements/${id}`,{method:"PATCH",body:JSON.stringify(patch)})}
 export async function adminDeleteAnnouncement(id:string){return api<{deleted:boolean}>(`/admin/announcements/${id}`,{method:"DELETE"})}
-export async function createGroup(payload:{name:string;code?:string;course_number?:number;admission_year?:number}){return api<Record<string,unknown>>("/groups",{method:"POST",body:JSON.stringify(payload)})}
+export async function createGroup(payload:{name:string;code?:string;course_number?:number}){return api<Record<string,unknown>>("/groups",{method:"POST",body:JSON.stringify(payload)})}
 export async function createSubject(payload:{name:string;course_number?:number;semester?:number;control_type?:string}){return api<Record<string,unknown>>("/subjects",{method:"POST",body:JSON.stringify(payload)})}
-export async function updateGroup(id:string,payload:Partial<{name:string;code:string;course_number:number;admission_year:number;is_active:boolean}>){return api<{group:Record<string,unknown>}>(`/groups/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(payload)})}
-export async function deleteGroup(id:string,hard=false){return api<{deleted:boolean}>(`/groups/${encodeURIComponent(id)}${hard?"?hard=1":""}`,{method:"DELETE"})}
-export async function updateSubject(id:string,payload:Partial<{name:string;course_number:number;semester:number;control_type:string}>){return api<{subject:Record<string,unknown>}>(`/subjects/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(payload)})}
-export async function deleteSubject(id:string){return api<{deleted:boolean}>(`/subjects/${encodeURIComponent(id)}`,{method:"DELETE"})}
 export async function getDashboard(){return api<{profile:{user:{id:string;full_name?:string;email?:string};roles:string[];groups:Array<{id:string;name:string;code?:string}>};announcements:Array<{id:string;title:string;body:string}>;schedule:Array<Record<string,unknown>>;homeworks:Array<Record<string,unknown>>;tests:Array<Record<string,unknown>>}>("/dashboard")}
 export type ScheduleItem={id:string;schedule_id?:string;group_id?:string;group_name?:string;group_code?:string;semester?:number|null;version?:number;subject_id?:string|null;subject_name?:string|null;date:string;start_time:string;end_time:string;type:string;room?:string|null;building?:string|null;notes?:string|null;is_cancelled?:boolean};
 export async function listSchedule(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);const qs=q.toString();return api<{items:ScheduleItem[]}>(`/schedule${qs?`?${qs}`:""}`)}
@@ -47,7 +45,7 @@ export async function adminSaveScheduleLocal(items:Array<Partial<ScheduleItem>>)
 export async function saveSchedule(items:Array<Record<string,unknown>>){return api<{items:ScheduleItem[]}>("/schedule",{method:"PUT",body:JSON.stringify({items})})}
 export async function listMaterials(groupId?:string){return api<{items:unknown[]}>(`/materials${groupId?`?group_id=${encodeURIComponent(groupId)}`:""}`)}
 export async function listCommunityPosts(){return api<{items:Array<{id:string;title:string;body:string;author_name?:string}>}>("/community/posts")}
-export async function createCommunityPost(title:string,body:string){return api<{post:Record<string,unknown>}>("/community/posts",{method:"POST",body:JSON.stringify({title,body})})}
+export async function createCommunityPost(title:string,body:string){return api<{post:Record<string,unknown> }>("/community/posts",{method:"POST",body:JSON.stringify({title,body})})}
 export async function getProgress(){return api<{overall_pct?:number;homework:unknown;tests:unknown;note?:string}>("/progress")}
 export async function getSubject(id:string){return api<{subject:{id:string;name:string};modules?:unknown[]}>(`/subjects/${id}`)}
 export async function claimAdmin(secret:string){return api<{roles:string[];message:string;session_refresh_required?:boolean;metadata_synced?:boolean}>("/admin/claim-admin",{method:"POST",body:JSON.stringify({secret})})}
@@ -67,23 +65,14 @@ export async function adminListCommunity(){return api<{items:Array<Record<string
 export async function adminUpdateCommunity(id:string,patch:Record<string,unknown>){return api<{post:Record<string,unknown>}>(`/admin/community/${id}`,{method:"PATCH",body:JSON.stringify(patch)})}
 export async function adminDeleteCommunity(id:string){return api<{deleted:boolean}>(`/admin/community/${id}`,{method:"DELETE"})}
 export function hasToken(){return !!getToken()}
-
 export type BankQuestion={id:string;subject:string;subject_slug?:string;topic?:string;type:string;kind?:string;text:string;answer?:string;has_answer?:boolean;options?:string[]|null;correct?:number|null}
-export async function listQuestions(params:Record<string,string|number|undefined>={}){
-  const q=new URLSearchParams();
-  Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});
-  const qs=q.toString();
-  return api<{items:BankQuestion[];total:number;limit:number;offset:number}>(`/questions${qs?`?${qs}`:""}`);
-}
+export async function listQuestions(params:Record<string,string|number|undefined>={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});const qs=q.toString();return api<{items:BankQuestion[];total:number;limit:number;offset:number}>(`/questions${qs?`?${qs}`:""}`)}
 export async function listQuestionSubjects(){return api<{items:Array<{subject:string;subject_slug:string;count:number;kinds:Record<string,number>}>}>("/questions/subjects")}
 export async function getQuestion(id:string){return api<{question:BankQuestion}>(`/questions/${encodeURIComponent(id)}`)}
 export async function listTicketBanks(){return api<{items:Array<{id:string;title:string;subject:string;count:number}>}>("/tickets")}
-export async function generateTicket(bank_id:string,count=3,mode:"practice"|"exam"="practice"){
-  return api<{bank:{id:string;title:string;subject:string};questions:BankQuestion[];count:number;mode:string}>("/tickets/generate",{method:"POST",body:JSON.stringify({bank_id,count,mode})})
-}
+export async function generateTicket(bank_id:string,count=3,mode:"practice"|"exam"="practice"){return api<{bank:{id:string;title:string;subject:string};questions:BankQuestion[];count:number;mode:string}>("/tickets/generate",{method:"POST",body:JSON.stringify({bank_id,count,mode})})}
 export async function listTrainers(){return api<{items:Array<{id:string;title:string;subject:string;row_count:number}>}>("/trainers")}
 export async function getTrainer(id:string){return api<{trainer:Record<string,unknown>}>(`/trainers/${encodeURIComponent(id)}`)}
-
 export async function listSessions(status?:string){const qs=status?`?status=${encodeURIComponent(status)}`:"";return api<{items:Array<Record<string,unknown>>}>(`/sessions${qs}`)}
 export async function createSession(payload:{type:string;ref_id?:string;title?:string;payload?:unknown;current_index?:number;answers?:unknown}){return api<{session:Record<string,unknown>}>("/sessions",{method:"POST",body:JSON.stringify(payload)})}
 export async function updateSession(id:string,patch:Record<string,unknown>){return api<{session:Record<string,unknown>}>(`/sessions/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
@@ -96,14 +85,8 @@ export async function adminListQuestions(params:Record<string,string|number|unde
 export async function adminCreateQuestion(payload:Partial<BankQuestion>&{text:string}){return api<{question:BankQuestion}>("/admin/questions",{method:"POST",body:JSON.stringify(payload)})}
 export async function adminUpdateQuestion(id:string,payload:Partial<BankQuestion>){return api<{question:BankQuestion}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"PUT",body:JSON.stringify(payload)})}
 export async function adminDeleteQuestion(id:string){return api<{deleted:boolean}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"DELETE"})}
-
-/** Subject lesson plans (official curriculum sheets) */
 export type SubjectPlanWeek={date?:string;week?:number;lecture?:string;practice?:string;study?:string[];control?:string|null;lab_detail?:string|null};
 export type SubjectPlan={subject:string;subject_slug:string;semester?:string;control?:string;weeks:SubjectPlanWeek[]};
 export async function getSubjectPlan(slug:string){return api<{plan:SubjectPlan;schedule_count:number}>(`/subject-plans/${encodeURIComponent(slug)}`)}
-export async function getLessonPlan(params:{date?:string;subject_slug?:string;subject?:string}){
-  const q=new URLSearchParams();
-  Object.entries(params).forEach(([k,v])=>{if(v)q.set(k,v)});
-  return api<{lesson:SubjectPlanWeek|null;weeks:SubjectPlanWeek[];plan_meta?:Record<string,unknown>}>(`/lesson-plan?${q}`);
-}
+export async function getLessonPlan(params:{date?:string;subject_slug?:string;subject?:string}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v)q.set(k,v)});return api<{lesson:SubjectPlanWeek|null;weeks:SubjectPlanWeek[];plan_meta?:Record<string,unknown>}>(`/lesson-plan?${q}`)}
 export async function adminSaveSubjectPlans(plans:SubjectPlan[]){return api<{plans:SubjectPlan[];count:number}>("/admin/subject-plans",{method:"PUT",body:JSON.stringify({plans})})}
