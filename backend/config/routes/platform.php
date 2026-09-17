@@ -18,30 +18,12 @@ use Medbiohim\Support\ContentStore;
 
 return static function (Router $router): void {
     $normalizeSchedule = static function (array $items): array {
-        $subjectCache = [];
-        $groupCache = [];
+        // Local-only normalize — NO per-item Supabase REST (was causing Vercel/proxy timeouts)
         foreach ($items as &$item) {
             if (!is_array($item)) continue;
-            if (empty($item['subject_name']) && !empty($item['subject_id'])) {
-                $sid = (string) $item['subject_id'];
-                if (!array_key_exists($sid, $subjectCache)) {
-                    try { $subjectCache[$sid] = SupabaseRest::getSubject($sid); } catch (\Throwable $e) { $subjectCache[$sid] = null; }
-                }
-                if (is_array($subjectCache[$sid])) $item['subject_name'] = $subjectCache[$sid]['name'] ?? null;
+            if (empty($item['subject_name']) && !empty($item['subject'])) {
+                $item['subject_name'] = $item['subject'];
             }
-            if (!empty($item['group_id'])) {
-                $gid = (string) $item['group_id'];
-                if (!array_key_exists($gid, $groupCache)) {
-                    try { $groupCache[$gid] = SupabaseRest::getGroup($gid); } catch (\Throwable $e) { $groupCache[$gid] = null; }
-                }
-                $group = is_array($groupCache[$gid]) ? ($groupCache[$gid]['group'] ?? null) : null;
-                if (is_array($group)) {
-                    $item['group_name'] = $group['name'] ?? ($item['group_name'] ?? null);
-                    $item['group_code'] = $group['code'] ?? ($item['group_code'] ?? null);
-                    $item['course_number'] = $group['course_number'] ?? ($item['course_number'] ?? null);
-                }
-            }
-            if (empty($item['subject_name']) && !empty($item['subject'])) $item['subject_name'] = $item['subject'];
         }
         unset($item);
         usort($items, static fn($a, $b): int => ((string)($a['date'] ?? '') . ' ' . (string)($a['start_time'] ?? '')) <=> ((string)($b['date'] ?? '') . ' ' . (string)($b['start_time'] ?? '')));
@@ -49,14 +31,35 @@ return static function (Router $router): void {
     };
 
     $loadSchedule = static function (string $userId, ?string $from = null, ?string $to = null) use ($normalizeSchedule): array {
-        try { return ['items' => ScheduleRestStore::listForUser($userId, $from, $to), 'source' => 'supabase']; } catch (\Throwable $e) {}
-        try { return ['items' => (new ScheduleRepository())->listForUser($userId, $from, $to), 'source' => 'db']; } catch (\Throwable $e) {}
-        try { return ['items' => SupabaseRest::listScheduleForUser($userId, $from, $to), 'source' => 'supabase-rest']; } catch (\Throwable $e) {}
-        $store = new ContentStore();
-        $items = $store->listSchedule();
-        if ($from) $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
-        if ($to) $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
-        return ['items' => $normalizeSchedule($items), 'source' => 'local'];
+        // Fast path first: direct DB, then local JSON — avoid slow multi-hop REST on SpaceWeb/Vercel
+        try {
+            $items = (new ScheduleRepository())->listForUser($userId, $from, $to);
+            if (is_array($items) && count($items) > 0) {
+                return ['items' => $normalizeSchedule($items), 'source' => 'db'];
+            }
+        } catch (\Throwable $e) {}
+        try {
+            $store = new ContentStore();
+            $items = $store->listSchedule();
+            if ($from) $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
+            if ($to) $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
+            if (is_array($items) && count($items) > 0) {
+                return ['items' => $normalizeSchedule($items), 'source' => 'local'];
+            }
+        } catch (\Throwable $e) {}
+        try {
+            if (class_exists(ScheduleRestStore::class)) {
+                $items = ScheduleRestStore::listForUser($userId, $from, $to);
+                if (is_array($items) && count($items) > 0) {
+                    return ['items' => $normalizeSchedule($items), 'source' => 'supabase'];
+                }
+            }
+        } catch (\Throwable $e) {}
+        try {
+            $items = SupabaseRest::listScheduleForUser($userId, $from, $to);
+            return ['items' => $normalizeSchedule(is_array($items) ? $items : []), 'source' => 'supabase-rest'];
+        } catch (\Throwable $e) {}
+        return ['items' => [], 'source' => 'none'];
     };
 
     $router->get('/api/v1/dashboard', static function (Request $req, array $params) use ($loadSchedule): void {
