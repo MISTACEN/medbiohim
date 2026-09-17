@@ -18,17 +18,18 @@ final class GroupRepository
     public function listActive(): array
     {
         $stmt = $this->db->query(
-            'SELECT id, code, name, course_number, admission_year, is_active, created_at
-             FROM public.groups WHERE is_active = true
-             ORDER BY course_number NULLS LAST, name'
+            'SELECT id, code, name, course_number, admission_year, is_active
+             FROM public.groups
+             WHERE COALESCE(is_active, true) = true
+             ORDER BY course_number NULLS LAST, code'
         );
-        return $stmt->fetchAll() ?: [];
+        return $stmt->fetchAll();
     }
 
     public function findById(string $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, code, name, course_number, admission_year, is_active, created_at
+            'SELECT id, code, name, course_number, admission_year, is_active
              FROM public.groups WHERE id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $id]);
@@ -39,14 +40,13 @@ final class GroupRepository
     public function members(string $groupId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT u.id, u.full_name, u.email, gm.role_in_group
+            'SELECT gm.user_id, gm.role_in_group, u.email, u.full_name
              FROM public.group_memberships gm
-             JOIN public.users u ON u.id = gm.user_id
-             WHERE gm.group_id = :gid
-             ORDER BY gm.role_in_group DESC, u.full_name'
+             LEFT JOIN public.users u ON u.id = gm.user_id
+             WHERE gm.group_id = :gid'
         );
         $stmt->execute(['gid' => $groupId]);
-        return $stmt->fetchAll() ?: [];
+        return $stmt->fetchAll();
     }
 
     public function create(array $data): array
@@ -60,8 +60,6 @@ final class GroupRepository
         $baseCode = $requestedCode !== '' ? $requestedCode : $this->makeCode($name);
         $code = $baseCode;
 
-        // public.groups.code is NOT NULL + UNIQUE in Supabase. The admin UI
-        // intentionally makes the code optional, so generate one when omitted.
         for ($attempt = 0; $attempt < 8; $attempt++) {
             try {
                 $stmt = $this->db->prepare(
@@ -81,8 +79,6 @@ final class GroupRepository
                 }
                 return $row;
             } catch (\PDOException $e) {
-                // PostgreSQL unique violation: generate a deterministic suffix
-                // and retry. Other SQL errors must reach the route for logging.
                 if ($e->getCode() !== '23505' || $attempt >= 7) {
                     throw $e;
                 }
@@ -129,5 +125,42 @@ final class GroupRepository
         }
         return $row;
     }
+
+    public function update(string $id, array $data): array
+    {
+        $fields = [];
+        $params = ['id' => $id];
+        foreach (['name' => 'name', 'code' => 'code', 'course_number' => 'course', 'admission_year' => 'year', 'is_active' => 'active'] as $col => $key) {
+            if (array_key_exists($col, $data)) {
+                $fields[] = "$col = :$key";
+                $params[$key] = $data[$col];
+            }
+        }
+        if (!$fields) {
+            $row = $this->findById($id);
+            if ($row === null) throw new \RuntimeException('Group not found');
+            return $row;
+        }
+        $sql = 'UPDATE public.groups SET ' . implode(', ', $fields) . ' WHERE id = :id RETURNING *';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch();
+        if ($row === false) throw new \RuntimeException('Update group failed');
+        return $row;
+    }
+
+    public function softDelete(string $id): bool
+    {
+        $stmt = $this->db->prepare('UPDATE public.groups SET is_active = false WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function hardDelete(string $id): bool
+    {
+        $this->db->prepare('DELETE FROM public.group_memberships WHERE group_id = :id')->execute(['id' => $id]);
+        $stmt = $this->db->prepare('DELETE FROM public.groups WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
 }
-// synced 2026-09-15

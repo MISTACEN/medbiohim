@@ -17,19 +17,25 @@ final class SubjectRepository
 
     public function listActive(?int $course = null, ?int $semester = null): array
     {
-        $sql = 'SELECT id, name, course_number, semester, control_type, lecture_hours, practice_hours, is_active FROM public.subjects WHERE is_active = true';
+        $sql = 'SELECT * FROM public.subjects WHERE 1=1';
         $params = [];
-        if ($course !== null) { $sql .= ' AND course_number = :course'; $params['course'] = $course; }
-        if ($semester !== null) { $sql .= ' AND semester = :semester'; $params['semester'] = $semester; }
-        $sql .= ' ORDER BY course_number NULLS LAST, semester NULLS LAST, name';
+        if ($course !== null) {
+            $sql .= ' AND course_number = :course';
+            $params['course'] = $course;
+        }
+        if ($semester !== null) {
+            $sql .= ' AND semester = :sem';
+            $params['sem'] = $semester;
+        }
+        $sql .= ' ORDER BY course_number NULLS LAST, name';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll() ?: [];
+        return $stmt->fetchAll();
     }
 
     public function findById(string $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT id, name, course_number, semester, control_type, lecture_hours, practice_hours, is_active FROM public.subjects WHERE id = :id LIMIT 1');
+        $stmt = $this->db->prepare('SELECT * FROM public.subjects WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
@@ -38,25 +44,20 @@ final class SubjectRepository
     public function detailWithModules(string $id): ?array
     {
         $subject = $this->findById($id);
-        if ($subject === null) return null;
-        $stmt = $this->db->prepare(
-            'SELECT m.id AS module_id, m.title AS module_title, m.order_index AS module_order,
-                    t.id AS topic_id, t.title AS topic_title, t.order_index AS topic_order
-             FROM public.modules m LEFT JOIN public.topics t ON t.module_id = m.id
-             WHERE m.subject_id = :sid ORDER BY m.order_index, t.order_index NULLS LAST'
-        );
-        $stmt->execute(['sid' => $id]);
-        $modules = [];
-        foreach ($stmt->fetchAll() ?: [] as $row) {
-            $mid = $row['module_id'];
-            if (!isset($modules[$mid])) {
-                $modules[$mid] = ['id' => $mid, 'title' => $row['module_title'], 'order_index' => (int)$row['module_order'], 'topics' => []];
-            }
-            if ($row['topic_id'] !== null) {
-                $modules[$mid]['topics'][] = ['id' => $row['topic_id'], 'title' => $row['topic_title'], 'order_index' => (int)$row['topic_order']];
-            }
+        if ($subject === null) {
+            return null;
         }
-        return ['subject' => $subject, 'modules' => array_values($modules)];
+        $modules = [];
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT id, title, sort_order FROM public.modules WHERE subject_id = :id ORDER BY sort_order NULLS LAST, title'
+            );
+            $stmt->execute(['id' => $id]);
+            $modules = $stmt->fetchAll();
+        } catch (\Throwable $e) {
+            $modules = [];
+        }
+        return ['subject' => $subject, 'modules' => $modules];
     }
 
     public function create(array $data): array
@@ -76,5 +77,43 @@ final class SubjectRepository
         $row = $stmt->fetch();
         if ($row === false) throw new \RuntimeException('Create subject failed');
         return $row;
+    }
+
+    public function update(string $id, array $data): array
+    {
+        $map = [
+            'name' => 'name',
+            'course_number' => 'course',
+            'semester' => 'sem',
+            'control_type' => 'ctrl',
+            'lecture_hours' => 'lec',
+            'practice_hours' => 'prac',
+        ];
+        $fields = [];
+        $params = ['id' => $id];
+        foreach ($map as $col => $key) {
+            if (array_key_exists($col, $data)) {
+                $fields[] = "$col = :$key";
+                $params[$key] = $data[$col];
+            }
+        }
+        if (!$fields) {
+            $row = $this->findById($id);
+            if ($row === null) throw new \RuntimeException('Subject not found');
+            return $row;
+        }
+        $sql = 'UPDATE public.subjects SET ' . implode(', ', $fields) . ' WHERE id = :id RETURNING *';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch();
+        if ($row === false) throw new \RuntimeException('Update subject failed');
+        return $row;
+    }
+
+    public function delete(string $id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM public.subjects WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
     }
 }
