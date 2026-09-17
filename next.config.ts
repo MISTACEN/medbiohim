@@ -1,27 +1,29 @@
 import type { NextConfig } from "next";
 
 /**
- * Browser calls same-origin /api/v1/* over HTTPS.
- * SpaceWeb production document root is backend/public, so the PHP API root
- * is /api/v1 (not /public/api/v1).
+ * Browser always calls same-origin /api/v1/* over HTTPS.
+ * Vercel/Next rewrites proxy server-side to SpaceWeb.
  *
- * In Vercel, set SPACEWEB_API_ORIGIN to the real HTTPS SpaceWeb API origin.
- * The fallback is kept only for the current SpaceWeb test host.
+ * CRITICAL: SpaceWeb HTTPS responds 302 → Location: http://...
+ * If the rewrite target is HTTPS, that 302 is forwarded to the browser
+ * and Mixed Content blocks login/API calls.
+ *
+ * Rewrite destination MUST be plain HTTP (server-side proxy only).
+ * Document root serves /api/v1 (no /public prefix needed).
+ *
+ * Do NOT set SPACEWEB_API_ORIGIN to https:// for this host.
+ * Do NOT set NEXT_PUBLIC_API_URL to an absolute http:// URL in Vercel.
  */
 const SPACEWEB =
   process.env.SPACEWEB_API_ORIGIN ||
-  "https://ryazansev3.temp.swtest.ru/api/v1";
+  "http://ryazansev3.temp.swtest.ru/api/v1";
 
-// Stable production-delivery fingerprint. It is intentionally independent of
-// the commit SHA so subsequent diagnostic commits do not change the expected
-// production marker.
-const BUILD_FINGERPRINT = "main-same-origin-2026-09-17";
+const BUILD_FINGERPRINT = "main-http-proxy-2026-09-17";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   env: {
-    // Browser requests must stay same-origin so HTTPS Vercel pages never
-    // attempt a direct HTTP call to SpaceWeb (Mixed Content).
+    // Force relative API so panel env cannot inject http:// into the browser bundle
     NEXT_PUBLIC_API_URL: "/api/v1",
   },
   async headers() {
@@ -39,7 +41,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-Medbiohim-Api-Mode",
-            value: "same-origin",
+            value: "same-origin-http-proxy",
           },
         ],
       },
