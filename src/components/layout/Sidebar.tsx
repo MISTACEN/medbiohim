@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import {
   Home, Calendar, ClipboardList, BookOpen, GraduationCap, FileQuestion,
   FolderOpen, TrendingUp, Users, Settings, LayoutDashboard, HelpCircle, Shield,
+  Bot, Calculator, Search, Brain,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 const navItems = [
   { href: "/", label: "Главная", icon: Home },
+  { href: "/search", label: "Поиск", icon: Search },
   { href: "/schedule", label: "Расписание", icon: Calendar },
   { href: "/homework", label: "Задания", icon: ClipboardList },
   { href: "/subjects", label: "Предметы", icon: BookOpen },
@@ -18,7 +20,9 @@ const navItems = [
   { href: "/tests", label: "Тесты", icon: FileQuestion },
   { href: "/practice", label: "Практика", icon: BookOpen },
   { href: "/tickets", label: "Билеты", icon: GraduationCap },
-  { href: "/trainers", label: "Тренажёры", icon: FileQuestion },
+  { href: "/tutor", label: "AI-тьютор", icon: Bot },
+  { href: "/cards", label: "Карточки SRS", icon: Brain },
+  { href: "/calculators", label: "Калькуляторы", icon: Calculator },
   { href: "/materials", label: "Материалы", icon: FolderOpen },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
   { href: "/community", label: "Сообщество", icon: Users },
