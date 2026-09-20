@@ -1,18 +1,22 @@
 import type { NextConfig } from "next";
 
 /**
- * TEMPORARY VERCEL-ONLY API MODE.
+ * Browser always calls same-origin /api/v1/* over HTTPS.
+ * App Router route src/app/api/v1/[...path] proxies server-side to SpaceWeb over HTTP
+ * (SpaceWeb HTTPS redirects to HTTP and would cause Mixed Content if followed in browser).
  *
- * For this diagnostic deployment the PHP backend runs on Vercel using the
- * custom PHP runtime in api/index.php. SpaceWeb is intentionally bypassed.
- * The PHP bridge restores the original /api/v1/* path before bootstrapping
- * the existing MEDBIOHIM backend, so the backend routes remain unchanged.
+ * Fallback rewrites also point at SpaceWeb if the route handler is not matched.
  */
-const BUILD_FINGERPRINT = "vercel-php-backend-test-2026-09-18";
+const SPACEWEB =
+  process.env.SPACEWEB_API_ORIGIN ||
+  "http://ryazansev3.temp.swtest.ru/api/v1";
+
+const BUILD_FINGERPRINT = "spaceweb-proxy-2026-09-20";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   env: {
+    // Force relative API so NEXT_PUBLIC_* from Vercel panel cannot inject http:// into the browser
     NEXT_PUBLIC_API_URL: "/api/v1",
   },
   async headers() {
@@ -30,19 +34,22 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-Medbiohim-Api-Mode",
-            value: "vercel-php-backend-test",
+            value: "same-origin-spaceweb-proxy",
           },
         ],
       },
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: "/api/index.php?__path=:path*",
-      },
-    ];
+    // afterFiles: App Router /api/v1/[...path] takes priority when present
+    return {
+      afterFiles: [
+        {
+          source: "/api/v1/:path*",
+          destination: `${SPACEWEB.replace(/\/$/, "")}/:path*`,
+        },
+      ],
+    };
   },
 };
 
