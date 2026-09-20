@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { tutorAsk, tutorMeta, type TutorAnswer, type TutorSource } from "@/lib/api";
+import { tutorAsk, tutorMeta, type TutorAnswer, type TutorSource } from "@/lib/features-api";
 import { Bot, Loader2, Send, BookOpen, Sparkles, Filter } from "lucide-react";
 
 type Msg = {
