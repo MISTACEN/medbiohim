@@ -167,6 +167,12 @@ final class ContentStore
         return isset($d['meta']) && is_array($d['meta']) ? $d['meta'] : [];
     }
 
+    public function readRawSubjectsCatalog(): array
+    {
+        $d = $this->read('subjects_catalog.json', []);
+        return is_array($d) ? $d : [];
+    }
+
     public function listSubjectsCatalog(): array
     {
         $d = $this->read('subjects_catalog.json', []);
