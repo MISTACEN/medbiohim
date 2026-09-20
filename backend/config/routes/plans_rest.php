@@ -12,8 +12,15 @@ return static function (Router $r): void {
     $r->get('/api/v1/subjects-catalog', static function (Request $q, array $p): void {
         if (!RequireAuth::handle($q)) return;
         $store = new ContentStore();
+        $raw = method_exists($store, 'readRawSubjectsCatalog')
+            ? $store->readRawSubjectsCatalog()
+            : [];
+        if (!is_array($raw)) $raw = [];
         Response::success([
-            'items' => $store->listSubjectsCatalog(),
+            'items' => $raw['items'] ?? $store->listSubjectsCatalog(),
+            'tools' => $raw['tools'] ?? [],
+            'program' => $raw['program'] ?? null,
+            'semester_label' => $raw['semester_label'] ?? null,
             'curriculum' => $store->curriculumPlan(),
         ], $q->requestId);
     });
