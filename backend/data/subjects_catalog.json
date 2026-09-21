@@ -1,169 +1,20 @@
 {
   "program": "30.05.01 Медицинская биохимия",
+  "specialty": "Медицинская биохимия",
+  "group_hint": "МБ-201",
   "course": 2,
   "semester_label": "Осень 2026/2027",
   "items": [
-    {
-      "id": "sub-phys",
-      "name": "Физиология",
-      "slug": "physiology",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "4-часовые",
-      "category": "Естественно-научные",
-      "icon": "activity",
-      "blurb": "Нормальная физиология систем организма"
-    },
-    {
-      "id": "sub-gist",
-      "name": "Гистология, цитология",
-      "slug": "histology",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "3-часовые",
-      "category": "Естественно-научные",
-      "icon": "microscope",
-      "blurb": "Ткани, клетки, микропрепараты"
-    },
-    {
-      "id": "sub-org",
-      "name": "Органическая и физическая химия",
-      "slug": "organic_chemistry",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "3-часовые",
-      "category": "Естественно-научные",
-      "icon": "flask",
-      "blurb": "Органика, физхимия, реакции"
-    },
-    {
-      "id": "sub-opt",
-      "name": "Оптика, атомная физика",
-      "slug": "optics",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "3-часовые",
-      "category": "Математика и IT",
-      "icon": "atom",
-      "blurb": "Оптика, кванты, атомная физика"
-    },
-    {
-      "id": "sub-inf",
-      "name": "Информатика, медицинская информатика",
-      "slug": "informatics",
-      "course": 2,
-      "semester": 3,
-      "control_type": "exam",
-      "hours_note": "3-часовые",
-      "category": "Математика и IT",
-      "icon": "cpu",
-      "blurb": "Медицинские ИС, данные, алгоритмы"
-    },
-    {
-      "id": "sub-it",
-      "name": "Информационные технологии в здравоохранении",
-      "slug": "it_health",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "2-часовые",
-      "category": "Математика и IT",
-      "icon": "network",
-      "blurb": "ИТ в клинике и организации здравоохранения"
-    },
-    {
-      "id": "sub-tv",
-      "name": "Теория вероятности и математическая статистика",
-      "slug": "probability",
-      "course": 2,
-      "semester": 3,
-      "control_type": "exam",
-      "hours_note": "4-часовые",
-      "category": "Математика и IT",
-      "icon": "chart",
-      "blurb": "Вероятность, статистика, биометрия"
-    },
-    {
-      "id": "sub-hist",
-      "name": "История медицины",
-      "slug": "history_medicine",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "3-часовые",
-      "category": "Гуманитарные",
-      "icon": "book",
-      "blurb": "Этапы развития медицины"
-    },
-    {
-      "id": "sub-phil",
-      "name": "Философия",
-      "slug": "philosophy",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "2-часовые",
-      "category": "Гуманитарные",
-      "icon": "brain",
-      "blurb": "Философия науки и медицины"
-    },
-    {
-      "id": "sub-pmp",
-      "name": "Первая медицинская помощь",
-      "slug": "first_aid",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "2-часовые",
-      "category": "Клинические навыки",
-      "icon": "heart",
-      "blurb": "Неотложная помощь, алгоритмы"
-    },
-    {
-      "id": "sub-pe",
-      "name": "Элективные курсы по физической культуре и спорту",
-      "slug": "physical_education",
-      "course": 2,
-      "semester": 3,
-      "control_type": "credit",
-      "hours_note": "2-часовые",
-      "category": "Элективы",
-      "icon": "dumbbell",
-      "blurb": "Физкультура и спорт"
-    }
-  ],
-  "tools": [
-    {
-      "id": "tool-tutor",
-      "name": "AI-тьютор",
-      "href": "/tutor",
-      "icon": "bot",
-      "blurb": "Вопросы по любому предмету — ответ из методичек и билетов"
-    },
-    {
-      "id": "tool-cards",
-      "name": "Карточки SRS",
-      "href": "/cards",
-      "icon": "layers",
-      "blurb": "Повторение по SM-2 — ошибки превращаются в карточки"
-    },
-    {
-      "id": "tool-calc",
-      "name": "Калькуляторы",
-      "href": "/calculators",
-      "icon": "calculator",
-      "blurb": "ClCr, дозы, шкалы, BMI и другие клинические формулы"
-    },
-    {
-      "id": "tool-search",
-      "name": "Поиск",
-      "href": "/search",
-      "icon": "search",
-      "blurb": "Единый поиск по вопросам, билетам и тренажёрам"
-    }
+    {"id": "sub-phys", "name": "Физиология", "slug": "physiology", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "4-часовые", "category": "Естественно-научные", "icon": "activity", "blurb": "Нормальная физиология"},
+    {"id": "sub-gist", "name": "Гистология, цитология", "slug": "histology", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "3-часовые", "category": "Естественно-научные", "icon": "microscope", "blurb": "Ткани и клетки"},
+    {"id": "sub-org", "name": "Органическая и физическая химия", "slug": "organic_chemistry", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "3-часовые", "category": "Естественно-научные", "icon": "flask", "blurb": "Органическая и физическая химия"},
+    {"id": "sub-opt", "name": "Оптика, атомная физика", "slug": "optics", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "3-часовые", "category": "Математика и физика", "icon": "atom", "blurb": "Оптика и атомная физика"},
+    {"id": "sub-inf", "name": "Информатика, медицинская информатика", "slug": "informatics", "course": 2, "semester": 3, "control_type": "exam", "hours_note": "3-часовые", "category": "Математика и IT", "icon": "cpu", "blurb": "Медицинская информатика"},
+    {"id": "sub-it", "name": "Информационные технологии в здравоохранении", "slug": "it_health", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "2-часовые", "category": "Математика и IT", "icon": "network", "blurb": "ИТ в здравоохранении"},
+    {"id": "sub-tv", "name": "Теория вероятности и математическая статистика", "slug": "probability", "course": 2, "semester": 3, "control_type": "exam", "hours_note": "4-часовые", "category": "Математика и IT", "icon": "chart", "blurb": "Вероятность и статистика"},
+    {"id": "sub-hist", "name": "История медицины", "slug": "history_medicine", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "3-часовые", "category": "Гуманитарные", "icon": "book", "blurb": "История медицины"},
+    {"id": "sub-phil", "name": "Философия", "slug": "philosophy", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "2-часовые", "category": "Гуманитарные", "icon": "brain", "blurb": "Философия"},
+    {"id": "sub-pmp", "name": "Первая медицинская помощь", "slug": "first_aid", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "2-часовые", "category": "Клинические навыки", "icon": "heart", "blurb": "Первая помощь"},
+    {"id": "sub-pe", "name": "Элективные курсы по физической культуре и спорту", "slug": "physical_education", "course": 2, "semester": 3, "control_type": "credit", "hours_note": "2-часовые", "category": "Элективы", "icon": "dumbbell", "blurb": "Физкультура"}
   ]
 }
