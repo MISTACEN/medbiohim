@@ -2,10 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type ChartSpec = { type?: string; title?: string; labels?: string[]; values?: number[]; unit?: string };
+type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
+type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
+
+function winLibs(): { katex?: KatexApi; mermaid?: MermaidApi } {
+  return window as unknown as { katex?: KatexApi; mermaid?: MermaidApi };
+}
+
+type ChartSpec = {
+  type?: string;
+  title?: string;
+  labels?: string[];
+  values?: number[];
+  unit?: string;
+};
 
 function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
 }
 
 function parseBlocks(md: string) {
@@ -37,7 +50,11 @@ function mdToHtml(md: string): string {
   s = s.replace(/(?:^\|.+\|\n?)+/gm, (table) => {
     const rows = table.trim().split("\n").filter(Boolean);
     if (rows.length < 2) return table;
-    const parseRow = (r: string) => r.split("|").slice(1, -1).map((c) => c.trim());
+    const parseRow = (r: string) =>
+      r
+        .split("|")
+        .slice(1, -1)
+        .map((c) => c.trim());
     const head = parseRow(rows[0]);
     const bodyRows = rows.slice(2).map(parseRow);
     const thead = `<thead><tr>${head.map((c) => `<th>${c}</th>`).join("")}</tr></thead>`;
@@ -70,11 +87,19 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
 
 function VideoBlock({ raw }: { raw: string }) {
   let data: { platform?: string; url?: string; caption?: string } = {};
-  try { data = JSON.parse(raw); } catch { data = { url: raw }; }
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    data = { url: raw };
+  }
   const url = data.url || "";
   const caption = data.caption || data.platform || "Видео";
   if (!url) {
-    return <div className="my-3 rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted)]">{caption || "Вставьте URL видео"}</div>;
+    return (
+      <div className="my-3 rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted)]">
+        {caption || "Вставьте URL видео"}
+      </div>
+    );
   }
   let embed = url;
   try {
@@ -87,7 +112,9 @@ function VideoBlock({ raw }: { raw: string }) {
       const id = url.split("/video/")[1]?.split(/[/?]/)[0];
       if (id) embed = `https://rutube.ru/play/embed/${id}`;
     }
-  } catch { /* keep url */ }
+  } catch {
+    /* keep url */
+  }
   const isEmbed = embed.includes("embed") || embed.includes("rutube.ru/play");
   return (
     <div className="my-4 space-y-2">
@@ -96,15 +123,22 @@ function VideoBlock({ raw }: { raw: string }) {
           <iframe src={embed} className="h-full w-full" allowFullScreen title={caption} />
         </div>
       ) : (
-        <a href={url} target="_blank" rel="noreferrer" className="text-sm font-medium text-[var(--primary)] underline">{caption}: открыть видео</a>
+        <a href={url} target="_blank" rel="noreferrer" className="text-sm font-medium text-[var(--primary)] underline">
+          {caption}: открыть видео
+        </a>
       )}
+      {caption && <div className="text-xs text-[var(--muted)]">{caption}</div>}
     </div>
   );
 }
 
 function ImageBlock({ raw }: { raw: string }) {
   let data: { url?: string; caption?: string } = {};
-  try { data = JSON.parse(raw); } catch { data = { url: raw }; }
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    data = { url: raw };
+  }
   if (!data.url) return null;
   return (
     <figure className="my-4">
@@ -123,7 +157,6 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const w = window as unknown as { katex?: { render: (t: string, el: HTMLElement, o: object) => void }; mermaid?: { run: (o: object) => Promise<void>; initialize: (o: object) => void } };
       if (!document.getElementById("katex-css")) {
         const link = document.createElement("link");
         link.id = "katex-css";
@@ -131,7 +164,7 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
         link.href = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css";
         document.head.appendChild(link);
       }
-      if (!w.katex) {
+      if (!winLibs().katex) {
         await new Promise<void>((resolve, reject) => {
           const s = document.createElement("script");
           s.src = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js";
@@ -140,7 +173,7 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
           document.body.appendChild(s);
         });
       }
-      if (!w.mermaid) {
+      if (!winLibs().mermaid) {
         await new Promise<void>((resolve, reject) => {
           const s = document.createElement("script");
           s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
@@ -148,37 +181,59 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
           s.onerror = () => reject();
           document.body.appendChild(s);
         });
-        w.mermaid?.initialize({ startOnLoad: false, theme: "neutral" });
+        const mm = winLibs().mermaid;
+        mm?.initialize({ startOnLoad: false, theme: "neutral" });
       }
       if (!cancelled) setReady(true);
     }
     void load().catch(() => setReady(true));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!ready || !ref.current) return;
-    const w = window as unknown as { katex?: { render: (t: string, el: HTMLElement, o: object) => void }; mermaid?: { run: (o: object) => Promise<void> } };
+    const libs = winLibs();
     ref.current.querySelectorAll(".lec-math").forEach((el) => {
       const tex = el.textContent || "";
       const display = tex.includes("\\[");
       const body = tex.replace(/^\\\(|\\\[/, "").replace(/\\\)$|\\\]$/, "");
-      try { w.katex?.render(body, el as HTMLElement, { throwOnError: false, displayMode: display }); } catch { /* ignore */ }
+      try {
+        libs.katex?.render(body, el as HTMLElement, { throwOnError: false, displayMode: display });
+      } catch {
+        /* ignore */
+      }
     });
-    void w.mermaid?.run({ nodes: ref.current.querySelectorAll(".mermaid") });
+    void libs.mermaid?.run({ nodes: ref.current.querySelectorAll(".mermaid") });
   }, [ready, parts]);
 
   return (
     <div ref={ref} className="lecture-body space-y-1 text-sm leading-relaxed">
       {parts.map((p, i) => {
-        if (p.kind === "md") return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
+        if (p.kind === "md") {
+          return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
+        }
         if (p.kind === "chart") {
-          try { return <ChartBlock key={i} spec={JSON.parse(p.content)} />; }
-          catch { return <pre key={i} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">{p.content}</pre>; }
+          try {
+            return <ChartBlock key={i} spec={JSON.parse(p.content)} />;
+          } catch {
+            return (
+              <pre key={i} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">
+                {p.content}
+              </pre>
+            );
+          }
         }
         if (p.kind === "video") return <VideoBlock key={i} raw={p.content} />;
         if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;
-        if (p.kind === "mermaid") return <div key={i} className="my-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-white p-4"><pre className="mermaid">{p.content}</pre></div>;
+        if (p.kind === "mermaid") {
+          return (
+            <div key={i} className="my-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-white p-4">
+              <pre className="mermaid">{p.content}</pre>
+            </div>
+          );
+        }
         return null;
       })}
       <style>{`
