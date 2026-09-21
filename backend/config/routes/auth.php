@@ -54,16 +54,20 @@ return static function (Router $router): void {
         }
         $email = trim((string) $req->json('email', ''));
         $password = (string) $req->json('password', '');
-        $fullName = trim((string) $req->json('full_name', ''));
+        $fullName = trim((string) ($req->json('full_name') ?? $req->json('name') ?? ''));
+        if ($fullName === '' || mb_strlen($fullName) < 2) {
+            Response::error('VALIDATION_ERROR', 'Укажите имя (не короче 2 символов)', $req->requestId, 422);
+            return;
+        }
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Response::error('VALIDATION_ERROR', 'A valid email is required', $req->requestId, 422);
+            Response::error('VALIDATION_ERROR', 'Укажите корректный email', $req->requestId, 422);
             return;
         }
         if (strlen($password) < 8) {
-            Response::error('VALIDATION_ERROR', 'Password must be at least 8 characters', $req->requestId, 422);
+            Response::error('VALIDATION_ERROR', 'Пароль не короче 8 символов', $req->requestId, 422);
             return;
         }
-        $result = (new SupabaseAuth())->register($email, $password, $fullName !== '' ? $fullName : null);
+        $result = (new SupabaseAuth())->register($email, $password, $fullName);
         if (!$result['ok']) {
             Response::error($result['code'], $result['message'], $req->requestId, $result['status']);
             return;
@@ -73,7 +77,7 @@ return static function (Router $router): void {
         if (is_string($userId) && $userId !== '') {
             try {
                 $repo = new UserRepository();
-                $repo->ensureProfile($userId, $email, $fullName !== '' ? $fullName : null);
+                $repo->ensureProfile($userId, $email, $fullName);
                 $data['roles'] = $repo->roleCodesForUser($userId);
             } catch (\Throwable $e) {
                 Logger::info('register_profile_sync_skipped', ['requestId' => $req->requestId]);
