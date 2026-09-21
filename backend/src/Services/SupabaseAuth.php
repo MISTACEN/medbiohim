@@ -54,12 +54,14 @@ final class SupabaseAuth
         }
         $payload = ['email' => $email, 'password' => $password];
         if ($fullName !== null && trim($fullName) !== '') {
-            $payload['data'] = ['full_name' => trim($fullName)];
+            $name = trim($fullName);
+            $payload['data'] = ['full_name' => $name, 'name' => $name];
         }
         $res = HttpClient::request('POST', $this->baseUrl . '/auth/v1/signup', $payload, [
             'apikey: ' . $this->apiKey(),
             'Authorization: Bearer ' . $this->apiKey(),
-        ]);
+            'Content-Type: application/json',
+        ], 30);
         if ($res['status'] === 0) {
             return ['ok' => false, 'code' => 'AUTH_UPSTREAM_ERROR', 'message' => 'Could not reach Supabase Auth', 'status' => 502];
         }
@@ -69,6 +71,9 @@ final class SupabaseAuth
         }
         $data = $this->normalizeSession($res['json']);
         $data['needs_email_confirm'] = empty($data['access_token']);
+        if (empty($data['user']['full_name']) && $fullName) {
+            $data['user']['full_name'] = trim($fullName);
+        }
         return ['ok' => true, 'data' => $data];
     }
 
@@ -147,6 +152,7 @@ final class SupabaseAuth
     private function normalizeSession(array $json): array
     {
         $user = $json['user'] ?? [];
+        $meta = is_array($user['user_metadata'] ?? null) ? $user['user_metadata'] : [];
         return [
             'access_token' => $json['access_token'] ?? null,
             'refresh_token' => $json['refresh_token'] ?? null,
@@ -155,7 +161,8 @@ final class SupabaseAuth
             'user' => [
                 'id' => $user['id'] ?? null,
                 'email' => $user['email'] ?? null,
-                'role' => $user['role'] ?? ($user['user_metadata']['role'] ?? null),
+                'full_name' => $meta['full_name'] ?? ($meta['name'] ?? null),
+                'role' => $user['role'] ?? ($meta['role'] ?? null),
             ],
         ];
     }
