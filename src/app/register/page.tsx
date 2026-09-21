@@ -20,7 +20,7 @@ export default function RegisterPage() {
     setError(null);
     setInfo(null);
     if (!fullName.trim() || fullName.trim().length < 2) {
-      setError("Укажите имя (как в зачётке / ФИО)");
+      setError("Укажите ФИО / имя (не короче 2 символов)");
       return;
     }
     if (password !== password2) {
@@ -37,7 +37,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         const msg = res.error.message || "Ошибка регистрации";
         if (/rate limit/i.test(msg)) {
-          setError("Лимит Supabase на письма. Подождите или войдите через Google / создайте пользователя в Dashboard с Auto Confirm.");
+          setError("Лимит Supabase на письма. Подождите или войдите через Google / Auto Confirm в Dashboard.");
         } else if (/already|registered|exists/i.test(msg)) {
           setError("Email уже зарегистрирован — войдите или используйте Google.");
         } else {
@@ -80,18 +80,18 @@ export default function RegisterPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Имя <span className="text-rose-500">*</span>
+              ФИО / Имя <span className="text-rose-500">*</span>
             </label>
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
               minLength={2}
-              placeholder="Иванов Иван"
+              placeholder="Иванов Иван Иванович"
               autoComplete="name"
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             />
-            <p className="mt-1 text-xs text-slate-500">Будет видно в профиле, рейтинге и заданиях</p>
+            <p className="mt-1 text-xs text-slate-500">Как в зачётке — видно в профиле, заданиях и рейтинге</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Email <span className="text-rose-500">*</span></label>
