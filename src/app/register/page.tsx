@@ -19,17 +19,21 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    if (!fullName.trim() || fullName.trim().length < 2) {
+      setError("Укажите имя (как в зачётке / ФИО)");
+      return;
+    }
     if (password !== password2) {
       setError("Пароли не совпадают");
       return;
     }
-    if (password.length < 6) {
-      setError("Пароль не короче 6 символов");
+    if (password.length < 8) {
+      setError("Пароль не короче 8 символов");
       return;
     }
     setLoading(true);
     try {
-      const res = await register(email.trim(), password, fullName || undefined);
+      const res = await register(email.trim(), password, fullName.trim());
       if (!res.ok) {
         const msg = res.error.message || "Ошибка регистрации";
         if (/rate limit/i.test(msg)) {
@@ -75,20 +79,32 @@ export default function RegisterPage() {
 
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">ФИО</label>
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Имя <span className="text-rose-500">*</span>
+            </label>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              minLength={2}
+              placeholder="Иванов Иван"
+              autoComplete="name"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-500">Будет видно в профиле, рейтинге и заданиях</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Email <span className="text-rose-500">*</span></label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="email" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Пароль</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Пароль <span className="text-rose-500">*</span></label>
+            <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="new-password" />
+            <p className="mt-1 text-xs text-slate-500">Не короче 8 символов</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Повтор пароля</label>
-            <input type="password" required value={password2} onChange={(e) => setPassword2(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Повтор пароля <span className="text-rose-500">*</span></label>
+            <input type="password" required minLength={8} value={password2} onChange={(e) => setPassword2(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="new-password" />
           </div>
           {error && <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
           {info && <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div>}
