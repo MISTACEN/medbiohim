@@ -1,5 +1,20 @@
 "use client";
 
+/**
+ * CMS · Сетка расписания (drag-and-drop).
+ *
+ * Источник данных (бэкенд, policy=single_source_no_merge):
+ *  1) локальный schedule.json на SpaceWeb (после «Сохранить»)
+ *  2) fallback Supabase/БД, только если local пуст
+ * Нельзя склеивать local+db на клиенте — будут «дубли» карточек.
+ *
+ * Сохранение пишет в оба хранилища (local обязателен для студента на SpaceWeb,
+ * db — зеркало в Supabase, если доступен). После save снова load() читает
+ * single-source с сервера.
+ *
+ * Связано с: GET/PUT /api/v1/admin/schedule, PUT .../schedule/local,
+ * ContentStore::listSchedule / dedupeScheduleItems, dashboard nearest.
+ */
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -12,6 +27,7 @@ import {
 } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2 } from "lucide-react";
 
+/** Таймзона кампуса (Хабаровск) — совпадает с фильтром nearest на бэкенде */
 const TZ = "Asia/Vladivostok";
 const TYPE_LABELS: Record<string, string> = {
   lecture: "Лекция", practice: "Практика", laboratory: "Лабораторная",
@@ -57,6 +73,11 @@ function ymdFromKhToday() {
   return startOfWeek(new Date(y, m - 1, d, 12));
 }
 
+/**
+ * Клиентский дедуп (страховка к ContentStore::dedupeScheduleItems).
+ * Сигнатура: date|start|end|subject|type|room|group — без этого сетка
+ * после повторного «Сохранить» или load всех групп показывает тройные карточки.
+ */
 function dedupeItems(list: ScheduleItem[]): ScheduleItem[] {
   const byId = new Set<string>();
   const bySig = new Map<string, ScheduleItem>();
@@ -81,45 +102,41 @@ function dedupeItems(list: ScheduleItem[]): ScheduleItem[] {
   );
 }
 
-type Group = { id: string; name?: string; code?: string };
-
 export default function AdminSchedulePage() {
-  const [weekStart, setWeekStart] = useState(() => ymdFromKhToday());
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name?: string; code?: string }>>([]);
   const [groupId, setGroupId] = useState("");
   const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [weekStart, setWeekStart] = useState(() => ymdFromKhToday());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [source, setSource] = useState("");
-  const [edit, setEdit] = useState<ScheduleItem | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [now, setNow] = useState(() => nowPartsKh());
+  const [edit, setEdit] = useState<ScheduleItem | null>(null);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(nowPartsKh()), 15000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (!hasToken()) return;
-    void listGroups().then((g) => {
+    void (async () => {
+      const g = await listGroups();
       if (g.ok) {
-        const list = (g.data.items || []) as Group[];
+        const list = (g.data.items || []) as Array<{ id: string; name?: string; code?: string }>;
         setGroups(list);
-        setGroupId((prev) => prev || list[0]?.id || "");
+        const mb = list.find((x) => (x.code || "").includes("МБ-201") || (x.name || "").includes("201"));
+        if (mb) setGroupId(String(mb.id));
+        else if (list[0]) setGroupId(String(list[0].id));
       }
-    });
+    })();
   }, []);
 
   const days = useMemo(
-    () => Array.from({ length: 6 }, (_, i) => {
-      const d = addDays(weekStart, i);
-      return { date: d, key: dateKey(d) };
-    }),
+    () =>
+      Array.from({ length: 6 }, (_, i) => {
+        const d = addDays(weekStart, i);
+        return { date: d, key: dateKey(d) };
+      }),
     [weekStart]
   );
 
+  /** Загрузка: один источник с сервера + фильтр по выбранной группе */
   const load = useCallback(async () => {
     if (!hasToken()) { setLoading(false); return; }
     if (!groupId) { setLoading(false); return; }
@@ -130,8 +147,9 @@ export default function AdminSchedulePage() {
       let list = dedupeItems(res.data.items || []);
       list = list.filter((x) => !x.group_id || x.group_id === groupId);
       setItems(list);
-      setSource((res.data as { source?: string }).source || "");
-      setNote(`Загружено ${list.length} занятий (дубли отфильтрованы)`);
+      const src = (res.data as { source?: string }).source || "";
+      setSource(src);
+      setNote(`Загружено ${list.length} занятий · источник: ${src || "—"} (дубли отфильтрованы)`);
     } else setNote(res.error.message);
   }, [groupId]);
 
@@ -181,7 +199,7 @@ export default function AdminSchedulePage() {
     setSaving(true); setNote(null);
     if (!groupId) {
       setSaving(false);
-      setNote("Выберите группу перед сохранением — иначе сохранятся все группы и сетка удвоится");
+      setNote("Выберите группу перед сохранением — иначе сохранятся все группы и сетка «удвоится»");
       return;
     }
     const clean = dedupeItems(items).map((x) => ({ ...x, group_id: groupId }));
@@ -191,9 +209,9 @@ export default function AdminSchedulePage() {
     setSaving(false);
     if (!db.ok && !local.ok) { setNote(db.error.message); return; }
     setNote(
-      db.ok
-        ? `Сохранено без дублей · БД ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} · локально ${local.ok ? local.data.count : "—"}`
-        : `Локально ${local.ok ? local.data.count : "ошибка"}; БД: ${db.error.message}`
+      local.ok
+        ? `Сохранено · локально ${local.data.count}${db.ok ? ` · БД ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length}` : ` · БД: ${db.error?.message || "пропуск"}`}`
+        : `Локально ошибка; БД: ${db.ok ? "ok" : db.error.message}`
     );
     await load();
   }
@@ -207,149 +225,109 @@ export default function AdminSchedulePage() {
     );
   }
 
-  const today = now.date;
-  const showNow = now.minutes >= 8 * 60 && now.minutes <= 18 * 60 + 30;
-  const nowTop = (now.minutes - 8 * 60) * (64 / 60);
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/admin" className="text-sm text-primary">← Админ</Link>
-          <h1 className="page-title">CMS · Расписание</h1>
-          <p className="page-subtitle">
-            Сетка · drag-and-drop · группа · Хабаровск ({now.timeLabel})
-            {source ? ` · ${source}` : ""}
-          </p>
+          <h1 className="page-title mt-1">CMS · Расписание</h1>
+          <p className="page-subtitle">Сетка · drag-and-drop · группа · Хабаровск (00:20) · {source || "—"}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="rounded-xl bg-slate-100 px-3 py-2 text-sm" onClick={addItem}>
-            <Plus className="mr-1 inline h-4 w-4" /> Занятие
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900"
-            onClick={() => {
-              setItems((prev) => {
-                const n = dedupeItems(prev);
-                setNote(`Дубли убраны: было ${prev.length}, стало ${n.length}`);
-                return n;
-              });
-            }}
-          >
-            Убрать дубли
-          </button>
-          <button type="button" disabled={saving} className="btn-primary inline-flex items-center gap-2 text-sm" onClick={() => void saveAll()}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Сохранить
+          <button type="button" className="btn-secondary" onClick={addItem}><Plus className="h-4 w-4" /> Занятие</button>
+          <button type="button" className="btn-secondary" onClick={() => setItems((p) => dedupeItems(p))}>Убрать дубли</button>
+          <button type="button" className="btn-primary" disabled={saving} onClick={() => void saveAll()}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Сохранить
           </button>
         </div>
       </div>
 
-      <div className="card flex flex-wrap items-end gap-3 p-4">
-        <label className="min-w-[200px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Группа (обязательно)</span>
-          <select className="w-full rounded-xl border px-3 py-2 text-sm" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-            <option value="">— выберите группу —</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.code || g.name || g.id}</option>
-            ))}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">Группа (обязательно)
+          <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="mt-1 block rounded-xl border px-3 py-2">
+            <option value="">—</option>
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.code || g.name}</option>)}
           </select>
         </label>
-        <div className="flex items-center gap-2">
-          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => addDays(d, -7))}><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" className="schedule-today-btn" onClick={() => setWeekStart(ymdFromKhToday())}>Сегодня</button>
-          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => addDays(d, 7))}><ChevronRight className="h-4 w-4" /></button>
+        <div className="flex items-center gap-1">
+          <button type="button" className="rounded-lg border p-2" onClick={() => setWeekStart((w) => addDays(w, -7))}><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => setWeekStart(ymdFromKhToday())}>Сегодня</button>
+          <button type="button" className="rounded-lg border p-2" onClick={() => setWeekStart((w) => addDays(w, 7))}><ChevronRight className="h-4 w-4" /></button>
         </div>
       </div>
 
-      {note && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{note}</div>}
-
-      {edit && (
-        <div className="card space-y-3 border-primary/30 p-5">
-          <h2 className="font-semibold">Редактирование занятия</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">Предмет
-              <input className="mt-1 w-full rounded-xl border px-3 py-2" value={edit.subject_name || ""} onChange={(e) => setEdit({ ...edit, subject_name: e.target.value })} />
-            </label>
-            <label className="text-sm">Тип
-              <select className="mt-1 w-full rounded-xl border px-3 py-2" value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
-                {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-              </select>
-            </label>
-            <label className="text-sm">Дата
-              <input type="date" className="mt-1 w-full rounded-xl border px-3 py-2" value={edit.date} onChange={(e) => setEdit({ ...edit, date: e.target.value })} />
-            </label>
-            <label className="text-sm">Аудитория
-              <input className="mt-1 w-full rounded-xl border px-3 py-2" value={edit.room || ""} onChange={(e) => setEdit({ ...edit, room: e.target.value })} />
-            </label>
-            <label className="text-sm">Начало
-              <input type="time" className="mt-1 w-full rounded-xl border px-3 py-2" value={(edit.start_time || "").slice(0, 5)} onChange={(e) => setEdit({ ...edit, start_time: e.target.value })} />
-            </label>
-            <label className="text-sm">Конец
-              <input type="time" className="mt-1 w-full rounded-xl border px-3 py-2" value={(edit.end_time || "").slice(0, 5)} onChange={(e) => setEdit({ ...edit, end_time: e.target.value })} />
-            </label>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary text-sm" onClick={() => { setItems((prev) => dedupeItems(prev.map((x) => (x.id === edit.id ? edit : x)))); setEdit(null); }}>Применить</button>
-            <button type="button" className="rounded-xl bg-slate-100 px-3 py-2 text-sm" onClick={() => setEdit(null)}>Отмена</button>
-            <button type="button" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600" onClick={() => { setItems((prev) => prev.filter((x) => x.id !== edit.id)); setEdit(null); }}>
-              <Trash2 className="mr-1 inline h-3 w-3" /> Удалить
-            </button>
-          </div>
-        </div>
-      )}
-
+      {note && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{note}</div>}
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Загрузка…</div>
-      ) : !groupId ? (
-        <div className="card p-6 text-sm text-slate-600">Выберите группу — иначе в сетке смешаются занятия всех групп и появятся «дубли».</div>
+        <div className="flex items-center gap-2 p-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Загрузка…</div>
       ) : (
-        <div className="schedule-shell overflow-x-auto">
-          <div className="min-w-[920px]">
-            <div className="grid" style={{ gridTemplateColumns: "56px repeat(6, 1fr)", gridTemplateRows: `48px repeat(${SLOTS.length}, 64px)` }}>
-              <div className="schedule-corner" />
-              {days.map(({ date, key }) => (
-                <div key={key} className={`schedule-day-head border-b px-2 py-2 text-center text-sm font-semibold ${key === today ? "schedule-day-today" : ""}`}>
-                  {new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(date)}{" "}
-                  {new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit" }).format(date)}
-                </div>
-              ))}
+        <div className="overflow-x-auto rounded-2xl border">
+          <table className="min-w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="border-b p-2 text-left"> </th>
+                {days.map((d) => (
+                  <th key={d.key} className="border-b p-2 text-center font-semibold">
+                    {d.date.toLocaleDateString("ru-RU", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
               {SLOTS.map((hour) => (
-                <Fragment key={`row-${hour}`}>
-                  <div className="border-r border-b px-1 py-2 text-xs text-slate-400">{String(hour).padStart(2, "0")}:00</div>
-                  {days.map(({ key }) => (
-                    <div key={`${key}-${hour}`} className="relative border-b border-r bg-white/40" onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(key, hour, e)}>
-                      {(grouped.get(key) || [])
-                        .filter((it) => Math.floor(timeToMinutes(it.start_time) / 60) === hour)
-                        .map((it) => (
+                <tr key={hour}>
+                  <td className="border-b px-2 py-6 text-xs text-slate-400">{String(hour).padStart(2, "0")}:00</td>
+                  {days.map((d) => {
+                    const cell = (grouped.get(d.key) || []).filter((x) => Math.floor(timeToMinutes(x.start_time) / 60) === hour);
+                    return (
+                      <td
+                        key={d.key + hour}
+                        className="border-b border-l p-1 align-top"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => onDrop(d.key, hour, e)}
+                      >
+                        {cell.map((it) => (
                           <div
                             key={it.id}
                             draggable
-                            onDragStart={() => setDragId(it.id)}
+                            onDragStart={() => setDragId(String(it.id))}
                             onClick={() => setEdit(it)}
-                            className="m-0.5 cursor-grab rounded-lg border border-indigo-200 bg-indigo-50 px-1.5 py-1 text-[11px] leading-tight active:cursor-grabbing"
-                            title="Перетащите или нажмите для редактирования"
+                            className="mb-1 cursor-grab rounded-lg bg-indigo-50 px-2 py-1 text-left text-xs shadow-sm hover:bg-indigo-100"
                           >
-                            <div className="font-semibold text-indigo-900">{it.subject_name}</div>
-                            <div className="text-indigo-600/80">{(TYPE_LABELS[it.type] || it.type).slice(0, 8)} · {it.start_time?.slice(0, 5)}</div>
+                            <div className="font-semibold">{it.subject_name}</div>
+                            <div className="text-[10px] text-slate-500">{TYPE_LABELS[it.type] || it.type} · {(it.start_time || "").slice(0, 5)}</div>
                           </div>
                         ))}
-                      {key === today && hour === Math.floor(now.minutes / 60) && showNow && (
-                        <div className="schedule-now-line" style={{ top: nowTop % 64 }} aria-label={`Сейчас ${now.timeLabel}`}>
-                          <span className="schedule-now-dot" />
-                          <span className="schedule-now-label">{now.timeLabel}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </Fragment>
+                      </td>
+                    );
+                  })}
+                </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {edit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="card max-w-md space-y-3 p-5">
+            <h2 className="font-bold">Редактировать</h2>
+            <input className="w-full rounded-xl border px-3 py-2" value={edit.subject_name} onChange={(e) => setEdit({ ...edit, subject_name: e.target.value })} />
+            <div className="grid grid-cols-2 gap-2">
+              <input type="time" className="rounded-xl border px-3 py-2" value={(edit.start_time || "").slice(0, 5)} onChange={(e) => setEdit({ ...edit, start_time: e.target.value })} />
+              <input type="time" className="rounded-xl border px-3 py-2" value={(edit.end_time || "").slice(0, 5)} onChange={(e) => setEdit({ ...edit, end_time: e.target.value })} />
+            </div>
+            <select className="w-full rounded-xl border px-3 py-2" value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
+              {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+            </select>
+            <input className="w-full rounded-xl border px-3 py-2" placeholder="Аудитория" value={edit.room || ""} onChange={(e) => setEdit({ ...edit, room: e.target.value })} />
+            <div className="flex justify-between gap-2">
+              <button type="button" className="text-rose-600" onClick={() => { setItems((p) => p.filter((x) => x.id !== edit.id)); setEdit(null); }}><Trash2 className="inline h-4 w-4" /> Удалить</button>
+              <div className="flex gap-2">
+                <button type="button" className="btn-secondary" onClick={() => setEdit(null)}>Отмена</button>
+                <button type="button" className="btn-primary" onClick={() => { setItems((p) => dedupeItems(p.map((x) => (x.id === edit.id ? edit : x)))); setEdit(null); }}>OK</button>
+              </div>
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Drag-and-drop · клик — правка · за неделю {weekItems.length} / всего {items.length} (без дублей)
-          </p>
         </div>
       )}
     </div>
