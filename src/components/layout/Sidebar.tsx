@@ -23,6 +23,7 @@ const navItems = [
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
   { href: "/cards", label: "Карточки SRS", icon: Brain },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
+  { href: "/lectures", label: "Лекции", icon: BookOpen },
   { href: "/materials", label: "Материалы", icon: FolderOpen },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
   { href: "/community", label: "Сообщество", icon: Users },
@@ -98,7 +99,7 @@ export function Sidebar() {
           </div>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{displayName}</div>
-            <div className="text-xs opacity-60">{roleLabel}</div>
+            <div className="text-[10px] opacity-60">{roleLabel}</div>
           </div>
         </div>
       </div>
