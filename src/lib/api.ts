@@ -1,6 +1,4 @@
 /** API client for SpaceWeb backend. */
-// Browser API is always same-origin. This prevents a stale Vercel NEXT_PUBLIC_API_URL
-// from forcing insecure HTTP requests and bypassing the HTTPS Vercel rewrite.
 const API_URL="/api/v1";
 export type ApiSuccess<T>={ok:true;data:T;requestId:string};
 export type ApiError={ok:false;error:{code:string;message:string;details?:unknown};requestId:string};
@@ -13,7 +11,7 @@ export async function login(email:string,password:string){return api<{access_tok
 export async function me(){return api<{user:unknown;roles?:string[];groups?:unknown[]}>("/auth/me")}
 export async function refreshSession(){const refreshToken=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!refreshToken)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:refreshToken})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
 export async function health(){return api<{status:string;phase?:string}>("/health")}
-export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
+export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string;slug?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
 export async function listGroups(){return api<{items:unknown[]}>("/groups")}
 export type ApiTest={id:string;title?:string;name?:string;description?:string|null;subject_id?:string|null;subject_name?:string|null;questions_count?:number;type?:string;is_published?:boolean};
 export async function listTests(subjectId?:string){return api<{items:ApiTest[]}>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
@@ -90,9 +88,21 @@ export async function adminListQuestions(params:Record<string,string|number|unde
 export async function adminCreateQuestion(payload:Partial<BankQuestion>&{text:string}){return api<{question:BankQuestion}>("/admin/questions",{method:"POST",body:JSON.stringify(payload)})}
 export async function adminUpdateQuestion(id:string,payload:Partial<BankQuestion>){return api<{question:BankQuestion}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"PUT",body:JSON.stringify(payload)})}
 export async function adminDeleteQuestion(id:string){return api<{deleted:boolean}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"DELETE"})}
-/** Subject lesson plans (official curriculum sheets) */
 export type SubjectPlanWeek={date?:string;week?:number;lecture?:string;practice?:string;study?:string[];control?:string|null;lab_detail?:string|null};
 export type SubjectPlan={subject:string;subject_slug:string;semester?:string;control?:string;weeks:SubjectPlanWeek[]};
 export async function getSubjectPlan(slug:string){return api<{plan:SubjectPlan;schedule_count:number}>(`/subject-plans/${encodeURIComponent(slug)}`)}
 export async function getLessonPlan(params:{date?:string;subject_slug?:string;subject?:string}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v)q.set(k,v)});return api<{lesson:SubjectPlanWeek|null;weeks:SubjectPlanWeek[];plan_meta?:Record<string,unknown>}>(`/lesson-plan?${q}`)}
 export async function adminSaveSubjectPlans(plans:SubjectPlan[]){return api<{plans:SubjectPlan[];count:number}>("/admin/subject-plans",{method:"PUT",body:JSON.stringify({plans})})}
+export async function listSubjectsCatalog(){return api<{items:Array<{id:string;name:string;slug:string;control_type?:string;hours_note?:string;category?:string;icon?:string;blurb?:string;course?:number;semester?:number}>;program?:string;semester_label?:string;curriculum?:Record<string,unknown>}>("/subjects-catalog")}
+
+/** AI lectures */
+export type LectureListItem={id:string;title:string;subject:string;subject_slug:string;topic:string;summary?:string;published_at?:string|null;media_count?:number;status?:string}
+export type Lecture=LectureListItem&{body_md:string;media?:Array<Record<string,unknown>>;sources?:Array<Record<string,unknown>>;generation?:Record<string,unknown>}
+export async function listLectures(subject?:string){return api<{items:LectureListItem[];count:number}>(`/lectures${subject?`?subject=${encodeURIComponent(subject)}`:""}`)}
+export async function getLecture(id:string){return api<{lecture:Lecture}>(`/lectures/${encodeURIComponent(id)}`)}
+export async function adminListLectures(status?:string){return api<{items:Lecture[];count:number}>(`/admin/lectures${status?`?status=${encodeURIComponent(status)}`:""}`)}
+export async function adminGenerateLecture(body:{subject_slug:string;topic:string;notes?:string}){return api<{lecture:Lecture}>("/admin/lectures/generate",{method:"POST",body:JSON.stringify(body)})}
+export async function adminUpdateLecture(id:string,patch:Record<string,unknown>){return api<{lecture:Lecture}>(`/admin/lectures/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
+export async function adminPublishLecture(id:string){return api<{lecture:Lecture}>(`/admin/lectures/${encodeURIComponent(id)}/publish`,{method:"POST"})}
+export async function adminRejectLecture(id:string){return api<{lecture:Lecture}>(`/admin/lectures/${encodeURIComponent(id)}/reject`,{method:"POST"})}
+export async function adminDeleteLecture(id:string){return api<{deleted:boolean}>(`/admin/lectures/${encodeURIComponent(id)}`,{method:"DELETE"})}
