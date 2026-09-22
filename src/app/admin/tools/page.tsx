@@ -98,6 +98,7 @@ export default function AdminToolsPage() {
             <Link href="/admin/schedule" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700">
               <CalendarDays className="h-4 w-4" /> Сетка расписания
             </Link>
+            <Link href="/admin/database" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700"><HardDrive className="h-4 w-4" /> База / Excel</Link>
             <Link href="/admin/questions" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700">
               <Ticket className="h-4 w-4" /> Вопросы / билеты
             </Link>
