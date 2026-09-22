@@ -89,8 +89,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             setSubject({
               id: hit.id,
               name: hit.name,
-              course_number: hit.course ?? 2,
-              semester: 3,
+              course_number: hit.course_number ?? null,
+              semester: hit.semester ?? null,
               control_type: hit.control_type || null,
             });
             const slug = hit.slug || SLUG_BY_NAME[hit.name.toLowerCase()];
