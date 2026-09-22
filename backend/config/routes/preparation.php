@@ -33,7 +33,7 @@ return static function (Router $router): void {
    $s=$db->prepare("select ps.*,t.title as test_title from public.test_preparation_sessions ps join public.tests t on t.id=ps.test_id where ps.id=:id and ps.user_id=:uid");
    $s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Preparation session not found',$r->requestId,404);return;}
-   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.name as module_name,top.name as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(:ids::uuid[])");
+   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.name as module_name,top.name as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
    $q->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$session['question_ids'])).'}']);$questions=$q->fetchAll()?:[];
    $a=$db->prepare("select question_id,answer_text,is_correct,score from public.test_preparation_results where session_id=:sid");$a->execute(['sid'=>$session['id']]);
    Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$a->fetchAll()?:[]],$r->requestId);
