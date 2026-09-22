@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Flag, useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -153,6 +153,7 @@ export default function AdminPage() {
           <Link href="/admin/questions" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Ticket className="h-4 w-4" />Экзаменационные билеты</Link>
           <Link href="/admin/lectures" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><BookOpen className="h-4 w-4" />AI-лекции</Link>
           <Link href="/admin/tools" className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700"><Settings2 className="h-4 w-4" />Импорт / tools</Link>
+          <Link href="/admin/problems" className="flex w-full items-center gap-3 rounded-xl bg-rose-50 px-3 py-2.5 text-left text-sm font-semibold text-rose-700"><Flag className="h-4 w-4" />Проблемы и работы</Link>
           <div className="my-2 border-t border-slate-100" />
           {([ ["overview", "Обзор", LayoutDashboard], ["schedule", "Расписание", CalendarDays], ["subjects", "Предметы", BookOpen], ["groups", "Группы", Users], ["content", "Контент", FileText], ["roles", "Пользователи", ShieldCheck], ["tools", "ДЗ / медиа", Settings2] ] as const).map(([id, label, Icon]) => (
             <button key={id} type="button" onClick={() => setTab(id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${tab === id ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"}`}>
