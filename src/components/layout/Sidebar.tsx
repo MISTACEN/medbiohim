@@ -1,11 +1,25 @@
 "use client";
 
+/**
+ * Боковое меню — короткая навигация по концепции Медбиохим.
+ * Лекции, билеты, практика, материалы, SRS — внутри страницы предмета.
+ */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Calendar, ClipboardList, BookOpen, GraduationCap, FileQuestion,
-  FolderOpen, TrendingUp, Users, Settings, LayoutDashboard, HelpCircle, Shield,
-  Bot, Calculator, Search, Brain,
+  Home,
+  Calendar,
+  ClipboardList,
+  BookOpen,
+  TrendingUp,
+  Users,
+  Settings,
+  LayoutDashboard,
+  HelpCircle,
+  Shield,
+  Bot,
+  Calculator,
+  Search,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -14,25 +28,23 @@ const navItems = [
   { href: "/", label: "Главная", icon: Home },
   { href: "/search", label: "Поиск", icon: Search },
   { href: "/schedule", label: "Расписание", icon: Calendar },
-  { href: "/homework", label: "Задания", icon: ClipboardList },
   { href: "/subjects", label: "Предметы", icon: BookOpen },
-  { href: "/curriculum", label: "Учебный план", icon: GraduationCap },
-  { href: "/tests", label: "Тесты", icon: FileQuestion },
-  { href: "/practice", label: "Практика", icon: BookOpen },
-  { href: "/tickets", label: "Билеты", icon: GraduationCap },
-  { href: "/tutor", label: "AI-тьютор", icon: Bot },
-  { href: "/cards", label: "Карточки SRS", icon: Brain },
-  { href: "/calculators", label: "Калькуляторы", icon: Calculator },
-  { href: "/lectures", label: "Лекции", icon: BookOpen },
-  { href: "/materials", label: "Материалы", icon: FolderOpen },
+  { href: "/homework", label: "Задания", icon: ClipboardList },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
   { href: "/community", label: "Сообщество", icon: Users },
+  { href: "/calculators", label: "Калькуляторы", icon: Calculator },
+  { href: "/tutor", label: "AI-тьютор", icon: Bot },
 ];
 
-const bottomItems = [
-  { href: "/admin", label: "Админ", icon: LayoutDashboard },
+const bottomItems: Array<{
+  href: string;
+  label: string;
+  icon: typeof Settings;
+  adminOnly?: boolean;
+}> = [
   { href: "/settings", label: "Настройки", icon: Settings },
   { href: "/help", label: "Помощь", icon: HelpCircle },
+  { href: "/admin", label: "Админ", icon: LayoutDashboard, adminOnly: true },
 ];
 
 export function Sidebar() {
@@ -40,33 +52,58 @@ export function Sidebar() {
   const { user } = useAuth();
   const displayName = user?.name || "Гость";
   const roleLabel =
-    user?.role === "teacher" ? "Преподаватель"
-    : user?.role === "admin" ? "Админ"
-    : user?.role === "moderator" ? "Модератор"
-    : user ? "Студент" : "Не авторизован";
+    user?.role === "teacher"
+      ? "Преподаватель"
+      : user?.role === "admin"
+        ? "Админ"
+        : user?.role === "moderator"
+          ? "Модератор"
+          : user
+            ? "Студент"
+            : "Не авторизован";
+
+  const showAdmin =
+    user?.role === "admin" || user?.role === "moderator" || user?.role === "teacher";
 
   return (
     <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-screen w-64 flex-col shadow-xl">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md" style={{ background: "var(--sidebar-active)" }}>
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md"
+          style={{ background: "var(--sidebar-active)" }}
+        >
           <Shield className="h-5 w-5" />
         </div>
         <div>
-          <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
-          <div className="text-[10px] font-medium uppercase tracking-wider opacity-60">образовательная платформа</div>
+          <div className="flex items-center gap-2">
+            <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
+            <span className="rounded-full bg-amber-400/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-950">
+              beta
+            </span>
+          </div>
+          <div className="text-[10px] font-medium uppercase tracking-wider opacity-60">
+            предмет · курс · семестр
+          </div>
         </div>
       </div>
+
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
           {navItems.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active =
+              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <li key={item.href}>
-                <Link href={item.href} className={clsx(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                  active ? "app-sidebar-active shadow-md" : "opacity-80 hover:bg-white/10 hover:opacity-100"
-                )}>
+                <Link
+                  href={item.href}
+                  className={clsx(
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    active
+                      ? "app-sidebar-active shadow-md"
+                      : "opacity-80 hover:bg-white/10 hover:opacity-100"
+                  )}
+                >
                   <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
                   <span className="flex-1">{item.label}</span>
                 </Link>
@@ -74,33 +111,39 @@ export function Sidebar() {
             );
           })}
         </ul>
+        <p className="mt-4 px-3 text-[10px] leading-relaxed opacity-50">
+          Лекции, билеты, практика, материалы и карточки — внутри выбранного предмета.
+        </p>
       </nav>
+
       <div className="border-t border-white/10 px-3 py-3">
         <ul className="space-y-1">
-          {bottomItems.map((item) => {
-            const active = pathname.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <li key={item.href}>
-                <Link href={item.href} className={clsx(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
-                  active ? "app-sidebar-active" : "opacity-70 hover:bg-white/10 hover:opacity-100"
-                )}>
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
+          {bottomItems
+            .filter((item) => !item.adminOnly || showAdmin)
+            .map((item) => {
+              const active = pathname.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={clsx(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                      active
+                        ? "app-sidebar-active shadow-md"
+                        : "opacity-80 hover:bg-white/10 hover:opacity-100"
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
         </ul>
-        <div className="mt-3 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "var(--sidebar-active)" }}>
-            {displayName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{displayName}</div>
-            <div className="text-[10px] opacity-60">{roleLabel}</div>
-          </div>
+        <div className="mt-3 rounded-xl bg-white/5 px-3 py-2.5">
+          <div className="truncate text-sm font-semibold">{displayName}</div>
+          <div className="text-[11px] opacity-60">{roleLabel}</div>
         </div>
       </div>
     </aside>
