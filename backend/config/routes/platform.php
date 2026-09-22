@@ -168,28 +168,7 @@ return static function (Router $router): void {
 
     $router->put('/api/v1/admin/schedule/local', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
-        $items = $req->json('items');
-        if (!is_array($items)) {
-            Response::error('VALIDATION_ERROR', 'items array required', $req->requestId, 422);
-            return;
-        }
-        try {
-            $store = new ContentStore();
-            $meta = $store->scheduleMeta();
-            $payload = [
-                'meta' => $meta ?: ['title' => 'Расписание', 'group_code' => 'МБ-201'],
-                'items' => array_values($items),
-                'updated_at' => gmdate('c'),
-                'count' => count($items),
-                'source' => 'admin_cms',
-            ];
-            $dir = dirname(__DIR__, 2) . '/data';
-            if (!is_dir($dir)) @mkdir($dir, 0775, true);
-            file_put_contents($dir . '/schedule.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL, LOCK_EX);
-            Response::success(['items' => $items, 'count' => count($items), 'source' => 'local'], $req->requestId);
-        } catch (\Throwable $e) {
-            Response::error('WRITE_ERROR', $e->getMessage(), $req->requestId, 500);
-        }
+        Response::error('GONE', 'Local JSON schedule storage has been retired. Use /api/v1/admin/schedule.', $req->requestId, 410);
     });
 
     $router->put('/api/v1/admin/schedule', static function (Request $req, array $params): void {
