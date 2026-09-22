@@ -50,6 +50,20 @@ final class ScheduleRepository
         return count($defaultIds) === 1 ? $defaultIds : [];
     }
 
+    public function calendarMeta(?int $course = null, ?int $semester = null): array
+    {
+        $params=[]; $where=[];
+        if($course!==null){$where[]='course_number=:course_number';$params['course_number']=$course;}
+        if($semester!==null){$where[]='semester=:semester';$params['semester']=$semester;}
+        $sql='SELECT id,title,type,start_date,end_date,notes,is_current FROM public.academic_calendar_periods';
+        if($where)$sql.=' WHERE '.implode(' AND ',$where);
+        $sql.=' ORDER BY start_date,end_date NULLS LAST,title';
+        $stmt=$this->db->prepare($sql);$stmt->execute($params);$periods=$stmt->fetchAll()?:[];
+        $stmt=$this->db->prepare('SELECT id,subject_id,subject_name,academic_hours,notes FROM public.subject_schedule_rules WHERE (:course IS NULL OR course_number=:course) AND (:semester IS NULL OR semester=:semester) ORDER BY subject_name');
+        $stmt->execute(['course'=>$course,'semester'=>$semester]);
+        return ['periods'=>$periods,'duration_rules'=>$stmt->fetchAll()?:[]];
+    }
+
     /** Latest active schedule version for groups the user belongs to. */
     public function listForUser(string $userId, ?string $from = null, ?string $to = null): array
     {
@@ -97,7 +111,17 @@ SELECT
     se.room,
     se.building,
     se.notes,
-    se.is_cancelled
+    se.is_cancelled,
+    se.teacher,
+    se.academic_hours,
+    se.week_parity,
+    se.recurrence_group,
+    se.parent_entry_id,
+    se.source_detail,
+    se.event_kind,
+    se.is_makeup,
+    se.session_id,
+    se.source
 FROM latest ls
 JOIN public.schedule_entries se ON se.schedule_id = ls.id
 JOIN public.groups g ON g.id = ls.group_id
@@ -248,10 +272,10 @@ SQL;
 
             $insert = $this->db->prepare(
                 'INSERT INTO public.schedule_entries
-                    (schedule_id, subject_id, subject_name, date, start_time, end_time, type, room, building, notes, is_cancelled, sort_order)
+                    (schedule_id, subject_id, subject_name, date, start_time, end_time, type, room, building, notes, is_cancelled, sort_order, teacher, academic_hours, week_parity, recurrence_group, parent_entry_id, source_detail, event_kind, is_makeup, session_id, source)
                  VALUES
                     (:schedule_id, :subject_id, :subject_name, :date, :start_time, :end_time,
-                     CAST(:type AS public.schedule_type), :room, :building, :notes, :is_cancelled, :sort_order)
+                     CAST(:type AS public.schedule_type), :room, :building, :notes, :is_cancelled, :sort_order, :teacher, :academic_hours, :week_parity, :recurrence_group, :parent_entry_id, :source_detail, :event_kind, :is_makeup, :session_id, :source)
                  RETURNING id'
             );
 
@@ -289,6 +313,16 @@ SQL;
                     'notes' => ($entry['notes'] ?? null) !== '' ? ($entry['notes'] ?? null) : null,
                     'is_cancelled' => (bool) ($entry['is_cancelled'] ?? false),
                     'sort_order' => $saved,
+                    'teacher' => ($entry['teacher'] ?? null) !== '' ? ($entry['teacher'] ?? null) : null,
+                    'academic_hours' => isset($entry['academic_hours']) ? (int)$entry['academic_hours'] : null,
+                    'week_parity' => ($entry['week_parity'] ?? null) !== '' ? ($entry['week_parity'] ?? null) : null,
+                    'recurrence_group' => ($entry['recurrence_group'] ?? null) !== '' ? ($entry['recurrence_group'] ?? null) : null,
+                    'parent_entry_id' => ($entry['parent_entry_id'] ?? null) ?: null,
+                    'source_detail' => ($entry['source_detail'] ?? null) !== '' ? ($entry['source_detail'] ?? null) : null,
+                    'event_kind' => ($entry['event_kind'] ?? 'class') ?: 'class',
+                    'is_makeup' => (bool)($entry['is_makeup'] ?? false),
+                    'session_id' => ($entry['session_id'] ?? null) ?: null,
+                    'source' => ($entry['source'] ?? 'official') ?: 'official',
                 ]);
                 $saved++;
             }
