@@ -283,10 +283,10 @@ final class TelegramHomeworkService
     {
         if ($description === '') return;
         $stmt = $this->db->prepare(
-            'UPDATE public.homeworks
-             SET description = CASE WHEN description IS NULL OR description = ''''
-                                    THEN :d ELSE description || E''\n'' || :d END
-             WHERE id = :id'
+            "UPDATE public.homeworks
+             SET description = CASE WHEN description IS NULL OR description = ''
+                                    THEN :d ELSE description || E'\\n' || :d END
+             WHERE id = :id"
         );
         $stmt->execute(['id' => $homeworkId, 'd' => $description]);
     }
