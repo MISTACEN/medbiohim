@@ -168,6 +168,7 @@ export type AcademicState = {
   recommendations: Array<Record<string,unknown>>;
   generated_at: string;
 };
+export async function syncAcademicState(){return api<{synced:boolean}>("/academic/sync",{method:"POST",body:"{}"})}
 export async function getAcademicState(){return api<AcademicState>("/academic/state")}
 export async function saveAcademicState(payload:Record<string,unknown>){return api<{state:Record<string,unknown>}>("/academic/state",{method:"PUT",body:JSON.stringify(payload)})}
 export async function generateAcademicAiPlan(){return api<{plan:Record<string,unknown>;items:Array<Record<string,unknown>>;source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
