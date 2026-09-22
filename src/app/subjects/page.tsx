@@ -65,8 +65,8 @@ function controlLabel(v?: string | null) {
 
 export default function SubjectsPage() {
   const { user } = useAuth();
-  const [course, setCourse] = useState<number | "">(user?.course ?? 2);
-  const [semester, setSemester] = useState<number | "">(3);
+  const [course, setCourse] = useState<number | "">(user?.course ?? "");
+  const [semester, setSemester] = useState<number | "">(user?.semester ?? "");
   const [items, setItems] = useState<Item[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,8 +74,9 @@ export default function SubjectsPage() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (user?.course != null && course === "") setCourse(user.course);
-  }, [user?.course, course]);
+    if (user?.course != null) setCourse(user.course);
+    if (user?.semester != null) setSemester(user.semester);
+  }, [user?.course, user?.semester]);
 
   useEffect(() => {
     let cancelled = false;
