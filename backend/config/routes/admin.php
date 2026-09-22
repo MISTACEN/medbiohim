@@ -48,6 +48,27 @@ $adminGridTables = [
 ];
 $adminGridGate = static function(Request $req)use($strictAdmin):bool{return $strictAdmin($req);};
 
+$adminKeyMap=['test_questions'=>['test_id','question_id'],'favorites'=>['user_id','target_type','target_id'],'site_content'=>['key'],'group_memberships'=>['group_id','user_id'],'user_roles'=>['user_id','role_id'],'test_answers'=>['attempt_id','question_id'],'homework_progress'=>['homework_id','user_id']];
+$router->get('/api/v1/admin/db/meta',static function(Request $req,array $params)use($adminGridGate,$adminGridTables,$adminKeyMap):void{
+ if(!$adminGridGate($req))return;$items=[];
+ foreach($adminGridTables as $t){try{$cols=SupabaseRest::select('information_schema_columns_not_exposed');$rows=SupabaseRest::select($t.'?select=*&limit=1');$columns=$rows?array_keys($rows[0]):[];$items[]=['name'=>$t,'items'=>count(SupabaseRest::select($t.'?select=*&limit=10000')),'primary_key'=>$adminKeyMap[$t]??['id'],'columns'=>$columns];}catch(\Throwable $e){$items[]=['name'=>$t,'items'=>null,'primary_key'=>$adminKeyMap[$t]??['id'],'columns'=>[],'error'=>$e->getMessage()];}}
+ Response::success(['items'=>$items],$req->requestId);
+});
+$router->patch('/api/v1/admin/db/{table}/row',static function(Request $req,array $params)use($adminGridGate,$adminGridTables,$adminKeyMap):void{
+ if(!$adminGridGate($req))return;$table=(string)$params['table'];if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available',$req->requestId,403);return;}
+ $p=is_array($req->jsonBody??null)?$req->jsonBody:[];$key=is_array($p['key']??null)?$p['key']:[];$row=is_array($p['row']??null)?$p['row']:[];$keys=$adminKeyMap[$table]??['id'];foreach($keys as $k)if(!array_key_exists($k,$key)||$key[$k]===''){Response::error('VALIDATION_ERROR','Missing key: '.$k,$req->requestId,422);return;}
+ try{$filters=[];foreach($key as $k=>$v)$filters[]=$k.'=eq.'.rawurlencode((string)$v);$old=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));if(!$old){Response::error('NOT_FOUND','Row not found',$req->requestId,404);return;}$new=SupabaseRest::patch($table.'?'.implode('&',$filters),$row,true);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'update','table_name'=>$table,'row_key'=>$key,'old_data'=>$old[0],'new_data'=>$new[0]??array_merge($old[0],$row),'source'=>'admin_ui'],false);Response::success(['item'=>$new[0]??array_merge($old[0],$row)],$req->requestId);
+ }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
+$router->delete('/api/v1/admin/db/{table}/row',static function(Request $req,array $params)use($adminGridGate,$adminGridTables,$adminKeyMap):void{
+ if(!$adminGridGate($req))return;$table=(string)$params['table'];if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available',$req->requestId,403);return;}
+ $p=is_array($req->jsonBody??null)?$req->jsonBody:[];$key=is_array($p['key']??null)?$p['key']:[];$keys=$adminKeyMap[$table]??['id'];foreach($keys as $k)if(!array_key_exists($k,$key)||$key[$k]===''){Response::error('VALIDATION_ERROR','Missing key: '.$k,$req->requestId,422);return;}
+ try{$filters=[];foreach($key as $k=>$v)$filters[]=$k.'=eq.'.rawurlencode((string)$v);$old=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));if(!$old){Response::error('NOT_FOUND','Row not found',$req->requestId,404);return;}SupabaseRest::deleteWhere($table.'?'.implode('&',$filters));SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'delete','table_name'=>$table,'row_key'=>$key,'old_data'=>$old[0],'new_data'=>null,'source'=>'admin_ui'],false);Response::success(['deleted'=>true],$req->requestId);
+ }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
+$router->get('/api/v1/admin/db/audit',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;$limit=min(500,max(1,(int)($req->query['limit']??200)));try{Response::success(['items'=>SupabaseRest::select('admin_change_log?select=*&order=created_at.desc&limit='.$limit)],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+});
 $router->get('/api/v1/admin/db/tables', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
     if(!$adminGridGate($req))return;
     $items=[];
