@@ -60,7 +60,7 @@ final class ScheduleRestStore
         if (!$latest) return [];
 
         $scheduleIds = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), array_values($latest))));
-        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,room,building,notes,is_cancelled&order=date.asc,start_time.asc';
+        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,session_id,room,building,notes,is_cancelled&order=date.asc,start_time.asc';
         if ($from !== null && $from !== '') $entryPath .= '&date=gte.' . rawurlencode($from);
         if ($to !== null && $to !== '') $entryPath .= '&date=lte.' . rawurlencode($to);
         $entries = self::request('GET', $entryPath);
@@ -106,6 +106,9 @@ final class ScheduleRestStore
                 'start_time' => $entry['start_time'] ?? null,
                 'end_time' => $entry['end_time'] ?? null,
                 'type' => (string) ($entry['type'] ?? 'other'),
+                'event_kind' => (string) ($entry['event_kind'] ?? 'class'),
+                'is_makeup' => (bool) ($entry['is_makeup'] ?? false),
+                'session_id' => $entry['session_id'] ?? null,
                 'room' => $entry['room'] ?? null,
                 'building' => $entry['building'] ?? null,
                 'notes' => $entry['notes'] ?? null,
