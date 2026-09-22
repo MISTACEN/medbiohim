@@ -43,7 +43,7 @@ $adminGridTables = [
     'subjects','groups','group_memberships','modules','topics','materials',
     'questions','tests','test_questions','test_attempts','test_answers',
     'homeworks','homework_progress','homework_submissions','schedules',
-    'schedule_entries','community_posts','comments','notes','favorites',
+    'schedule_entries','academic_sessions','curriculum_items','student_academic_states','academic_progress_history','ai_study_plans','ai_study_plan_items','community_posts','comments','notes','favorites',
     'exam_questions','ticket_banks','progress_ledger','site_content','learning_sessions'
 ];
 $adminGridGate = static function(Request $req)use($strictAdmin):bool{return $strictAdmin($req);};
