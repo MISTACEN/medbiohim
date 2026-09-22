@@ -87,9 +87,14 @@ return static function (Router $router): void {
             } catch (\Throwable $e) {}
             // Live dashboard schedule uses the same Supabase source as CMS.
             try {
-                $items = (new ScheduleRepository())->listForUser($req->user->id);
+                $tz = new \DateTimeZone('Asia/Vladivostok');
+                $today = new \DateTimeImmutable('now', $tz);
+                $from = $today->format('Y-m-d');
+                // Dashboard needs current/future events, not the first N rows of the semester.
+                $to = $today->modify('+42 days')->format('Y-m-d');
+                $items = (new ScheduleRepository())->listForUser($req->user->id, $from, $to);
                 if (is_array($items)) {
-                    $schedule = array_slice($items, 0, 60);
+                    $schedule = $items;
                     $scheduleSource = 'db';
                 }
             } catch (\Throwable $e) {}
