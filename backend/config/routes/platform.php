@@ -84,23 +84,15 @@ return static function (Router $router): void {
                 $store = new ContentStore();
                 try { $site = $store->getSite(); } catch (\Throwable $e) {}
                 try { $announcements = array_slice($store->listAnnouncements(), 0, 10); } catch (\Throwable $e) {}
-                try {
-                    $items = $store->listSchedule();
-                    if (is_array($items) && count($items) > 0) {
-                        $schedule = array_slice($items, 0, 60);
-                        $scheduleSource = 'local';
-                    }
-                } catch (\Throwable $e) {}
             } catch (\Throwable $e) {}
-            if ($scheduleSource === 'none') {
-                try {
-                    $items = (new ScheduleRepository())->listForUser($req->user->id);
-                    if (is_array($items) && count($items) > 0) {
-                        $schedule = array_slice($items, 0, 60);
-                        $scheduleSource = 'db';
-                    }
-                } catch (\Throwable $e) {}
-            }
+            // Live dashboard schedule uses the same Supabase source as CMS.
+            try {
+                $items = (new ScheduleRepository())->listForUser($req->user->id);
+                if (is_array($items)) {
+                    $schedule = array_slice($items, 0, 60);
+                    $scheduleSource = 'db';
+                }
+            } catch (\Throwable $e) {}
         } catch (\Throwable $e) {}
         Response::success([
             'profile' => $profile,
@@ -116,28 +108,20 @@ return static function (Router $router): void {
     // --- schedule ---
     $router->get('/api/v1/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
+        // Supabase is the single source of truth for the live schedule.
         $items = [];
-        $source = 'none';
+        $source = 'db';
         try {
-            $store = new ContentStore();
-            $items = $store->listSchedule();
-            $source = 'local';
-        } catch (\Throwable $e) {}
-        try {
-            if (!$items) {
-                $items = (new ScheduleRepository())->listForUser($req->user->id);
-                $source = 'db';
-            }
-        } catch (\Throwable $e) {}
+            $items = (new ScheduleRepository())->listForUser($req->user->id);
+        } catch (\Throwable $e) {
+            $items = [];
+            $source = 'db_error';
+        }
         if (!is_array($items)) $items = [];
         $from = isset($req->query['from']) ? trim((string)$req->query['from']) : '';
         $to = isset($req->query['to']) ? trim((string)$req->query['to']) : '';
-        if ($from !== '') {
-            $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
-        }
-        if ($to !== '') {
-            $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
-        }
+        if ($from !== '') $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
+        if ($to !== '') $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
         Response::success(['items' => $items, 'source' => $source], $req->requestId);
     });
 
@@ -152,17 +136,8 @@ return static function (Router $router): void {
             $items = (new ScheduleRepository())->listAll($groupId !== '' ? $groupId : null, $semester);
             if (is_array($items) && count($items) > 0) $source = 'db';
         } catch (\Throwable $e) {}
-        if (!is_array($items) || count($items) === 0) {
-            try {
-                $store = new ContentStore();
-                $items = $store->listSchedule();
-                $source = 'local';
-                Response::success(['items' => is_array($items)?$items:[], 'meta' => $store->scheduleMeta(), 'source' => $source], $req->requestId);
-                return;
-            } catch (\Throwable $e) {
-                $items = [];
-            }
-        }
+        // Never fall back to legacy local JSON: CMS and student schedule must stay identical.
+        if (!is_array($items)) $items = [];
         Response::success(['items' => is_array($items)?$items:[], 'source' => $source], $req->requestId);
     });
 
