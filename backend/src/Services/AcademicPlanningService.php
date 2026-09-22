@@ -34,9 +34,9 @@ final class AcademicPlanningService
                     count(*) filter (where item_type not in ('module','topic','subtopic'))::int as concrete
              from public.curriculum_items
              where is_active=true
-               and (:course is null or course_number=:course)
-               and (:semester is null or semester=:semester)",
-            [':course'=>$profile['course_number'],':semester'=>$profile['semester']]
+               and (:course_filter is null or course_number=:course_value)
+               and (:semester_filter is null or semester=:semester_value)",
+            [':course_filter'=>$profile['course_number'],':course_value'=>$profile['course_number'],':semester_filter'=>$profile['semester'],':semester_value'=>$profile['semester']]
         ) ?? ['total'=>0,'concrete'=>0];
 
         $states = $this->all(
@@ -169,7 +169,7 @@ final class AcademicPlanningService
         $row=$q->fetch() ?: [];
         $this->db->prepare("insert into public.academic_progress_history
             (user_id,subject_id,topic_id,curriculum_item_id,percent,learning_status,academic_status,source,metadata)
-            values (:u,:sid,:tid,:cid,:pct,:ls,:as,'manual',:meta::jsonb)")
+            values (:u,:sid,:tid,:cid,:pct,:ls,:as,'manual',cast(:meta as jsonb))")
             ->execute([
                 ':u'=>$userId,':sid'=>$subjectId ?: null,
                 ':tid'=>$targetType==='topic' ? $targetId : null,
@@ -215,7 +215,7 @@ final class AcademicPlanningService
             $old=$this->db->prepare("update public.ai_study_plans set status='archived',updated_at=now() where user_id=:u and status='active'");
             $old->execute([':u'=>$userId]);
             $ins=$this->db->prepare("insert into public.ai_study_plans(user_id,session_id,status,title,summary,context_snapshot,generated_by,model)
-                values(:u,:s,'active','Адаптивный план подготовки',:summary,:ctx::jsonb,:gen,:model) returning id");
+                values(:u,:s,'active','Адаптивный план подготовки',:summary,cast(:ctx as jsonb),:gen,:model) returning id");
             $ins->execute([
                 ':u'=>$userId,':s'=>$state['session']['id'] ?? null,':summary'=>$summary,
                 ':ctx'=>json_encode($context,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
@@ -225,7 +225,7 @@ final class AcademicPlanningService
 
             $item=$this->db->prepare("insert into public.ai_study_plan_items
                 (plan_id,user_id,subject_id,topic_id,curriculum_item_id,schedule_entry_id,priority,action_type,title,reason,due_at,metadata)
-                values(:p,:u,:sid,:tid,:cid,:eid,:priority,:action,:title,:reason,:due,:meta::jsonb)");
+                values(:p,:u,:sid,:tid,:cid,:eid,:priority,:action,:title,:reason,:due,cast(:meta as jsonb))");
             foreach($deterministic as $r){
                 $item->execute([
                     ':p'=>$planId,':u'=>$userId,':sid'=>$r['subject_id'] ?? null,':tid'=>$r['topic_id'] ?? null,
