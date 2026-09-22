@@ -43,7 +43,7 @@ final class SupabaseAcademic
         $subjects = self::request(
             'GET',
             'subjects?id=eq.' . rawurlencode($subjectId)
-            . '&select=id,name,course_number,semester,control_type,lecture_hours,practice_hours,is_active'
+            . '&select=id,name,course_number,semester,control_type,lecture_hours,practice_hours,self_study_hours,total_hours,credits,is_active'
         );
         if (!$subjects) return null;
 
