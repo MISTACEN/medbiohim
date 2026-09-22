@@ -22,6 +22,7 @@ return static function (Router $router): void {
         'tests.php',
         'homework.php',
         'files.php',
+        '00_admin_import_atomic.php',
         'admin.php',
         'platform.php',
         'tutor_rest.php',
