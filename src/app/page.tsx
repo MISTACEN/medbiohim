@@ -120,45 +120,28 @@ export default function DashboardPage() {
     return !["submitted", "graded", "done"].includes(s);
   });
 
-  const nearest = (() => {
-    const list = data?.schedule || [];
-    if (!list.length) return null;
-    const { today, hm } = khNowParts();
-    const upcoming = list
-      .filter((row) => {
-        if (row.is_cancelled) return false;
-        const date = String(row.date || "");
-        const start = String(row.start_time || row.startTime || "00:00").slice(0, 5);
-        if (!date) return false;
-        if (date < today) return false;
-        if (date === today && start < hm) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        const da = String(a.date || "");
-        const db = String(b.date || "");
-        if (da !== db) return da.localeCompare(db);
-        return String(a.start_time || a.startTime || "").localeCompare(
-          String(b.start_time || b.startTime || "")
-        );
-      });
-    return upcoming[0] || null;
-  })();
+  const scheduleSorted = [...(data?.schedule || [])]
+    .filter((row) => !row.is_cancelled && String(row.date || ""))
+    .sort((a, b) => {
+      const ka = String(a.date || "") + " " + String(a.start_time || a.startTime || "");
+      const kb = String(b.date || "") + " " + String(b.start_time || b.startTime || "");
+      return ka.localeCompare(kb);
+    });
 
-  const nearestTitle = nearest
-    ? String(nearest.subject_name || nearest.subject || nearest.title || "Занятие")
-    : "";
-  const nearestStart = nearest
-    ? String(nearest.start_time || nearest.startTime || "—").slice(0, 5)
-    : "";
-  const nearestEnd = nearest
-    ? String(nearest.end_time || nearest.endTime || "").slice(0, 5)
-    : "";
-  const nearestDate = nearest ? String(nearest.date || "") : "";
-  const nearestGroup = nearest
-    ? String(nearest.group_name || nearest.group_code || "")
-    : "";
-  const { today: khToday } = khNowParts();
+  const { today: khToday, hm: khHm } = khNowParts();
+  const todaySchedule = scheduleSorted.filter((row) => String(row.date || "") === khToday);
+  const nextFutureDate = scheduleSorted.map((row) => String(row.date || "")).find((date) => date > khToday) || null;
+  const futureSchedule = nextFutureDate ? scheduleSorted.filter((row) => String(row.date || "") === nextFutureDate) : [];
+  const dashboardSchedule = todaySchedule.length > 0 ? todaySchedule : futureSchedule;
+  const scheduleIsToday = todaySchedule.length > 0;
+  const nextScheduleDate = dashboardSchedule[0] ? String(dashboardSchedule[0].date || "") : "";
+  const nextAfterNow = dashboardSchedule.find((row) => {
+    const startTime = String(row.start_time || row.startTime || "00:00").slice(0, 5);
+    const date = String(row.date || "");
+    return date > khToday || (date === khToday && startTime >= khHm);
+  }) || null;
+  const nearest = nextAfterNow || dashboardSchedule[0] || null;
+
 
   if (authLoading || loading) {
     return (
@@ -258,21 +241,31 @@ export default function DashboardPage() {
             <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
               <Calendar className="h-4 w-4" /> Ближайшее занятие
             </div>
-            {nearest ? (
-              <>
-                <div className="text-lg font-semibold text-slate-900">{nearestTitle}</div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-slate-600">
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    {nearestDate && nearestDate !== khToday ? `${nearestDate} · ` : ""}
-                    {nearestStart}
-                    {nearestEnd ? `–${nearestEnd}` : ""}
-                  </span>
-                </div>
-                {nearestGroup ? (
-                  <p className="mt-1 text-xs text-slate-500">{nearestGroup}</p>
-                ) : null}
-              </>
+            {dashboardSchedule.length ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-slate-500">
+                  {scheduleIsToday ? "Сегодня" : `Ближайшие · ${nextScheduleDate}`}
+                </p>
+                {dashboardSchedule.slice(0, 8).map((row, index) => {
+                  const title = String(row.subject_name || row.subject || row.title || "Занятие");
+                  const startTime = String(row.start_time || row.startTime || "—").slice(0, 5);
+                  const endTime = String(row.end_time || row.endTime || "").slice(0, 5);
+                  const room = String(row.room || "");
+                  const teacher = String(row.teacher || "");
+                  return (
+                    <div key={String(row.id || index)} className={`rounded-xl border p-3 ${nextAfterNow?.id === row.id ? "border-indigo-200 bg-indigo-50/50" : "border-slate-100 bg-slate-50/50"}`}>
+                      <div className="font-semibold text-slate-900">{title}</div>
+                      <div className="mt-1 flex flex-wrap gap-x-2 text-sm text-slate-600">
+                        <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{startTime}{endTime ? `–${endTime}` : ""}</span>
+                        {room ? <span>ауд. {room}</span> : null}
+                        {teacher ? <span>{teacher}</span> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+                {dashboardSchedule.length > 8 ? <p className="pt-1 text-xs text-slate-500">Ещё {dashboardSchedule.length - 8} занятия — в расписании.</p> : null}
+                <Link href="/schedule" className="inline-flex items-center gap-1 pt-1 text-sm font-medium text-indigo-600">Открыть расписание <ChevronRight className="h-4 w-4" /></Link>
+              </div>
             ) : (
               <p className="text-slate-500">Нет ближайших занятий</p>
             )}
