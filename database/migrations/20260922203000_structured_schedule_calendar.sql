@@ -44,3 +44,33 @@ alter table public.schedule_entries
 create index if not exists idx_schedule_entries_recurrence on public.schedule_entries(schedule_id,recurrence_group,date);
 create index if not exists idx_schedule_entries_parent on public.schedule_entries(parent_entry_id);
 grant select on public.academic_calendar_periods, public.subject_schedule_rules to authenticated;
+
+-- Official 2nd year / 3rd semester 2026/2027 calendar metadata.
+insert into public.academic_calendar_periods(course_number,semester,title,type,start_date,end_date,notes,is_current)
+select 2,3,'Теоретическое обучение','theoretical','2026-09-01','2027-01-21','Официальный осенний семестр 2026/2027',true
+where not exists (select 1 from public.academic_calendar_periods where course_number=2 and semester=3 and type='theoretical' and start_date='2026-09-01');
+insert into public.academic_calendar_periods(course_number,semester,title,type,start_date,end_date,notes,is_current)
+select 2,3,'Экзаменационная сессия','exam_session','2027-01-22','2027-01-30','Экзамены: Теория вероятности и математическая статистика; Информатика, медицинская информатика',false
+where not exists (select 1 from public.academic_calendar_periods where course_number=2 and semester=3 and type='exam_session' and start_date='2027-01-22');
+insert into public.academic_calendar_periods(course_number,semester,title,type,start_date,end_date,notes,is_current)
+select 2,3,'Каникулы','holidays','2027-02-01','2027-02-06','Каникулы',false
+where not exists (select 1 from public.academic_calendar_periods where course_number=2 and semester=3 and type='holidays' and start_date='2027-02-01');
+insert into public.academic_calendar_periods(course_number,semester,title,type,start_date,end_date,notes,is_current)
+select 2,3,'Начало весеннего семестра','semester_start','2027-02-08',null,'Начало весеннего семестра',false
+where not exists (select 1 from public.academic_calendar_periods where course_number=2 and semester=3 and type='semester_start' and start_date='2027-02-08');
+
+insert into public.subject_schedule_rules(course_number,semester,subject_name,academic_hours)
+select v.course_number,v.semester,v.subject_name,v.academic_hours from (values
+(2,3,'Элективные курсы по физической культуре и спорту',2),
+(2,3,'Информационные технологии',2),
+(2,3,'Философия',2),
+(2,3,'Первая медицинская помощь',2),
+(2,3,'История медицины',3),
+(2,3,'Информатика, медицинская информатика',3),
+(2,3,'Гистология, цитология',3),
+(2,3,'Оптика, атомная физика',3),
+(2,3,'Органическая и физическая химия',3),
+(2,3,'Теория вероятности и математическая статистика',4),
+(2,3,'Физиология',4)
+) as v(course_number,semester,subject_name,academic_hours)
+where not exists (select 1 from public.subject_schedule_rules r where r.course_number=v.course_number and r.semester=v.semester and r.subject_name=v.subject_name);
