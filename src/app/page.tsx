@@ -46,7 +46,10 @@ export default function DashboardPage() {
   const { user, loading: authLoading, refresh } = useAuth();
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);\n  const [academic, setAcademic] = useState<AcademicState | null>(null);\n  const [academicLoading, setAcademicLoading] = useState(false);\n  const [academicError, setAcademicError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [academic, setAcademic] = useState<AcademicState | null>(null);
+  const [academicLoading, setAcademicLoading] = useState(false);
+  const [academicError, setAcademicError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +60,9 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const res = await getDashboard();\n        const academicRes = await getAcademicState();\n        if (!cancelled && academicRes.ok) setAcademic(academicRes.data);
+        const res = await getDashboard();
+        const academicRes = await getAcademicState();
+        if (!cancelled && academicRes.ok) setAcademic(academicRes.data);
         if (cancelled) return;
         if (res.ok) {
           setData({
