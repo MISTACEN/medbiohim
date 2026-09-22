@@ -19,6 +19,7 @@ import {
 import {
   getSubject,
   getSubjectPlan,
+  getSubjectGradebook,
   listSubjectsCatalog,
   type SubjectPlan,
   type SubjectPlanWeek,
@@ -31,6 +32,8 @@ type Subject = {
   course_number?: number | null;
   semester?: number | null;
   control_type?: string | null;
+  total_hours?: number | null;
+  credits?: number | null;
 };
 type Topic = { id?: string; title?: string };
 type Module = { id?: string; title?: string; topics?: Topic[] };
@@ -62,6 +65,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
+  const [gradebook, setGradebook] = useState<Array<{display_name:string;hours?:number|null;credits?:number|null;control_form?:string|null;hours_scope?:string;source_note?:string|null}>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [block, setBlock] = useState<BlockId>("plan");
@@ -102,6 +106,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           const s = r.data.subject as Subject;
           setSubject((prev) => prev || s);
           setModules(Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
+          const gb = await getSubjectGradebook(p.id);
+          if (!cancelled && gb.ok) setGradebook(gb.data.items || []);
           const slug =
             SLUG_BY_NAME[(s.name || "").toLowerCase()] ||
             (s.name || "").toLowerCase().replace(/\s+/g, "_");
@@ -168,6 +174,29 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 : ""}
             </p>
           </header>
+
+          <section className="card border-indigo-100 bg-indigo-50/40 p-4">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-semibold text-slate-800">Учебная нагрузка:</span>
+              {subject.total_hours != null && <span>{subject.total_hours} ч</span>}
+              {subject.credits != null && <span>· {subject.credits} з.е.</span>}
+            </div>
+            {gradebook.length > 0 && (
+              <div className="mt-2 text-sm text-slate-600">
+                <span className="font-semibold text-slate-800">Для зачётки:</span>{" "}
+                {gradebook.map((g, i) => (
+                  <span key={i}>
+                    {i > 0 ? " · " : ""}
+                    {g.display_name}
+                    {g.hours != null ? " (" + g.hours + (g.credits != null ? "/" + g.credits : " ч") + ")" : ""}
+                  </span>
+                ))}
+              </div>
+            )}
+            {gradebook.some((g) => g.source_note) && (
+              <p className="mt-2 text-xs text-amber-700">В отдельных строках фото и XLSX содержат разные значения; они не смешиваются и сохранены раздельно.</p>
+            )}
+          </section>
 
           <div className="flex flex-wrap gap-2">
             {BLOCKS.map((b) => {
