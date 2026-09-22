@@ -96,4 +96,22 @@ final class HttpClient
             'json' => is_array($json) ? $json : null,
         ];
     }
+    /** @param array<string,string> $form */
+    public static function form(string $method, string $url, array $form = [], array $headers = [], int $timeout = 15): array
+    {
+        $payload = http_build_query($form, '', '&', PHP_QUERY_RFC3986);
+        $headers = array_merge(['Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'], $headers);
+        if (extension_loaded('curl')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [CURLOPT_CUSTOMREQUEST=>$method, CURLOPT_RETURNTRANSFER=>true, CURLOPT_HTTPHEADER=>$headers, CURLOPT_TIMEOUT=>$timeout, CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_POSTFIELDS=>$payload]);
+            $body = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch);
+            if ($body === false) { Logger::error('http_client_curl_form',['error'=>$err,'url'=>$url]); return ['status'=>0,'body'=>'','json'=>null]; }
+            $json=json_decode($body,true); return ['status'=>$status,'body'=>$body,'json'=>is_array($json)?$json:null];
+        }
+        $opts=['http'=>['method'=>$method,'header'=>implode("\\r\\n",$headers),'timeout'=>$timeout,'ignore_errors'=>true,'content'=>$payload]];
+        $body=@file_get_contents($url,false,stream_context_create($opts)); $status=0;
+        if(isset($http_response_header[0])&&preg_match('/\\s(\\d{3})\\s/',$http_response_header[0],$m))$status=(int)$m[1];
+        if($body===false)return ['status'=>0,'body'=>'','json'=>null]; $json=json_decode($body,true); return ['status'=>$status,'body'=>$body,'json'=>is_array($json)?$json:null];
+    }
+
 }
