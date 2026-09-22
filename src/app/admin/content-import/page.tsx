@@ -1,0 +1,82 @@
+"use client";
+
+import { ChangeEvent, useRef, useState } from "react";
+import Link from "next/link";
+import * as XLSX from "xlsx";
+import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
+import { adminContentImport, hasToken } from "@/lib/api";
+
+type Row = Record<string, unknown>;
+const headers={
+  tests:["id","title","subject_slug","module_id","topic_id","time_limit_sec","max_attempts","is_published"],
+  questions:["id","text","subject_slug","module_id","topic_id","type","answer","options","difficulty","is_published"],
+  test_questions:["test_id","question_id","order_index"],
+};
+
+function downloadTemplate(){
+  const wb=XLSX.utils.book_new();
+  for(const [name,cols] of Object.entries(headers)){
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cols]),name);
+  }
+  XLSX.writeFile(wb,"medbiohim-content-template.xlsx");
+}
+function normalize(v:unknown):unknown{
+  if(v===undefined||v===null)return "";
+  if(typeof v==="number"||typeof v==="boolean")return v;
+  const s=String(v).trim();
+  if(s==="")return "";
+  if(s==="true")return true;
+  if(s==="false")return false;
+  return s;
+}
+async function readWorkbook(file:File){
+  const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+  const result:{tests:Row[];questions:Row[];test_questions:Row[]}={tests:[],questions:[],test_questions:[]};
+  for(const key of Object.keys(result)){
+    const sheet=wb.Sheets[key];
+    if(sheet) result[key as keyof typeof result]=XLSX.utils.sheet_to_json<Row>(sheet,{defval:""}).map(row=>Object.fromEntries(Object.entries(row).map(([k,v])=>[k,normalize(v)])));
+  }
+  return result;
+}
+
+export default function AdminContentImportPage(){
+  const input=useRef<HTMLInputElement>(null);
+  const [data,setData]=useState<{tests:Row[];questions:Row[];test_questions:Row[]}>({tests:[],questions:[],test_questions:[]});
+  const [fileName,setFileName]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [message,setMessage]=useState("");
+  const [errors,setErrors]=useState<Array<{sheet:string;row:number;error:string}>>([]);
+
+  async function choose(e:ChangeEvent<HTMLInputElement>){
+    const f=e.target.files?.[0]; if(!f)return;
+    try{setData(await readWorkbook(f));setFileName(f.name);setMessage("Файл прочитан. Проверьте количество строк и запустите проверку.");setErrors([]);}
+    catch(err){setMessage(err instanceof Error?err.message:"Не удалось прочитать Excel");}
+    e.target.value="";
+  }
+  async function run(dry_run:boolean){
+    setBusy(true);setErrors([]);setMessage(dry_run?"Проверяю связи и значения…":"Импортирую в Supabase…");
+    const res=await adminContentImport({...data,dry_run});
+    if(res.ok){
+      setErrors(res.data.errors);
+      setMessage(dry_run
+        ? (res.data.errors.length?"Есть ошибки — исправьте файл и проверьте снова.":"Проверка пройдена: можно импортировать.")
+        : "Импорт завершён: тестов "+res.data.created.tests+", вопросов "+res.data.created.questions+", связей "+res.data.created.test_questions+".");
+    }else setMessage(res.error.message);
+    setBusy(false);
+  }
+  if(!hasToken())return <div className="card mx-auto max-w-md p-8 text-center"><h1 className="page-title">Импорт контента</h1><p className="page-subtitle">Сначала войдите.</p><Link href="/login" className="btn-primary mt-4 inline-flex">Войти</Link></div>;
+
+  const counts=[["tests","Тесты"],["questions","Вопросы"],["test_questions","Связи"]].map(([k,label])=>[label,data[k as keyof typeof data].length] as const);
+  return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
+    <header><Link href="/admin" className="text-sm text-indigo-600">← Админ</Link><h1 className="mt-1 page-title flex items-center gap-2"><FileSpreadsheet className="h-6 w-6"/>Импорт тестов и вопросов</h1><p className="page-subtitle">Excel → Supabase: тесты, вопросы и их порядок. Сначала проверка, затем запись.</p></header>
+    <div className="grid gap-4 md:grid-cols-3">
+      <div className="card md:col-span-2"><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={downloadTemplate}><Download className="mr-2 inline h-4 w-4"/>Скачать шаблон Excel</button><button className="btn-primary" onClick={()=>input.current?.click()}><Upload className="mr-2 inline h-4 w-4"/>Загрузить Excel</button><input ref={input} hidden type="file" accept=".xlsx,.xls" onChange={choose}/></div><p className="mt-3 text-xs text-slate-500">{fileName||"Ожидается файл medbiohim-content-template.xlsx"}</p></div>
+      <div className="card"><div className="text-xs font-bold uppercase tracking-wider text-slate-400">Загружено</div><div className="mt-2 space-y-1 text-sm">{counts.map(([l,n])=><div className="flex justify-between" key={l}><span>{l}</span><b>{n}</b></div>)}</div></div>
+    </div>
+    {message&&<div className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-700">{message}</div>}
+    <div className="card"><h2 className="font-bold">Как заполнять</h2><ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600"><li><b>subject_slug</b> — slug, code или точное название предмета из Supabase.</li><li><b>type</b> — mcq, open, problem, theory или practical.</li><li><b>options</b> — JSON-массив или варианты через символ <code>|</code>.</li><li>В <b>test_questions</b> можно указывать ID созданного теста/вопроса или значения из колонок id исходных строк.</li></ul></div>
+    {errors.length>0&&<div className="card border-rose-200"><h2 className="font-bold text-rose-700">Ошибки ({errors.length})</h2><div className="mt-3 max-h-72 overflow-auto space-y-2">{errors.map((e,i)=><div key={i} className="rounded-lg bg-rose-50 p-2 text-xs text-rose-700">{e.sheet}, строка {e.row}: {e.error}</div>)}</div></div>}
+    <div className="flex flex-wrap gap-2"><button disabled={busy||(!data.tests.length&&!data.questions.length)} className="btn-secondary disabled:opacity-50" onClick={()=>void run(true)}><CheckCircle2 className="mr-2 inline h-4 w-4"/>Проверить файл</button><button disabled={busy||(!data.tests.length&&!data.questions.length)||errors.length>0} className="btn-primary disabled:opacity-50" onClick={()=>void run(false)}>Импортировать в Supabase</button></div>
+    <p className="text-xs text-slate-400">Импорт доступен только администратору. Для повторной загрузки используйте новые UUID или отдельный набор.</p>
+  </main>;
+}
