@@ -138,3 +138,16 @@ export async function adminDbAudit(limit=200){return api<{items:AdminDbRow[]}>(`
 
 export async function adminContentArchive(table:"tests"|"questions",id:string){return api<{item:AdminDbRow|null}>("/admin/content/archive",{method:"POST",body:JSON.stringify({table,id})})}
 export async function adminContentMove(table:"tests"|"questions",id:string,patch:{subject_id?:string|null;module_id?:string|null;topic_id?:string|null}){return api<{item:AdminDbRow|null}>("/admin/content/move",{method:"POST",body:JSON.stringify({table,id,...patch})})}
+
+
+export type PreparationQuestion={id:string;body?:string;text?:string;options?:string[];type?:string;answer?:string|null;topic_id?:string|null;topic_name?:string|null;module_name?:string|null};
+export type PreparationSession={id:string;test_id:string;mode:"full"|"count";question_limit?:number|null;question_ids:string[];current_index:number;status:string;last_saved_at?:string};
+export async function startPreparation(testId:string,mode:"full"|"count"="full",questionLimit?:number){return api<{session:PreparationSession}>(`/tests/${encodeURIComponent(testId)}/preparation/start`,{method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})})}
+export async function getPreparation(id:string){return api<{session:PreparationSession;questions:PreparationQuestion[];answers:Array<{question_id:string;answer_text?:string|null;is_correct?:boolean|null}>}>(`/tests/preparation/${encodeURIComponent(id)}`)}
+export async function savePreparation(id:string,payload:{current_index?:number;question_id?:string;answer_text?:string|null}){return api<{session:PreparationSession;result?:unknown}>(`/tests/preparation/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(payload)})}
+export async function finishPreparation(id:string){return api<{session:PreparationSession;stats:{total:number;answered:number;correct:number;wrong:number;unanswered:number;percent:number};topics:Array<Record<string,unknown>>;errors:Array<Record<string,unknown>}>(`/tests/preparation/${encodeURIComponent(id)}/finish`,{method:"POST",body:"{}"})}
+export async function reportQuestion(questionId:string,category:string,message?:string){return api<{item:Record<string,unknown>;duplicate?:boolean}>(`/questions/${encodeURIComponent(questionId)}/report`,{method:"POST",body:JSON.stringify({category,message})})}
+export async function adminProblemCenter(){return api<{problems:Array<Record<string,unknown>>;reports:Array<Record<string,unknown>>;works:Array<Record<string,unknown>>}>("/admin/problem-center")}
+export async function adminUpdateQuestionReport(id:string,status:"new"|"reviewing"|"fixed"|"rejected"){return api<{item:Record<string,unknown>}>(`/admin/question-reports/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify({status})})}
+export async function adminCreateWork(payload:{title:string;description?:string;priority?:string;question_id?:string;report_id?:string}){return api<{item:Record<string,unknown>}>("/admin/problem-center/work",{method:"POST",body:JSON.stringify(payload)})}
+export async function adminUpdateWork(id:string,patch:Record<string,unknown>){return api<{item:Record<string,unknown>}>(`/admin/problem-center/work/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
