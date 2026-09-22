@@ -173,6 +173,15 @@ return static function (Router $router): void {
         }
     });
 
+    $router->get('/api/v1/subjects/{id}/gradebook', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            Response::success(['items' => SupabaseRest::subjectGradebook((string)$params['id'])], $req->requestId);
+        } catch (\Throwable $e) {
+            Response::error('DB_UNAVAILABLE', 'Не удалось загрузить данные для зачётки', $req->requestId, 503);
+        }
+    });
+
     $router->post('/api/v1/subjects', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) {
             return;
