@@ -106,3 +106,11 @@ export async function adminUpdateLecture(id:string,patch:Record<string,unknown>)
 export async function adminPublishLecture(id:string){return api<{lecture:Lecture}>(`/admin/lectures/${encodeURIComponent(id)}/publish`,{method:"POST"})}
 export async function adminRejectLecture(id:string){return api<{lecture:Lecture}>(`/admin/lectures/${encodeURIComponent(id)}/reject`,{method:"POST"})}
 export async function adminDeleteLecture(id:string){return api<{deleted:boolean}>(`/admin/lectures/${encodeURIComponent(id)}`,{method:"DELETE"})}
+
+
+export type AdminDbRow = Record<string, unknown>;
+export async function adminDbTables(){return api<{items:Array<{name:string;items:number|null;error?:string}>}>("/admin/db/tables")}
+export async function adminDbList(table:string,limit=200){return api<{items:AdminDbRow[]}>(`/admin/db/${encodeURIComponent(table)}?limit=${limit}`)}
+export async function adminDbInsert(table:string,row:AdminDbRow){return api<{item:AdminDbRow}>(`/admin/db/${encodeURIComponent(table)}`,{method:"POST",body:JSON.stringify(row)})}
+export async function adminDbUpdate(table:string,id:string,row:AdminDbRow){return api<{item:AdminDbRow}>(`/admin/db/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(row)})}
+export async function adminDbDelete(table:string,id:string){return api<{deleted:boolean}>(`/admin/db/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,{method:"DELETE"})}
