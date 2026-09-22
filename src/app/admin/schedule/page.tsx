@@ -10,7 +10,6 @@ import Link from "next/link";
 import {
   adminListSchedule,
   adminSaveSchedule,
-  adminSaveScheduleLocal,
   listGroups,
   hasToken,
   type ScheduleItem,
@@ -205,17 +204,12 @@ export default function AdminSchedulePage() {
     const clean = dedupeItems(items).map((x) => ({ ...x, group_id: groupId }));
     setItems(clean);
     const db = await adminSaveSchedule({ group_id: groupId, semester: 3, entries: clean });
-    const local = await adminSaveScheduleLocal(clean);
     setSaving(false);
-    if (!db.ok && !local.ok) {
+    if (!db.ok) {
       setNote(db.error.message);
       return;
     }
-    setNote(
-      db.ok
-        ? `Сохранено в БД · версия ${(db.data as { version?: number }).version ?? "—"} · ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} занятий${local.ok ? ` · кэш JSON ${local.data.count}` : ""}`
-        : `БД недоступна (${db.error.message}) · записан только кэш JSON: ${local.ok ? local.data.count : "ошибка"}`
-    );
+    setNote(`Сохранено в БД · версия ${(db.data as { version?: number }).version ?? "—"} · ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} занятий`);
     await load();
   }
 
