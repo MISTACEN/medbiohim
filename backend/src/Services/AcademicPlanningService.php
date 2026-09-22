@@ -79,8 +79,10 @@ final class AcademicPlanningService
                           and coalesce(e.is_cancelled,false)=false";
         $params = [];
         if ($groups !== []) {
-            $scheduleSql .= " and exists (select 1 from public.schedules sc where sc.id=e.schedule_id and sc.group_id = any(:g::uuid[]))";
-            $params[':g'] = '{' . implode(',', array_map(static fn($x) => '"' . $x . '"', $groups)) . '}';
+            $scheduleSql .= " and exists (select 1 from public.schedules sc where sc.id=e.schedule_id and sc.group_id = any(cast(:g as uuid[])))";
+            $params[':g'] = '{' . implode(',', $groups) . '}';
+        } else {
+            $scheduleSql .= ' and false';
         }
         $scheduleSql .= " order by e.date,e.start_time limit 120";
         $schedule = $this->all($scheduleSql, $params);
