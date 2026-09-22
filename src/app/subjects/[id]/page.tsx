@@ -106,7 +106,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           const s = r.data.subject as Subject;
           setSubject((prev) => prev || s);
           setModules(Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
-          const gb = await getSubjectGradebook(p.id);
+          const gb = await getSubjectGradebook(s.id);
           if (!cancelled && gb.ok) setGradebook(gb.data.items || []);
           const slug =
             SLUG_BY_NAME[(s.name || "").toLowerCase()] ||
