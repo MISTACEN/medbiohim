@@ -128,3 +128,10 @@ export async function adminContentImport(payload:AdminContentImportPayload){
     {method:"POST",body:JSON.stringify(payload)}
   );
 }
+
+
+export type AdminDbMeta = {name:string;items:number|null;primary_key:string[];columns:string[]};
+export async function adminDbMeta(){return api<{items:AdminDbMeta[]}>("/admin/db/meta");}
+export async function adminDbUpdateByKey(table:string,key:AdminDbRow,row:AdminDbRow){return api<{item:AdminDbRow}>(`/admin/db/${encodeURIComponent(table)}/row`,{method:"PATCH",body:JSON.stringify({key,row})});}
+export async function adminDbDeleteByKey(table:string,key:AdminDbRow){return api<{deleted:boolean}>(`/admin/db/${encodeURIComponent(table)}/row`,{method:"DELETE",body:JSON.stringify({key})});}
+export async function adminDbAudit(limit=200){return api<{items:AdminDbRow[]}>(`/admin/db/audit?limit=${limit}`);}
