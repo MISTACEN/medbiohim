@@ -104,7 +104,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         if (cancelled) return;
         if (r.ok) {
           const s = r.data.subject as Subject;
-          setSubject((prev) => prev || s);
+          setSubject((prev) => (prev ? { ...prev, ...s } : s));
           setModules(Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
           const gb = await getSubjectGradebook(s.id);
           if (!cancelled && gb.ok) setGradebook(gb.data.items || []);
