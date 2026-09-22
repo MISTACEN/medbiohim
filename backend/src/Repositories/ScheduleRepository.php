@@ -179,7 +179,17 @@ SELECT
     se.room,
     se.building,
     se.notes,
-    se.is_cancelled
+    se.is_cancelled,
+    se.teacher,
+    se.academic_hours,
+    se.week_parity,
+    se.recurrence_group,
+    se.parent_entry_id,
+    se.source_detail,
+    se.event_kind,
+    se.is_makeup,
+    se.session_id,
+    se.source
 FROM latest ls
 JOIN public.groups g ON g.id = ls.group_id
 LEFT JOIN public.academic_years ay ON ay.id = ls.academic_year_id
