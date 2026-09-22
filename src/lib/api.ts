@@ -151,3 +151,5 @@ export async function adminProblemCenter(){return api<{problems:Array<Record<str
 export async function adminUpdateQuestionReport(id:string,status:"new"|"reviewing"|"fixed"|"rejected"){return api<{item:Record<string,unknown>}>(`/admin/question-reports/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify({status})})}
 export async function adminCreateWork(payload:{title:string;description?:string;priority?:string;question_id?:string;report_id?:string}){return api<{item:Record<string,unknown>}>("/admin/problem-center/work",{method:"POST",body:JSON.stringify(payload)})}
 export async function adminUpdateWork(id:string,patch:Record<string,unknown>){return api<{item:Record<string,unknown>}>(`/admin/problem-center/work/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
+
+export async function preparationAiReview(id:string){return api<{review:Record<string,unknown>;model?:string}>(`/tests/preparation/${encodeURIComponent(id)}/ai-review`,{method:"POST",body:"{}"})}
