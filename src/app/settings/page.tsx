@@ -181,7 +181,7 @@ export default function SettingsPage() {
 
       <section className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Привязанные входы</h2>
-        <p className="text-sm text-[var(--muted)]">Почта, Google и VK — к одному аккаунту. VK удобнее без VPN; Google может потребовать VPN в браузере.</p>
+        <p className="text-sm text-[var(--muted)]">Почта, Google, VK и Telegram — к одному аккаунту. VK удобнее без VPN; Google может потребовать VPN в браузере.</p>
         <div className="space-y-2">
           {identities.map((id) => (
             <div key={id.id || id.provider} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
@@ -198,7 +198,8 @@ export default function SettingsPage() {
         <div className="grid gap-2 sm:grid-cols-2">
           {(account?.providers_available || [
             { id: "google", label: "Google", region: "global", enabled: true, linkable: true },
-            { id: "vk", label: "ВКонтакте", region: "ru", enabled: true, linkable: true },
+            { id: "custom:vk", label: "ВКонтакте", region: "ru", enabled: true, linkable: true },
+            { id: "custom:telegram", label: "Telegram", region: "any", enabled: true, linkable: true },
           ]).filter((p) => p.linkable).map((p) => {
             const linked = linkedProviders.has(p.id);
             return (
