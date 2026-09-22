@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, Plus, RefreshCw, Save, Trash2, Upload, Table2 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { adminDbDelete, adminDbInsert, adminDbList, adminDbTables, adminDbUpdate, AdminDbRow, hasToken } from "@/lib/api";
 
 function csvEscape(v: unknown) {
@@ -75,12 +76,12 @@ export default function AdminDatabasePage(){
     const csv=[columns,...rows.map(r=>columns.map(k=>csvEscape(r[k])))].map(r=>r.join(",")).join("\r\n");
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download=`${table}.csv`;a.click();
   }
-  function exportJSON(){
+  function exportXLSX(){const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,table.slice(0,31));XLSX.writeFile(wb,\`${table}.xlsx\`);}\n  function exportJSON(){
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(rows,null,2)],{type:"application/json"}));a.download=`${table}.json`;a.click();
   }
   async function importFile(e:ChangeEvent<HTMLInputElement>){
     const f=e.target.files?.[0]; if(!f)return; const text=await f.text(); let imported:AdminDbRow[]=[];
-    if(f.name.toLowerCase().endsWith(".json")){try{const x=JSON.parse(text);imported=Array.isArray(x)?x:(x.items||[]);}catch{setMessage("Некорректный JSON");return;}}
+    if(f.name.toLowerCase().endsWith(".xlsx")||f.name.toLowerCase().endsWith(".xls")){const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});const ws=wb.Sheets[wb.SheetNames[0]];imported=XLSX.utils.sheet_to_json<AdminDbRow>(ws,{defval:""});}\n    else if(f.name.toLowerCase().endsWith(".json")){try{const x=JSON.parse(text);imported=Array.isArray(x)?x:(x.items||[]);}catch{setMessage("Некорректный JSON");return;}}
     else {const grid=parseCSV(text);if(grid.length<2){setMessage("CSV пустой");return;}const headers=grid[0];imported=grid.slice(1).filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??""])));}
     let ok=0; for(const row of imported){const id=row.id;const payload={...row};delete payload.id;const r=id?await adminDbUpdate(table,String(id),payload):await adminDbInsert(table,payload);if(r.ok)ok++;}
     setMessage(`Импортировано: ${ok}/${imported.length}`);await load();e.target.value="";
@@ -95,9 +96,9 @@ export default function AdminDatabasePage(){
         <button className="btn-secondary" onClick={()=>void load()}><RefreshCw className={`mr-2 inline h-4 w-4 ${loading?"animate-spin":""}`}/>Обновить</button>
         <button className="btn-secondary" onClick={addRow}><Plus className="mr-2 inline h-4 w-4"/>Строка</button>
         <button className="btn-secondary" onClick={exportCSV}><Download className="mr-2 inline h-4 w-4"/>CSV</button>
-        <button className="btn-secondary" onClick={exportJSON}><Download className="mr-2 inline h-4 w-4"/>JSON</button>
+        <button className="btn-secondary" onClick={exportXLSX}><Download className="mr-2 inline h-4 w-4"/>Excel</button><button className="btn-secondary" onClick={exportJSON}><Download className="mr-2 inline h-4 w-4"/>JSON</button>
         <button className="btn-primary" onClick={()=>fileRef.current?.click()}><Upload className="mr-2 inline h-4 w-4"/>Импорт</button>
-        <input ref={fileRef} hidden type="file" accept=".csv,.json,text/csv,application/json" onChange={e=>void importFile(e)}/>
+        <input ref={fileRef} hidden type="file" accept=".csv,.json,.xlsx,.xls,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e=>void importFile(e)}/>
       </div>
     </header>
     {message&&<div className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-700">{message}</div>}
@@ -118,6 +119,6 @@ export default function AdminDatabasePage(){
       </div>
       {!rows.length&&<div className="p-10 text-center text-sm text-slate-500">Таблица пустая.</div>}
     </div>
-    <div className="text-xs text-slate-400">Импорт CSV/JSON выполняется построчно с серверной проверкой прав admin. Для больших наборов используйте CSV.</div>
+    <div className="text-xs text-slate-400">Импорт CSV/XLSX/JSON выполняется построчно с серверной проверкой прав admin. Для больших наборов используйте CSV.</div>
   </main>;
 }
