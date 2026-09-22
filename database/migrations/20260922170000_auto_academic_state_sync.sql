@@ -12,6 +12,7 @@ declare
   new_learning text; new_academic text; new_execution text;
   ledger_status text; hw_status text;
   new_percent numeric; result numeric; result_max numeric; passing numeric;
+  failed_count integer; retake_count integer; passed_count integer; required_count integer;
   homework_id uuid; test_id uuid; has_evidence boolean;
 begin
   if p_user_id is null then return; end if;
@@ -140,13 +141,13 @@ begin
 
     select count(*) filter(where academic_status='failed'),count(*) filter(where academic_status='retake_required'),
       count(*) filter(where academic_status='passed'),count(*)
-    into result,result_max,passing,has_evidence
+    into failed_count,retake_count,passed_count,required_count
     from public.student_academic_states where user_id=p_user_id and target_type='curriculum_item'
       and subject_id=r.subject_id and academic_status<>'not_required';
 
     new_learning=case when coalesce(new_percent,0)>=100 then 'completed' when coalesce(new_percent,0)>0 then 'in_progress' else 'not_started' end;
-    if result>0 or result_max>0 then new_academic='failed';
-    elsif has_evidence>0 and passing=has_evidence then new_academic='passed'; else new_academic='pending'; end if;
+    if failed_count>0 or retake_count>0 then new_academic='failed';
+    elsif required_count>0 and passed_count=required_count then new_academic='passed'; else new_academic='pending'; end if;
     new_execution=case
       when exists(select 1 from public.student_academic_states x where x.user_id=p_user_id and x.target_type='curriculum_item' and x.subject_id=r.subject_id and x.execution_status='overdue') then 'overdue'
       when exists(select 1 from public.student_academic_states x where x.user_id=p_user_id and x.target_type='curriculum_item' and x.subject_id=r.subject_id and x.execution_status='not_done') then 'not_done'
