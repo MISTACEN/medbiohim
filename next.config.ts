@@ -4,9 +4,11 @@ import type { NextConfig } from "next";
  * Browser always calls same-origin /api/v1/* over HTTPS.
  * App Router /api/v1/[...path] proxies server-side to SpaceWeb over HTTP.
  */
-const SPACEWEB =
-  process.env.SPACEWEB_API_ORIGIN ||
-  "http://ryazansev3.temp.swtest.ru/api/v1";
+const SPACEWEB_API_ORIGIN = process.env.SPACEWEB_API_ORIGIN;
+if (!SPACEWEB_API_ORIGIN) {
+  throw new Error("SPACEWEB_API_ORIGIN must be configured; HTTP/temporary backend fallback is disabled.");
+}
+const SPACEWEB = SPACEWEB_API_ORIGIN.replace(/\\/$/, "");
 
 const BUILD_FINGERPRINT = "subject-ia-2026-09-22";
 
@@ -30,7 +32,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-Medbiohim-Api-Mode",
-            value: "same-origin-spaceweb-proxy",
+            value: "same-origin-backend-proxy",
           },
         ],
       },
