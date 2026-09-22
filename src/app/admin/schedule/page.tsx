@@ -2,18 +2,8 @@
 
 /**
  * CMS · Сетка расписания (drag-and-drop).
- *
- * Источник данных (бэкенд, policy=single_source_no_merge):
- *  1) локальный schedule.json на SpaceWeb (после «Сохранить»)
- *  2) fallback Supabase/БД, только если local пуст
- * Нельзя склеивать local+db на клиенте — будут «дубли» карточек.
- *
- * Сохранение пишет в оба хранилища (local обязателен для студента на SpaceWeb,
- * db — зеркало в Supabase, если доступен). После save снова load() читает
- * single-source с сервера.
- *
- * Связано с: GET/PUT /api/v1/admin/schedule, PUT .../schedule/local,
- * ContentStore::listSchedule / dedupeScheduleItems, dashboard nearest.
+ * Источник истины = PostgreSQL/Supabase (policy=db_primary_no_merge).
+ * Local JSON — только аварийный fallback.
  */
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -27,7 +17,6 @@ import {
 } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2 } from "lucide-react";
 
-/** Таймзона кампуса (Хабаровск) — совпадает с фильтром nearest на бэкенде */
 const TZ = "Asia/Vladivostok";
 const TYPE_LABELS: Record<string, string> = {
   lecture: "Лекция", practice: "Практика", laboratory: "Лабораторная",
@@ -73,11 +62,6 @@ function ymdFromKhToday() {
   return startOfWeek(new Date(y, m - 1, d, 12));
 }
 
-/**
- * Клиентский дедуп (страховка к ContentStore::dedupeScheduleItems).
- * Сигнатура: date|start|end|subject|type|room|group — без этого сетка
- * после повторного «Сохранить» или load всех групп показывает тройные карточки.
- */
 function dedupeItems(list: ScheduleItem[]): ScheduleItem[] {
   const byId = new Set<string>();
   const bySig = new Map<string, ScheduleItem>();
@@ -136,7 +120,6 @@ export default function AdminSchedulePage() {
     [weekStart]
   );
 
-  /** Загрузка: один источник с сервера + фильтр по выбранной группе */
   const load = useCallback(async () => {
     if (!hasToken()) { setLoading(false); return; }
     if (!groupId) { setLoading(false); return; }
@@ -147,10 +130,27 @@ export default function AdminSchedulePage() {
       let list = dedupeItems(res.data.items || []);
       list = list.filter((x) => !x.group_id || x.group_id === groupId);
       setItems(list);
-      const src = (res.data as { source?: string }).source || "";
+      const payload = res.data as {
+        source?: string;
+        degraded?: boolean;
+        service_notice?: string;
+        service_notice_title?: string;
+      };
+      const src = payload.source || "";
       setSource(src);
-      setNote(`Загружено ${list.length} занятий · источник: ${src || "—"} (дубли отфильтрованы)`);
-    } else setNote(res.error.message);
+      if (payload.degraded || payload.service_notice || src === "local_fallback" || src === "local") {
+        setNote(
+          `${payload.service_notice_title || "Что-то пошло не так"}: ${
+            payload.service_notice ||
+            "Временный сбой — основная база недоступна, показан резервный режим. Скоро всё починят."
+          } · загружено ${list.length}`
+        );
+      } else {
+        setNote(`Загружено ${list.length} занятий · источник: ${src || "db"}`);
+      }
+    } else {
+      setNote(`Что-то пошло не так: ${res.error.message}. Скоро всё починят — попробуйте позже.`);
+    }
   }, [groupId]);
 
   useEffect(() => { void load(); }, [load]);
@@ -204,14 +204,17 @@ export default function AdminSchedulePage() {
     }
     const clean = dedupeItems(items).map((x) => ({ ...x, group_id: groupId }));
     setItems(clean);
-    const local = await adminSaveScheduleLocal(clean);
     const db = await adminSaveSchedule({ group_id: groupId, semester: 3, entries: clean });
+    const local = await adminSaveScheduleLocal(clean);
     setSaving(false);
-    if (!db.ok && !local.ok) { setNote(db.error.message); return; }
+    if (!db.ok && !local.ok) {
+      setNote(db.error.message);
+      return;
+    }
     setNote(
-      local.ok
-        ? `Сохранено · локально ${local.data.count}${db.ok ? ` · БД ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length}` : ` · БД: ${db.error?.message || "пропуск"}`}`
-        : `Локально ошибка; БД: ${db.ok ? "ok" : db.error.message}`
+      db.ok
+        ? `Сохранено в БД · версия ${(db.data as { version?: number }).version ?? "—"} · ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} занятий${local.ok ? ` · кэш JSON ${local.data.count}` : ""}`
+        : `БД недоступна (${db.error.message}) · записан только кэш JSON: ${local.ok ? local.data.count : "ошибка"}`
     );
     await load();
   }
@@ -231,7 +234,7 @@ export default function AdminSchedulePage() {
         <div>
           <Link href="/admin" className="text-sm text-primary">← Админ</Link>
           <h1 className="page-title mt-1">CMS · Расписание</h1>
-          <p className="page-subtitle">Сетка · drag-and-drop · группа · Хабаровск (00:20) · {source || "—"}</p>
+          <p className="page-subtitle">Сетка · drag-and-drop · БД primary · {source || "—"}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-secondary" onClick={addItem}><Plus className="h-4 w-4" /> Занятие</button>
@@ -293,7 +296,7 @@ export default function AdminSchedulePage() {
                             onClick={() => setEdit(it)}
                             className="mb-1 cursor-grab rounded-lg bg-indigo-50 px-2 py-1 text-left text-xs shadow-sm hover:bg-indigo-100"
                           >
-                            <div className="font-semibold">{it.subject_name}</div>
+                            <div className="font-semibold">{it.subject_name || "—"}</div>
                             <div className="text-[10px] text-slate-500">{TYPE_LABELS[it.type] || it.type} · {(it.start_time || "").slice(0, 5)}</div>
                           </div>
                         ))}
@@ -311,20 +314,58 @@ export default function AdminSchedulePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div className="card max-w-md space-y-3 p-5">
             <h2 className="font-bold">Редактировать</h2>
-            <input className="w-full rounded-xl border px-3 py-2" value={edit.subject_name} onChange={(e) => setEdit({ ...edit, subject_name: e.target.value })} />
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              value={edit.subject_name ?? ""}
+              onChange={(e) => setEdit({ ...edit, subject_name: e.target.value })}
+            />
             <div className="grid grid-cols-2 gap-2">
-              <input type="time" className="rounded-xl border px-3 py-2" value={(edit.start_time || "").slice(0, 5)} onChange={(e) => setEdit({ ...edit, start_time: e.target.value })} />
-              <input type="time" className="rounded-xl border px-3 py-2" value={(edit.end_time || "").slice(0, 5)} onChange={(e) => setEdit({ ...edit, end_time: e.target.value })} />
+              <input
+                type="time"
+                className="rounded-xl border px-3 py-2"
+                value={(edit.start_time || "").slice(0, 5)}
+                onChange={(e) => setEdit({ ...edit, start_time: e.target.value })}
+              />
+              <input
+                type="time"
+                className="rounded-xl border px-3 py-2"
+                value={(edit.end_time || "").slice(0, 5)}
+                onChange={(e) => setEdit({ ...edit, end_time: e.target.value })}
+              />
             </div>
-            <select className="w-full rounded-xl border px-3 py-2" value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
+            <select
+              className="w-full rounded-xl border px-3 py-2"
+              value={edit.type || "lecture"}
+              onChange={(e) => setEdit({ ...edit, type: e.target.value })}
+            >
               {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
             </select>
-            <input className="w-full rounded-xl border px-3 py-2" placeholder="Аудитория" value={edit.room || ""} onChange={(e) => setEdit({ ...edit, room: e.target.value })} />
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              placeholder="Аудитория"
+              value={edit.room ?? ""}
+              onChange={(e) => setEdit({ ...edit, room: e.target.value })}
+            />
             <div className="flex justify-between gap-2">
-              <button type="button" className="text-rose-600" onClick={() => { setItems((p) => p.filter((x) => x.id !== edit.id)); setEdit(null); }}><Trash2 className="inline h-4 w-4" /> Удалить</button>
+              <button
+                type="button"
+                className="text-rose-600"
+                onClick={() => { setItems((p) => p.filter((x) => x.id !== edit.id)); setEdit(null); }}
+              >
+                <Trash2 className="inline h-4 w-4" /> Удалить
+              </button>
               <div className="flex gap-2">
                 <button type="button" className="btn-secondary" onClick={() => setEdit(null)}>Отмена</button>
-                <button type="button" className="btn-primary" onClick={() => { setItems((p) => dedupeItems(p.map((x) => (x.id === edit.id ? edit : x)))); setEdit(null); }}>OK</button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    setItems((p) => dedupeItems(p.map((x) => (x.id === edit.id ? edit : x))));
+                    setEdit(null);
+                  }}
+                >
+                  OK
+                </button>
               </div>
             </div>
           </div>
