@@ -153,3 +153,21 @@ export async function adminCreateWork(payload:{title:string;description?:string;
 export async function adminUpdateWork(id:string,patch:Record<string,unknown>){return api<{item:Record<string,unknown>}>(`/admin/problem-center/work/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
 
 export async function preparationAiReview(id:string){return api<{review:Record<string,unknown>;model?:string}>(`/tests/preparation/${encodeURIComponent(id)}/ai-review`,{method:"POST",body:"{}"})}
+
+
+export type AcademicState = {
+  profile: { id:string; full_name?:string; course_number?:number|null; semester?:number|null };
+  session: Record<string,unknown>|null;
+  plan: { available:boolean; items:number; concrete_items:number; message?:string|null };
+  metrics: { closed:number; in_progress:number; not_started:number; debts:number; tracked:number };
+  states: Array<Record<string,unknown>>;
+  topic_progress: Array<Record<string,unknown>>;
+  debts: Array<Record<string,unknown>>;
+  upcoming: Array<Record<string,unknown>>;
+  weak_topics: Array<Record<string,unknown>>;
+  recommendations: Array<Record<string,unknown>>;
+  generated_at: string;
+};
+export async function getAcademicState(){return api<AcademicState>("/academic/state")}
+export async function saveAcademicState(payload:Record<string,unknown>){return api<{state:Record<string,unknown>}>("/academic/state",{method:"PUT",body:JSON.stringify(payload)})}
+export async function generateAcademicAiPlan(){return api<{plan:Record<string,unknown>;items:Array<Record<string,unknown>>;source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
