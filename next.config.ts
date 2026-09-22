@@ -5,10 +5,7 @@ import type { NextConfig } from "next";
  * App Router /api/v1/[...path] proxies server-side to the configured HTTPS backend.
  */
 const SPACEWEB_API_ORIGIN = process.env.SPACEWEB_API_ORIGIN;
-if (!SPACEWEB_API_ORIGIN) {
-  throw new Error("SPACEWEB_API_ORIGIN must be configured; HTTP/temporary backend fallback is disabled.");
-}
-const SPACEWEB = SPACEWEB_API_ORIGIN.replace(/\/$/, "");
+const SPACEWEB = SPACEWEB_API_ORIGIN?.replace(/\/$/, "");
 
 const BUILD_FINGERPRINT = "subject-ia-2026-09-22";
 
@@ -39,6 +36,7 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    if (!SPACEWEB) return [];
     return {
       afterFiles: [
         {
