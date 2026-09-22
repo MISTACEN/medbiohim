@@ -236,7 +236,7 @@ export default function SubjectsPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((s) => {
                 const Icon = subjectIcon(s.icon);
-                const href = `/subjects/${encodeURIComponent(s.slug || s.id)}`;
+                const href = `/subjects/${encodeURIComponent(s.id)}`;
                 return (
                   <div key={s.id} className="group flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--primary)]/35 hover:shadow-md">
                     <Link href={href} className="flex flex-1 gap-3">
