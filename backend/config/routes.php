@@ -35,6 +35,7 @@ return static function (Router $router): void {
         'settings_rest.php',
         'srs_rest.php',
         'academic_planning.php',
+        'telegram.php',
     ];
     foreach ($files as $file) {
         $path = $dir . '/' . $file;
