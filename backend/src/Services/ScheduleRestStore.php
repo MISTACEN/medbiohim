@@ -41,11 +41,6 @@ final class ScheduleRestStore
         $groupIds = [];
         foreach ($memberships as $row) if (!empty($row['group_id'])) $groupIds[] = (string) $row['group_id'];
 
-        if (!$groupIds && $userCourse !== null) {
-            $groups = self::request('GET', 'groups?course_number=eq.' . (int) $userCourse . '&is_active=eq.true&select=id&order=name.asc');
-            $ids = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), $groups)));
-            if (count($ids) === 1) $groupIds = $ids;
-        }
         if (!$groupIds) return [];
 
         $groupFilter = self::inUuidList($groupIds);
@@ -60,7 +55,7 @@ final class ScheduleRestStore
         if (!$latest) return [];
 
         $scheduleIds = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), array_values($latest))));
-        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,session_id,room,building,notes,is_cancelled,teacher,academic_hours,week_parity,recurrence_group,parent_entry_id,source_detail,event_kind,is_makeup,session_id,source&order=date.asc,start_time.asc';
+        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,session_id,room,building,notes,is_cancelled,teacher,academic_hours,week_parity,recurrence_group,parent_entry_id,source_detail,source&order=date.asc,start_time.asc';
         if ($from !== null && $from !== '') $entryPath .= '&date=gte.' . rawurlencode($from);
         if ($to !== null && $to !== '') $entryPath .= '&date=lte.' . rawurlencode($to);
         $entries = self::request('GET', $entryPath);
