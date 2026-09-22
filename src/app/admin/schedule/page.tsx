@@ -9,6 +9,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   adminListSchedule,
+  getScheduleMeta,
   adminSaveSchedule,
   listGroups,
   hasToken,
@@ -96,6 +97,7 @@ export default function AdminSchedulePage() {
   const [source, setSource] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [edit, setEdit] = useState<ScheduleItem | null>(null);
+  const [meta, setMeta] = useState<{periods:Array<{id:string;title:string;start_date:string;end_date?:string|null;notes?:string|null}>}>({periods:[]});
 
   useEffect(() => {
     void (async () => {
@@ -123,6 +125,8 @@ export default function AdminSchedulePage() {
     if (!hasToken()) { setLoading(false); return; }
     if (!groupId) { setLoading(false); return; }
     setLoading(true); setNote(null);
+    const metaRes = await getScheduleMeta(2, 3);
+    if (metaRes.ok) setMeta({ periods: metaRes.data.periods });
     const res = await adminListSchedule(groupId, 3);
     setLoading(false);
     if (res.ok) {
@@ -239,6 +243,10 @@ export default function AdminSchedulePage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {meta.periods.map((p) => <div key={p.id} className="rounded-xl border bg-slate-50 px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}
+      </div>
+
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">Группа (обязательно)
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="mt-1 block rounded-xl border px-3 py-2">
@@ -291,6 +299,7 @@ export default function AdminSchedulePage() {
                             className="mb-1 cursor-grab rounded-lg bg-indigo-50 px-2 py-1 text-left text-xs shadow-sm hover:bg-indigo-100"
                           >
                             <div className="font-semibold">{it.subject_name || "—"}</div>
+                            <div className="text-[10px] text-slate-500">{it.teacher || ""}{it.week_parity ? ` · ${it.week_parity === "numerator" ? "числ." : it.week_parity === "denominator" ? "знам." : "все"}` : ""}</div>
                             <div className="text-[10px] text-slate-500">{TYPE_LABELS[it.type] || it.type} · {(it.start_time || "").slice(0, 5)}</div>
                           </div>
                         ))}
