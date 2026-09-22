@@ -108,23 +108,8 @@ export default function SubjectsPage() {
             })
           );
         } else if (cat.ok) {
-          let list: Item[] = (cat.data.items || []).map((x: Item) => ({
-            id: x.slug || x.id,
-            name: x.name,
-            course_number: x.course_number ?? x.course ?? 2,
-            semester: x.semester ?? 3,
-            control_type: x.control_type,
-            slug: x.slug,
-            hours_note: x.hours_note,
-            category: x.category || "Другое",
-            icon: x.icon,
-            blurb: x.blurb,
-          }));
-          if (course !== "") list = list.filter((x) => x.course_number === course);
-          if (semester !== "") list = list.filter((x) => x.semester === semester);
-          setItems(list);
-          if (list.length === 0) setNote("Для выбранного курса и семестра предметов нет.");
-          else if (!r.ok) setNote("Показан официальный каталог. БД временно недоступна.");
+          setItems([]);
+          setNote("Для выбранного курса и семестра данные из основной БД недоступны. Устаревший каталог не подставляется.");
         } else {
           setItems([]);
           setNote(r.ok ? "Пусто" : r.error.message);
