@@ -57,7 +57,8 @@ export default function AdminContentImportPage(){
     catch(err){setMessage(err instanceof Error?err.message:"Не удалось прочитать Excel");}
     e.target.value="";
   }
-  function rebuildData(current=files){const merged=current.reduce((a,x)=>{const subject=x.subject||"";return {tests:[...a.tests,...x.data.tests.map(r=>subject?{...r,subject_key:subject}:r)],questions:[...a.questions,...x.data.questions.map(r=>subject?{...r,subject_key:subject}:r)],test_questions:[...a.test_questions,...x.data.test_questions]};},{tests:[],questions:[],test_questions:[]} as {tests:Row[];questions:Row[];test_questions:Row[]});setData(merged);return merged;}\n  async function run(dry_run:boolean){
+  function rebuildData(current=files){const merged=current.reduce((a,x)=>{const subject=x.subject||"";return {tests:[...a.tests,...x.data.tests.map(r=>subject?{...r,subject_key:subject}:r)],questions:[...a.questions,...x.data.questions.map(r=>subject?{...r,subject_key:subject}:r)],test_questions:[...a.test_questions,...x.data.test_questions]};},{tests:[],questions:[],test_questions:[]} as {tests:Row[];questions:Row[];test_questions:Row[]});setData(merged);return merged;}
+  async function run(dry_run:boolean){
     setBusy(true);setErrors([]);setMessage(dry_run?"Проверяю связи и значения…":"Импортирую в Supabase…");
     const payload=rebuildData(); const res=await adminContentImport({...payload,dry_run});
     if(res.ok){
