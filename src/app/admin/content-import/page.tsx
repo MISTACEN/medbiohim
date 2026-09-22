@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
@@ -49,7 +49,7 @@ export default function AdminContentImportPage(){
   const [errors,setErrors]=useState<Array<{sheet:string;row:number;error:string}>>([]);
   const [subjects,setSubjects]=useState<Row[]>([]);
 
-  useState(()=>{void adminDbList("subjects",500).then(r=>{if(r.ok)setSubjects(r.data.items)});});
+  useEffect(()=>{void adminDbList("subjects",500).then(r=>{if(r.ok)setSubjects(r.data.items)});},[]);
 
   async function choose(e:ChangeEvent<HTMLInputElement>){
     const selected=Array.from(e.target.files??[]); if(!selected.length)return;
