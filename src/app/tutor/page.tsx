@@ -1,17 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { tutorAsk, tutorMeta, type TutorAnswer, type TutorSource } from "@/lib/features-api";
-import { Bot, Loader2, Send, BookOpen, Sparkles, Filter } from "lucide-react";
-
-type Msg = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  sources?: TutorSource[];
-  mode?: string;
-};
-
 import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiConversation, type AiMessage, type AiProvider } from "@/lib/features-api";
 import { listSubjectsCatalog } from "@/lib/api";
 import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
