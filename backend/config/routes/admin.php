@@ -35,3 +35,63 @@ $router->get('/api/v1/admin/community',static function(Request $req,array $param
 $router->patch('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$patch=[];if($req->jsonBody!==null)foreach(['title','body','pinned','hidden'] as $k)if(array_key_exists($k,$req->jsonBody))$patch[$k]=$req->jsonBody[$k];$row=(new ContentStore())->updateCommunityPost($params['id'],$patch);if($row===null){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['post'=>$row],$req->requestId);});
 $router->delete('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$ok=(new ContentStore())->deleteCommunityPost($params['id']);if(!$ok){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['deleted'=>true],$req->requestId);});
 };
+
+
+/**
+ * Generic admin data grid. Deliberately whitelist tables and never exposes arbitrary SQL.
+ * The UI uses this for the Excel-like editor and CSV/JSON import/export.
+ */
+$adminGridTables = [
+    'subjects','groups','group_memberships','modules','topics','materials',
+    'questions','tests','test_questions','test_attempts','test_answers',
+    'homeworks','homework_progress','homework_submissions','schedules',
+    'schedule_entries','community_posts','comments','notes','favorites',
+    'exam_questions','ticket_banks','progress_ledger','site_content','learning_sessions'
+];
+$adminGridGate = static function(Request $req)use($strictAdmin):bool{return $strictAdmin($req);};
+
+$router->get('/api/v1/admin/db/tables', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+    if(!$adminGridGate($req))return;
+    $items=[];
+    foreach($adminGridTables as $t){
+        try{$items[]=['name'=>$t,'items'=>count(SupabaseRest::select($t.'?select=id&limit=10000'))];}
+        catch(\Throwable $e){$items[]=['name'=>$t,'items'=>null,'error'=>$e->getMessage()];}
+    }
+    Response::success(['items'=>$items],$req->requestId);
+});
+
+$router->get('/api/v1/admin/db/:table', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+    if(!$adminGridGate($req))return;
+    $table=(string)($params['table']??'');
+    if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available in admin grid',$req->requestId,403);return;}
+    $limit=min(500,(int)($req->query['limit']??200)); if($limit<1)$limit=200;
+    try{Response::success(['items'=>SupabaseRest::select($table.'?select=*&limit='.$limit)],$req->requestId);}
+    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+});
+
+$router->post('/api/v1/admin/db/:table', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+    if(!$adminGridGate($req))return;
+    $table=(string)($params['table']??'');
+    if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available in admin grid',$req->requestId,403);return;}
+    $row=is_array($req->jsonBody??null)?$req->jsonBody:[];
+    unset($row['id']);
+    try{Response::success(['item'=>SupabaseRest::insert($table,$row,true)[0]??$row],$req->requestId,201);}
+    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
+
+$router->patch('/api/v1/admin/db/:table/:id', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+    if(!$adminGridGate($req))return;
+    $table=(string)($params['table']??''); $id=(string)($params['id']??'');
+    if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
+    $row=is_array($req->jsonBody??null)?$req->jsonBody:[]; unset($row['id']);
+    try{$x=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$row,true);Response::success(['item'=>$x[0]??array_merge(['id'=>$id],$row)],$req->requestId);}
+    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
+
+$router->delete('/api/v1/admin/db/:table/:id', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+    if(!$adminGridGate($req))return;
+    $table=(string)($params['table']??''); $id=(string)($params['id']??'');
+    if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
+    try{SupabaseRest::deleteWhere($table.'?id=eq.'.rawurlencode($id));Response::success(['deleted'=>true],$req->requestId);}
+    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
