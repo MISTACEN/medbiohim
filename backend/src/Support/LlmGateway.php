@@ -171,14 +171,14 @@ final class LlmGateway
                 'configured' => (bool)Env::get('GEMINI_API_KEY'),
                 'model' => Env::get('GEMINI_MODEL', 'gemini-3.5-flash'),
             ],
-            'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'gigachat'),
+            'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq'),
         ];
     }
 
     private static function chatGroq(array $messages, float $temperature): array
     {
         $key = trim((string)(Env::get('GROQ_API_KEY', '') ?? ''));
-        if ($key === '') throw new \\RuntimeException('GROQ_API_KEY is not configured');
+        if ($key === '') throw new \RuntimeException('GROQ_API_KEY is not configured');
         $base = rtrim((string)(Env::get('GROQ_BASE_URL', 'https://api.groq.com/openai/v1') ?? 'https://api.groq.com/openai/v1'), '/');
         $model = (string)(Env::get('GROQ_MODEL', 'openai/gpt-oss-20b') ?? 'openai/gpt-oss-20b');
         $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
@@ -187,11 +187,11 @@ final class LlmGateway
             'Content-Type: application/json',
         ], 90);
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
-            throw new \\RuntimeException('Groq HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
+            throw new \RuntimeException('Groq HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
         }
         $body = $res['json'] ?? [];
         $text = (string)($body['choices'][0]['message']['content'] ?? '');
-        if (trim($text) === '') throw new \\RuntimeException('Groq returned empty content');
+        if (trim($text) === '') throw new \RuntimeException('Groq returned empty content');
         return ['text' => trim($text), 'provider' => 'groq', 'model' => $model, 'mode' => 'api'];
     }
 
