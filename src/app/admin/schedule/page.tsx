@@ -340,6 +340,37 @@ export default function AdminSchedulePage() {
               value={edit.room ?? ""}
               onChange={(e) => setEdit({ ...edit, room: e.target.value })}
             />
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              placeholder="Преподаватель"
+              value={edit.teacher ?? ""}
+              onChange={(e) => setEdit({ ...edit, teacher: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number" min="1" max="8"
+                className="rounded-xl border px-3 py-2"
+                placeholder="Академические часы"
+                value={edit.academic_hours ?? ""}
+                onChange={(e) => setEdit({ ...edit, academic_hours: e.target.value ? Number(e.target.value) : null })}
+              />
+              <select
+                className="rounded-xl border px-3 py-2"
+                value={edit.week_parity ?? ""}
+                onChange={(e) => setEdit({ ...edit, week_parity: (e.target.value || null) as ScheduleItem["week_parity"] })}
+              >
+                <option value="">Без чередования</option>
+                <option value="numerator">Числитель</option>
+                <option value="denominator">Знаменатель</option>
+                <option value="all">Все недели</option>
+              </select>
+            </div>
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              placeholder="Уточнение / источник"
+              value={edit.source_detail ?? ""}
+              onChange={(e) => setEdit({ ...edit, source_detail: e.target.value })}
+            />
             <div className="flex justify-between gap-2">
               <button
                 type="button"
