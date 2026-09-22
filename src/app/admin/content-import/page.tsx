@@ -4,7 +4,7 @@ import { ChangeEvent, useRef, useState } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
-import { adminContentImport, hasToken } from "@/lib/api";
+import { adminContentImport, adminDbList, hasToken } from "@/lib/api";
 
 type Row = Record<string, unknown>;
 const headers={
@@ -47,6 +47,9 @@ export default function AdminContentImportPage(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [errors,setErrors]=useState<Array<{sheet:string;row:number;error:string}>>([]);
+  const [subjects,setSubjects]=useState<Row[]>([]);
+
+  useState(()=>{void adminDbList("subjects",500).then(r=>{if(r.ok)setSubjects(r.data.items)});});
 
   async function choose(e:ChangeEvent<HTMLInputElement>){
     const selected=Array.from(e.target.files??[]); if(!selected.length)return;
@@ -71,7 +74,7 @@ export default function AdminContentImportPage(){
   return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
     <header><Link href="/admin" className="text-sm text-indigo-600">← Админ</Link><h1 className="mt-1 page-title flex items-center gap-2"><FileSpreadsheet className="h-6 w-6"/>Импорт тестов и вопросов</h1><p className="page-subtitle">Excel → Supabase: тесты, вопросы и их порядок. Сначала проверка, затем запись.</p></header>
     <div className="grid gap-4 md:grid-cols-3">
-      <div className="card md:col-span-2"><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={downloadTemplate}><Download className="mr-2 inline h-4 w-4"/>Скачать шаблон Excel</button><button className="btn-primary" onClick={()=>input.current?.click()}><Upload className="mr-2 inline h-4 w-4"/>Загрузить Excel</button><input ref={input} hidden type="file" accept=".xlsx,.xls" multiple onChange={choose}/></div><p className="mt-3 text-xs text-slate-500">{fileName||"Можно выбрать сразу несколько Excel-файлов — например физика.xlsx, биология.xlsx, гистология.xlsx."}</p>{files.length>0&&<div className="mt-3 space-y-2">{files.map((x,i)=><div key={x.name} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs"><b className="min-w-48">{x.name}</b><select value={x.subject} onChange={e=>setFiles(p=>p.map((z,n)=>n===i?{...z,subject:e.target.value}:z))} className="rounded border px-2 py-1"><option value="">Предмет из Excel</option><option>Физика</option><option>Биология</option><option>Гистология</option></select><span>{x.data.tests.length} тестов · {x.data.questions.length} вопросов</span></div>)}</div>}</div>
+      <div className="card md:col-span-2"><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={downloadTemplate}><Download className="mr-2 inline h-4 w-4"/>Скачать шаблон Excel</button><button className="btn-primary" onClick={()=>input.current?.click()}><Upload className="mr-2 inline h-4 w-4"/>Загрузить Excel</button><input ref={input} hidden type="file" accept=".xlsx,.xls" multiple onChange={choose}/></div><p className="mt-3 text-xs text-slate-500">{fileName||"Можно выбрать сразу несколько Excel-файлов — например физика.xlsx, биология.xlsx, гистология.xlsx."}</p>{files.length>0&&<div className="mt-3 space-y-2">{files.map((x,i)=><div key={x.name} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs"><b className="min-w-48">{x.name}</b><select value={x.subject} onChange={e=>setFiles(p=>p.map((z,n)=>n===i?{...z,subject:e.target.value}:z))} className="rounded border px-2 py-1"><option value="">Предмет из Excel</option>{subjects.map(s=><option key={String(s.id)} value={String(s.slug||s.code||s.name)}>{String(s.name)}</option>)}</select><span>{x.data.tests.length} тестов · {x.data.questions.length} вопросов</span></div>)}</div>}</div>
       <div className="card"><div className="text-xs font-bold uppercase tracking-wider text-slate-400">Загружено</div><div className="mt-2 space-y-1 text-sm">{counts.map(([l,n])=><div className="flex justify-between" key={l}><span>{l}</span><b>{n}</b></div>)}</div></div>
     </div>
     {message&&<div className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-700">{message}</div>}
