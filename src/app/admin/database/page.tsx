@@ -76,7 +76,7 @@ export default function AdminDatabasePage(){
     const csv=[columns,...rows.map(r=>columns.map(k=>csvEscape(r[k])))].map(r=>r.join(",")).join("\r\n");
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download=`${table}.csv`;a.click();
   }
-  function exportXLSX(){const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,table.slice(0,31));XLSX.writeFile(wb,\`${table}.xlsx\`);}\n  function exportJSON(){
+  function exportXLSX(){const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,table.slice(0,31));XLSX.writeFile(wb,`${table}.xlsx`);}\n  function exportJSON(){
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(rows,null,2)],{type:"application/json"}));a.download=`${table}.json`;a.click();
   }
   async function importFile(e:ChangeEvent<HTMLInputElement>){
