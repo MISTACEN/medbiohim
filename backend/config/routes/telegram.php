@@ -21,7 +21,7 @@ return static function (Router $router): void {
             return;
         }
 
-        $update = $req->json();
+        $update = $req->jsonBody;
         if (!is_array($update)) {
             Response::error('VALIDATION_ERROR', 'Invalid Telegram update', $req->requestId, 422);
             return;
