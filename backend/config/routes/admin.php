@@ -94,7 +94,7 @@ $router->post('/api/v1/admin/db/{table}', static function(Request $req,array $pa
     if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available in admin grid',$req->requestId,403);return;}
     $row=is_array($req->jsonBody??null)?$req->jsonBody:[];
     unset($row['id']);
-    try{Response::success(['item'=>SupabaseRest::insert($table,$row,true)[0]??$row],$req->requestId,201);}
+    try{$item=SupabaseRest::insert($table,$row,true)[0]??$row;SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'insert','table_name'=>$table,'row_key'=>['id'=>$item['id']??null],'old_data'=>null,'new_data'=>$item,'source'=>'admin_ui'],false);Response::success(['item'=>$item],$req->requestId,201);}
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
 
@@ -103,7 +103,7 @@ $router->patch('/api/v1/admin/db/{table}/{id}', static function(Request $req,arr
     $table=(string)($params['table']??''); $id=(string)($params['id']??'');
     if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
     $row=is_array($req->jsonBody??null)?$req->jsonBody:[]; unset($row['id']);
-    try{$x=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$row,true);Response::success(['item'=>$x[0]??array_merge(['id'=>$id],$row)],$req->requestId);}
+    try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');$x=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$row,true);$item=$x[0]??array_merge(['id'=>$id],$row);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'update','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0]??null,'new_data'=>$item,'source'=>'admin_ui'],false);Response::success(['item'=>$item],$req->requestId);}
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
 
@@ -111,7 +111,7 @@ $router->delete('/api/v1/admin/db/{table}/{id}', static function(Request $req,ar
     if(!$adminGridGate($req))return;
     $table=(string)($params['table']??''); $id=(string)($params['id']??'');
     if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
-    try{SupabaseRest::deleteWhere($table.'?id=eq.'.rawurlencode($id));Response::success(['deleted'=>true],$req->requestId);}
+    try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');SupabaseRest::deleteWhere($table.'?id=eq.'.rawurlencode($id));SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'delete','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0]??null,'new_data'=>null,'source'=>'admin_ui'],false);Response::success(['deleted'=>true],$req->requestId);}
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
 
