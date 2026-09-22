@@ -136,7 +136,7 @@ final class LlmGateway
         $provider = strtolower(trim($provider));
         if ($provider === 'auto') {
             $preferred = strtolower((string)(Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq') ?? 'groq'));
-            $chain = array_values(array_unique([$preferred, 'groq', 'gigachat', 'gemini']));
+            $chain = array_values(array_unique([$preferred, 'groq', 'gigachat', 'gemini', 'mistral', 'openrouter']));
             $errors = [];
             foreach ($chain as $p) {
                 try { return self::chatProvider($p, $messages, $temperature); }
@@ -152,6 +152,12 @@ final class LlmGateway
         }
         if ($provider === 'gemini' || $provider === 'google') {
             return self::chatGemini($messages, $temperature);
+        }
+        if ($provider === 'mistral') {
+            return self::chatMistral($messages, $temperature);
+        }
+        if ($provider === 'openrouter') {
+            return self::chatOpenRouter($messages, $temperature);
         }
         throw new \InvalidArgumentException('Unknown AI provider: ' . $provider);
     }
@@ -170,6 +176,14 @@ final class LlmGateway
             'gemini' => [
                 'configured' => (bool)Env::get('GEMINI_API_KEY'),
                 'model' => Env::get('GEMINI_MODEL', 'gemini-3.5-flash'),
+            ],
+            'mistral' => [
+                'configured' => (bool)Env::get('MISTRAL_API_KEY'),
+                'model' => Env::get('MISTRAL_MODEL', 'mistral-small-latest'),
+            ],
+            'openrouter' => [
+                'configured' => (bool)(Env::get('OPENROUTER_API_KEY') && Env::get('OPENROUTER_MODEL')),
+                'model' => Env::get('OPENROUTER_MODEL', ''),
             ],
             'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq'),
         ];
@@ -262,6 +276,44 @@ final class LlmGateway
         foreach($parts as $p) if(is_array($p)&&isset($p['text'])) $text.=(string)$p['text'];
         if(trim($text)==='') throw new \RuntimeException('Gemini returned empty content');
         return ['text'=>trim($text),'provider'=>'gemini','model'=>$model,'mode'=>'api'];
+    }
+
+    private static function chatMistral(array $messages, float $temperature): array
+    {
+        $key = trim((string)(Env::get('MISTRAL_API_KEY', '') ?? ''));
+        if ($key === '') throw new \RuntimeException('MISTRAL_API_KEY is not configured');
+        $base = rtrim((string)(Env::get('MISTRAL_BASE_URL', 'https://api.mistral.ai/v1') ?? 'https://api.mistral.ai/v1'), '/');
+        $model = (string)(Env::get('MISTRAL_MODEL', 'mistral-small-latest') ?? 'mistral-small-latest');
+        return self::chatOpenAICompatible($base, $key, $model, $messages, $temperature, 'mistral');
+    }
+
+    private static function chatOpenRouter(array $messages, float $temperature): array
+    {
+        $key = trim((string)(Env::get('OPENROUTER_API_KEY', '') ?? ''));
+        $model = trim((string)(Env::get('OPENROUTER_MODEL', '') ?? ''));
+        if ($key === '' || $model === '') throw new \RuntimeException('OPENROUTER_API_KEY and OPENROUTER_MODEL are required');
+        $base = rtrim((string)(Env::get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1') ?? 'https://openrouter.ai/api/v1'), '/');
+        return self::chatOpenAICompatible($base, $key, $model, $messages, $temperature, 'openrouter', [
+            'HTTP-Referer: https://medbiohim.vercel.app',
+            'X-Title: MEDBIOHIM',
+        ]);
+    }
+
+    private static function chatOpenAICompatible(string $base, string $key, string $model, array $messages, float $temperature, string $provider, array $extraHeaders = []): array
+    {
+        $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
+        $headers = array_merge([
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json',
+        ], $extraHeaders);
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException(ucfirst($provider) . ' HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $text = (string)($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text) === '') throw new \RuntimeException(ucfirst($provider) . ' returned empty content');
+        return ['text' => trim($text), 'provider' => $provider, 'model' => $model, 'mode' => 'api'];
     }
 
     private static function uuid4(): string
