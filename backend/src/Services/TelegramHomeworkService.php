@@ -214,14 +214,14 @@ final class TelegramHomeworkService
         $lower = mb_strtolower($text);
 
         $stmt = $this->db->prepare(
-            'SELECT DISTINCT s.id, s.name, s.semester, s.course_number
+            "SELECT DISTINCT s.id, s.name, s.semester, s.course_number
              FROM public.schedule_entries se
              JOIN public.schedules sch ON sch.id = se.schedule_id AND sch.is_active = true
              JOIN public.subjects s ON s.id = se.subject_id
              WHERE sch.group_id = :group
-               AND se.date >= CURRENT_DATE - INTERVAL ''14 days''
-               AND se.date <= CURRENT_DATE + INTERVAL ''30 days''
-             ORDER BY se.date'
+               AND se.date >= CURRENT_DATE - INTERVAL '14 days'
+               AND se.date <= CURRENT_DATE + INTERVAL '30 days'
+             ORDER BY se.date"
         );
         $stmt->execute(['group' => $groupId]);
         $subjects = $stmt->fetchAll() ?: [];
@@ -268,11 +268,11 @@ final class TelegramHomeworkService
     private function findRecentHomework(string $groupId, ?string $subjectId, string $title): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT * FROM public.homeworks
+            "SELECT * FROM public.homeworks
              WHERE group_id = :group
                AND (:subject IS NULL OR subject_id = :subject)
-               AND created_at >= now() - INTERVAL ''2 hours''
-             ORDER BY created_at DESC LIMIT 1'
+               AND created_at >= now() - INTERVAL '2 hours'
+             ORDER BY created_at DESC LIMIT 1"
         );
         $stmt->execute(['group' => $groupId, 'subject' => $subjectId]);
         $row = $stmt->fetch();
@@ -429,10 +429,10 @@ final class TelegramHomeworkService
     private function updateClassification(string $id, array $classification): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE public.telegram_messages
+            "UPDATE public.telegram_messages
              SET classification = :type, classification_confidence = :confidence,
-                 processing_status = ''processing''
-             WHERE id = :id'
+                 processing_status = 'processing'
+             WHERE id = :id"
         );
         $stmt->execute(['id'=>$id,'type'=>$classification['type'],'confidence'=>$classification['confidence']]);
     }
