@@ -57,6 +57,26 @@ final class TelegramHomeworkService
             return ['status' => 'ignored', 'reason' => 'chat_not_mapped'];
         }
 
+        // A photo/document sent as a reply to an already imported homework
+        // belongs to that homework even when the attachment itself has no caption.
+        $replyHomework = $this->findHomeworkByReply($chat['telegram_chat_id'] ?? $message['chat']['id'], $message['reply_to_message']['message_id'] ?? null);
+        if ($replyHomework && (isset($message['photo']) || isset($message['document']))) {
+            $attachments = $this->importAttachments(
+                $message,
+                $chat['group_id'],
+                (string) $stored['id'],
+                (string) $replyHomework['id']
+            );
+            $this->linkMessage((string) $stored['id'], (string) $replyHomework['id'], 0.99);
+            $this->markMessage((string) $stored['id'], 'processed');
+            return [
+                'status' => 'processed',
+                'created' => false,
+                'attached_to_homework_id' => $replyHomework['id'],
+                'attachments' => $attachments,
+            ];
+        }
+
         $classification = $this->classify($message);
         $this->updateClassification((string) $stored['id'], $classification);
 
@@ -178,6 +198,24 @@ final class TelegramHomeworkService
             'title' => $title !== '' ? $title : null,
         ]);
         return $insert->fetch() ?: null;
+    }
+
+    private function findHomeworkByReply(int|string $chatId, mixed $replyMessageId): ?array
+    {
+        if ($replyMessageId === null || $replyMessageId === '') return null;
+        $stmt = $this->db->prepare(
+            'SELECT h.*
+             FROM public.telegram_messages source
+             JOIN public.telegram_homework_links l ON l.telegram_message_id = source.id
+             JOIN public.homeworks h ON h.id = l.homework_id
+             WHERE source.telegram_chat_id = :chat
+               AND source.telegram_message_id = :message
+             ORDER BY l.created_at DESC
+             LIMIT 1'
+        );
+        $stmt->execute(['chat' => (int) $chatId, 'message' => (int) $replyMessageId]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
     }
 
     private function classify(array $message): array
