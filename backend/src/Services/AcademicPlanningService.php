@@ -16,8 +16,20 @@ final class AcademicPlanningService
         $this->db = Connection::pdo();
     }
 
+    private function syncFromDatabase(string $userId): void
+    {
+        $q = $this->db->prepare('select private.sync_student_academic_state(cast(:u as uuid))');
+        $q->execute([':u' => $userId]);
+    }
+
+    public function sync(string $userId): void
+    {
+        $this->syncFromDatabase($userId);
+    }
+
     public function state(string $userId): array
     {
+        $this->syncFromDatabase($userId);
         $profile = $this->one("select id, full_name, course_number, semester from public.users where id=:u", [':u'=>$userId]) ?? [
             'id'=>$userId,'full_name'=>'Student','course_number'=>null,'semester'=>null
         ];
