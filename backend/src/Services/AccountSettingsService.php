@@ -65,7 +65,7 @@ final class AccountSettingsService
             'preferences' => $prefs,
             'sync' => [
                 'account_id' => $user['id'] ?? null,
-                'note' => 'Все данные (прогресс, SRS, избранное, сессии) привязаны к этому ID. Привязка Google/VK/почты не создаёт второй аккаунт.',
+                'note' => 'Все данные (прогресс, SRS, избранное, сессии) привязаны к этому ID. Привязка Google/VK/Telegram/почты не создаёт второй аккаунт.',
                 'scopes' => ['progress', 'srs_cards', 'favorites', 'notes', 'sessions', 'homework'],
             ],
         ];
