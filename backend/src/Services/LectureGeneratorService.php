@@ -6,6 +6,7 @@ namespace Medbiohim\Services;
 use Medbiohim\Support\ContentStore;
 use Medbiohim\Support\Env;
 use Medbiohim\Support\LlmGateway;
+use Medbiohim\Support\Logger;
 use Medbiohim\Support\Str;
 
 /** Generates lecture drafts from subject plan + knowledge base (+ optional LLM). RF media first. */
