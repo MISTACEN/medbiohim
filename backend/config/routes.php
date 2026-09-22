@@ -28,6 +28,7 @@ return static function (Router $router): void {
         'admin.php',
         'platform.php',
         'tutor_rest.php',
+        'ai_chat.php',
         'calculators_rest.php',
         'lectures_rest.php',
         'search_rest.php',
