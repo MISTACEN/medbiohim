@@ -8,6 +8,16 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Services\AcademicPlanningService;
 
 return static function (Router $r): void {
+    $r->post('/api/v1/academic/sync', static function (Request $q, array $p): void {
+        if (!RequireAuth::handle($q)) return;
+        try {
+            (new AcademicPlanningService())->sync($q->user->id);
+            Response::success(['synced'=>true], $q->requestId);
+        } catch (\\Throwable $e) {
+            Response::error('ACADEMIC_SYNC_ERROR', $e->getMessage(), $q->requestId, 500);
+        }
+    });
+
     $r->get('/api/v1/academic/state', static function (Request $q, array $p): void {
         if (!RequireAuth::handle($q)) return;
         try {
