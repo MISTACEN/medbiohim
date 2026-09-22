@@ -17,6 +17,8 @@ type Item = {
   control_type?: string | null;
   slug?: string;
   hours_note?: string;
+  total_hours?: number | null;
+  credits?: number | null;
   category?: string;
   icon?: string;
   blurb?: string;
@@ -244,6 +246,7 @@ export default function SubjectsPage() {
                         {s.blurb && <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">{s.blurb}</p>}
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                           {controlLabel(s.control_type) && <span className="rounded-full bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]">{controlLabel(s.control_type)}</span>}
+                          {s.total_hours != null && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.total_hours} ч{s.credits != null ? ` / ${s.credits} з.е.` : ""}</span>}
                           {s.hours_note && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.hours_note}</span>}
                         </div>
                       </div>
