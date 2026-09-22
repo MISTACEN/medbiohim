@@ -176,6 +176,7 @@ export default function TestsPage() {
                 </label>
               ))}
             </div>
+            <QuestionReport questionId={q.id} />
           </div>
         ))}
         {result ? (
@@ -212,14 +213,14 @@ export default function TestsPage() {
                 <div className="text-lg font-semibold">{t.title}</div>
                 <div className="text-sm text-slate-500">{t.questionCount || "—"} вопросов</div>
               </div>
-              <button
+              <div className="flex flex-wrap gap-2"><Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link><button
                 type="button"
                 className="btn-primary inline-flex items-center gap-2 self-start"
                 disabled={busy}
                 onClick={() => void openTest(t.id)}
               >
-                <Play className="h-4 w-4" /> Начать
-              </button>
+                <Play className="h-4 w-4" /> Тест
+              </button></div>
             </div>
           ))}
         </div>
