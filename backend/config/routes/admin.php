@@ -52,13 +52,13 @@ $router->get('/api/v1/admin/db/tables', static function(Request $req,array $para
     if(!$adminGridGate($req))return;
     $items=[];
     foreach($adminGridTables as $t){
-        try{$items[]=['name'=>$t,'items'=>count(SupabaseRest::select($t.'?select=id&limit=10000'))];}
+        try{$items[]=['name'=>$t,'items'=>count(SupabaseRest::select($t.'?select=*&limit=10000'))];}
         catch(\Throwable $e){$items[]=['name'=>$t,'items'=>null,'error'=>$e->getMessage()];}
     }
     Response::success(['items'=>$items],$req->requestId);
 });
 
-$router->get('/api/v1/admin/db/:table', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+$router->get('/api/v1/admin/db/{table}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
     if(!$adminGridGate($req))return;
     $table=(string)($params['table']??'');
     if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available in admin grid',$req->requestId,403);return;}
@@ -67,7 +67,7 @@ $router->get('/api/v1/admin/db/:table', static function(Request $req,array $para
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
 });
 
-$router->post('/api/v1/admin/db/:table', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+$router->post('/api/v1/admin/db/{table}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
     if(!$adminGridGate($req))return;
     $table=(string)($params['table']??'');
     if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available in admin grid',$req->requestId,403);return;}
@@ -77,7 +77,7 @@ $router->post('/api/v1/admin/db/:table', static function(Request $req,array $par
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
 
-$router->patch('/api/v1/admin/db/:table/:id', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+$router->patch('/api/v1/admin/db/{table}/{id}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
     if(!$adminGridGate($req))return;
     $table=(string)($params['table']??''); $id=(string)($params['id']??'');
     if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
@@ -86,7 +86,7 @@ $router->patch('/api/v1/admin/db/:table/:id', static function(Request $req,array
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
 
-$router->delete('/api/v1/admin/db/:table/:id', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
+$router->delete('/api/v1/admin/db/{table}/{id}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
     if(!$adminGridGate($req))return;
     $table=(string)($params['table']??''); $id=(string)($params['id']??'');
     if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
