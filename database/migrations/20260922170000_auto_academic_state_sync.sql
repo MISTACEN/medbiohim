@@ -212,7 +212,7 @@ revoke all on function private.sync_student_academic_state_trigger() from public
 create or replace function public.sync_my_academic_state()
 returns void language plpgsql security invoker
 set search_path = public, pg_temp
-as $
+as $$
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   perform private.sync_student_academic_state(auth.uid());
