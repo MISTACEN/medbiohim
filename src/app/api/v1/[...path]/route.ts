@@ -2,13 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** Backend origin is explicit and must use HTTPS. */
 const configuredOrigin = process.env.SPACEWEB_API_ORIGIN;
-if (!configuredOrigin) throw new Error("SPACEWEB_API_ORIGIN is required");
-const UPSTREAM = configuredOrigin.replace(/\/$/, "");
+const UPSTREAM = configuredOrigin?.replace(/\/$/, "");
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 async function proxy(req: NextRequest, pathParts: string[]) {
+  if (!UPSTREAM) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: "BACKEND_NOT_CONFIGURED",
+          message: "SPACEWEB_API_ORIGIN is not configured on this deployment.",
+        },
+      },
+      { status: 503 }
+    );
+  }
+
   const sub = pathParts.join("/");
   const url = new URL(req.url);
   const target = `${UPSTREAM}/${sub}${url.search}`;
@@ -41,27 +53,6 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       { ok: false, error: { code: "UPSTREAM", message: msg }, requestId: "proxy" },
       { status: 502 }
     );
-  }
-
-  // If SpaceWeb returns 302 to http:// same path, re-fetch over HTTP once
-  if (upstream.status >= 300 && upstream.status < 400) {
-    const loc = upstream.headers.get("location");
-    if (loc) {
-      try {
-        const retry = await fetch(loc.replace(/^https:/, "http:"), {
-          ...init,
-          redirect: "follow",
-        });
-        const buf = await retry.arrayBuffer();
-        const out = new NextResponse(buf, { status: retry.status });
-        const ct = retry.headers.get("content-type");
-        if (ct) out.headers.set("content-type", ct);
-        out.headers.set("x-medbiohim-proxy", "retry-http");
-        return out;
-      } catch {
-        /* fall through */
-      }
-    }
   }
 
   const buf = await upstream.arrayBuffer();
