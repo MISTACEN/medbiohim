@@ -172,4 +172,16 @@ $router->post('/api/v1/admin/content/import', static function(Request $req,array
         Response::success(['dry_run'=>$dryRun,'created'=>['tests'=>$createdTests,'questions'=>$createdQuestions,'test_questions'=>$createdLinks],'errors'=>$errors],$req->requestId,$dryRun?200:201);
     }catch(\Throwable $e){Response::error('IMPORT_ERROR',$e->getMessage(),$req->requestId,422);}
 });
+
+// Safe content operations: archive instead of destructive delete, move across hierarchy, and restore snapshots.
+$router->post('/api/v1/admin/content/archive',static function(Request $req,array $params)use($adminGridGate):void{
+ if(!$adminGridGate($req))return; $p=is_array($req->jsonBody??null)?$req->jsonBody:[]; $table=(string)($p['table']??''); $id=(string)($p['id']??''); if(!in_array($table,['tests','questions'],true)||$id===''){Response::error('VALIDATION_ERROR','table and id required',$req->requestId,422);return;}
+ try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1'); if(!$old){Response::error('NOT_FOUND','Content not found',$req->requestId,404);return;} $new=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),['archived_at'=>gmdate('c')],true); SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'update','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0],'new_data'=>$new[0]??null,'source'=>'admin_archive'],false); Response::success(['item'=>$new[0]??null],$req->requestId);
+ }catch(\\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
+$router->post('/api/v1/admin/content/move',static function(Request $req,array $params)use($adminGridGate):void{
+ if(!$adminGridGate($req))return; $p=is_array($req->jsonBody??null)?$req->jsonBody:[]; $table=(string)($p['table']??''); $id=(string)($p['id']??''); $patch=[]; foreach(['subject_id','module_id','topic_id'] as $k)if(array_key_exists($k,$p))$patch[$k]=$p[$k]?:null; if(!in_array($table,['tests','questions'],true)||$id===''||!$patch){Response::error('VALIDATION_ERROR','table, id and destination required',$req->requestId,422);return;}
+ try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');if(!$old){Response::error('NOT_FOUND','Content not found',$req->requestId,404);return;} $new=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$patch,true);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'move','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0],'new_data'=>$new[0]??null,'source'=>'admin_ui'],false);Response::success(['item'=>$new[0]??null],$req->requestId);
+ }catch(\\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+});
 };
