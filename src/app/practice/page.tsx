@@ -8,6 +8,7 @@ import {
   type BankQuestion,
 } from "@/lib/api";
 import { Loader2, Search, Eye, EyeOff } from "lucide-react";
+import { QuestionReport } from "@/components/QuestionReport";
 
 export default function PracticePage() {
   const [subjects, setSubjects] = useState<
@@ -174,6 +175,7 @@ export default function PracticePage() {
                   {selected.text}
                 </h2>
               </div>
+              <QuestionReport questionId={selected.id} />
 
               {selected.type === "mc" && selected.options?.length ? (
                 <div className="space-y-2">
