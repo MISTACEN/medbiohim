@@ -151,7 +151,9 @@ function ScheduleCard({
         {item.is_cancelled && <span>ОТМЕНЕНО</span>}
       </div>
       <div className="mt-0.5 text-[11px] font-semibold opacity-75">{item.start_time.slice(0, 5)}–{item.end_time.slice(0, 5)}</div>
-      {(item.week_parity || item.academic_hours) && <div className="mt-1 text-[9px] font-semibold opacity-70">{item.week_parity === "numerator" ? "числитель" : item.week_parity === "denominator" ? "знаменатель" : item.academic_hours ? `${item.academic_hours} ак. ч.` : ""}</div>}\n      {item.teacher && cols === 1 && <div className="mt-1 truncate text-[10px] opacity-75">{item.teacher}</div>}\n      {location && cols === 1 && (
+      {(item.week_parity || item.academic_hours) && <div className="mt-1 text-[9px] font-semibold opacity-70">{item.week_parity === "numerator" ? "числитель" : item.week_parity === "denominator" ? "знаменатель" : item.academic_hours ? `${item.academic_hours} ак. ч.` : ""}</div>}
+      {item.teacher && cols === 1 && <div className="mt-1 truncate text-[10px] opacity-75">{item.teacher}</div>}
+      {location && cols === 1 && (
         <div className="mt-1 flex items-center gap-1 text-[10px] opacity-75">
           <MapPin className="h-3 w-3 shrink-0" />
           {location}
@@ -290,7 +292,8 @@ export default function SchedulePage() {
             <button key={id} type="button" onClick={() => setView(id)} className={view===id?"schedule-tab schedule-tab-active":"schedule-tab"}>{label}</button>
           ))}
         </div>
-        <div className="schedule-period">{weekTitle(weekStart)} · на неделе {weekCount}</div>\n        {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
+        <div className="schedule-period">{weekTitle(weekStart)} · на неделе {weekCount}</div>
+        {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
       </div>
 
       {groupMissing && !loading && (
@@ -304,7 +307,9 @@ export default function SchedulePage() {
       {loading ? <SkeletonCards count={4} /> : (
         <>
           {view === "week" && (
-            <div className="space-y-3">\n              {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}\n            <div className="schedule-shell">
+            <div className="space-y-3">
+              {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}
+            <div className="schedule-shell">
               <div className="schedule-scroll">
                 <div className="schedule-grid" style={{ minWidth: 920 }}>
                   <div className="schedule-corner"><Clock className="h-4 w-4" /></div>
