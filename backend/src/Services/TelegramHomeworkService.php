@@ -238,14 +238,6 @@ final class TelegramHomeworkService
                 if (mb_strlen($token) >= 5 && mb_strpos($lower, $token) !== false) $score += 0.08;
             }
 
-            $schedule = (new ScheduleRepository())->listForGroup($groupId);
-            foreach ($schedule as $entry) {
-                if (($entry['subject_id'] ?? null) === $subject['id']) {
-                    $score += 0.15;
-                    break;
-                }
-            }
-
             if ($score > $bestScore) {
                 $bestScore = min(0.99, $score);
                 $best = $subject;
@@ -368,12 +360,10 @@ final class TelegramHomeworkService
             return null;
         }
 
-        $download = HttpClient::request('GET', $api . '/getFile?file_id=' . rawurlencode($fileId), null, [], 20);
-        unset($download);
         $url = 'https://api.telegram.org/file/bot' . $this->token . '/' . $path;
-
-        $binary = @file_get_contents($url);
-        if ($binary === false || $binary === '') {
+        $download = HttpClient::request('GET', $url, null, [], 60);
+        $binary = $download['body'];
+        if ($download['status'] < 200 || $download['status'] >= 300 || $binary === '') {
             Logger::error('telegram_file_download_failed', ['path' => $path]);
             return null;
         }
@@ -452,17 +442,12 @@ final class TelegramHomeworkService
     {
         $stmt = $this->db->prepare(
             'UPDATE public.telegram_messages
-             SET processing_status = :status, processed_at = now(),
-                 raw_payload = CASE WHEN :error IS NULL THEN raw_payload
-                                    ELSE jsonb_set(COALESCE(raw_payload,''{}''::jsonb), ''{processing_error}'', to_jsonb(:error::text))
-                               END
+             SET processing_status = :status, processed_at = now()
              WHERE id = :id'
         );
-        try {
-            $stmt->execute(['id'=>$id,'status'=>$status,'error'=>$error]);
-        } catch (\Throwable $e) {
-            $fallback = $this->db->prepare('UPDATE public.telegram_messages SET processing_status=:status, processed_at=now() WHERE id=:id');
-            $fallback->execute(['id'=>$id,'status'=>$status]);
+        $stmt->execute(['id'=>$id,'status'=>$status]);
+        if ($error !== null) {
+            Logger::error('telegram_message_processing', ['message_id'=>$id,'error'=>$error]);
         }
     }
 }
