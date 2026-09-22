@@ -18,6 +18,13 @@ jobs:
           cache: npm
       - name: Install frontend dependencies
         run: npm install
+      - name: Detect literal escaped-newline source artifacts
+        run: |
+          set -euo pipefail
+          if grep -RInE '\\\\n[[:space:]]*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)' src backend --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.php'; then
+            echo 'Found a literal \\n embedded in source code.'
+            exit 1
+          fi
       - name: TypeScript and Next build
         run: npm run build
 
