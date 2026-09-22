@@ -31,6 +31,7 @@ const navItems = [
   { href: "/subjects", label: "Предметы", icon: BookOpen },
   { href: "/homework", label: "Задания", icon: ClipboardList },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
+  { href: "/academic", label: "Учебный план", icon: ClipboardList },
   { href: "/community", label: "Сообщество", icon: Users },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
