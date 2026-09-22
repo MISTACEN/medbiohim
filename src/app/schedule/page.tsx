@@ -5,7 +5,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen,
 } from "lucide-react";
 import Link from "next/link";
-import { listSchedule, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek } from "@/lib/api";
+import { listSchedule, getScheduleMeta, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
@@ -151,7 +151,7 @@ function ScheduleCard({
         {item.is_cancelled && <span>ОТМЕНЕНО</span>}
       </div>
       <div className="mt-0.5 text-[11px] font-semibold opacity-75">{item.start_time.slice(0, 5)}–{item.end_time.slice(0, 5)}</div>
-      {location && cols === 1 && (
+      {(item.week_parity || item.academic_hours) && <div className="mt-1 text-[9px] font-semibold opacity-70">{item.week_parity === "numerator" ? "числитель" : item.week_parity === "denominator" ? "знаменатель" : item.academic_hours ? `${item.academic_hours} ак. ч.` : ""}</div>}\n      {item.teacher && cols === 1 && <div className="mt-1 truncate text-[10px] opacity-75">{item.teacher}</div>}\n      {location && cols === 1 && (
         <div className="mt-1 flex items-center gap-1 text-[10px] opacity-75">
           <MapPin className="h-3 w-3 shrink-0" />
           {location}
@@ -174,29 +174,29 @@ export default function SchedulePage() {
   const [lesson, setLesson] = useState<SubjectPlanWeek|null>(null);
   const [lessonLoading, setLessonLoading] = useState(false);
   const [lessonWeeks, setLessonWeeks] = useState<SubjectPlanWeek[]>([]);
+  const [meta, setMeta] = useState<ScheduleMeta>({ periods: [], duration_rules: [] });
 
   useEffect(() => {
     const tick = () => setNow(nowParts());
     tick();
     const id = window.setInterval(tick, 15000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [user?.course, user?.semester]);
 
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     setLoading(true); setError(null);
-    void listSchedule(SEMESTER_FROM, SEMESTER_TO).then((res) => {
+    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course ?? 2, user?.semester ?? 3)]).then(([res, metaRes]) => {
       if (res.ok) {
         setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
         const payload = res.data as { items: ScheduleItem[]; source?: string };
         setSource(payload.source || "db");
-        if ((res.data.items || []).length === 0) {
-          setError("На весь семестр нет занятий. Назначьте группу в CMS или проверьте Supabase schedule_entries.");
-        }
+        if ((res.data.items || []).length === 0) setError("На весь семестр нет занятий. Назначьте группу в CMS или проверьте Supabase schedule_entries.");
       } else {
         setAllItems([]);
         setError(res.error.message || "Не удалось загрузить расписание");
       }
+      if (metaRes.ok) setMeta(metaRes.data);
       setLoading(false);
     });
   }, []);
@@ -251,6 +251,7 @@ export default function SchedulePage() {
   const nowTop = (now.minutes - GRID_START_MIN) * PX_PER_MIN;
   const weekCount = items.length;
   const totalCount = allItems.length;
+  const activePeriod = meta.periods.find((p) => p.start_date <= weekEnd && (!p.end_date || p.end_date >= weekStart));
 
   return (
     <div className="space-y-5">
@@ -289,7 +290,7 @@ export default function SchedulePage() {
             <button key={id} type="button" onClick={() => setView(id)} className={view===id?"schedule-tab schedule-tab-active":"schedule-tab"}>{label}</button>
           ))}
         </div>
-        <div className="schedule-period">{weekTitle(weekStart)} · на неделе {weekCount}</div>
+        <div className="schedule-period">{weekTitle(weekStart)} · на неделе {weekCount}</div>\n        {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
       </div>
 
       {groupMissing && !loading && (
@@ -303,7 +304,7 @@ export default function SchedulePage() {
       {loading ? <SkeletonCards count={4} /> : (
         <>
           {view === "week" && (
-            <div className="schedule-shell">
+            <div className="space-y-3">\n              {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}\n            <div className="schedule-shell">
               <div className="schedule-scroll">
                 <div className="schedule-grid" style={{ minWidth: 920 }}>
                   <div className="schedule-corner"><Clock className="h-4 w-4" /></div>
@@ -455,6 +456,14 @@ export default function SchedulePage() {
                 </div>
               </div>
             )}
+
+            <div className="mt-3 grid gap-2 rounded-xl border p-3 text-xs sm:grid-cols-2">
+              {selected.teacher && <div><b>Преподаватель:</b> {selected.teacher}</div>}
+              {selected.academic_hours && <div><b>Академическая нагрузка:</b> {selected.academic_hours} ак. ч.</div>}
+              {selected.week_parity && <div><b>Чередование:</b> {selected.week_parity === "numerator" ? "числитель" : selected.week_parity === "denominator" ? "знаменатель" : "все недели"}</div>}
+              {selected.source_detail && <div className="sm:col-span-2"><b>Источник/уточнение:</b> {selected.source_detail}</div>}
+              {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Перенос / пересдача</div>}
+            </div>
 
             {(selected.room||selected.notes) && (
               <div className="mt-3 text-xs opacity-60">
