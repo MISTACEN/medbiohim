@@ -135,8 +135,8 @@ final class LlmGateway
     {
         $provider = strtolower(trim($provider));
         if ($provider === 'auto') {
-            $preferred = strtolower((string)(Env::get('AI_CHAT_PRIMARY_PROVIDER', 'gigachat') ?? 'gigachat'));
-            $chain = array_values(array_unique([$preferred, 'gigachat', 'gemini']));
+            $preferred = strtolower((string)(Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq') ?? 'groq'));
+            $chain = array_values(array_unique([$preferred, 'groq', 'gigachat', 'gemini']));
             $errors = [];
             foreach ($chain as $p) {
                 try { return self::chatProvider($p, $messages, $temperature); }
@@ -147,6 +147,9 @@ final class LlmGateway
         if ($provider === 'gigachat' || $provider === 'giga') {
             return self::chatGigaChat($messages, $temperature);
         }
+        if ($provider === 'groq') {
+            return self::chatGroq($messages, $temperature);
+        }
         if ($provider === 'gemini' || $provider === 'google') {
             return self::chatGemini($messages, $temperature);
         }
@@ -156,6 +159,10 @@ final class LlmGateway
     public static function chatProvidersStatus(): array
     {
         return [
+            'groq' => [
+                'configured' => (bool)Env::get('GROQ_API_KEY'),
+                'model' => Env::get('GROQ_MODEL', 'openai/gpt-oss-20b'),
+            ],
             'gigachat' => [
                 'configured' => (bool)(Env::get('GIGACHAT_CREDENTIALS') || Env::get('GIGACHAT_ACCESS_TOKEN') || Env::get('LLM_PRIMARY_API_KEY')),
                 'model' => Env::get('GIGACHAT_MODEL', 'GigaChat'),
@@ -166,6 +173,26 @@ final class LlmGateway
             ],
             'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'gigachat'),
         ];
+    }
+
+    private static function chatGroq(array $messages, float $temperature): array
+    {
+        $key = trim((string)(Env::get('GROQ_API_KEY', '') ?? ''));
+        if ($key === '') throw new \\RuntimeException('GROQ_API_KEY is not configured');
+        $base = rtrim((string)(Env::get('GROQ_BASE_URL', 'https://api.groq.com/openai/v1') ?? 'https://api.groq.com/openai/v1'), '/');
+        $model = (string)(Env::get('GROQ_MODEL', 'openai/gpt-oss-20b') ?? 'openai/gpt-oss-20b');
+        $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, [
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json',
+        ], 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \\RuntimeException('Groq HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $text = (string)($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text) === '') throw new \\RuntimeException('Groq returned empty content');
+        return ['text' => trim($text), 'provider' => 'groq', 'model' => $model, 'mode' => 'api'];
     }
 
     private static function chatGigaChat(array $messages, float $temperature): array
