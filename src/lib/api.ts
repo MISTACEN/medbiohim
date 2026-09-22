@@ -11,7 +11,7 @@ export async function login(email:string,password:string){return api<{access_tok
 export async function me(){return api<{user:unknown;roles?:string[];groups?:unknown[]}>("/auth/me")}
 export async function refreshSession(){const refreshToken=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!refreshToken)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:refreshToken})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
 export async function health(){return api<{status:string;phase?:string}>("/health")}
-export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string;slug?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
+export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string;lecture_hours?:number|null;practice_hours?:number|null;self_study_hours?:number|null;total_hours?:number|null;credits?:number|null;slug?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
 export async function listGroups(){return api<{items:unknown[]}>("/groups")}
 export type ApiTest={id:string;title?:string;name?:string;description?:string|null;subject_id?:string|null;subject_name?:string|null;questions_count?:number;type?:string;is_published?:boolean};
 export async function listTests(subjectId?:string){return api<{items:ApiTest[]}>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
@@ -174,3 +174,6 @@ export async function syncAcademicState(){return api<{synced:boolean}>("/academi
 export async function getAcademicState(){return api<AcademicState>("/academic/state")}
 export async function saveAcademicState(payload:Record<string,unknown>){return api<{state:Record<string,unknown>}>("/academic/state",{method:"PUT",body:JSON.stringify(payload)})}
 export async function generateAcademicAiPlan(){return api<{plan:Record<string,unknown>;items:Array<Record<string,unknown>>;source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
+
+export type SubjectGradebookEntry={id:string;subject_id:string;display_name:string;hours?:number|null;credits?:number|null;control_form?:string|null;hours_scope?:"semester"|"course";source_note?:string|null;source_file?:string};
+export async function getSubjectGradebook(id:string){return api<{items:SubjectGradebookEntry[]}>(`/subjects/${encodeURIComponent(id)}/gradebook`)}
