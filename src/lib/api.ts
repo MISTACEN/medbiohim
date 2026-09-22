@@ -135,3 +135,6 @@ export async function adminDbMeta(){return api<{items:AdminDbMeta[]}>("/admin/db
 export async function adminDbUpdateByKey(table:string,key:AdminDbRow,row:AdminDbRow){return api<{item:AdminDbRow}>(`/admin/db/${encodeURIComponent(table)}/row`,{method:"PATCH",body:JSON.stringify({key,row})});}
 export async function adminDbDeleteByKey(table:string,key:AdminDbRow){return api<{deleted:boolean}>(`/admin/db/${encodeURIComponent(table)}/row`,{method:"DELETE",body:JSON.stringify({key})});}
 export async function adminDbAudit(limit=200){return api<{items:AdminDbRow[]}>(`/admin/db/audit?limit=${limit}`);}
+
+export async function adminContentArchive(table:"tests"|"questions",id:string){return api<{item:AdminDbRow|null}>("/admin/content/archive",{method:"POST",body:JSON.stringify({table,id})})}
+export async function adminContentMove(table:"tests"|"questions",id:string,patch:{subject_id?:string|null;module_id?:string|null;topic_id?:string|null}){return api<{item:AdminDbRow|null}>("/admin/content/move",{method:"POST",body:JSON.stringify({table,id,...patch})})}
