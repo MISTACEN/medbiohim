@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/** SpaceWeb has no working HTTPS (302→http). Proxy server-side over HTTP. */
-const UPSTREAM =
-  (process.env.SPACEWEB_API_ORIGIN || "http://ryazansev3.temp.swtest.ru/api/v1").replace(
-    /\/$/,
-    ""
-  );
+/** Backend origin is explicit and must use HTTPS. */
+const configuredOrigin = process.env.SPACEWEB_API_ORIGIN;
+if (!configuredOrigin) throw new Error("SPACEWEB_API_ORIGIN is required");
+const UPSTREAM = configuredOrigin.replace(/\/$/, "");
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
