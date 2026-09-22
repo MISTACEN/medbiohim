@@ -15,6 +15,7 @@ create table if not exists public.academic_calendar_periods (
 );
 create index if not exists idx_academic_calendar_periods_scope on public.academic_calendar_periods(course_number,semester,start_date);
 alter table public.academic_calendar_periods enable row level security;
+drop policy if exists "academic calendar authenticated read" on public.academic_calendar_periods;
 create policy "academic calendar authenticated read" on public.academic_calendar_periods for select to authenticated using (true);
 
 create table if not exists public.subject_schedule_rules (
@@ -30,6 +31,7 @@ create table if not exists public.subject_schedule_rules (
  unique(academic_year_id,course_number,semester,subject_name)
 );
 alter table public.subject_schedule_rules enable row level security;
+drop policy if exists "subject schedule rules authenticated read" on public.subject_schedule_rules;
 create policy "subject schedule rules authenticated read" on public.subject_schedule_rules for select to authenticated using (true);
 
 alter table public.schedule_entries
