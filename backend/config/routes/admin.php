@@ -126,8 +126,9 @@ $router->post('/api/v1/admin/content/import', static function(Request $req,array
     $errors=[];$createdTests=0;$createdQuestions=0;$createdLinks=0;
     try{
         $subjects=SupabaseRest::select('subjects?select=id,name,slug,code&limit=1000');
-        $byKey=[];
-        foreach($subjects as $s){foreach(['id','slug','code','name'] as $k){$v=trim((string)($s[$k]??''));if($v!=='')$byKey[mb_strtolower($v)]=(string)$s['id'];}}
+        $byKey=[]; foreach($subjects as $s){foreach(['id','slug','code','name'] as $k){$v=trim((string)($s[$k]??''));if($v!=='')$byKey[mb_strtolower($v)]=(string)$s['id'];}}
+        $modules=SupabaseRest::select('modules?select=id,name,slug,subject_id&limit=2000'); $moduleByKey=[]; foreach($modules as $m){foreach(['id','slug','name'] as $k){$v=trim((string)($m[$k]??''));if($v!=='')$moduleByKey[mb_strtolower((string)$m['subject_id']).'|'.mb_strtolower($v)]=(string)$m['id'];}}
+        $topics=SupabaseRest::select('topics?select=id,name,slug,module_id&limit=5000'); $topicByKey=[]; foreach($topics as $t){foreach(['id','slug','name'] as $k){$v=trim((string)($t[$k]??''));if($v!=='')$topicByKey[mb_strtolower((string)$t['module_id']).'|'.mb_strtolower($v)]=(string)$t['id'];}}
         $testIds=[];
         foreach($tests as $i=>$row){
             $title=trim((string)($row['title']??''));
@@ -135,8 +136,10 @@ $router->post('/api/v1/admin/content/import', static function(Request $req,array
             if($title===''){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'title is required'];continue;}
             $sid=$subjectKey!==''?($byKey[mb_strtolower($subjectKey)]??null):null;
             if($subjectKey!==''&&!$sid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'subject not found: '.$subjectKey];continue;}
+            $moduleKey=trim((string)($row['module_slug']??$row['module']??$row['module_id']??'')); $mid=$moduleKey!==''?($moduleByKey[mb_strtolower((string)$sid).'|'.mb_strtolower($moduleKey)]??null):null; if($moduleKey!==''&&!$mid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'module not found: '.$moduleKey];continue;}
+            $topicKey=trim((string)($row['topic_slug']??$row['topic']??$row['topic_id']??'')); $tid=$topicKey!==''?($topicByKey[mb_strtolower((string)$mid).'|'.mb_strtolower($topicKey)]??null):null; if($topicKey!==''&&!$tid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'topic not found: '.$topicKey];continue;}
             $id=trim((string)($row['id']??''));
-            $data=['title'=>$title,'subject_id'=>$sid,'module_id'=>($row['module_id']??null)?:null,'topic_id'=>($row['topic_id']??null)?:null,'time_limit_sec'=>($row['time_limit_sec']??null)===''?null:(int)$row['time_limit_sec'],'max_attempts'=>($row['max_attempts']??null)===''?null:(int)$row['max_attempts'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
+            $data=['title'=>$title,'subject_id'=>$sid,'module_id'=>$mid,'topic_id'=>$tid,'time_limit_sec'=>($row['time_limit_sec']??null)===''?null:(int)$row['time_limit_sec'],'max_attempts'=>($row['max_attempts']??null)===''?null:(int)$row['max_attempts'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
             if($id!=='')$data['id']=$id;
             if(!$dryRun){$x=SupabaseRest::insert('tests',$data,true);$id=(string)($x[0]['id']??'');}
             if($id!==''){$testIds[(string)($row['id']??$title)]=$id;$createdTests++;}
@@ -148,12 +151,14 @@ $router->post('/api/v1/admin/content/import', static function(Request $req,array
             if($text===''){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'text is required'];continue;}
             $sid=$subjectKey!==''?($byKey[mb_strtolower($subjectKey)]??null):null;
             if($subjectKey!==''&&!$sid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'subject not found: '.$subjectKey];continue;}
+            $moduleKey=trim((string)($row['module_slug']??$row['module']??$row['module_id']??'')); $mid=$moduleKey!==''?($moduleByKey[mb_strtolower((string)$sid).'|'.mb_strtolower($moduleKey)]??null):null; if($moduleKey!==''&&!$mid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'module not found: '.$moduleKey];continue;}
+            $topicKey=trim((string)($row['topic_slug']??$row['topic']??$row['topic_id']??'')); $tid=$topicKey!==''?($topicByKey[mb_strtolower((string)$mid).'|'.mb_strtolower($topicKey)]??null):null; if($topicKey!==''&&!$tid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'topic not found: '.$topicKey];continue;}
             $type=trim((string)($row['type']??'theory'));if(!in_array($type,['mcq','open','problem','theory','practical'],true)){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'invalid type: '.$type];continue;}
             $options=$row['options']??[];
             if(is_string($options)){try{$options=json_decode($options,true,512,JSON_THROW_ON_ERROR);}catch(\Throwable $e){$options=array_values(array_filter(array_map('trim',explode('|',$options))));}}
             if(!is_array($options))$options=[];
             $id=trim((string)($row['id']??''));
-            $data=['subject_id'=>$sid,'module_id'=>($row['module_id']??null)?:null,'topic_id'=>($row['topic_id']??null)?:null,'type'=>$type,'text'=>$text,'answer'=>($row['answer']??null)===''?null:(string)$row['answer'],'options'=>$options,'difficulty'=>($row['difficulty']??null)===''?null:(int)$row['difficulty'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
+            $data=['subject_id'=>$sid,'module_id'=>$mid,'topic_id'=>$tid,'type'=>$type,'text'=>$text,'answer'=>($row['answer']??null)===''?null:(string)$row['answer'],'options'=>$options,'difficulty'=>($row['difficulty']??null)===''?null:(int)$row['difficulty'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
             if($id!=='')$data['id']=$id;
             if(!$dryRun){$x=SupabaseRest::insert('questions',$data,true);$id=(string)($x[0]['id']??'');}
             if($id!==''){$questionIds[(string)($row['id']??$text)]=$id;$createdQuestions++;}
