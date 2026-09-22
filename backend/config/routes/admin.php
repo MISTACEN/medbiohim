@@ -34,8 +34,6 @@ $router->delete('/api/v1/admin/materials/{id}',static function(Request $req,arra
 $router->get('/api/v1/admin/community',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;Response::success(['items'=>(new ContentStore())->listCommunityPosts()],$req->requestId);});
 $router->patch('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$patch=[];if($req->jsonBody!==null)foreach(['title','body','pinned','hidden'] as $k)if(array_key_exists($k,$req->jsonBody))$patch[$k]=$req->jsonBody[$k];$row=(new ContentStore())->updateCommunityPost($params['id'],$patch);if($row===null){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['post'=>$row],$req->requestId);});
 $router->delete('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$ok=(new ContentStore())->deleteCommunityPost($params['id']);if(!$ok){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['deleted'=>true],$req->requestId);});
-};
-
 
 /**
  * Generic admin data grid. Deliberately whitelist tables and never exposes arbitrary SQL.
@@ -95,3 +93,57 @@ $router->delete('/api/v1/admin/db/:table/:id', static function(Request $req,arra
     try{SupabaseRest::deleteWhere($table.'?id=eq.'.rawurlencode($id));Response::success(['deleted'=>true],$req->requestId);}
     catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
+
+
+$router->post('/api/v1/admin/content/import', static function(Request $req,array $params)use($adminGridGate):void{
+    if(!$adminGridGate($req))return;
+    $payload=is_array($req->jsonBody??null)?$req->jsonBody:[];
+    $tests=is_array($payload['tests']??null)?$payload['tests']:[];
+    $questions=is_array($payload['questions']??null)?$payload['questions']:[];
+    $links=is_array($payload['test_questions']??null)?$payload['test_questions']:[];
+    $dryRun=(bool)($payload['dry_run']??false);
+    $errors=[];$createdTests=0;$createdQuestions=0;$createdLinks=0;
+    try{
+        $subjects=SupabaseRest::select('subjects?select=id,name,slug,code&limit=1000');
+        $byKey=[];
+        foreach($subjects as $s){foreach(['id','slug','code','name'] as $k){$v=trim((string)($s[$k]??''));if($v!=='')$byKey[mb_strtolower($v)]=(string)$s['id'];}}
+        $testIds=[];
+        foreach($tests as $i=>$row){
+            $title=trim((string)($row['title']??''));
+            $subjectKey=trim((string)($row['subject_slug']??$row['subject']??$row['subject_id']??''));
+            if($title===''){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'title is required'];continue;}
+            $sid=$subjectKey!==''?($byKey[mb_strtolower($subjectKey)]??null):null;
+            if($subjectKey!==''&&!$sid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'subject not found: '.$subjectKey];continue;}
+            $id=trim((string)($row['id']??''));
+            $data=['title'=>$title,'subject_id'=>$sid,'module_id'=>($row['module_id']??null)?:null,'topic_id'=>($row['topic_id']??null)?:null,'time_limit_sec'=>($row['time_limit_sec']??null)===''?null:(int)$row['time_limit_sec'],'max_attempts'=>($row['max_attempts']??null)===''?null:(int)$row['max_attempts'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
+            if($id!=='')$data['id']=$id;
+            if(!$dryRun){$x=SupabaseRest::insert('tests',$data,true);$id=(string)($x[0]['id']??'');}
+            if($id!==''){$testIds[(string)($row['id']??$title)]=$id;$createdTests++;}
+        }
+        $questionIds=[];
+        foreach($questions as $i=>$row){
+            $text=trim((string)($row['text']??''));
+            $subjectKey=trim((string)($row['subject_slug']??$row['subject']??$row['subject_id']??''));
+            if($text===''){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'text is required'];continue;}
+            $sid=$subjectKey!==''?($byKey[mb_strtolower($subjectKey)]??null):null;
+            if($subjectKey!==''&&!$sid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'subject not found: '.$subjectKey];continue;}
+            $type=trim((string)($row['type']??'theory'));if(!in_array($type,['mcq','open','problem','theory','practical'],true)){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'invalid type: '.$type];continue;}
+            $options=$row['options']??[];
+            if(is_string($options)){try{$options=json_decode($options,true,512,JSON_THROW_ON_ERROR);}catch(\Throwable $e){$options=array_values(array_filter(array_map('trim',explode('|',$options))));}}
+            if(!is_array($options))$options=[];
+            $id=trim((string)($row['id']??''));
+            $data=['subject_id'=>$sid,'module_id'=>($row['module_id']??null)?:null,'topic_id'=>($row['topic_id']??null)?:null,'type'=>$type,'text'=>$text,'answer'=>($row['answer']??null)===''?null:(string)$row['answer'],'options'=>$options,'difficulty'=>($row['difficulty']??null)===''?null:(int)$row['difficulty'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
+            if($id!=='')$data['id']=$id;
+            if(!$dryRun){$x=SupabaseRest::insert('questions',$data,true);$id=(string)($x[0]['id']??'');}
+            if($id!==''){$questionIds[(string)($row['id']??$text)]=$id;$createdQuestions++;}
+        }
+        foreach($links as $i=>$row){
+            $testRef=trim((string)($row['test_id']??$row['test']??''));$questionRef=trim((string)($row['question_id']??$row['question']??''));
+            $tid=$testIds[$testRef]??$testRef;$qid=$questionIds[$questionRef]??$questionRef;
+            if($tid===''||$qid===''){$errors[]=['sheet'=>'test_questions','row'=>$i+2,'error'=>'test_id and question_id are required'];continue;}
+            if(!$dryRun){SupabaseRest::insert('test_questions',['test_id'=>$tid,'question_id'=>$qid,'order_index'=>(int)($row['order_index']??$i)],true);$createdLinks++;}
+        }
+        Response::success(['dry_run'=>$dryRun,'created'=>['tests'=>$createdTests,'questions'=>$createdQuestions,'test_questions'=>$createdLinks],'errors'=>$errors],$req->requestId,$dryRun?200:201);
+    }catch(\Throwable $e){Response::error('IMPORT_ERROR',$e->getMessage(),$req->requestId,422);}
+});
+};
