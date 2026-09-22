@@ -125,6 +125,19 @@ return static function (Router $router): void {
         Response::success(['items' => $items, 'source' => $source], $req->requestId);
     });
 
+    $router->get('/api/v1/schedule/meta', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        $course = isset($req->query['course']) && $req->query['course'] !== '' ? (int)$req->query['course'] : null;
+        $semester = isset($req->query['semester']) && $req->query['semester'] !== '' ? (int)$req->query['semester'] : null;
+        try {
+            $meta = (new ScheduleRepository())->calendarMeta($course, $semester);
+            Response::success($meta, $req->requestId);
+        } catch (Throwable $e) {
+            try { Response::success(SupabaseRest::calendarMeta($course, $semester), $req->requestId); }
+            catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500); }
+        }
+    });
+
     // --- admin schedule (was 404) ---
     $router->get('/api/v1/admin/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
