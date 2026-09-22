@@ -69,7 +69,7 @@ export function startVkOAuth(redirectTo?: string) {
   const redirect = redirectTo || `${appOrigin}/auth/callback`;
   const url =
     `${SUPABASE_URL}/auth/v1/authorize` +
-    `?provider=vk` +
+    `?provider=custom:vk` +
     `&redirect_to=${encodeURIComponent(redirect)}`;
   window.location.href = url;
 }
