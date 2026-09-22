@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { Confetti } from "@/components/ui/Confetti";
+import { QuestionReport } from "@/components/QuestionReport";
 
 type UiTest = {
   id: string;
