@@ -114,3 +114,17 @@ export async function adminDbList(table:string,limit=200){return api<{items:Admi
 export async function adminDbInsert(table:string,row:AdminDbRow){return api<{item:AdminDbRow}>(`/admin/db/${encodeURIComponent(table)}`,{method:"POST",body:JSON.stringify(row)})}
 export async function adminDbUpdate(table:string,id:string,row:AdminDbRow){return api<{item:AdminDbRow}>(`/admin/db/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(row)})}
 export async function adminDbDelete(table:string,id:string){return api<{deleted:boolean}>(`/admin/db/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,{method:"DELETE"})}
+
+
+export type AdminContentImportPayload = {
+  tests: AdminDbRow[];
+  questions: AdminDbRow[];
+  test_questions: AdminDbRow[];
+  dry_run?: boolean;
+};
+export async function adminContentImport(payload:AdminContentImportPayload){
+  return api<{dry_run:boolean;created:{tests:number;questions:number;test_questions:number};errors:Array<{sheet:string;row:number;error:string}>}>(
+    "/admin/content/import",
+    {method:"POST",body:JSON.stringify(payload)}
+  );
+}
