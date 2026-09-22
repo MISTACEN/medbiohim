@@ -95,7 +95,7 @@ export type SubjectPlan={subject:string;subject_slug:string;semester?:string;con
 export async function getSubjectPlan(slug:string){return api<{plan:SubjectPlan;schedule_count:number}>(`/subject-plans/${encodeURIComponent(slug)}`)}
 export async function getLessonPlan(params:{date?:string;subject_slug?:string;subject?:string}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v)q.set(k,v)});return api<{lesson:SubjectPlanWeek|null;weeks:SubjectPlanWeek[];plan_meta?:Record<string,unknown>}>(`/lesson-plan?${q}`)}
 export async function adminSaveSubjectPlans(plans:SubjectPlan[]){return api<{plans:SubjectPlan[];count:number}>("/admin/subject-plans",{method:"PUT",body:JSON.stringify({plans})})}
-export async function listSubjectsCatalog(){return api<{items:Array<{id:string;name:string;slug:string;control_type?:string;hours_note?:string;category?:string;icon?:string;blurb?:string;course?:number;semester?:number}>;program?:string;semester_label?:string;curriculum?:Record<string,unknown>}>("/subjects-catalog")}
+export async function listSubjectsCatalog(){return api<{items:Array<{id:string;name:string;slug?:string;control_type?:string;hours_note?:string;category?:string;icon?:string;blurb?:string;course?:number;course_number?:number;semester?:number}>;program?:string;semester_label?:string;curriculum?:Record<string,unknown>}>("/subjects-catalog")}
 
 /** AI lectures */
 export type LectureListItem={id:string;title:string;subject:string;subject_slug:string;topic:string;summary?:string;published_at?:string|null;media_count?:number;status?:string}
