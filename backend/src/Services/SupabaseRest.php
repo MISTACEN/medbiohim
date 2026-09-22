@@ -32,4 +32,9 @@ final class SupabaseRest {
  public static function getFile(string $id):?array{$x=self::r('GET','files?id=eq.'.rawurlencode($id).'&status=eq.active&select=id,original_name,mime_type,size_bytes,object_key,b2_file_id,uploaded_by,group_id,visibility,status,created_at');return $x[0]??null;}
  public static function createFileMetadata(array $d):array{$x=self::r('POST','files',['original_name'=>$d['original_name'],'mime_type'=>$d['mime_type']??null,'size_bytes'=>$d['size_bytes']??null,'object_key'=>$d['object_key'],'b2_file_id'=>$d['b2_file_id']??null,'uploaded_by'=>$d['uploaded_by']??null,'group_id'=>$d['group_id']??null,'visibility'=>$d['visibility']??'group','status'=>'active'],['Prefer: return=representation']);return $x[0]??throw new \RuntimeException('File metadata insert failed');}
  public static function softDeleteFile(string $id):bool{self::r('PATCH','files?id=eq.'.rawurlencode($id),['status'=>'deleted'],['Prefer: return=minimal']);return true;}
+ public static function select(string $path):array{return self::r('GET',$path);}
+ public static function insert(string $table,array $row, bool $representation=true):array{return self::r('POST',$table,$row,$representation?['Prefer: return=representation']:['Prefer: return=minimal']);}
+ public static function patch(string $path,array $row,bool $representation=true):array{return self::r('PATCH',$path,$row,$representation?['Prefer: return=representation']:['Prefer: return=minimal']);}
+ public static function deleteWhere(string $path):array{return self::r('DELETE',$path,null,['Prefer: return=minimal']);}
+
 }
