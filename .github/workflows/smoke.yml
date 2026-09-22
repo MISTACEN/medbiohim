@@ -1,0 +1,29 @@
+name: MEDBIOHIM smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: https://medbiohim.vercel.app
+    steps:
+      - name: Check Vercel app
+        run: |
+          set -euo pipefail
+          code=$(curl -L -sS -o /tmp/app.html -w "%{http_code}" "$APP_URL/")
+          test "$code" = "200"
+          grep -q "Медбиохим" /tmp/app.html || true
+
+      - name: Check API through Vercel
+        run: |
+          set -euo pipefail
+          code=$(curl -L -sS -o /tmp/health.json -w "%{http_code}" "$APP_URL/api/v1/health")
+          test "$code" = "200"
+          cat /tmp/health.json
+          grep -q '"status"' /tmp/health.json
