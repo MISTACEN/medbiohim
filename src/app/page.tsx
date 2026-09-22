@@ -9,7 +9,7 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
-import { clearTokens, getDashboard, hasToken } from "@/lib/api";
+import { clearTokens, getDashboard, getAcademicState, hasToken, type AcademicState } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading, refresh } = useAuth();
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);\n  const [academic, setAcademic] = useState<AcademicState | null>(null);\n  const [academicLoading, setAcademicLoading] = useState(false);\n  const [academicError, setAcademicError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +57,7 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const res = await getDashboard();
+        const res = await getDashboard();\n        const academicRes = await getAcademicState();\n        if (!cancelled && academicRes.ok) setAcademic(academicRes.data);
         if (cancelled) return;
         if (res.ok) {
           setData({
@@ -98,6 +98,18 @@ export default function DashboardPage() {
   }, [refresh]);
 
   const name = user?.name?.split(" ")[0] || "студент";
+  const generatePlan = async () => {
+    setAcademicLoading(true);
+    setAcademicError(null);
+    try {
+      const res = await import("@/lib/api").then((m) => m.generateAcademicAiPlan());
+      if (!res.ok) throw new Error(res.error.message);
+      setAcademic(res.data.source_state);
+    } catch (e) {
+      setAcademicError(e instanceof Error ? e.message : "Не удалось сформировать план");
+    } finally { setAcademicLoading(false); }
+  };
+
   const pendingHw = (data?.homeworks || []).filter((h) => {
     const s = String(h.my_status || h.status || "");
     return !["submitted", "graded", "done"].includes(s);
@@ -206,6 +218,32 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Академическое состояние</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">Текущий прогресс и подготовка</h2>
+            {academic?.session ? <p className="mt-1 text-sm text-slate-500">{String(academic.session.title || "Текущая сессия")}</p> : null}
+          </div>
+          <button onClick={generatePlan} disabled={academicLoading} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+            {academicLoading ? "Анализирую…" : "Сформировать план подготовки"}
+          </button>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[["Закрыто", academic?.metrics.closed ?? 0], ["В процессе", academic?.metrics.in_progress ?? 0], ["Не начато", academic?.metrics.not_started ?? 0], ["Долги", academic?.metrics.debts ?? 0]].map(([label,value]) => (
+            <div key={String(label)} className="rounded-xl bg-slate-50 p-3"><div className="text-xl font-bold text-slate-900">{String(value)}</div><div className="text-xs text-slate-500">{String(label)}</div></div>
+          ))}
+        </div>
+        {!academic?.plan.available ? <p className="mt-4 text-sm text-amber-700">{academic?.plan.message || "Учебный план ещё не загружен."}</p> : null}
+        {academic?.recommendations?.length ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm font-semibold text-slate-800">Что сейчас важно</p>
+            {academic.recommendations.slice(0,3).map((r,i) => <div key={String(r.schedule_entry_id || r.topic_id || i)} className="rounded-xl border border-slate-100 p-3 text-sm"><span className="font-medium text-slate-900">{String(r.title || "Подготовка")}</span><span className="ml-2 text-slate-500">{String(r.reason || "")}</span></div>)}
+          </div>
+        ) : null}
+        {academicError ? <p className="mt-3 text-sm text-rose-600">{academicError}</p> : null}
       </section>
 
       <section>
