@@ -140,7 +140,6 @@ export default function DashboardPage() {
     const date = String(row.date || "");
     return date > khToday || (date === khToday && startTime >= khHm);
   }) || null;
-  const nearest = nextAfterNow || dashboardSchedule[0] || null;
 
 
   if (authLoading || loading) {
