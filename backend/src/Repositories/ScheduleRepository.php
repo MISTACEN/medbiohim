@@ -15,10 +15,7 @@ final class ScheduleRepository
         $this->db = Connection::pdo();
     }
 
-    /**
-     * Resolve active groups for a user. If the user has no explicit membership,
-     * use a course default only when that course currently has exactly one active group.
-     */
+    /** Resolve only explicit active group memberships; never infer a group from course. */
     private function userGroupIds(string $userId): array
     {
         $stmt = $this->db->prepare(
@@ -28,26 +25,7 @@ final class ScheduleRepository
                 AND is_active = true'
         );
         $stmt->execute(['user_id' => $userId]);
-        $ids = array_values(array_unique(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
-        if ($ids) {
-            return $ids;
-        }
-
-        $fallback = $this->db->prepare(
-            'SELECT g.id
-               FROM public.users u
-               JOIN public.groups g
-                 ON g.course_number = u.course_number
-                AND g.is_active = true
-              WHERE u.id = :user_id
-              ORDER BY g.name'
-        );
-        $fallback->execute(['user_id' => $userId]);
-        $defaultIds = array_values(array_unique(array_map('strval', $fallback->fetchAll(PDO::FETCH_COLUMN) ?: [])));
-
-        // Do not guess between multiple groups. This fallback is only safe for a course
-        // that currently has one active group (the demo/initial setup case).
-        return count($defaultIds) === 1 ? $defaultIds : [];
+        return array_values(array_unique(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
     }
 
     public function calendarMeta(?int $course = null, ?int $semester = null): array
@@ -300,7 +278,7 @@ SQL;
                 }
 
                 $type = strtolower(trim((string) ($entry['type'] ?? 'other')));
-                $allowed = ['lecture', 'practice', 'laboratory', 'seminar', 'exam', 'credit', 'consultation', 'other'];
+                $allowed = ['lecture', 'practice', 'laboratory', 'seminar', 'exam', 'credit', 'consultation', 'retake', 'other'];
                 if (!in_array($type, $allowed, true)) $type = 'other';
 
                 $subjectName = trim((string) ($entry['subject_name'] ?? ''));
