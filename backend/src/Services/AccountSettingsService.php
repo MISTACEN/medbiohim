@@ -106,7 +106,7 @@ final class AccountSettingsService
     public function startLinkProvider(string $accessToken, string $provider, string $redirectTo): array
     {
         $provider = strtolower(trim($provider));
-        $allowed = ['google', 'vk', 'github', 'discord', 'yandex'];
+        $allowed = ['google', 'custom:vk', 'custom:telegram', 'github', 'discord', 'yandex'];
         if (!in_array($provider, $allowed, true)) {
             throw new \InvalidArgumentException('Провайдер не поддерживается: ' . $provider);
         }
@@ -216,7 +216,7 @@ final class AccountSettingsService
     private function providerLabel(string $p): string
     {
         return match ($p) {
-            'email' => 'Почта / пароль', 'google' => 'Google', 'vk' => 'ВКонтакте',
+            'email' => 'Почта / пароль', 'google' => 'Google', 'vk' => 'ВКонтакте', 'custom:vk' => 'ВКонтакте', 'custom:telegram' => 'Telegram',
             'yandex' => 'Яндекс', 'github' => 'GitHub', 'discord' => 'Discord', 'phone' => 'Телефон', default => $p,
         };
     }
@@ -226,7 +226,8 @@ final class AccountSettingsService
         return [
             ['id' => 'email', 'label' => 'Почта / пароль', 'region' => 'any', 'enabled' => true, 'linkable' => false],
             ['id' => 'google', 'label' => 'Google', 'region' => 'global', 'enabled' => Env::get('OAUTH_GOOGLE_ENABLED', '1') !== '0', 'linkable' => true],
-            ['id' => 'vk', 'label' => 'ВКонтакте', 'region' => 'ru', 'enabled' => Env::get('OAUTH_VK_ENABLED', '1') !== '0', 'linkable' => true],
+            ['id' => 'custom:vk', 'label' => 'ВКонтакте', 'region' => 'ru', 'enabled' => Env::get('OAUTH_VK_ENABLED', '1') !== '0', 'linkable' => true],
+            ['id' => 'custom:telegram', 'label' => 'Telegram', 'region' => 'any', 'enabled' => Env::get('OAUTH_TELEGRAM_ENABLED', '1') !== '0', 'linkable' => true],
             ['id' => 'yandex', 'label' => 'Яндекс', 'region' => 'ru', 'enabled' => Env::get('OAUTH_YANDEX_ENABLED', '0') === '1', 'linkable' => true],
         ];
     }
