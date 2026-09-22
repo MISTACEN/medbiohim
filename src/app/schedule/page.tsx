@@ -188,7 +188,7 @@ export default function SchedulePage() {
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     setLoading(true); setError(null);
-    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course ?? 2, user?.semester ?? 3)]).then(([res, metaRes]) => {
+    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course, user?.semester)]).then(([res, metaRes]) => {
       if (res.ok) {
         setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
         const payload = res.data as { items: ScheduleItem[]; source?: string };
@@ -244,9 +244,9 @@ export default function SchedulePage() {
 
   const today = now.date;
   const first = allItems[0] || items[0];
-  const course = user?.course ?? 2;
-  const semester = first?.semester ?? user?.semester ?? 3;
-  const groupName = user?.groupName || first?.group_name || first?.group_code || "МБ-201 (общая сетка)";
+  const course = user?.course ?? first?.course_number ?? null;
+  const semester = first?.semester ?? user?.semester ?? null;
+  const groupName = user?.groupName || first?.group_name || first?.group_code || "Учебная группа не назначена";
   const groupMissing = !user?.groupName && allItems.length === 0;
   const currentDayItems = grouped.get(today) || [];
   const showNowLine = now.minutes >= GRID_START_MIN && now.minutes <= 18 * 60 + 30;
@@ -269,7 +269,7 @@ export default function SchedulePage() {
             <CalendarDays className="h-6 w-6" style={{ color: "var(--primary)" }} />
             <h1 className="page-title">Расписание</h1>
           </div>
-          <p className="page-subtitle">{groupName} · {course} курс · семестр {semester} · 2026/2027</p>
+          <p className="page-subtitle">{groupName}{course != null ? ` · ${course} курс` : ""}{semester != null ? ` · семестр ${semester}` : ""} · 2026/2027</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
               <Database className="h-3.5 w-3.5" /> {source === "db" ? "Supabase" : source === "local" ? "резервные данные" : source} · {totalCount} занятий за семестр
@@ -299,7 +299,7 @@ export default function SchedulePage() {
       {groupMissing && !loading && (
         <div className="schedule-config-warning">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <div><b>Учебная группа не назначена.</b><p>CMS → Пользователи: группа и семестр. Пока показывается общая сетка МБ-201 (если есть в резерве).</p></div>
+          <div><b>Учебная группа не назначена.</b><p>CMS → Пользователи: назначьте учебную группу. Расписание без подтверждённой группы не подставляется автоматически.</p></div>
         </div>
       )}
       {error && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb,var(--danger) 10%,transparent)", color: "var(--danger)" }}>{error}</div>}
