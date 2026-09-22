@@ -6,7 +6,6 @@ namespace Medbiohim\Services;
 use Medbiohim\Database\Connection;
 use Medbiohim\Repositories\FileRepository;
 use Medbiohim\Repositories\HomeworkRepository;
-use Medbiohim\Repositories\ScheduleRepository;
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
 use Medbiohim\Support\Logger;
