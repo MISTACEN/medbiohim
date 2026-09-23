@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  Bot,
   Activity,
   BookOpen,
   CalendarDays,
