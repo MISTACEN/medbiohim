@@ -216,7 +216,7 @@ final class LlmGateway
         $key = trim((string) (Env::get('GEMINI_API_KEY', '') ?? ''));
         if ($key === '') throw new \\RuntimeException('GEMINI_API_KEY is not configured');
         $base = rtrim((string) (Env::get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta') ?? 'https://generativelanguage.googleapis.com/v1beta'), '/');
-        $model = (string) (Env::get('GEMINI_VISION_MODEL', '') ?: Env::get('GEMINI_MODEL', 'gemini-3.5-flash'));
+        $model = (string) (self::normalizeGeminiModel(Env::get('GEMINI_VISION_MODEL', '') ?: Env::get('GEMINI_MODEL', 'gemini-3.6-flash')));
         $system = '';
         $contents = [];
         foreach ($messages as $m) {
@@ -283,7 +283,7 @@ final class LlmGateway
             ],
             'gemini' => [
                 'configured' => (bool)Env::get('GEMINI_API_KEY'),
-                'model' => Env::get('GEMINI_MODEL', 'gemini-3.5-flash'),
+                'model' => self::normalizeGeminiModel(Env::get('GEMINI_MODEL', 'gemini-3.6-flash')),
             ],
             'mistral' => [
                 'configured' => (bool)Env::get('MISTRAL_API_KEY'),
@@ -351,9 +351,10 @@ final class LlmGateway
         $res = HttpClient::form('POST', 'https://ngw.devices.sberbank.ru:9443/api/v2/oauth', ['scope'=>$scope], [
             'RqUID: ' . $rquid,
             'Authorization: Basic ' . $credential,
+            'Accept: application/json',
         ], 20);
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
-            throw new \RuntimeException('GigaChat OAuth HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,300));
+            throw new \RuntimeException('GigaChat OAuth HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,500));
         }
         $body=$res['json'] ?? [];
         $token=(string)($body['access_token'] ?? '');
@@ -362,28 +363,67 @@ final class LlmGateway
         return $token;
     }
 
+    private static function normalizeGeminiModel(?string $model): string
+    {
+        $model = trim((string)($model ?? ''));
+        if (str_starts_with($model, 'models/')) $model = substr($model, 7);
+        if ($model === '' || in_array($model, ['gemini-2.0-flash','gemini-2.0-flash-lite'], true)) {
+            return 'gemini-3.6-flash';
+        }
+        return $model;
+    }
+
     private static function chatGemini(array $messages, float $temperature): array
     {
         $key=trim((string)(Env::get('GEMINI_API_KEY','') ?? ''));
         if($key==='') throw new \RuntimeException('GEMINI_API_KEY is not configured');
-        $base=rtrim((string)(Env::get('GEMINI_BASE_URL','https://generativelanguage.googleapis.com/v1beta') ?? 'https://generativelanguage.googleapis.com/v1beta'),'/');
-        $model=(string)(Env::get('GEMINI_MODEL','gemini-3.5-flash') ?? 'gemini-3.5-flash');
+        $base=rtrim((string)(Env::get('GEMINI_BASE_URL','https://generativelanguage.googleapis.com') ?? 'https://generativelanguage.googleapis.com'),'/');
+        $model=self::normalizeGeminiModel(Env::get('GEMINI_MODEL','gemini-3.6-flash'));
+
         $system='';
-        $contents=[];
+        $input=[];
         foreach($messages as $m){
-            $role=(string)($m['role']??'user'); $content=$m['content']??'';
-            if($role==='system'){ $system.=(($system?'\n':'').(string)$content); continue; }
-            $contents[]=['role'=>$role==='assistant'?'model':'user','parts'=>[['text'=>(string)$content]]];
+            $role=(string)($m['role']??'user');
+            $content=(string)($m['content']??'');
+            if($role==='system'){
+                $system.=($system!=='' ? "\n" : '').$content;
+                continue;
+            }
+            $input[]=[
+                'type'=>$role==='assistant' ? 'model_output' : 'user_input',
+                'content'=>[['type'=>'text','text'=>$content]],
+            ];
         }
-        if(!$contents) throw new \InvalidArgumentException('At least one user message is required');
-        $payload=['contents'=>$contents,'generationConfig'=>['temperature'=>$temperature,'maxOutputTokens'=>(int)(Env::get('GEMINI_MAX_OUTPUT_TOKENS','2048')??2048)]];
-        if($system!=='') $payload['systemInstruction']=['parts'=>[['text'=>$system]]];
-        $res=HttpClient::request('POST',$base.'/models/'.rawurlencode($model).':generateContent',$payload,['x-goog-api-key: '.$key,'Content-Type: application/json'],90);
-        if(($res['status']??0)<200||($res['status']??0)>=300) throw new \RuntimeException('Gemini HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,300));
-        $body=$res['json']??[]; $parts=$body['candidates'][0]['content']['parts']??[]; $text='';
-        foreach($parts as $p) if(is_array($p)&&isset($p['text'])) $text.=(string)$p['text'];
-        if(trim($text)==='') throw new \RuntimeException('Gemini returned empty content');
-        return ['text'=>trim($text),'provider'=>'gemini','model'=>$model,'mode'=>'api'];
+        if(!$input) throw new \InvalidArgumentException('At least one user message is required');
+
+        $payload=[
+            'model'=>$model,
+            'input'=>$input,
+            'store'=>false,
+            'generation_config'=>[
+                'temperature'=>$temperature,
+                'max_output_tokens'=>(int)(Env::get('GEMINI_MAX_OUTPUT_TOKENS','2048')??2048),
+            ],
+        ];
+        if($system!=='') $payload['system_instruction']=$system;
+
+        $res=HttpClient::request('POST',$base.'/v1/interactions',$payload,[
+            'x-goog-api-key: '.$key,
+            'Content-Type: application/json',
+        ],90);
+        if(($res['status']??0)<200||($res['status']??0)>=300){
+            throw new \RuntimeException('Gemini Interactions HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,500));
+        }
+        $body=$res['json']??[];
+        $text='';
+        foreach(($body['steps']??[]) as $step){
+            if(!is_array($step)||($step['type']??'')!=='model_output') continue;
+            foreach(($step['content']??[]) as $part){
+                if(is_array($part)&&($part['type']??'')==='text') $text.=(string)($part['text']??'');
+            }
+        }
+        if(trim($text)==='') throw new \RuntimeException('Gemini Interactions returned empty content');
+        return ['text'=>trim($text),'provider'=>'gemini','model'=>$model,'mode'=>'interactions'];
     }
 
     private static function chatMistral(array $messages, float $temperature): array
@@ -392,7 +432,7 @@ final class LlmGateway
         if ($key === '') throw new \RuntimeException('MISTRAL_API_KEY is not configured');
         $base = rtrim((string)(Env::get('MISTRAL_BASE_URL', 'https://api.mistral.ai/v1') ?? 'https://api.mistral.ai/v1'), '/');
         $model = (string)(Env::get('MISTRAL_MODEL', 'mistral-small-latest') ?? 'mistral-small-latest');
-        return self::chatOpenAICompatible($base, $key, $model, $messages, $temperature, 'mistral');
+        return self::chatOpenAICompatible($base, $key, $model, self::normalizeTextMessages($messages), $temperature, 'mistral');
     }
 
     private static function chatOpenRouter(array $messages, float $temperature): array
@@ -405,6 +445,28 @@ final class LlmGateway
             'HTTP-Referer: https://medbiohim.vercel.app',
             'X-Title: MEDBIOHIM',
         ]);
+    }
+
+    private static function normalizeTextMessages(array $messages): array
+    {
+        $out=[];
+        foreach($messages as $m){
+            if(!is_array($m)) continue;
+            $role=(string)($m['role']??'user');
+            if(!in_array($role,['system','user','assistant','tool'],true)) $role='user';
+            $content=$m['content']??'';
+            if(is_string($content)) $text=$content;
+            elseif(is_array($content)){
+                $parts=[];
+                foreach($content as $part){
+                    if(is_string($part)) $parts[]=$part;
+                    elseif(is_array($part) && isset($part['text'])) $parts[]=(string)$part['text'];
+                }
+                $text=implode("\n",$parts);
+            } else $text=(string)$content;
+            $out[]=['role'=>$role,'content'=>$text];
+        }
+        return $out;
     }
 
     private static function chatOpenAICompatible(string $base, string $key, string $model, array $messages, float $temperature, string $provider, array $extraHeaders = []): array
