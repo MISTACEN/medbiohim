@@ -344,7 +344,7 @@ TXT;
              JOIN public.schedules sch ON sch.id = se.schedule_id AND sch.is_active = true
              JOIN public.subjects s ON s.id = se.subject_id
              WHERE sch.group_id = :group
-               AND se.date >= (:message_date::date - INTERVAL '21 days')
+               AND se.date >= (CAST(:message_date AS date) - INTERVAL '21 days')
                AND se.date <= (CAST(:message_date AS date) + INTERVAL '42 days')
                AND COALESCE(se.is_cancelled, false) = false
              GROUP BY s.id, s.name, s.semester, s.course_number
