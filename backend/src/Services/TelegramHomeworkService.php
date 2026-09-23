@@ -62,19 +62,24 @@ final class TelegramHomeworkService
         // A photo/document sent as a reply to an already imported homework
         // belongs to that homework even when the attachment itself has no caption.
         $replyHomework = $this->findHomeworkByReply($chat['telegram_chat_id'] ?? $message['chat']['id'], $message['reply_to_message']['message_id'] ?? null);
-        if ($replyHomework && (isset($message['photo']) || isset($message['document']))) {
+        $mediaGroupHomework = $this->findHomeworkByMediaGroup(
+            (int) ($message['chat']['id'] ?? 0),
+            isset($message['media_group_id']) ? (string) $message['media_group_id'] : null
+        );
+        $attachmentHomework = $replyHomework ?: $mediaGroupHomework;
+        if ($attachmentHomework && (isset($message['photo']) || isset($message['document']))) {
             $attachments = $this->importAttachments(
                 $message,
                 $chat['group_id'],
                 (string) $stored['id'],
-                (string) $replyHomework['id']
+                (string) $attachmentHomework['id']
             );
-            $this->linkMessage((string) $stored['id'], (string) $replyHomework['id'], 0.99);
+            $this->linkMessage((string) $stored['id'], (string) $attachmentHomework['id'], $replyHomework ? 0.99 : 0.97);
             $this->markMessage((string) $stored['id'], 'processed');
             return [
                 'status' => 'processed',
                 'created' => false,
-                'attached_to_homework_id' => $replyHomework['id'],
+                'attached_to_homework_id' => $attachmentHomework['id'],
                 'attachments' => $attachments,
             ];
         }
@@ -158,12 +163,13 @@ final class TelegramHomeworkService
         $userId = isset($message['from']['id']) ? (int) $message['from']['id'] : null;
         $replyId = isset($message['reply_to_message']['message_id'])
             ? (int) $message['reply_to_message']['message_id'] : null;
+        $mediaGroupId = isset($message['media_group_id']) ? (string) $message['media_group_id'] : null;
 
         $stmt = $this->db->prepare(
             'INSERT INTO public.telegram_messages
              (telegram_chat_id, telegram_message_id, telegram_user_id, reply_to_message_id,
-              message_text, caption, telegram_date, raw_payload)
-             VALUES (:chat,:message,:user,:reply,:text,:caption,:date,:raw)
+              message_text, caption, telegram_date, telegram_media_group_id, raw_payload)
+             VALUES (:chat,:message,:user,:reply,:text,:caption,:date,:media_group,:raw)
              RETURNING id'
         );
         $stmt->execute([
@@ -174,6 +180,7 @@ final class TelegramHomeworkService
             'text' => $text,
             'caption' => $caption,
             'date' => $date,
+            'media_group' => $mediaGroupId,
             'raw' => json_encode($message, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
         return ['id' => $stmt->fetchColumn(), 'duplicate' => false];
@@ -220,6 +227,24 @@ final class TelegramHomeworkService
              LIMIT 1'
         );
         $stmt->execute(['chat' => (int) $chatId, 'message' => (int) $replyMessageId]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    private function findHomeworkByMediaGroup(int $chatId, ?string $mediaGroupId): ?array
+    {
+        if ($chatId === 0 || $mediaGroupId === null || $mediaGroupId === '') return null;
+        $stmt = $this->db->prepare(
+            'SELECT h.*
+             FROM public.telegram_messages source
+             JOIN public.telegram_homework_links l ON l.telegram_message_id = source.id
+             JOIN public.homeworks h ON h.id = l.homework_id
+             WHERE source.telegram_chat_id = :chat
+               AND source.telegram_media_group_id = :media_group
+             ORDER BY l.created_at ASC
+             LIMIT 1'
+        );
+        $stmt->execute(['chat' => $chatId, 'media_group' => $mediaGroupId]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
     }
