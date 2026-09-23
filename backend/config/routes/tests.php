@@ -91,7 +91,7 @@ return static function (Router $router): void {
                        AND q.archived_at IS NULL
                      ORDER BY tq.order_index, q.id'
                 );
-                $q->execute(['test_id' => $testId]);
+                $q->execute(['test_id' => (string) $params['id']]);
                 $questions = $q->fetchAll() ?: [];
                 Response::success(['test' => $test, 'questions' => $questions, 'source' => 'db'], $req->requestId);
                 return;
