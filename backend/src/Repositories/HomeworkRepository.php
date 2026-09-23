@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Medbiohim\Repositories;
 
 use Medbiohim\Database\Connection;
+use Medbiohim\Services\B2Storage;
 use PDO;
 
 final class HomeworkRepository
@@ -34,7 +35,50 @@ final class HomeworkRepository
              ORDER BY h.due_at NULLS LAST, h.created_at DESC'
         );
         $stmt->execute(['uid' => $userId, 'uid2' => $userId]);
-        return $stmt->fetchAll() ?: [];
+        $items = $stmt->fetchAll() ?: [];
+        if ($items === []) return [];
+
+        $ids = array_values(array_filter(array_map(static fn($row) => (string)($row['id'] ?? ''), $items)));
+        $attachmentsByHomework = [];
+        if ($ids) {
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            $a = $this->db->prepare(
+                "SELECT ha.homework_id, ha.file_id, ha.attachment_type, ha.caption, ha.sort_order,
+                        ha.inline_view, f.original_name, f.mime_type, f.size_bytes, f.object_key
+                 FROM public.homework_attachments ha
+                 JOIN public.files f ON f.id = ha.file_id
+                 WHERE ha.homework_id IN ($ph) AND f.status <> 'deleted'
+                 ORDER BY ha.homework_id, ha.sort_order, ha.created_at"
+            );
+            $a->execute($ids);
+            $b2 = new B2Storage();
+            foreach (($a->fetchAll() ?: []) as $row) {
+                $item = [
+                    'file_id' => (string)$row['file_id'],
+                    'name' => $row['original_name'],
+                    'mime_type' => $row['mime_type'],
+                    'size_bytes' => $row['size_bytes'] !== null ? (int)$row['size_bytes'] : null,
+                    'attachment_type' => $row['attachment_type'],
+                    'caption' => $row['caption'],
+                    'inline_view' => (bool)$row['inline_view'],
+                    'download_url' => null,
+                ];
+                if ($b2->isConfigured() && !empty($row['object_key'])) {
+                    try {
+                        $item['download_url'] = $b2->presignedDownloadUrl((string)$row['object_key'], 3600);
+                    } catch (\\Throwable $e) {
+                        // Keep metadata visible even if B2 signing temporarily fails.
+                    }
+                }
+                $attachmentsByHomework[(string)$row['homework_id']][] = $item;
+            }
+        }
+
+        foreach ($items as &$item) {
+            $item['attachments'] = $attachmentsByHomework[(string)$item['id']] ?? [];
+        }
+        unset($item);
+        return $items;
     }
 
     public function findById(string $id): ?array
