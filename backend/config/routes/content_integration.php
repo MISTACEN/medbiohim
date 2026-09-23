@@ -63,7 +63,7 @@ return static function (Router $router): void {
 
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT id, title, source_path, mime_type, original_format, source_archive, note, created_at
+                'SELECT id, title, source_path, mime_type, original_format, source_archive, note, file_id, created_at
                  FROM public.content_sources
                  WHERE id = :id
                  LIMIT 1'
@@ -82,7 +82,25 @@ return static function (Router $router): void {
                 }
             }
 
-            Response::success(['source' => $row], $req->requestId);
+            $download = null;
+            if (!empty($row['file_id'])) {
+                $fileStmt = Connection::pdo()->prepare(
+                    'SELECT id, original_name, mime_type, size_bytes, object_key
+                     FROM public.files
+                     WHERE id = :id AND status = \'active\'
+                     LIMIT 1'
+                );
+                $fileStmt->execute(['id' => (string) $row['file_id']]);
+                $file = $fileStmt->fetch();
+                if ($file !== false && !empty($file['object_key'])) {
+                    $storage = new B2Storage();
+                    if ($storage->isConfigured()) {
+                        try { $download = ['name'=>$file['original_name'] ?? null,'mime_type'=>$file['mime_type'] ?? null,'size_bytes'=>$file['size_bytes'] ?? null,'url'=>$storage->presignedDownloadUrl((string)$file['object_key'],3600)]; }
+                        catch (\Throwable $e) { $download = null; }
+                    }
+                }
+            }
+            Response::success(['source' => $row, 'download' => $download], $req->requestId);
         } catch (\Throwable $e) {
             Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
         }
