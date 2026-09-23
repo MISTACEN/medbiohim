@@ -520,8 +520,8 @@ TXT;
 
         $stmt = $this->db->prepare(
             'INSERT INTO public.homework_attachments
-             (homework_id, file_id, telegram_message_id, attachment_type, caption)
-             VALUES (:homework,:file,:message,:type,:caption)
+             (homework_id, file_id, telegram_message_id, attachment_type, caption, inline_view)
+             VALUES (:homework,:file,:message,:type,:caption,:inline)
              ON CONFLICT (homework_id,file_id) DO NOTHING
              RETURNING *'
         );
@@ -531,6 +531,7 @@ TXT;
             'message' => $telegramMessageId,
             'type' => $attachmentType,
             'caption' => $caption !== '' ? $caption : null,
+            'inline' => $attachmentType === 'image',
         ]);
 
         return [
