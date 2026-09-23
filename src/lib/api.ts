@@ -102,6 +102,9 @@ export async function adminSetTelegramWebhook(){return api<{configured:boolean;u
 export async function adminListHomeworks(){return api<{items:Array<Record<string,unknown>>}>("/admin/homeworks")}
 export async function adminCreateHomework(payload:{title:string;description?:string;subject_id?:string;group_id?:string;due_at?:string}){return api<{item:Record<string,unknown>}>("/admin/homeworks",{method:"POST",body:JSON.stringify(payload)})}
 export async function adminDeleteHomework(id:string){return api<{deleted:boolean}>(`/admin/homeworks/${id}`,{method:"DELETE"})}
+export async function adminImportContentPackage(payload:Record<string,unknown>){
+  return api<{stats:Record<string,number>;package_id?:string}>("/admin/content/package/import",{method:"POST",body:JSON.stringify(payload)});
+}
 export async function adminListMaterials(){return api<{items:Array<Record<string,unknown>>}>("/admin/materials")}
 export async function adminDeleteMaterial(id:string){return api<{deleted:boolean}>(`/admin/materials/${id}`,{method:"DELETE"})}
 export async function adminListCommunity(){return api<{items:Array<Record<string,unknown>>}>("/admin/community")}
