@@ -106,7 +106,7 @@ final class TelegramHomeworkService
                 $description,
                 $subject['id'] ?? null,
                 $chat['group_id'],
-                $this->extractDueAt($message['text'] ?? $message['caption'] ?? ''),
+                $this->extractDueAt($dueText),
                 $this->actorUserId
             );
         } else {
