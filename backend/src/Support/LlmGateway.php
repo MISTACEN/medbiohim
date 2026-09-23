@@ -162,6 +162,114 @@ final class LlmGateway
         throw new \InvalidArgumentException('Unknown AI provider: ' . $provider);
     }
 
+    /**
+     * Multimodal image understanding for ingestion/OCR workflows.
+     * Accepts OpenAI-compatible image_url data URLs in message content.
+     * Provider is selected by LLM_VISION_PROVIDER=auto|gemini|openrouter.
+     */
+    public static function vision(array $messages, float $temperature = 0.1): array
+    {
+        $preferred = strtolower(trim((string) (Env::get('LLM_VISION_PROVIDER', 'auto') ?? 'auto')));
+        $chain = $preferred === 'auto'
+            ? ['gemini', 'openrouter']
+            : [$preferred, 'gemini', 'openrouter'];
+        $errors = [];
+        foreach (array_values(array_unique($chain)) as $provider) {
+            try {
+                if ($provider === 'gemini') return self::visionGemini($messages, $temperature);
+                if ($provider === 'openrouter') return self::visionOpenRouter($messages, $temperature);
+            } catch (\\Throwable $e) {
+                $errors[] = $provider . ': ' . Str::sub($e->getMessage(), 0, 180);
+            }
+        }
+        throw new \\RuntimeException('Vision providers unavailable: ' . implode(' | ', $errors));
+    }
+
+    /** @param list<array{role:string,content:mixed}> $messages */
+    private static function visionOpenRouter(array $messages, float $temperature): array
+    {
+        $key = trim((string) (Env::get('OPENROUTER_API_KEY', '') ?? ''));
+        if ($key === '') throw new \\RuntimeException('OPENROUTER_API_KEY is not configured');
+        $base = rtrim((string) (Env::get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1') ?? 'https://openrouter.ai/api/v1'), '/');
+        $model = (string) (Env::get('OPENROUTER_VISION_MODEL', '') ?: Env::get('OPENROUTER_MODEL', 'google/gemini-2.5-flash'));
+        if ($model === '') throw new \\RuntimeException('OPENROUTER_VISION_MODEL is not configured');
+        $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
+        $headers = [
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json',
+            'HTTP-Referer: https://medbiohim.vercel.app',
+            'X-Title: MEDBIOHIM Telegram ingestion',
+        ];
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \\RuntimeException('OpenRouter vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $text = (string) ($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text) === '') throw new \\RuntimeException('OpenRouter vision returned empty content');
+        return ['text' => trim($text), 'provider' => 'openrouter', 'model' => $model, 'mode' => 'api'];
+    }
+
+    /** @param list<array{role:string,content:mixed}> $messages */
+    private static function visionGemini(array $messages, float $temperature): array
+    {
+        $key = trim((string) (Env::get('GEMINI_API_KEY', '') ?? ''));
+        if ($key === '') throw new \\RuntimeException('GEMINI_API_KEY is not configured');
+        $base = rtrim((string) (Env::get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta') ?? 'https://generativelanguage.googleapis.com/v1beta'), '/');
+        $model = (string) (Env::get('GEMINI_VISION_MODEL', '') ?: Env::get('GEMINI_MODEL', 'gemini-3.5-flash'));
+        $system = '';
+        $contents = [];
+        foreach ($messages as $m) {
+            $role = (string) ($m['role'] ?? 'user');
+            $content = $m['content'] ?? '';
+            if ($role === 'system') {
+                $system .= ($system !== '' ? "\\n" : '') . (string) $content;
+                continue;
+            }
+            $parts = [];
+            if (is_string($content)) {
+                $parts[] = ['text' => $content];
+            } elseif (is_array($content)) {
+                foreach ($content as $part) {
+                    if (!is_array($part)) continue;
+                    if (($part['type'] ?? '') === 'text') {
+                        $parts[] = ['text' => (string) ($part['text'] ?? '')];
+                        continue;
+                    }
+                    if (($part['type'] ?? '') === 'image_url') {
+                        $url = (string) ($part['image_url']['url'] ?? '');
+                        if (preg_match('#^data:([^;]+);base64,(.+)$#s', $url, $m2)) {
+                            $parts[] = ['inline_data' => ['mime_type' => $m2[1], 'data' => $m2[2]]];
+                        }
+                    }
+                }
+            }
+            if ($parts) $contents[] = ['role' => $role === 'assistant' ? 'model' : 'user', 'parts' => $parts];
+        }
+        if (!$contents) throw new \\InvalidArgumentException('At least one multimodal user message is required');
+        $payload = [
+            'contents' => $contents,
+            'generationConfig' => [
+                'temperature' => $temperature,
+                'maxOutputTokens' => (int) (Env::get('GEMINI_MAX_OUTPUT_TOKENS', '2048') ?? 2048),
+            ],
+        ];
+        if ($system !== '') $payload['systemInstruction'] = ['parts' => [['text' => $system]]];
+        $res = HttpClient::request('POST', $base . '/models/' . rawurlencode($model) . ':generateContent', $payload, [
+            'x-goog-api-key: ' . $key,
+            'Content-Type: application/json',
+        ], 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \\RuntimeException('Gemini vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $parts = $body['candidates'][0]['content']['parts'] ?? [];
+        $text = '';
+        foreach ($parts as $part) if (is_array($part) && isset($part['text'])) $text .= (string) $part['text'];
+        if (trim($text) === '') throw new \\RuntimeException('Gemini vision returned empty content');
+        return ['text' => trim($text), 'provider' => 'gemini', 'model' => $model, 'mode' => 'api'];
+    }
+
     public static function chatProvidersStatus(): array
     {
         return [
