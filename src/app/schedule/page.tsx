@@ -348,6 +348,7 @@ export default function SchedulePage() {
                 </p>
               )}
             </div>
+            </div>
           )}
 
           {view === "day" && (
