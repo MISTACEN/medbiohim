@@ -311,8 +311,8 @@ final class TelegramHomeworkService
                         $base['reason'] = 'llm_' . Str::sub((string) ($ai['reason'] ?? 'semantic_classification'), 0, 80);
                     }
                 }
-                $base['subject_hint'] = trim((string) ($ai['subject_hint'] ?? '')) ?: null;
-                $base['due_hint'] = trim((string) ($ai['due_hint'] ?? '')) ?: null;
+                $base['subject_hint'] = trim((string) ($ai['subject_hint'] ?? '')) ?: ($base['subject_hint'] ?? null);
+                $base['due_hint'] = trim((string) ($ai['due_hint'] ?? '')) ?: ($base['due_hint'] ?? null);
             }
         }
 
