@@ -8,6 +8,7 @@ import {
   getTest,
   startTestAttempt,
   finishAttempt,
+  getFile,
   hasToken,
   type ApiTest,
 } from "@/lib/api";
@@ -21,6 +22,8 @@ type UiTest = {
   subject: string;
   type: string;
   questionCount: number;
+  sourceFileId?: string | null;
+  sourceFileName?: string | null;
 };
 
 type Q = { id: string; body: string; options: string[]; answer?: string | number | null; };
@@ -59,6 +62,8 @@ export default function TestsPage() {
               subject: String(t.subject_name || "—"),
               type: String(t.type || "test"),
               questionCount: Number(t.questions_count || 0),
+              sourceFileId: t.source_file_id || null,
+              sourceFileName: t.source_file_name || null,
             }))
           );
         } else setNote(res.error.message);
@@ -72,6 +77,13 @@ export default function TestsPage() {
       cancelled = true;
     };
   }, []);
+
+  async function openSource(test: UiTest) {
+    if (!test.sourceFileId) return;
+    const r = await getFile(test.sourceFileId);
+    if (r.ok && r.data.download?.url) window.open(r.data.download.url, "_blank", "noopener,noreferrer");
+    else setNote(r.ok ? "Исходный файл сейчас недоступен" : r.error.message);
+  }
 
   async function openTest(id: string) {
     setBusy(true);
@@ -228,7 +240,10 @@ export default function TestsPage() {
                 <div className="text-lg font-semibold">{t.title}</div>
                 <div className="text-sm text-slate-500">{t.questionCount || "—"} вопросов</div>
               </div>
-              <div className="flex flex-wrap gap-2"><Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link><button
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link>
+                {t.sourceFileId && <button type="button" className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" onClick={() => void openSource(t)}>Исходник{t.sourceFileName ? " · " + t.sourceFileName : ""}</button>}
+                <button
                 type="button"
                 className="btn-primary inline-flex items-center gap-2 self-start"
                 disabled={busy}
