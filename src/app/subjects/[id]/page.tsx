@@ -14,6 +14,7 @@ import {
   FolderOpen,
   GraduationCap,
   ListChecks,
+  Microscope,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -37,7 +38,7 @@ type Subject = {
 };
 type Topic = { id?: string; title?: string };
 type Module = { id?: string; title?: string; topics?: Topic[] };
-type BlockId = "plan" | "tickets" | "practice" | "lectures" | "materials" | "cards" | "progress";
+type BlockId = "plan" | "tickets" | "practice" | "lectures" | "materials" | "trainer" | "cards" | "progress";
 
 const BLOCKS: Array<{ id: BlockId; label: string; icon: typeof BookOpen }> = [
   { id: "plan", label: "Учебный план", icon: GraduationCap },
@@ -45,6 +46,7 @@ const BLOCKS: Array<{ id: BlockId; label: string; icon: typeof BookOpen }> = [
   { id: "practice", label: "Практика", icon: ListChecks },
   { id: "lectures", label: "Лекции", icon: BookOpen },
   { id: "materials", label: "Материалы", icon: FolderOpen },
+  { id: "trainer", label: "Микропрепараты", icon: Microscope },
   { id: "cards", label: "Карточки SRS", icon: Brain },
   { id: "progress", label: "Прогресс", icon: TrendingUp },
 ];
@@ -332,6 +334,21 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 cta="К материалам"
               />
             )}
+            {block === "trainer" && subjectSlug === "histology" && (
+              <Block
+                title="Тренажёр микропрепаратов"
+                text="Фотографии препаратов и электронограммы с вариантами ответа. Доступ ограничен специальностью МБХ."
+                href="/trainers/feed/histology"
+                cta="Открыть тренажёр"
+              />
+            )}
+            {block === "trainer" && subjectSlug !== "histology" && (
+              <div className="space-y-2">
+                <h2 className="text-lg font-bold">Микропрепараты</h2>
+                <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Для этого предмета тренажёр не подключён.</p>
+              </div>
+            )}
+
             {block === "cards" && (
               <div className="space-y-4">
                 <h2 className="text-lg font-bold">Карточки SRS</h2>
