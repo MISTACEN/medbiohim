@@ -18,12 +18,13 @@ jobs:
           set -euo pipefail
           code=$(curl -L -sS -o /tmp/app.html -w "%{http_code}" "$APP_URL/")
           test "$code" = "200"
-          grep -q "Медбиохим" /tmp/app.html || true
+          grep -q "Медбиохим" /tmp/app.html
 
       - name: Check API through Vercel
         run: |
           set -euo pipefail
           code=$(curl -L -sS -o /tmp/health.json -w "%{http_code}" "$APP_URL/api/v1/health")
           test "$code" = "200"
-          cat /tmp/health.json
           grep -q '"status"' /tmp/health.json
+          grep -q '"ok"' /tmp/health.json
+          cat /tmp/health.json
