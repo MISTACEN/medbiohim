@@ -70,7 +70,7 @@ return static function (Router $router): void {
             try {
                 $profile = (new UserRepository())->profileBundle($req->user->id);
             } catch (\Throwable $e) {
-                try { $profile = SupabaseRest::profileBundle($req->user->id); } catch (\Throwable $x) {}
+                try { $profile = SupabaseRest::profileBundle($req->user->id, $req->bearerToken()); } catch (\Throwable $x) {}
             }
             try {
                 $homeworks = (new HomeworkRepository())->listForUser($req->user->id);
