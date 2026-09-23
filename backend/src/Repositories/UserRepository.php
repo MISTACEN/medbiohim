@@ -237,15 +237,33 @@ final class UserRepository
         $groups = $stmt->fetchAll() ?: [];
         $course = $user['course_number'] !== null ? (int) $user['course_number'] : null;
         $semester = $user['semester'] !== null ? (int) $user['semester'] : null;
+        $currentGroup = null;
+        if ($groups !== []) {
+            // The active membership is the source of truth for the current group.
+            // Prefer the group whose course matches the saved academic context.
+            foreach ($groups as $group) {
+                if ($course !== null && isset($group['course_number']) && (int) $group['course_number'] === $course) {
+                    $currentGroup = $group;
+                    break;
+                }
+            }
+            $currentGroup ??= $groups[0];
+        }
         return [
             'user' => [
                 'id' => $user['id'],
                 'full_name' => $user['full_name'],
                 'email' => $user['email'],
                 'avatar_url' => $user['avatar_url'] ?? null,
+                'group_id' => $currentGroup['id'] ?? null,
+                'group_name' => $currentGroup['name'] ?? null,
+                'group_code' => $currentGroup['code'] ?? null,
+                'course_number' => $course,
+                'semester' => $semester,
             ],
             'roles' => $roles,
             'groups' => $groups,
+            'current_group' => $currentGroup,
             'course' => $course,
             'semester' => $semester,
         ];
