@@ -35,7 +35,8 @@ export interface HomeworkItem {
   status: "pending" | "submitted" | "graded" | "overdue";
   description?: string;
   grade?: number;
-  feedback?: string;  attachments?: Array<{file_id:string;name?:string|null;mime_type?:string|null;size_bytes?:number|null;attachment_type?:string;caption?:string|null;inline_view?:boolean;download_url?:string|null}>;
+  feedback?: string;
+  attachments?: Array<{file_id:string;name?:string|null;mime_type?:string|null;size_bytes?:number|null;attachment_type?:string;caption?:string|null;inline_view?:boolean;download_url?:string|null}>;
 
 }
 
