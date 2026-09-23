@@ -29,7 +29,42 @@ final class SupabaseRest {
  public static function assignRole(string $id,string $code):array{$x=self::r('GET','roles?code=eq.'.rawurlencode($code).'&select=id');if(!$x)throw new \RuntimeException('Role not found');self::r('POST','user_roles',['user_id'=>$id,'role_id'=>$x[0]['id']],['Prefer: return=representation,resolution=ignore-duplicates']);return ['user_id'=>$id,'roles'=>self::roles($id)];}
  public static function revokeRole(string $id,string $code):array{$x=self::r('GET','roles?code=eq.'.rawurlencode($code).'&select=id');if(!$x)throw new \RuntimeException('Role not found');self::r('DELETE','user_roles?user_id=eq.'.rawurlencode($id).'&role_id=eq.'.rawurlencode((string)$x[0]['id']),null,['Prefer: return=minimal']);return ['user_id'=>$id,'roles'=>self::roles($id)];}
  public static function countRole(string $code):int{$x=self::r('GET','roles?code=eq.'.rawurlencode($code).'&select=id');if(!$x)return 0;return count(self::r('GET','user_roles?role_id=eq.'.rawurlencode((string)$x[0]['id']).'&select=user_id'));}
- public static function profileBundle(string $id):array{$u=self::getUser($id);if(!$u)throw new \RuntimeException('User profile not found');$m=self::r('GET','group_memberships?user_id=eq.'.rawurlencode($id).'&is_active=eq.true&select=group_id,role_in_group');$ids=[];foreach($m as $x)$ids[]=(string)$x['group_id'];$map=[];$groups=[];if($ids)foreach(self::r('GET','groups?id=in.('.rawurlencode(self::q(array_unique($ids))).')&is_active=eq.true&select=id,code,name,course_number,admission_year') as $x)$map[(string)$x['id']]=$x;foreach($m as $x)if(isset($map[(string)$x['group_id']]))$groups[]=array_merge($map[(string)$x['group_id']],['role_in_group'=>$x['role_in_group']??'student']);$c=$u['course_number']??null;if($c===null&&$groups)$c=$groups[0]['course_number']??null;$u['course_number']=$c;return ['user'=>$u,'roles'=>$u['roles'],'groups'=>$groups,'course'=>$c];}
+ public static function profileBundle(string $id,?string $accessToken=null):array{
+  $base=rtrim((string)Env::get('SUPABASE_URL',''),'/');
+  $anon=(string)Env::get('SUPABASE_ANON_KEY','');
+  $service=(string)Env::get('SUPABASE_SERVICE_KEY','');
+  $token=trim((string)($accessToken??''));
+  $key=$token!==''?($anon!==''?$anon:$service):$service;
+  $authorization=$token!==''?$token:$service;
+  if($base===''||$key===''||$authorization==='') throw new \RuntimeException('Supabase REST fallback is not configured');
+  $get=static function(string $path)use($base,$key,$authorization):array{
+    $x=\Medbiohim\Support\HttpClient::request('GET',$base.'/rest/v1/'.ltrim($path,'/'),null,['apikey: '.$key,'Authorization: Bearer '.$authorization],15);
+    if($x['status']<200||$x['status']>=300) throw new \RuntimeException('Supabase REST request failed ('.$x['status'].')');
+    return is_array($x['json'])?$x['json']:[];
+  };
+  $users=$get('users?id=eq.'.rawurlencode($id).'&select=id,email,full_name,course_number,semester,created_at');
+  if(!$users) throw new \RuntimeException('User profile not found');
+  $u=$users[0];
+  $roles=[];
+  $roleRows=$get('user_roles?user_id=eq.'.rawurlencode($id).'&select=role_id');
+  if($roleRows){
+    $ids=[];foreach($roleRows as $row)$ids[]=(string)($row['role_id']??'');
+    $ids=array_values(array_filter(array_unique($ids)));
+    if($ids){$roleData=$get('roles?id=in.('.rawurlencode(self::q($ids)).')&select=id,code');$map=[];foreach($roleData as $row)$map[(string)$row['id']]=(string)$row['code'];foreach($ids as $rid)if(isset($map[$rid]))$roles[]=$map[$rid];}
+  }
+  $m=$get('group_memberships?user_id=eq.'.rawurlencode($id).'&is_active=eq.true&select=group_id,role_in_group');
+  $ids=[];foreach($m as $x)$ids[]=(string)$x['group_id'];$ids=array_values(array_unique(array_filter($ids)));
+  $map=[];$groups=[];
+  if($ids){
+    foreach($get('groups?id=in.('.rawurlencode(self::q($ids)).')&is_active=eq.true&select=id,code,name,course_number,admission_year,specialty_slug') as $x)$map[(string)$x['id']]=$x;
+  }
+  foreach($m as $x)if(isset($map[(string)$x['group_id']]))$groups[]=array_merge($map[(string)$x['group_id']],['role_in_group'=>$x['role_in_group']??'student']);
+  $course=$u['course_number']??null;
+  if($course===null&&$groups)$course=$groups[0]['course_number']??null;
+  $u['course_number']=$course;
+  $current=$groups[0]??null;
+  return ['user'=>$u,'roles'=>$roles,'groups'=>$groups,'current_group'=>$current,'course'=>$course,'semester'=>$u['semester']??null];
+ }
  public static function listFiles(?string $g=null,bool $all=false):array{$p='files?select='.rawurlencode('id,original_name,mime_type,size_bytes,object_key,b2_file_id,uploaded_by,group_id,visibility,status,created_at').'&order=created_at.desc';if(!$all)$p.='&status=eq.active';if($g)$p.='&group_id=eq.'.rawurlencode($g);return self::r('GET',$p);}
  public static function getFile(string $id):?array{$x=self::r('GET','files?id=eq.'.rawurlencode($id).'&status=eq.active&select=id,original_name,mime_type,size_bytes,object_key,b2_file_id,uploaded_by,group_id,visibility,status,created_at');return $x[0]??null;}
  public static function createFileMetadata(array $d):array{$x=self::r('POST','files',['original_name'=>$d['original_name'],'mime_type'=>$d['mime_type']??null,'size_bytes'=>$d['size_bytes']??null,'object_key'=>$d['object_key'],'b2_file_id'=>$d['b2_file_id']??null,'uploaded_by'=>$d['uploaded_by']??null,'group_id'=>$d['group_id']??null,'visibility'=>$d['visibility']??'group','status'=>'active'],['Prefer: return=representation']);return $x[0]??throw new \RuntimeException('File metadata insert failed');}
