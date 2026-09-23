@@ -7,6 +7,7 @@ use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\TestRepository;
 use Medbiohim\Support\ContentStore;
+use Medbiohim\Services\SpecialtyAccess;
 
 return static function (Router $router): void {
     $listLocal = static function (?string $subjectId = null): array {
@@ -52,6 +53,11 @@ return static function (Router $router): void {
         $subjectId = isset($req->query['subject_id']) ? (string) $req->query['subject_id'] : null;
         try {
             $items = (new TestRepository())->listPublished($subjectId);
+            $access = new SpecialtyAccess();
+            $items = array_values(array_filter($items, static function (array $row) use ($access, $req): bool {
+                $sid = trim((string) ($row['subject_id'] ?? ''));
+                return $sid === '' || $access->canAccessSubject($req->user->id, $sid);
+            }));
             foreach ($items as &$row) $row['source'] = 'db';
             unset($row);
             Response::success(['items' => $items, 'source' => 'db'], $req->requestId);
@@ -70,7 +76,23 @@ return static function (Router $router): void {
         if ($found['source'] === 'db') {
             try {
                 $test = $found['test'];
-                $questions = (new TestRepository())->questionsForSubject($test['subject_id'] ?? null, 15);
+                $subjectId = (string) ($test['subject_id'] ?? '');
+                if ($subjectId !== '' && !(new SpecialtyAccess())->canAccessSubject($req->user->id, $subjectId)) {
+                    Response::error('FORBIDDEN', 'Этот тест недоступен для вашей специальности', $req->requestId, 403);
+                    return;
+                }
+                $db = \Medbiohim\Database\Connection::pdo();
+                $q = $db->prepare(
+                    'SELECT q.id, q.subject_id, q.module_id, q.topic_id, q.type, q.text, q.answer, q.options, q.difficulty
+                     FROM public.test_questions tq
+                     JOIN public.questions q ON q.id = tq.question_id
+                     WHERE tq.test_id = :test_id
+                       AND q.is_published = true
+                       AND q.archived_at IS NULL
+                     ORDER BY tq.order_index, q.id'
+                );
+                $q->execute(['test_id' => $testId]);
+                $questions = $q->fetchAll() ?: [];
                 Response::success(['test' => $test, 'questions' => $questions, 'source' => 'db'], $req->requestId);
                 return;
             } catch (\Throwable $e) {
