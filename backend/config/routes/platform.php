@@ -97,7 +97,21 @@ return static function (Router $router): void {
                     $schedule = $items;
                     $scheduleSource = 'db';
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                try {
+                    $items = (new ScheduleRestStore())->listForUser(
+                        $req->user->id,
+                        $from,
+                        $to,
+                        $req->bearerToken()
+                    );
+                    $schedule = is_array($items) ? $items : [];
+                    $scheduleSource = 'supabase_rest';
+                } catch (\Throwable $restError) {
+                    $schedule = [];
+                    $scheduleSource = 'unavailable';
+                }
+            }
         } catch (\Throwable $e) {}
         Response::success([
             'profile' => $profile,
@@ -119,8 +133,18 @@ return static function (Router $router): void {
         try {
             $items = (new ScheduleRepository())->listForUser($req->user->id);
         } catch (\Throwable $e) {
-            $items = [];
-            $source = 'db_error';
+            try {
+                $items = (new ScheduleRestStore())->listForUser(
+                    $req->user->id,
+                    null,
+                    null,
+                    $req->bearerToken()
+                );
+                $source = 'supabase_rest';
+            } catch (\Throwable $restError) {
+                $items = [];
+                $source = 'unavailable';
+            }
         }
         if (!is_array($items)) $items = [];
         $from = isset($req->query['from']) ? trim((string)$req->query['from']) : '';
@@ -128,6 +152,20 @@ return static function (Router $router): void {
         if ($from !== '') $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
         if ($to !== '') $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
         Response::success(['items' => $items, 'source' => $source], $req->requestId);
+    });
+
+    // Compatibility write endpoint used by the legacy frontend API client.
+    $router->put('/api/v1/schedule', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+        try {
+            Response::success((new ScheduleRepository())->replace($req->jsonBody ?? []), $req->requestId);
+        } catch (\Throwable $e) {
+            try {
+                Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
+            } catch (\Throwable $x) {
+                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
+            }
+        }
     });
 
     $router->get('/api/v1/schedule/meta', static function (Request $req, array $params): void {
