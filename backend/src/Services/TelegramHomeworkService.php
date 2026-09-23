@@ -10,6 +10,7 @@ use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
 use Medbiohim\Support\LlmGateway;
 use Medbiohim\Support\Logger;
+use Medbiohim\Support\Str;
 use PDO;
 
 final class TelegramHomeworkService
