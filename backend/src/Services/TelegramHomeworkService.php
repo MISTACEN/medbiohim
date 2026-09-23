@@ -309,10 +309,15 @@ TXT;
             'heuristic' => $base,
         ];
 
-        $result = LlmGateway::chatProvider('auto', [
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user', 'content' => json_encode($prompt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
-        ], 0.1);
+        try {
+            $result = LlmGateway::chatProvider('auto', [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user', 'content' => json_encode($prompt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
+            ], 0.1);
+        } catch (\\Throwable $e) {
+            Logger::error('telegram_ai_classification_failed', ['error' => $e->getMessage()]);
+            return null;
+        }
 
         $raw = trim((string) ($result['text'] ?? ''));
         if ($raw === '') return null;
@@ -330,7 +335,7 @@ TXT;
         $messageDate = isset($message['date']) ? gmdate('Y-m-d', (int) $message['date']) : gmdate('Y-m-d');
         $stmt = $this->db->prepare(
             "SELECT DISTINCT s.id, s.name, s.semester, s.course_number,
-                    MIN(ABS((se.date - :message_date::date))) AS date_distance
+                    MIN(ABS((se.date - CAST(:message_date AS date)))) AS date_distance
              FROM public.schedule_entries se
              JOIN public.schedules sch ON sch.id = se.schedule_id AND sch.is_active = true
              JOIN public.subjects s ON s.id = se.subject_id
