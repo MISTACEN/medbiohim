@@ -222,7 +222,7 @@ with zipfile.ZipFile(ZIP) as z:
             })
         if qrows:
             tests.append({
-                "source_key": "histology-test-" + hashlib.sha1((n + title).encode()).hexdigest()[:12],
+                "source_key": sid(n),
                 "title": title, "subject_slug": "histology", "specialty_slug": "mbh",
                 "is_published": True, "max_attempts": 3, "questions": qrows,
             })
