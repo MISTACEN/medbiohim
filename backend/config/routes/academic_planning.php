@@ -13,7 +13,7 @@ return static function (Router $r): void {
         try {
             (new AcademicPlanningService())->sync($q->user->id);
             Response::success(['synced'=>true], $q->requestId);
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Response::error('ACADEMIC_SYNC_ERROR', $e->getMessage(), $q->requestId, 500);
         }
     });
