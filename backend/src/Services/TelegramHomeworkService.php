@@ -100,6 +100,10 @@ final class TelegramHomeworkService
             $dueText .= ' ' . (string) $classification['due_hint'];
         }
         $homework = $this->findRecentHomework(
+            $chat['group_id'],
+            $subject['id'] ?? null,
+            $title
+        );
 
         if (!$homework) {
             $homework = (new HomeworkRepository())->create(
@@ -341,7 +345,7 @@ TXT;
              JOIN public.subjects s ON s.id = se.subject_id
              WHERE sch.group_id = :group
                AND se.date >= (:message_date::date - INTERVAL '21 days')
-               AND se.date <= (:message_date::date + INTERVAL '42 days')
+               AND se.date <= (CAST(:message_date AS date) + INTERVAL '42 days')
                AND COALESCE(se.is_cancelled, false) = false
              GROUP BY s.id, s.name, s.semester, s.course_number
              ORDER BY date_distance ASC, s.name"
