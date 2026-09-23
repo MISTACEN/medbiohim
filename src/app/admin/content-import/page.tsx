@@ -7,6 +7,8 @@ import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { adminContentImport, adminDbList, hasToken } from "@/lib/api";
 
 type Row = Record<string, unknown>;
+type ImportData = { tests: Row[]; questions: Row[]; test_questions: Row[] };
+type ImportFile = { name: string; subject: string; data: ImportData };
 const headers={
   tests:["test_key","title","subject_key","module_key","topic_key","time_limit_sec","max_attempts","is_published"],
   questions:["question_key","text","subject_key","module_key","topic_key","type","answer","options","difficulty","is_published"],
@@ -41,9 +43,9 @@ async function readWorkbook(file:File){
 
 export default function AdminContentImportPage(){
   const input=useRef<HTMLInputElement>(null);
-  const [data,setData]=useState<{tests:Row[];questions:Row[];test_questions:Row[]}>({tests:[],questions:[],test_questions:[]});
+  const [data,setData]=useState<ImportData>({tests:[],questions:[],test_questions:[]});
   const [fileName,setFileName]=useState("");
-  const [files,setFiles]=useState<Array<{name:string;subject:string;data:{tests:Row[];questions:Row[];test_questions:Row[]}}>>([]);
+  const [files,setFiles]=useState<ImportFile[]>([]);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [errors,setErrors]=useState<Array<{sheet:string;row:number;error:string}>>([]);
@@ -53,11 +55,11 @@ export default function AdminContentImportPage(){
 
   async function choose(e:ChangeEvent<HTMLInputElement>){
     const selected=Array.from(e.target.files??[]); if(!selected.length)return;
-    try{const loaded:Array<{name:string;subject:string;data:{tests:Row[];questions:Row[];test_questions:Row[]}}>=[];for(const f of selected)loaded.push({name:f.name,subject:"",data:await readWorkbook(f)});setFiles(loaded);setData(loaded.reduce((a,x)=>({tests:[...a.tests,...x.data.tests],questions:[...a.questions,...x.data.questions],test_questions:[...a.test_questions,...x.data.test_questions]}),{tests:[],questions:[],test_questions:[]}));setFileName(selected.map(x=>x.name).join(", "));setMessage("Файлы прочитаны. Назначьте предмет каждому файлу.");setErrors([]);}
+    try{const loaded:ImportFile[]=[];for(const f of selected)loaded.push({name:f.name,subject:"",data:await readWorkbook(f)});setFiles(loaded);const merged:ImportData=loaded.reduce<ImportData>((a,x)=>({tests:[...a.tests,...x.data.tests],questions:[...a.questions,...x.data.questions],test_questions:[...a.test_questions,...x.data.test_questions]}),{tests:[],questions:[],test_questions:[]});setData(merged);setFileName(selected.map(x=>x.name).join(", "));setMessage("Файлы прочитаны. Назначьте предмет каждому файлу.");setErrors([]);}
     catch(err){setMessage(err instanceof Error?err.message:"Не удалось прочитать Excel");}
     e.target.value="";
   }
-  function rebuildData(current=files){const merged=current.reduce((a,x)=>{const subject=x.subject||"";return {tests:[...a.tests,...x.data.tests.map(r=>subject?{...r,subject_key:subject}:r)],questions:[...a.questions,...x.data.questions.map(r=>subject?{...r,subject_key:subject}:r)],test_questions:[...a.test_questions,...x.data.test_questions]};},{tests:[],questions:[],test_questions:[]} as {tests:Row[];questions:Row[];test_questions:Row[]});setData(merged);return merged;}
+  function rebuildData(current:ImportFile[]=files){const merged=current.reduce<ImportData>((a,x)=>{const subject=x.subject||"";return {tests:[...a.tests,...x.data.tests.map(r=>subject?{...r,subject_key:subject}:r)],questions:[...a.questions,...x.data.questions.map(r=>subject?{...r,subject_key:subject}:r)],test_questions:[...a.test_questions,...x.data.test_questions]};},{tests:[],questions:[],test_questions:[]});setData(merged);return merged;}
   async function run(dry_run:boolean){
     setBusy(true);setErrors([]);setMessage(dry_run?"Проверяю связи и значения…":"Импортирую в Supabase…");
     const payload=rebuildData(); const res=await adminContentImport({...payload,dry_run});
