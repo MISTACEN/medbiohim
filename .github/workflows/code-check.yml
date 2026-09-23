@@ -15,7 +15,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Install frontend dependencies
         run: npm install
       - name: Detect literal escaped-newline source artifacts
