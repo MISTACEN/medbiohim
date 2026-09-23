@@ -15,8 +15,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Install frontend dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+      - name: Verify Vercel/SpaceWeb architecture
+        run: |
+          set -euo pipefail
+          test -f src/app/api/v1/'[...path]'/route.ts
+          test ! -f api/index.php
+          grep -q 'SPACEWEB_API_ORIGIN' src/app/api/v1/'[...path]'/route.ts
+          grep -q 'NEXT_PUBLIC_API_URL' .env.example
       - name: Detect literal escaped-newline source artifacts
         run: |
           set -euo pipefail
