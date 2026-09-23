@@ -254,8 +254,13 @@ final class TelegramHomeworkService
     private function classify(array $message): array
     {
         $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
-        $lower = mb_strtolower($text);
         $hasAttachment = isset($message['photo']) || isset($message['document']);
+        $vision = $hasAttachment ? $this->analyzeImageAttachment($message) : null;
+        $visionText = trim((string) ($vision['extracted_text'] ?? ''));
+        if ($visionText !== '') {
+            $text = trim($text . "\n" . $visionText);
+        }
+        $lower = mb_strtolower($text);
 
         $positive = [
             'дз','домашн','задани','сделать','подготовить','выучить','решить',
@@ -276,8 +281,11 @@ final class TelegramHomeworkService
             'type' => $score >= 0.60 ? 'homework' : ($hasAttachment ? 'material_candidate' : 'other'),
             'confidence' => $score,
             'reason' => $hasAttachment ? 'attachment_and_homework_signals' : 'text_homework_signals',
-            'subject_hint' => null,
-            'due_hint' => null,
+            'subject_hint' => trim((string) ($vision['subject_hint'] ?? '')) ?: null,
+            'due_hint' => trim((string) ($vision['due_hint'] ?? '')) ?: null,
+            'extracted_text' => $visionText !== '' ? $visionText : null,
+            'vision_provider' => $vision['provider'] ?? null,
+            'vision_model' => $vision['model'] ?? null,
         ];
 
         // LLM is a second-pass semantic classifier, not the source of academic truth.
@@ -285,7 +293,11 @@ final class TelegramHomeworkService
         // curriculum event or a schedule date. If no provider is configured, heuristic
         // classification continues to work unchanged.
         if ($text !== '' && ($score >= 0.20 || $hasAttachment)) {
-            $ai = $this->aiClassify($message, $base);
+            $aiMessage = $message;
+            if ($visionText !== '') {
+                $aiMessage['_vision_text'] = $visionText;
+            }
+            $ai = $this->aiClassify($aiMessage, $base);
             if ($ai !== null) {
                 $aiType = (string) ($ai['type'] ?? '');
                 $aiConfidence = isset($ai['confidence']) ? (float) $ai['confidence'] : 0.0;
@@ -313,6 +325,84 @@ final class TelegramHomeworkService
         return $base;
     }
 
+    private function analyzeImageAttachment(array $message): ?array
+    {
+        $fileId = null;
+        $mime = 'image/jpeg';
+        if (isset($message['photo']) && is_array($message['photo']) && $message['photo']) {
+            $photo = end($message['photo']);
+            if (is_array($photo)) {
+                $fileId = (string) ($photo['file_id'] ?? '');
+                $mime = 'image/jpeg';
+            }
+        } elseif (isset($message['document']['file_id'])) {
+            $candidateMime = (string) ($message['document']['mime_type'] ?? '');
+            $candidateName = strtolower((string) ($message['document']['file_name'] ?? ''));
+            if (str_starts_with($candidateMime, 'image/') || preg_match('/\\.(png|jpe?g|webp|gif)$/i', $candidateName)) {
+                $fileId = (string) $message['document']['file_id'];
+                $mime = $candidateMime !== '' ? $candidateMime : 'image/jpeg';
+            }
+        }
+        if ($fileId === '') return null;
+
+        try {
+            $api = 'https://api.telegram.org/bot' . rawurlencode($this->token);
+            $info = HttpClient::request('POST', $api . '/getFile', ['file_id' => $fileId], [], 20);
+            $size = isset($info['json']['result']['file_size']) ? (int) $info['json']['result']['file_size'] : 0;
+            // Keep the multimodal request comfortably below provider request-size limits.
+            if ($size > 6 * 1024 * 1024) return null;
+            $path = (string) ($info['json']['result']['file_path'] ?? '');
+            if ($path === '') return null;
+            $download = HttpClient::request('GET', 'https://api.telegram.org/file/bot' . $this->token . '/' . $path, null, [], 45);
+            $binary = (string) ($download['body'] ?? '');
+            if (($download['status'] ?? 0) < 200 || ($download['status'] ?? 0) >= 300 || $binary === '') return null;
+            if (strlen($binary) > 6 * 1024 * 1024) return null;
+
+            $prompt = <<<TXT
+Проанализируй изображение из учебной Telegram-группы MEDBIOHIM.
+Это может быть фотография доски, задания, страницы методички, расписания или обычная картинка.
+Верни ТОЛЬКО JSON:
+{"type":"homework|material_candidate|other","confidence":0.0,"subject_hint":"","due_hint":"","extracted_text":"","reason":""}
+Извлеки читаемый текст максимально близко к оригиналу.
+homework — если на изображении есть конкретное задание студентам.
+material_candidate — если это учебный материал без понятного задания.
+other — если это не учебное задание.
+subject_hint и due_hint заполняй только если они явно следуют из изображения. Дату не придумывай.
+TXT;
+            $result = LlmGateway::vision([
+                [
+                    'role' => 'system',
+                    'content' => 'Не выдумывай факты. Изображение является единственным источником OCR/визуальных признаков. Верни только JSON.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        ['type' => 'text', 'text' => $prompt],
+                        ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $mime . ';base64,' . base64_encode($binary)]],
+                    ],
+                ],
+            ], 0.1);
+            $raw = trim((string) ($result['text'] ?? ''));
+            if ($raw === '') return null;
+            if (preg_match('/\\{.*\\}/s', $raw, $m)) $raw = $m[0];
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) return null;
+            return [
+                'type' => (string) ($decoded['type'] ?? 'material_candidate'),
+                'confidence' => isset($decoded['confidence']) ? (float) $decoded['confidence'] : 0.0,
+                'subject_hint' => trim((string) ($decoded['subject_hint'] ?? '')) ?: null,
+                'due_hint' => trim((string) ($decoded['due_hint'] ?? '')) ?: null,
+                'extracted_text' => trim((string) ($decoded['extracted_text'] ?? '')) ?: null,
+                'reason' => trim((string) ($decoded['reason'] ?? '')) ?: 'vision',
+                'provider' => $result['provider'] ?? null,
+                'model' => $result['model'] ?? null,
+            ];
+        } catch (\\Throwable $e) {
+            Logger::error('telegram_vision_failed', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
     private function aiClassify(array $message, array $base): ?array
     {
         $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
@@ -336,6 +426,8 @@ TXT;
         $prompt = [
             'chat_title' => $chatTitle,
             'message' => $text,
+            'vision_text' => (string) ($message['_vision_text'] ?? ''),
+            'file_name' => (string) ($message['document']['file_name'] ?? ''),
             'has_attachment' => isset($message['photo']) || isset($message['document']),
             'heuristic' => $base,
         ];
@@ -653,6 +745,9 @@ TXT;
             'reason' => $classification['reason'] ?? null,
             'subject_hint' => $classification['subject_hint'] ?? null,
             'due_hint' => $classification['due_hint'] ?? null,
+            'extracted_text' => $classification['extracted_text'] ?? null,
+            'vision_provider' => $classification['vision_provider'] ?? null,
+            'vision_model' => $classification['vision_model'] ?? null,
             'used_ai' => str_starts_with((string)($classification['reason'] ?? ''), 'llm_'),
         ]);
     }
