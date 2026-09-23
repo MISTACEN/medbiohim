@@ -31,8 +31,8 @@ jobs:
             echo 'Found a literal \\n embedded in source code.'
             exit 1
           fi
-      - name: TypeScript and Next build
-        run: npm run build
+      - name: Full local-equivalent pre-deploy audit
+        run: npm run predeploy:audit
 
   backend:
     runs-on: ubuntu-latest
