@@ -13,7 +13,7 @@ export async function refreshSession(){const refreshToken=typeof window!=="undef
 export async function health(){return api<{status:string;phase?:string}>("/health")}
 export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string;slug?:string;lecture_hours?:number|null;practice_hours?:number|null;self_study_hours?:number|null;total_hours?:number|null;credits?:number|null;slug?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
 export async function listGroups(){return api<{items:unknown[]}>("/groups")}
-export type ApiTest={id:string;title?:string;name?:string;description?:string|null;subject_id?:string|null;subject_name?:string|null;questions_count?:number;type?:string;is_published?:boolean};
+export type ApiTest={id:string;title?:string;name?:string;description?:string|null;subject_id?:string|null;subject_name?:string|null;questions_count?:number;type?:string;is_published?:boolean;source_key?:string|null;source_file_id?:string|null;source_file_name?:string|null};
 export async function listTests(subjectId?:string){return api<{items:ApiTest[]}>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
 export async function getTest(id:string){return api<{test:ApiTest;questions:Array<{id:string;body?:string;q?:string;options?:string[];difficulty?:number}>;answers_local?:Array<number|null>}>(`/tests/${id}`)}
 export async function startTestAttempt(id:string){return api<{attempt:{id:string;status:string}}>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
