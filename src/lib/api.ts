@@ -8,7 +8,24 @@ export function setTokens(access:string,refresh?:string){localStorage.setItem("m
 export function clearTokens(){localStorage.removeItem("mb_access_token");localStorage.removeItem("mb_refresh_token")}
 export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;if(options.body&&!isForm&&!headers["Content-Type"])headers["Content-Type"]="application/json";const token=getToken();if(token)headers.Authorization=`Bearer ${token}`;try{const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers});const text=await res.text();try{return JSON.parse(text) as ApiResult<T>}catch{return{ok:false,error:{code:"BAD_RESPONSE",message:res.ok?"Сервер вернул не JSON":`HTTP ${res.status}`},requestId:"client"}}}catch{return{ok:false,error:{code:"NETWORK",message:"Сеть недоступна"},requestId:"client"}}}
 export async function login(email:string,password:string){return api<{access_token:string;refresh_token:string;expires_in:number;user:{id:string;email:string};roles?:string[]}>("/auth/login",{method:"POST",body:JSON.stringify({email,password})})}
-export async function me(){return api<{user:unknown;roles?:string[];groups?:unknown[]}>("/auth/me")}
+export async function me(){return api<{
+  user: {
+    id?: string;
+    full_name?: string | null;
+    email?: string | null;
+    avatar_url?: string | null;
+    group_id?: string | null;
+    group_name?: string | null;
+    group_code?: string | null;
+    course_number?: number | null;
+    semester?: number | null;
+  };
+  roles?: string[];
+  groups?: Array<{ id: string; name: string; code?: string; course_number?: number | null }>;
+  current_group?: { id: string; name: string; code?: string; course_number?: number | null } | null;
+  course?: number | null;
+  semester?: number | null;
+}>("/auth/me")}
 export async function refreshSession(){const refreshToken=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!refreshToken)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:refreshToken})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
 export async function health(){return api<{status:string;phase?:string}>("/health")}
 export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const qs=q.toString();return api<{items:Array<{id:string;name:string;course_number?:number;semester?:number;control_type?:string;slug?:string;lecture_hours?:number|null;practice_hours?:number|null;self_study_hours?:number|null;total_hours?:number|null;credits?:number|null;slug?:string}>}>(`/subjects${qs?`?${qs}`:""}`)}
