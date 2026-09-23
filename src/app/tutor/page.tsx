@@ -37,7 +37,12 @@ export default function TutorPage() {
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
     if(ps.ok) setAvailable({gigachat:!!ps.data.providers.gigachat?.configured,gemini:!!ps.data.providers.gemini?.configured});
-    if(ss.ok) setSubjects((ss.data.items||[]).map((s)=>({name:s.name,slug:s.slug})).filter(s=>s.slug));
+    if(ss.ok) {
+      const list = (ss.data.items || [])
+        .map((s) => ({ name: s.name, slug: String(s.slug || "").trim() }))
+        .filter((s): s is { name: string; slug: string } => Boolean(s.slug));
+      setSubjects(list);
+    }
     if(!cs.ok){setError(cs.error.message);setBooting(false);return;}
     setItems(cs.data.items||[]);
     if(cs.data.items?.[0]) await loadConversation(cs.data.items[0].id);
