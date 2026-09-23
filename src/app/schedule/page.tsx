@@ -193,7 +193,13 @@ export default function SchedulePage() {
         setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
         const payload = res.data as { items: ScheduleItem[]; source?: string };
         setSource(payload.source || "db");
-        if ((res.data.items || []).length === 0) setError("На весь семестр нет занятий. Назначьте группу в CMS или проверьте Supabase schedule_entries.");
+        if ((res.data.items || []).length === 0) {
+          setError(
+            user?.groupName
+              ? "Для назначенной группы Supabase не вернул занятия. Проверьте активную версию schedules и связанные schedule_entries."
+              : "Учебная группа не назначена. Назначьте её в CMS, чтобы расписание могло быть загружено."
+          );
+        }
       } else {
         setAllItems([]);
         setError(res.error.message || "Не удалось загрузить расписание");
