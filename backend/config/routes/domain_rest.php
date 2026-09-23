@@ -21,7 +21,7 @@ return static function (Router $r): void {
             Response::success($x->profileBundle($q->user->id), $q->requestId);
         } catch (\Throwable $e) {
             try {
-                Response::success(SupabaseRest::profileBundle($q->user->id), $q->requestId);
+                Response::success(SupabaseRest::profileBundle($q->user->id, $q->bearerToken()), $q->requestId);
             } catch (\Throwable $x) {
                 Response::success([
                     'user' => $q->user->toArray(),
