@@ -7,6 +7,7 @@ use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\UserRepository;
 use Medbiohim\Services\SupabaseAuth;
+use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Support\Logger;
 use Medbiohim\Support\RateLimiter;
 
@@ -134,13 +135,20 @@ return static function (Router $router): void {
             $bundle = (new UserRepository())->profileBundle($req->user->id);
             Response::success($bundle, $req->requestId);
         } catch (\Throwable $e) {
-            Response::success([
-                'user' => $req->user->toArray(),
-                'roles' => [],
-                'groups' => [],
-                'course' => null,
-                'semester' => null,
-            ], $req->requestId);
+            try {
+                Response::success(
+                    SupabaseRest::profileBundle($req->user->id, $req->bearerToken()),
+                    $req->requestId
+                );
+            } catch (\Throwable $fallback) {
+                Response::success([
+                    'user' => $req->user->toArray(),
+                    'roles' => $req->user->role ? [$req->user->role] : [],
+                    'groups' => [],
+                    'course' => null,
+                    'semester' => null,
+                ], $req->requestId);
+            }
         }
     });
 };
