@@ -2,12 +2,15 @@ import type { NextConfig } from "next";
 
 /**
  * Browser always calls same-origin /api/v1/* over HTTPS.
- * App Router /api/v1/[...path] proxies server-side to the configured HTTPS backend.
+ *
+ * The App Router catch-all route at src/app/api/v1/[...path]/route.ts is the
+ * single Vercel-side API entrypoint. It proxies requests server-side to the
+ * PHP backend on SpaceWeb using SPACEWEB_API_ORIGIN.
+ *
+ * Do not add a second rewrite for /api/v1 here: keeping one proxy path avoids
+ * route ambiguity and makes the Vercel -> SpaceWeb architecture explicit.
  */
-const SPACEWEB_API_ORIGIN = process.env.SPACEWEB_API_ORIGIN;
-const SPACEWEB = SPACEWEB_API_ORIGIN?.replace(/\/$/, "");
-
-const BUILD_FINGERPRINT = "subject-ia-2026-09-22";
+const BUILD_FINGERPRINT = "subject-ia-2026-09-23";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -34,17 +37,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-  },
-  async rewrites() {
-    if (!SPACEWEB) return [];
-    return {
-      afterFiles: [
-        {
-          source: "/api/v1/:path*",
-          destination: `${SPACEWEB}/:path*`,
-        },
-      ],
-    };
   },
   /** Старые пункты меню → Предметы. */
   async redirects() {
