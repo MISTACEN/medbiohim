@@ -417,7 +417,7 @@ TXT;
                 'provider' => $result['provider'] ?? null,
                 'model' => $result['model'] ?? null,
             ];
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Logger::error('telegram_vision_failed', ['error' => $e->getMessage()]);
             return null;
         }
