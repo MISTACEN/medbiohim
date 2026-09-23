@@ -84,6 +84,26 @@ final class TelegramHomeworkService
             ];
         }
 
+        // A reply can continue an existing homework thread even without an attachment.
+        // This prevents one assignment from being split into several records when the teacher
+        // sends the task in multiple Telegram messages.
+        if ($replyHomework && trim((string) ($message['text'] ?? $message['caption'] ?? '')) !== '') {
+            $classification = $this->classify($message);
+            $this->updateClassification((string) $stored['id'], $classification);
+            if ($classification['type'] === 'homework' && $classification['confidence'] >= 0.60) {
+                $this->appendDescription((string) $replyHomework['id'], $this->buildDescription($message, $classification));
+                $this->linkMessage((string) $stored['id'], (string) $replyHomework['id'], $classification['confidence'], 'continuation');
+                $this->markMessage((string) $stored['id'], 'processed');
+                return [
+                    'status' => 'processed',
+                    'created' => false,
+                    'homework_id' => $replyHomework['id'],
+                    'classification' => $classification,
+                    'continued_homework' => true,
+                ];
+            }
+        }
+
         $classification = $this->classify($message);
         $this->updateClassification((string) $stored['id'], $classification);
 
@@ -556,15 +576,22 @@ TXT;
         $stmt->execute(['id' => $homeworkId, 'd' => $description]);
     }
 
-    private function linkMessage(string $messageId, string $homeworkId, float $confidence): void
+    private function linkMessage(string $messageId, string $homeworkId, float $confidence, string $relationType = 'source'): void
     {
         $stmt = $this->db->prepare(
             'INSERT INTO public.telegram_homework_links
-             (telegram_message_id, homework_id, confidence)
-             VALUES (:message,:homework,:confidence)
-             ON CONFLICT (telegram_message_id, homework_id) DO NOTHING'
+             (telegram_message_id, homework_id, relation_type, confidence)
+             VALUES (:message,:homework,:relation,:confidence)
+             ON CONFLICT (telegram_message_id, homework_id) DO UPDATE
+               SET relation_type = EXCLUDED.relation_type,
+                   confidence = EXCLUDED.confidence'
         );
-        $stmt->execute(['message' => $messageId, 'homework' => $homeworkId, 'confidence' => $confidence]);
+        $stmt->execute([
+            'message' => $messageId,
+            'homework' => $homeworkId,
+            'relation' => $relationType,
+            'confidence' => $confidence,
+        ]);
     }
 
     private function importAttachments(array $message, string $groupId, string $telegramMessageId, string $homeworkId): array
