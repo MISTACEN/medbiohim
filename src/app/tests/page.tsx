@@ -23,7 +23,7 @@ type UiTest = {
   questionCount: number;
 };
 
-type Q = { id: string; body: string; options: string[] };
+type Q = { id: string; body: string; options: string[]; answer?: string | number | null; };
 
 export default function TestsPage() {
   const [items, setItems] = useState<UiTest[]>([]);
@@ -88,14 +88,29 @@ export default function TestsPage() {
         setNote(attempt.error.message);
         return;
       }
-      const questions = (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => ({
-        id: String(q.id || i),
-        body: String(q.body || q.q || ""),
-        options: Array.isArray(q.options) ? (q.options as string[]).map(String) : [],
-      }));
-      const answersKey = Array.isArray((detail.data as { answers_local?: unknown }).answers_local)
+      const questions = (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => {
+        const rawOptions = Array.isArray(q.options) ? q.options : [];
+        const options = rawOptions.map((x: unknown) => {
+          if (typeof x === "object" && x !== null && "label" in x) return String((x as {label?:unknown}).label ?? "");
+          return String(x);
+        });
+        return { id: String(q.id || i), body: String(q.body || q.q || q.text || ""), options, answer: q.answer == null ? null : String(q.answer) };
+      });
+      const localAnswers = Array.isArray((detail.data as { answers_local?: unknown }).answers_local)
         ? ((detail.data as { answers_local: Array<number | null> }).answers_local || [])
         : [];
+      const answersKey = questions.map((q, i) => {
+        if (localAnswers[i] != null) return Number(localAnswers[i]);
+        const answer = q.answer == null ? "" : String(q.answer).trim();
+        if (answer === "") return null;
+        const n = Number(answer);
+        if (Number.isInteger(n) && n >= 0 && n < q.options.length) return n;
+        if (Number.isInteger(n) && n >= 1 && n <= q.options.length) return n - 1;
+        const byText = q.options.findIndex((x) => x.trim().toLowerCase() === answer.toLowerCase());
+        if (byText >= 0) return byText;
+        const byId = q.options.findIndex((x) => x.trim() === answer.replace(/^option[-_]?/i, ""));
+        return byId >= 0 ? byId : null;
+      });
       setActive({
         testId: id,
         attemptId: attempt.data.attempt.id,
