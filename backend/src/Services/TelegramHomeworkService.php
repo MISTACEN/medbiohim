@@ -110,6 +110,7 @@ final class TelegramHomeworkService
             $title
         );
 
+        $createdHomework = false;
         if (!$homework) {
             $homework = (new HomeworkRepository())->create(
                 $title,
@@ -119,6 +120,7 @@ final class TelegramHomeworkService
                 $this->extractDueAt($dueText),
                 $this->actorUserId
             );
+            $createdHomework = true;
         } else {
             $this->appendDescription($homework['id'], $description);
         }
@@ -136,7 +138,7 @@ final class TelegramHomeworkService
 
         return [
             'status' => 'processed',
-            'created' => true,
+            'created' => $createdHomework,
             'homework_id' => $homework['id'],
             'subject' => $subject,
             'classification' => $classification,
@@ -524,6 +526,11 @@ TXT;
 
         $api = 'https://api.telegram.org/bot' . rawurlencode($this->token);
         $info = HttpClient::request('POST', $api . '/getFile', ['file_id' => $fileId], [], 20);
+        $fileSize = isset($info['json']['result']['file_size']) ? (int) $info['json']['result']['file_size'] : null;
+        if ($fileSize !== null && $fileSize > 20 * 1024 * 1024) {
+            Logger::error('telegram_file_too_large', ['file_id' => $fileId, 'size' => $fileSize]);
+            return null;
+        }
         $path = $info['json']['result']['file_path'] ?? null;
         if (!is_string($path) || $path === '') {
             Logger::error('telegram_get_file_failed', ['status' => $info['status'], 'file_id' => $fileId]);
