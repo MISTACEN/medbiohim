@@ -93,8 +93,27 @@ return static function (Router $router): void {
                 // Dashboard needs current/future events, not the first N rows of the semester.
                 $to = $today->modify('+42 days')->format('Y-m-d');
                 $items = (new ScheduleRepository())->listForUser($req->user->id, $from, $to);
-                if (is_array($items)) {
-                    $schedule = $items;
+                $schedule = is_array($items) ? $items : [];
+
+                // Supabase is the source of truth. Retry through REST when direct DB is empty.
+                if (count($schedule) === 0) {
+                    try {
+                        $restItems = (new ScheduleRestStore())->listForUser(
+                            $req->user->id,
+                            $from,
+                            $to,
+                            $req->bearerToken()
+                        );
+                        if (is_array($restItems) && count($restItems) > 0) {
+                            $schedule = $restItems;
+                            $scheduleSource = 'supabase_rest';
+                        } else {
+                            $scheduleSource = 'db_empty';
+                        }
+                    } catch (\Throwable $restError) {
+                        $scheduleSource = 'unavailable';
+                    }
+                } else {
                     $scheduleSource = 'db';
                 }
             } catch (\Throwable $e) {
@@ -132,6 +151,29 @@ return static function (Router $router): void {
         $source = 'db';
         try {
             $items = (new ScheduleRepository())->listForUser($req->user->id);
+            $items = is_array($items) ? $items : [];
+
+            // Prefer live Supabase REST data when the direct DB path returns no rows.
+            if (count($items) === 0) {
+                try {
+                    $restItems = (new ScheduleRestStore())->listForUser(
+                        $req->user->id,
+                        null,
+                        null,
+                        $req->bearerToken()
+                    );
+                    if (is_array($restItems) && count($restItems) > 0) {
+                        $items = $restItems;
+                        $source = 'supabase_rest';
+                    } else {
+                        $source = 'db_empty';
+                    }
+                } catch (\Throwable $restError) {
+                    $source = 'unavailable';
+                }
+            } else {
+                $source = 'db';
+            }
         } catch (\Throwable $e) {
             try {
                 $items = (new ScheduleRestStore())->listForUser(
@@ -140,6 +182,7 @@ return static function (Router $router): void {
                     null,
                     $req->bearerToken()
                 );
+                $items = is_array($items) ? $items : [];
                 $source = 'supabase_rest';
             } catch (\Throwable $restError) {
                 $items = [];
