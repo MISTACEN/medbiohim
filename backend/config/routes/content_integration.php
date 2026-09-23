@@ -126,6 +126,15 @@ return static function (Router $router): void {
             $stmt->bindValue('offset', $offset, \PDO::PARAM_INT);
             $stmt->execute();
             $items = $stmt->fetchAll() ?: [];
+            foreach ($items as &$item) {
+                foreach (['preparation', 'hotspots', 'question', 'tags'] as $jsonKey) {
+                    if (isset($item[$jsonKey]) && is_string($item[$jsonKey])) {
+                        $decoded = json_decode($item[$jsonKey], true);
+                        if (is_array($decoded)) $item[$jsonKey] = $decoded;
+                    }
+                }
+            }
+            unset($item);
 
             Response::success([
                 'items' => $items,
@@ -152,6 +161,14 @@ return static function (Router $router): void {
             );
             $stmt->execute(['id' => (string) ($params['id'] ?? '')]);
             $item = $stmt->fetch();
+            if ($item !== false) {
+                foreach (['preparation', 'hotspots', 'question', 'tags'] as $jsonKey) {
+                    if (isset($item[$jsonKey]) && is_string($item[$jsonKey])) {
+                        $decoded = json_decode($item[$jsonKey], true);
+                        if (is_array($decoded)) $item[$jsonKey] = $decoded;
+                    }
+                }
+            }
             if ($item === false) {
                 Response::error('NOT_FOUND', 'Trainer card not found', $req->requestId, 404);
                 return;
