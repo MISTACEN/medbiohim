@@ -35,7 +35,9 @@ export default function AdminLecturesPage() {
     void reload();
     void listSubjectsCatalog().then((r) => {
       if (r.ok) {
-        const list = (r.data.items || []).map((x) => ({ slug: x.slug, name: x.name }));
+        const list = (r.data.items || [])
+          .map((x) => ({ slug: String(x.slug || "").trim(), name: x.name }))
+          .filter((x): x is { slug: string; name: string } => Boolean(x.slug));
         setSubjects(list);
         if (list[0] && !slug) setSlug(list[0].slug);
       }
