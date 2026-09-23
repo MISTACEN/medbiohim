@@ -44,7 +44,7 @@ final class AiChatService
         $provider=$this->normalizeProvider($provider);
         $title=$this->cleanTitle($title ?: 'Новый чат');
         $q=$this->db->prepare("insert into ai_conversations(user_id,title,provider,subject_slug) values(:u,:t,:p,:s) returning id,title,provider,model,subject_slug,created_at,updated_at");
-        $q->execute([':u'=>$userId,':t'=>$title,':p'=>$provider,':s=>$subjectSlug]);
+        $q->execute([':u'=>$userId,':t'=>$title,':p'=>$provider,':s'=>$subjectSlug]);
         return (array)$q->fetch();
     }
 
