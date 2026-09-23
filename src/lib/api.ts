@@ -48,7 +48,40 @@ export async function adminListSchedule(groupId?:string,semester?:number){const 
 export async function adminSaveSchedule(payload:{group_id:string;semester?:number|null;academic_year_id?:string|null;entries:Array<Partial<ScheduleItem>>}){return api<{schedule_id:string;group_id:string;semester:number|null;version:number;entries_saved:number}>("/admin/schedule",{method:"PUT",body:JSON.stringify(payload)})}
 export async function adminSaveScheduleLocal(items:Array<Partial<ScheduleItem>>){return api<{items:ScheduleItem[];count:number}>("/admin/schedule/local",{method:"PUT",body:JSON.stringify({items})})}
 export async function saveSchedule(items:Array<Record<string,unknown>>){return api<{items:ScheduleItem[]}>("/schedule",{method:"PUT",body:JSON.stringify({items})})}
-export async function listMaterials(groupId?:string){return api<{items:unknown[]}>(`/materials${groupId?`?group_id=${encodeURIComponent(groupId)}`:""}`)}
+export type ApiMaterial={
+  id:string; subject_id?:string|null; module_id?:string|null; topic_id?:string|null;
+  type?:string|null; title:string; file_id?:string|null; external_url?:string|null;
+  content_html?:string|null; order_index?:number|null; is_published?:boolean;
+  source_key?:string|null; subject_name?:string|null; subject_slug?:string|null; specialty_slug?:string|null;
+  source?:{key?:string|null;file_id?:string|null;name?:string|null;mime_type?:string|null;size_bytes?:number|null;download_url?:string|null};
+};
+export async function listMaterials(params:{groupId?:string;subjectId?:string;subjectSlug?:string;type?:string;q?:string}={}){
+  const q=new URLSearchParams();
+  if(params.groupId)q.set("group_id",params.groupId);
+  if(params.subjectId)q.set("subject_id",params.subjectId);
+  if(params.subjectSlug)q.set("subject_slug",params.subjectSlug);
+  if(params.type)q.set("type",params.type);
+  if(params.q)q.set("q",params.q);
+  const qs=q.toString();
+  return api<{items:ApiMaterial[];source?:string}>(`/materials${qs?`?${qs}`:""}`);
+}
+export async function getMaterial(id:string){return api<{item:ApiMaterial;source?:ApiMaterial["source"]}>(`/materials/${encodeURIComponent(id)}`)}
+
+export type TrainerFeedCard={
+  id:string; subject_slug:string; specialty_slug?:string|null; mode_set?:string|null;
+  preparation:{name:string;organ?:string;stain?:string;imageUrl?:string;imagePath?:string};
+  hotspots:Array<Record<string,unknown>>;
+  question:{prompt:string;mode?:string;options:Array<{id:string;label:string;correct?:boolean}>;explanation?:string;allowSkip?:boolean};
+  tags?:string[]; difficulty?:number|null; source_key?:string|null;
+};
+export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){
+  const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});
+  return api<{items:TrainerFeedCard[];limit:number;offset:number;source?:string}>(`/trainers/feed?${q.toString()}`);
+}
+export async function answerTrainerCard(payload:{card_id:string;option_id?:string;answer_text?:string;is_skipped?:boolean;time_ms?:number|null}){
+  return api<{answer:unknown;correct:boolean|null}>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)});
+}
+
 export async function listCommunityPosts(){return api<{items:Array<{id:string;title:string;body:string;author_name?:string}>}>("/community/posts")}
 export async function createCommunityPost(title:string,body:string){return api<{post:Record<string,unknown>}>("/community/posts",{method:"POST",body:JSON.stringify({title,body})})}
 export async function getProgress(){return api<{overall_pct?:number;homework:unknown;tests:unknown;note?:string}>("/progress")}
