@@ -25,11 +25,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: medbiohim-full-${{ github.sha }}
-          path: medbiohim-full-$GITHUB_SHA.zip
+          path: medbiohim-full-${{ github.sha }}.zip
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
           name: medbiohim-backend-${{ github.sha }}
-          path: medbiohim-backend-$GITHUB_SHA.zip
+          path: medbiohim-backend-${{ github.sha }}.zip
           if-no-files-found: error
