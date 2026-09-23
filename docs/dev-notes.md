@@ -55,6 +55,17 @@ Type error: Type 'unknown' is not assignable to type 'ReactNode'.
 
 **Правило:** перед каждым пушем на `main` убедиться, что в JSX нет «голых» `unknown` из `AdminDbRow` / `Record<string, unknown>`.
 
+## Optional fields → required state
+
+Каталог предметов: `slug?: string`. Если state требует `slug: string`:
+
+```ts
+.map((x) => ({ name: x.name, slug: String(x.slug || "").trim() }))
+.filter((x): x is { name: string; slug: string } => Boolean(x.slug))
+```
+
+Исправлено превентивно: `src/app/tutor/page.tsx`, `src/app/admin/lectures/page.tsx` (2026-09-23).
+
 ## Сборка и деплой
 
 | Часть | Куда | Команда / триггер |
