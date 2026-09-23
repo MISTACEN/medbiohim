@@ -60,6 +60,11 @@ export async function adminSaveCurriculum(items:Array<Record<string,unknown>>){r
 export async function adminGetTests(){return api<{items:Array<Record<string,unknown>>;db_items?:Array<Record<string,unknown>>}>("/admin/tests")}
 export async function adminSaveTests(items:Array<Record<string,unknown>>){return api<{items:Array<Record<string,unknown>>}>("/admin/tests",{method:"PUT",body:JSON.stringify({items})})}
 export async function getCurriculum(){return api<{items:Array<Record<string,unknown>>}>("/curriculum")}
+export type TelegramAdminChat={id:string;telegram_chat_id:number;telegram_chat_type:string;telegram_title?:string|null;group_id?:string|null;group_name?:string|null;group_code?:string|null;is_active:boolean;is_verified:boolean};
+export async function adminTelegramChats(){return api<{items:TelegramAdminChat[]}>("/admin/telegram/chats")}
+export async function adminBindTelegramChat(chatId:number|string,groupId:string){return api<{chat:TelegramAdminChat}>(`/admin/telegram/chats/${encodeURIComponent(String(chatId))}/bind`,{method:"POST",body:JSON.stringify({group_id:groupId})})}
+export async function adminSetTelegramWebhook(){return api<{configured:boolean;url:string;telegram:Record<string,unknown>}>("/admin/telegram/set-webhook",{method:"POST",body:"{}"})}
+
 export async function adminListHomeworks(){return api<{items:Array<Record<string,unknown>>}>("/admin/homeworks")}
 export async function adminCreateHomework(payload:{title:string;description?:string;subject_id?:string;group_id?:string;due_at?:string}){return api<{item:Record<string,unknown>}>("/admin/homeworks",{method:"POST",body:JSON.stringify(payload)})}
 export async function adminDeleteHomework(id:string){return api<{deleted:boolean}>(`/admin/homeworks/${id}`,{method:"DELETE"})}
