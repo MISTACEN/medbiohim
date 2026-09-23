@@ -123,7 +123,7 @@ return static function (Router $router): void {
 
         try {
             $sql = 'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
-                           preparation, hotspots, question, tags, difficulty, source_key,
+                           preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
                            is_published, created_at, updated_at
                     FROM public.trainer_feed_cards
                     WHERE is_published = true';
@@ -172,7 +172,7 @@ return static function (Router $router): void {
         try {
             $stmt = Connection::pdo()->prepare(
                 'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
-                        preparation, hotspots, question, tags, difficulty, source_key,
+                        preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
                         is_published, created_at, updated_at
                  FROM public.trainer_feed_cards
                  WHERE id = :id AND is_published = true
@@ -279,7 +279,7 @@ return static function (Router $router): void {
 
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT source_key, specialty_slug
+                'SELECT source_key, source_file_id, specialty_slug
                  FROM public.trainer_feed_cards
                  WHERE id = :id AND is_published = true
                  LIMIT 1'
@@ -295,6 +295,26 @@ return static function (Router $router): void {
                 && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
                 Response::error('FORBIDDEN', 'Медиа доступно только специальности МБХ', $req->requestId, 403);
                 return;
+            }
+
+            if (!empty($row['source_file_id'])) {
+                $fileStmt = Connection::pdo()->prepare(
+                    'SELECT object_key FROM public.files WHERE id = :id AND status = \'active\' LIMIT 1'
+                );
+                $fileStmt->execute(['id' => (string) $row['source_file_id']]);
+                $file = $fileStmt->fetch(PDO::FETCH_ASSOC);
+                if ($file !== false && !empty($file['object_key'])) {
+                    $storage = new B2Storage();
+                    if ($storage->isConfigured()) {
+                        try {
+                            $url = $storage->presignedDownloadUrl((string) $file['object_key'], 3600);
+                            header('Location: ' . $url, true, 302);
+                            exit;
+                        } catch (\Throwable $e) {
+                            // Fall through to the backend-local media path.
+                        }
+                    }
+                }
             }
 
             $relative = ltrim(str_replace('\\', '/', (string) ($row['source_key'] ?? '')), '/');
