@@ -7,6 +7,12 @@ import * as XLSX from "xlsx";
 import { adminDbAudit, adminDbDelete, adminDbDeleteByKey, adminDbInsert, adminDbList, adminDbMeta, adminDbTables, adminDbUpdate, adminDbUpdateByKey, AdminDbRow, hasToken } from "@/lib/api";
 
 type Meta={name:string;items:number|null;primary_key:string[];columns:string[]};
+
+/**
+ * AdminDbRow = Record<string, unknown> → fields are unknown.
+ * unknown is not assignable to ReactNode (strict TS / Next build on Vercel).
+ * Always stringify before JSX or input value. See docs/dev-notes.md.
+ */
 function display(v:unknown):string{return v===null||v===undefined?"":typeof v==="object"?JSON.stringify(v):String(v)}
 function parseValue(v:string,original:unknown){if(v==="")return original===null?null:"";if(typeof original==="number"){const n=Number(v);return Number.isFinite(n)?n:v}if(typeof original==="boolean")return v==="true"||v==="1";if(original&&typeof original==="object"){try{return JSON.parse(v)}catch{return v}}return v}
 function keyOf(r:AdminDbRow,keys:string[]){return keys.map(k=>String(r[k]??"")).join("|")}
