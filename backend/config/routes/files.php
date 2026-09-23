@@ -7,6 +7,7 @@ use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\FileRepository;
 use Medbiohim\Services\B2Storage;
+use Medbiohim\Services\SpecialtyAccess;
 use Medbiohim\Support\Logger;
 use Medbiohim\Support\Multipart;
 
@@ -71,6 +72,7 @@ return static function (Router $router): void {
                 'uploaded_by' => $req->user->id,
                 'group_id' => $groupId,
                 'visibility' => (string) ($req->json('visibility') ?? $_POST['visibility'] ?? 'group'),
+                'specialty_slug' => trim((string) ($req->json('specialty_slug') ?? $_POST['specialty_slug'] ?? '')),
             ]);
             Response::success(['file' => $meta], $req->requestId, 201);
         } catch (\Throwable $e) {
@@ -85,6 +87,11 @@ return static function (Router $router): void {
             $file = (new FileRepository())->findById($params['id']);
             if ($file === null) {
                 Response::error('NOT_FOUND', 'File not found', $req->requestId, 404);
+                return;
+            }
+            $specialty = trim((string) ($file['specialty_slug'] ?? ''));
+            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+                Response::error('FORBIDDEN', 'Этот файл недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
             $download = ['status' => 'unavailable', 'url' => null, 'expires_in' => null];
