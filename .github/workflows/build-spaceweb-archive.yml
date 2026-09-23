@@ -1,25 +1,104 @@
-name: Build SpaceWeb backend archive
+name: Build MEDBIOHIM deployment archives
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  archive-backend:
+  archive:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Build backend archive
         run: |
+          set -euo pipefail
           rm -rf /tmp/medbiohim-spaceweb
           mkdir -p /tmp/medbiohim-spaceweb
           cp -a backend /tmp/medbiohim-spaceweb/backend
           rm -f /tmp/medbiohim-spaceweb/backend/.env
-          printf 'MEDBIOHIM SpaceWeb archive\nSource: $GITHUB_SHA\nKeep production backend/.env on SpaceWeb.\n' > /tmp/medbiohim-spaceweb/SPACEWEB-UPDATE.txt
+          printf 'MEDBIOHIM SpaceWeb archive\nSource: %s\n\n' "$GITHUB_SHA" > /tmp/medbiohim-spaceweb/SPACEWEB-UPDATE.txt
           cd /tmp/medbiohim-spaceweb
-          zip -qr "$GITHUB_WORKSPACE/medbiohim-spaceweb-${GITHUB_SHA}.zip" backend SPACEWEB-UPDATE.txt
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-spaceweb-$GITHUB_SHA.zip" backend SPACEWEB-UPDATE.txt
+
+      - name: Build full source archive without secrets
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/medbiohim-full/medbiohim
+          rsync -a --exclude='.git' --exclude='.env' --exclude='**/.env' ./ /tmp/medbiohim-full/medbiohim/
+          printf 'MEDBIOHIM full source archive\nSource: %s\nNo secrets are included.\n' "$GITHUB_SHA" > /tmp/medbiohim-full/BUILD-INFO.txt
+          cd /tmp/medbiohim-full
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-full-$GITHUB_SHA-no-secrets.zip" medbiohim BUILD-INFO.txt
+
+      - name: Build test configuration package
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.MEDBIOHIM_TEST_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.MEDBIOHIM_TEST_SUPABASE_SERVICE_KEY }}
+          DB_URL: ${{ secrets.MEDBIOHIM_TEST_DB_URL }}
+          B2_KEY_ID: ${{ secrets.MEDBIOHIM_TEST_B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.MEDBIOHIM_TEST_B2_APPLICATION_KEY }}
+          B2_BUCKET: ${{ secrets.MEDBIOHIM_TEST_B2_BUCKET }}
+          B2_ENDPOINT: ${{ secrets.MEDBIOHIM_TEST_B2_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/medbiohim-test
+          mkdir -p /tmp/medbiohim-test/config
+
+          cat > /tmp/medbiohim-test/config/backend.env.test <<EOF
+APP_ENV=local
+APP_DEBUG=1
+SUPABASE_URL=https://gnobvyjywtqbdfeejxmf.supabase.co
+SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+SUPABASE_SERVICE_KEY=$SUPABASE_SERVICE_KEY
+DB_URL=$DB_URL
+B2_KEY_ID=$B2_KEY_ID
+B2_APPLICATION_KEY=$B2_APPLICATION_KEY
+B2_BUCKET=$B2_BUCKET
+B2_ENDPOINT=$B2_ENDPOINT
+CORS_ORIGINS=https://medbiohim.vercel.app
+EOF
+
+          cat > /tmp/medbiohim-test/config/frontend.env.test <<EOF
+NEXT_PUBLIC_SUPABASE_URL=https://gnobvyjywtqbdfeejxmf.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+NEXT_PUBLIC_API_URL=/api/v1
+SPACEWEB_API_ORIGIN=
+EOF
+
+          cat > /tmp/medbiohim-test/README.txt <<'EOF'
+Test configuration for MEDBIOHIM.
+Generated only inside GitHub Actions and never committed to Git.
+backend.env.test -> temporary backend/.env
+frontend.env.test -> Vercel test environment values
+EOF
+
+          cd /tmp/medbiohim-test
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-test-config-$GITHUB_SHA.zip" config README.txt
+
       - uses: actions/upload-artifact@v4
         with:
           name: medbiohim-spaceweb-backend-${{ github.sha }}
           path: medbiohim-spaceweb-${{ github.sha }}.zip
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medbiohim-full-no-secrets-${{ github.sha }}
+          path: medbiohim-full-${{ github.sha }}-no-secrets.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medbiohim-test-config-${{ github.sha }}
+          path: medbiohim-test-config-${{ github.sha }}.zip
+          if-no-files-found: error
+
+      - name: Publish job summary
+        run: |
+          {
+            echo "## MEDBIOHIM archives"
+            echo "- commit: $GITHUB_SHA"
+            echo "- backend: medbiohim-spaceweb-$GITHUB_SHA.zip"
+            echo "- full no-secrets: medbiohim-full-$GITHUB_SHA-no-secrets.zip"
+            echo "- test config: medbiohim-test-config-$GITHUB_SHA.zip"
+          } >> "$GITHUB_STEP_SUMMARY"
