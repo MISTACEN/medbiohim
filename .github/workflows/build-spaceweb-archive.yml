@@ -21,5 +21,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: medbiohim-spaceweb-backend-${{ github.sha }}
-          path: medbiohim-spaceweb-$GITHUB_SHA.zip
+          path: medbiohim-spaceweb-${{ github.sha }}.zip
           if-no-files-found: error
