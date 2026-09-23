@@ -20,6 +20,8 @@ export type AppUser = {
   groupName?: string;
   course?: number;
   semester?: number;
+  groupId?: string;
+  groupCode?: string;
   groups: Array<{ id: string; name: string; code?: string; course_number?: number }>;
 };
 
@@ -60,18 +62,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         groups?: Array<{ id: string; name: string; code?: string; course_number?: number }>;
         course?: number | null;
         semester?: number | null;
+        current_group?: { id: string; name: string; code?: string; course_number?: number } | null;
       };
       const u = data.user || {};
       const roles = data.roles || [];
       const groups = data.groups || [];
-      const primary = groups[0];
+      const primary = data.current_group || groups[0];
       setUser({
         id: String(u.id || ""),
         name: String(u.full_name || u.name || u.email || "Пользователь"),
         email: String(u.email || ""),
         role: roles[0] || "student",
         roles,
+        groupId: primary?.id,
         groupName: primary?.name || primary?.code,
+        groupCode: primary?.code,
         course: data.course ?? primary?.course_number ?? undefined,
         semester: data.semester ?? undefined,
         groups,
