@@ -87,7 +87,7 @@ function dedupeItems(list: ScheduleItem[]): ScheduleItem[] {
 }
 
 export default function AdminSchedulePage() {
-  const [groups, setGroups] = useState<Array<{ id: string; name?: string; code?: string }>>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name?: string; code?: string; course_number?: number | null }>>([]);
   const [groupId, setGroupId] = useState("");
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [weekStart, setWeekStart] = useState(() => ymdFromKhToday());
@@ -98,12 +98,13 @@ export default function AdminSchedulePage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [edit, setEdit] = useState<ScheduleItem | null>(null);
   const [meta, setMeta] = useState<{periods:Array<{id:string;title:string;start_date:string;end_date?:string|null;notes?:string|null}>}>({periods:[]});
+  const currentGroup = groups.find((g) => String(g.id) === String(groupId));
 
   useEffect(() => {
     void (async () => {
       const g = await listGroups();
       if (g.ok) {
-        const list = (g.data.items || []) as Array<{ id: string; name?: string; code?: string }>;
+        const list = (g.data.items || []) as Array<{ id: string; name?: string; code?: string; course_number?: number | null }>;
         setGroups(list);
         const mb = list.find((x) => (x.code || "").includes("МБ-201") || (x.name || "").includes("201"));
         if (mb) setGroupId(String(mb.id));
@@ -233,6 +234,7 @@ export default function AdminSchedulePage() {
           <Link href="/admin" className="text-sm text-primary">← Админ</Link>
           <h1 className="page-title mt-1">CMS · Расписание</h1>
           <p className="page-subtitle">Сетка · drag-and-drop · БД primary · {source || "—"}</p>
+          <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3"><div className="text-[11px] font-bold uppercase tracking-wide text-indigo-500">Сейчас редактируется расписание</div><div className="mt-1 text-lg font-bold text-indigo-950">{currentGroup?.name || "Группа не выбрана"}</div><div className="text-sm text-indigo-700">{currentGroup?.code || "—"} · {currentGroup?.course_number || "—"} курс · 3 семестр</div></div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-secondary" onClick={addItem}><Plus className="h-4 w-4" /> Занятие</button>
