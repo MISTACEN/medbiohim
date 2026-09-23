@@ -53,7 +53,7 @@ export default function AdminContentImportPage(){
 
   async function choose(e:ChangeEvent<HTMLInputElement>){
     const selected=Array.from(e.target.files??[]); if(!selected.length)return;
-    try{const loaded=[];for(const f of selected)loaded.push({name:f.name,subject:"",data:await readWorkbook(f)});setFiles(loaded);setData(loaded.reduce((a,x)=>({tests:[...a.tests,...x.data.tests],questions:[...a.questions,...x.data.questions],test_questions:[...a.test_questions,...x.data.test_questions]}),{tests:[],questions:[],test_questions:[]}));setFileName(selected.map(x=>x.name).join(", "));setMessage("Файлы прочитаны. Назначьте предмет каждому файлу.");setErrors([]);}
+    try{const loaded:Array<{name:string;subject:string;data:{tests:Row[];questions:Row[];test_questions:Row[]}}>=[];for(const f of selected)loaded.push({name:f.name,subject:"",data:await readWorkbook(f)});setFiles(loaded);setData(loaded.reduce((a,x)=>({tests:[...a.tests,...x.data.tests],questions:[...a.questions,...x.data.questions],test_questions:[...a.test_questions,...x.data.test_questions]}),{tests:[],questions:[],test_questions:[]}));setFileName(selected.map(x=>x.name).join(", "));setMessage("Файлы прочитаны. Назначьте предмет каждому файлу.");setErrors([]);}
     catch(err){setMessage(err instanceof Error?err.message:"Не удалось прочитать Excel");}
     e.target.value="";
   }
