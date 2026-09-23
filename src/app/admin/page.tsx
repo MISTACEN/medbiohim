@@ -259,7 +259,7 @@ export default function AdminPage() {
                   <textarea required rows={5} value={aBody} onChange={(e) => setABody(e.target.value)} placeholder="Текст" className="w-full rounded-xl border px-3 py-2" />
                   <button className="btn-primary">Опубликовать</button>
                 </form>
-                <div className="card"><h2 className="mb-2 font-bold">Объявления</h2>{anns.map((a) => <div key={a.id} className="border-b py-3 last:border-0"><b>{a.title}</b><p className="text-sm text-slate-600">{a.body}</p><button type="button" className="text-xs text-rose-600" onClick={async () => { await adminDeleteAnnouncement(a.id); const x = await adminListAnnouncements(); if (x.ok) setAnns(x.data.items); }}>Удалить</button></div>))}</div>
+                <div className="card"><h2 className="mb-2 font-bold">Объявления</h2>{anns.map((a) => <div key={a.id} className="border-b py-3 last:border-0"><b>{a.title}</b><p className="text-sm text-slate-600">{a.body}</p><button type="button" className="text-xs text-rose-600" onClick={async () => { await adminDeleteAnnouncement(a.id); const x = await adminListAnnouncements(); if (x.ok) setAnns(x.data.items); }}>Удалить</button></div>)}</div>
               </div>
               <form className="card space-y-3" onSubmit={async (e) => { e.preventDefault(); const r = await adminUpdateSite(site); if (r.ok) msg("", "Настройки сайта сохранены"); else msg(r.error.message); }}>
                 <h2 className="font-bold">Настройки сайта</h2>
