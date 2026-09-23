@@ -8,6 +8,7 @@ use Medbiohim\Repositories\FileRepository;
 use Medbiohim\Repositories\HomeworkRepository;
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
+use Medbiohim\Support\LlmGateway;
 use Medbiohim\Support\Logger;
 use PDO;
 
@@ -93,11 +94,11 @@ final class TelegramHomeworkService
         $title = $this->buildTitle($message, $subject);
         $description = $this->buildDescription($message, $classification);
 
+        $dueText = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
+        if (!empty($classification['due_hint'])) {
+            $dueText .= ' ' . (string) $classification['due_hint'];
+        }
         $homework = $this->findRecentHomework(
-            $chat['group_id'],
-            $subject['id'] ?? null,
-            $title
-        );
 
         if (!$homework) {
             $homework = (new HomeworkRepository())->create(
@@ -223,57 +224,155 @@ final class TelegramHomeworkService
         $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
         $lower = mb_strtolower($text);
         $hasAttachment = isset($message['photo']) || isset($message['document']);
+
         $positive = [
             'дз','домашн','задани','сделать','подготовить','выучить','решить',
             'прочитать','ответить','к следующ','к следующему','до завтра','до пятниц',
+            'к семинар','к практик','к лаб','лаборатор','контрольн',
         ];
-        $negative = ['кто знает','кто-нибудь знает','расписание','перенесли','отмена','спасибо'];
+        $negative = [
+            'кто знает','кто-нибудь знает','расписание','перенесли','отмена',
+            'спасибо','кто идет','кто идёт','во сколько',
+        ];
+
         $score = $hasAttachment ? 0.38 : 0.0;
         foreach ($positive as $word) if (mb_strpos($lower, $word) !== false) $score += 0.16;
         foreach ($negative as $word) if (mb_strpos($lower, $word) !== false) $score -= 0.25;
-
-        if ($text === '' && !$hasAttachment) {
-            return ['type' => 'other', 'confidence' => 0.10, 'reason' => 'empty'];
-        }
-
         $score = max(0.0, min(0.99, $score));
-        $type = $score >= 0.60 ? 'homework' : ($hasAttachment ? 'material_candidate' : 'other');
 
-        return [
-            'type' => $type,
+        $base = [
+            'type' => $score >= 0.60 ? 'homework' : ($hasAttachment ? 'material_candidate' : 'other'),
             'confidence' => $score,
             'reason' => $hasAttachment ? 'attachment_and_homework_signals' : 'text_homework_signals',
+            'subject_hint' => null,
+            'due_hint' => null,
         ];
+
+        // LLM is a second-pass semantic classifier, not the source of academic truth.
+        // It may improve classification/subject/date extraction, but never invents a
+        // curriculum event or a schedule date. If no provider is configured, heuristic
+        // classification continues to work unchanged.
+        if ($text !== '' && ($score >= 0.20 || $hasAttachment)) {
+            $ai = $this->aiClassify($message, $base);
+            if ($ai !== null) {
+                $aiType = (string) ($ai['type'] ?? '');
+                $aiConfidence = isset($ai['confidence']) ? (float) $ai['confidence'] : 0.0;
+                if (in_array($aiType, ['homework', 'material_candidate', 'other'], true)
+                    && $aiConfidence >= 0.0 && $aiConfidence <= 1.0) {
+                    // Require a reasonably strong AI signal before overriding a
+                    // deterministic homework classification with something else.
+                    if ($aiType === 'homework' || $aiConfidence >= 0.72 || $base['type'] !== 'homework') {
+                        $base['type'] = $aiType;
+                        $base['confidence'] = $aiConfidence;
+                        $base['reason'] = 'llm_' . Str::sub((string) ($ai['reason'] ?? 'semantic_classification'), 0, 80);
+                    }
+                }
+                $base['subject_hint'] = trim((string) ($ai['subject_hint'] ?? '')) ?: null;
+                $base['due_hint'] = trim((string) ($ai['due_hint'] ?? '')) ?: null;
+            }
+        }
+
+        if ($text === '' && !$hasAttachment) {
+            $base['type'] = 'other';
+            $base['confidence'] = 0.10;
+            $base['reason'] = 'empty';
+        }
+
+        return $base;
+    }
+
+    private function aiClassify(array $message, array $base): ?array
+    {
+        $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
+        $chatTitle = trim((string) ($message['chat']['title'] ?? ''));
+        if ($text === '') return null;
+
+        $system = <<<TXT
+Ты классифицируешь сообщения учебной группы Telegram для образовательной системы MEDBIOHIM.
+Верни ТОЛЬКО JSON без markdown:
+{"type":"homework|material_candidate|other","confidence":0.0,"subject_hint":"","due_hint":"","reason":""}
+
+homework = сообщение содержит конкретное задание студентам: что сделать/выучить/прочитать/решить/подготовить, включая задания к следующему занятию.
+material_candidate = файл/фото/материал, который сам по себе не содержит понятного задания.
+other = обсуждение, вопрос, расписание, перенос, отмена, благодарность и т.п.
+
+subject_hint — только предмет, если он явно или достаточно однозначно следует из сообщения.
+due_hint — только срок, если он явно указан словами или датой. НИКОГДА не придумывай дату.
+confidence — уверенность именно в классификации.
+TXT;
+
+        $prompt = [
+            'chat_title' => $chatTitle,
+            'message' => $text,
+            'has_attachment' => isset($message['photo']) || isset($message['document']),
+            'heuristic' => $base,
+        ];
+
+        $result = LlmGateway::chatProvider('auto', [
+            ['role' => 'system', 'content' => $system],
+            ['role' => 'user', 'content' => json_encode($prompt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
+        ], 0.1);
+
+        $raw = trim((string) ($result['text'] ?? ''));
+        if ($raw === '') return null;
+        if (preg_match('/\{.*\}/s', $raw, $m)) $raw = $m[0];
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function resolveSubject(string $groupId, array $message, array $classification): array
     {
         $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
-        $lower = mb_strtolower($text);
+        $hint = trim((string) ($classification['subject_hint'] ?? ''));
+        $lower = mb_strtolower($text . ' ' . $hint);
 
+        $messageDate = isset($message['date']) ? gmdate('Y-m-d', (int) $message['date']) : gmdate('Y-m-d');
         $stmt = $this->db->prepare(
-            "SELECT DISTINCT s.id, s.name, s.semester, s.course_number
+            "SELECT DISTINCT s.id, s.name, s.semester, s.course_number,
+                    MIN(ABS((se.date - :message_date::date))) AS date_distance
              FROM public.schedule_entries se
              JOIN public.schedules sch ON sch.id = se.schedule_id AND sch.is_active = true
              JOIN public.subjects s ON s.id = se.subject_id
              WHERE sch.group_id = :group
-               AND se.date >= CURRENT_DATE - INTERVAL '14 days'
-               AND se.date <= CURRENT_DATE + INTERVAL '30 days'
-             ORDER BY se.date"
+               AND se.date >= (:message_date::date - INTERVAL '21 days')
+               AND se.date <= (:message_date::date + INTERVAL '42 days')
+               AND COALESCE(se.is_cancelled, false) = false
+             GROUP BY s.id, s.name, s.semester, s.course_number
+             ORDER BY date_distance ASC, s.name"
         );
-        $stmt->execute(['group' => $groupId]);
+        $stmt->execute(['group' => $groupId, 'message_date' => $messageDate]);
         $subjects = $stmt->fetchAll() ?: [];
 
         $best = null;
         $bestScore = 0.0;
         foreach ($subjects as $subject) {
-            $name = mb_strtolower((string) $subject['name']);
+            $name = mb_strtolower(trim((string) $subject['name']));
+            if ($name === '') continue;
             $score = 0.0;
-            if ($name !== '' && mb_strpos($lower, $name) !== false) $score += 0.80;
 
-            foreach (preg_split('/[\s,;:()\-]+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
-                if (mb_strlen($token) >= 5 && mb_strpos($lower, $token) !== false) $score += 0.08;
+            if (mb_strpos($lower, $name) !== false) {
+                $score += 0.90;
             }
+
+            $tokens = preg_split('/[^\\p{L}\\p{N}]+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $matched = 0;
+            foreach ($tokens as $token) {
+                if (mb_strlen($token) < 4) continue;
+                if (mb_strpos($lower, $token) !== false) $matched++;
+            }
+            if ($tokens) $score += min(0.55, ($matched / max(1, count($tokens))) * 0.55);
+
+            // Short academic abbreviations are common in group chats.
+            $compact = preg_replace('/[^\\p{L}]/u', '', $name) ?: '';
+            $compactHint = preg_replace('/[^\\p{L}]/u', '', $hint) ?: '';
+            if ($compactHint !== '' && mb_strlen($compactHint) >= 5 && mb_strpos($compact, $compactHint) !== false) {
+                $score += 0.65;
+            }
+
+            // Prefer a subject that actually occurs near the message date when
+            // several subjects have similar textual matches.
+            $distance = (int) ($subject['date_distance'] ?? 999);
+            $score += max(0.0, 0.12 - min(0.12, $distance * 0.01));
 
             if ($score > $bestScore) {
                 $bestScore = min(0.99, $score);
@@ -282,7 +381,6 @@ final class TelegramHomeworkService
         }
 
         if ($best) return $best + ['match_confidence' => $bestScore];
-
         return ['id' => null, 'name' => null, 'match_confidence' => 0.0];
     }
 
@@ -450,8 +548,35 @@ final class TelegramHomeworkService
         $tz = new \DateTimeZone('Asia/Vladivostok');
         $now = new \DateTimeImmutable('now', $tz);
 
-        if (preg_match('/\bзавтра\b/iu', $text)) return $now->modify('+1 day')->setTime(23,59,59)->format('c');
-        if (preg_match('/\bсегодня\b/iu', $text)) return $now->setTime(23,59,59)->format('c');
+        if (preg_match('/\\bсегодня\\b/iu', $text)) return $now->setTime(23,59,59)->format('c');
+        if (preg_match('/\\bзавтра\\b/iu', $text)) return $now->modify('+1 day')->setTime(23,59,59)->format('c');
+        if (preg_match('/\\bпослезавтра\\b/iu', $text)) return $now->modify('+2 days')->setTime(23,59,59)->format('c');
+
+        // Explicit numeric dates: 25.09, 25.09.2026, 25/09.
+        if (preg_match('/\\b(\\d{1,2})[.\\/-](\\d{1,2})(?:[.\\/-](\\d{2,4}))?\\b/u', $text, $m)) {
+            $year = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : (int) $now->format('Y');
+            if ($year < 100) $year += 2000;
+            try {
+                $d = new \DateTimeImmutable(sprintf('%04d-%02d-%02d 23:59:59', $year, (int)$m[2], (int)$m[1]), $tz);
+                if ($d < $now->modify('-1 day')) $d = $d->modify('+1 year');
+                return $d->format('c');
+            } catch (\Throwable $e) {}
+        }
+
+        $months = [
+            'января'=>1,'февраля'=>2,'марта'=>3,'апреля'=>4,'мая'=>5,'июня'=>6,
+            'июля'=>7,'августа'=>8,'сентября'=>9,'октября'=>10,'ноября'=>11,'декабря'=>12,
+        ];
+        foreach ($months as $name=>$month) {
+            if (preg_match('/\\b(\\d{1,2})\\s+' . $name . '(?:\\s+(\\d{4}))?/iu', $text, $m)) {
+                $year = isset($m[2]) && $m[2] !== '' ? (int)$m[2] : (int)$now->format('Y');
+                try {
+                    $d = new \DateTimeImmutable(sprintf('%04d-%02d-%02d 23:59:59', $year, $month, (int)$m[1]), $tz);
+                    if ($d < $now->modify('-1 day')) $d = $d->modify('+1 year');
+                    return $d->format('c');
+                } catch (\Throwable $e) {}
+            }
+        }
 
         $days = ['понедельник'=>1,'вторник'=>2,'среда'=>3,'четверг'=>4,'пятница'=>5,'суббота'=>6,'воскресенье'=>7];
         foreach ($days as $name=>$n) {
@@ -461,6 +586,7 @@ final class TelegramHomeworkService
                 return $now->modify('+' . $delta . ' days')->setTime(23,59,59)->format('c');
             }
         }
+
         return null;
     }
 
@@ -468,11 +594,24 @@ final class TelegramHomeworkService
     {
         $stmt = $this->db->prepare(
             "UPDATE public.telegram_messages
-             SET classification = :type, classification_confidence = :confidence,
-                 processing_status = 'processing'
+             SET classification = :type,
+                 classification_confidence = :confidence,
+                 processing_status = 'processing',
+                 ai_reason = :reason,
+                 ai_subject_hint = :subject_hint,
+                 ai_due_hint = :due_hint,
+                 ai_processed_at = CASE WHEN :used_ai THEN now() ELSE ai_processed_at END
              WHERE id = :id"
         );
-        $stmt->execute(['id'=>$id,'type'=>$classification['type'],'confidence'=>$classification['confidence']]);
+        $stmt->execute([
+            'id' => $id,
+            'type' => $classification['type'],
+            'confidence' => $classification['confidence'],
+            'reason' => $classification['reason'] ?? null,
+            'subject_hint' => $classification['subject_hint'] ?? null,
+            'due_hint' => $classification['due_hint'] ?? null,
+            'used_ai' => str_starts_with((string)($classification['reason'] ?? ''), 'llm_'),
+        ]);
     }
 
     private function markMessage(string $id, string $status, ?string $error = null): void
