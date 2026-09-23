@@ -1,13 +1,12 @@
 <?php
 declare(strict_types=1);
 
-use MedbiohimDatabaseConnection;
-use MedbiohimHttpRequest;
-use MedbiohimHttpResponse;
-use MedbiohimHttpRouter;
-use MedbiohimMiddlewareRequireAuth;
-use MedbiohimMiddlewareRequireRole;
-use PDO;
+use Medbiohim\Database\Connection;
+use Medbiohim\Http\Request;
+use Medbiohim\Http\Response;
+use Medbiohim\Http\Router;
+use Medbiohim\Middleware\RequireAuth;
+use Medbiohim\Middleware\RequireRole;
 
 return static function (Router $router): void {
     $router->post('/api/v1/admin/content/package/import', static function (Request $req, array $params): void {
