@@ -17,8 +17,13 @@ type ChartSpec = {
   unit?: string;
 };
 
+/** Real HTML entities — previous version no-op'd (&→&, <→<) which left XSS risk in markdown path. */
 function escapeHtml(s: string) {
-  return s.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function parseBlocks(md: string) {

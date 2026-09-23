@@ -64,7 +64,17 @@ Type error: Type 'unknown' is not assignable to type 'ReactNode'.
 .filter((x): x is { name: string; slug: string } => Boolean(x.slug))
 ```
 
-Исправлено превентивно: `src/app/tutor/page.tsx`, `src/app/admin/lectures/page.tsx` (2026-09-23).
+Исправлено: `src/app/tutor/page.tsx`, `src/app/admin/lectures/page.tsx` (2026-09-23).
+
+Vercel после database-фикса падал на:
+
+```
+./src/app/admin/lectures/page.tsx
+Argument of type '{ slug: string | undefined; name: string; }[]'
+  is not assignable to SetStateAction<{ slug: string; name: string; }[]>
+```
+
+(коммит деплоя был старый `aee1266` — до фикса `a4c41db`).
 
 ## Сборка и деплой
 
@@ -76,6 +86,21 @@ Type error: Type 'unknown' is not assignable to type 'ReactNode'.
 - Source of truth: ветка **`main`** на GitHub.
 - `tsconfig`: `"strict": true` — ошибки типов = failed deploy.
 - Не полагаться на «у меня локально ок» без `next build`: Vercel всегда гоняет полный typecheck.
+- **Vercel Hobby:** ~100 deployments/day (`api-deployments-free-per-day`). Каждый push в connected branch = деплой. Пока квота 0 — Disconnect Git или `ignoreCommand: exit 0` в Settings → Git / `vercel.json`.
+
+### Pre-deploy checklist (2026-09-23)
+
+Проверено статически на `main`:
+
+| Риск | Статус |
+|------|--------|
+| `unknown` в JSX (admin/database) | fixed `display()` |
+| optional `slug` → strict state (tutor, admin/lectures) | fixed filter + type predicate |
+| `LectureRenderer.escapeHtml` no-op entities | fixed `&amp;`/`&lt;`/`&gt;` |
+| `subjects/[id]` stale `subject` in `else if (!subject)` | fixed local `hasCatalogHit` |
+| cards / tickets / practice / search / schedule | no TS pattern like above |
+
+Локально перед пушем: `npm run build`.
 
 ## AdminDbRow в UI
 

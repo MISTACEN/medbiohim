@@ -65,7 +65,16 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
-  const [gradebook, setGradebook] = useState<Array<{display_name:string;hours?:number|null;credits?:number|null;control_form?:string|null;hours_scope?:string;source_note?:string|null}>>([]);
+  const [gradebook, setGradebook] = useState<
+    Array<{
+      display_name: string;
+      hours?: number | null;
+      credits?: number | null;
+      control_form?: string | null;
+      hours_scope?: string;
+      source_note?: string | null;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [block, setBlock] = useState<BlockId>("plan");
@@ -77,6 +86,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
       const p = await params;
       if (cancelled) return;
       setSubjectId(p.id);
+      /** Local flag — do not read `subject` state (stale closure while setState is async). */
+      let hasCatalogHit = false;
       try {
         const cat = await listSubjectsCatalog();
         if (cat.ok) {
@@ -86,6 +97,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           );
           const hit = byId || byName;
           if (hit) {
+            hasCatalogHit = true;
             setSubject({
               id: hit.id,
               name: hit.name,
@@ -113,7 +125,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             (s.name || "").toLowerCase().replace(/\s+/g, "_");
           const pr = await getSubjectPlan(slug);
           if (pr.ok) setPlan(pr.data.plan);
-        } else if (!subject) {
+        } else if (!hasCatalogHit) {
           setError(r.error.message);
         }
       } catch {
@@ -194,7 +206,10 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </div>
             )}
             {gradebook.some((g) => g.source_note) && (
-              <p className="mt-2 text-xs text-amber-700">В отдельных строках фото и XLSX содержат разные значения; они не смешиваются и сохранены раздельно.</p>
+              <p className="mt-2 text-xs text-amber-700">
+                В отдельных строках фото и XLSX содержат разные значения; они не смешиваются и сохранены
+                раздельно.
+              </p>
             )}
           </section>
 
@@ -287,27 +302,40 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 <div className="space-y-2">
                   <h2 className="text-lg font-bold">Билеты и вопросы</h2>
                   <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    Для «{subject.name}» банка билетов нет — чужой предмет (неорганика, биология 1
-                    курса и т.д.) не подставляем.
+                    Для «{subject.name}» банка билетов нет — чужой предмет (неорганика, биология 1 курса и
+                    т.д.) не подставляем.
                   </p>
                 </div>
               ))}
 
             {block === "practice" && (
-              <Block title="Практика" text="Тренажёры по темам предмета." href={`/practice?${q}`} cta="К практике" />
+              <Block
+                title="Практика"
+                text="Тренажёры по темам предмета."
+                href={`/practice?${q}`}
+                cta="К практике"
+              />
             )}
             {block === "lectures" && (
-              <Block title="Лекции" text="Страницы лекций с формулами и видео." href={`/lectures?${q}`} cta="К лекциям" />
+              <Block
+                title="Лекции"
+                text="Страницы лекций с формулами и видео."
+                href={`/lectures?${q}`}
+                cta="К лекциям"
+              />
             )}
             {block === "materials" && (
-              <Block title="Материалы" text="Таблицы, PDF, схемы — наполняет админ." href={`/materials?${q}`} cta="К материалам" />
+              <Block
+                title="Материалы"
+                text="Таблицы, PDF, схемы — наполняет админ."
+                href={`/materials?${q}`}
+                cta="К материалам"
+              />
             )}
             {block === "cards" && (
               <div className="space-y-4">
                 <h2 className="text-lg font-bold">Карточки SRS</h2>
-                <p className="text-sm text-slate-500">
-                  Общие и личные. Не путать с экзаменационными билетами.
-                </p>
+                <p className="text-sm text-slate-500">Общие и личные. Не путать с экзаменационными билетами.</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Link href={`/cards?${q}&scope=shared`} className="rounded-xl border p-4 hover:bg-slate-50">
                     <div className="font-semibold">Общие</div>
@@ -321,7 +349,12 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </div>
             )}
             {block === "progress" && (
-              <Block title="Прогресс по предмету" text="Покрытие, точность, готовность." href={`/progress?${q}`} cta="Смотреть прогресс" />
+              <Block
+                title="Прогресс по предмету"
+                text="Покрытие, точность, готовность."
+                href={`/progress?${q}`}
+                cta="Смотреть прогресс"
+              />
             )}
           </section>
         </>
