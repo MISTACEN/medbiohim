@@ -16,6 +16,7 @@ return static function (Router $router): void {
         'questions_rest.php',
         'content_integration.php',
         'admin_content_package.php',
+        'admin_compat.php',
         'admin_questions.php',
         'sessions_rest.php',
         'plans_rest.php',
