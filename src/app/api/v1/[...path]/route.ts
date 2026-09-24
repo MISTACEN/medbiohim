@@ -5,8 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
  * /trainers/feed yet. */
 const configuredOrigin = process.env.SPACEWEB_API_ORIGIN;
 const UPSTREAM = configuredOrigin?.replace(/\/$/, "");
-const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gnobvyjywtqbdfeejxmf.supabase.co").replace(/\/$/, "");
+// The anon key is intentionally safe for browser use and is already used by src/lib/supabase.ts.
+// Keep the server fallback aligned so trainer routes still work when Vercel env vars are missing.
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub2J2eWp5d3RxYmRmZWVqeG1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MzgxMjIsImV4cCI6MjEwNDAxNDEyMn0.kVPf6gZ_7GGNt1nDvbev4RJM0iMQ9rBWBV_5xXWRUTg";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
