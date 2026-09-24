@@ -272,7 +272,7 @@ export default function HistologyTrainerPage() {
 
                   <div className="flex flex-wrap gap-2">
                     {!answered && <button type="button" onClick={() => void skip()} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><SkipForward className="h-4 w-4" />Пропустить</button>}
-                    {answered && <button type="button" onClick={next} className="btn-primary">Следующая</button>}
+                    {answered && !(experience === "exam" && index === visibleCards.length - 1 && Object.keys(examAnswers).length === visibleCards.length) && <button type="button" onClick={next} className="btn-primary">Следующая</button>}
                     {experience === "exam" && !examFinished && index === visibleCards.length - 1 && Object.keys(examAnswers).length === visibleCards.length && <button type="button" onClick={() => void finishExam()} className="btn-primary">Завершить экзамен</button>}
                     {card.source_key && <Link href={"/materials/source?key=" + encodeURIComponent(card.source_key) + "&title=" + encodeURIComponent(card.preparation?.name || "Гистология МБХ")} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><Eye className="h-4 w-4" />Источник</Link>}
                   </div>
