@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Eye, FileText, SkipForward, X } from "lucide-react";
+import { getTrainerImageUrl } from "@/lib/api";
 import { listTrainerFeed, submitTrainerAnswer, type TrainerCard } from "@/lib/content-api";
 
 type Mode = "all" | "preparation" | "electronogram" | "electronogram_label";
@@ -25,10 +26,11 @@ export default function HistologyTrainerPage() {
   const [examFinished, setExamFinished] = useState(false);
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [labelChecked, setLabelChecked] = useState(false);
+  const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
 
   useEffect(() => {
     void listTrainerFeed("histology", "mbh", 500).then(r => {
-      if (r.ok) setCards(r.data.items || []);
+      if (r.ok) {\n        const items = r.data.items || [];\n        setCards(items);\n        void Promise.all(items.map(async item => {\n          if (item.preparation?.imagePath || item.preparation?.imageUrl) return [item.id, item.preparation.imageUrl || item.preparation.imagePath] as const;\n          const url = await getTrainerImageUrl(item.id);\n          return url ? [item.id, url] as const : null;\n        })).then(entries => setImageUrls(Object.fromEntries(entries.filter((x): x is readonly [string,string] => !!x))));\n      }
       else setError(r.error.message);
       setLoading(false);
     });
@@ -186,7 +188,7 @@ export default function HistologyTrainerPage() {
               <div className="grid gap-0 lg:grid-cols-[1.15fr_.85fr]">
                 <div className="relative flex min-h-[360px] items-center justify-center bg-slate-100">
                   <img
-                    src={card.preparation?.imageUrl || ("/api/v1/trainers/feed/" + encodeURIComponent(card.id) + "/image")}
+                    src={imageUrls[card.id] || card.preparation?.imageUrl || card.preparation?.imagePath || ""}
                     alt={card.preparation?.name || "Препарат"}
                     className="h-full min-h-[360px] w-full object-contain"
                   />
