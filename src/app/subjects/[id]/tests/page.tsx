@@ -10,6 +10,7 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
   const [subjectName, setSubjectName] = useState("Тесты");
   const [tests, setTests] = useState<ApiTest[]>([]);
   const [topic, setTopic] = useState("all");
+  const [source, setSource] = useState("all");
   const [count, setCount] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,7 +32,8 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
   }, [params]);
 
   const topics = useMemo(() => tests.map((t) => ({ id: t.id, title: t.title || t.name || "Тест" })), [tests]);
-  const visible = useMemo(() => topic === "all" ? tests : tests.filter((t) => t.id === topic), [tests, topic]);
+  const sources = useMemo(() => Array.from(new Set(tests.map((t) => t.source_file_name || t.source_key || "база тестов"))), [tests]);
+  const visible = useMemo(() => tests.filter((t) => (topic === "all" || t.id === topic) && (source === "all" || (t.source_file_name || t.source_key || "база тестов") === source)), [tests, topic, source]);
 
   const href = (testId: string, mode: "prepare" | "solve" | "exam") =>
     "/tests/preparation/" + encodeURIComponent(testId) + "?mode=" + mode + "&count=" + count;
@@ -54,10 +56,18 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
 
       <section className="card space-y-4 p-5">
         <div>
-          <div className="text-sm font-semibold text-slate-800">Тема / источник</div>
+          <div className="text-sm font-semibold text-slate-800">Тема / банк</div>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => setTopic("all")} className={"rounded-xl border px-3 py-2 text-sm font-semibold " + (topic === "all" ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200")}>Все</button>
             {topics.map((t) => <button key={t.id} type="button" onClick={() => setTopic(t.id)} className={"rounded-xl border px-3 py-2 text-sm font-semibold " + (topic === t.id ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200")}>{t.title}</button>)}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-sm font-semibold text-slate-800">Источник</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => setSource("all")} className={"rounded-xl border px-3 py-2 text-sm font-semibold " + (source === "all" ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200")}>Все источники</button>
+            {sources.map((name) => <button key={name} type="button" onClick={() => setSource(name)} className={"rounded-xl border px-3 py-2 text-sm font-semibold " + (source === name ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200")}>{name}</button>)}
           </div>
         </div>
 
