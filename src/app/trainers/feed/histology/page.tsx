@@ -22,7 +22,7 @@ export default function HistologyTrainerPage(){
   const [cards,setCards]=useState<TrainerCard[]>([]),[index,setIndex]=useState(0),[selected,setSelected]=useState<string|null>(null);
   const [result,setResult]=useState<boolean|null>(null),[showAnswer,setShowAnswer]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null);
   const [startedAt,setStartedAt]=useState(Date.now),[mode,setMode]=useState<Mode>("all"),[experience,setExperience]=useState<Experience>("prepare"),[category,setCategory]=useState("all");
-  const [examCards,setExamCards]=useState<TrainerCard[]>([]),[examAnswers,setExamAnswers]=useState<Record<string,{optionId:string;correct:boolean}>>({}),[examFinished,setExamFinished]=useState(false);
+  const [practiceCards,setPracticeCards]=useState<TrainerCard[]>([]),[examCards,setExamCards]=useState<TrainerCard[]>([]),[examAnswers,setExamAnswers]=useState<Record<string,{optionId:string;correct:boolean}>>({}),[examFinished,setExamFinished]=useState(false);
   const [labels,setLabels]=useState<Record<string,string>>({}),[labelChecked,setLabelChecked]=useState(false),[currentImage,setCurrentImage]=useState<string|null>(null);
 
   useEffect(()=>{ void listTrainerFeed("histology","mbh",500).then(r=>{
@@ -32,8 +32,8 @@ export default function HistologyTrainerPage(){
   });},[]);
 
   const base=useMemo(()=>{let a=mode==="all"?cards:cards.filter(c=>c.mode_set===mode);return category==="all"?a:a.filter(c=>Array.isArray(c.tags)&&c.tags.includes(category));},[cards,mode,category]);
-  useEffect(()=>{setIndex(0);setSelected(null);setResult(null);setShowAnswer(false);setLabels({});setLabelChecked(false);if(experience==="exam"){setExamCards(shuffle(base));setExamAnswers({});setExamFinished(false);}else setExamCards([]);},[experience,base]);
-  const visible=experience==="exam"?examCards:base, card:any=visible[index];
+  useEffect(()=>{setIndex(0);setSelected(null);setResult(null);setShowAnswer(false);setLabels({});setLabelChecked(false);if(experience==="exam"){setExamCards(shuffle(base));setExamAnswers({});setExamFinished(false);}else{setPracticeCards(shuffle(base));setExamCards([]);}},[experience,base]);
+  const visible=experience==="exam"?examCards:practiceCards, card:any=visible[index];
   useEffect(()=>{
     let alive=true;
     let objectUrl:string|null=null;
