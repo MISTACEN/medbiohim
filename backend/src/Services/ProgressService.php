@@ -14,8 +14,7 @@ final class ProgressService
         $key = (string) Env::get('SUPABASE_SERVICE_KEY', '');
         if ($url === '' || $key === '') throw new \RuntimeException('Supabase REST is not configured');
         $res = HttpClient::request($method, $url . '/rest/v1/' . ltrim($path, '/'), null, [
-            'apikey: ' . $key,
-            'Authorization: Bearer ' . $key,
+            ...SupabaseKeyHeaders::service($key),
         ], 15);
         if ($res['status'] < 200 || $res['status'] >= 300) {
             $body = is_array($res['json']) ? json_encode($res['json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : trim((string) $res['body']);
