@@ -3,8 +3,8 @@
 ## Frontend (repo root) → Vercel
 Next.js App Router.
 - Browser API base: `/api/v1`
-- Vercel rewrite target: `SPACEWEB_API_ORIGIN` (HTTPS SpaceWeb API origin)
-- If SpaceWeb document root is `backend/public`, the API origin is `https://YOUR-SPACEWEB/api/v1` — **not** `/public/api/v1`.
+- Vercel server-side proxy target: `SPACEWEB_API_ORIGIN` (current test SpaceWeb origin is HTTP)
+- If SpaceWeb document root is `backend/public`, the API origin is `http://YOUR-SPACEWEB/api/v1` for the current test environment — **not** `/public/api/v1`.
 - **Strict TypeScript** (`tsconfig` strict): `unknown` from `AdminDbRow` / `Record<string, unknown>` must be stringified before JSX (`String(...)` or `display(...)`). See **[docs/dev-notes.md](docs/dev-notes.md)**.
 
 ## backend/ → SpaceWeb
