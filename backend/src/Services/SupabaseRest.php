@@ -4,7 +4,7 @@ namespace Medbiohim\Services;
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
 final class SupabaseRest {
- private static function r(string $m,string $p,?array $b=null,array $h=[]):array{$u=rtrim((string)Env::get('SUPABASE_URL',''),'/');$k=(string)Env::get('SUPABASE_SERVICE_KEY','');if($u===''||$k==='')throw new \RuntimeException('Supabase REST fallback is not configured');$x=HttpClient::request($m,$u.'/rest/v1/'.ltrim($p,'/'),$b,array_merge(['apikey: '.$k,'Authorization: Bearer '.$k],$h),15);if($x['status']<200||$x['status']>=300)throw new \RuntimeException('Supabase REST request failed ('.$x['status'].'): '.substr(is_array($x['json'])?(string)json_encode($x['json'],JSON_UNESCAPED_UNICODE):trim((string)$x['body']),0,700));return is_array($x['json'])?$x['json']:[];}
+ private static function r(string $m,string $p,?array $b=null,array $h=[]):array{$u=rtrim((string)Env::get('SUPABASE_URL',''),'/');$k=(string)Env::get('SUPABASE_SERVICE_KEY','');if($u===''||$k==='')throw new \RuntimeException('Supabase REST fallback is not configured');$x=HttpClient::request($m,$u.'/rest/v1/'.ltrim($p,'/'),$b,array_merge(SupabaseKeyHeaders::service($k),$h),15);if($x['status']<200||$x['status']>=300)throw new \RuntimeException('Supabase REST request failed ('.$x['status'].'): '.substr(is_array($x['json'])?(string)json_encode($x['json'],JSON_UNESCAPED_UNICODE):trim((string)$x['body']),0,700));return is_array($x['json'])?$x['json']:[];}
  private static function q(array $v):string{return implode(',',array_map(static fn($x)=>'"'.str_replace(['\\','"'],['\\\\','\\"'],(string)$x).'"',$v));}
  private static function roles(string $uid):array{$all=self::r('GET','roles?select=id,code');$map=[];foreach($all as $x){$map[(string)$x['id']]=(string)$x['code'];}$out=[];foreach(self::r('GET','user_roles?user_id=eq.'.rawurlencode($uid).'&select=role_id') as $x){$c=$map[(string)($x['role_id']??'')]??null;if($c)$out[]=$c;}return $out;}
  public static function listGroups():array{return self::r('GET','groups?is_active=eq.true&select=id,code,name,course_number,admission_year,is_active,created_at&order=course_number.asc.nullslast,name.asc');}
@@ -35,10 +35,10 @@ final class SupabaseRest {
   $service=(string)Env::get('SUPABASE_SERVICE_KEY','');
   $token=trim((string)($accessToken??''));
   $key=$token!==''?($anon!==''?$anon:$service):$service;
-  $authorization=$token!==''?$token:$service;
+  $authorization=$token!==''?$token:'';
   if($base===''||$key===''||$authorization==='') throw new \RuntimeException('Supabase REST fallback is not configured');
   $get=static function(string $path)use($base,$key,$authorization):array{
-    $x=\Medbiohim\Support\HttpClient::request('GET',$base.'/rest/v1/'.ltrim($path,'/'),null,['apikey: '.$key,'Authorization: Bearer '.$authorization],15);
+    $x=\Medbiohim\Support\HttpClient::request('GET',$base.'/rest/v1/'.ltrim($path,'/'),null,$token!==''?['apikey: '.$key,'Authorization: Bearer '.$authorization]:SupabaseKeyHeaders::service($key),15);
     if($x['status']<200||$x['status']>=300) throw new \RuntimeException('Supabase REST request failed ('.$x['status'].')');
     return is_array($x['json'])?$x['json']:[];
   };
