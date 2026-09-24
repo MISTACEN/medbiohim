@@ -178,7 +178,7 @@ final class LlmGateway
             try {
                 if ($provider === 'gemini') return self::visionGemini($messages, $temperature);
                 if ($provider === 'openrouter') return self::visionOpenRouter($messages, $temperature);
-            } catch (\\Throwable $e) {
+            } catch (\Throwable $e) {
                 $errors[] = $provider . ': ' . Str::sub($e->getMessage(), 0, 180);
             }
         }
