@@ -30,16 +30,27 @@ export default function HistologyTrainerPage() {
 
   useEffect(() => {
     void listTrainerFeed("histology", "mbh", 500).then(r => {
-      if (r.ok) {\n        const items = r.data.items || [];\n        setCards(items);\n        void Promise.all(items.map(async item => {\n          if (item.preparation?.imagePath || item.preparation?.imageUrl) return [item.id, item.preparation.imageUrl || item.preparation.imagePath] as const;\n          const url = await getTrainerImageUrl(item.id);\n          return url ? [item.id, url] as const : null;\n        })).then(entries => setImageUrls(Object.fromEntries(entries.filter((x): x is readonly [string,string] => !!x))));\n      }
+      if (r.ok) {
+        const items = r.data.items || [];
+        setCards(items);
+        void Promise.all(items.map(async item => {
+          if (item.preparation?.imagePath || item.preparation?.imageUrl) return [item.id, item.preparation.imageUrl || item.preparation.imagePath] as const;
+          const url = await getTrainerImageUrl(item.id);
+          return url ? [item.id, url] as const : null;
+        })).then(entries => setImageUrls(Object.fromEntries(entries.filter((x): x is readonly [string,string] => !!x))));
+      }
       else setError(r.error.message);
       setLoading(false);
     });
   }, []);
 
-  const visibleCards = useMemo(
-    () => mode === "all" ? cards : cards.filter(c => c.mode_set === mode),
-    [cards, mode]
-  );
+  const visibleCards = useMemo(() => {
+    let items = mode === "all" ? cards : cards.filter(c => c.mode_set === mode);
+    if (category !== "all") {
+      items = items.filter(c => Array.isArray(c.tags) && c.tags.includes(category));
+    }
+    return items;
+  }, [cards, mode, category]);
   const card: any = visibleCards[index];
   const options = Array.isArray(card?.question?.options) ? card.question.options : [];
   const labelItems = Array.isArray(card?.hotspots) ? card.hotspots : [];
