@@ -385,12 +385,16 @@ return static function (Router $router): void {
             }
 
             $relative = ltrim(str_replace('\\', '/', (string) ($row['source_key'] ?? '')), '/');
+            $relative = preg_replace('#^content/histology/#', '', $relative) ?? $relative;
             if ($relative === '' || str_contains($relative, '..')) {
                 Response::error('MEDIA_INVALID', 'Invalid media path', $req->requestId, 422);
                 return;
             }
 
-            $root = rtrim((string) (getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../storage/histology')), '/');
+            // The histology media installer writes to content/histology. Keep
+            // HISTOLOGY_MEDIA_ROOT configurable, but use that deployed tree by
+            // default instead of the obsolete storage/histology path.
+            $root = rtrim((string) (getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology')), '/');
             $path = realpath($root . '/' . $relative);
             $rootReal = realpath($root);
             if ($rootReal === false || $path === false || !str_starts_with($path, $rootReal . DIRECTORY_SEPARATOR) || !is_file($path)) {
