@@ -19,7 +19,7 @@ final class SupabaseAcademic
             $method,
             $url . '/rest/v1/' . ltrim($path, '/'),
             $body,
-            array_merge(['apikey: ' . $key, 'Authorization: Bearer ' . $key], $headers),
+            array_merge(SupabaseKeyHeaders::service($key), $headers),
             15
         );
         if ($res['status'] < 200 || $res['status'] >= 300) {
