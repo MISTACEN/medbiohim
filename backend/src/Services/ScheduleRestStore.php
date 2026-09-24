@@ -25,7 +25,7 @@ final class ScheduleRestStore
             $method,
             $url . '/rest/v1/' . ltrim($path, '/'),
             null,
-            ['apikey: ' . $apiKey, 'Authorization: Bearer ' . $authorization],
+            ($token !== '' ? ['apikey: ' . $apiKey, 'Authorization: Bearer ' . $authorization] : SupabaseKeyHeaders::service($serviceKey)),
             15
         );
         if ($res['status'] < 200 || $res['status'] >= 300) {
