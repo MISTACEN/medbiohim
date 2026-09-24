@@ -144,7 +144,8 @@ export async function answerTrainerCard(payload:{card_id:string;option_id?:strin
 export async function listCommunityPosts(){return api<{items:Array<{id:string;title:string;body:string;author_name?:string}>}>("/community/posts")}
 export async function createCommunityPost(title:string,body:string){return api<{post:Record<string,unknown>}>("/community/posts",{method:"POST",body:JSON.stringify({title,body})})}
 export async function getProgress(){return api<{overall_pct?:number;homework:unknown;tests:unknown;note?:string}>("/progress")}
-export type ApiSubjectModule={id?:string;title?:string;topics?:Array<{id?:string;title?:string}>};\nexport async function getSubject(id:string){return api<{subject:{id:string;name:string;slug?:string|null};modules?:ApiSubjectModule[]}>(`/subjects/${id}`)}
+export type ApiSubjectModule={id?:string;title?:string;topics?:Array<{id?:string;title?:string}>};
+export async function getSubject(id:string){return api<{subject:{id:string;name:string;slug?:string|null};modules?:ApiSubjectModule[]}>(`/subjects/${id}`)}
 export async function claimAdmin(secret:string){return api<{roles:string[];message:string;session_refresh_required?:boolean;metadata_synced?:boolean}>("/admin/claim-admin",{method:"POST",body:JSON.stringify({secret})})}
 export async function adminListUsers(){return api<{items:Array<{id:string;email?:string;full_name?:string;roles:string[]}>}>("/admin/users")}
 export async function adminSetUserRole(userId:string,role:string,action:"assign"|"revoke"="assign"){return api<{roles:string[]}>("/admin/users/roles",{method:"POST",body:JSON.stringify({user_id:userId,role,action})})}
