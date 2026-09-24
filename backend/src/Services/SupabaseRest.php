@@ -37,9 +37,10 @@ final class SupabaseRest {
   $token=trim((string)($accessToken??''));
   $key=$token!==''?($anon!==''?$anon:$service):$service;
   $authorization=$token!==''?$token:'';
-  if($base===''||$key===''||$authorization==='') throw new \RuntimeException('Supabase REST fallback is not configured');
-  $get=static function(string $path)use($base,$key,$authorization):array{
-    $x=\Medbiohim\Support\HttpClient::request('GET',$base.'/rest/v1/'.ltrim($path,'/'),null,$token!==''?['apikey: '.$key,'Authorization: Bearer '.$authorization]:SupabaseKeyHeaders::service($key),15);
+  $requestHeaders=$token!==''?['apikey: '.$key,'Authorization: Bearer '.$authorization]:SupabaseKeyHeaders::service($key);
+  if($base===''||$key==='') throw new \RuntimeException('Supabase REST fallback is not configured');
+  $get=static function(string $path)use($base,$requestHeaders):array{
+    $x=\Medbiohim\Support\HttpClient::request('GET',$base.'/rest/v1/'.ltrim($path,'/'),null,$requestHeaders,15);
     if($x['status']<200||$x['status']>=300) throw new \RuntimeException('Supabase REST request failed ('.$x['status'].')');
     return is_array($x['json'])?$x['json']:[];
   };
