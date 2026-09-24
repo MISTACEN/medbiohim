@@ -297,3 +297,29 @@ This is intentionally limited to GET 404s so POST/PUT/PATCH/DELETE requests are 
 - `TrainerCard.preparation.imageUrl` is explicitly typed.
 - Protected images must use `getTrainerImageUrl()` / authenticated `fetch` + `URL.createObjectURL()`.
 - Do not deploy an older commit solely because it contains one fix if `main` already contains that fix plus subsequent synchronization changes; compare `490b040` with `main` first.
+
+## 16. Trainer 404 compatibility fallback (2026-09-24)
+
+Если production SpaceWeb временно не содержит trainer routes, Vercel `/api/v1/[...path]` имеет узкий fallback только для `trainers/feed`:
+
+1. принимает тот же Bearer token;
+2. читает опубликованные карточки из Supabase `public.trainer_feed_cards` через PostgREST + пользовательский JWT;
+3. сохраняет ответы в `public.trainer_feed_answers` через RLS;
+4. для `/trainers/feed/{id}/image` берёт `preparation.imageUrl` из карточки и проксирует оригинальный media path через SpaceWeb.
+
+Это compatibility layer, а не новый источник данных. Рабочий backend и расписание не изменяются. Когда SpaceWeb снова отдаёт trainer endpoints, fallback можно удалить после проверки production.
+
+### Почему это безопаснее полного переписывания
+
+- не меняет `schedule`, auth или существующие backend routes;
+- не требует service-role ключа в браузере;
+- Supabase RLS продолжает проверять пользовательский JWT;
+- fallback ограничен доменом `trainers/feed`.
+
+### Проверка после deploy
+
+- GET /api/v1/trainers/feed?subject=histology&specialty=mbh&limit=500&offset=0 -> 200
+- GET /api/v1/trainers/feed/{id} -> 200
+- GET /api/v1/trainers/feed/{id}/image -> 200 image/*
+- POST /api/v1/trainers/feed/answer -> 201
+- GET /api/v1/schedule -> не изменён
