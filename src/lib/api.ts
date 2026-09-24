@@ -9,7 +9,46 @@ export function setTokens(access:string,refresh?:string){localStorage.setItem("m
 export function clearTokens(){localStorage.removeItem("mb_access_token");localStorage.removeItem("mb_refresh_token")}
 async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;if(options.body&&!isForm&&!headers["Content-Type"])headers["Content-Type"]="application/json";const token=tokenOverride??getToken();if(token)headers.Authorization=`Bearer ${token}`;const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store"});return{res,text:await res.text()}}
 export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{try{let {res,text}=await request<T>(path,options);if(res.status===401&&path!=="/auth/refresh"){const refreshToken=getRefreshToken();if(refreshToken){try{const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});const rt=await rr.text();if(rr.ok){const parsed=JSON.parse(rt) as {ok?:boolean;data?:{access_token?:string;refresh_token?:string}};const access=parsed.data?.access_token;if(access){setTokens(access,parsed.data?.refresh_token);({res,text}=await request<T>(path,options,access));}}}catch{}}}try{return JSON.parse(text) as ApiResult<T>}catch{return{ok:false,error:{code:"BAD_RESPONSE",message:res.ok?"Сервер вернул не JSON":`HTTP ${res.status}`},requestId:res.headers.get("x-request-id")||"client"}}}catch{return{ok:false,error:{code:"NETWORK",message:"Сеть недоступна"},requestId:"client"}}}
-export async function getTrainerImageUrl(id:string){if(typeof window==="undefined")return null;try{const token=getToken();const res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(id)}/image`,{headers:token?{Authorization:`Bearer ${token}`}: {},cache:"no-store"});if(!res.ok)return null;const blob=await res.blob();return URL.createObjectURL(blob)}catch{return null}}
+export async function getTrainerImageUrl(id:string){
+  if(typeof window==="undefined")return null;
+  const fetchImage=async(token:string|null)=>{
+    const res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(id)}/image`,{
+      headers:token?{Authorization:`Bearer ${token}`}: {},
+      cache:"no-store"
+    });
+    if(!res.ok)return res;
+    return res;
+  };
+  try{
+    let token=getToken();
+    let res=await fetchImage(token);
+    if(res.status===401){
+      const refreshToken=getRefreshToken();
+      if(refreshToken){
+        const rr=await fetch(`${API_URL}/auth/refresh`,{
+          method:"POST",
+          headers:{"Accept":"application/json","Content-Type":"application/json"},
+          body:JSON.stringify({refresh_token:refreshToken}),
+          cache:"no-store"
+        });
+        const rt=await rr.text();
+        if(rr.ok){
+          try{
+            const parsed=JSON.parse(rt) as {data?:{access_token?:string;refresh_token?:string}};
+            if(parsed.data?.access_token){
+              setTokens(parsed.data.access_token,parsed.data.refresh_token);
+              token=parsed.data.access_token;
+              res=await fetchImage(token);
+            }
+          }catch{}
+        }
+      }
+    }
+    if(!res.ok)return null;
+    const blob=await res.blob();
+    return URL.createObjectURL(blob);
+  }catch{return null}
+}
 export async function login(email:string,password:string){return api<{access_token:string;refresh_token:string;expires_in:number;user:{id:string;email:string};roles?:string[]}>("/auth/login",{method:"POST",body:JSON.stringify({email,password})})}
 export async function me(){return api<{
   user: {
