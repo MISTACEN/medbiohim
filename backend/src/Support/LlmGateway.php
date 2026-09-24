@@ -246,7 +246,7 @@ final class LlmGateway
             }
             if ($parts) $contents[] = ['role' => $role === 'assistant' ? 'model' : 'user', 'parts' => $parts];
         }
-        if (!$contents) throw new \\InvalidArgumentException('At least one multimodal user message is required');
+        if (!$contents) throw new \InvalidArgumentException('At least one multimodal user message is required');
         $payload = [
             'contents' => $contents,
             'generationConfig' => [
