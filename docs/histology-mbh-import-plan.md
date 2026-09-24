@@ -25,3 +25,18 @@ Builder читает `features.zip`, собирает trainer cards, electronogr
 ## Safety
 
 Для histology backend уже требует specialty `mbh`. Это правило не менять и не ослаблять при последующих дополнениях.
+
+
+## Media из features.zip
+
+`features.zip` содержит 206 изображений (178 фотографий препаратов + 28 электронограмм).
+Бинарные файлы не должны попадать в PostgreSQL или в JSON bundle. Перед публикацией
+backend media нужно извлечь в его `content/`-каталог:
+
+`python tools/import_histology_media.py features.zip --out content`
+
+Скрипт создаёт:
+- `content/histology/em/*` для электронограмм;
+- `content/histology/photos/5_Фотографии препаратов/.../*` для фотографий.
+
+Frontend тренажёра использует авторизованный media proxy `/api/v1/trainers/feed/{id}/image`.
