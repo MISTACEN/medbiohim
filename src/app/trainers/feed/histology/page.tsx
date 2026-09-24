@@ -91,7 +91,7 @@ export default function HistologyTrainerPage() {
           </Link>
           <div className="mt-3 text-xs font-bold uppercase tracking-wider text-indigo-500">Только МБХ · Гистология</div>
           <h1 className="page-title">Тренажёр препаратов и электронограмм</h1>
-          <p className="page-subtitle">Опознайте препарат, а для экзаменационных электронограмм заполните подписи.</p>
+          <p className="page-subtitle">Определите препарат по микрофотографии. Название и эталон раскрываются только после ответа.</p>
         </div>
         <Link href="/materials?subject_slug=histology" className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold">
           <FileText className="h-4 w-4" />Материалы
@@ -137,8 +137,8 @@ export default function HistologyTrainerPage() {
 
               <div className="space-y-4 p-5">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{card.preparation?.organ || "Препарат"}</div>
-                  <h2 className="mt-1 text-xl font-bold">{card.question?.prompt || "Что изображено?"}</h2>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{card.modeSet === "preparation" ? "Микропрепарат · определение по фото" : card.preparation?.organ || "Препарат"}</div>
+                  <h2 className="mt-1 text-xl font-bold">{card.modeSet === "preparation" ? "Какой это препарат?" : card.question?.prompt || "Что изображено?"}</h2>
                 </div>
 
                 {card.question?.mode === "label_fill" ? (
@@ -178,7 +178,7 @@ export default function HistologyTrainerPage() {
 
                 {labelChecked && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">Сверьте каждую подпись с эталоном. Это экзаменационный режим заполнения, а не угадывание варианта.</div>}
 
-                {showAnswer && (
+                {showAnswer && (<div className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950"><b>Эталон препарата:</b> {card.preparation?.name || "Название не указано"}</div>)}{showAnswer && (
                   <div className={"rounded-xl p-4 text-sm " + (result ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900")}>
                     <b>{result ? "Правильно" : "Неверно"}</b>
                     {card.question?.explanation && <p className="mt-1 leading-6">{card.question.explanation}</p>}
