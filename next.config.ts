@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 /**
- * Browser always calls same-origin /api/v1/* over HTTPS.
+ * Browser always calls same-origin /api/v1/* on the Vercel deployment.
  *
  * The App Router catch-all route at src/app/api/v1/[...path]/route.ts is the
  * single Vercel-side API entrypoint. It proxies requests server-side to the
@@ -10,7 +10,7 @@ import type { NextConfig } from "next";
  * Do not add a second rewrite for /api/v1 here: keeping one proxy path avoids
  * route ambiguity and makes the Vercel -> SpaceWeb architecture explicit.
  */
-const BUILD_FINGERPRINT = "subject-ia-2026-09-23";
+const BUILD_FINGERPRINT = "2026-09-24-490b040";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
