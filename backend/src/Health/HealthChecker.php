@@ -150,21 +150,32 @@ final class HealthChecker
         $url = Env::get('SUPABASE_URL');
         $anon = Env::get('SUPABASE_ANON_KEY');
         $service = Env::get('SUPABASE_SERVICE_KEY');
+
         if (!$url) {
             return ['status' => 'fail', 'message' => 'SUPABASE_URL missing'];
         }
-        $serviceOk = is_string($service) && str_starts_with($service, 'eyJ');
         if (!$anon || !$service) {
             return ['status' => 'fail', 'message' => 'Supabase Auth keys missing'];
         }
+
+        $serviceType = 'unknown';
+        if (is_string($service) && str_starts_with($service, 'eyJ')) {
+            $serviceType = 'legacy_service_role_jwt';
+        } elseif (is_string($service) && str_starts_with($service, 'sb_secret_')) {
+            $serviceType = 'secret';
+        }
+
+        $serviceOk = $serviceType !== 'unknown';
+
         return [
             'status' => $serviceOk ? 'ok' : 'warn',
             'message' => $serviceOk
                 ? 'Supabase Auth config present'
-                : 'SUPABASE_SERVICE_KEY does not look like a JWT (need real service_role key)',
+                : 'SUPABASE_SERVICE_KEY format is not recognized (expected legacy service_role JWT or sb_secret_ key)',
             'has_anon' => true,
-            'has_service' => (bool) $service,
+            'has_service' => true,
             'service_looks_valid' => $serviceOk,
+            'service_key_type' => $serviceType,
         ];
     }
 }
