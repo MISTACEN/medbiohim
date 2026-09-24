@@ -151,6 +151,50 @@ with zipfile.ZipFile(ZIP) as z:
     for fn in ["feed-cards.json", "electronograms-feed-cards.json"]:
         feed += json.loads(z.read("features/histology-content/content-package/" + fn))["items"]
 
+    # Exam electronograms have a second, label-filling mode. The clean PNG stays
+    # untouched; labels are taken from the corresponding printable DOCX.
+    electronogram_docs = {}
+    em_prefix = "features/histology-content/electronograms/docx/1_Экзаменационные электронограммы_РАСПЕЧАТАТЬ ВСЕ!/"
+    for n in names:
+        if not n.startswith(em_prefix) or not n.endswith(".docx"):
+            continue
+        txt = doc_text(z, n)
+        lines = [x.strip() for x in txt.splitlines() if x.strip()]
+        if not lines:
+            continue
+        labels = []
+        for line in lines[1:]:
+            m = re.match(r"^([А-ЯA-Z]|\d+)[.)]?\s*(?:–|-)?\s*(.+)$", line)
+            if m and m.group(2).strip():
+                labels.append({"id": m.group(1), "label": m.group(2).strip()})
+        if labels:
+            electronogram_docs[lines[0]] = labels
+
+    label_cards = []
+    for card in feed:
+        if card.get("modeSet") != "electronogram":
+            continue
+        name = (card.get("preparation") or {}).get("name") or ""
+        labels = electronogram_docs.get(name)
+        if not labels:
+            continue
+        label_cards.append({
+            **card,
+            "id": card["id"] + "-labels",
+            "modeSet": "electronogram_label",
+            "hotspots": labels,
+            "question": {
+                "prompt": "Заполните подписи к структурам на электронограмме.",
+                "mode": "label_fill",
+                "options": [],
+                "explanation": "Эталонные подписи взяты из экзаменационного DOCX МБХ.",
+                "allowSkip": True,
+            },
+            "tags": list(dict.fromkeys((card.get("tags") or []) + ["label-fill", "exam"])),
+            "source": "histology-content/electronograms/docx",
+        })
+    feed += label_cards
+
     lectures = json.loads(z.read("features/histology-content/content-package/lectures-skeleton.json"))["items"]
 
     docs = []
@@ -233,7 +277,8 @@ bundle = {
     "package_id": pkg["packageId"], "version": pkg["version"], "specialty_slug": "mbh",
     "subject_slug": "histology",
     "stats": {
-        "trainer_cards": len(feed), "documents": len(docs), "lectures": len(lectures),
+        "trainer_cards": len(feed),
+        "electronogram_label_cards": len(label_cards), "documents": len(docs), "lectures": len(lectures),
         "tests": len(tests), "test_questions": sum(len(x["questions"]) for x in tests),
         "practical_tasks": len(practical_tasks),
     },
