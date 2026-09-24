@@ -32,7 +32,7 @@ export default function SubjectPage({params}:{params:Promise<{id:string}>}){
   const query=new URLSearchParams({subject:subjectId,subject_slug:slug,course:String(course),semester:String(sem)}).toString();
   const subjectBanks=banks.filter(b=>/гистол/i.test(b.subject||"")||b.subject_slug===slug);
   const subjectTests=tests.filter(t=>!t.subject_id||t.subject_id===subject?.id);
-  const nav=[["plan","Учебный план",GraduationCap],["tickets","Билеты",FileQuestion],["practice","Практика",ListChecks],["lectures","Лекции",BookOpen],["materials","Материалы",FolderOpen],["trainer","Микропрепараты",Microscope],["cards","Карточки SRS",Brain],["progress","Прогресс",TrendingUp]] as const;
+  const nav=[["plan","Учебный план",GraduationCap],["tickets","Билеты",FileQuestion],["tests","Тесты",FileQuestion],["practice","Практика",ListChecks],["lectures","Лекции",BookOpen],["materials","Материалы",FolderOpen],["trainer","Микропрепараты",Microscope],["cards","Карточки SRS",Brain],["progress","Прогресс",TrendingUp]] as const;
 
   if(loading)return <div className="card p-6 text-sm text-slate-500">Загрузка предмета…</div>;
   if(error&&!subject)return <div className="card p-6 text-sm text-rose-600">{error}</div>;
