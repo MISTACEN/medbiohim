@@ -282,3 +282,18 @@ HTTP-коды:
 Цель — чтобы каждый следующий модуль выглядел как часть одной системы, а не как отдельный мини-проект.
 
 Последнее обновление: 2026-09-24.
+
+
+## 14. Vercel -> SpaceWeb compatibility proxy
+
+The frontend uses the same-origin `/api/v1/*` route in Vercel. The proxy forwards the `Authorization` header unchanged to SpaceWeb. For GET requests, when the primary SpaceWeb target returns `404`, the proxy may retry the compatibility target under `public/api/v1` when the configured origin supports that layout. This fallback is transport-only: it does not change application data, authentication, or the Supabase source of truth.
+
+This is intentionally limited to GET 404s so POST/PUT/PATCH/DELETE requests are never replayed automatically.
+
+## 15. Trainer integration status (2026-09-24)
+
+- Supabase `public.trainer_feed_cards` is populated and is the content source of truth.
+- Frontend trainer page consumes the shared API client (`src/lib/api.ts` + `src/lib/content-api.ts`).
+- `TrainerCard.preparation.imageUrl` is explicitly typed.
+- Protected images must use `getTrainerImageUrl()` / authenticated `fetch` + `URL.createObjectURL()`.
+- Do not deploy an older commit solely because it contains one fix if `main` already contains that fix plus subsequent synchronization changes; compare `490b040` with `main` first.
