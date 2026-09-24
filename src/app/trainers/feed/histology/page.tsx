@@ -19,6 +19,8 @@ export default function HistologyTrainerPage() {
   const [startedAt, setStartedAt] = useState(Date.now);
   const [mode, setMode] = useState<Mode>("all");
   const [experience, setExperience] = useState<Experience>("prepare");
+  const [category, setCategory] = useState("all");
+  const categories = useMemo(() => { const s = new Set<string>(); cards.forEach((c: any) => { (Array.isArray(c.tags) ? c.tags : []).forEach((t: any) => { if (typeof t === "string") s.add(t); }); }); return ["all", ...Array.from(s).sort()]; }, [cards]);
   const [examAnswers, setExamAnswers] = useState<Record<string, { optionId: string; correct: boolean }>>({});
   const [examFinished, setExamFinished] = useState(false);
   const [labels, setLabels] = useState<Record<string, string>>({});
@@ -142,6 +144,12 @@ export default function HistologyTrainerPage() {
                 {label}
               </button>
             ))}
+            <label className="ml-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+              Раздел
+              <select value={category} onChange={e => { setCategory(e.target.value); setIndex(0); resetCard(); }} className="rounded-xl border bg-white px-3 py-2 text-sm font-medium">
+                {categories.map(c => <option key={c} value={c}>{c === "all" ? "Все" : c}</option>)}
+              </select>
+            </label>
             <span className="ml-auto text-xs text-slate-500">{visibleCards.length} карточек</span>
           </div>
 
