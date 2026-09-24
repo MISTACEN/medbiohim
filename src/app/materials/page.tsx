@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BookOpen, ExternalLink, File, FileText, Search, X, Presentation } from "lucide-react";
 import { listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
