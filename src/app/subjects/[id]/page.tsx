@@ -314,15 +314,15 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             {block === "practice" && (
               <Block
                 title="Практика"
-                text="Тренажёры по темам предмета."
-                href={`/practice?${q}`}
-                cta="К практике"
+                text={isHistologySubject ? "Микропрепараты, электронограммы и задания по гистологии МБХ." : "Тренажёры по темам предмета."}
+                href={isHistologySubject ? "/trainers/feed/histology" : `/practice?${q}`}
+                cta={isHistologySubject ? "Открыть практику" : "К практике"}
               />
             )}
             {block === "lectures" && (
               <Block
                 title="Лекции"
-                text="Страницы лекций с формулами и видео."
+                text={isHistologySubject ? "17 тем гистологии, цитологии и эмбриологии из отдельного банка МБХ." : "Страницы лекций с формулами и видео."}
                 href={`/lectures?${q}`}
                 cta="К лекциям"
               />
