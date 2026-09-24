@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, ChevronRight, CircleHelp, Loader2, RotateCcw, SkipForward } from "lucide-react";
-import { answerTrainerCard, getTrainerFeed, hasToken, type TrainerFeedCard } from "@/lib/api";
+import { answerTrainerCard, getTrainerFeed, getTrainerImageUrl, hasToken, type TrainerFeedCard } from "@/lib/api";
 
 export default function TrainerFeedPage({ params }: { params: Promise<{ subject: string }> }) {
   const [subject, setSubject] = useState("histology");
@@ -14,6 +14,8 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const startedAt = useMemo(() => Date.now(), [index]);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
       const slug = p.subject || "histology";
       setSubject(slug);
       if (!hasToken()) { setNote("Войдите, чтобы проходить тренажёр."); setLoading(false); return; }
-      const r = await getTrainerFeed(slug, "mbh", 100, 0);
+      const r = await getTrainerFeed(slug, "mbh", 500, 0);
       if (cancelled) return;
       if (r.ok) setCards(r.data.items || []); else setNote(r.error.message);
       setLoading(false);
@@ -33,6 +35,19 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
   }, [params]);
 
   const card = cards[index];
+
+  useEffect(() => {
+    let cancelled = false;
+    setImageUrl(null);
+    if (!card) return;
+    setImageLoading(true);
+    void getTrainerImageUrl(card.id).then((url) => {
+      if (!cancelled) setImageUrl(url);
+    }).finally(() => {
+      if (!cancelled) setImageLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [card?.id]);
 
   async function choose(optionId: string) {
     if (!card || busy || result !== null) return;
@@ -75,7 +90,16 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
           <div className="mx-auto max-w-3xl">
             <div className="overflow-hidden rounded-3xl bg-white shadow-2xl">
               <div className="relative aspect-[4/3] bg-slate-900">
-                <img src={"/api/v1/trainers/feed/" + encodeURIComponent(card.id) + "/image"} alt={card.preparation?.name || "Препарат"} className="h-full w-full object-contain" />
+                {imageUrl ? (
+                  <img src={imageUrl} alt={card.preparation?.name || "Препарат"} className="h-full w-full object-contain" />
+                ) : imageLoading ? (
+                  <div className="flex h-full items-center justify-center text-sm text-white/60">Загружаем изображение…</div>
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/60">
+                    <span>Изображение пока недоступно</span>
+                    <span className="text-xs">Медиа-файл должен быть установлен в content/histology.</span>
+                  </div>
+                )}
                 <div className="absolute left-3 top-3 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold backdrop-blur">{card.mode_set === "electronogram" ? "Электронограмма" : "Препарат"}</div>
               </div>
               <div className="p-5 text-slate-900 sm:p-7">
@@ -88,7 +112,15 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                     return <button key={option.id} type="button" disabled={busy || result !== null} onClick={() => void choose(option.id)} className={"rounded-2xl border px-4 py-3 text-left text-sm transition " + (correct ? "border-emerald-400 bg-emerald-50 text-emerald-800" : active && result === false ? "border-rose-400 bg-rose-50 text-rose-800" : active ? "border-indigo-400 bg-indigo-50 text-indigo-800" : "border-slate-200 hover:bg-slate-50")}>{option.label}</button>;
                   })}
                 </div>
-                {result !== null && <div className={"mt-5 rounded-2xl p-4 text-sm " + (result ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800")}><div className="flex items-center gap-2 font-bold">{result ? <CheckCircle2 className="h-5 w-5" /> : <CircleHelp className="h-5 w-5" />}{result ? "Правильно" : "Неверно"}</div>{card.question?.explanation && <p className="mt-2 leading-6">{card.question.explanation}</p>}</div>}
+                {result !== null && <div className={"mt-5 rounded-2xl p-4 text-sm " + (result ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800")}><div className="flex items-center gap-2 font-bold">{result ? <CheckCircle2 className="h-5 w-5" /> : <CircleHelp className="h-5 w-5" />}{result ? "Правильно" : "Неверно"}</div>{result ? (
+                  <p className="mt-2">Эталон не показываем — ты ответил правильно.</p>
+                ) : (
+                  <>
+                    <p className="mt-2">Показываем эталонный разбор.</p>
+                    {card.hotspots?.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{card.hotspots.map((h, i) => <div key={String(h.id || i)} className="rounded-xl bg-white/70 p-2"><span className="font-semibold">{String(h.id || "")}</span><span className="ml-2">{String(h.label || h.title || "")}</span></div>)}</div>}
+                    {card.question?.explanation && <p className="mt-3 leading-6">{card.question.explanation}</p>}
+                  </>
+                )}</div>}
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                   <button type="button" disabled={busy || result !== null} onClick={() => void skip()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"><SkipForward className="h-4 w-4" /> Пропустить</button>
                   {result !== null && <button type="button" onClick={next} className="btn-primary inline-flex items-center gap-2">Следующая <ChevronRight className="h-4 w-4" /></button>}
