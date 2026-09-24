@@ -5,6 +5,7 @@ namespace Medbiohim\Services;
 
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
+use Medbiohim\Support\SupabaseKeyHeaders;
 
 final class ProgressService
 {
