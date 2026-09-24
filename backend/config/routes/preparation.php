@@ -17,10 +17,13 @@ return static function (Router $router): void {
    $db=Connection::pdo();
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
+   // Каждая новая попытка получает случайный порядок. Это относится и к полному
+   // тесту, и к короткой тренировке с выбранным количеством вопросов.
+   shuffle($ids);
    if($limit!==null)$ids=array_slice($ids,0,$limit);
    if(!$ids){Response::error('NO_QUESTIONS','В тесте нет опубликованных вопросов', $r->requestId,422);return;}
-   $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' limit 1");
-   $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
+   $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' and mode=:mode and (question_limit is not distinct from :lim) limit 1");
+   $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit]); $existing=$s->fetch();
    if($existing){Response::success(['session'=>$existing],$r->requestId);return;}
    $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids) values(:uid,:tid,:mode,:lim,:ids) returning *");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
@@ -35,6 +38,10 @@ return static function (Router $router): void {
    if(!$session){Response::error('NOT_FOUND','Preparation session not found',$r->requestId,404);return;}
    $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.name as module_name,top.name as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
    $q->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$session['question_ids'])).'}']);$questions=$q->fetchAll()?:[];
+   // PostgreSQL не гарантирует порядок IN/ANY — возвращаем вопросы ровно в
+   // случайной последовательности, сохранённой в question_ids.
+   $positions=array_flip(array_map('strval',$session['question_ids']));
+   usort($questions,static fn($a,$b)=>(($positions[(string)$a['id']]??PHP_INT_MAX)<=>($positions[(string)$b['id']]??PHP_INT_MAX)));
    $a=$db->prepare("select question_id,answer_text,is_correct,score from public.test_preparation_results where session_id=:sid");$a->execute(['sid'=>$session['id']]);
    Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$a->fetchAll()?:[]],$r->requestId);
   }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
