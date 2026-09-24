@@ -457,7 +457,7 @@ TXT;
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user', 'content' => json_encode($prompt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
             ], 0.1);
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Logger::error('telegram_ai_classification_failed', ['error' => $e->getMessage()]);
             return null;
         }
