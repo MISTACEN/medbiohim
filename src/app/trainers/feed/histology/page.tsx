@@ -37,7 +37,7 @@ export default function HistologyTrainerPage() {
           const url = await getTrainerImageUrl(item.id);
           if (url) return [item.id, url] as const;
           const direct = item.preparation?.imageUrl || "";
-          return /^https?:\\/\\//i.test(direct) ? [item.id, direct] as const : null;
+          return (direct.startsWith("http://") || direct.startsWith("https://")) ? [item.id, direct] as const : null;
         })).then(entries => setImageUrls(Object.fromEntries(entries.filter((x): x is readonly [string,string] => !!x))));
       }
       else setError(r.error.message);
