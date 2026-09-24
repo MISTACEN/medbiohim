@@ -151,7 +151,7 @@ export async function adminUpdateQuestion(id:string,payload:Partial<BankQuestion
 export async function adminDeleteQuestion(id:string){return api<{deleted:boolean}>(`/admin/questions/${encodeURIComponent(id)}`,{method:"DELETE"})}
 export type SubjectPlanWeek={date?:string;week?:number;lecture?:string;practice?:string;study?:string[];control?:string|null;lab_detail?:string|null};
 export type SubjectPlan={subject:string;subject_slug:string;semester?:string;control?:string;weeks:SubjectPlanWeek[]};
-export async function getSubjectPlan(slug:string){return api<{plan:SubjectPlan;schedule_count:number}>(`/subject-plans/${encodeURIComponent(slug)}`)}
+export async function getSubjectPlan(slug:string){return api<{plan:SubjectPlan|null;schedule_count:number;available?:boolean}>(`/subject-plans/${encodeURIComponent(slug)}`)}
 export async function getLessonPlan(params:{date?:string;subject_slug?:string;subject?:string}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v)q.set(k,v)});return api<{lesson:SubjectPlanWeek|null;weeks:SubjectPlanWeek[];plan_meta?:Record<string,unknown>}>(`/lesson-plan?${q}`)}
 export async function adminSaveSubjectPlans(plans:SubjectPlan[]){return api<{plans:SubjectPlan[];count:number}>("/admin/subject-plans",{method:"PUT",body:JSON.stringify({plans})})}
 export async function listSubjectsCatalog(){return api<{items:Array<{id:string;name:string;slug?:string;control_type?:string;hours_note?:string;category?:string;icon?:string;blurb?:string;course?:number;course_number?:number;semester?:number}>;program?:string;semester_label?:string;curriculum?:Record<string,unknown>}>("/subjects-catalog")}
