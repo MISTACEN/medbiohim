@@ -9,7 +9,7 @@ use MedbiohimMiddlewareRequireRole;
 use MedbiohimServicesSupabaseRest;
 use MedbiohimServicesB2Storage;
 
-return static function (Router $router): void {
+return static function (\Medbiohim\Http\Router $router): void {
     $adminGate = static function (Request $req): bool {
         if (!RequireAuth::handle($req)) return false;
         return RequireRole::handle($req, ['admin', 'moderator', 'teacher']);
