@@ -29,7 +29,7 @@ export default function HistologyTrainerPage() {
   }, []);
 
   const visibleCards = useMemo(
-    () => mode === "all" ? cards : cards.filter(c => c.modeSet === mode),
+    () => mode === "all" ? cards : cards.filter(c => c.mode_set === mode),
     [cards, mode]
   );
   const card: any = visibleCards[index];
@@ -123,7 +123,7 @@ export default function HistologyTrainerPage() {
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between border-b bg-slate-50 px-5 py-3 text-xs text-slate-500">
               <span>Карточка {index + 1} / {visibleCards.length}</span>
-              <span>{card.modeSet === "electronogram_label" ? "Электронограмма · подписи" : card.modeSet === "electronogram" ? "Электронограмма" : "Микропрепарат"} · МБХ</span>
+              <span>{card.mode_set === "electronogram_label" ? "Электронограмма · подписи" : card.mode_set === "electronogram" ? "Электронограмма" : "Микропрепарат"} · МБХ</span>
             </div>
 
             <div className="grid gap-0 lg:grid-cols-[1.15fr_.85fr]">
@@ -137,8 +137,8 @@ export default function HistologyTrainerPage() {
 
               <div className="space-y-4 p-5">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{card.modeSet === "preparation" ? "Микропрепарат · определение по фото" : card.preparation?.organ || "Препарат"}</div>
-                  <h2 className="mt-1 text-xl font-bold">{card.modeSet === "preparation" ? "Какой это препарат?" : card.question?.prompt || "Что изображено?"}</h2>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{card.mode_set === "preparation" ? "Микропрепарат · определение по фото" : card.preparation?.organ || "Препарат"}</div>
+                  <h2 className="mt-1 text-xl font-bold">{card.mode_set === "preparation" ? "Какой это препарат?" : card.question?.prompt || "Что изображено?"}</h2>
                 </div>
 
                 {card.question?.mode === "label_fill" ? (
