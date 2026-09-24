@@ -182,17 +182,17 @@ final class LlmGateway
                 $errors[] = $provider . ': ' . Str::sub($e->getMessage(), 0, 180);
             }
         }
-        throw new \\RuntimeException('Vision providers unavailable: ' . implode(' | ', $errors));
+        throw new \RuntimeException('Vision providers unavailable: ' . implode(' | ', $errors));
     }
 
     /** @param list<array{role:string,content:mixed}> $messages */
     private static function visionOpenRouter(array $messages, float $temperature): array
     {
         $key = trim((string) (Env::get('OPENROUTER_API_KEY', '') ?? ''));
-        if ($key === '') throw new \\RuntimeException('OPENROUTER_API_KEY is not configured');
+        if ($key === '') throw new \RuntimeException('OPENROUTER_API_KEY is not configured');
         $base = rtrim((string) (Env::get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1') ?? 'https://openrouter.ai/api/v1'), '/');
         $model = (string) (Env::get('OPENROUTER_VISION_MODEL', '') ?: Env::get('OPENROUTER_MODEL', 'google/gemini-2.5-flash'));
-        if ($model === '') throw new \\RuntimeException('OPENROUTER_VISION_MODEL is not configured');
+        if ($model === '') throw new \RuntimeException('OPENROUTER_VISION_MODEL is not configured');
         $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
         $headers = [
             'Authorization: Bearer ' . $key,
@@ -202,11 +202,11 @@ final class LlmGateway
         ];
         $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
-            throw new \\RuntimeException('OpenRouter vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
+            throw new \RuntimeException('OpenRouter vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
         }
         $body = $res['json'] ?? [];
         $text = (string) ($body['choices'][0]['message']['content'] ?? '');
-        if (trim($text) === '') throw new \\RuntimeException('OpenRouter vision returned empty content');
+        if (trim($text) === '') throw new \RuntimeException('OpenRouter vision returned empty content');
         return ['text' => trim($text), 'provider' => 'openrouter', 'model' => $model, 'mode' => 'api'];
     }
 
@@ -214,7 +214,7 @@ final class LlmGateway
     private static function visionGemini(array $messages, float $temperature): array
     {
         $key = trim((string) (Env::get('GEMINI_API_KEY', '') ?? ''));
-        if ($key === '') throw new \\RuntimeException('GEMINI_API_KEY is not configured');
+        if ($key === '') throw new \RuntimeException('GEMINI_API_KEY is not configured');
         $base = rtrim((string) (Env::get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta') ?? 'https://generativelanguage.googleapis.com/v1beta'), '/');
         $model = (string) (self::normalizeGeminiModel(Env::get('GEMINI_VISION_MODEL', '') ?: Env::get('GEMINI_MODEL', 'gemini-3.6-flash')));
         $system = '';
@@ -260,13 +260,13 @@ final class LlmGateway
             'Content-Type: application/json',
         ], 90);
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
-            throw new \\RuntimeException('Gemini vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
+            throw new \RuntimeException('Gemini vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
         }
         $body = $res['json'] ?? [];
         $parts = $body['candidates'][0]['content']['parts'] ?? [];
         $text = '';
         foreach ($parts as $part) if (is_array($part) && isset($part['text'])) $text .= (string) $part['text'];
-        if (trim($text) === '') throw new \\RuntimeException('Gemini vision returned empty content');
+        if (trim($text) === '') throw new \RuntimeException('Gemini vision returned empty content');
         return ['text' => trim($text), 'provider' => 'gemini', 'model' => $model, 'mode' => 'api'];
     }
 
