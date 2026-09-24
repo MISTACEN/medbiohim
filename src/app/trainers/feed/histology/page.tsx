@@ -242,7 +242,6 @@ export default function HistologyTrainerPage() {
             </div>
           </div>
           )}
-      )}
     </div>
   );
 }
