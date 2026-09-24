@@ -63,9 +63,7 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
 
         <label className="flex flex-wrap items-center gap-3 text-sm">
           <span className="font-semibold text-slate-800">Случайных вопросов</span>
-          <select value={count} onChange={(e) => setCount(Number(e.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-            {[5, 10, 15, 20, 30, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
+          <input type="number" min={1} max={200} value={count} onChange={(e) => setCount(Math.max(1, Math.min(200, Number(e.target.value) || 1)))} className="w-24 rounded-xl border border-slate-200 bg-white px-3 py-2" />
           <span className="text-xs text-slate-500">если вопросов меньше — используются все доступные</span>
         </label>
       </section>
