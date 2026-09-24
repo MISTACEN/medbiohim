@@ -1,404 +1,64 @@
 "use client";
 
-/**
- * Страница «Предмет + Курс + Семестр».
- * Блоки: план, билеты, практика, лекции, материалы, SRS, прогресс.
- */
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  BookOpen,
-  Brain,
-  ChevronLeft,
-  FileQuestion,
-  FolderOpen,
-  GraduationCap,
-  ListChecks,
-  Microscope,
-  TrendingUp,
-} from "lucide-react";
-import {
-  getSubject,
-  getSubjectPlan,
-  getSubjectGradebook,
-  listSubjectsCatalog,
-  type SubjectPlan,
-  type SubjectPlanWeek,
-} from "@/lib/api";
+import { BookOpen, Brain, ChevronLeft, FileQuestion, FolderOpen, GraduationCap, ListChecks, Microscope, TrendingUp } from "lucide-react";
+import { getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 
-type Subject = {
-  id: string;
-  name: string;
-  course_number?: number | null;
-  semester?: number | null;
-  control_type?: string | null;
-  total_hours?: number | null;
-  credits?: number | null;
-};
-type Topic = { id?: string; title?: string };
-type Module = { id?: string; title?: string; topics?: Topic[] };
-type BlockId = "plan" | "tickets" | "practice" | "lectures" | "materials" | "trainer" | "cards" | "progress";
+type Subject={id:string;name:string;course_number?:number|null;semester?:number|null;control_type?:string|null;total_hours?:number|null;credits?:number|null};
+type Module={id?:string;title?:string;topics?:{id?:string;title?:string}[]};
+const slugNames:Record<string,string>={"гистология, цитология":"histology","гистология":"histology","физиология":"physiology","органическая и физическая химия":"organic_chemistry"};
+const semester=(n:number)=>n%2?"Осенний":"Весенний";
 
-const BLOCKS: Array<{ id: BlockId; label: string; icon: typeof BookOpen }> = [
-  { id: "plan", label: "Учебный план", icon: GraduationCap },
-  { id: "tickets", label: "Билеты", icon: FileQuestion },
-  { id: "practice", label: "Практика", icon: ListChecks },
-  { id: "lectures", label: "Лекции", icon: BookOpen },
-  { id: "materials", label: "Материалы", icon: FolderOpen },
-  { id: "trainer", label: "Микропрепараты", icon: Microscope },
-  { id: "cards", label: "Карточки SRS", icon: Brain },
-  { id: "progress", label: "Прогресс", icon: TrendingUp },
-];
+export default function SubjectPage({params}:{params:Promise<{id:string}>}){
+  const [subject,setSubject]=useState<Subject|null>(null),[modules,setModules]=useState<Module[]>([]),[plan,setPlan]=useState<SubjectPlan|null>(null);
+  const [gradebook,setGradebook]=useState<any[]>([]),[tests,setTests]=useState<ApiTest[]>([]),[materials,setMaterials]=useState<SubjectMaterial[]>([]),[banks,setBanks]=useState<any[]>([]),[progress,setProgress]=useState<any>(null);
+  const [loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null),[subjectId,setSubjectId]=useState("");
 
-const SLUG_BY_NAME: Record<string, string> = {
-  "органическая и физическая химия": "organic_chemistry",
-  физиология: "physiology",
-  "гистология, цитология": "histology",
-  гистология: "histology",
-};
+  useEffect(()=>{let cancelled=false;(async()=>{try{
+    const p=await params;if(cancelled)return;setSubjectId(p.id);
+    const cat=await listSubjectsCatalog();const hit=cat.ok?(cat.data.items.find((x:any)=>x.id===p.id||x.slug===p.id)||cat.data.items.find((x:any)=>x.name.toLowerCase()===decodeURIComponent(p.id).toLowerCase())):null;
+    const r=await getSubject(p.id);if(cancelled)return;
+    if(!r.ok&&!hit){setError(r.error.message);setLoading(false);return;}
+    const s:any=r.ok?r.data.subject:hit;setSubject(s);setModules(r.ok&&Array.isArray(r.data.modules)?r.data.modules:[]);
+    const slug=slugNames[(s?.name||"").toLowerCase()]||s?.slug||"";
+    if(slug){const pr=await getSubjectPlan(slug);if(pr.ok&&!cancelled)setPlan(pr.data.plan);}
+    if(s?.id){const [gb,tt,mm,bb,pg]=await Promise.all([getSubjectGradebook(s.id),listTests(s.id),listSubjectMaterials({subjectId:s.id}),listTicketBanks(),getProgress()]);if(!cancelled){if(gb.ok)setGradebook(gb.data.items||[]);if(tt.ok)setTests(tt.data.items||[]);if(mm.ok)setMaterials(mm.data.items||[]);if(bb.ok)setBanks(bb.data.items||[]);if(pg.ok)setProgress(pg.data);}}
+  }catch{if(!cancelled)setError("Не удалось загрузить предмет")}finally{if(!cancelled)setLoading(false)}})();return()=>{cancelled=true}},[params]);
 
-function semesterLabel(s?: number | null) {
-  if (s == null) return "семестр";
-  return s % 2 === 1 ? `Осенний · ${s}` : `Весенний · ${s}`;
-}
+  const course=subject?.course_number??2,sem=subject?.semester??3,slug=resolveSubjectSlug(subjectId,subject?.name),histology=slug==="histology"||/гистол.*цитол|цитол.*гистол/i.test(subject?.name||"");
+  const query=new URLSearchParams({subject:subjectId,subject_slug:slug,course:String(course),semester:String(sem)}).toString();
+  const subjectBanks=banks.filter(b=>/гистол/i.test(b.subject||"")||b.subject_slug===slug);
+  const subjectTests=tests.filter(t=>!t.subject_id||t.subject_id===subject?.id);
+  const nav=[["plan","Учебный план",GraduationCap],["tickets","Билеты",FileQuestion],["practice","Практика",ListChecks],["lectures","Лекции",BookOpen],["materials","Материалы",FolderOpen],["trainer","Микропрепараты",Microscope],["cards","Карточки SRS",Brain],["progress","Прогресс",TrendingUp]] as const;
 
-export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
-  const [subject, setSubject] = useState<Subject | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [plan, setPlan] = useState<SubjectPlan | null>(null);
-  const [gradebook, setGradebook] = useState<
-    Array<{
-      display_name: string;
-      hours?: number | null;
-      credits?: number | null;
-      control_form?: string | null;
-      hours_scope?: string;
-      source_note?: string | null;
-    }>
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [block, setBlock] = useState<BlockId>("plan");
-  const [subjectId, setSubjectId] = useState("");
+  if(loading)return <div className="card p-6 text-sm text-slate-500">Загрузка предмета…</div>;
+  if(error&&!subject)return <div className="card p-6 text-sm text-rose-600">{error}</div>;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const p = await params;
-      if (cancelled) return;
-      setSubjectId(p.id);
-      /** Local flag — do not read `subject` state (stale closure while setState is async). */
-      let hasCatalogHit = false;
-      try {
-        const cat = await listSubjectsCatalog();
-        if (cat.ok) {
-          const byId = cat.data.items.find((x) => x.id === p.id || x.slug === p.id);
-          const byName = cat.data.items.find(
-            (x) => x.name.toLowerCase() === decodeURIComponent(p.id).toLowerCase()
-          );
-          const hit = byId || byName;
-          if (hit) {
-            hasCatalogHit = true;
-            setSubject({
-              id: hit.id,
-              name: hit.name,
-              course_number: hit.course_number ?? null,
-              semester: hit.semester ?? null,
-              control_type: hit.control_type || null,
-            });
-            const slug = hit.slug || SLUG_BY_NAME[hit.name.toLowerCase()];
-            if (slug) {
-              const pr = await getSubjectPlan(slug);
-              if (pr.ok) setPlan(pr.data.plan);
-            }
-          }
-        }
-        const r = await getSubject(p.id);
-        if (cancelled) return;
-        if (r.ok) {
-          const s = r.data.subject as Subject;
-          setSubject((prev) => (prev ? { ...prev, ...s } : s));
-          setModules(Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
-          const gb = await getSubjectGradebook(s.id);
-          if (!cancelled && gb.ok) setGradebook(gb.data.items || []);
-          const slug =
-            SLUG_BY_NAME[(s.name || "").toLowerCase()] ||
-            (s.name || "").toLowerCase().replace(/\s+/g, "_");
-          const pr = await getSubjectPlan(slug);
-          if (pr.ok) setPlan(pr.data.plan);
-        } else if (!hasCatalogHit) {
-          setError(r.error.message);
-        }
-      } catch {
-        if (!cancelled) setError("Не удалось загрузить предмет");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params]);
+  return <div className="space-y-6">
+    <Link href="/subjects" className="inline-flex items-center gap-1 text-sm text-primary hover:underline"><ChevronLeft className="h-4 w-4"/>К предметам</Link>
+    <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm"><p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Предмет · Курс · Семестр</p><h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{subject?.name}</h1><p className="mt-2 text-sm text-slate-600">{course} курс · {semester(sem)} · {sem}{subject?.control_type?" · "+(subject.control_type==="exam"?"Экзамен":subject.control_type==="credit"?"Зачёт":subject.control_type):""}</p></header>
+    <section className="card border-indigo-100 bg-indigo-50/40 p-4"><div className="flex flex-wrap gap-2 text-sm"><b>Учебная нагрузка:</b>{subject?.total_hours!=null&&<span>{subject.total_hours} ч</span>}{subject?.credits!=null&&<span>· {subject.credits} з.е.</span>}</div>{gradebook.length>0&&<div className="mt-2 text-sm text-slate-600"><b>Для зачётки:</b> {gradebook.map((g:any,i:number)=><span key={i}>{i?" · ":""}{g.display_name}{g.hours!=null?" ("+g.hours+(g.credits!=null?"/"+g.credits:" ч")+")":""}</span>)}</div>}</section>
+    <nav className="flex flex-wrap gap-2">{nav.map(([id,label,Icon])=><a key={id} href={"#"+id} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon className="h-4 w-4"/>{label}</a>)}</nav>
 
-  const course = subject?.course_number ?? 2;
-  const semester = subject?.semester ?? 3;
-  const subjectSlug = resolveSubjectSlug(subjectId || subject?.id, subject?.name);
-  const isHistologySubject = subjectSlug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
-  const q = useMemo(
-    () =>
-      new URLSearchParams({
-        subject: subjectId || subject?.id || "",
-        subject_slug: subjectSlug,
-        course: String(course),
-        semester: String(semester),
-      }).toString(),
-    [subjectId, subject?.id, subjectSlug, course, semester]
-  );
+    <div className="space-y-5">
+      <section id="plan" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Учебный план</h2><p className="mt-1 text-sm text-slate-500">{plan?(plan.control||"Контроль не указан")+" · "+(plan.weeks||[]).length+" занятий":"План ещё не загружен."}</p>{plan?.weeks?.length?<div className="mt-4 grid gap-3">{(plan.weeks as SubjectPlanWeek[]).map((w:any,i:number)=><article key={i} className="rounded-xl border bg-slate-50 p-4"><div className="text-xs text-slate-400">{w.date||""}{w.week!=null?" · неделя "+w.week:""}</div>{w.lecture&&<div className="mt-2 text-sm"><b className="text-indigo-700">Лекция:</b> {w.lecture}</div>}{w.practice&&<div className="text-sm"><b className="text-emerald-700">Практика:</b> {w.practice}</div>}</article>)}</div>:modules.length?<div className="mt-4 space-y-2">{modules.map((m,i)=><details key={m.id||i} className="rounded-xl border" open={i===0}><summary className="cursor-pointer px-4 py-3 font-semibold">{m.title||"Модуль "+(i+1)}</summary><div className="border-t px-4 py-2 text-sm">{(m.topics||[]).map((t,j)=><div key={t.id||j} className="border-b py-2 last:border-0">{t.title}</div>)}</div></details>)}</div>:null}</section>
 
-  return (
-    <div className="space-y-6">
-      <Link href="/subjects" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-        <ChevronLeft className="h-4 w-4" />К предметам
-      </Link>
+      <section id="tickets" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Билеты</h2><p className="mt-1 text-sm text-slate-500">Билеты остаются отдельным банком и не смешиваются с SRS.</p>{ticketBankAvailable(slug)&&subjectBanks.length?<div className="mt-4 grid gap-3 sm:grid-cols-2">{subjectBanks.map((b:any)=><div key={b.id} className="rounded-xl border p-4"><b>{b.title}</b><div className="mt-1 text-xs text-slate-500">{b.count} вопросов</div></div>)}</div>:<p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Банк билетов для этого предмета пока не подключён.</p>}<Link href={"/tickets?"+query} className="btn-primary mt-4 inline-flex">Открыть билеты</Link></section>
 
-      {loading ? (
-        <div className="card p-6 text-sm text-slate-500">Загрузка предмета…</div>
-      ) : error && !subject ? (
-        <div className="card p-6 text-sm text-rose-600">{error}</div>
-      ) : subject ? (
-        <>
-          <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">
-              Предмет · Курс · Семестр
-            </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-              {subject.name}
-            </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              {course} курс · {semesterLabel(semester)}
-              {subject.control_type
-                ? ` · ${
-                    subject.control_type === "exam"
-                      ? "Экзамен"
-                      : subject.control_type === "credit"
-                        ? "Зачёт"
-                        : subject.control_type
-                  }`
-                : ""}
-            </p>
-          </header>
+      <section id="practice" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Практика</h2><p className="mt-1 text-sm text-slate-500">{histology?"Микропрепараты, электронограммы и задания МБХ.":"Темы и практические задания предмета."}</p>{modules.length>0&&<div className="mt-4 grid gap-2 sm:grid-cols-2">{modules.slice(0,6).map((m,i)=><div key={m.id||i} className="rounded-xl border p-3 text-sm font-medium">{m.title}</div>)}</div>}<Link href={histology?"/trainers/feed/histology":"/practice?"+query} className="btn-primary mt-4 inline-flex">{histology?"Открыть тренажёр":"Открыть практику"}</Link></section>
 
-          <section className="card border-indigo-100 bg-indigo-50/40 p-4">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold text-slate-800">Учебная нагрузка:</span>
-              {subject.total_hours != null && <span>{subject.total_hours} ч</span>}
-              {subject.credits != null && <span>· {subject.credits} з.е.</span>}
-            </div>
-            {gradebook.length > 0 && (
-              <div className="mt-2 text-sm text-slate-600">
-                <span className="font-semibold text-slate-800">Для зачётки:</span>{" "}
-                {gradebook.map((g, i) => (
-                  <span key={i}>
-                    {i > 0 ? " · " : ""}
-                    {g.display_name}
-                    {g.hours != null ? " (" + g.hours + (g.credits != null ? "/" + g.credits : " ч") + ")" : ""}
-                  </span>
-                ))}
-              </div>
-            )}
-            {gradebook.some((g) => g.source_note) && (
-              <p className="mt-2 text-xs text-amber-700">
-                В отдельных строках фото и XLSX содержат разные значения; они не смешиваются и сохранены
-                раздельно.
-              </p>
-            )}
-          </section>
+      <section id="lectures" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Лекции</h2><p className="mt-1 text-sm text-slate-500">Лекции открываются отдельной страницей — это единственное исключение.</p><Link href={"/lectures?"+query} className="btn-primary mt-4 inline-flex">К лекциям</Link></section>
 
-          <div className="flex flex-wrap gap-2">
-            {BLOCKS.map((b) => {
-              const Icon = b.icon;
-              const active = block === b.id;
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => setBlock(b.id)}
-                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                    active
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {b.label}
-                </button>
-              );
-            })}
-          </div>
+      <section id="materials" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Материалы</h2><p className="mt-1 text-sm text-slate-500">{materials.length?materials.length+" материалов доступно для предмета.":"Материалы пока не найдены."}</p>{materials.length>0&&<div className="mt-4 grid gap-2 sm:grid-cols-2">{materials.slice(0,8).map(m=><div key={m.id} className="rounded-xl border p-3"><div className="font-medium">{m.title}</div><div className="mt-1 text-xs text-slate-500">{m.type}</div></div>)}</div>}<Link href={"/materials?"+query} className="btn-primary mt-4 inline-flex">Открыть все материалы</Link></section>
 
-          <section className="card space-y-4 p-5">
-            {block === "plan" && (
-              <>
-                <div>
-                  <h2 className="text-lg font-bold">Учебный план</h2>
-                  <p className="text-sm text-slate-500">
-                    {plan
-                      ? `Контроль: ${plan.control || "—"} · ${(plan.weeks || []).length} занятий`
-                      : "Темы и сроки семестра"}
-                  </p>
-                </div>
-                {plan?.weeks?.length ? (
-                  <div className="space-y-3">
-                    {(plan.weeks as SubjectPlanWeek[]).map((w, i) => (
-                      <article key={w.date || w.week || i} className="rounded-xl border bg-slate-50 p-4">
-                        <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                          {w.date && <span>{w.date}</span>}
-                          {w.week != null && <span>Неделя {w.week}</span>}
-                        </div>
-                        {w.lecture && (
-                          <div className="mt-2 text-sm">
-                            <span className="font-medium text-indigo-700">Лекция: </span>
-                            {w.lecture}
-                          </div>
-                        )}
-                        {w.practice && (
-                          <div className="text-sm">
-                            <span className="font-medium text-emerald-700">Практика: </span>
-                            {w.practice}
-                          </div>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                ) : modules.length ? (
-                  modules.map((m, i) => (
-                    <details key={m.id || m.title || i} className="rounded-xl border" open={i === 0}>
-                      <summary className="cursor-pointer px-4 py-3 font-medium">
-                        {m.title || `Модуль ${i + 1}`}
-                      </summary>
-                      <ul className="border-t px-4 py-2 text-sm">
-                        {(m.topics || []).map((t, j) => (
-                          <li key={t.id || j} className="border-b border-slate-50 py-2 last:border-0">
-                            {t.title}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500">План ещё не загружен.</p>
-                )}
-              </>
-            )}
+      <section id="trainer" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">{histology?"Тренажёр остаётся отдельным окном, но раздел и кнопка находятся прямо здесь.":"Для этого предмета тренажёр не подключён."}</p>{histology&&<Link href="/trainers/feed/histology" className="btn-primary mt-4 inline-flex">Открыть тренажёр</Link>}</section>
 
-            {block === "tickets" &&
-              (ticketBankAvailable(subjectSlug) ? (
-                <Block
-                  title="Билеты и вопросы"
-                  text="Только банк этого предмета (не SRS-карточки)."
-                  href={`/tickets?${q}`}
-                  cta="Открыть билеты"
-                />
-              ) : (
-                <div className="space-y-2">
-                  <h2 className="text-lg font-bold">Билеты и вопросы</h2>
-                  <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    Для «{subject.name}» банка билетов нет — чужой предмет (неорганика, биология 1 курса и
-                    т.д.) не подставляем.
-                  </p>
-                </div>
-              ))}
+      <section id="cards" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Карточки SRS</h2><p className="mt-1 text-sm text-slate-500">Общие и личные карточки — отдельно от билетов.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><Link href={"/cards?"+query+"&scope=shared"} className="rounded-xl border p-4 hover:bg-slate-50"><b>Общие</b><div className="mt-1 text-xs text-slate-500">Преподаватель</div></Link><Link href={"/cards?"+query+"&scope=personal"} className="rounded-xl border p-4 hover:bg-slate-50"><b>Мои</b><div className="mt-1 text-xs text-slate-500">Личные термины</div></Link></div></section>
 
-            {block === "practice" && (
-              <Block
-                title="Практика"
-                text={isHistologySubject ? "Микропрепараты, электронограммы и задания по гистологии МБХ." : "Тренажёры по темам предмета."}
-                href={isHistologySubject ? "/trainers/feed/histology" : `/practice?${q}`}
-                cta={isHistologySubject ? "Открыть практику" : "К практике"}
-              />
-            )}
-            {block === "lectures" && (
-              <Block
-                title="Лекции"
-                text={isHistologySubject ? "17 тем гистологии, цитологии и эмбриологии из отдельного банка МБХ." : "Страницы лекций с формулами и видео."}
-                href={`/lectures?${q}`}
-                cta="К лекциям"
-              />
-            )}
-            {block === "materials" && (
-              <Block
-                title="Материалы"
-                text="Таблицы, PDF, схемы — наполняет админ."
-                href={`/materials?${q}`}
-                cta="К материалам"
-              />
-            )}
-            {block === "trainer" && isHistologySubject && (
-              <Block
-                title="Тренажёр микропрепаратов"
-                text="Фотографии препаратов и электронограммы с вариантами ответа. Доступ ограничен специальностью МБХ."
-                href="/trainers/feed/histology"
-                cta="Открыть тренажёр"
-              />
-            )}
-            {block === "trainer" && !isHistologySubject && (
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold">Микропрепараты</h2>
-                <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Для этого предмета тренажёр не подключён.</p>
-              </div>
-            )}
-
-            {block === "cards" && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold">Карточки SRS</h2>
-                <p className="text-sm text-slate-500">Общие и личные. Не путать с экзаменационными билетами.</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Link href={`/cards?${q}&scope=shared`} className="rounded-xl border p-4 hover:bg-slate-50">
-                    <div className="font-semibold">Общие</div>
-                    <p className="mt-1 text-xs text-slate-500">Преподаватель</p>
-                  </Link>
-                  <Link href={`/cards?${q}&scope=personal`} className="rounded-xl border p-4 hover:bg-slate-50">
-                    <div className="font-semibold">Мои</div>
-                    <p className="mt-1 text-xs text-slate-500">Термины, формулы</p>
-                  </Link>
-                </div>
-              </div>
-            )}
-            {block === "progress" && (
-              <Block
-                title="Прогресс по предмету"
-                text="Покрытие, точность, готовность."
-                href={`/progress?${q}`}
-                cta="Смотреть прогресс"
-              />
-            )}
-          </section>
-        </>
-      ) : null}
+      <section id="progress" className="card scroll-mt-5 p-5"><h2 className="text-lg font-bold">Прогресс</h2><div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-slate-50 p-4"><div className="text-xs text-slate-500">Общий</div><b className="text-2xl">{progress?.overall_pct!=null?Math.round(progress.overall_pct)+"%":"—"}</b></div><div className="rounded-xl bg-slate-50 p-4"><div className="text-xs text-slate-500">Тесты</div><b className="text-2xl">{tests.length}</b></div><div className="rounded-xl bg-slate-50 p-4"><div className="text-xs text-slate-500">Материалы</div><b className="text-2xl">{materials.length}</b></div></div><div className="mt-4 flex flex-wrap gap-2">{subjectTests.map(t=><Link key={t.id} href={"/tests/"+t.id} className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50">{t.title||t.name||"Тест"} · {t.questions_count||0} вопросов</Link>)}</div><Link href={"/progress?"+query} className="btn-primary mt-4 inline-flex">Открыть подробный прогресс</Link></section>
     </div>
-  );
-}
-
-function Block({
-  title,
-  text,
-  href,
-  cta,
-}: {
-  title: string;
-  text: string;
-  href: string;
-  cta: string;
-}) {
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold">{title}</h2>
-      <p className="text-sm text-slate-500">{text}</p>
-      <Link href={href} className="btn-primary inline-flex">
-        {cta}
-      </Link>
-    </div>
-  );
+  </div>;
 }
