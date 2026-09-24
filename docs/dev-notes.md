@@ -113,3 +113,14 @@ Argument of type '{ slug: string | undefined; name: string; }[]'
 - `docs/platform-concept-medbiohim.md` — продукт
 - `docs/subject-content-matrix.md` — матрица контента
 - README.md — цепочка деплоя Vercel ↔ SpaceWeb ↔ Supabase
+
+
+## Trainer feed integration rule (2026-09-24)
+
+- Production trainer requests use `/api/v1/trainers/feed` through the Next.js same-origin proxy.
+- The existing backend/SpaceWeb remains the primary source for ordinary API routes and must not be changed when adding trainer modules.
+- Trainer feed cards are stored in Supabase `public.trainer_feed_cards`; for `subject_slug=histology` + `specialty_slug=mbh` the current database contains 206 published cards.
+- The proxy has a Supabase compatibility fallback for trainer GET/answer/image routes. It uses the authenticated user's Bearer token and never requires the Supabase service-role key.
+- The server proxy keeps the same public Supabase URL/anon-key fallback as `src/lib/supabase.ts`, so a missing Vercel env variable does not turn the trainer endpoint into a 404. Prefer configuring the variables in Vercel when possible.
+- Do not modify the working schedule/auth backend to fix trainer issues. First reproduce the trainer request, then check whether the failure is Vercel proxy, SpaceWeb backend, Supabase table/RLS, or media storage.
+- When adding a new module, copy this pattern: existing backend first, module-specific Supabase fallback only for data that is already represented in Supabase, and document the route/data contract here before extending it.
