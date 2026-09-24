@@ -58,11 +58,11 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     try {
       const candidate = await fetch(targets[i], init);
       const contentType = candidate.headers.get("content-type") || "";
-      if (
-        candidate.status !== 404 ||
-        i === targets.length - 1 ||
-        contentType.toLowerCase().includes("application/json")
-      ) {
+      // GET compatibility fallback: some SpaceWeb deployments expose the PHP
+      // document root as /public/api/v1. A JSON 404 from the first target can
+      // still mean that the compatibility target is the correct one, so do not
+      // stop on a 404 until every GET target has been tried.
+      if (candidate.status !== 404 || i === targets.length - 1 || req.method !== "GET") {
         upstream = candidate;
         break;
       }
