@@ -23,7 +23,14 @@ async function proxy(req: NextRequest, pathParts: string[]) {
 
   const sub = pathParts.join("/");
   const url = new URL(req.url);
-  const target = `${UPSTREAM}/${sub}${url.search}`;
+  // Normal SpaceWeb contract plus compatibility with older deployments where
+  // the PHP document root sits one directory above public/.
+  const targets = [
+    `${UPSTREAM}/${sub}${url.search}`,
+    ...(UPSTREAM.endsWith("/api/v1")
+      ? [`${UPSTREAM.slice(0, -"/api/v1".length)}/public/api/v1/${sub}${url.search}`]
+      : []),
+  ];
 
   const headers = new Headers();
   const pass = ["content-type", "authorization", "accept", "x-request-id"];
@@ -44,11 +51,28 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     if (body.byteLength) init.body = body;
   }
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(target, init);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "upstream unreachable";
+  let upstream: Response | null = null;
+  let lastError: unknown = null;
+
+  for (let i = 0; i < targets.length; i += 1) {
+    try {
+      const candidate = await fetch(targets[i], init);
+      const contentType = candidate.headers.get("content-type") || "";
+      if (
+        candidate.status !== 404 ||
+        i === targets.length - 1 ||
+        contentType.toLowerCase().includes("application/json")
+      ) {
+        upstream = candidate;
+        break;
+      }
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  if (!upstream) {
+    const msg = lastError instanceof Error ? lastError.message : "upstream unreachable";
     return NextResponse.json(
       { ok: false, error: { code: "UPSTREAM", message: msg }, requestId: "proxy" },
       { status: 502 }
