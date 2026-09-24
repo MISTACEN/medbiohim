@@ -31,7 +31,7 @@ def extract_media(zip_path: Path, out_root: Path) -> tuple[int, int]:
                 target.write_bytes(z.read(name))
                 em += 1
             elif name.startswith(PHOTO_PREFIX) and not name.endswith("/"):
-                rel = Path(name[len(f"{ROOT.as_posix()}/"):])
+                rel = Path("histology") / Path(name[len(PHOTO_PREFIX):])
                 target = out_root / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(z.read(name))
