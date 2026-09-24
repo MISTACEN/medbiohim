@@ -106,66 +106,6 @@ return static function (Router $router): void {
         }
     });
 
-    $router->get('/api/v1/trainers/feed', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-
-        $subjectSlug = trim((string) ($req->query['subject'] ?? ''));
-        $specialtySlug = trim((string) ($req->query['specialty'] ?? ''));
-        $limit = max(1, min(100, (int) ($req->query['limit'] ?? 30)));
-        $offset = max(0, (int) ($req->query['offset'] ?? 0));
-
-        if ($subjectSlug === 'histology' || $specialtySlug === 'mbh') {
-            if (!(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
-                Response::error('FORBIDDEN', 'Тренажёр по гистологии доступен только специальности МБХ', $req->requestId, 403);
-                return;
-            }
-        }
-
-        try {
-            $sql = 'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
-                           preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
-                           is_published, created_at, updated_at
-                    FROM public.trainer_feed_cards
-                    WHERE is_published = true';
-            $p = [];
-
-            if ($subjectSlug !== '') {
-                $sql .= ' AND subject_slug = :subject_slug';
-                $p['subject_slug'] = $subjectSlug;
-            }
-            if ($specialtySlug !== '') {
-                $sql .= ' AND specialty_slug = :specialty_slug';
-                $p['specialty_slug'] = $specialtySlug;
-            }
-
-            $sql .= ' ORDER BY id LIMIT :limit OFFSET :offset';
-            $stmt = Connection::pdo()->prepare($sql);
-            foreach ($p as $k => $v) $stmt->bindValue($k, $v);
-            $stmt->bindValue('limit', $limit, \PDO::PARAM_INT);
-            $stmt->bindValue('offset', $offset, \PDO::PARAM_INT);
-            $stmt->execute();
-            $items = $stmt->fetchAll() ?: [];
-            foreach ($items as &$item) {
-                foreach (['preparation', 'hotspots', 'question', 'tags'] as $jsonKey) {
-                    if (isset($item[$jsonKey]) && is_string($item[$jsonKey])) {
-                        $decoded = json_decode($item[$jsonKey], true);
-                        if (is_array($decoded)) $item[$jsonKey] = $decoded;
-                    }
-                }
-            }
-            unset($item);
-
-            Response::success([
-                'items' => $items,
-                'limit' => $limit,
-                'offset' => $offset,
-                'source' => 'supabase',
-            ], $req->requestId);
-        } catch (\Throwable $e) {
-            Response::error('TRAINER_ERROR', $e->getMessage(), $req->requestId, 503);
-        }
-    });
-
     $router->get('/api/v1/trainers/feed/{id}', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
 
