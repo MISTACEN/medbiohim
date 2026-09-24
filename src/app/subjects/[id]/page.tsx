@@ -145,6 +145,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const course = subject?.course_number ?? 2;
   const semester = subject?.semester ?? 3;
   const subjectSlug = resolveSubjectSlug(subjectId || subject?.id, subject?.name);
+  const isHistologySubject = subjectSlug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
   const q = useMemo(
     () =>
       new URLSearchParams({
@@ -334,7 +335,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 cta="К материалам"
               />
             )}
-            {block === "trainer" && subjectSlug === "histology" && (
+            {block === "trainer" && isHistologySubject && (
               <Block
                 title="Тренажёр микропрепаратов"
                 text="Фотографии препаратов и электронограммы с вариантами ответа. Доступ ограничен специальностью МБХ."
@@ -342,7 +343,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 cta="Открыть тренажёр"
               />
             )}
-            {block === "trainer" && subjectSlug !== "histology" && (
+            {block === "trainer" && !isHistologySubject && (
               <div className="space-y-2">
                 <h2 className="text-lg font-bold">Микропрепараты</h2>
                 <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Для этого предмета тренажёр не подключён.</p>
