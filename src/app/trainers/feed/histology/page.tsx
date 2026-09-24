@@ -34,9 +34,10 @@ export default function HistologyTrainerPage() {
         const items = r.data.items || [];
         setCards(items);
         void Promise.all(items.map(async item => {
-          if (item.preparation?.imagePath || item.preparation?.imageUrl) return [item.id, item.preparation.imageUrl || item.preparation.imagePath] as const;
           const url = await getTrainerImageUrl(item.id);
-          return url ? [item.id, url] as const : null;
+          if (url) return [item.id, url] as const;
+          const direct = item.preparation?.imageUrl || "";
+          return /^https?:\\/\\//i.test(direct) ? [item.id, direct] as const : null;
         })).then(entries => setImageUrls(Object.fromEntries(entries.filter((x): x is readonly [string,string] => !!x))));
       }
       else setError(r.error.message);
@@ -74,6 +75,13 @@ export default function HistologyTrainerPage() {
   async function answer(optionId: string) {
     if (!card || answered) return;
     setSelected(optionId);
+
+    if (experience === "exam") {
+      const correct = options.some((o: any) => o.id === optionId && o.correct === true);
+      setExamAnswers(v => ({ ...v, [card.id]: { optionId, correct } }));
+      return;
+    }
+
     const r = await submitTrainerAnswer({ card_id: card.id, option_id: optionId, time_ms: Date.now() - startedAt });
     if (!r.ok) {
       setError(r.error.message);
@@ -198,11 +206,20 @@ export default function HistologyTrainerPage() {
 
               <div className="grid gap-0 lg:grid-cols-[1.15fr_.85fr]">
                 <div className="relative flex min-h-[360px] items-center justify-center bg-slate-100">
-                  <img
-                    src={imageUrls[card.id] || card.preparation?.imageUrl || card.preparation?.imagePath || ""}
-                    alt={card.preparation?.name || "Препарат"}
-                    className="h-full min-h-[360px] w-full object-contain"
-                  />
+                  {imageUrls[card.id] ? (
+                    <img
+                      src={imageUrls[card.id]}
+                      alt={card.preparation?.name || "Препарат"}
+                      className="h-full min-h-[360px] w-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex min-h-[360px] w-full flex-col items-center justify-center px-6 text-center text-slate-500">
+                      <div className="text-base font-semibold">Фото пока не загружено</div>
+                      <div className="mt-2 max-w-md text-xs">
+                        {card.preparation?.imagePath || card.preparation?.imageUrl || "Для этой карточки путь к изображению не указан."}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4 p-5">
@@ -257,7 +274,7 @@ export default function HistologyTrainerPage() {
                     {!answered && <button type="button" onClick={() => void skip()} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><SkipForward className="h-4 w-4" />Пропустить</button>}
                     {answered && <button type="button" onClick={next} className="btn-primary">Следующая</button>}
                     {experience === "exam" && !examFinished && index === visibleCards.length - 1 && Object.keys(examAnswers).length === visibleCards.length && <button type="button" onClick={() => void finishExam()} className="btn-primary">Завершить экзамен</button>}
-                    {card.source_key && <Link href={"/materials/source?key=" + encodeURIComponent(card.source_key)} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><Eye className="h-4 w-4" />Источник</Link>}
+                    {card.source_key && <Link href={"/materials/source?key=" + encodeURIComponent(card.source_key) + "&title=" + encodeURIComponent(card.preparation?.name || "Гистология МБХ")} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><Eye className="h-4 w-4" />Источник</Link>}
                   </div>
                 </div>
               </div>
