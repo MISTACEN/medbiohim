@@ -13,7 +13,7 @@ final class ExcelImporter
     {
         $url=rtrim((string)Env::get('SUPABASE_URL',''),'/');$key=(string)Env::get('SUPABASE_SERVICE_KEY','');
         if($url===''||$key==='')throw new \RuntimeException('Supabase REST fallback is not configured');
-        $x=HttpClient::request($method,$url.'/rest/v1/'.ltrim($path,'/'),$body,array_merge(['apikey: '.$key,'Authorization: Bearer '.$key],$headers),20);
+        $x=HttpClient::request($method,$url.'/rest/v1/'.ltrim($path,'/'),$body,array_merge(SupabaseKeyHeaders::service($key),$headers),20);
         if($x['status']<200||$x['status']>=300){$d=is_array($x['json'])?(string)json_encode($x['json'],JSON_UNESCAPED_UNICODE):trim((string)$x['body']);throw new \RuntimeException('Supabase import request failed ('.$x['status'].'): '.substr($d,0,800));}
         return is_array($x['json'])?$x['json']:[];
     }
