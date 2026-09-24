@@ -176,10 +176,12 @@ with zipfile.ZipFile(ZIP) as z:
         })
 
     tests = []
+    practical_tasks = []
     known = [
         ("features/histology-content/tests/federal/База тестовых заданий/федеральные тесты стом.doc", "Федеральные тесты: стоматология", "direct"),
         ("features/histology-content/tests/collections/3_Сборники тестовых заданий/Сборник тестовых заданий по цитологии и эмбриологии.docx", "Сборник тестовых заданий по цитологии и эмбриологии", "topic"),
         ("features/histology-content/tests/collections/3_Сборники тестовых заданий/Сборник тестовых заданий по общей гистологии.doc", "Сборник тестовых заданий по общей гистологии", "topic"),
+        ("features/histology-content/tests/collections/3_Сборники тестовых заданий/Сборник тест зад по общ. и частн. гист. 2008.doc", "Сборник тестовых заданий по общей и частной гистологии 2008", "topic"),
     ]
 
     for n, title, mode in known:
@@ -233,6 +235,7 @@ bundle = {
     "stats": {
         "trainer_cards": len(feed), "documents": len(docs), "lectures": len(lectures),
         "tests": len(tests), "test_questions": sum(len(x["questions"]) for x in tests),
+        "practical_tasks": len(practical_tasks),
     },
     "trainer_cards": feed, "lectures": lectures,
     "sources": [{
@@ -240,6 +243,7 @@ bundle = {
         "mime_type": d["mime_type"], "original_format": d["original_format"],
         "source_archive": "features.zip", "note": d["note"],
     } for d in docs],
+    "practical_tasks": practical_tasks,
     "materials": [{
         "source_key": d["id"], "title": d["title"],
         "type": "docx" if d["original_format"] == "docx" else "other",
