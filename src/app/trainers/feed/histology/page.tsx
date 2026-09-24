@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Eye, FileText, SkipForward, X } from "lucide-react";
 import { listTrainerFeed, submitTrainerAnswer, type TrainerCard } from "@/lib/content-api";
 
 type Mode = "all" | "preparation" | "electronogram" | "electronogram_label";
+type Experience = "study" | "prepare" | "exam";
 
 export default function HistologyTrainerPage() {
   const [cards, setCards] = useState<TrainerCard[]>([]);
@@ -17,6 +18,9 @@ export default function HistologyTrainerPage() {
   const [error, setError] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState(Date.now);
   const [mode, setMode] = useState<Mode>("all");
+  const [experience, setExperience] = useState<Experience>("prepare");
+  const [examAnswers, setExamAnswers] = useState<Record<string, { optionId: string; correct: boolean }>>({});
+  const [examFinished, setExamFinished] = useState(false);
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [labelChecked, setLabelChecked] = useState(false);
 
@@ -35,7 +39,7 @@ export default function HistologyTrainerPage() {
   const card: any = visibleCards[index];
   const options = Array.isArray(card?.question?.options) ? card.question.options : [];
   const labelItems = Array.isArray(card?.hotspots) ? card.hotspots : [];
-  const answered = result !== null || labelChecked;
+  const answered = result !== null || labelChecked || (experience === "exam" && !!examAnswers[card?.id]);
 
   function resetCard() {
     setSelected(null);
@@ -70,7 +74,7 @@ export default function HistologyTrainerPage() {
     next();
   }
 
-  function next() {
+  async function finishExam() {\n    if (!visibleCards.length) return;\n    for (const c of visibleCards) {\n      const a = examAnswers[c.id];\n      if (a) await submitTrainerAnswer({ card_id: c.id, option_id: a.optionId, time_ms: 0 });\n    }\n    setExamFinished(true);\n  }\n\n  function next() {
     setIndex(i => visibleCards.length ? (i + 1) % visibleCards.length : 0);
     resetCard();
   }
@@ -91,7 +95,7 @@ export default function HistologyTrainerPage() {
           </Link>
           <div className="mt-3 text-xs font-bold uppercase tracking-wider text-indigo-500">Только МБХ · Гистология</div>
           <h1 className="page-title">Тренажёр препаратов и электронограмм</h1>
-          <p className="page-subtitle">Определите препарат по микрофотографии. Название и эталон раскрываются только после ответа.</p>
+          <p className="page-subtitle">Изучение → подготовка → экзамен. Для экзамена правильные ответы открываются только после завершения.</p>
         </div>
         <Link href="/materials?subject_slug=histology" className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold">
           <FileText className="h-4 w-4" />Материалы
@@ -105,7 +109,19 @@ export default function HistologyTrainerPage() {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-700">Режим:</span>
+            <span className="text-sm font-semibold text-slate-700">Формат:</span>
+            {([
+              ["study", "📚 Изучение"],
+              ["prepare", "🎯 Подготовка"],
+              ["exam", "📝 Экзамен"],
+            ] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => { setExperience(id); setIndex(0); setExamAnswers({}); setExamFinished(false); resetCard(); }}
+                className={"rounded-xl px-3 py-2 text-sm font-semibold " + (experience === id ? "bg-indigo-600 text-white" : "border bg-white text-slate-700 hover:bg-slate-50")}>
+                {label}
+              </button>
+            ))}
+            <span className="mx-1 h-6 w-px bg-slate-200" />
+            <span className="text-sm font-semibold text-slate-700">Материал:</span>
             {([
               ["all", "Все"],
               ["preparation", "Микропрепараты"],
@@ -120,7 +136,7 @@ export default function HistologyTrainerPage() {
             <span className="ml-auto text-xs text-slate-500">{visibleCards.length} карточек</span>
           </div>
 
-          <div className="card overflow-hidden">
+          {examFinished ? (\n            <div className="card p-8">\n              <h2 className="text-2xl font-bold">Экзамен завершён</h2>\n              <p className="mt-2 text-slate-600">Правильные ответы теперь открыты для разбора.</p>\n              <div className="mt-5 grid gap-3 sm:grid-cols-3">\n                <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs text-slate-500">Вопросов</div><b className="text-xl">{visibleCards.length}</b></div>\n                <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs text-slate-500">Отвечено</div><b className="text-xl">{Object.keys(examAnswers).length}</b></div>\n                <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs text-slate-500">Правильно</div><b className="text-xl">{Object.values(examAnswers).filter(a => a.correct).length}</b></div>\n              </div>\n              <div className="mt-6 space-y-3">\n                {visibleCards.map((c: any, i) => <div key={c.id} className="rounded-xl border p-4"><div className="text-xs text-slate-500">Вопрос {i + 1}</div><div className="font-semibold">{c.question?.prompt || "Что изображено?"}</div><div className="mt-1 text-sm"><b>Эталон:</b> {c.preparation?.name || c.question?.options?.find((o: any) => o.correct)?.label || "—"}</div></div>)}\n              </div>\n            </div>\n          ) : (\n          <div className="card overflow-hidden">
             <div className="flex items-center justify-between border-b bg-slate-50 px-5 py-3 text-xs text-slate-500">
               <span>Карточка {index + 1} / {visibleCards.length}</span>
               <span>{card.mode_set === "electronogram_label" ? "Электронограмма · подписи" : card.mode_set === "electronogram" ? "Электронограмма" : "Микропрепарат"} · МБХ</span>
@@ -137,7 +153,7 @@ export default function HistologyTrainerPage() {
 
               <div className="space-y-4 p-5">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{card.mode_set === "preparation" ? "Микропрепарат · определение по фото" : card.preparation?.organ || "Препарат"}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{experience === "study" ? (card.preparation?.name || "Препарат") : card.mode_set === "preparation" ? "Микропрепарат · определение по фото" : card.preparation?.organ || "Препарат"}</div>
                   <h2 className="mt-1 text-xl font-bold">{card.mode_set === "preparation" ? "Какой это препарат?" : card.question?.prompt || "Что изображено?"}</h2>
                 </div>
 
@@ -178,7 +194,7 @@ export default function HistologyTrainerPage() {
 
                 {labelChecked && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">Сверьте каждую подпись с эталоном. Это экзаменационный режим заполнения, а не угадывание варианта.</div>}
 
-                {showAnswer && (<div className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950"><b>Эталон препарата:</b> {card.preparation?.name || "Название не указано"}</div>)}{showAnswer && (
+                {(showAnswer || experience === "study") && (<div className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950"><b>Эталон:</b> {card.preparation?.name || card.question?.options?.find((o: any) => o.correct)?.label || "Название не указано"}</div>)}{(showAnswer || experience === "study") && (
                   <div className={"rounded-xl p-4 text-sm " + (result ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900")}>
                     <b>{result ? "Правильно" : "Неверно"}</b>
                     {card.question?.explanation && <p className="mt-1 leading-6">{card.question.explanation}</p>}
@@ -187,7 +203,7 @@ export default function HistologyTrainerPage() {
 
                 <div className="flex flex-wrap gap-2">
                   {!answered && <button type="button" onClick={() => void skip()} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><SkipForward className="h-4 w-4" />Пропустить</button>}
-                  {answered && <button type="button" onClick={next} className="btn-primary">Следующая</button>}
+                  {answered && <button type="button" onClick={next} className="btn-primary">Следующая</button>}\n                  {experience === "exam" && !examFinished && index === visibleCards.length - 1 && Object.keys(examAnswers).length === visibleCards.length && <button type="button" onClick={() => void finishExam()} className="btn-primary">Завершить экзамен</button>}
                   {card.source_key && <Link href={"/materials/source?key=" + encodeURIComponent(card.source_key)} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><Eye className="h-4 w-4" />Источник</Link>}
                 </div>
               </div>
