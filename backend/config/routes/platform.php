@@ -233,6 +233,181 @@ return static function (Router $router): void {
         ], $req->requestId);
     });
 
+    $router->get('/api/v1/trainers/feed/{id}', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+
+        try {
+            $stmt = Connection::pdo()->prepare(
+                'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
+                        preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
+                        is_published, created_at, updated_at
+                 FROM public.trainer_feed_cards
+                 WHERE id = :id AND is_published = true
+                 LIMIT 1'
+            );
+            $stmt->execute(['id' => (string) ($params['id'] ?? '')]);
+            $item = $stmt->fetch();
+            if ($item !== false) {
+                foreach (['preparation', 'hotspots', 'question', 'tags'] as $jsonKey) {
+                    if (isset($item[$jsonKey]) && is_string($item[$jsonKey])) {
+                        $decoded = json_decode($item[$jsonKey], true);
+                        if (is_array($decoded)) $item[$jsonKey] = $decoded;
+                    }
+                }
+            }
+            if ($item === false) {
+                Response::error('NOT_FOUND', 'Trainer card not found', $req->requestId, 404);
+                return;
+            }
+
+            if ((string) ($item['specialty_slug'] ?? '') === 'mbh'
+                && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
+                Response::error('FORBIDDEN', 'Карточка доступна только специальности МБХ', $req->requestId, 403);
+                return;
+            }
+
+            Response::success(['item' => $item], $req->requestId);
+        } catch (\Throwable $e) {
+            Response::error('TRAINER_ERROR', $e->getMessage(), $req->requestId, 503);
+        }
+    });
+
+    $router->post('/api/v1/trainers/feed/answer', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+
+        $cardId = trim((string) $req->json('card_id', ''));
+        if ($cardId === '') {
+            Response::error('VALIDATION_ERROR', 'card_id required', $req->requestId, 422);
+            return;
+        }
+
+        try {
+            $db = Connection::pdo();
+            $cardStmt = $db->prepare(
+                'SELECT id, specialty_slug, question
+                 FROM public.trainer_feed_cards
+                 WHERE id = :id AND is_published = true
+                 LIMIT 1'
+            );
+            $cardStmt->execute(['id' => $cardId]);
+            $card = $cardStmt->fetch(PDO::FETCH_ASSOC);
+            if ($card === false) {
+                Response::error('NOT_FOUND', 'Trainer card not found', $req->requestId, 404);
+                return;
+            }
+
+            if ((string) ($card['specialty_slug'] ?? '') === 'mbh'
+                && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
+                Response::error('FORBIDDEN', 'Карточка доступна только специальности МБХ', $req->requestId, 403);
+                return;
+            }
+
+            $question = is_array($card['question'] ?? null)
+                ? $card['question']
+                : (json_decode((string) ($card['question'] ?? '{}'), true) ?: []);
+            $givenOption = trim((string) $req->json('option_id', ''));
+            $givenText = trim((string) $req->json('answer_text', ''));
+            $isSkipped = (bool) $req->json('is_skipped', false);
+            $timeMs = $req->json('time_ms');
+            $correct = null;
+
+            foreach (($question['options'] ?? []) as $option) {
+                if ((string) ($option['id'] ?? '') === $givenOption) {
+                    $correct = (bool) ($option['correct'] ?? false);
+                    break;
+                }
+            }
+
+            $answerText = $givenText !== '' ? $givenText : ($givenOption !== '' ? $givenOption : null);
+            $ins = $db->prepare(
+                'INSERT INTO public.trainer_feed_answers
+                   (user_id, card_id, option_id, answer_text, is_skipped, is_correct, time_ms)
+                 VALUES (:uid, :cid, :oid, :answer_text, :skipped, :correct, :time_ms)
+                 RETURNING id, card_id, option_id, answer_text, is_skipped, is_correct, time_ms, created_at'
+            );
+            $ins->execute([
+                'uid' => $req->user->id,
+                'cid' => $cardId,
+                'oid' => $givenOption !== '' ? $givenOption : null,
+                'answer_text' => $answerText,
+                'skipped' => $isSkipped,
+                'correct' => $isSkipped ? null : $correct,
+                'time_ms' => is_numeric($timeMs) ? (int) $timeMs : null,
+            ]);
+
+            Response::success(['answer' => $ins->fetch(), 'correct' => $isSkipped ? null : $correct], $req->requestId, 201);
+        } catch (\Throwable $e) {
+            Response::error('TRAINER_ERROR', $e->getMessage(), $req->requestId, 503);
+        }
+    });
+
+    $router->get('/api/v1/trainers/feed/{id}/image', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+
+        try {
+            $stmt = Connection::pdo()->prepare(
+                'SELECT source_key, source_file_id, specialty_slug
+                 FROM public.trainer_feed_cards
+                 WHERE id = :id AND is_published = true
+                 LIMIT 1'
+            );
+            $stmt->execute(['id' => (string) ($params['id'] ?? '')]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row === false) {
+                Response::error('NOT_FOUND', 'Image not found', $req->requestId, 404);
+                return;
+            }
+
+            if ((string) ($row['specialty_slug'] ?? '') === 'mbh'
+                && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
+                Response::error('FORBIDDEN', 'Медиа доступно только специальности МБХ', $req->requestId, 403);
+                return;
+            }
+
+            if (!empty($row['source_file_id'])) {
+                $fileStmt = Connection::pdo()->prepare(
+                    'SELECT object_key FROM public.files WHERE id = :id AND status = \'active\' LIMIT 1'
+                );
+                $fileStmt->execute(['id' => (string) $row['source_file_id']]);
+                $file = $fileStmt->fetch(PDO::FETCH_ASSOC);
+                if ($file !== false && !empty($file['object_key'])) {
+                    $storage = new B2Storage();
+                    if ($storage->isConfigured()) {
+                        try {
+                            $url = $storage->presignedDownloadUrl((string) $file['object_key'], 3600);
+                            header('Location: ' . $url, true, 302);
+                            exit;
+                        } catch (\Throwable $e) {
+                            // Fall through to the backend-local media path.
+                        }
+                    }
+                }
+            }
+
+            $relative = ltrim(str_replace('\\', '/', (string) ($row['source_key'] ?? '')), '/');
+            if ($relative === '' || str_contains($relative, '..')) {
+                Response::error('MEDIA_INVALID', 'Invalid media path', $req->requestId, 422);
+                return;
+            }
+
+            $root = rtrim((string) (getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../storage/histology')), '/');
+            $path = realpath($root . '/' . $relative);
+            $rootReal = realpath($root);
+            if ($rootReal === false || $path === false || !str_starts_with($path, $rootReal . DIRECTORY_SEPARATOR) || !is_file($path)) {
+                Response::error('MEDIA_NOT_FOUND', 'Original media is not deployed on the backend yet', $req->requestId, 404);
+                return;
+            }
+
+            $mime = function_exists('mime_content_type') ? (string) mime_content_type($path) : 'application/octet-stream';
+            header('Content-Type: ' . ($mime !== '' ? $mime : 'application/octet-stream'));
+            header('Cache-Control: private, max-age=86400');
+            readfile($path);
+            exit;
+        } catch (\Throwable $e) {
+            Response::error('MEDIA_ERROR', $e->getMessage(), $req->requestId, 503);
+        }
+    });
+
 // --- schedule ---
     $router->get('/api/v1/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
