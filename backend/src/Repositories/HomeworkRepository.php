@@ -66,7 +66,7 @@ final class HomeworkRepository
                 if ($b2->isConfigured() && !empty($row['object_key'])) {
                     try {
                         $item['download_url'] = $b2->presignedDownloadUrl((string)$row['object_key'], 3600);
-                    } catch (\\Throwable $e) {
+                    } catch (\Throwable $e) {
                         // Keep metadata visible even if B2 signing temporarily fails.
                     }
                 }
