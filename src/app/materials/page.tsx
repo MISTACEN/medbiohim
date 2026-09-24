@@ -26,7 +26,6 @@ function stripHtml(html?: string | null) {
 export default function MaterialsPage() {
   const searchParams = useSearchParams();
   const initialSubjectSlug = searchParams.get("subject_slug") || "";
-  const initialQuery = searchParams.get("q") || "";
   const [items, setItems = useState<ApiMaterial[]>([]);
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
