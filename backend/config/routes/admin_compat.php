@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-use MedbiohimHttpRequest;
-use MedbiohimHttpResponse;
-use MedbiohimHttpRouter;
-use MedbiohimMiddlewareRequireAuth;
-use MedbiohimMiddlewareRequireRole;
-use MedbiohimServicesSupabaseRest;
-use MedbiohimServicesB2Storage;
+use Medbiohim\Http\Request;
+use Medbiohim\Http\Response;
+use Medbiohim\Http\Router;
+use Medbiohim\Middleware\RequireAuth;
+use Medbiohim\Middleware\RequireRole;
+use Medbiohim\Services\SupabaseRest;
+use Medbiohim\Services\B2Storage;
 
-return static function (\Medbiohim\Http\Router $router): void {
+return static function (Router $router): void {
     $adminGate = static function (Request $req): bool {
         if (!RequireAuth::handle($req)) return false;
         return RequireRole::handle($req, ['admin', 'moderator', 'teacher']);
