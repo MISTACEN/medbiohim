@@ -158,6 +158,35 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
     return NextResponse.json({ ok: true, data: { answer: Array.isArray(answer) ? answer[0] : answer, correct: skipped ? null : correct }, requestId: "trainer-fallback" }, { status: 201 });
   }
 
+  // GET /trainers/feed/{id}/image: keep the existing backend as the media source.
+  const imageMatch = sub.match(/^trainers\/feed\/([^/]+)\/image$/);
+  if (req.method === "GET" && imageMatch) {
+    const id = decodeURIComponent(imageMatch[1]);
+    const params = new URLSearchParams({ select: "preparation", id: "eq." + id, is_published: "eq.true", limit: "1" });
+    const response = await supabaseRequest("trainer_feed_cards?" + params.toString(), req);
+    if (!response) return null;
+    const text = await response.text();
+    let rows: any[] = [];
+    try { rows = JSON.parse(text); } catch {}
+    const imageUrl = rows[0]?.preparation?.imageUrl;
+    if (!response.ok || typeof imageUrl !== "string" || !imageUrl.startsWith("/")) {
+      return NextResponse.json({ ok: false, error: { code: "MEDIA_NOT_FOUND", message: "Trainer image not found" }, requestId: "trainer-fallback" }, { status: 404 });
+    }
+    if (!UPSTREAM) return null;
+    const origin = UPSTREAM.endsWith("/api/v1") ? UPSTREAM.slice(0, -"/api/v1".length) : UPSTREAM;
+    try {
+      const media = await fetch(origin + imageUrl, { headers: { Accept: "image/*", Authorization: "Bearer " + token }, cache: "no-store", redirect: "follow" });
+      if (!media.ok) return NextResponse.json({ ok: false, error: { code: "MEDIA_NOT_FOUND", message: "Original trainer media is not available on the backend" }, requestId: "trainer-fallback" }, { status: 404 });
+      const out = new NextResponse(await media.arrayBuffer(), { status: 200 });
+      out.headers.set("content-type", media.headers.get("content-type") || "image/png");
+      out.headers.set("cache-control", "private, max-age=86400");
+      out.headers.set("x-medbiohim-proxy", "trainer-media-fallback");
+      return out;
+    } catch {
+      return NextResponse.json({ ok: false, error: { code: "MEDIA_ERROR", message: "Trainer media backend is unreachable" }, requestId: "trainer-fallback" }, { status: 502 });
+    }
+  }
+
   // GET /trainers/feed/{id}
   const cardMatch = sub.match(/^trainers\/feed\/([^/]+)$/);
   if (req.method === "GET" && cardMatch) {
