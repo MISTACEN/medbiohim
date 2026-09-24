@@ -1,7 +1,19 @@
 import { api, getTrainerImageUrl } from "@/lib/api";
 
 export type SubjectMaterial = { id:string; subject_id:string; subject_name?:string|null; subject_slug?:string|null; type:string; title:string; content_html?:string|null; external_url?:string|null; source_key?:string|null; order_index?:number|null; module_id?:string|null; topic_id?:string|null; };
-export type TrainerCard = { id:string; subject_id?:string|null; subject_slug:string; specialty_slug?:string|null; mode_set?:string; preparation?:{name?:string;organ?:string;imagePath?:string}; hotspots?:unknown[]; question?:{prompt?:string;mode?:string;explanation?:string;allowSkip?:boolean;options?:Array<{id:string;label:string;correct?:boolean}>}; tags?:string[]; difficulty?:number|null; source_key?:string|null; };
+export type TrainerCard = {
+  id:string;
+  subject_id?:string|null;
+  subject_slug:string;
+  specialty_slug?:string|null;
+  mode_set?:string;
+  preparation?:{name?:string;organ?:string;imagePath?:string;imageUrl?:string};
+  hotspots?:unknown[];
+  question?:{prompt?:string;mode?:string;explanation?:string;allowSkip?:boolean;options?:Array<{id:string;label:string;correct?:boolean}>};
+  tags?:string[];
+  difficulty?:number|null;
+  source_key?:string|null;
+};
 
 export async function listSubjectMaterials(params:{subjectId?:string;subjectSlug?:string;type?:string}={}){
   const q=new URLSearchParams(); if(params.subjectId)q.set("subject_id",params.subjectId); if(params.subjectSlug)q.set("subject_slug",params.subjectSlug); if(params.type)q.set("type",params.type);
