@@ -45,31 +45,42 @@ This is a safety measure against duplicate indexes, policies, functions and tabl
 
 ## Remote migration snapshot
 
-Checked 2026-09-23. The connected project currently contains migrations through:
+Verified 2026-09-24 against Supabase project `gnobvyjywtqbdfeejxmf`.
 
-- `20260923011259 telegram_vision_metadata`
-
-The full remote history remains available from Supabase and should be treated as authoritative until a repository baseline is explicitly reconciled.
+- Remote migration history: **58 applied migrations**.
+- Latest remote migration: `20260924003228 add_histology_content_model`.
+- Repository SQL under `database/migrations/` is **not** a complete mirror of those 58 remote migrations; GitHub currently contains only the historical/reconciliation SQL files that are intentionally tracked there.
+- Therefore the remote history remains authoritative. Do not blindly run `supabase db push` from the repository migration directory.
 
 ## Current data snapshot
 
 The current database has structural/academic data, including:
 
 - users: 3
-- groups: 5
+- groups: 4
 - subjects: 114
-- schedule_entries: 796
-- exam_questions: 150
-- ticket_banks: 8
-
-The following application-content tables are currently empty:
-
-- tests: 0
-- questions: 0
-- test_questions: 0
-- homeworks: 0
-- homework_submissions: 0
+- schedules: 5 (1 active)
+- active schedule entries: 361
+- trainer_feed_cards: 206 (all 206 published)
+- trainer_feed_answers: 0
 - files: 0
+- user_roles: 4
+
+The currently active schedule is:
+
+- id: `4cc2d535-4da4-43fa-93f7-bcb3cff471d4`
+- academic year: `2026/2027`
+- semester: `3`
+- version: `5`
+- entries: `361`
+
+Trainer content currently present:
+
+- `subject_slug=histology`
+- `specialty_slug=mbh`
+- `206` published cards
+
+Other application-content tables such as tests/homeworks may remain empty or partially populated depending on the import state.
 
 This is an **import/content state**, not a reason to move the backend to Vercel.
 
