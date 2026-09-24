@@ -4,6 +4,8 @@ declare(strict_types=1);
 use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
+use Medbiohim\Database\Connection;
+use Medbiohim\Services\SpecialtyAccess;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Middleware\RequireRole;
 use Medbiohim\Repositories\FileRepository;
@@ -143,7 +145,95 @@ return static function (Router $router): void {
         ], $req->requestId);
     });
 
-    // --- schedule ---
+    // --- trainer feed ---
+    $router->get('/api/v1/trainers/feed', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+
+        $subjectSlug = trim((string) ($req->query['subject'] ?? ''));
+        $specialtySlug = trim((string) ($req->query['specialty'] ?? ''));
+        $limit = max(1, min(500, (int) ($req->query['limit'] ?? 30)));
+        $offset = max(0, (int) ($req->query['offset'] ?? 0));
+
+        if ($subjectSlug === 'histology' || $specialtySlug === 'mbh') {
+            if (!(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
+                Response::error('FORBIDDEN', 'Тренажёр по гистологии доступен только специальности МБХ', $req->requestId, 403);
+                return;
+            }
+        }
+
+        $items = [];
+        $source = 'db';
+
+        try {
+            $sql = 'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
+                           preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
+                           is_published, created_at, updated_at
+                    FROM public.trainer_feed_cards
+                    WHERE is_published = true';
+            $paramsSql = [];
+
+            if ($subjectSlug !== '') {
+                $sql .= ' AND subject_slug = :subject_slug';
+                $paramsSql['subject_slug'] = $subjectSlug;
+            }
+            if ($specialtySlug !== '') {
+                $sql .= ' AND specialty_slug = :specialty_slug';
+                $paramsSql['specialty_slug'] = $specialtySlug;
+            }
+
+            $sql .= ' ORDER BY id LIMIT :limit OFFSET :offset';
+            $stmt = Connection::pdo()->prepare($sql);
+            foreach ($paramsSql as $key => $value) $stmt->bindValue($key, $value);
+            $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll() ?: [];
+
+            if (count($items) === 0) {
+                $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
+                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at'
+                );
+                if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
+                if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
+                $path .= '&order=id.asc&limit=' . $limit . '&offset=' . $offset;
+                $items = SupabaseRest::select($path);
+                $source = 'supabase_rest';
+            }
+        } catch (Throwable $e) {
+            try {
+                $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
+                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at'
+                );
+                if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
+                if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
+                $path .= '&order=id.asc&limit=' . $limit . '&offset=' . $offset;
+                $items = SupabaseRest::select($path);
+                $source = 'supabase_rest';
+            } catch (Throwable $fallback) {
+                Response::error('TRAINER_ERROR', 'Не удалось загрузить тренажёр', $req->requestId, 503);
+                return;
+            }
+        }
+
+        foreach ($items as &$item) {
+            foreach (['preparation', 'hotspots', 'question', 'tags'] as $jsonKey) {
+                if (isset($item[$jsonKey]) && is_string($item[$jsonKey])) {
+                    $decoded = json_decode($item[$jsonKey], true);
+                    if (is_array($decoded)) $item[$jsonKey] = $decoded;
+                }
+            }
+        }
+        unset($item);
+
+        Response::success([
+            'items' => array_values($items),
+            'limit' => $limit,
+            'offset' => $offset,
+            'source' => $source,
+        ], $req->requestId);
+    });
+
+// --- schedule ---
     $router->get('/api/v1/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         // Supabase is the single source of truth for the live schedule.
