@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace Medbiohim\Services;
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
+use Medbiohim\Support\SupabaseKeyHeaders;
 final class SupabaseRest {
  private static function r(string $m,string $p,?array $b=null,array $h=[]):array{$u=rtrim((string)Env::get('SUPABASE_URL',''),'/');$k=(string)Env::get('SUPABASE_SERVICE_KEY','');if($u===''||$k==='')throw new \RuntimeException('Supabase REST fallback is not configured');$x=HttpClient::request($m,$u.'/rest/v1/'.ltrim($p,'/'),$b,array_merge(SupabaseKeyHeaders::service($k),$h),15);if($x['status']<200||$x['status']>=300)throw new \RuntimeException('Supabase REST request failed ('.$x['status'].'): '.substr(is_array($x['json'])?(string)json_encode($x['json'],JSON_UNESCAPED_UNICODE):trim((string)$x['body']),0,700));return is_array($x['json'])?$x['json']:[];}
  private static function q(array $v):string{return implode(',',array_map(static fn($x)=>'"'.str_replace(['\\','"'],['\\\\','\\"'],(string)$x).'"',$v));}
