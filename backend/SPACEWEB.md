@@ -10,3 +10,11 @@
 8. Vercel: `NEXT_PUBLIC_API_URL=https://YOUR_DOMAIN/api/v1`
 
 Login rate limit: 10 / 5 min / IP.
+
+## Интеграция новых модулей
+
+Каноническая схема добавления новых backend-функций, основанная на уже работающих расписании и тренажёре:
+
+**[backend/MODULE-INTEGRATION.md](./MODULE-INTEGRATION.md)**
+
+Перед добавлением нового модуля сначала сверяться с этим документом.
