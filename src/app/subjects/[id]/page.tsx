@@ -22,7 +22,7 @@ export default function SubjectPage({params}:{params:Promise<{id:string}>}){
     const cat=await listSubjectsCatalog();const hit=cat.ok?(cat.data.items.find((x:any)=>x.id===p.id||x.slug===p.id)||cat.data.items.find((x:any)=>x.name.toLowerCase()===decodeURIComponent(p.id).toLowerCase())):null;
     const r=await getSubject(p.id);if(cancelled)return;
     if(!r.ok&&!hit){setError(r.error.message);setLoading(false);return;}
-    const s:any=r.ok?r.data.subject:hit;setSubject(s);setModules(r.ok&&Array.isArray(r.data.modules)?r.data.modules:[]);
+    const s:any=r.ok?r.data.subject:hit;setSubject(s);setModules(r.ok&&Array.isArray(r.data.modules)?(r.data.modules as Module[]):[]);
     const slug=slugNames[(s?.name||"").toLowerCase()]||s?.slug||"";
     if(slug){const pr=await getSubjectPlan(slug);if(pr.ok&&!cancelled)setPlan(pr.data.plan);}
     if(s?.id){const [gb,tt,mm,bb,pg]=await Promise.all([getSubjectGradebook(s.id),listTests(s.id),listSubjectMaterials({subjectId:s.id}),listTicketBanks(),getProgress()]);if(!cancelled){if(gb.ok)setGradebook(gb.data.items||[]);if(tt.ok)setTests(tt.data.items||[]);if(mm.ok)setMaterials(mm.data.items||[]);if(bb.ok)setBanks(bb.data.items||[]);if(pg.ok)setProgress(pg.data);}}
