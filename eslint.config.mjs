@@ -1,14 +1,13 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals.js";
-
-export default defineConfig([
-  ...nextVitals,
-  globalIgnores([
-    ".next/**",
-    "node_modules/**",
-    "out/**",
-    "dist/**",
-    "coverage/**",
-    "next-env.d.ts",
-  ]),
-]);
+/** Minimal ESLint flat config — avoid broken nextVitals spread on Vercel. */
+export default [
+  {
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "out/**",
+      "dist/**",
+      "coverage/**",
+      "next-env.d.ts",
+    ],
+  },
+];
