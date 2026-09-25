@@ -26,18 +26,18 @@ export default function AdminLecturesPage() {
   const [editBody, setEditBody] = useState("");
 
   async function reload(st = status) {
-    const r = await adminListLectures(st === "all" ? undefined : st);
+    const r: any = await adminListLectures(st === "all" ? undefined : st);
     if (r.ok) setItems((r.data.items || []) as Lecture[]);
-    else setMsg(r.error.message);
+    else setMsg(String(r.error?.message || "Ошибка"));
   }
 
   useEffect(() => {
     void reload();
-    void listSubjectsCatalog().then((r) => {
+    void listSubjectsCatalog().then((r: any) => {
       if (r.ok) {
-        const list = (r.data.items || [])
-          .map((x) => ({ slug: String(x.slug || "").trim(), name: x.name }))
-          .filter((x): x is { slug: string; name: string } => Boolean(x.slug));
+        const list = ((r.data?.items || []) as any[])
+          .map((x: any) => ({ slug: String(x.slug || "").trim(), name: String(x.name || "") }))
+          .filter((x: { slug: string; name: string }): x is { slug: string; name: string } => Boolean(x.slug));
         setSubjects(list);
         if (list[0] && !slug) setSlug(list[0].slug);
       }
@@ -49,9 +49,9 @@ export default function AdminLecturesPage() {
     if (!topic.trim()) return setMsg("Укажите тему");
     setBusy(true);
     setMsg(null);
-    const r = await adminGenerateLecture({ subject_slug: slug, topic: topic.trim(), notes: notes.trim() || undefined });
+    const r: any = await adminGenerateLecture({ subject_slug: slug, topic: topic.trim(), notes: notes.trim() || undefined });
     setBusy(false);
-    if (!r.ok) return setMsg(r.error.message);
+    if (!r.ok) return setMsg(String(r.error?.message || "Ошибка"));
     setMsg("Черновик создан и отправлен на проверку");
     setTopic("");
     setStatus("pending_review");
@@ -109,7 +109,7 @@ export default function AdminLecturesPage() {
       </div>
 
       <div className="space-y-3">
-        {items.map((lec) => (
+        {items.map((lec: any) => (
           <div key={lec.id} className="card space-y-3 p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -121,15 +121,15 @@ export default function AdminLecturesPage() {
               <div className="flex flex-wrap gap-2">
                 {lec.status !== "published" && (
                   <button type="button" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white" onClick={async () => {
-                    const r = await adminPublishLecture(lec.id);
-                    setMsg(r.ok ? "Опубликовано" : r.error.message);
+                    const r: any = await adminPublishLecture(lec.id);
+                    setMsg(r.ok ? "Опубликовано" : String(r.error?.message || "Ошибка"));
                     await reload();
                   }}>Опубликовать</button>
                 )}
                 {lec.status === "pending_review" && (
                   <button type="button" className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700" onClick={async () => {
-                    const r = await adminRejectLecture(lec.id);
-                    setMsg(r.ok ? "Отклонено" : r.error.message);
+                    const r: any = await adminRejectLecture(lec.id);
+                    setMsg(r.ok ? "Отклонено" : String(r.error?.message || "Ошибка"));
                     await reload();
                   }}>Отклонить</button>
                 )}
@@ -147,7 +147,7 @@ export default function AdminLecturesPage() {
             {lec.summary && <p className="text-xs text-[var(--muted)]">{lec.summary}</p>}
             {Array.isArray(lec.media) && lec.media.length > 0 && (
               <div className="flex flex-wrap gap-2 text-xs">
-                {lec.media.map((m, i) => (
+                {lec.media.map((m: any, i: number) => (
                   <a
                     key={i}
                     href={String(m.url || "#")}
@@ -165,8 +165,8 @@ export default function AdminLecturesPage() {
               <div className="space-y-2">
                 <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={12} className="w-full rounded-xl border border-[var(--border)] p-3 font-mono text-xs" />
                 <button type="button" className="rounded-xl bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-white" onClick={async () => {
-                  const r = await adminUpdateLecture(lec.id, { body_md: editBody });
-                  setMsg(r.ok ? "Сохранено" : r.error.message);
+                  const r: any = await adminUpdateLecture(lec.id, { body_md: editBody });
+                  setMsg(r.ok ? "Сохранено" : String(r.error?.message || "Ошибка"));
                   await reload();
                 }}>Сохранить текст</button>
               </div>
