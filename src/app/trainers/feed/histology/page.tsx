@@ -197,9 +197,13 @@ export default function HistologyTrainerPage() {
         </div>
       </header>
 
-      {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
-      )}
+      {error ? (
+        <div
+          className={"rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"}
+        >
+          {error}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         {(["study", "prepare", "exam"] as const).map((id) => (
@@ -232,7 +236,7 @@ export default function HistologyTrainerPage() {
         <div className="card p-6">
           <h2 className="text-2xl font-bold">Экзамен завершён</h2>
           <p className="mt-2">Правильно: {Object.values(examAnswers).filter((x) => x.correct).length} / {visible.length}</p>
-          <button type="button" className="btn-primary mt-5" onClick={() => setExperience("exam")}>Ещё раз</button>
+          <button type="button" className="btn-primary mt-5" onClick={() => setExperience("exam")} >Ещё раз</button>
         </div>
       ) : (
         <div className="card overflow-hidden">
