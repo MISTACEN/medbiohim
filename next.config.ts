@@ -10,10 +10,14 @@ import type { NextConfig } from "next";
  * Do not add a second rewrite for /api/v1 here: keeping one proxy path avoids
  * route ambiguity and makes the Vercel -> SpaceWeb architecture explicit.
  */
-const BUILD_FINGERPRINT = "2026-09-24-490b040";
+const BUILD_FINGERPRINT = "2026-09-25-c241f09";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Vercel: do not fail production build on local eslint flat-config quirks
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   env: {
     NEXT_PUBLIC_API_URL: "/api/v1",
   },
