@@ -19,7 +19,7 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
   if(cached)return cached;
   const pending=trainerImageInflight.get(key);
   if(pending)return pending;
-  const run=async():Promise<string|null=>{
+  const run=async()=>{
     try{
       let token=getToken();
       let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"force-cache"});
@@ -53,8 +53,7 @@ export async function listGroups(){return api<any>("/groups")}
 export type ApiTest=any;
 export async function listTests(subjectId?:string){return api<any>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
 export async function getTest(id:string){return api<any>(`/tests/${id}`)}
-export async function startTestAttempt(id:string){return api<any>(`/tests/${id}/start`,{method:"POST",body:"{}"})
-}
+export async function startTestAttempt(id:string){return api<any>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
 export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
 export async function listHomeworks(){return api<any>("/homeworks")}
 export async function submitHomework(id:string,textAnswer?:string,fileId?:string){return api<any>(`/homeworks/${id}/submit`,{method:"POST",body:JSON.stringify({text_answer:textAnswer,file_id:fileId})})}
