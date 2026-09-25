@@ -153,7 +153,7 @@ export default function HistologyTrainerPage() {
     setSelected(id);
     const correct = options.some((o: any) => o.id === id && o.correct === true);
     if (experience === "exam") {
-      setExamAnswers((v) => ({ ...v, [card.id]: { optionId: id, correct }));
+      setExamAnswers((v) => ({ ...v, [card.id]: { optionId: id, correct } }));
       return;
     }
     const r = await submitTrainerAnswer({
