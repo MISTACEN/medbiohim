@@ -114,9 +114,9 @@ export async function createSubject(..._args: any[]): Promise<any> { return api(
 export async function deleteGroup(..._args: any[]): Promise<any> { return api(`/api-compat/deleteGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function deleteSubject(..._args: any[]): Promise<any> { return api(`/api-compat/deleteSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function finishPreparation(..._args: any[]): Promise<any> { return api(`/api-compat/finishPreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function generateAcademicAiPlan(..._args: any[]): Promise<any> { return api(`/api-compat/generateAcademicAiPlan`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function generateAcademicAiPlan(){return api<{plan:Record<string,unknown>;items:Array<Record<string,unknown>>;source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
 export async function generateTicket(..._args: any[]): Promise<any> { return api(`/api-compat/generateTicket`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getAcademicState(..._args: any[]): Promise<any> { return api(`/api-compat/getAcademicState`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function getAcademicState(){return api<AcademicState>("/academic/state")}
 export async function getFile(..._args: any[]): Promise<any> { return api(`/api-compat/getFile`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function getLecture(..._args: any[]): Promise<any> { return api(`/api-compat/getLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function getLessonPlan(..._args: any[]): Promise<any> { return api(`/api-compat/getLessonPlan`, { method: "POST", body: JSON.stringify(_args) }) as any; }
@@ -140,7 +140,27 @@ export async function savePreparation(..._args: any[]): Promise<any> { return ap
 export async function startPreparation(..._args: any[]): Promise<any> { return api(`/api-compat/startPreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function updateGroup(..._args: any[]): Promise<any> { return api(`/api-compat/updateGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function updateSubject(..._args: any[]): Promise<any> { return api(`/api-compat/updateSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export type AcademicState = any;
+export type AcademicState = {
+  profile?: any;
+  session: any;
+  plan: any;
+  metrics: any;
+  debts: any[];
+  upcoming: any[];
+  weak_topics: any[];
+  recommendations: any[];
+  states?: any[];
+  topic_progress?: any[];
+  generated_at?: string;
+};
 export type AdminContentImportPayload = any;
 export type AdminDbMeta = any;
 export type AdminDbRow = any;
+export async function adminUpdateQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminUpdateQuestionReport(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateQuestionReport`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminUpdateWork(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateWork`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminListQuestions(..._args: any[]): Promise<any> { return api(`/api-compat/adminListQuestions`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminCreateQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminCreateQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminDeleteQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminTelegramChats(..._args: any[]): Promise<any> { return api(`/api-compat/adminTelegramChats`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminSetTelegramWebhook(..._args: any[]): Promise<any> { return api(`/api-compat/adminSetTelegramWebhook`, { method: "POST", body: JSON.stringify(_args) }) as any; }
