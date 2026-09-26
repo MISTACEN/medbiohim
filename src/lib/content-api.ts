@@ -130,6 +130,7 @@ export type Training = {
   current_index: number;
   score?: number | null;
   total_questions: number;
+  answered_count?: number;
 };
 
 export async function listTrainings(status?: string) {
