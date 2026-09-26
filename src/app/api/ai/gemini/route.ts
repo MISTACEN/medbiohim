@@ -40,7 +40,14 @@ export async function POST(req: NextRequest) {
               const match = url.match(/^data:([^;]+);base64,(.+)$/);
               if (match) return [{ type: "image", mime_type: match[1], data: match[2] }];
             }
-            if (url) return [{ type: "image_url", url }];
+            if (url) {
+              const imageResponse = await fetch(url);
+              if (imageResponse.ok) {
+                const mime = imageResponse.headers.get("content-type") || "image/jpeg";
+                const bytes = Buffer.from(await imageResponse.arrayBuffer());
+                return [{ type: "image", mime_type: mime, data: bytes.toString("base64") }];
+              }
+            }
           }
           return [];
         })
