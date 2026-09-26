@@ -197,8 +197,8 @@ return static function (Router $r): void {
 
             $ans = $db->prepare(
                 'INSERT INTO public.training_answers
-                 (training_id,question_id,"order",options,question_snapshot)
-                 VALUES (:tid,:qid,:ord,:options::jsonb,:snapshot::jsonb)'
+                 (training_id,question_id,"order",options,question_snapshot,review_snapshot)
+                 VALUES (:tid,:qid,:ord,:options::jsonb,:snapshot::jsonb,:review::jsonb)'
             );
             foreach ($questions as $i => $question) {
                 $ans->execute([
@@ -207,6 +207,7 @@ return static function (Router $r): void {
                     'ord'=>$i,
                     'options'=>json_encode($question['options'], JSON_UNESCAPED_UNICODE),
                     'snapshot'=>json_encode($question, JSON_UNESCAPED_UNICODE),
+                    'review'=>json_encode($cards[$i] ?? [], JSON_UNESCAPED_UNICODE),
                 ]);
             }
             $db->commit();
