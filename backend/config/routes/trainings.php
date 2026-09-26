@@ -115,9 +115,14 @@ return static function (Router $r): void {
         if (!RequireAuth::handle($q)) return;
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT id, subject_slug, specialty_slug, topics, content_type, question_count, label_mode, layout_mode,
-                        status, current_index, score, total_questions, completed_at, created_at, updated_at
-                 FROM public.trainings WHERE user_id = :uid ORDER BY updated_at DESC LIMIT 50'
+                'SELECT t.id, t.subject_slug, t.specialty_slug, t.topics, t.content_type, t.question_count, t.label_mode, t.layout_mode,
+                        t.status, t.current_index, t.score, t.total_questions, t.completed_at, t.created_at, t.updated_at,
+                        count(a.id) FILTER (WHERE a.user_answer IS NOT NULL OR a.is_skipped = true) AS answered_count
+                 FROM public.trainings t
+                 LEFT JOIN public.training_answers a ON a.training_id = t.id
+                 WHERE t.user_id = :uid
+                 GROUP BY t.id
+                 ORDER BY t.updated_at DESC LIMIT 50'
             );
             $stmt->execute(['uid' => $q->user->id]);
             Response::success(['items' => $stmt->fetchAll()], $q->requestId);
