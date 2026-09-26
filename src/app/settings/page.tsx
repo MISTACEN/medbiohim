@@ -2,7 +2,6 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-type TrainerLayout = "sidebar" | "list" | "top";
 import clsx from "clsx";
 import {
   Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles,
