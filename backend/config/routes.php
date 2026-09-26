@@ -19,6 +19,7 @@ return static function (Router $router): void {
         'admin_compat.php',
         'admin_questions.php',
         'sessions_rest.php',
+        'trainings.php',
         'plans_rest.php',
         'import_rest.php',
         'domain.php',
