@@ -14,7 +14,7 @@ export default function TutorPage() {
   const [booting,setBooting]=useState(true);
   const [error,setError]=useState<string|null>(null);
   const [provider,setProvider]=useState<AiProvider>("auto");
-  const [available,setAvailable]=useState({gigachat:false,gemini:false});
+  const [available,setAvailable]=useState<Record<AiProvider,boolean>>({auto:true,groq:false,gigachat:false,gemini:false,mistral:false,openrouter:false});
   const [subjects,setSubjects]=useState<Array<{name:string;slug:string}>>([]);
   const [subjectSlug,setSubjectSlug]=useState("");
   const [mobileList,setMobileList]=useState(true);
@@ -36,7 +36,7 @@ export default function TutorPage() {
   async function boot(){
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
-    if(ps.ok) setAvailable({gigachat:!!ps.data.providers.gigachat?.configured,gemini:!!ps.data.providers.gemini?.configured});
+    if(ps.ok) setAvailable({auto:true,groq:!!ps.data.providers.groq?.configured,gigachat:!!ps.data.providers.gigachat?.configured,gemini:!!ps.data.providers.gemini?.configured,mistral:!!ps.data.providers.mistral?.configured,openrouter:!!ps.data.providers.openrouter?.configured});
     if(ss.ok) {
       const list = (ss.data.items || [])
         .map((s) => ({ name: s.name, slug: String(s.slug || "").trim() }))
@@ -98,8 +98,7 @@ export default function TutorPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История хранится в Supabase и восстанавливается после перезагрузки.</p></div>
         <div className="flex items-center gap-2 text-xs">
-          <span className={available.gigachat?"rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>GigaChat {available.gigachat?"●":"○"}</span>
-          <span className={available.gemini?"rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>Gemini {available.gemini?"●":"○"}</span>
+          {(["groq","gigachat","gemini","mistral","openrouter"] as const).map(p=><span key={p} className={available[p]?"rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{p==="groq"?"Groq":p==="gigachat"?"GigaChat":p==="gemini"?"Gemini":p==="mistral"?"Mistral":"OpenRouter"} {available[p]?"●":"○"}</span>)}
         </div>
       </div>
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm md:grid-cols-[280px_1fr]">
@@ -117,7 +116,12 @@ export default function TutorPage() {
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] p-3">
               <button type="button" onClick={()=>setMobileList(true)} className="rounded-lg p-2 hover:bg-[var(--background)] md:hidden"><ChevronLeft className="h-4 w-4"/></button>
               <select value={provider} onChange={e=>setProvider(e.target.value as AiProvider)} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm">
-                <option value="auto">Авто: GigaChat → Gemini</option><option value="gigachat" disabled={!available.gigachat}>GigaChat</option><option value="gemini" disabled={!available.gemini}>Gemini</option>
+                <option value="auto">Авто — лучший доступный</option>
+                <option value="groq" disabled={!available.groq}>Groq</option>
+                <option value="gigachat" disabled={!available.gigachat}>GigaChat</option>
+                <option value="gemini" disabled={!available.gemini}>Gemini</option>
+                <option value="mistral" disabled={!available.mistral}>Mistral</option>
+                <option value="openrouter" disabled={!available.openrouter}>OpenRouter</option>
               </select>
               <select value={subjectSlug} onChange={e=>setSubjectSlug(e.target.value)} className="min-w-[170px] rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"><option value="">Все предметы</option>{subjects.map(s=><option key={s.slug} value={s.slug}>{s.name}</option>)}</select>
               <span className="ml-auto truncate text-xs text-[var(--muted)]">{conversation?.title}</span>
