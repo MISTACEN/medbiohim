@@ -164,10 +164,10 @@ export async function getTraining(id: string) {
   }> }>(`/trainings/${encodeURIComponent(id)}`);
 }
 
-export async function answerTrainingQuestion(id: string, order: number, userAnswer: string | null) {
+export async function answerTrainingQuestion(id: string, order: number, userAnswer: string | null, skipped = false) {
   return api<{ answer: Record<string, unknown>; correct: boolean | null }>(
     `/trainings/${encodeURIComponent(id)}/answer`,
-    { method: "POST", body: JSON.stringify({ order, user_answer: userAnswer }) },
+    { method: "POST", body: JSON.stringify({ order, user_answer: userAnswer, is_skipped: skipped }) },
   );
 }
 
