@@ -5,7 +5,7 @@ use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
-use Medbiohim\Support\Connection;
+use Medbiohim\Database\Connection;
 
 return static function (Router $r): void {
     $loadCards = static function (Request $q): array {
