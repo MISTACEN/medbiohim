@@ -148,8 +148,8 @@ return static function (Router $r): void {
             $all = (bool)$q->json('all_questions', false);
             $requested = max(1, min(500, (int)$q->json('question_count', 20)));
 
-            $cards = $loadCards($q);
-            $cards = array_values(array_filter($cards, static function(array $card) use ($contentType, $topics): bool {
+            $allCards = $loadCards($q);
+            $cards = array_values(array_filter($allCards, static function(array $card) use ($contentType, $topics): bool {
                 if ($contentType !== 'all' && (string)($card['mode_set'] ?? '') !== $contentType) return false;
                 if (!$topics) return true;
                 $tags = is_array($card['tags'] ?? null) ? array_map('strval', $card['tags']) : [];
@@ -164,7 +164,7 @@ return static function (Router $r): void {
 
             $questions = [];
             foreach ($cards as $card) {
-                $options = $buildOptions($card, $cards);
+                $options = $buildOptions($card, $allCards);
                 if (count($options) < 2) continue;
                 $questions[] = $sanitizeQuestion($card, $options, $labelMode);
             }
