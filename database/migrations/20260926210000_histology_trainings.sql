@@ -28,6 +28,7 @@ create table if not exists public.training_answers (
   is_skipped boolean not null default false,
   options jsonb not null default '[]'::jsonb,
   question_snapshot jsonb not null default '{}'::jsonb,
+  review_snapshot jsonb not null default '{}'::jsonb,
   answered_at timestamptz,
   created_at timestamptz not null default now(),
   unique(training_id, "order"),
