@@ -195,6 +195,8 @@ return static function (Router $r): void {
             ]);
             $training = $ins->fetch();
 
+            $sourceCardsById = [];
+            foreach ($cards as $sourceCard) $sourceCardsById[(string)$sourceCard['id']] = $sourceCard;
             $ans = $db->prepare(
                 'INSERT INTO public.training_answers
                  (training_id,question_id,"order",options,question_snapshot,review_snapshot)
@@ -207,7 +209,7 @@ return static function (Router $r): void {
                     'ord'=>$i,
                     'options'=>json_encode($question['options'], JSON_UNESCAPED_UNICODE),
                     'snapshot'=>json_encode($question, JSON_UNESCAPED_UNICODE),
-                    'review'=>json_encode($cards[$i] ?? [], JSON_UNESCAPED_UNICODE),
+                    'review'=>json_encode($sourceCardsById[(string)$question['id']] ?? [], JSON_UNESCAPED_UNICODE),
                 ]);
             }
             $db->commit();
