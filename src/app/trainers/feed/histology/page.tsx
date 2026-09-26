@@ -93,7 +93,7 @@ export default function HistologyTrainerPage() {
     if(!training||!answers[active]||working)return;
     const a=answers[active]; if(a.user_answer!=null||a.is_skipped)return;
     setWorking(true);
-    const r=await answerTrainingQuestion(training.id,a.order,value);
+    const r=await answerTrainingQuestion(training.id,a.order,value,skip);
     if(!r.ok){setError(r.error.message);setWorking(false);return;}
     setAnswers(v=>v.map((x,i)=>i===active?{...x,user_answer:value,is_correct:r.data.correct,is_skipped:skip}:x));
     setWorking(false);
