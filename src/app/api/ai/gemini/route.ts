@@ -24,14 +24,31 @@ export async function POST(req: NextRequest) {
   const input: any[] = [];
   for (const m of body.messages) {
     const role = String(m?.role || "user");
-    const content = String(m?.content || "");
+    const raw = m?.content;
     if (role === "system") {
-      system += (system ? "\n" : "") + content;
+      system += (system ? "\n" : "") + (typeof raw === "string" ? raw : "");
       continue;
     }
+
+    // Accept both plain text and multimodal content parts.
+    const parts = Array.isArray(raw)
+      ? raw.flatMap((part: any) => {
+          if (part?.type === "text") return [{ type: "text", text: String(part.text || "") }];
+          if (part?.type === "image_url") {
+            const url = typeof part?.image_url === "string" ? part.image_url : String(part?.image_url?.url || "");
+            if (url.startsWith("data:")) {
+              const match = url.match(/^data:([^;]+);base64,(.+)$/);
+              if (match) return [{ type: "image", mime_type: match[1], data: match[2] }];
+            }
+            if (url) return [{ type: "image_url", url }];
+          }
+          return [];
+        })
+      : [{ type: "text", text: String(raw || "") }];
+
     input.push({
       type: role === "assistant" ? "model_output" : "user_input",
-      content: [{ type: "text", text: content }],
+      content: parts,
     });
   }
 
