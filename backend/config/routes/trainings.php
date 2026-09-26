@@ -249,19 +249,20 @@ return static function (Router $r): void {
             if((string)$training['status']!=='in_progress'){Response::error('TRAINING_FINISHED','Training is already completed',$q->requestId,409);return;}
             $order=max(0,(int)$q->json('order',0));
             $answer=$q->json('user_answer',null);
+            $isSkipped=(bool)$q->json('is_skipped',false);
             $row=$db->prepare('SELECT * FROM public.training_answers WHERE training_id=:tid AND "order"=:ord LIMIT 1');
             $row->execute(['tid'=>$training['id'],'ord'=>$order]);
             $current=$row->fetch();
             if(!$current){Response::error('NOT_FOUND','Training question not found',$q->requestId,404);return;}
             $options=is_string($current['options']??null)?(json_decode($current['options'],true)?:[]):($current['options']??[]);
             $correct=null;
-            if($answer!==null){
+            if(!$isSkipped && $answer!==null){
                 foreach($options as $option){
                     if((string)($option['id']??'')===(string)$answer){$correct=(bool)($option['correct']??false);break;}
                 }
             }
-            $up=$db->prepare('UPDATE public.training_answers SET user_answer=:answer,is_correct=:correct,answered_at=now() WHERE id=:id RETURNING *');
-            $up->execute(['answer'=>$answer!==null?(string)$answer:null,'correct'=>$correct,'id'=>$current['id']]);
+            $up=$db->prepare('UPDATE public.training_answers SET user_answer=:answer,is_correct=:correct,is_skipped=:skipped,answered_at=now() WHERE id=:id RETURNING *');
+            $up->execute(['answer'=>$answer!==null?(string)$answer:null,'correct'=>$correct,'skipped'=>$isSkipped,'id'=>$current['id']]);
             $patch=$db->prepare('UPDATE public.trainings SET current_index=:idx,updated_at=now() WHERE id=:id');
             $patch->execute(['idx'=>$order,'id'=>$training['id']]);
             Response::success(['answer'=>$up->fetch(),'correct'=>$correct],$q->requestId);
