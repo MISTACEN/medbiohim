@@ -172,10 +172,10 @@ export async function srsListCards(limit = 100, subject_slug?: string) {
 }
 
 /* —— Persistent AI chat —— */
-export type AiProvider = "auto" | "gigachat" | "gemini";
+export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter";
 export type AiConversation = { id:string; title:string; provider:AiProvider; model?:string|null; subject_slug?:string|null; created_at:string; updated_at:string };
 export type AiMessage = { id:string; role:"system"|"user"|"assistant"; content:string; provider?:string|null; model?:string|null; created_at:string };
-export async function aiProviders(){ return api<{providers:{gigachat:{configured:boolean;model?:string};gemini:{configured:boolean;model?:string};default:AiProvider}} >("/ai/providers"); }
+export async function aiProviders(){ return api<{providers:Record<Exclude<AiProvider,"auto">,{configured:boolean;model?:string}> & {default:AiProvider}} >("/ai/providers"); }
 export async function aiConversations(){ return api<{items:AiConversation[]}>("/ai/conversations"); }
 export async function aiCreateConversation(payload?:{title?:string;provider?:AiProvider;subject_slug?:string}){ return api<{conversation:AiConversation}>("/ai/conversations",{method:"POST",body:JSON.stringify(payload||{})}); }
 export async function aiGetConversation(id:string){ return api<{conversation:AiConversation;messages:AiMessage[]}>(`/ai/conversations/${encodeURIComponent(id)}`); }
