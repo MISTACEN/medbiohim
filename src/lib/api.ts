@@ -161,15 +161,15 @@ export async function getLessonPlan(..._args: any[]): Promise<any> { return api(
 export async function getPreparation(..._args: any[]): Promise<any> { return api(`/api-compat/getPreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function getQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/getQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function getScheduleMeta(..._args: any[]): Promise<any> { return api(`/api-compat/getScheduleMeta`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getSubjectGradebook(..._args: any[]): Promise<any> { return api(`/api-compat/getSubjectGradebook`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getSubjectPlan(..._args: any[]): Promise<any> { return api(`/api-compat/getSubjectPlan`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function getSubjectGradebook(..._args: any[]): Promise<any> { const id=String(_args[0]??"").trim(); if(!id) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api(`/subjects/${encodeURIComponent(id)}/gradebook`) as any; }
+export async function getSubjectPlan(..._args: any[]): Promise<any> { const slug=String(_args[0]??"").trim(); if(!slug) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; return api(`/subject-plans/${encodeURIComponent(slug)}`) as any; }
 export async function getTrainer(..._args: any[]): Promise<any> { return api(`/api-compat/getTrainer`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function listCommunityPosts(..._args: any[]): Promise<any> { return api(`/api-compat/listCommunityPosts`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function listLectures(..._args: any[]): Promise<any> { return api(`/api-compat/listLectures`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api(`/api-compat/listQuestionSubjects`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function listQuestions(..._args: any[]): Promise<any> { return api(`/api-compat/listQuestions`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return api(`/api-compat/listSubjectsCatalog`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function listTicketBanks(..._args: any[]): Promise<any> { return api(`/api-compat/listTicketBanks`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return api(`/subjects-catalog`) as any; }
+export async function listTicketBanks(..._args: any[]): Promise<any> { return api(`/tickets`) as any; }
 export async function listTrainers(..._args: any[]): Promise<any> { return api(`/api-compat/listTrainers`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function preparationAiReview(..._args: any[]): Promise<any> { return api(`/api-compat/preparationAiReview`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function register(..._args: any[]): Promise<any> { return api(`/api-compat/register`, { method: "POST", body: JSON.stringify(_args) }) as any; }
