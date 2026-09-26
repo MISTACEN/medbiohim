@@ -121,13 +121,13 @@ return static function (Router $r): void {
                  FROM public.trainings t
                  LEFT JOIN public.training_answers a ON a.training_id = t.id
                  WHERE t.user_id = :uid
-                   AND (:status = '' OR t.status = :status)
+                   AND (:status_filter = '' OR t.status = :status)
                  GROUP BY t.id
                  ORDER BY t.updated_at DESC LIMIT 50"
             );
             $status = trim((string)($q->query['status'] ?? ''));
             if (!in_array($status, ['', 'in_progress', 'completed', 'cancelled'], true)) $status = '';
-            $stmt->execute(['uid' => $q->user->id, 'status' => $status]);
+            $stmt->execute(['uid' => $q->user->id, 'status_filter' => $status, 'status' => $status]);
             Response::success(['items' => $stmt->fetchAll()], $q->requestId);
         } catch (Throwable $e) {
             Response::error('TRAINING_ERROR', $e->getMessage(), $q->requestId, 503);
