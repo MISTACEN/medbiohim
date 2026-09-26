@@ -16,6 +16,8 @@ export default function TutorPage() {
   const [provider,setProvider]=useState<AiProvider>("auto");
   const [available,setAvailable]=useState<Record<AiProvider,boolean>>({auto:true,groq:false,gigachat:false,gemini:false,mistral:false,openrouter:false});
   const [subjects,setSubjects]=useState<Array<{name:string;slug:string}>>([]);
+  const [psRegionHint,setPsRegionHint]=useState(false);
+
   const [subjectSlug,setSubjectSlug]=useState("");
   const [mobileList,setMobileList]=useState(true);
   const bottomRef=useRef<HTMLDivElement>(null);
@@ -36,7 +38,7 @@ export default function TutorPage() {
   async function boot(){
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
-    if(ps.ok) setAvailable({auto:true,groq:!!ps.data.providers.groq?.configured,gigachat:!!ps.data.providers.gigachat?.configured,gemini:!!ps.data.providers.gemini?.configured,mistral:!!ps.data.providers.mistral?.configured,openrouter:!!ps.data.providers.openrouter?.configured});
+    if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available}); setPsRegionHint(ps.data.region==="ru" && !!ps.data.providers.gemini?.reason); }
     if(ss.ok) {
       const list = (ss.data.items || [])
         .map((s) => ({ name: s.name, slug: String(s.slug || "").trim() }))
@@ -119,7 +121,7 @@ export default function TutorPage() {
                 <option value="auto">Авто — лучший доступный</option>
                 <option value="groq" disabled={!available.groq}>Groq</option>
                 <option value="gigachat" disabled={!available.gigachat}>GigaChat</option>
-                <option value="gemini" disabled={!available.gemini}>Gemini</option>
+                <option value="gemini" disabled={!available.gemini}>Gemini{psRegionHint ? " — недоступен из RU backend" : ""}</option>
                 <option value="mistral" disabled={!available.mistral}>Mistral</option>
                 <option value="openrouter" disabled={!available.openrouter}>OpenRouter</option>
               </select>
