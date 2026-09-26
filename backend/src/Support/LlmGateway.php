@@ -464,53 +464,43 @@ final class LlmGateway
 
     private static function chatGemini(array $messages, float $temperature): array
     {
+        // Gemini is executed by the Vercel proxy so the Google API sees the
+        // Vercel region, while GEMINI_API_KEY never leaves Vercel.
+        $proxy = trim((string)(Env::get('GEMINI_VERCEL_PROXY_URL', '') ?? ''));
+        $secret = trim((string)(Env::get('GEMINI_VERCEL_PROXY_SECRET', '') ?? ''));
+        if ($proxy !== '' && $secret !== '') {
+            $res = HttpClient::request('POST', rtrim($proxy, '/'), [
+                'messages' => $messages,
+                'temperature' => $temperature,
+                'model' => self::normalizeGeminiModel(Env::get('GEMINI_MODEL', 'gemini-3.6-flash')),
+            ], [
+                'Authorization: Bearer ' . $secret,
+                'Content-Type: application/json',
+            ], 90);
+            if (($res['status'] ?? 0) >= 200 && ($res['status'] ?? 0) < 300) {
+                $body = $res['json'] ?? [];
+                if (is_string($body['text'] ?? null) && trim($body['text']) !== '') {
+                    return ['text'=>trim($body['text']),'provider'=>'gemini','model'=>(string)($body['model'] ?? Env::get('GEMINI_MODEL','gemini-3.6-flash')),'mode'=>'vercel-proxy'];
+                }
+            }
+            throw new \RuntimeException('Gemini Vercel proxy HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,500));
+        }
+
+        // Legacy direct mode, useful only when backend itself is deployed in a
+        // Gemini-supported region.
         $key=trim((string)(Env::get('GEMINI_API_KEY','') ?? ''));
         if($key==='') throw new \RuntimeException('GEMINI_API_KEY is not configured');
         $base=rtrim((string)(Env::get('GEMINI_BASE_URL','https://generativelanguage.googleapis.com') ?? 'https://generativelanguage.googleapis.com'),'/');
         $model=self::normalizeGeminiModel(Env::get('GEMINI_MODEL','gemini-3.6-flash'));
-
-        $system='';
-        $input=[];
-        foreach($messages as $m){
-            $role=(string)($m['role']??'user');
-            $content=(string)($m['content']??'');
-            if($role==='system'){
-                $system.=($system!=='' ? "\n" : '').$content;
-                continue;
-            }
-            $input[]=[
-                'type'=>$role==='assistant' ? 'model_output' : 'user_input',
-                'content'=>[['type'=>'text','text'=>$content]],
-            ];
-        }
+        $system=''; $input=[];
+        foreach($messages as $m){ $role=(string)($m['role']??'user'); $content=(string)($m['content']??''); if($role==='system'){ $system.=($system!==''?"\n":'').$content; continue; } $input[]=['type'=>$role==='assistant'?'model_output':'user_input','content'=>[['type'=>'text','text'=>$content]]]; }
         if(!$input) throw new \InvalidArgumentException('At least one user message is required');
-
-        $payload=[
-            'model'=>$model,
-            'input'=>$input,
-            'store'=>false,
-            'generation_config'=>[
-                'temperature'=>$temperature,
-                'max_output_tokens'=>(int)(Env::get('GEMINI_MAX_OUTPUT_TOKENS','2048')??2048),
-            ],
-        ];
+        $payload=['model'=>$model,'input'=>$input,'store'=>false,'generation_config'=>['temperature'=>$temperature,'max_output_tokens'=>(int)(Env::get('GEMINI_MAX_OUTPUT_TOKENS','2048')??2048)]];
         if($system!=='') $payload['system_instruction']=$system;
-
-        $res=HttpClient::request('POST',$base.'/v1/interactions',$payload,[
-            'x-goog-api-key: '.$key,
-            'Content-Type: application/json',
-        ],90);
-        if(($res['status']??0)<200||($res['status']??0)>=300){
-            throw new \RuntimeException('Gemini Interactions HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,500));
-        }
-        $body=$res['json']??[];
-        $text='';
-        foreach(($body['steps']??[]) as $step){
-            if(!is_array($step)||($step['type']??'')!=='model_output') continue;
-            foreach(($step['content']??[]) as $part){
-                if(is_array($part)&&($part['type']??'')==='text') $text.=(string)($part['text']??'');
-            }
-        }
+        $res=HttpClient::request('POST',$base.'/v1/interactions',$payload,['x-goog-api-key: '.$key,'Content-Type: application/json'],90);
+        if(($res['status']??0)<200||($res['status']??0)>=300) throw new \RuntimeException('Gemini Interactions HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,500));
+        $body=$res['json']??[]; $text='';
+        foreach(($body['steps']??[]) as $step) foreach(($step['content']??[]) as $part) if(is_array($part)&&($part['type']??'')==='text') $text.=(string)($part['text']??'');
         if(trim($text)==='') throw new \RuntimeException('Gemini Interactions returned empty content');
         return ['text'=>trim($text),'provider'=>'gemini','model'=>$model,'mode'=>'interactions'];
     }
