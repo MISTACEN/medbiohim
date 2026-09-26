@@ -269,6 +269,18 @@ return static function (Router $r): void {
         }catch(Throwable $e){Response::error('TRAINING_ERROR',$e->getMessage(),$q->requestId,503);}
     });
 
+    $r->post('/api/v1/trainings/{id}/cancel', static function (Request $q, array $p): void {
+        if (!RequireAuth::handle($q)) return;
+        try {
+            $db=Connection::pdo();
+            $u=$db->prepare("UPDATE public.trainings SET status='cancelled',updated_at=now() WHERE id=:id AND user_id=:uid RETURNING id,status");
+            $u->execute(['id'=>(string)$p['id'],'uid'=>$q->user->id]);
+            $row=$u->fetch();
+            if(!$row){Response::error('NOT_FOUND','Training not found',$q->requestId,404);return;}
+            Response::success(['training'=>$row],$q->requestId);
+        } catch(Throwable $e) { Response::error('TRAINING_ERROR',$e->getMessage(),$q->requestId,503); }
+    });
+
     $r->post('/api/v1/trainings/{id}/complete', static function (Request $q, array $p): void {
         if (!RequireAuth::handle($q)) return;
         try{
