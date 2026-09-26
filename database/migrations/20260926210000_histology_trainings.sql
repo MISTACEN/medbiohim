@@ -25,6 +25,7 @@ create table if not exists public.training_answers (
   "order" integer not null,
   user_answer text,
   is_correct boolean,
+  is_skipped boolean not null default false,
   options jsonb not null default '[]'::jsonb,
   question_snapshot jsonb not null default '{}'::jsonb,
   answered_at timestamptz,
