@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-use MedbiohimHttpRequest;
-use MedbiohimHttpResponse;
-use MedbiohimHttpRouter;
-use MedbiohimMiddlewareRequireAuth;
-use MedbiohimSupportConnection;
+use Medbiohim\Http\Request;
+use Medbiohim\Http\Response;
+use Medbiohim\Http\Router;
+use Medbiohim\Middleware\RequireAuth;
+use Medbiohim\Support\Connection;
 
 return static function (Router $r): void {
     $loadCards = static function (Request $q): array {
