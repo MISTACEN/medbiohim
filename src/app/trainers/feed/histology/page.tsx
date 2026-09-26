@@ -2,315 +2,167 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, SkipForward, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Menu, RefreshCw, SkipForward, X } from "lucide-react";
+import { getTrainerImageUrl, retryTrainerImage } from "@/lib/api";
 import {
-  createSession,
-  getTrainerImageUrl,
-  prefetchTrainerImages,
-  listSessions,
-  updateSession,
-} from "@/lib/api";
-import { listTrainerFeed, submitTrainerAnswer, type TrainerCard } from "@/lib/content-api";
+  answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
+  getTraining, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
+  type TrainingLabelMode, type TrainingLayout, type TrainingQuestion,
+} from "@/lib/content-api";
 
-type Mode = "all" | "preparation" | "electronogram" | "electronogram_label";
-type Experience = "study" | "prepare" | "exam";
-
-const shuffle = <T,>(a: T[]): T[] => {
-  const x = [...a];
-  for (let i = x.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [x[i], x[j]] = [x[j], x[i]];
-  }
-  return x;
+type AnswerRow = {
+  id: string; question_id: string; order: number; user_answer?: string | null;
+  is_correct?: boolean | null; is_skipped?: boolean; options: Array<{id:string;label:string;correct?:boolean}>;
+  question_snapshot: TrainingQuestion; review_snapshot?: any;
 };
 
+const topicNames: Record<string,string> = {
+  mbh:"МБХ", electronogram:"Электронограммы", identify:"Определение препарата",
+  stom_mbh:"Стом. гистология", orofacial:"Орофациальная область", histology:"Гистология",
+};
+const topicLabel=(x:string)=>topicNames[x] || x.replaceAll("_"," ");
+
+function ImageBox({id}:{id:string}) {
+  const [src,setSrc]=useState<string|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [retrying,setRetrying]=useState(false);
+  const load=async(retry=false)=>{
+    setLoading(true);
+    const u=retry?await retryTrainerImage(id):await getTrainerImageUrl(id);
+    setSrc(u); setLoading(false); setRetrying(false);
+  };
+  useEffect(()=>{let ok=true; setLoading(true); void getTrainerImageUrl(id).then(u=>{if(ok){setSrc(u);setLoading(false)}}); return()=>{ok=false}},[id]);
+  if(loading)return <div className="flex min-h-[300px] items-center justify-center bg-slate-100 text-sm text-slate-500"><RefreshCw className="mr-2 h-4 w-4 animate-spin"/>Загрузка изображения…</div>;
+  if(!src)return <div className="flex min-h-[300px] flex-col items-center justify-center bg-slate-100 p-6 text-center"><span className="text-4xl">?</span><b className="mt-2">Изображение временно недоступно</b><button disabled={retrying} onClick={()=>{setRetrying(true);void load(true)}} className="mt-3 rounded-xl border bg-white px-4 py-2 text-sm font-semibold"><RefreshCw className="mr-2 inline h-4 w-4"/>Повторить</button></div>;
+  return <img src={src} onError={()=>setSrc(null)} className="max-h-[650px] min-h-[300px] w-full bg-slate-100 object-contain" alt="Гистологический препарат" draggable={false}/>;
+}
+
+function Dots({answers,current,onSelect}:{answers:AnswerRow[];current:number;onSelect:(n:number)=>void}) {
+  return <div className="flex flex-wrap gap-1.5">{answers.map((a,i)=>{
+    const cls=a.is_correct===true?"bg-emerald-500 text-white":a.is_correct===false?"bg-rose-500 text-white":a.is_skipped?"bg-slate-300":"border bg-white";
+    return <button key={a.id} onClick={()=>onSelect(i)} className={"h-8 min-w-8 rounded-full px-2 text-xs font-bold "+(i===current&&!a.is_correct&&!a.is_skipped?" ring-2 ring-indigo-300 ":"")+cls}>{i+1}</button>;
+  })}</div>;
+}
+
 export default function HistologyTrainerPage() {
-  const [cards, setCards] = useState<TrainerCard[]>([]);
-  const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [result, setResult] = useState<boolean | null>(null);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState(Date.now());
-  const [mode, setMode] = useState<Mode>("all");
-  const [experience, setExperience] = useState<Experience>("prepare");
-  const [questionCount, setQuestionCount] = useState(20);
-  const [practiceCards, setPracticeCards] = useState<TrainerCard[]>([]);
-  const [examCards, setExamCards] = useState<TrainerCard[]>([]);
-  const [examAnswers, setExamAnswers] = useState<Record<string, { optionId: string; correct: boolean }>>({});
-  const [examFinished, setExamFinished] = useState(false);
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [topics,setTopics]=useState<string[]>([]);
+  const [resume,setResume]=useState<Training|null>(null);
+  const [training,setTraining]=useState<Training|null>(null);
+  const [answers,setAnswers]=useState<AnswerRow[]>([]);
+  const [active,setActive]=useState(0);
+  const [setup,setSetup]=useState(true);
+  const [result,setResult]=useState<any>(null);
+  const [review,setReview]=useState(false);
+  const [error,setError]=useState<string|null>(null);
+  const [working,setWorking]=useState(false);
+  const [mobileList,setMobileList]=useState(false);
+  const [selectedTopics,setSelectedTopics]=useState<string[]>([]);
+  const [contentType,setContentType]=useState<TrainingContentType>("all");
+  const [count,setCount]=useState("20");
+  const [custom,setCustom]=useState("");
+  const [allQuestions,setAllQuestions]=useState(false);
+  const [labelMode,setLabelMode]=useState<TrainingLabelMode>("without");
+  const [layout,setLayout]=useState<TrainingLayout>("top");
+  const [loading,setLoading]=useState(true);
 
-  useEffect(() => {
-    void listTrainerFeed("histology", "mbh", 500).then((r) => {
-      if (!r.ok) {
-        setError(r.error.message);
-        setLoading(false);
-        return;
-      }
-      setCards(r.data.items || []);
+  useEffect(()=>{
+    Promise.all([listTrainerFeed("histology","mbh",500),listTrainings("in_progress")]).then(([feed,s])=>{
+      if(feed.ok)setTopics(Array.from(new Set(feed.data.items.flatMap((x:any)=>Array.isArray(x.tags)?x.tags:[]))).sort());
+      if(s.ok)setResume(s.data.items.find((x:Training)=>x.status==="in_progress")||null);
       setLoading(false);
-    });
-  }, []);
+    }).catch(()=>setLoading(false));
+  },[]);
 
-  const base = useMemo(() => {
-    let a = mode === "all" ? cards : cards.filter((c) => c.mode_set === mode);
-    const shuffled = shuffle(a);
-    if (questionCount > 0 && questionCount < 500) {
-      return shuffled.slice(0, Math.min(questionCount, shuffled.length));
-    }
-    return shuffled;
-  }, [cards, mode, questionCount]);
-
-  useEffect(() => {
-    setIndex(0);
-    setSelected(null);
-    setResult(null);
-    setShowAnswer(false);
-    if (experience === "exam") {
-      setExamCards(base);
-      setExamAnswers({});
-      setExamFinished(false);
-    } else {
-      setPracticeCards(base);
-      setExamCards([]);
-    }
-    const ref = `histology:mbh:${mode}:${experience}:n${questionCount}`;
-    void (async () => {
-      const list = await listSessions("in_progress");
-      if (list.ok) {
-        const match = (list.data.items || []).find(
-          (s: any) => String(s.type) === "histology_feed" && String(s.ref_id) === ref,
-        );
-        if (match?.id) {
-          setSessionId(String(match.id));
-          setIndex(Number(match.current_index) || 0);
-          return;
-        }
-      }
-      const created = await createSession({
-        type: "histology_feed",
-        ref_id: ref,
-        title: `Гистология · ${mode} · ${experience}`,
-        current_index: 0,
-        answers: {},
-        payload: { mode, experience, questionCount, cardIds: base.map((c) => c.id) },
-      });
-      if (created.ok && (created.data as any).session?.id) {
-        setSessionId(String((created.data as any).session.id));
-      }
-    })();
-  }, [experience, base, mode, questionCount]);
-
-  const visible = experience === "exam" ? examCards : practiceCards;
-  const card: any = visible[index];
-
-  useEffect(() => {
-    let alive = true;
-    setCurrentImage(null);
-    setImageFailed(false);
-    if (!card) {
-      setImageLoading(false);
-      return;
-    }
-    setImageLoading(true);
-    void getTrainerImageUrl(card.id).then((url) => {
-      if (!alive) return;
-      setCurrentImage(url);
-      setImageFailed(!url);
-      setImageLoading(false);
-    });
-    prefetchTrainerImages([visible[index + 1]?.id, visible[index + 2]?.id]);
-    return () => {
-      alive = false;
-    };
-  }, [card?.id, index, visible]);
-
-  useEffect(() => {
-    if (!sessionId) return;
-    void updateSession(sessionId, {
-      current_index: index,
-      payload: { mode, experience, questionCount, cardIds: visible.map((c) => c.id) },
-    });
-  }, [index, sessionId]);
-
-  const options = Array.isArray(card?.question?.options) ? card.question.options : [];
-  const answered = result !== null || (experience === "exam" && !!examAnswers[card?.id]);
-
-  const reset = () => {
-    setSelected(null);
-    setResult(null);
-    setShowAnswer(false);
-    setStartedAt(Date.now());
+  const loadSession=async(id:string)=>{
+    setWorking(true); setError(null);
+    const r=await getTraining(id);
+    if(!r.ok){setError(r.error.message);setWorking(false);return;}
+    setTraining(r.data.training); setAnswers(r.data.answers); setActive(Math.min(r.data.training.current_index||0,Math.max(0,r.data.answers.length-1)));
+    setSetup(false); setResume(null); setWorking(false);
   };
 
-  async function answer(id: string) {
-    if (!card || answered) return;
-    setSelected(id);
-    const correct = options.some((o: any) => o.id === id && o.correct === true);
-    if (experience === "exam") {
-      setExamAnswers((v) => ({ ...v, [card.id]: { optionId: id, correct } }));
-      return;
-    }
-    const r = await submitTrainerAnswer({
-      card_id: card.id,
-      option_id: id,
-      time_ms: Date.now() - startedAt,
-    });
-    if (!r.ok) {
-      setError(r.error.message);
-      return;
-    }
-    setResult(r.data.correct);
-    setShowAnswer(true);
-  }
+  const start=async()=>{
+    setWorking(true);setError(null);
+    const n=allQuestions?500:Math.max(1,Number(custom||count));
+    const r=await createHistologyTraining({topics:selectedTopics,content_type:contentType,question_count:n,all_questions:allQuestions,label_mode:labelMode,layout_mode:layout});
+    if(!r.ok){setError(r.error.message);setWorking(false);return;}
+    await loadSession(r.data.training.id);
+  };
 
-  function next() {
-    setIndex((i) => (visible.length ? (i + 1) % visible.length : 0));
-    reset();
-  }
+  const answer=async(value:string|null,skip=false)=>{
+    if(!training||!answers[active]||working)return;
+    const a=answers[active]; if(a.user_answer!=null||a.is_skipped)return;
+    setWorking(true);
+    const r=await answerTrainingQuestion(training.id,a.order,value);
+    if(!r.ok){setError(r.error.message);setWorking(false);return;}
+    setAnswers(v=>v.map((x,i)=>i===active?{...x,user_answer:value,is_correct:r.data.correct,is_skipped:skip}:x));
+    setWorking(false);
+  };
 
-  async function finish() {
-    for (const c of visible) {
-      const a = examAnswers[c.id];
-      if (a) await submitTrainerAnswer({ card_id: c.id, option_id: a.optionId, time_ms: 0 });
-    }
-    setExamFinished(true);
-    if (sessionId) void updateSession(sessionId, { status: "finished" });
-  }
+  const finish=async()=>{
+    if(!training)return; setWorking(true);
+    const r=await completeTraining(training.id);
+    if(!r.ok){setError(r.error.message);setWorking(false);return;}
+    setTraining(r.data.training);setResult(r.data.stats);setWorking(false);
+  };
 
-  if (loading) return <div className="card p-6 text-sm text-slate-500">Загрузка тренажёра…</div>;
+  const restart=async()=>{
+    if(resume)await cancelTraining(resume.id);
+    setResume(null);
+  };
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:underline">
-            <ArrowLeft className="h-4 w-4" />К предметам
-          </Link>
-          <h1 className="page-title mt-3">Тренажёр препаратов и электронограмм</h1>
-          <p className="page-subtitle">Ответ по имени файла не показывается. Фото кэшируются.</p>
-        </div>
-      </header>
+  const current=answers[active];
+  const answered=answers.filter(x=>x.user_answer!=null||x.is_skipped).length;
+  const wrong=answers.filter(x=>x.is_correct===false);
+  const topicsForSetup=useMemo(()=>topics, [topics]);
 
-      {error ? (
-        <div
-          className={"rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"}
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        {(["study", "prepare", "exam"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setExperience(id)}
-            className={"rounded-xl px-3 py-2 text-sm font-semibold " + (experience === id ? "bg-indigo-600 text-white" : "border bg-white")}
-          >
-            {id === "study" ? "Изучение" : id === "prepare" ? "Подготовка" : "Экзамен"}
-          </button>
-        ))}
-        <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} className="rounded-xl border bg-white px-3 py-2 text-sm">
-          <option value="all">Все</option>
-          <option value="preparation">Микропрепараты</option>
-          <option value="electronogram">Электронограммы</option>
-        </select>
-        <select value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} className="rounded-xl border bg-white px-3 py-2 text-sm">
-          {[5, 10, 20, 30, 50, 100].map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-          <option value={500}>Все</option>
-        </select>
-        <span className="ml-auto text-xs text-slate-500">{visible.length} карточек</span>
+  const question=(a:AnswerRow,i:number,compact=false)=>{
+    const q=a.question_snapshot;
+    const answeredNow=a.user_answer!=null||a.is_skipped;
+    const manual=training?.label_mode==="manual";
+    return <article key={a.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      <div className="flex justify-between border-b bg-slate-50 px-4 py-3 text-xs text-slate-500"><span>Вопрос {i+1} / {answers.length}</span><span>{a.is_correct===true?"Верно":a.is_correct===false?"Ошибка":a.is_skipped?"Пропущен":"Не отвечен"}</span></div>
+      <ImageBox id={a.question_id}/>
+      <div className={compact?"p-4":"p-5"}>
+        {training?.label_mode==="with"&&q.preparation?.name?<div className="mb-3 rounded-xl bg-indigo-50 p-3 text-sm"><b>Препарат:</b> {String(q.preparation.name)}</div>:null}
+        <h2 className="text-xl font-bold">{q.question?.prompt||"Что изображено?"}</h2>
+        {training?.label_mode==="with"&&Array.isArray(q.preparation?.captions)&&q.preparation.captions.length?<div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs">{q.preparation.captions.join(" · ")}</div>:null}
+        {manual?<div className="mt-4"><input disabled={answeredNow} defaultValue={a.user_answer||""} id={"answer-"+a.id} placeholder="Введите ответ" className="w-full rounded-xl border px-4 py-3"/>{!answeredNow&&<button onClick={()=>{const e=document.getElementById("answer-"+a.id) as HTMLInputElement|null;void answer(e?.value.trim()||null)}} className="btn-primary mt-2">Ответить</button>}</div>:
+        <div className="mt-4 space-y-2">{a.options.map(o=>{
+          const good=answeredNow&&o.correct; const bad=answeredNow&&a.user_answer===o.id&&!o.correct;
+          return <button key={o.id} disabled={answeredNow||working} onClick={()=>void answer(o.id)} className={"flex w-full items-center gap-3 rounded-xl border p-3 text-left "+(good?"border-emerald-400 bg-emerald-50":bad?"border-rose-400 bg-rose-50":"hover:bg-slate-50")}>{good?<Check className="h-4 w-4"/>:bad?<X className="h-4 w-4"/>:<span className="h-4 w-4 rounded-full border"/>}{o.label}</button>;
+        })}</div>}
+        {!answeredNow&&<div className="mt-4 flex gap-2"><button disabled={working} onClick={()=>void answer(null,true)} className="rounded-xl border px-3 py-2 text-sm"><SkipForward className="mr-1 inline h-4 w-4"/>Пропустить</button><button disabled={working} onClick={()=>void answer(null,true)} className="rounded-xl border px-3 py-2 text-sm">Я не знаю</button></div>}
+        {answeredNow&&training?.label_mode==="with"&&q.question?.explanation?<div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">{q.question.explanation}</div>:null}
       </div>
+    </article>;
+  };
 
-      {!card ? (
-        <div className="card p-8 text-center text-sm text-slate-500">Карточки пока недоступны.</div>
-      ) : examFinished ? (
-        <div className="card p-6">
-          <h2 className="text-2xl font-bold">Экзамен завершён</h2>
-          <p className="mt-2">Правильно: {Object.values(examAnswers).filter((x) => x.correct).length} / {visible.length}</p>
-          <button type="button" className="btn-primary mt-5" onClick={() => setExperience("exam")} >Ещё раз</button>
-        </div>
-      ) : (
-        <div className="card overflow-hidden">
-          <div className="flex justify-between border-b bg-slate-50 px-5 py-3 text-xs text-slate-500">
-            <span>Карточка {index + 1} / {visible.length}</span>
-            <span>МБХ</span>
-          </div>
-          <div className="grid lg:grid-cols-[1.15fr_.85fr]">
-            <div className="relative flex min-h-[360px] items-center justify-center bg-slate-100">
-              {currentImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentImage} alt="Гистологический препарат" className="h-full min-h-[360px] w-full object-contain" draggable={false} />
-              ) : imageLoading ? (
-                <div className="flex flex-col items-center gap-3 p-6 text-sm text-slate-500">
-                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
-                  <span>Загрузка фото…</span>
-                </div>
-              ) : (
-                <div className="p-6 text-center text-sm text-slate-500">
-                  <b>{imageFailed ? "Изображение временно недоступно" : "Фото ещё не загружено"}</b>
-                  <div className="mt-2 text-xs text-slate-400">Название файла не показывается — определите препарат по снимку.</div>
-                </div>
-              )}
-            </div>
-            <div className="space-y-4 p-5">
-              <h2 className="text-xl font-bold">
-                {card.mode_set === "preparation" ? "Какой это препарат?" : card.question?.prompt || "Что изображено?"}
-              </h2>
-              {experience === "study" && (
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm">
-                  <b>Эталон:</b> {card.preparation?.name || options.find((o: any) => o.correct)?.label || "—"}
-                </div>
-              )}
-              <div className="space-y-2">
-                {options.map((o: any) => {
-                  const good = showAnswer && o.correct;
-                  const bad = showAnswer && selected === o.id && !o.correct;
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      disabled={answered}
-                      onClick={() => void answer(o.id)}
-                      className={
-                        "flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm " +
-                        (good ? "border-emerald-400 bg-emerald-50" : bad ? "border-rose-400 bg-rose-50" : selected === o.id ? "border-indigo-400 bg-indigo-50" : "hover:bg-slate-50")
-                      }
-                    >
-                      {good ? <Check className="h-4 w-4" /> : bad ? <X className="h-4 w-4" /> : <span className="h-4 w-4 rounded-full border" />}
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </div>
-              {showAnswer && experience === "prepare" && (
-                <div className={"rounded-xl p-4 text-sm " + (result ? "bg-emerald-50" : "bg-rose-50")}>
-                  <b>{result ? "Правильно" : "Неверно"}</b>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {!answered && experience !== "exam" && (
-                  <button type="button" onClick={next} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm">
-                    <SkipForward className="h-4 w-4" />Пропустить
-                  </button>
-                )}
-                {answered && <button type="button" onClick={next} className="btn-primary">Следующая</button>}
-                {experience === "exam" && index === visible.length - 1 && Object.keys(examAnswers).length === visible.length && (
-                  <button type="button" onClick={() => void finish()} className="btn-primary">Завершить</button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  if(loading)return <div className="card p-8 text-sm text-slate-500">Загрузка тренажёра…</div>;
+
+  if(setup&&!training)return <div className="mx-auto max-w-6xl space-y-5">
+    <header><Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4"/>К предметам</Link><h1 className="page-title mt-3">Тренажёр препаратов и электронограмм</h1><p className="page-subtitle">Создайте вариант и продолжайте его позже.</p></header>
+    {resume&&<section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5"><b className="text-lg">У вас есть незавершённая тренировка</b><p className="mt-1 text-sm text-slate-600">{resume.current_index+1} из {resume.total_questions}</p><div className="mt-3 flex gap-2"><button disabled={working} onClick={()=>void loadSession(resume.id)} className="btn-primary">Продолжить</button><button disabled={working} onClick={()=>void restart()} className="rounded-xl border bg-white px-4 py-2">Начать заново</button></div></section>}
+    {error&&<div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+    <section className="card space-y-6 p-5">
+      <div><h2 className="font-bold">Темы</h2><div className="mt-3 flex flex-wrap gap-2"><button onClick={()=>setSelectedTopics(selectedTopics.length===topicsForSetup.length?[]:topicsForSetup)} className="rounded-xl border px-3 py-2 text-sm font-semibold">Выбрать все</button>{topicsForSetup.map(t=><label key={t} className={"rounded-xl border px-3 py-2 text-sm "+(selectedTopics.includes(t)?"border-indigo-400 bg-indigo-50":"")}><input type="checkbox" className="mr-2" checked={selectedTopics.includes(t)} onChange={e=>setSelectedTopics(e.target.checked?[...selectedTopics,t]:selectedTopics.filter(x=>x!==t))}/>{topicLabel(t)}</label>)}</div></div>
+      <div><h2 className="font-bold">Тип контента</h2><div className="mt-3 flex flex-wrap gap-2">{([["all","Всё вместе"],["preparation","Микропрепараты"],["electronogram","Электронограммы"]] as [TrainingContentType,string][]).map(x=><label key={x[0]} className={"rounded-xl border px-4 py-3 "+(contentType===x[0]?"border-indigo-400 bg-indigo-50":"")}><input type="radio" className="mr-2" checked={contentType===x[0]} onChange={()=>setContentType(x[0])}/>{x[1]}</label>)}</div></div>
+      <div><h2 className="font-bold">Количество</h2><div className="mt-3 flex flex-wrap items-center gap-2">{["10","20","50"].map(n=><label key={n} className="rounded-xl border px-4 py-3"><input type="radio" className="mr-2" checked={!custom&&!allQuestions&&count===n} onChange={()=>{setCount(n);setCustom("");setAllQuestions(false)}}/>{n}</label>)}<input type="number" min="1" max="500" value={custom} onChange={e=>{setCustom(e.target.value);setAllQuestions(false)}} placeholder="Своё количество" className="w-36 rounded-xl border px-3 py-3"/><label className="rounded-xl border px-4 py-3"><input type="checkbox" className="mr-2" checked={allQuestions} onChange={e=>setAllQuestions(e.target.checked)}/>Все вопросы</label></div></div>
+      <div><h2 className="font-bold">Режим подписей</h2><div className="mt-3 grid gap-2 md:grid-cols-3">{([["with","С подписями"],["without","Без подписей"],["manual","Ручной ввод"]] as [TrainingLabelMode,string][]).map(x=><label key={x[0]} className={"rounded-2xl border p-4 "+(labelMode===x[0]?"border-indigo-400 bg-indigo-50":"")}><input type="radio" className="mr-2" checked={labelMode===x[0]} onChange={()=>setLabelMode(x[0])}/><b>{x[1]}</b></label>)}</div></div>
+      <div><h2 className="font-bold">Формат отображения</h2><div className="mt-3 flex flex-wrap gap-2">{([["sidebar","Сайдбар"],["list","Списком"],["top","Верхняя пагинация"]] as [TrainingLayout,string][]).map(x=><label key={x[0]} className={"rounded-xl border px-4 py-3 "+(layout===x[0]?"border-indigo-400 bg-indigo-50":"")}><input type="radio" className="mr-2" checked={layout===x[0]} onChange={()=>setLayout(x[0])}/>{x[1]}</label>)}</div></div>
+      <button disabled={working} onClick={()=>void start()} className="btn-primary w-full py-3">{working?"Формируем вариант…":"Сформировать вариант"}</button>
+    </section>
+  </div>;
+
+  if(result)return <div className="mx-auto max-w-5xl space-y-5"><section className="card p-6 text-center"><div className="text-sm text-slate-500">Тренировка завершена</div><h1 className="mt-2 text-4xl font-black">{result.correct}/{result.total}</h1><p className="mt-2">Правильно · {result.percent}% · Оценка {result.grade}</p><div className="mt-5 flex justify-center gap-2"><button className="btn-primary" onClick={()=>setReview(!review)}>Разбор ошибок ({wrong.length})</button><button className="rounded-xl border px-4 py-2" onClick={()=>{setResult(null);setTraining(null);setAnswers([]);setSetup(true)}}>Новая тренировка</button></div></section>{review&&wrong.map(a=>{const snap=a.review_snapshot||a.question_snapshot;const correct=a.options.find(o=>o.correct);return <article key={a.id} className="card overflow-hidden"><ImageBox id={a.question_id}/><div className="p-5"><h2 className="font-bold">{snap?.preparation?.name||snap?.question?.prompt}</h2><div className="mt-3 rounded-xl bg-emerald-50 p-3"><b>Правильный ответ:</b> {correct?.label||"—"}</div>{Array.isArray(snap?.preparation?.captions)&&snap.preparation.captions.length?<div className="mt-3 rounded-xl bg-indigo-50 p-3"><b>Подписи:</b> {snap.preparation.captions.join(" · ")}</div>:null}</div></article>})}</div>;
+
+  const finish=<div className="sticky bottom-3 z-10 mt-4 flex items-center justify-between rounded-2xl border bg-white/95 p-3 shadow-lg"><span className="text-sm text-slate-500">Решено {answered} из {answers.length}</span><button disabled={working} onClick={()=>void finish()} className="btn-primary">Завершить тест</button></div>;
+
+  return <div className="mx-auto max-w-7xl space-y-4">
+    <header className="flex items-center justify-between"><div><Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4"/>К предметам</Link><h1 className="page-title mt-2">Тренировка</h1><p className="page-subtitle">25 XP за правильный ответ</p></div><button className="rounded-xl border px-3 py-2 md:hidden" onClick={()=>setMobileList(!mobileList)}><Menu className="mr-1 inline h-4 w-4"/>Список задач</button></header>
+    {error&&<div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+    {training.layout_mode==="sidebar"?<div className="grid gap-4 lg:grid-cols-[240px_1fr]"><aside className={(mobileList?"block ":"hidden ")+"rounded-2xl border bg-white p-4 lg:block"}><Dots answers={answers} current={active} onSelect={setActive}/></aside><div>{current&&question(current,active)}<div className="mt-3 flex justify-between"><button disabled={active===0} onClick={()=>setActive(active-1)} className="rounded-xl border px-4 py-2"><ChevronLeft className="inline h-4 w-4"/>Назад</button><button disabled={active===answers.length-1} onClick={()=>setActive(active+1)} className="rounded-xl border px-4 py-2">Далее<ChevronRight className="inline h-4 w-4"/></button></div>{finish}</div></div>
+    :training.layout_mode==="list"?<div className="space-y-4">{answers.map((a,i)=>question(a,i,true))}{finish}</div>
+    :<div className="mx-auto max-w-4xl"><div className="mb-4 rounded-2xl border bg-white p-3"><Dots answers={answers} current={active} onSelect={setActive}/></div>{current&&question(current,active)}<div className="mt-3 flex justify-between"><button disabled={active===0} onClick={()=>setActive(active-1)} className="rounded-xl border px-4 py-2"><ChevronLeft className="inline h-4 w-4"/>Назад</button><button disabled={active===answers.length-1} onClick={()=>setActive(active+1)} className="rounded-xl border px-4 py-2">Далее<ChevronRight className="inline h-4 w-4"/></button></div>{finish}</div>}
+  </div>;
 }
