@@ -263,6 +263,19 @@ return static function (Router $r): void {
                 foreach($options as $option){
                     if((string)($option['id']??'')===(string)$answer){$correct=(bool)($option['correct']??false);break;}
                 }
+                if($correct===null && is_string($current['review_snapshot']??null)){
+                    $review=json_decode($current['review_snapshot'],true) ?: [];
+                    $rq=is_array($review['question']??null)?$review['question']:[];
+                    $given=mb_strtolower(trim((string)$answer));
+                    foreach(($rq['options']??[]) as $option){
+                        if(($option['correct']??false)===true){
+                            $expected=mb_strtolower(trim((string)($option['label']??'')));
+                            $norm=static fn(string $v): string => str_replace(['ё','й'],['е','и'],mb_strtolower(trim($v)));
+                            $correct=$expected!=='' && $norm($given)===$norm($expected);
+                            break;
+                        }
+                    }
+                }
             }
             $up=$db->prepare('UPDATE public.training_answers SET user_answer=:answer,is_correct=:correct,is_skipped=:skipped,answered_at=now() WHERE id=:id RETURNING *');
             $up->execute(['answer'=>$answer!==null?(string)$answer:null,'correct'=>$correct,'skipped'=>$isSkipped,'id'=>$current['id']]);
