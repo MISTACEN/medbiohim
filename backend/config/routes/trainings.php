@@ -121,10 +121,13 @@ return static function (Router $r): void {
                  FROM public.trainings t
                  LEFT JOIN public.training_answers a ON a.training_id = t.id
                  WHERE t.user_id = :uid
+                   AND (:status = '' OR t.status = :status)
                  GROUP BY t.id
                  ORDER BY t.updated_at DESC LIMIT 50'
             );
-            $stmt->execute(['uid' => $q->user->id]);
+            $status = trim((string)($q->query['status'] ?? ''));
+            if (!in_array($status, ['', 'in_progress', 'completed', 'cancelled'], true)) $status = '';
+            $stmt->execute(['uid' => $q->user->id, 'status' => $status]);
             Response::success(['items' => $stmt->fetchAll()], $q->requestId);
         } catch (Throwable $e) {
             Response::error('TRAINING_ERROR', $e->getMessage(), $q->requestId, 503);
@@ -148,7 +151,8 @@ return static function (Router $r): void {
             if (!in_array($contentType, ['all','preparation','electronogram'], true)) $contentType = 'all';
             $labelMode = (string)$q->json('label_mode', 'without');
             if (!in_array($labelMode, ['with','without','manual'], true)) $labelMode = 'without';
-            $layoutMode = (string)$q->json('layout_mode', 'top');
+            $prefs = (new \Medbiohim\Services\AccountSettingsService())->getPreferences((string)$q->user->id);
+            $layoutMode = (string)($prefs['trainer_layout'] ?? 'top');
             if (!in_array($layoutMode, ['sidebar','list','top'], true)) $layoutMode = 'top';
             $all = (bool)$q->json('all_questions', false);
             $requested = max(1, min(500, (int)$q->json('question_count', 20)));
@@ -237,7 +241,7 @@ return static function (Router $r): void {
             $a->execute(['tid'=>$training['id']]);
             $answers=$a->fetchAll();
             foreach($answers as &$row){
-                foreach(['options','question_snapshot'] as $key){
+                foreach(['options','question_snapshot','review_snapshot'] as $key){
                     if(is_string($row[$key]??null)) $row[$key]=json_decode($row[$key],true) ?: [];
                 }
             }
