@@ -175,3 +175,11 @@ export async function completeTraining(id: string) {
     { method: "POST", body: "{}" },
   );
 }
+
+
+export async function cancelTraining(id: string) {
+  return api<{ training: Training }>(`/trainings/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    body: "{}",
+  });
+}
