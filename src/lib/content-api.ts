@@ -102,3 +102,76 @@ export async function submitTrainerAnswer(payload: {
     { method: "POST", body: JSON.stringify(payload) },
   );
 }
+
+
+export type TrainingLayout = "sidebar" | "list" | "top";
+export type TrainingLabelMode = "with" | "without" | "manual";
+export type TrainingContentType = "all" | "preparation" | "electronogram";
+
+export type TrainingQuestion = {
+  id: string;
+  mode_set?: string;
+  preparation?: Record<string, unknown>;
+  question?: { prompt?: string; explanation?: string | null; allowSkip?: boolean };
+  options: Array<{ id: string; label: string; correct?: boolean }>;
+  hotspots?: unknown[];
+  tags?: string[];
+  difficulty?: number | null;
+};
+
+export type Training = {
+  id: string;
+  topics: string[];
+  content_type: TrainingContentType;
+  question_count: number;
+  label_mode: TrainingLabelMode;
+  layout_mode: TrainingLayout;
+  status: "in_progress" | "completed" | "cancelled";
+  current_index: number;
+  score?: number | null;
+  total_questions: number;
+};
+
+export async function listTrainings(status?: string) {
+  return api<{ items: Training[] }>(`/trainings${status ? `?status=${encodeURIComponent(status)}` : ""}`);
+}
+
+export async function createHistologyTraining(payload: {
+  topics: string[];
+  content_type: TrainingContentType;
+  question_count: number;
+  all_questions: boolean;
+  label_mode: TrainingLabelMode;
+  layout_mode: TrainingLayout;
+}) {
+  return api<{ training: Training; questions: TrainingQuestion[] }>("/trainings", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getTraining(id: string) {
+  return api<{ training: Training; answers: Array<{
+    id: string;
+    question_id: string;
+    order: number;
+    user_answer?: string | null;
+    is_correct?: boolean | null;
+    options: Array<{ id: string; label: string; correct?: boolean }>;
+    question_snapshot: TrainingQuestion;
+  }> }>(`/trainings/${encodeURIComponent(id)}`);
+}
+
+export async function answerTrainingQuestion(id: string, order: number, userAnswer: string | null) {
+  return api<{ answer: Record<string, unknown>; correct: boolean | null }>(
+    `/trainings/${encodeURIComponent(id)}/answer`,
+    { method: "POST", body: JSON.stringify({ order, user_answer: userAnswer }) },
+  );
+}
+
+export async function completeTraining(id: string) {
+  return api<{ training: Training; stats: { total: number; correct: number; wrong: number; skipped: number; percent: number; grade: number } }>(
+    `/trainings/${encodeURIComponent(id)}/complete`,
+    { method: "POST", body: "{}" },
+  );
+}
