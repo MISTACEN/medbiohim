@@ -308,6 +308,20 @@ final class LlmGateway
             'Authorization: Bearer ' . $key,
             'Content-Type: application/json',
         ], 90);
+        if (($res['status'] ?? 0) === 403) {
+            // Groq can deny a model because of organization/project permissions.
+            // Ask the models endpoint which production models this key can see,
+            // then retry once with an allowed model instead of failing the whole chain.
+            $fallback = self::groqAllowedFallback($key, $model, $base);
+            if ($fallback !== null) {
+                $model = $fallback;
+                $payload['model'] = $model;
+                $res = HttpClient::request('POST', $base . '/chat/completions', $payload, [
+                    'Authorization: Bearer ' . $key,
+                    'Content-Type: application/json',
+                ], 90);
+            }
+        }
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
             throw new \RuntimeException('Groq HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
         }
@@ -315,6 +329,31 @@ final class LlmGateway
         $text = (string)($body['choices'][0]['message']['content'] ?? '');
         if (trim($text) === '') throw new \RuntimeException('Groq returned empty content');
         return ['text' => trim($text), 'provider' => 'groq', 'model' => $model, 'mode' => 'api'];
+    }
+
+    private static function groqAllowedFallback(string $key, string $currentModel, string $base): ?string
+    {
+        $res = HttpClient::request('GET', $base . '/models', null, [
+            'Authorization: Bearer ' . $key,
+            'Accept: application/json',
+        ], 20);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) return null;
+        $models = $res['json']['data'] ?? [];
+        if (!is_array($models)) return null;
+        $preferred = [
+            'openai/gpt-oss-120b',
+            'openai/gpt-oss-20b',
+            'qwen/qwen3.8-27b',
+            'llama-3.3-70b-versatile',
+        ];
+        $available = [];
+        foreach ($models as $item) {
+            if (!is_array($item) || empty($item['id'])) continue;
+            $id = (string)$item['id'];
+            if ($id !== $currentModel) $available[$id] = true;
+        }
+        foreach ($preferred as $id) if (isset($available[$id])) return $id;
+        return null;
     }
 
     private static function chatGigaChat(array $messages, float $temperature): array
