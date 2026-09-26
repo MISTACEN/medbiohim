@@ -155,10 +155,15 @@ final class AccountSettingsService
         return $this->getAccount($accessToken);
     }
 
+    public function getPreferences(string $userId): array
+    {
+        return $this->loadPrefs($userId);
+    }
+
     public function savePreferences(string $userId, array $prefs): array
     {
         $current = $this->loadPrefs($userId);
-        $allowed = ['theme', 'locale', 'notify_email', 'notify_telegram', 'notify_homework', 'notify_lectures', 'media_prefer_ru'];
+        $allowed = ['theme', 'locale', 'notify_email', 'notify_telegram', 'notify_homework', 'notify_lectures', 'media_prefer_ru', 'trainer_layout'];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $prefs)) $current[$k] = $prefs[$k];
         }
@@ -171,7 +176,7 @@ final class AccountSettingsService
     {
         $defaults = [
             'theme' => 'system', 'locale' => 'ru', 'notify_email' => true, 'notify_telegram' => false,
-            'notify_homework' => true, 'notify_lectures' => true, 'media_prefer_ru' => true, 'updated_at' => null,
+            'notify_homework' => true, 'notify_lectures' => true, 'media_prefer_ru' => true, 'trainer_layout' => 'top', 'updated_at' => null,
         ];
         if ($userId === '') return $defaults;
         $path = $this->prefsPath($userId);
