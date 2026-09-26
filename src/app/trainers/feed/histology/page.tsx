@@ -89,7 +89,7 @@ export default function HistologyTrainerPage() {
   const [working, setWorking] = useState(false);
   const [mobileList, setMobileList] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [contentType, setContentType] = useState<TrainingContentType>("preparation");
+  const [contentType, setContentType] = useState<TrainingContentType>("all");
   const [count, setCount] = useState("20");
   const [custom, setCustom] = useState("");
   const [allQuestions, setAllQuestions] = useState(false);
