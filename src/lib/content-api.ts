@@ -157,8 +157,10 @@ export async function getTraining(id: string) {
     order: number;
     user_answer?: string | null;
     is_correct?: boolean | null;
+    is_skipped?: boolean;
     options: Array<{ id: string; label: string; correct?: boolean }>;
     question_snapshot: TrainingQuestion;
+    review_snapshot?: Record<string, unknown>;
   }> }>(`/trainings/${encodeURIComponent(id)}`);
 }
 
