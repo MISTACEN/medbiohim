@@ -19,6 +19,8 @@ import {
   type LinkedIdentity,
 } from "@/lib/settings-api";
 
+type TrainerLayout = "sidebar" | "list" | "top";
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, refresh } = useAuth();
