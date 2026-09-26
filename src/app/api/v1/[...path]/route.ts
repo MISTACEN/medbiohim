@@ -177,7 +177,10 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
     if (!UPSTREAM) return null;
     const origin = UPSTREAM.endsWith("/api/v1") ? UPSTREAM.slice(0, -"/api/v1".length) : UPSTREAM;
     try {
-      const media = await fetch(origin + "/api/v1/trainers/feed/" + encodeURIComponent(id) + "/image", { headers: { Accept: "image/*", Authorization: "Bearer " + token }, cache: "no-store", redirect: "follow" });
+      // preparation.imageUrl is the canonical media path. Fetch it directly so the
+      // Vercel compatibility layer also works while an older SpaceWeb trainer route
+      // still resolves source_key incorrectly.
+      const media = await fetch(origin + imageUrl, { headers: { Accept: "image/*", Authorization: "Bearer " + token }, cache: "no-store", redirect: "follow" });
       if (!media.ok) return NextResponse.json({ ok: false, error: { code: "MEDIA_NOT_FOUND", message: "Original trainer media is not available on the backend" }, requestId: "trainer-fallback" }, { status: 404 });
       const out = new NextResponse(await media.arrayBuffer(), { status: 200 });
       out.headers.set("content-type", media.headers.get("content-type") || "image/png");
