@@ -32,22 +32,52 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
   if(cached)return cached;
   const pending=trainerImageInflight.get(key);
   if(pending)return pending;
+
   const run=async()=>{
-    try{
-      let token=getToken();
-      let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"force-cache"});
-      if(res.status===401){
-        const refreshToken=getRefreshToken();
-        if(refreshToken){
-          const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});
-          if(rr.ok){try{const parsed=JSON.parse(await rr.text()) as {data?:{access_token?:string;refresh_token?:string}};if(parsed.data?.access_token){setTokens(parsed.data.access_token,parsed.data.refresh_token);token=parsed.data.access_token;res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image`,{headers:{Authorization:`Bearer ${token}`},cache:"force-cache"});}}catch{}}
+    let token=getToken();
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const bust=attempt===0?"":`?retry=${attempt}-${Date.now()}`;
+        let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image${bust}`,{
+          headers:token?{Authorization:`Bearer ${token}`}:{},
+          cache:attempt===0?"force-cache":"no-store",
+        });
+        if(res.status===401){
+          const refreshToken=getRefreshToken();
+          if(refreshToken){
+            const rr=await fetch(`${API_URL}/auth/refresh`,{
+              method:"POST",
+              headers:{"Accept":"application/json","Content-Type":"application/json"},
+              body:JSON.stringify({refresh_token:refreshToken}),
+              cache:"no-store"
+            });
+            if(rr.ok){
+              try{
+                const parsed=JSON.parse(await rr.text()) as {data?:{access_token?:string;refresh_token?:string}};
+                if(parsed.data?.access_token){
+                  setTokens(parsed.data.access_token,parsed.data.refresh_token);
+                  token=parsed.data.access_token;
+                  res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image?retry=auth-${Date.now()}`,{
+                    headers:{Authorization:`Bearer ${token}`},
+                    cache:"no-store"
+                  });
+                }
+              }catch{}
+            }
+          }
         }
-      }
-      if(!res.ok)return null;
-      const url=URL.createObjectURL(await res.blob());
-      trainerImageCache.set(key,url);
-      return url;
-    }catch{return null}
+        if(res.ok){
+          const blob=await res.blob();
+          if(blob.size>0){
+            const url=URL.createObjectURL(blob);
+            trainerImageCache.set(key,url);
+            return url;
+          }
+        }
+      }catch{}
+      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));
+    }
+    return null;
   };
   const promise=run().finally(()=>{trainerImageInflight.delete(key);});
   trainerImageInflight.set(key,promise);
