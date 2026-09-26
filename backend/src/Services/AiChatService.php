@@ -106,7 +106,7 @@ final class AiChatService
     private function normalizeProvider(string $provider): string
     {
         $provider=strtolower(trim($provider));
-        return in_array($provider,['auto','gigachat','gemini'],true) ? $provider : 'auto';
+        return in_array($provider,['auto','groq','gigachat','gemini','mistral','openrouter'],true) ? $provider : 'auto';
     }
 
     private function cleanTitle(string $title): string
