@@ -322,8 +322,8 @@ final class LlmGateway
                 'configured' => (bool)(Env::get('OPENROUTER_API_KEY') && Env::get('OPENROUTER_MODEL')),
                 'model' => Env::get('OPENROUTER_MODEL', ''),
             ],
+            ],
             'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq'),
-        ],
         ];
         foreach ($status['providers'] as $name => &$item) {
             $item['available'] = (bool)$item['configured'] && !self::isRegionBlocked($name);
