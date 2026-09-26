@@ -466,6 +466,8 @@ final class LlmGateway
     {
         // Gemini is executed by the Vercel proxy so the Google API sees the
         // Vercel region, while GEMINI_API_KEY never leaves Vercel.
+        // Vision is supported by passing content parts through to the Vercel proxy.
+        // Each message may contain content: [{type:text,text:...},{type:image_url,image_url:{url:...}}].
         $proxy = trim((string)(Env::get('GEMINI_VERCEL_PROXY_URL', '') ?? ''));
         $secret = trim((string)(Env::get('GEMINI_VERCEL_PROXY_SECRET', '') ?? ''));
         if ($proxy !== '' && $secret !== '') {
