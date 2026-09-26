@@ -46,10 +46,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  /** Старые пункты меню → Предметы. */
+  /** Старые пункты меню → Предметы; учебный план имеет собственную страницу. */
   async redirects() {
     return [
-      { source: "/curriculum", destination: "/subjects", permanent: false },
       { source: "/tests", destination: "/subjects", permanent: false },
       { source: "/trainers", destination: "/subjects", permanent: false },
     ];
