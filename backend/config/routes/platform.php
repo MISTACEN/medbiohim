@@ -405,6 +405,17 @@ return static function (Router $router): void {
             $root = rtrim((string) (getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology')), '/');
             $path = realpath($root . '/' . $relative);
             $rootReal = realpath($root);
+
+            // Older trainer cards stored photo paths without the "photos/" segment,
+            // while the canonical media installer deploys them under
+            // content/histology/photos/5_Фотографии препаратов/...
+            // Keep both representations readable so existing Supabase cards do not
+            // need a destructive data rewrite.
+            if ($path === false && str_starts_with($relative, '5_Фотографии препаратов/')) {
+                $legacyPhotoPath = $root . '/photos/' . $relative;
+                $path = realpath($legacyPhotoPath);
+            }
+
             if ($rootReal === false || $path === false || !str_starts_with($path, $rootReal . DIRECTORY_SEPARATOR) || !is_file($path)) {
                 Response::error('MEDIA_NOT_FOUND', 'Original media is not deployed on the backend yet', $req->requestId, 404);
                 return;
