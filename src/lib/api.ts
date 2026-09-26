@@ -83,6 +83,14 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
   trainerImageInflight.set(key,promise);
   return promise;
 }
+export async function retryTrainerImage(id:string):Promise<string|null>{
+  if(typeof window==="undefined")return null;
+  const key=String(id);
+  const old=trainerImageCache.get(key);
+  if(old){try{URL.revokeObjectURL(old);}catch{} trainerImageCache.delete(key);}
+  trainerImageInflight.delete(key);
+  return getTrainerImageUrl(key);
+}
 export function prefetchTrainerImages(ids:(string|null|undefined)[]):void{
   if(typeof window==="undefined")return;
   for(const id of ids){if(!id)continue;const key=String(id);if(trainerImageCache.has(key)||trainerImageInflight.has(key))continue;void getTrainerImageUrl(key);}
