@@ -321,13 +321,22 @@ final class LlmGateway
     {
         $base = rtrim((string)(Env::get('GIGACHAT_BASE_URL', 'https://api.giga.chat/v1') ?? 'https://api.giga.chat/v1'), '/');
         $model = (string)(Env::get('GIGACHAT_MODEL', 'GigaChat') ?? 'GigaChat');
-        $token = trim((string)(Env::get('GIGACHAT_ACCESS_TOKEN', '') ?? ''));
-        if ($token === '') $token = self::gigaAccessToken();
-        $payload = ['model'=>$model,'temperature'=>$temperature,'messages'=>$messages];
-        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, [
+        // Access tokens are short-lived (about 30 minutes). Prefer a freshly
+        // cached token obtained from the authorization key and refresh on 401.
+        $token = self::gigaAccessToken();
+        $payload = ['model'=>$model,'temperature'=>$temperature,'messages'=>self::normalizeTextMessages($messages)];
+        $headers = [
             'Authorization: Bearer ' . $token,
             'Content-Type: application/json',
-        ], 90);
+            'Accept: application/json',
+            'User-Agent: MEDBIOHIM/1.0',
+        ];
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) === 401) {
+            $token = self::gigaAccessToken(true);
+            $headers[0] = 'Authorization: Bearer ' . $token;
+            $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        }
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
             throw new \RuntimeException('GigaChat HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,300));
         }
@@ -337,21 +346,26 @@ final class LlmGateway
         return ['text'=>trim($text),'provider'=>'gigachat','model'=>$model,'mode'=>'api'];
     }
 
-    private static function gigaAccessToken(): string
+    private static function gigaAccessToken(bool $forceRefresh = false): string
     {
         $credential = trim((string)(Env::get('GIGACHAT_CREDENTIALS') ?: Env::get('GIGACHAT_AUTH_KEY') ?: Env::get('LLM_PRIMARY_API_KEY') ?: ''));
-        if ($credential === '') throw new \RuntimeException('GigaChat credentials are not configured');
+        if ($credential === '') {
+            $static = trim((string)(Env::get('GIGACHAT_ACCESS_TOKEN', '') ?? ''));
+            if ($static !== '') return $static;
+            throw new \RuntimeException('GigaChat credentials are not configured');
+        }
         $scope = (string)(Env::get('GIGACHAT_SCOPE', 'GIGACHAT_API_PERS') ?? 'GIGACHAT_API_PERS');
         $cache = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'medbiohim_gigachat_' . sha1($credential) . '.json';
-        if (is_readable($cache)) {
+        if (!$forceRefresh && is_readable($cache)) {
             $cached=json_decode((string)@file_get_contents($cache),true);
-            if (is_array($cached) && !empty($cached['access_token']) && (int)($cached['expires_at'] ?? 0) > time()+60) return (string)$cached['access_token'];
+            if (is_array($cached) && !empty($cached['access_token']) && (int)($cached['expires_at'] ?? 0) > time()+120) return (string)$cached['access_token'];
         }
         $rquid = self::uuid4();
         $res = HttpClient::form('POST', 'https://ngw.devices.sberbank.ru:9443/api/v2/oauth', ['scope'=>$scope], [
             'RqUID: ' . $rquid,
             'Authorization: Basic ' . $credential,
             'Accept: application/json',
+            'User-Agent: MEDBIOHIM/1.0',
         ], 20);
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
             throw new \RuntimeException('GigaChat OAuth HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,500));
