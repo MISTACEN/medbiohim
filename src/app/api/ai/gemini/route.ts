@@ -31,27 +31,57 @@ export async function POST(req: NextRequest) {
     }
 
     // Accept both plain text and multimodal content parts.
-    const parts = Array.isArray(raw)
-      ? raw.flatMap((part: any) => {
-          if (part?.type === "text") return [{ type: "text", text: String(part.text || "") }];
-          if (part?.type === "image_url") {
-            const url = typeof part?.image_url === "string" ? part.image_url : String(part?.image_url?.url || "");
-            if (url.startsWith("data:")) {
-              const match = url.match(/^data:([^;]+);base64,(.+)$/);
-              if (match) return [{ type: "image", mime_type: match[1], data: match[2] }];
+    // This must be an explicit async loop: Array.flatMap() does not await async callbacks.
+    const parts: any[] = [];
+
+    if (Array.isArray(raw)) {
+      for (const part of raw) {
+        if (part?.type === "text") {
+          parts.push({ type: "text", text: String(part.text || "") });
+          continue;
+        }
+
+        if (part?.type === "image_url") {
+          const url =
+            typeof part?.image_url === "string"
+              ? part.image_url
+              : String(part?.image_url?.url || "");
+
+          if (url.startsWith("data:")) {
+            const match = url.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              parts.push({
+                type: "image",
+                mime_type: match[1],
+                data: match[2],
+              });
             }
-            if (url) {
+            continue;
+          }
+
+          if (url) {
+            try {
               const imageResponse = await fetch(url);
               if (imageResponse.ok) {
-                const mime = imageResponse.headers.get("content-type") || "image/jpeg";
+                const mime =
+                  imageResponse.headers.get("content-type") || "image/jpeg";
                 const bytes = Buffer.from(await imageResponse.arrayBuffer());
-                return [{ type: "image", mime_type: mime, data: bytes.toString("base64") }];
+
+                parts.push({
+                  type: "image",
+                  mime_type: mime,
+                  data: bytes.toString("base64"),
+                });
               }
+            } catch {
+              // Ignore an unreachable remote image and continue processing the message.
             }
           }
-          return [];
-        })
-      : [{ type: "text", text: String(raw || "") }];
+        }
+      }
+    } else {
+      parts.push({ type: "text", text: String(raw || "") });
+    }
 
     input.push({
       type: role === "assistant" ? "model_output" : "user_input",
