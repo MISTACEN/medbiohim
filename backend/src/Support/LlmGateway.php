@@ -144,6 +144,9 @@ final class LlmGateway
             }
             throw new \RuntimeException('AI providers unavailable: ' . implode(' | ', $errors));
         }
+        if (self::isRegionBlocked($provider)) {
+            throw new \RuntimeException(self::regionBlockReason($provider));
+        }
         if ($provider === 'gigachat' || $provider === 'giga') {
             return self::chatGigaChat($messages, $temperature);
         }
@@ -270,9 +273,35 @@ final class LlmGateway
         return ['text' => trim($text), 'provider' => 'gemini', 'model' => $model, 'mode' => 'api'];
     }
 
+    private static function backendRegion(): string
+    {
+        return strtolower(trim((string)(Env::get('AI_BACKEND_REGION', 'ru') ?? 'ru')));
+    }
+
+    private static function isRegionBlocked(string $provider): bool
+    {
+        $region = self::backendRegion();
+        // SpaceWeb production is in Russia. Google Gemini API/AI Studio performs
+        // supported-region checks against the request origin, so do not advertise
+        // Gemini as usable from a RU backend. This is configurable if the backend moves.
+        if ($region === 'ru' && in_array($provider, ['gemini', 'google'], true)) return true;
+        return false;
+    }
+
+    private static function regionBlockReason(string $provider): string
+    {
+        if (self::backendRegion() === 'ru' && in_array($provider, ['gemini', 'google'], true)) {
+            return 'Gemini недоступен из региона backend (RU): запрос выполняется с российского SpaceWeb-сервера. Переместите backend в поддерживаемый регион или выберите другой AI provider.';
+        }
+        return $provider . ' недоступен из региона backend';
+    }
+
     public static function chatProvidersStatus(): array
     {
-        return [
+        $region = self::backendRegion();
+        $status = [
+            'region' => $region,
+            'providers' => [
             'groq' => [
                 'configured' => (bool)Env::get('GROQ_API_KEY'),
                 'model' => Env::get('GROQ_MODEL', 'openai/gpt-oss-20b'),
@@ -294,7 +323,14 @@ final class LlmGateway
                 'model' => Env::get('OPENROUTER_MODEL', ''),
             ],
             'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq'),
+        ],
         ];
+        foreach ($status['providers'] as $name => &$item) {
+            $item['available'] = (bool)$item['configured'] && !self::isRegionBlocked($name);
+            $item['reason'] = self::isRegionBlocked($name) ? self::regionBlockReason($name) : null;
+        }
+        unset($item);
+        return $status;
     }
 
     private static function chatGroq(array $messages, float $temperature): array
