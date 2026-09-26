@@ -143,7 +143,6 @@ export async function createHistologyTraining(payload: {
   question_count: number;
   all_questions: boolean;
   label_mode: TrainingLabelMode;
-  layout_mode: TrainingLayout;
 }) {
   return api<{ training: Training; questions: TrainingQuestion[] }>("/trainings", {
     method: "POST",
