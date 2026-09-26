@@ -346,7 +346,7 @@ return static function (Router $router): void {
 
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT source_key, source_file_id, specialty_slug
+                'SELECT source_key, source_file_id, specialty_slug, preparation
                  FROM public.trainer_feed_cards
                  WHERE id = :id AND is_published = true
                  LIMIT 1'
@@ -384,7 +384,15 @@ return static function (Router $router): void {
                 }
             }
 
-            $relative = ltrim(str_replace('\\', '/', (string) ($row['source_key'] ?? '')), '/');
+            // Trainer cards store the canonical deployed media path in preparation.imageUrl.
+            // source_key is an opaque content identifier and must not be treated as a filesystem path.
+            $preparation = [];
+            if (isset($row['preparation'])) {
+                $decoded = json_decode((string) $row['preparation'], true);
+                if (is_array($decoded)) $preparation = $decoded;
+            }
+            $imageUrl = is_string($preparation['imageUrl'] ?? null) ? trim($preparation['imageUrl']) : '';
+            $relative = ltrim(str_replace('\\', '/', $imageUrl), '/');
             $relative = preg_replace('#^content/histology/#', '', $relative) ?? $relative;
             if ($relative === '' || str_contains($relative, '..')) {
                 Response::error('MEDIA_INVALID', 'Invalid media path', $req->requestId, 422);
