@@ -140,7 +140,11 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     semester: String(sem),
   }).toString();
   const subjectBanks = banks.filter((b) => /гистол/i.test(b.subject || "") || b.subject_slug === slug);
-  const subjectTests = tests.filter((t) => !t.subject_id || t.subject_id === subject?.id);
+  const subjectTests = tests.filter((t) => {
+    if (!t.subject_id || t.subject_id === subject?.id) return true;
+    if (histology && (t.subject_id === "histology" || /цитолог|эмбриолог|гистолог/i.test(String(t.title || t.name || "")))) return true;
+    return false;
+  });
 
   const nav: { id: TabId; label: string; Icon: ComponentType<{ className?: string }> }[] = [
     { id: "plan", label: "Учебный план", Icon: GraduationCap },
@@ -253,9 +257,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                   <details key={m.id || i} className="rounded-xl border" open={i === 0}>
                     <summary className="cursor-pointer px-4 py-3 font-semibold">{m.title || "Модуль " + (i + 1)}</summary>
                     <div className="border-t px-4 py-2 text-sm">
-                      {(m.topics || []).map((t, j) => (
-                        <div key={t.id || j} className="border-b py-2 last:border-0">
-                          {t.title}
+                      {(m.topics || []).map((tp, j) => (
+                        <div key={tp.id || j} className="border-b py-2 last:border-0">
+                          {tp.title}
                         </div>
                       ))}
                     </div>
@@ -291,26 +295,38 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
 
         {tab === "tests" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Тесты</h2>
-            <p className="mt-1 text-sm text-slate-500">Выбор темы, источника, режима и количества случайных вопросов.</p>
+          <section className="card space-y-4 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold">Тесты</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {histology
+                    ? "Закрытые тесты по цитологии и эмбриологии + банк предмета."
+                    : "Выбор темы, источника, режима и количества случайных вопросов."}
+                </p>
+              </div>
+              <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/tests"} className="btn-primary inline-flex shrink-0">
+                Открыть раздел тестов
+              </Link>
+            </div>
             {subjectTests.length > 0 ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {subjectTests.map((t) => (
-                  <div key={t.id} className="rounded-xl border p-4">
+                  <Link
+                    key={t.id}
+                    href={"/tests/preparation/" + encodeURIComponent(t.id) + "?mode=solve&count=20"}
+                    className="rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
+                  >
                     <div className="font-semibold">{t.title || t.name || "Тест"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов</div>
-                  </div>
+                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов · нажмите, чтобы начать</div>
+                  </Link>
                 ))}
               </div>
             ) : (
-              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Тесты для этого предмета пока не подключены.
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Тесты для этого предмета пока не подключены. После импорта SQL они появятся здесь.
               </p>
             )}
-            <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/tests"} className="btn-primary mt-4 inline-flex">
-              Открыть тесты
-            </Link>
           </section>
         )}
 
@@ -412,16 +428,15 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 <b className="text-2xl">{materials.length}</b>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {subjectTests.map((t) => (
-                <Link key={t.id} href={"/tests/" + t.id} className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50">
-                  {t.title || t.name || "Тест"} · {t.questions_count || 0} вопросов
-                </Link>
-              ))}
-            </div>
-            <Link href={"/progress?" + query} className="btn-primary mt-4 inline-flex">
-              Открыть подробный прогресс
-            </Link>
+            {tests.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {tests.slice(0, 6).map((t) => (
+                  <Link key={t.id} href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50">
+                    {t.title || t.name || "Тест"} · {t.questions_count || 0} вопросов
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
         )}
       </div>
