@@ -6,6 +6,7 @@ import { BookOpen, Brain, ChevronLeft, FileQuestion, FolderOpen, GraduationCap, 
 import { getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
+import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 
 type Subject = {
   id: string;
@@ -368,13 +369,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
         {tab === "trainer" && (
           histology ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <iframe
-                src="/trainers/feed/histology?embed=1"
-                title="Микропрепараты"
-                className="block h-[min(90vh,1200px)] w-full border-0"
-              />
-            </div>
+            <HistologyTrainer embedded />
           ) : (
             <section className="card p-5">
               <h2 className="text-lg font-bold">Микропрепараты</h2>
