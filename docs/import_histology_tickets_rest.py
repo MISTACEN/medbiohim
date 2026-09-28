@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-"""Apply histology ticket questions to Supabase REST.
-Usage: SUPABASE_URL=... SUPABASE_SERVICE_KEY=... python3 docs/import_histology_tickets_rest.py
-Reads docs/histology-import/questions-part*.json
+"""Import histology exam_questions into Supabase REST.
+
+Usage:
+  SUPABASE_URL=... SUPABASE_SERVICE_KEY=... python3 docs/import_histology_tickets_rest.py
+
+Reads (in order):
+  docs/histology-import/slim01.json ... slim10.json
+  or docs/histology-import/questions-part*.json
+
+Does NOT insert ticket_banks (live DB uses UUID ids; 5 banks already exist).
+Questions attach to banks via subject_slug=histology.
 """
 import json, os, sys, urllib.request
 from pathlib import Path
@@ -28,16 +36,11 @@ def req(method, path, body=None):
     with urllib.request.urlopen(r) as resp:
         return resp.status
 
-banks = [
-  {"id":"bank-histology-lech-ped","subject_name":"Гистология, цитология","subject_slug":"histology","title":"Билеты — Гистология (леч./пед.)","mode":"exam"},
-  {"id":"bank-histology-stom","subject_name":"Гистология, цитология","subject_slug":"histology","title":"Билеты — Гистология (стом.)","mode":"exam"},
-  {"id":"bank-histology-cases","subject_name":"Гистология, цитология","subject_slug":"histology","title":"Ситуационные задачи — Гистология","mode":"exam"},
-  {"id":"bank-histology-preparations","subject_name":"Гистология, цитология","subject_slug":"histology","title":"Экзаменационные препараты — Гистология","mode":"exam"},
-  {"id":"bank-histology-all","subject_name":"Гистология, цитология","subject_slug":"histology","title":"Билеты — Гистология (полный банк)","mode":"exam"},
-]
-print("banks", req("POST", "ticket_banks", banks))
+imp = BASE / "histology-import"
+parts = sorted(imp.glob("slim*.json")) or sorted(imp.glob("questions-part*.json"))
+if not parts:
+    print("No JSON parts in", imp); sys.exit(1)
 
-parts = sorted((BASE / "histology-import").glob("questions-part*.json"))
 n = 0
 for p in parts:
     items = json.loads(p.read_text(encoding="utf-8"))
@@ -57,9 +60,9 @@ for p in parts:
             "source": it.get("source") or "features/exam-questions",
             "is_published": True,
         })
-    for i in range(0, len(rows), 50):
-        chunk = rows[i:i+50]
+    for i in range(0, len(rows), 40):
+        chunk = rows[i:i+40]
         st = req("POST", "exam_questions", chunk)
         n += len(chunk)
-        print(p.name, i, st, "total", n)
+        print(p.name, i, "status", st, "total", n)
 print("done", n)
