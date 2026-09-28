@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "id": "bank-histology-lech-ped",
+      "title": "Билеты — Гистология (леч./пед.)",
+      "subject": "Гистология, цитология",
+      "subject_slug": "histology",
+      "mode": "exam",
+      "count": 149,
+      "question_ids": ["tkt-histology-lech-fc6c248716", "tkt-histology-lech-c6822e4285", "tkt-histology-lech-f714a79e06", "tkt-histology-lech-354f64f11c", "tkt-histology-lech-c73478a83b", "tkt-histology-lech-119b196a63", "tkt-histology-lech-17c9d8cafe", "tkt-histology-lech-681b5eaccd", "tkt-histology-lech-34acce3a0f", "tkt-histology-lech-a98f885aa8", "tkt-histology-lech-5b17ea6294", "tkt-histology-lech-a2f43a7f08", "tkt-histology-lech-3dd0a8f82a", "tkt-histology-lech-599c8407d0", "tkt-histology-lech-a8abe6d2c5", "tkt-histology-lech-a05732be4c", "tkt-histology-lech-987ccf60f8", "tkt-histology-lech-2fc3c1f3db", "tkt-histology-lech-8e67cf02d3", "tkt-histology-lech-5f8b2e2604", "tkt-histology-lech-357d8d7dd5", "tkt-histology-lech-4dbf5e332f", "tkt-histology-lech-1bc359e92d", "tkt-histology-lech-02efa19048", "tkt-histology-lech-a82e16e710", "tkt-histology-lech-1dd13cc910", "tkt-histology-lech-5e8e223290", "tkt-histology-lech-ee63e14145", "tkt-histology-lech-321f3a16b9", "tkt-histology-lech-fbd7b57d8d", "tkt-histology-lech-005f5d531c", "tkt-histology-lech-3279c51efb", "tkt-histology-lech-59c55f4f86", "tkt-histology-lech-ce28d0f9a6", "tkt-histology-lech-4c2b8659aa", "tkt-histology-lech-fccce8c69e", "tkt-histology-lech-77ee1047dd", "tkt-histology-lech-e90f1c117d", "tkt-histology-lech-b5f374af65", "tkt-histology-lech-8da8d2a8e4", "tkt-histology-lech-6d23bd09ef", "tkt-histology-lech-0dad255465", "tkt-histology-lech-90270f8bf3", "tkt-histology-lech-a6a0095ec1", "tkt-histology-lech-a86075dd7e", "tkt-histology-lech-7204d0fc4a", "tkt-histology-lech-7b162614e9", "tkt-histology-lech-426ba4c6e3", "tkt-histology-lech-0e65edcc68", "tkt-histology-lech-32522dcb90", "tkt-histology-lech-46829e2075", "tkt-histology-lech-0b01612436", "tkt-histology-lech-f741487e1b", "tkt-histology-lech-57c898a69c", "tkt-histology-lech-c11d7be3a4", "tkt-histology-lech-6cbf41d4d5", "tkt-histology-lech-fa18bd9d9c", "tkt-histology-lech-4d895520f4", "tkt-histology-lech-0946c1c29d", "tkt-histology-lech-1c0f7fc25d", "tkt-histology-lech-e2caec3001", "tkt-histology-lech-07a248665b", "tkt-histology-lech-82dc11aeac", "tkt-histology-lech-66db868492", "tkt-histology-lech-5deda315a1", "tkt-histology-lech-72ad4c0bd4", "tkt-histology-lech-45e1d4bd28", "tkt-histology-lech-bfdc490339", "tkt-histology-lech-511367eea3", "tkt-histology-lech-6ee2308ee3", "tkt-histology-lech-dd74ebe174", "tkt-histology-lech-14b94fbe0d", "tkt-histology-lech-daa86f803f", "tkt-histology-lech-0a3ee44cc4", "tkt-histology-lech-f191646db2", "tkt-histology-lech-030a1bf5fa", "tkt-histology-lech-2531e32ca1", "tkt-histology-lech-30a9c0a036", "tkt-histology-lech-d0fa767736", "tkt-histology-lech-b1ada096b3", "tkt-histology-lech-26a1405627", "tkt-histology-lech-1ff35d814d", "tkt-histology-lech-bc94602a9f", "tkt-histology-lech-d14029edda", "tkt-histology-lech-0e618df66b", "tkt-histology-lech-b86fbad65d", "tkt-histology-lech-a97e83f49c", "tkt-histology-lech-158c8bd834", "tkt-histology-lech-ee5cc4679d", "tkt-histology-lech-ad0473c027", "tkt-histology-lech-c211463110", "tkt-histology-lech-9513bb2962", "tkt-histology-lech-dc880619ad", "tkt-histology-lech-8b8d82d5e4", "tkt-histology-lech-b318667819", "tkt-histology-lech-d9b9deb9b7", "tkt-histology-lech-c06707ae1c", "tkt-histology-lech-ad8bd14515", "tkt-histology-lech-adf85a6538", "tkt-histology-lech-bc3b5d716b", "tkt-histology-lech-f94d0d133a", "tkt-histology-lech-a86af104cd", "tkt-histology-lech-466f491a2c", "tkt-histology-lech-3cb061a388", "tkt-histology-lech-603964deb1", "tkt-histology-lech-6273b575de", "tkt-histology-lech-93b58fc7f7", "tkt-histology-lech-0da220ef3a", "tkt-histology-lech-1b80e4d29d", "tkt-histology-lech-0a97b0e095", "tkt-histology-lech-0ec8b16434", "tkt-histology-lech-cee6d202b3", "tkt-histology-lech-a0ba7bb053", "tkt-histology-lech-cf11bc16d2", "tkt-histology-lech-70c4027dcd", "tkt-histology-lech-9c1ed28009", "tkt-histology-lech-f648ab65ab", "tkt-histology-lech-efceb838f7", "tkt-histology-lech-d84d5f3388", "tkt-histology-lech-c5cf36a7a4", "tkt-histology-lech-1ee49cbbc2", "tkt-histology-lech-2322aecb1b", "tkt-histology-lech-efb3eed809", "tkt-histology-lech-2d38df1cac", "tkt-histology-lech-afe87f3e97", "tkt-histology-lech-7072d463b6", "tkt-histology-lech-9a0b8b4d29", "tkt-histology-lech-4d32b09638", "tkt-histology-lech-48ff7c27db", "tkt-histology-lech-7cce47b19e", "tkt-histology-lech-25baf5d4a1", "tkt-histology-lech-db650dd484", "tkt-histology-lech-a563c50749", "tkt-histology-lech-26844b1c72", "tkt-histology-lech-03583ace61", "tkt-histology-lech-98971364a0", "tkt-histology-lech-935362f783", "tkt-histology-lech-9639567fa8", "tkt-histology-lech-6d993441e6", "tkt-histology-lech-916ec0e49f", "tkt-histology-lech-e01988216c", "tkt-histology-lech-0eb89216fd", "tkt-histology-lech-aed2af5ad4", "tkt-histology-lech-89cf3e16fa", "tkt-histology-lech-dbef14a146", "tkt-histology-lech-0d43ccdb09", "tkt-histology-lech-027fc39a0f", "tkt-histology-lech-3fb88f462e", "tkt-histology-lech-29610226d7"]
+    },
+    {
+      "id": "bank-histology-stom",
+      "title": "Билеты — Гистология (стом.)",
+      "subject": "Гистология, цитология",
+      "subject_slug": "histology",
+      "mode": "exam",
+      "count": 125,
+      "question_ids": []
+    },
+    {
+      "id": "bank-histology-cases",
+      "title": "Ситуационные задачи — Гистология",
+      "subject": "Гистология, цитология",
+      "subject_slug": "histology",
+      "mode": "exam",
+      "count": 57,
+      "question_ids": []
+    },
+    {
+      "id": "bank-histology-preparations",
+      "title": "Экзаменационные препараты — Гистология",
+      "subject": "Гистология, цитология",
+      "subject_slug": "histology",
+      "mode": "exam",
+      "count": 19,
+      "question_ids": []
+    },
+    {
+      "id": "bank-histology-all",
+      "title": "Билеты — Гистология (полный банк)",
+      "subject": "Гистология, цитология",
+      "subject_slug": "histology",
+      "mode": "exam",
+      "count": 350,
+      "question_ids": []
+    }
+  ],
+  "updated_at": "2026-09-28T19:00:00Z",
+  "note": "Full question_ids and question texts are in questions_bank.json / questions_by_subject/histology.json and docs/20260928_import_histology_ticket_questions.sql. Banks resolve via ExamQuestionStore (Supabase) after SQL import."
+}
