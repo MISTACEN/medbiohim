@@ -225,8 +225,27 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     let list = feedItems.slice();
     if (contentType === "electronogram") list = list.filter(isEm);
     else if (contentType === "preparation") list = list.filter((x) => !isEm(x));
-    if (atlasTopic) list = list.filter((x) => Array.isArray(x.tags) && x.tags.map(String).includes(atlasTopic));
-    return list;
+    if (atlasTopic) {
+      list = list.filter((x) => Array.isArray(x.tags) && x.tags.map(String).includes(atlasTopic));
+    }
+    const seenId = new Set<string>();
+    const seenKey = new Set<string>();
+    const seenEmName = new Set<string>();
+    const deduped: any[] = [];
+    for (const item of list) {
+      const id = String(item?.id || "");
+      const src = String(item?.source_key || item?.preparation?.imagePath || item?.preparation?.imageUrl || "");
+      const name = String(item?.preparation?.name || "").trim().toLowerCase();
+      const em = isEm(item);
+      if (id && seenId.has(id)) continue;
+      if (src && seenKey.has(src)) continue;
+      if (em && name && seenEmName.has(name)) continue;
+      if (id) seenId.add(id);
+      if (src) seenKey.add(src);
+      if (em && name) seenEmName.add(name);
+      deduped.push(item);
+    }
+    return deduped;
   }, [feedItems, contentType, atlasTopic]);
 
   const atlasByTopic = useMemo(() => {
