@@ -78,6 +78,7 @@ function historyLabel(t: Training) {
 
 export default function HistologyTrainer({ embedded = false }: { embedded?: boolean }) {
   const [topics, setTopics] = useState<string[]>([]);
+  const [feedItems, setFeedItems] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Training[]>([]);
   const [training, setTraining] = useState<Training | null>(null);
   const [answers, setAnswers] = useState<AnswerRow[]>([]);
@@ -104,7 +105,10 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
       listTrainings(),
       getAccountSettings(),
     ]).then(([feed, history, account]) => {
-      if (feed.ok) setTopics(Array.from(new Set(feed.data.items.flatMap((x: any) => Array.isArray(x.tags) ? x.tags : []))).sort());
+      if (feed.ok) {
+        setFeedItems(feed.data.items || []);
+        setTopics(Array.from(new Set(feed.data.items.flatMap((x: any) => Array.isArray(x.tags) ? x.tags : []))).sort());
+      }
       if (history.ok) setSessions(history.data.items);
       if (account.ok) {
         const saved = String(account.data.preferences?.trainer_layout || "top");
@@ -143,6 +147,12 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     setWorking(false);
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("training");
+    if (id) void loadSession(id);
+  }, []);
+
   const start = async () => {
     setWorking(true);
     setError(null);
@@ -159,7 +169,12 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
       setWorking(false);
       return;
     }
-    await loadSession(r.data.training.id);
+    const tid = r.data.training.id;
+    if (embedded && typeof window !== "undefined") {
+      window.location.assign("/trainers/feed/histology?training=" + encodeURIComponent(tid));
+      return;
+    }
+    await loadSession(tid);
   };
 
   const answer = async (value: string | null, skip = false) => {
@@ -204,7 +219,24 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const current = answers[active];
   const answered = answers.filter((x) => x.user_answer != null || x.is_skipped).length;
   const wrong = answers.filter((x) => x.is_correct === false);
-  const topicsForSetup = useMemo(() => topics, [topics]);
+  const topicsForSetup = useMemo(() => {
+    if (!feedItems.length) return topics;
+    const isEm = (x: any) => {
+      const tags = Array.isArray(x.tags) ? x.tags.map((t: string) => String(t).toLowerCase()) : [];
+      const mode = String(x.mode_set || "").toLowerCase();
+      return tags.some((t: string) => t.includes("electron") || t.includes("электронограм")) || mode.includes("electron");
+    };
+    const filtered = feedItems.filter((x) => {
+      if (contentType === "electronogram") return isEm(x);
+      if (contentType === "preparation") return !isEm(x);
+      return true;
+    });
+    const set = new Set<string>();
+    for (const x of filtered) {
+      for (const tag of (Array.isArray(x.tags) ? x.tags : [])) set.add(String(tag));
+    }
+    return Array.from(set).sort();
+  }, [topics, feedItems, contentType]);
   const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
   const hasMoreHistory = sessions.length > 4;
 
@@ -260,8 +292,14 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
             <div className="flex flex-wrap items-center gap-2"><span className={"rounded-full px-2.5 py-1 text-xs font-bold " + (s.status === "in_progress" ? "bg-amber-100 text-amber-800" : s.status === "completed" ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700")}>{historyLabel(s)}</span><span className="text-sm font-semibold">{s.content_type === "preparation" ? "Микропрепараты" : s.content_type === "electronogram" ? "Электронограммы" : "Всё вместе"}</span></div>
             <div className="mt-1 text-sm text-slate-500">{s.status === "in_progress" ? `${s.answered_count || 0} из ${s.total_questions} отвечено` : `${s.score ?? 0}% · ${s.total_questions} вопросов`}</div>
           </div>
-          {s.status === "in_progress" ? <div className="flex gap-2"><button disabled={working} onClick={() => void loadSession(s.id)} className="btn-primary">Продолжить</button><button disabled={working} onClick={() => void restart(s.id)} className="rounded-xl border bg-white px-3 py-2 text-sm">Начать заново</button></div>
-            : s.status === "completed" ? <button disabled={working} onClick={() => void loadSession(s.id, true)} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold">Открыть результат</button> : null}
+          {s.status === "in_progress" ? <div className="flex gap-2"><button disabled={working} onClick={() => {
+              if (embedded && typeof window !== "undefined") { window.location.assign("/trainers/feed/histology?training=" + encodeURIComponent(s.id)); return; }
+              void loadSession(s.id);
+            }} className="btn-primary">Продолжить</button><button disabled={working} onClick={() => void restart(s.id)} className="rounded-xl border bg-white px-3 py-2 text-sm">Начать заново</button></div>
+            : s.status === "completed" ? <button disabled={working} onClick={() => {
+              if (embedded && typeof window !== "undefined") { window.location.assign("/trainers/feed/histology?training=" + encodeURIComponent(s.id)); return; }
+              void loadSession(s.id, true);
+            }} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold">Открыть результат</button> : null}
         </div>)}
       </div>
     </section>}
@@ -269,10 +307,10 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
 
     <section className="card space-y-6 p-5">
-      <div><h2 className="font-bold">Темы</h2><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => setSelectedTopics(selectedTopics.length === topicsForSetup.length ? [] : topicsForSetup)} className="rounded-xl border px-3 py-2 text-sm font-semibold">Выбрать все</button>{topicsForSetup.map((t) => <label key={t} className={"rounded-xl border px-3 py-2 text-sm " + (selectedTopics.includes(t) ? "border-indigo-400 bg-indigo-50" : "")}><input type="checkbox" className="mr-2" checked={selectedTopics.includes(t)} onChange={(e) => setSelectedTopics(e.target.checked ? [...selectedTopics, t] : selectedTopics.filter((x) => x !== t))} />{topicLabel(t)}</label>)}</div></div>
-      <div><h2 className="font-bold">Тип контента</h2><div className="mt-3 flex flex-wrap gap-2">{([["all", "Всё вместе"], ["preparation", "Микропрепараты"], ["electronogram", "Электронограммы"]] as [TrainingContentType, string][]).map((x) => <label key={x[0]} className={"rounded-xl border px-4 py-3 " + (contentType === x[0] ? "border-indigo-400 bg-indigo-50" : "")}><input type="radio" className="mr-2" checked={contentType === x[0]} onChange={() => setContentType(x[0])} />{x[1]}</label>)}</div></div>
+      <div><h2 className="font-bold">Темы</h2><p className="mt-1 text-xs text-slate-500">Список тем зависит от типа контента: отдельно для микропрепаратов и электронограмм.</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => setSelectedTopics(selectedTopics.length === topicsForSetup.length ? [] : topicsForSetup)} className="rounded-xl border px-3 py-2 text-sm font-semibold">Выбрать все</button>{topicsForSetup.map((t) => <label key={t} className={"rounded-xl border px-3 py-2 text-sm " + (selectedTopics.includes(t) ? "border-indigo-400 bg-indigo-50" : "")}><input type="checkbox" className="mr-2" checked={selectedTopics.includes(t)} onChange={(e) => setSelectedTopics(e.target.checked ? [...selectedTopics, t] : selectedTopics.filter((x) => x !== t))} />{topicLabel(t)}</label>)}</div></div>
+      <div><h2 className="font-bold">Тип контента</h2><div className="mt-3 flex flex-wrap gap-2">{([["all", "Всё вместе"], ["preparation", "Микропрепараты"], ["electronogram", "Электронограммы"]] as [TrainingContentType, string][]).map((x) => <label key={x[0]} className={"rounded-xl border px-4 py-3 " + (contentType === x[0] ? "border-indigo-400 bg-indigo-50" : "")}><input type="radio" className="mr-2" checked={contentType === x[0]} onChange={() => { setContentType(x[0]); setSelectedTopics([]); }} />{x[1]}</label>)}</div></div>
       <div><h2 className="font-bold">Количество</h2><div className="mt-3 flex flex-wrap items-center gap-2">{["10", "20", "50"].map((n) => <label key={n} className="rounded-xl border px-4 py-3"><input type="radio" className="mr-2" checked={!custom && !allQuestions && count === n} onChange={() => { setCount(n); setCustom(""); setAllQuestions(false); }} />{n}</label>)}<input type="number" min="1" max="500" value={custom} onChange={(e) => { setCustom(e.target.value); setAllQuestions(false); }} placeholder="Своё количество" className="w-36 rounded-xl border px-3 py-3" /><label className="rounded-xl border px-4 py-3"><input type="checkbox" className="mr-2" checked={allQuestions} onChange={(e) => setAllQuestions(e.target.checked)} />Все вопросы</label></div></div>
-      <div><h2 className="font-bold">Режим подписей</h2><div className="mt-3 grid gap-2 md:grid-cols-3">{([["with", "С подписями"], ["without", "Без подписей"], ["manual", "Ручной ввод"]] as [TrainingLabelMode, string][]).map((x) => <label key={x[0]} className={"rounded-2xl border p-4 " + (labelMode === x[0] ? "border-indigo-400 bg-indigo-50" : "")}><input type="radio" className="mr-2" checked={labelMode === x[0]} onChange={() => setLabelMode(x[0])} /><b>{x[1]}</b></label>)}</div></div>
+      <div><h2 className="font-bold">Режим подписей</h2><p className="mt-1 text-xs text-slate-500">«С подписями» — для подготовки (фото с названиями). «Без подписей» — для экзамена.</p><div className="mt-3 grid gap-2 md:grid-cols-3">{([["with", "С подписями"], ["without", "Без подписей"], ["manual", "Ручной ввод"]] as [TrainingLabelMode, string][]).map((x) => <label key={x[0]} className={"rounded-2xl border p-4 " + (labelMode === x[0] ? "border-indigo-400 bg-indigo-50" : "")}><input type="radio" className="mr-2" checked={labelMode === x[0]} onChange={() => setLabelMode(x[0])} /><b>{x[1]}</b></label>)}</div></div>
       <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4"><b>Формат отображения</b><p className="mt-1 text-sm text-slate-600">Настраивается один раз в «Настройки» и применяется ко всем тренировкам и тестам.</p><Link href="/settings" className="mt-2 inline-flex text-sm font-semibold text-indigo-600">Изменить формат →</Link></div>
       <button disabled={working} onClick={() => void start()} className="btn-primary w-full py-3">{working ? "Формируем вариант…" : "Сформировать вариант"}</button>
     </section>
@@ -283,7 +321,17 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const finishBar = <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4 shadow-sm"><div className="text-sm text-slate-600">Отвечено {answered} / {answers.length}</div><div className="flex gap-2"><button disabled={working} onClick={() => setActive(Math.max(0, active - 1))} className="rounded-xl border px-3 py-2"><ChevronLeft className="inline h-4 w-4" /></button><button disabled={working} onClick={() => setActive(Math.min(answers.length - 1, active + 1))} className="rounded-xl border px-3 py-2"><ChevronRight className="inline h-4 w-4" /></button><button disabled={working || answered < answers.length} onClick={() => void finish()} className="btn-primary">Завершить</button></div></div>;
 
   return <div className={embedded ? "space-y-4" : "mx-auto max-w-7xl space-y-4"}>
-    <header className="flex items-center justify-between"><div>{!embedded && <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предметам</Link>}<h1 className={embedded ? "text-lg font-bold" : "page-title mt-2"}>Тренировка</h1><p className="text-sm text-slate-500">25 XP за правильный ответ</p></div><button className="rounded-xl border px-3 py-2 md:hidden" onClick={() => setMobileList(!mobileList)}><Menu className="mr-1 inline h-4 w-4" />Список задач</button></header>
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предмету</Link>
+          <button type="button" onClick={() => { setResult(null); setTraining(null); setAnswers([]); setSetup(true); if (typeof window !== "undefined") { const u = new URL(window.location.href); u.searchParams.delete("training"); window.history.replaceState(null, "", u.pathname + (u.search || "")); } }} className="inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-semibold">К выбору варианта</button>
+        </div>
+        <h1 className="page-title mt-2">Тренировка</h1>
+        <p className="text-sm text-slate-500">Вопрос {active + 1} из {answers.length} · отвечено {answered}</p>
+      </div>
+      <button className="rounded-xl border px-3 py-2 md:hidden" onClick={() => setMobileList(!mobileList)}><Menu className="mr-1 inline h-4 w-4" />Список задач</button>
+    </header>
     {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
     {layout === "sidebar" ? (
       <div className="grid gap-4 lg:grid-cols-[240px_1fr]"><div className="hidden lg:block"><div className="sticky top-4 space-y-2 rounded-2xl border bg-white p-3"><b className="text-sm">Вопросы</b><Dots answers={answers} current={active} onSelect={setActive} /></div></div><div>{current && question(current, active)}{finishBar}</div></div>
