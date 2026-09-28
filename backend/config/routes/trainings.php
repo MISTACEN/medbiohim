@@ -44,7 +44,6 @@ return static function (Router $r): void {
         $question = is_array($card['question'] ?? null) ? $card['question'] : [];
         $original = is_array($question['options'] ?? null) ? $question['options'] : [];
         $correct = null;
-        $labels = [];
 
         foreach ($original as $o) {
             if (!is_array($o)) continue;
@@ -68,8 +67,7 @@ return static function (Router $r): void {
 
         $seen = [$correct['label'] => true];
         $distractors = [];
-        $candidates = $pool;
-        foreach ($candidates as $candidate) {
+        foreach ($pool as $candidate) {
             if ((string)($candidate['id'] ?? '') === (string)$card['id']) continue;
             $cq = is_array($candidate['question'] ?? null) ? $candidate['question'] : [];
             foreach (($cq['options'] ?? []) as $o) {
@@ -287,7 +285,16 @@ return static function (Router $r): void {
                 }
             }
             $up=$db->prepare('UPDATE public.training_answers SET user_answer=:answer,is_correct=:correct,is_skipped=:skipped,answered_at=now() WHERE id=:id RETURNING *');
-            $up->execute(['answer'=>$answer!==null?(string)$answer:null,'correct'=>$correct,'skipped'=>$isSkipped,'id'=>$current['id']]);
+            // PostgreSQL boolean: never bind empty string — use true/false/NULL
+            $up->bindValue(':answer', $answer !== null ? (string)$answer : null, $answer !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
+            if ($correct === null) {
+                $up->bindValue(':correct', null, PDO::PARAM_NULL);
+            } else {
+                $up->bindValue(':correct', (bool)$correct, PDO::PARAM_BOOL);
+            }
+            $up->bindValue(':skipped', (bool)$isSkipped, PDO::PARAM_BOOL);
+            $up->bindValue(':id', (string)$current['id'], PDO::PARAM_STR);
+            $up->execute();
             $patch=$db->prepare('UPDATE public.trainings SET current_index=:idx,updated_at=now() WHERE id=:id');
             $patch->execute(['idx'=>$order,'id'=>$training['id']]);
             Response::success(['answer'=>$up->fetch(),'correct'=>$correct],$q->requestId);
