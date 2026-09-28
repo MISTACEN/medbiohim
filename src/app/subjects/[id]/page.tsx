@@ -367,19 +367,20 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
 
         {tab === "trainer" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Микропрепараты</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {histology
-                ? "Тренажёр микропрепаратов и электронограмм — отдельный режим."
-                : "Для этого предмета тренажёр не подключён."}
-            </p>
-            {histology && (
-              <Link href="/trainers/feed/histology" className="btn-primary mt-4 inline-flex">
-                Открыть тренажёр
-              </Link>
-            )}
-          </section>
+          histology ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <iframe
+                src="/trainers/feed/histology?embed=1"
+                title="Микропрепараты"
+                className="block h-[min(90vh,1200px)] w-full border-0"
+              />
+            </div>
+          ) : (
+            <section className="card p-5">
+              <h2 className="text-lg font-bold">Микропрепараты</h2>
+              <p className="mt-1 text-sm text-slate-500">Для этого предмета тренажёр не подключён.</p>
+            </section>
+          )
         )}
 
         {tab === "cards" && (
