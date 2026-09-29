@@ -1,20 +1,25 @@
 # HOTFIX trainings.php PG 42601 (2026-09-30)
 
-## Bug
-Single-quoted PHP strings contained literal `\\n` (backslash + n).
-PostgreSQL received:
+## Error
 ```
-UPDATE public.training_answers\\n SET user_answer...
+SQLSTATE[42601]: Syntax error at or near "\"
+LINE 1: UPDATE public.training_answers\n SET user_an...
 ```
-→ SQLSTATE[42601] syntax error at or near "\\"
 
-## Fix
-Replace literal `\\n` with **real newlines** in all SQL strings in:
-- `backend/config/routes/trainings.php`
+## Cause
+In PHP **single-quoted** strings, `\n` is **literal** backslash + n, not a newline.
+PostgreSQL received the characters `\\` and rejected the query.
+
+## Fix (done in artifacts)
+All SQL strings in `trainings.php` now use **real newlines**.
+
+Files (upload to SpaceWeb **now**):
 - `spaceweb_upload/config/routes/trainings.php`
+- `backend/config/routes/trainings.php`
 
-## Deploy NOW (SpaceWeb)
-Upload fixed file from artifacts:
-`spaceweb_upload/config/routes/trainings.php`
-
-Local artifacts are correct. After upload, answer endpoint works again.
+## GitHub main
+If `backend/config/routes/trainings.php` shows placeholder text, restore:
+```bash
+bash docs/restore-trainings-gh.sh spaceweb_upload/config/routes/trainings.php
+```
+(requires `gh auth login`)
