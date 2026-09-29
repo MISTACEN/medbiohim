@@ -115,7 +115,15 @@ return static function (Router $r): void {
         if (!RequireAuth::handle($q)) return;
         try {
             $stmt = Connection::pdo()->prepare(
-                "SELECT t.id, t.subject_slug, t.specialty_slug, t.topics, t.content_type, t.question_count, t.label_mode, t.layout_mode,\n                        t.status, t.current_index, t.score, t.total_questions, t.completed_at, t.created_at, t.updated_at,\n                        count(a.id) FILTER (WHERE a.user_answer IS NOT NULL OR a.is_skipped = true) AS answered_count\n                 FROM public.trainings t\n                 LEFT JOIN public.training_answers a ON a.training_id = t.id\n                 WHERE t.user_id = :uid\n                   AND (:status_filter = '' OR t.status = :status)\n                 GROUP BY t.id\n                 ORDER BY t.updated_at DESC LIMIT 50"
+                "SELECT t.id, t.subject_slug, t.specialty_slug, t.topics, t.content_type, t.question_count, t.label_mode, t.layout_mode,
+                        t.status, t.current_index, t.score, t.total_questions, t.completed_at, t.created_at, t.updated_at,
+                        count(a.id) FILTER (WHERE a.user_answer IS NOT NULL OR a.is_skipped = true) AS answered_count
+                 FROM public.trainings t
+                 LEFT JOIN public.training_answers a ON a.training_id = t.id
+                 WHERE t.user_id = :uid
+                   AND (:status_filter = '' OR t.status = :status)
+                 GROUP BY t.id
+                 ORDER BY t.updated_at DESC LIMIT 50"
             );
             $status = trim((string)($q->query['status'] ?? ''));
             if (!in_array($status, ['', 'in_progress', 'completed', 'cancelled'], true)) $status = '';
@@ -160,7 +168,7 @@ return static function (Router $r): void {
             $layoutMode = (string)($prefs['trainer_layout'] ?? 'top');
             if (!in_array($layoutMode, ['sidebar','list','top'], true)) $layoutMode = 'top';
             $all = (bool)$q->json('all_questions', false);
-            $requested = max(1, min(500, (int)$q->json('question_count', 20)));
+            $requested = max(1, min(500, (int)$q->json('question_count', 20));
 
             $allCards = $loadCards($q);
             $cards = array_values(array_filter($allCards, static function(array $card) use ($contentType, $topics): bool {
@@ -189,7 +197,10 @@ return static function (Router $r): void {
 
             $db->beginTransaction();
             $ins = $db->prepare(
-                'INSERT INTO public.trainings\n                 (user_id,subject_slug,specialty_slug,topics,content_type,question_count,label_mode,layout_mode,status,question_ids,total_questions)\n                 VALUES (:uid,:subject,:specialty,:topics::jsonb,:ctype,:count,:label,:layout,\'in_progress\',:ids,:total)\n                 RETURNING *'
+                'INSERT INTO public.trainings
+                 (user_id,subject_slug,specialty_slug,topics,content_type,question_count,label_mode,layout_mode,status,question_ids,total_questions)
+                 VALUES (:uid,:subject,:specialty,:topics::jsonb,:ctype,:count,:label,:layout,\'in_progress\',:ids,:total)
+                 RETURNING *'
             );
             $ids = array_map(static fn(array $x): string => (string)$x['id'], $questions);
             $ins->execute([
@@ -209,7 +220,9 @@ return static function (Router $r): void {
             $sourceCardsById = [];
             foreach ($cards as $sourceCard) $sourceCardsById[(string)$sourceCard['id']] = $sourceCard;
             $ans = $db->prepare(
-                'INSERT INTO public.training_answers\n                 (training_id,question_id,"order",options,question_snapshot,review_snapshot)\n                 VALUES (:tid,:qid,:ord,:options::jsonb,:snapshot::jsonb,:review::jsonb)'
+                'INSERT INTO public.training_answers
+                 (training_id,question_id,"order",options,question_snapshot,review_snapshot)
+                 VALUES (:tid,:qid,:ord,:options::jsonb,:snapshot::jsonb,:review::jsonb)'
             );
             foreach ($questions as $i => $question) {
                 $ans->execute([
@@ -291,7 +304,13 @@ return static function (Router $r): void {
             $correctSql = $correct === null ? 'NULL' : ((bool)$correct ? 'true' : 'false');
             $skippedSql = (bool)$isSkipped ? 'true' : 'false';
             $up = $db->prepare(
-                'UPDATE public.training_answers\n                 SET user_answer = :answer,\n                     is_correct = ' . $correctSql . ',\n                     is_skipped = ' . $skippedSql . ',\n                     answered_at = now()\n                 WHERE id = :id\n                 RETURNING *'
+                'UPDATE public.training_answers
+                 SET user_answer = :answer,
+                     is_correct = ' . $correctSql . ',
+                     is_skipped = ' . $skippedSql . ',
+                     answered_at = now()
+                 WHERE id = :id
+                 RETURNING *'
             );
             if ($answer !== null) {
                 $up->bindValue(':answer', (string)$answer, PDO::PARAM_STR);
