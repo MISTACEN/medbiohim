@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use PDO;
+
 use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
@@ -113,15 +115,7 @@ return static function (Router $r): void {
         if (!RequireAuth::handle($q)) return;
         try {
             $stmt = Connection::pdo()->prepare(
-                "SELECT t.id, t.subject_slug, t.specialty_slug, t.topics, t.content_type, t.question_count, t.label_mode, t.layout_mode,
-                        t.status, t.current_index, t.score, t.total_questions, t.completed_at, t.created_at, t.updated_at,
-                        count(a.id) FILTER (WHERE a.user_answer IS NOT NULL OR a.is_skipped = true) AS answered_count
-                 FROM public.trainings t
-                 LEFT JOIN public.training_answers a ON a.training_id = t.id
-                 WHERE t.user_id = :uid
-                   AND (:status_filter = '' OR t.status = :status)
-                 GROUP BY t.id
-                 ORDER BY t.updated_at DESC LIMIT 50"
+                "SELECT t.id, t.subject_slug, t.specialty_slug, t.topics, t.content_type, t.question_count, t.label_mode, t.layout_mode,\n                        t.status, t.current_index, t.score, t.total_questions, t.completed_at, t.created_at, t.updated_at,\n                        count(a.id) FILTER (WHERE a.user_answer IS NOT NULL OR a.is_skipped = true) AS answered_count\n                 FROM public.trainings t\n                 LEFT JOIN public.training_answers a ON a.training_id = t.id\n                 WHERE t.user_id = :uid\n                   AND (:status_filter = '' OR t.status = :status)\n                 GROUP BY t.id\n                 ORDER BY t.updated_at DESC LIMIT 50"
             );
             $status = trim((string)($q->query['status'] ?? ''));
             if (!in_array($status, ['', 'in_progress', 'completed', 'cancelled'], true)) $status = '';
@@ -136,11 +130,24 @@ return static function (Router $r): void {
         if (!RequireAuth::handle($q)) return;
         try {
             $db = Connection::pdo();
-            $statusStmt = $db->prepare("SELECT id FROM public.trainings WHERE user_id=:uid AND status='in_progress' LIMIT 1");
+            $force = (bool)$q->json('force', false);
+            $statusStmt = $db->prepare("SELECT id FROM public.trainings WHERE user_id=:uid AND status='in_progress' ORDER BY updated_at DESC LIMIT 1");
             $statusStmt->execute(['uid'=>$q->user->id]);
-            if ($statusStmt->fetch()) {
-                Response::error('TRAINING_IN_PROGRESS', 'У вас уже есть незавершённая тренировка', $q->requestId, 409);
-                return;
+            $existing = $statusStmt->fetch();
+            if ($existing) {
+                if ($force) {
+                    $cancelAll = $db->prepare("UPDATE public.trainings SET status='cancelled',updated_at=now() WHERE user_id=:uid AND status='in_progress'");
+                    $cancelAll->execute(['uid'=>$q->user->id]);
+                } else {
+                    Response::error(
+                        'TRAINING_IN_PROGRESS',
+                        'У вас уже есть незавершённая тренировка. Продолжите её или завершите/отмените досрочно.',
+                        $q->requestId,
+                        409,
+                        ['existing_training_id' => (string)$existing['id']]
+                    );
+                    return;
+                }
             }
 
             $topics = $q->json('topics', []);
@@ -182,10 +189,7 @@ return static function (Router $r): void {
 
             $db->beginTransaction();
             $ins = $db->prepare(
-                'INSERT INTO public.trainings
-                 (user_id,subject_slug,specialty_slug,topics,content_type,question_count,label_mode,layout_mode,status,question_ids,total_questions)
-                 VALUES (:uid,:subject,:specialty,:topics::jsonb,:ctype,:count,:label,:layout,\'in_progress\',:ids,:total)
-                 RETURNING *'
+                'INSERT INTO public.trainings\n                 (user_id,subject_slug,specialty_slug,topics,content_type,question_count,label_mode,layout_mode,status,question_ids,total_questions)\n                 VALUES (:uid,:subject,:specialty,:topics::jsonb,:ctype,:count,:label,:layout,\'in_progress\',:ids,:total)\n                 RETURNING *'
             );
             $ids = array_map(static fn(array $x): string => (string)$x['id'], $questions);
             $ins->execute([
@@ -205,9 +209,7 @@ return static function (Router $r): void {
             $sourceCardsById = [];
             foreach ($cards as $sourceCard) $sourceCardsById[(string)$sourceCard['id']] = $sourceCard;
             $ans = $db->prepare(
-                'INSERT INTO public.training_answers
-                 (training_id,question_id,"order",options,question_snapshot,review_snapshot)
-                 VALUES (:tid,:qid,:ord,:options::jsonb,:snapshot::jsonb,:review::jsonb)'
+                'INSERT INTO public.training_answers\n                 (training_id,question_id,"order",options,question_snapshot,review_snapshot)\n                 VALUES (:tid,:qid,:ord,:options::jsonb,:snapshot::jsonb,:review::jsonb)'
             );
             foreach ($questions as $i => $question) {
                 $ans->execute([
@@ -222,7 +224,9 @@ return static function (Router $r): void {
             $db->commit();
             Response::success(['training'=>$training,'questions'=>$questions], $q->requestId, 201);
         } catch (Throwable $e) {
-            if (Connection::pdo()->inTransaction()) Connection::pdo()->rollBack();
+            try {
+                if (Connection::pdo()->inTransaction()) Connection::pdo()->rollBack();
+            } catch (Throwable $_) {}
             Response::error('TRAINING_ERROR', $e->getMessage(), $q->requestId, 503);
         }
     });
@@ -284,15 +288,18 @@ return static function (Router $r): void {
                     }
                 }
             }
-            $up=$db->prepare('UPDATE public.training_answers SET user_answer=:answer,is_correct=:correct,is_skipped=:skipped,answered_at=now() WHERE id=:id RETURNING *');
-            // PostgreSQL boolean: never bind empty string — use true/false/NULL
-            $up->bindValue(':answer', $answer !== null ? (string)$answer : null, $answer !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
-            if ($correct === null) {
-                $up->bindValue(':correct', null, PDO::PARAM_NULL);
+            // ATTR_EMULATE_PREPARES=true turns PDO::PARAM_BOOL false into "" → PG 22P02.
+            // Embed boolean as SQL literals only (never bind boolean / never use '').
+            $correctSql = $correct === null ? 'NULL' : ((bool)$correct ? 'true' : 'false');
+            $skippedSql = (bool)$isSkipped ? 'true' : 'false';
+            $up = $db->prepare(
+                'UPDATE public.training_answers\n                 SET user_answer = :answer,\n                     is_correct = ' . $correctSql . ',\n                     is_skipped = ' . $skippedSql . ',\n                     answered_at = now()\n                 WHERE id = :id\n                 RETURNING *'
+            );
+            if ($answer !== null) {
+                $up->bindValue(':answer', (string)$answer, PDO::PARAM_STR);
             } else {
-                $up->bindValue(':correct', (bool)$correct, PDO::PARAM_BOOL);
+                $up->bindValue(':answer', null, PDO::PARAM_NULL);
             }
-            $up->bindValue(':skipped', (bool)$isSkipped, PDO::PARAM_BOOL);
             $up->bindValue(':id', (string)$current['id'], PDO::PARAM_STR);
             $up->execute();
             $patch=$db->prepare('UPDATE public.trainings SET current_index=:idx,updated_at=now() WHERE id=:id');
@@ -321,7 +328,10 @@ return static function (Router $r): void {
             $stmt->execute(['id'=>(string)$p['id'],'uid'=>$q->user->id]);
             $training=$stmt->fetch();
             if(!$training){Response::error('NOT_FOUND','Training not found',$q->requestId,404);return;}
-            $s=$db->prepare('SELECT count(*) total, count(*) filter (where is_correct=true) correct, count(*) filter (where is_correct=false) wrong, count(*) filter (where user_answer is null) skipped FROM public.training_answers WHERE training_id=:id');
+            // Early finish: unanswered rows → is_skipped=true (boolean literal, not '')
+            $mark = $db->prepare("UPDATE public.training_answers SET is_skipped=true, answered_at=COALESCE(answered_at, now()) WHERE training_id=:id AND user_answer IS NULL AND COALESCE(is_skipped,false)=false");
+            $mark->execute(['id'=>$training['id']]);
+            $s=$db->prepare('SELECT count(*) total, count(*) filter (where is_correct=true) correct, count(*) filter (where is_correct=false) wrong, count(*) filter (where is_skipped=true OR user_answer is null) skipped FROM public.training_answers WHERE training_id=:id');
             $s->execute(['id'=>$training['id']]);
             $stats=$s->fetch() ?: ['total'=>0,'correct'=>0,'wrong'=>0,'skipped'=>0];
             $total=(int)$stats['total']; $correct=(int)$stats['correct'];
