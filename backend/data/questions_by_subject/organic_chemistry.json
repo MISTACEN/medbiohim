@@ -1,1 +1,9 @@
-{"subject_slug": "organic_chemistry", "subject": "Органическая и физическая химия", "count": 260, "kind": "ticket", "for_exam": true, "items": []}
+{
+  "subject_slug": "organic_chemistry",
+  "subject": "Органическая и физическая химия",
+  "count": 20,
+  "kind": "ticket",
+  "for_exam": true,
+  "items": [],
+  "_note": "Partial scaffold. Full 260 tasks in artifacts/backend/data/questions_by_subject/organic_chemistry.json. Micros m01-m04 on GH; continue m05-m52 then assemble."
+}
