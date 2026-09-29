@@ -1,1 +1,31 @@
-SEE_ARTIFACTS_backend_data_tests.json_FULL
+{
+  "items": [
+    {
+      "id": "t-bio-1",
+      "title": "Биохимия: белки и ферменты",
+      "subject": "Биохимия",
+      "type": "test",
+      "questionCount": 3,
+      "is_published": true,
+      "questions": [
+        {"q": "Какая связь соединяет аминокислоты в белке?", "options": ["Пептидная", "Ионная", "Водородная", "Дисульфидная"], "answer": 0},
+        {"q": "Кофермент часто является производным:", "options": ["Витамина", "Углевода", "Липида", "Гормона"], "answer": 0},
+        {"q": "Оптимум pH для многих ферментов человека близок к:", "options": ["7,4", "2,0", "10,0", "5,0"], "answer": 0}
+      ]
+    },
+    {
+      "id": "t-anat-1",
+      "title": "Анатомия: опорно-двигательная система",
+      "subject": "Анатомия",
+      "type": "test",
+      "questionCount": 2,
+      "is_published": true,
+      "questions": [
+        {"q": "Сколько шейных позвонков у человека?", "options": ["5", "7", "12", "4"], "answer": 1},
+        {"q": "Самая длинная кость тела:", "options": ["Большеберцовая", "Бедренная", "Плечевая", "Лучевая"], "answer": 1}
+      ]
+    }
+  ],
+  "updated_at": "2026-09-29T16:01:41Z",
+  "_orgchem_note": "18 orgchem packs: docs/orgchem-import/tests_packs.json — merge into items. Full in artifacts/backend/data/tests.json"
+}
