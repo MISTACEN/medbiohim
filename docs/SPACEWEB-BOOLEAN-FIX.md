@@ -1,39 +1,69 @@
-# SpaceWeb fix: SQLSTATE 22P02 boolean ""
+# SpaceWeb: SQLSTATE 22P02 boolean `""`
 
-## Cause
-`Connection.php` sets `PDO::ATTR_EMULATE_PREPARES => true`.
-With emulated prepares, `PDO::PARAM_BOOL` **false** (and sometimes null) is substituted as empty string `""`.
-PostgreSQL then fails:
+## Симптом
+
+На **любом** ответе в тренажёре:
 
 ```text
 SQLSTATE[22P02]: invalid input syntax for type boolean: ""
-is_correct='', is_skipped=...
+... SET user_answer='opt-XXXX',is_correct='',is_skipped=...
 ```
 
-Option id in the message changes every time; the bug is always empty string for boolean.
+Номер `opt-...` меняется — это id варианта. Баг **один**: в boolean уходит пустая строка.
 
-## Fix
-Never bind boolean parameters. Embed SQL literals only:
+## Причина
+
+В `src/Database/Connection.php`:
 
 ```php
-$correctSql = $correct === null ? 'NULL' : ((bool)$correct ? 'true' : 'false');
-$skippedSql = (bool)$isSkipped ? 'true' : 'false';
-// ... is_correct = {$correctSql}, is_skipped = {$skippedSql}
+PDO::ATTR_EMULATE_PREPARES => true
 ```
 
-## Files updated
-- `spaceweb_upload/config/routes/trainings.php` — POST `/api/v1/trainings/{id}/answer`
-- `spaceweb_upload/config/routes/platform.php` — trainer_feed_answers insert
-- `spaceweb_upload/config/routes/preparation.php` — test_preparation_results
-- same under `backend/config/routes/`
+При emulated prepares `false` / `null` для boolean часто подставляются как `""` → PostgreSQL 22P02.
 
-## Deploy SpaceWeb
-Upload/replace on hosting:
-1. `config/routes/trainings.php`
-2. `config/routes/platform.php`
-3. `config/routes/preparation.php`
+## Исправление (обязательно на SpaceWeb)
 
-No DB migration. Restart PHP-FPM if needed.
+В `config/routes/trainings.php` в хендлере `POST /api/v1/trainings/{id}/answer`
+**заменить** блок UPDATE на:
 
-## Verify
-Answer any training question (correct or wrong) — should return 200, no 22P02.
+```php
+// ATTR_EMULATE_PREPARES=true turns PDO::PARAM_BOOL false into "" → PG 22P02.
+// Embed boolean as SQL literals only (never bind boolean / never use '').
+$correctSql = $correct === null ? 'NULL' : ((bool)$correct ? 'true' : 'false');
+$skippedSql = (bool)$isSkipped ? 'true' : 'false';
+$up = $db->prepare(
+    'UPDATE public.training_answers
+     SET user_answer = :answer,
+         is_correct = ' . $correctSql . ',
+         is_skipped = ' . $skippedSql . ',
+         answered_at = now()
+     WHERE id = :id
+     RETURNING *'
+);
+if ($answer !== null) {
+    $up->bindValue(':answer', (string)$answer, PDO::PARAM_STR);
+} else {
+    $up->bindValue(':answer', null, PDO::PARAM_NULL);
+}
+$up->bindValue(':id', (string)$current['id'], PDO::PARAM_STR);
+$up->execute();
+```
+
+Аналогично:
+- `platform.php` — insert в `trainer_feed_answers`
+- `preparation.php` — `is_correct` через `$okSql` (`true`/`false`) — **уже на GitHub**
+
+Полные файлы локально: `spaceweb_upload/config/routes/{trainings,platform,preparation}.php`
+
+## Деплой
+
+1. Залить на SpaceWeb из `spaceweb_upload/config/routes/`:
+   - `trainings.php` (главный — ошибка на ответе)
+   - `platform.php`
+   - `preparation.php`
+2. Миграции БД **не нужны**.
+3. Проверить: ответить на вопрос → 200, без 22P02.
+
+## Не чинить в SQL/Supabase
+
+Это не схема БД и не фронт. Только PHP binding на SpaceWeb.
