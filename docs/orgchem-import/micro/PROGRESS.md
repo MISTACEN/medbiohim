@@ -2,8 +2,8 @@
 
 | Range | Tasks | Status |
 |-------|-------|--------|
-| m01–m16 | 1–80 | on main |
-| m17–m52 | 81–260 | pending |
+| m01–m31 | 1–155 | **on main** |
+| m32–m52 | 156–260 | pending |
 
 Full source of truth: `artifacts/backend/data/questions_by_subject/organic_chemistry.json` (260).
 
