@@ -168,7 +168,7 @@ return static function (Router $r): void {
             $layoutMode = (string)($prefs['trainer_layout'] ?? 'top');
             if (!in_array($layoutMode, ['sidebar','list','top'], true)) $layoutMode = 'top';
             $all = (bool)$q->json('all_questions', false);
-            $requested = max(1, min(500, (int)$q->json('question_count', 20));
+            $requested = max(1, min(500, (int)$q->json('question_count', 20)));
 
             $allCards = $loadCards($q);
             $cards = array_values(array_filter($allCards, static function(array $card) use ($contentType, $topics): bool {
