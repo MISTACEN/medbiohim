@@ -1,0 +1,12 @@
+{
+  "subject_slug": "organic_chemistry",
+  "parts": [
+    "questions-part01.json",
+    "questions-part02.json",
+    "questions-part03.json",
+    "questions-part04.json",
+    "questions-part05.json",
+    "questions-part06.json"
+  ],
+  "total": 260
+}
