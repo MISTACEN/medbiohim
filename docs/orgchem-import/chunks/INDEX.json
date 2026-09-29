@@ -1,0 +1,20 @@
+{
+  "subject_slug": "organic_chemistry",
+  "total_tasks": 260,
+  "chunks": [
+    "chunk-01.json",
+    "chunk-02.json",
+    "chunk-03.json",
+    "chunk-04.json",
+    "chunk-05.json",
+    "chunk-06.json",
+    "chunk-07.json",
+    "chunk-08.json",
+    "chunk-09.json",
+    "chunk-10.json",
+    "chunk-11.json",
+    "chunk-12.json",
+    "chunk-13.json"
+  ],
+  "assemble": "python3 docs/orgchem-import/assemble_from_chunks.py"
+}
