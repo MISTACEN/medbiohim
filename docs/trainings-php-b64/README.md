@@ -1,13 +1,26 @@
-# trainings.php (full fixed) as base64
+# trainings.php (fixed) — base64 parts
 
-Assemble:
+**Source of truth (full file):** local artifacts
+- `spaceweb_upload/config/routes/trainings.php`
+- `backend/config/routes/trainings.php`
+
+## Assemble from these parts
 ```bash
 cat docs/trainings-php-b64/part*.txt | tr -d '\n' | base64 -d > trainings.php
+php -l trainings.php
+grep -n 'correctSql\|force' trainings.php
 ```
 
-Then copy to:
-- spaceweb_upload/config/routes/trainings.php
-- backend/config/routes/trainings.php
+## Features
+- SQL boolean literals (`true`/`false`/`NULL`) — no 22P02
+- `force: true` on POST /trainings
+- Early complete → unanswered as is_skipped=true
+- in_progress until user completes/cancels
 
-Contains: force start, correctSql boolean literals, early complete (is_skipped).
-Parts: 4, raw bytes: 20262
+## Frontend
+- `frontend/src/lib/content-api.ts` — on GitHub
+- HistologyTrainer + preparation page — artifacts (deploy Vercel)
+
+## Docs
+- `docs/SPACEWEB-BOOLEAN-FIX.md`
+- `docs/SPACEWEB-TRAININGS-AND-SESSIONS.md`
