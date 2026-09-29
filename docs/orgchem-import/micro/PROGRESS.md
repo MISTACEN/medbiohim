@@ -2,16 +2,13 @@
 
 | Range | Tasks | Status |
 |-------|-------|--------|
-| m01–m31 | 1–155 | **on main** |
-| m32–m52 | 156–260 | pending |
+| **m01–m52** | **1–260** | **COMPLETE on main** |
 
-Full source of truth: `artifacts/backend/data/questions_by_subject/organic_chemistry.json` (260).
-
-After all micros on GH:
+Assemble full bank:
 ```bash
 python3 docs/orgchem-import/assemble_from_micros.py
 ```
 
-Deploy without waiting for full GH push:
+Deploy SpaceWeb:
 1. Upload `spaceweb_upload/data/{questions_bank,tests,questions_by_subject/organic_chemistry}.json`
-2. Run `docs/20260929_import_organic_chemistry_exam_questions_uuid.sql` on Supabase
+2. Run SQL import on Supabase
