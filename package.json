@@ -13,7 +13,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "lucide-react": "^0.468.0",
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "@rdkit/rdkit": "^2026.3.6",
+    "ketcher-core": "^3.18.0",
+    "ketcher-react": "^3.18.0",
+    "3dmol": "^2.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
