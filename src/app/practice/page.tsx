@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { Loader2, Search, Eye, EyeOff } from "lucide-react";
 import { QuestionReport } from "@/components/QuestionReport";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
 export default function PracticePage() {
   const [subjects, setSubjects] = useState<
@@ -172,7 +173,7 @@ export default function PracticePage() {
                   {selected.topic ? ` · ${selected.topic}` : ""}
                 </div>
                 <h2 className="mt-1 text-lg font-semibold leading-snug">
-                  {selected.text}
+                  <ChemRichText text={selected.text} />
                 </h2>
               </div>
               <QuestionReport questionId={selected.id} />
@@ -222,11 +223,9 @@ export default function PracticePage() {
                       {selected.options[selected.correct ?? 0] ?? selected.answer ?? "—"}
                     </p>
                   ) : (
-                    <div
-                      className="whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{
-                        __html: (selected.answer || "Эталон пока пуст").replace(/\n/g, "<br/>"),
-                      }}
+                    <ChemRichText
+                      text={selected.answer || "Эталон пока пуст"}
+                      asHtml
                     />
                   )}
                 </div>
