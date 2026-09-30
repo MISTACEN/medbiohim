@@ -62,6 +62,11 @@ function weekTitle(startYmd: string): string {
   const fmtEnd=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
   return `${fmt.format(start)} — ${fmtEnd.format(end)} · Хабаровск`;
 }
+function formatMinutes(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
 function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
 
 /** Pack overlapping events into side-by-side columns (classic calendar layout). */
@@ -121,13 +126,19 @@ function ScheduleCard({
   const start = timeToMinutes(item.start_time);
   const end = timeToMinutes(item.end_time);
   const top = Math.max(0, (start - GRID_START_MIN) * PX_PER_MIN);
-  const height = Math.max(58, (end - start) * PX_PER_MIN);
+  const height = Math.max(66, (end - start) * PX_PER_MIN);
   const type = TYPE_CLASS[item.type] || TYPE_CLASS.other;
   const subject = item.subject_name || "Занятие";
   const location = [item.building, item.room].filter(Boolean).join(", ");
+  const typeLabel = TYPE_LABELS[item.type] || "Занятие";
+  const parityLabel =
+    item.week_parity === "numerator" ? "числитель" :
+    item.week_parity === "denominator" ? "знаменатель" :
+    item.week_parity === "all" ? "каждую неделю" : null;
   const gap = 3;
   const widthPct = 100 / cols;
   const leftPct = col * widthPct;
+
   return (
     <article
       role="button"
@@ -143,10 +154,20 @@ function ScheduleCard({
         width: `calc(${widthPct}% - ${gap * 2}px)`,
         zIndex: 4 + col,
       }}
-      title={`${subject} · нажмите для темы занятия`}
+      title={[
+        subject,
+        `${formatMinutes(start)}–${formatMinutes(end)}`,
+        typeLabel,
+        item.academic_hours ? `${item.academic_hours} ак. ч.` : null,
+        parityLabel,
+        item.notes,
+        location,
+      ].filter(Boolean).join(" · ")}
     >
       {(() => {
-        const breaks = (item.breaks || []).map((value: string) => breakRange(value)).filter(Boolean) as Array<{start:number;end:number}>;
+        const breaks = (item.breaks || [])
+          .map((value: string) => breakRange(value))
+          .filter(Boolean) as Array<{start:number;end:number}>;
         const points = [start, ...breaks.flatMap((b) => [b.start, b.end]), end].sort((a,b) => a-b);
         const segments: Array<{start:number;end:number;isBreak:boolean}> = [];
         for (let i = 0; i < points.length - 1; i++) {
@@ -155,31 +176,67 @@ function ScheduleCard({
           const isBreak = breaks.some((br) => br.start === a && br.end === b);
           segments.push({start:a,end:b,isBreak});
         }
+
         let lessonPart = 0;
         return segments.map((seg, index) => {
           const topPct = ((seg.start - start) / Math.max(1, end - start)) * 100;
           const heightPct = ((seg.end - seg.start) / Math.max(1, end - start)) * 100;
+
           if (seg.isBreak) {
-            return <div key={"segment-break-" + index} className="absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/50 bg-slate-100/80 text-[9px] font-semibold text-slate-600" style={{top: topPct + "%", height: heightPct + "%"}}>ПЕРЕРЫВ</div>;
+            return (
+              <div
+                key={"segment-break-" + index}
+                className="absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/50 bg-slate-100/90 text-[9px] font-bold text-slate-600"
+                style={{top: topPct + "%", height: heightPct + "%"}}
+              >
+                Перерыв · {formatMinutes(seg.start)}–{formatMinutes(seg.end)}
+              </div>
+            );
           }
+
           lessonPart++;
-          const label = lessonPart > 1 ? subject + " прод." : subject;
+          const label = lessonPart > 1 ? `${subject} · продолжение` : subject;
+
           return (
-            <div key={"segment-lesson-" + index} className="absolute left-0 right-0 overflow-hidden px-2 py-1.5" style={{top: topPct + "%", height: heightPct + "%"}}>
-              <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>{label}</div>
-              <div className="mt-0.5 text-[10px] font-semibold opacity-75">{seg.start.toString().padStart(2,"0").replace(/^(\\d\\d)(\\d\\d)$/, "$1:$2")}–{Math.floor(seg.end/60).toString().padStart(2,"0")}:{(seg.end%60).toString().padStart(2,"0")}</div>
+            <div
+              key={"segment-lesson-" + index}
+              className="absolute left-0 right-0 overflow-hidden px-2 py-1.5"
+              style={{top: topPct + "%", height: heightPct + "%"}}
+            >
+              <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>
+                {label}
+              </div>
+
+              <div className="mt-0.5 text-[10px] font-semibold opacity-75">
+                {formatMinutes(seg.start)}–{formatMinutes(seg.end)}
+              </div>
+
+              {lessonPart === 1 && (
+                <div className="mt-1 space-y-0.5 text-[9px] font-semibold leading-tight opacity-75">
+                  <div className="truncate">
+                    {typeLabel}
+                    {item.academic_hours ? ` · ${item.academic_hours} ак. ч.` : ""}
+                    {parityLabel ? ` · ${parityLabel}` : ""}
+                  </div>
+                  {item.notes && height >= 130 && (
+                    <div className="line-clamp-2 font-medium">
+                      {item.notes}
+                    </div>
+                  )}
+                  {location && cols === 1 && height >= 120 && (
+                    <div className="truncate">
+                      <MapPin className="mr-0.5 inline h-2.5 w-2.5" />
+                      {location}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         });
       })()}
+
       {item.is_cancelled && <div className="absolute right-2 top-1 z-20 text-[9px] font-bold">ОТМЕНЕНО</div>}
-      {item.teacher && cols === 1 && <div className="mt-1 truncate text-[10px] opacity-75">{item.teacher}</div>}
-      {location && cols === 1 && (
-        <div className="mt-1 flex items-center gap-1 text-[10px] opacity-75">
-          <MapPin className="h-3 w-3 shrink-0" />
-          {location}
-        </div>
-      )}
     </article>
   );
 }
