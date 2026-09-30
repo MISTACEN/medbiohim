@@ -14,11 +14,13 @@ export async function GET() {
       projections: ["fischer", "haworth", "newman", "chair", "sawhorse"],
       mechanisms: true,
       electronArrows: true,
+      threeDmolViewer: true,
     },
     capabilities: {
       pubchemResolver: true,
       twoDImage: true,
       threeDRecord: true,
+      threeDmolViewer: true,
       rdkitSvg: "optional-client-wasm",
       structureEditor: false,
       projections: {

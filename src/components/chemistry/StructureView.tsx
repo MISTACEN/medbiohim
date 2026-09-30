@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ChemicalMolecule, StructureImage } from "@/lib/chemistry/types";
 import { pickStructureImage } from "@/lib/chemistry/structureImages";
 import { smilesToSvg } from "@/lib/chemistry/rdkitClient";
+import { Mol3DView } from "@/components/chemistry/Mol3DView";
 
 type Props = {
   molecule: ChemicalMolecule;
@@ -12,23 +13,28 @@ type Props = {
 };
 
 /**
- * Renders structure with priority:
- * 1) RDKit SVG from SMILES (generated) when WASM available
- * 2) PubChem verified PNG
- * 3) any other image on the molecule
- * Always shows provenance under the figure.
+ * 2D: RDKit SVG → PubChem PNG
+ * 3D: interactive 3Dmol.js from PubChem SDF
  */
 export function StructureView({ molecule, representation = "2d", className }: Props) {
   const [rdkitSvg, setRdkitSvg] = useState<string | null>(null);
   const [rdkitTried, setRdkitTried] = useState(false);
 
+  const is3d = representation === "3d";
   const smiles = molecule.isomericSmiles || molecule.canonicalSmiles;
+  const sdf =
+    molecule.image3dUrl ||
+    pickStructureImage(molecule, "3d", "verified")?.url ||
+    (molecule.cid
+      ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${molecule.cid}/record/SDF?record_type=3d`
+      : undefined);
 
   useEffect(() => {
+    if (is3d) return;
     let cancelled = false;
     setRdkitSvg(null);
     setRdkitTried(false);
-    if (!smiles || representation !== "2d") {
+    if (!smiles) {
       setRdkitTried(true);
       return;
     }
@@ -42,9 +48,22 @@ export function StructureView({ molecule, representation = "2d", className }: Pr
     return () => {
       cancelled = true;
     };
-  }, [smiles, representation]);
+  }, [smiles, is3d]);
 
-  const fallback = pickStructureImage(molecule, representation, "verified");
+  if (is3d) {
+    return (
+      <Mol3DView
+        className={className}
+        sdfUrl={sdf}
+        caption={molecule.name}
+        sourceLabel={molecule.provenance.label || molecule.provenance.source}
+        sourceUrl={molecule.provenance.sourceUrl}
+        height={320}
+      />
+    );
+  }
+
+  const fallback = pickStructureImage(molecule, "2d", "verified");
 
   const provenance =
     rdkitSvg && smiles
@@ -75,14 +94,6 @@ export function StructureView({ molecule, representation = "2d", className }: Pr
             className="max-h-80 max-w-full [&_svg]:h-auto [&_svg]:max-h-80 [&_svg]:w-full"
             dangerouslySetInnerHTML={{ __html: rdkitSvg }}
           />
-        ) : representation === "3d" && fallback?.url ? (
-          <div className="space-y-3 p-6 text-center text-sm">
-            <p className="font-medium">3D-конформер (SDF)</p>
-            <a className="underline" href={fallback.url} target="_blank" rel="noreferrer">
-              Скачать / открыть SDF
-            </a>
-            <p className="text-xs opacity-60">Интерактивный 3Dmol — следующий слой (beta → main).</p>
-          </div>
         ) : fallback?.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
