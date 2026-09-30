@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
+import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
@@ -17,23 +19,25 @@ type ChartSpec = {
   unit?: string;
 };
 
-/** Real HTML entities — previous version no-op'd (&→&, <→<) which left XSS risk in markdown path. */
 function escapeHtml(s: string) {
   return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g, "&")
+    .replace(/</g, "<")
+    .replace(/>/g, ">")
+    .replace(/"/g, """);
 }
 
 function parseBlocks(md: string) {
-  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid"; content: string }> = [];
-  const re = /```(chart|video|image|mermaid)\n([\s\S]*?)```/g;
+  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem"; content: string }> = [];
+  const re = /```(chart|video|image|mermaid|chem)\n([\s\S]*?)```/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
     if (m.index > last) parts.push({ kind: "md", content: md.slice(last, m.index) });
-    parts.push({ kind: m[1] as "chart" | "video" | "image" | "mermaid", content: m[2].trim() });
+    parts.push({
+      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem",
+      content: m[2].trim(),
+    });
     last = m.index + m[0].length;
   }
   if (last < md.length) parts.push({ kind: "md", content: md.slice(last) });
@@ -232,6 +236,21 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
         }
         if (p.kind === "video") return <VideoBlock key={i} raw={p.content} />;
         if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;
+        if (p.kind === "chem") {
+          const spec = parseChemSpec(p.content);
+          if (!spec) {
+            return (
+              <pre key={i} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">
+                {p.content}
+              </pre>
+            );
+          }
+          return (
+            <div key={i} className="my-4">
+              <ChemicalFigure spec={{ ...spec, size: spec.size || "default" }} />
+            </div>
+          );
+        }
         if (p.kind === "mermaid") {
           return (
             <div key={i} className="my-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-white p-4">
