@@ -1,17 +1,14 @@
 # Активные эксперименты (ветка `beta`)
 
-> Ветка **`beta` только для тестов и экспериментов.** Прод = **`main`**.  
-> Обновляйте этот файл при старте или закрытии эксперимента.
+> **`beta` = только тесты и эксперименты. Прод = `main`.**
 
-| Статус | Тема | Ветка | Описание | Начато |
-|--------|------|-------|----------|--------|
-| 🟡 active | Chemical structure renderers | `beta` | RDKit SVG, Ketcher, 3Dmol, Фишер/Newman/Chair | 2026-09-30 |
-| 🟡 active | Reaction editor + mechanism graph | `beta` | Черновик модели реакций | 2026-09-30 |
-| ✅ promoted | PubChem resolver + ChemicalMolecule | → `main` | API resolve/health, страница /chemistry | 2026-09-30 |
-| ✅ promoted | chemical_* schema + seed | → `main` (SQL files) | Нужно применить на Supabase | 2026-09-30 |
+| Статус | Тема | Описание |
+|--------|------|----------|
+| ✅ on main (educational) | Fischer/Haworth/Newman/Chair | SVG projection renderers |
+| ✅ on main (educational) | Mechanism curly arrows | SN2 + carbonyl demos |
+| 🟡 active on beta | RDKit exact coords → projections | точная стереохимия |
+| 🟡 active on beta | Animated electron arrows | step animation |
+| 🟡 active on beta | Ketcher / 3Dmol | editor + 3D viewer |
+| ✅ promoted | PubChem resolver + StructureImage | main |
 
-## Как подписать работу
-
-- Коммит на beta: `experiment(chemistry): …` / `test: …` / `wip: …`
-- PR в main: явно «promoted from beta experiment»
-- Не смешивать прод-фиксы (trainings, orgchem bank) только на beta — их сразу в main
+Коммиты на beta: `experiment:` / `test:` / `wip:`.
