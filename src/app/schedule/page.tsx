@@ -152,24 +152,34 @@ function ScheduleCard({
       }}
       title={`${subject} · нажмите для темы занятия`}
     >
-      <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>{subject}</div>
-      <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px] font-semibold opacity-80">
-        <span className="truncate">{TYPE_LABELS[item.type] || item.type}</span>
-        {item.is_cancelled && <span>ОТМЕНЕНО</span>}
-      </div>
-      <div className="mt-0.5 text-[11px] font-semibold opacity-75">{item.start_time.slice(0, 5)}–{item.end_time.slice(0, 5)}</div>
-      {(item.breaks || []).map((value: string, index: number) => {
-        const range = breakRange(value);
-        if (!range) return null;
-        const relTop = ((range.start - start) / Math.max(1, end - start)) * 100;
-        const relHeight = ((range.end - range.start) / Math.max(1, end - start)) * 100;
-        return (
-          <div key={"break-" + index} className="pointer-events-none absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/60 bg-slate-100/80 px-1 text-[9px] font-semibold text-slate-600" style={{ top: relTop + "%", height: Math.max(8, relHeight) + "%" }}>
-            <span className="rounded bg-white/80 px-1">Перерыв · {value}</span>
-          </div>
-        );
-      })}
-      {(item.week_parity || item.academic_hours) && <div className="mt-1 text-[9px] font-semibold opacity-70">{item.week_parity === "numerator" ? "числитель" : item.week_parity === "denominator" ? "знаменатель" : item.academic_hours ? `${item.academic_hours} ак. ч.` : ""}</div>}
+      {(() => {
+        const breaks = (item.breaks || []).map((value: string) => breakRange(value)).filter(Boolean) as Array<{start:number;end:number}>;
+        const points = [start, ...breaks.flatMap((b) => [b.start, b.end]), end].sort((a,b) => a-b);
+        const segments: Array<{start:number;end:number;isBreak:boolean}> = [];
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i], b = points[i + 1];
+          if (b <= a) continue;
+          const isBreak = breaks.some((br) => br.start === a && br.end === b);
+          segments.push({start:a,end:b,isBreak});
+        }
+        let lessonPart = 0;
+        return segments.map((seg, index) => {
+          const topPct = ((seg.start - start) / Math.max(1, end - start)) * 100;
+          const heightPct = ((seg.end - seg.start) / Math.max(1, end - start)) * 100;
+          if (seg.isBreak) {
+            return <div key={"segment-break-" + index} className="absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/50 bg-slate-100/80 text-[9px] font-semibold text-slate-600" style={{top: topPct + "%", height: heightPct + "%"}}>ПЕРЕРЫВ</div>;
+          }
+          lessonPart++;
+          const label = lessonPart > 1 ? subject + " прод." : subject;
+          return (
+            <div key={"segment-lesson-" + index} className="absolute left-0 right-0 overflow-hidden px-2 py-1.5" style={{top: topPct + "%", height: heightPct + "%"}}>
+              <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>{label}</div>
+              <div className="mt-0.5 text-[10px] font-semibold opacity-75">{seg.start.toString().padStart(2,"0").replace(/^(\\d\\d)(\\d\\d)$/, "$1:$2")}–{Math.floor(seg.end/60).toString().padStart(2,"0")}:{(seg.end%60).toString().padStart(2,"0")}</div>
+            </div>
+          );
+        });
+      })()}
+      {item.is_cancelled && <div className="absolute right-2 top-1 z-20 text-[9px] font-bold">ОТМЕНЕНО</div>}
       {item.teacher && cols === 1 && <div className="mt-1 truncate text-[10px] opacity-75">{item.teacher}</div>}
       {location && cols === 1 && (
         <div className="mt-1 flex items-center gap-1 text-[10px] opacity-75">
