@@ -16,6 +16,10 @@ caption: Бензол
 ```
 
 ```chem
+{"query":"aspirin","representation":"3d"}
+```
+
+```chem
 photoUrl: https://cdn.example.com/aspirin-scan.jpg
 caption: Скан из учебника
 ```
@@ -25,18 +29,22 @@ caption: Скан из учебника
 
 - `[chem:benzene]`
 - `[chem query="glucose" rep="fischer"]`
-- fenced `chem` блок в тексте
+- `[chem query="benzene" rep="3d"]`
+
+## 3D
+
+`representation: 3d` → **3Dmol.js** (CDN), SDF из PubChem.
+Стили: stick / line / sphere · вращение · drag/zoom.
 
 ## React
 
 ```tsx
-import { ChemicalFigure, ChemRichText } from "@/components/chemistry";
-<ChemicalFigure spec={{ query: "aspirin", representation: "skeletal" }} />
-<ChemRichText text={question.text} />
+import { ChemicalFigure, ChemRichText, Mol3DView } from "@/components/chemistry";
+<ChemicalFigure spec={{ query: "aspirin", representation: "3d" }} />
 ```
 
-## Приоритет
+## Приоритет 2D
 
-1. photoUrl / imageUrl (фото формулы)
-2. resolve → RDKit SVG / PubChem PNG
+1. photoUrl / imageUrl
+2. RDKit SVG / PubChem PNG
 3. проекции Fischer…
