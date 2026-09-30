@@ -76,7 +76,8 @@ create policy "chemical reaction steps are readable for published reactions" on 
 drop policy if exists "chemical sources are readable" on public.chemical_sources;
 create policy "chemical sources are readable" on public.chemical_sources for select to anon, authenticated using (true);
 drop policy if exists "chemical spectra are readable for published molecules" on public.chemical_spectra;
-create policy "chemical spectra are readable for published reactions" on public.chemical_spectra for select to anon, authenticated using (molecule_id is null or exists (select 1 from public.chemical_molecules m where m.id=molecule_id and m.is_published=true));
+drop policy if exists "chemical spectra are readable for published reactions" on public.chemical_spectra;
+create policy "chemical spectra are readable for published molecules" on public.chemical_spectra for select to anon, authenticated using (molecule_id is null or exists (select 1 from public.chemical_molecules m where m.id=molecule_id and m.is_published=true));
 drop policy if exists "chemical functional groups are readable" on public.chemical_functional_groups;
 create policy "chemical functional groups are readable" on public.chemical_functional_groups for select to anon, authenticated using (true);
 drop policy if exists "chemical topics are readable" on public.chemical_topics;
