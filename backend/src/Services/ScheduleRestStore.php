@@ -87,7 +87,7 @@ final class ScheduleRestStore
         if (!$latest) return [];
 
         $scheduleIds = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), array_values($latest))));
-        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,session_id,room,building,notes,is_cancelled,teacher,academic_hours,week_parity,recurrence_group,parent_entry_id,source_detail,source&order=date.asc,start_time.asc';
+        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,session_id,room,building,notes,is_cancelled,teacher,academic_hours,week_parity,recurrence_group,parent_entry_id,source_detail,source,breaks&order=date.asc,start_time.asc';
         if ($from !== null && $from !== '') $entryPath .= '&date=gte.' . rawurlencode($from);
         if ($to !== null && $to !== '') $entryPath .= '&date=lte.' . rawurlencode($to);
         $entries = self::request('GET', $entryPath, $accessToken);
@@ -154,6 +154,7 @@ final class ScheduleRestStore
                 'recurrence_group' => $entry['recurrence_group'] ?? null,
                 'parent_entry_id' => $entry['parent_entry_id'] ?? null,
                 'source_detail' => $entry['source_detail'] ?? null,
+                'breaks' => is_array($entry['breaks'] ?? null) ? $entry['breaks'] : [],
                 'event_kind' => (string)($entry['event_kind'] ?? 'class'),
                 'is_makeup' => (bool)($entry['is_makeup'] ?? false),
                 'session_id' => $entry['session_id'] ?? null,
