@@ -2,17 +2,24 @@ import type { ChemicalMolecule } from "./types";
 
 const PUG = "https://pubchem.ncbi.nlm.nih.gov/rest/pug";
 
-function imageUrl(cid: number, size = 400) {
+function imageUrl(cid: number, size = 500) {
   return `${PUG}/compound/cid/${cid}/PNG?image_size=${size}x${size}`;
+}
+
+function inputPath(query: string) {
+  const value = query.trim();
+  if (/^InChI=/i.test(value)) return `inchi/${encodeURIComponent(value)}`;
+  if (/^InChIKey=/i.test(value)) return `inchikey/${encodeURIComponent(value.replace(/^InChIKey=/i, ""))}`;
+  if (/^(smiles:|SMILES:)/i.test(value)) return `smiles/${encodeURIComponent(value.replace(/^(smiles:|SMILES:)/i, ""))}`;
+  return `name/${encodeURIComponent(value)}`;
 }
 
 export async function resolvePubChem(query: string): Promise<ChemicalMolecule | null> {
   const value = query.trim();
   if (!value) return null;
 
-  const encoded = encodeURIComponent(value);
   const url =
-    `${PUG}/compound/name/${encoded}/property/Title,MolecularFormula,MolecularWeight,CanonicalSMILES,IsomericSMILES,InChI,InChIKey/JSON`;
+    `${PUG}/compound/${inputPath(value)}/property/Title,MolecularFormula,MolecularWeight,CanonicalSMILES,IsomericSMILES,InChI,InChIKey/JSON`;
 
   const response = await fetch(url, {
     headers: { accept: "application/json" },
