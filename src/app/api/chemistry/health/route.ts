@@ -7,16 +7,28 @@ export async function GET() {
     service: "medbiohim-chemistry",
     status: "ok",
     version: "main",
+    core: {
+      chemicalMolecule: true,
+      provenance: true,
+      structureImages: true,
+      imagePriority: ["generated(rdkit-svg)", "verified(pubchem-png)", "external"],
+    },
     capabilities: {
       pubchemResolver: true,
-      provenance: true,
       twoDImage: true,
       threeDRecord: true,
+      rdkitSvg: "optional-client-wasm",
       structureEditor: false,
-      projections: ["fischer", "haworth", "newman", "sawhorse", "chair"],
+      projections: {
+        fischer: false,
+        haworth: false,
+        newman: false,
+        sawhorse: false,
+        chair: false,
+      },
       reactions: false,
+      ocr: false,
       spectra: false,
-      imageRecognition: "planned",
     },
   });
 }
