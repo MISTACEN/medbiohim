@@ -63,6 +63,13 @@ function weekTitle(startYmd: string): string {
   return `${fmt.format(start)} — ${fmtEnd.format(end)} · Хабаровск`;
 }
 function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
+function breakRange(value: string): { start: number; end: number } | null {
+  const parts = value.split(/[–-]/).map((x) => x.trim());
+  if (parts.length !== 2) return null;
+  const start = timeToMinutes(parts[0]);
+  const end = timeToMinutes(parts[1]);
+  return end > start ? { start, end } : null;
+}
 
 /** Pack overlapping events into side-by-side columns (classic calendar layout). */
 function layoutDayColumns(items: ScheduleItem[]): Array<{ item: ScheduleItem; col: number; cols: number }> {
@@ -151,6 +158,17 @@ function ScheduleCard({
         {item.is_cancelled && <span>ОТМЕНЕНО</span>}
       </div>
       <div className="mt-0.5 text-[11px] font-semibold opacity-75">{item.start_time.slice(0, 5)}–{item.end_time.slice(0, 5)}</div>
+      {(item.breaks || []).map((value: string, index: number) => {
+        const range = breakRange(value);
+        if (!range) return null;
+        const relTop = ((range.start - start) / Math.max(1, end - start)) * 100;
+        const relHeight = ((range.end - range.start) / Math.max(1, end - start)) * 100;
+        return (
+          <div key={"break-" + index} className="pointer-events-none absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/60 bg-slate-100/80 px-1 text-[9px] font-semibold text-slate-600" style={{ top: relTop + "%", height: Math.max(8, relHeight) + "%" }}>
+            <span className="rounded bg-white/80 px-1">Перерыв · {value}</span>
+          </div>
+        );
+      })}
       {(item.week_parity || item.academic_hours) && <div className="mt-1 text-[9px] font-semibold opacity-70">{item.week_parity === "numerator" ? "числитель" : item.week_parity === "denominator" ? "знаменатель" : item.academic_hours ? `${item.academic_hours} ак. ч.` : ""}</div>}
       {item.teacher && cols === 1 && <div className="mt-1 truncate text-[10px] opacity-75">{item.teacher}</div>}
       {location && cols === 1 && (
