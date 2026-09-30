@@ -8,11 +8,10 @@ export type ChemicalSource =
   | "ocr"
   | "user";
 
-/** How the structure image was obtained — always shown in UI. */
 export type StructureImageKind =
-  | "verified"   // official DB image (PubChem/ChEBI)
-  | "generated"  // RDKit / local engine SVG|PNG
-  | "external";  // other curated source after id check
+  | "verified"
+  | "generated"
+  | "external";
 
 export type ChemicalRepresentation =
   | "2d"
@@ -33,20 +32,13 @@ export interface ChemicalProvenance {
   sourceUrl?: string;
   retrievedAt?: string;
   representation?: ChemicalRepresentation;
-  /** Human label e.g. "PubChem, CID 241" */
   label?: string;
 }
 
-/**
- * One renderable structure image with mandatory provenance.
- * Prefer SVG (scalable, highlightable) over PNG when generator is RDKit.
- */
 export interface StructureImage {
   kind: StructureImageKind;
   format: "svg" | "png" | "sdf" | "url";
-  /** data: URL, remote URL, or inline SVG markup when format=svg and inline */
   url?: string;
-  /** Inline SVG string when generated client-side */
   svg?: string;
   representation: ChemicalRepresentation;
   generator?: "rdkit" | "pubchem" | "chebi" | "unknown";
@@ -64,10 +56,8 @@ export interface ChemicalMolecule {
   isomericSmiles?: string;
   inchi?: string;
   inchikey?: string;
-  /** @deprecated prefer images[] — kept for API compat */
   image2dUrl?: string;
   image3dUrl?: string;
-  /** Ordered by trust: verified → generated → external */
   images?: StructureImage[];
   provenance: ChemicalProvenance;
 }
@@ -79,9 +69,27 @@ export interface ChemicalResolverResponse {
   error?: string;
 }
 
-/** Priority when picking default 2D image for UI. */
 export const STRUCTURE_IMAGE_PRIORITY: StructureImageKind[] = [
-  "generated", // local RDKit SVG preferred when available
-  "verified",  // PubChem PNG trusted
+  "generated",
+  "verified",
   "external",
 ];
+
+/**
+ * Universal embed spec — lectures, tests, tickets, trainers, cards.
+ * photoUrl = scanned textbook structure; query/smiles = resolver.
+ */
+export interface ChemicalFigureSpec {
+  query?: string;
+  name?: string;
+  smiles?: string;
+  inchi?: string;
+  cid?: number;
+  photoUrl?: string;
+  imageUrl?: string;
+  representation?: ChemicalRepresentation;
+  caption?: string;
+  alt?: string;
+  showProvenance?: boolean;
+  size?: "compact" | "default" | "large";
+}
