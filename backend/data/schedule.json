@@ -35,969 +35,760 @@
     },
     "spring_start": "2027-02-08",
     "updated_at": "2026-09-30T12:00:00Z",
-    "source_note": "Официальное расписание, утверждено К.В. Жмеренецкий 30.09.2026. Группа 201."
+    "source_note": "До 30.09.2026 действует предыдущее расписание; с 01.10.2026 — последнее официальное расписание 30.09.2026.",
+    "transition_date": "2026-10-01",
+    "legacy_source": "schedule_half_1@b4aa4fb70d25b3ababafe75989ebb9868d7f3914",
+    "new_source": "official_timetable_mb201_2026_09_30"
   },
-  "raw_count": 329,
-  "real_block_count": 257,
+  "legacy_block_count": 39,
+  "new_block_count": 204,
+  "real_block_count": 243,
   "blocks": [
     {
       "date": "2026-09-01",
       "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Оптика, атомная физика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-02",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "История медицины",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-02",
-      "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Органическая и физическая химия",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "Аудитория № 303 (учебный корпус № 2)",
-      "room": "303, корпус 2",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-03",
-      "start_time": "08:30",
-      "end_time": "10:10",
-      "subject_name": "Информационные технологии в здравоохранении",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:30–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-03",
-      "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Теория вероятности и математическая статистика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-04",
-      "start_time": "08:30",
-      "end_time": "10:10",
-      "subject_name": "Первая медицинская помощь",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:30–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-04",
-      "start_time": "10:40",
-      "end_time": "15:20",
-      "subject_name": "Гистология, цитология",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "3×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "13:40–15:20"
-      ],
-      "breaks": [
-        "12:20–13:40"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-05",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "Информатика, медицинская информатика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×17",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-05",
-      "start_time": "10:40",
       "end_time": "12:20",
-      "subject_name": "Первая медицинская помощь",
-      "type": "practical",
+      "subject_name": "Оптика, атомная физика",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
         "10:40–12:20"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
-      "date": "2026-09-05",
+      "date": "2026-09-01",
       "start_time": "12:50",
       "end_time": "14:30",
-      "subject_name": "Элективные курсы по физической культуре и спорту",
-      "type": "practical",
+      "subject_name": "Органическая и физическая химия",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "2×18",
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
         "12:50–14:30"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
-      "date": "2026-09-07",
-      "start_time": "08:30",
-      "end_time": "14:30",
-      "subject_name": "Физиология",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "4×18 (блок)",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:30–10:10",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "10:10–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-07",
+      "date": "2026-09-01",
       "start_time": "14:45",
       "end_time": "16:25",
-      "subject_name": "Философия",
-      "type": "seminar",
+      "subject_name": "Теория вероятности и математическая статистика",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "2×19",
+      "hours": 4,
       "is_cancelled": false,
       "source_slots": [
         "14:45–16:25"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
-      "date": "2026-09-08",
-      "start_time": "10:40",
-      "end_time": "12:20",
-      "subject_name": "Информатика, медицинская информатика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-08",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Оптика, атомная физика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "3×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-09",
-      "start_time": "08:00",
+      "date": "2026-09-02",
+      "start_time": "08:30",
       "end_time": "10:10",
       "subject_name": "История медицины",
-      "type": "class",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "С 8:00 · 3×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-09",
-      "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Органическая и физическая химия",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "Аудитория № 303 (учебный корпус № 2)",
-      "room": "303, корпус 2",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-10",
-      "start_time": "08:30",
-      "end_time": "12:20",
-      "subject_name": "Информационные технологии в здравоохранении",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:30–10:10",
-        "10:40–12:20"
-      ],
-      "breaks": [
-        "10:10–10:40"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-10",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Теория вероятности и математическая статистика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "4×17",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-11",
-      "start_time": "08:30",
-      "end_time": "10:10",
-      "subject_name": "Первая медицинская помощь",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
         "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
-      "date": "2026-09-11",
-      "start_time": "10:40",
-      "end_time": "15:20",
-      "subject_name": "Гистология, цитология",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "3×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "13:40–15:20"
-      ],
-      "breaks": [
-        "12:20–13:40"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-12",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "Информатика, медицинская информатика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×17",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-12",
+      "date": "2026-09-02",
       "start_time": "10:40",
       "end_time": "12:20",
-      "subject_name": "История медицины",
-      "type": "class",
+      "subject_name": "Философия",
+      "type": "seminar",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
         "10:40–12:20"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-03",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Физиология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 4,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-03",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Неорганическая химия",
+      "type": "lecture",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-03",
+      "start_time": "12:50",
+      "end_time": "14:30",
+      "subject_name": "Органическая и физическая химия",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "12:50–14:30"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-04",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Гистология, цитология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-04",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Информатика, медицинская информатика",
+      "type": "practice",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-05",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Первая медицинская помощь",
+      "type": "practice",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 2,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-05",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Оптика, атомная физика",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-08",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Физиология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 4,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-08",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Оптика, атомная физика",
+      "type": "lecture",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-09",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "История медицины",
+      "type": "lecture",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 2,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-10",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Физиология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 4,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-10",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Неорганическая химия",
+      "type": "lecture",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-11",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Гистология, цитология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-12",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Элективные курсы по физической культуре и спорту",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-14",
       "start_time": "08:30",
-      "end_time": "14:30",
-      "subject_name": "Физиология",
-      "type": "practical",
+      "end_time": "10:10",
+      "subject_name": "Первая медицинская помощь",
+      "type": "practice",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "4×18 (блок)",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
-        "08:30–10:10",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "10:10–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-14",
-      "start_time": "14:45",
-      "end_time": "16:25",
-      "subject_name": "Философия",
-      "type": "seminar",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "14:45–16:25"
+        "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-15",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Физиология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 4,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-15",
       "start_time": "10:40",
-      "end_time": "14:30",
+      "end_time": "12:20",
       "subject_name": "Оптика, атомная физика",
-      "type": "class",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-16",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "История медицины",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
+        "10:40–12:20"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-16",
-      "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Органическая и физическая химия",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "Аудитория № 303 (учебный корпус № 2)",
-      "room": "303, корпус 2",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-17",
       "start_time": "08:30",
       "end_time": "10:10",
-      "subject_name": "Информационные технологии в здравоохранении",
-      "type": "class",
+      "subject_name": "История медицины",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "2×18",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
         "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-16",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Неорганическая химия",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-16",
+      "start_time": "12:50",
+      "end_time": "14:30",
+      "subject_name": "Органическая и физическая химия",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "12:50–14:30"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-17",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Гистология, цитология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-17",
       "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Теория вероятности и математическая статистика",
-      "type": "class",
+      "end_time": "12:20",
+      "subject_name": "Информатика, медицинская информатика",
+      "type": "practice",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
+        "10:40–12:20"
       ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-18",
       "start_time": "08:30",
       "end_time": "10:10",
       "subject_name": "Первая медицинская помощь",
-      "type": "practical",
+      "type": "practice",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "2×18",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
         "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-18",
       "start_time": "10:40",
-      "end_time": "15:20",
-      "subject_name": "Гистология, цитология",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "3×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "13:40–15:20"
-      ],
-      "breaks": [
-        "12:20–13:40"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-19",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "Информатика, медицинская информатика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×17",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-19",
-      "start_time": "10:40",
       "end_time": "12:20",
-      "subject_name": "Первая медицинская помощь",
-      "type": "practical",
+      "subject_name": "Оптика, атомная физика",
+      "type": "laboratory",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
         "10:40–12:20"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-19",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Элективные курсы по физической культуре и спорту",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-21",
       "start_time": "08:30",
-      "end_time": "14:30",
-      "subject_name": "Физиология",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "4×18 (блок)",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:30–10:10",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "10:10–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-21",
-      "start_time": "14:45",
-      "end_time": "16:25",
+      "end_time": "10:10",
       "subject_name": "Философия",
       "type": "seminar",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "2×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "14:45–16:25"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-22",
-      "start_time": "10:40",
-      "end_time": "12:20",
-      "subject_name": "Информатика, медицинская информатика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-22",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Оптика, атомная физика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "3×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-23",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "История медицины",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-23",
-      "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Органическая и физическая химия",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "Аудитория № 303 (учебный корпус № 2)",
-      "room": "303, корпус 2",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-24",
-      "start_time": "08:30",
-      "end_time": "12:20",
-      "subject_name": "Информационные технологии в здравоохранении",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:30–10:10",
-        "10:40–12:20"
-      ],
-      "breaks": [
-        "10:10–10:40"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-24",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Теория вероятности и математическая статистика",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "4×17",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-25",
-      "start_time": "08:30",
-      "end_time": "10:10",
-      "subject_name": "Первая медицинская помощь",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
         "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
-      "date": "2026-09-25",
-      "start_time": "10:40",
-      "end_time": "15:20",
-      "subject_name": "Гистология, цитология",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "3×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "10:40–12:20",
-        "13:40–15:20"
-      ],
-      "breaks": [
-        "12:20–13:40"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-26",
-      "start_time": "08:00",
+      "date": "2026-09-22",
+      "start_time": "08:30",
       "end_time": "10:10",
-      "subject_name": "Информатика, медицинская информатика",
-      "type": "class",
+      "subject_name": "Физиология",
+      "type": "laboratory",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "С 8:00 · 3×17",
+      "hours": 4,
       "is_cancelled": false,
       "source_slots": [
-        "08:00–10:10"
+        "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
-      "date": "2026-09-26",
+      "date": "2026-09-22",
       "start_time": "10:40",
       "end_time": "12:20",
-      "subject_name": "История медицины",
-      "type": "class",
+      "subject_name": "Оптика, атомная физика",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
         "10:40–12:20"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-23",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "История медицины",
+      "type": "lecture",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 2,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-24",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Физиология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 4,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-24",
+      "start_time": "10:40",
+      "end_time": "12:20",
+      "subject_name": "Неорганическая химия",
+      "type": "lecture",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "10:40–12:20"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-25",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Гистология, цитология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 3,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-26",
-      "start_time": "12:50",
-      "end_time": "14:30",
-      "subject_name": "Элективные курсы по физической культуре и спорту",
-      "type": "practical",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "12:50–14:30"
-      ],
-      "breaks": [],
-      "merged": false,
-      "merge_reason": null
-    },
-    {
-      "date": "2026-09-28",
       "start_time": "08:30",
-      "end_time": "14:30",
-      "subject_name": "Физиология",
-      "type": "practical",
+      "end_time": "10:10",
+      "subject_name": "Первая медицинская помощь",
+      "type": "practice",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "4×18 (блок)",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
-        "08:30–10:10",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "10:10–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-28",
-      "start_time": "14:45",
-      "end_time": "16:25",
-      "subject_name": "Философия",
-      "type": "seminar",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "2×19",
-      "is_cancelled": false,
-      "source_slots": [
-        "14:45–16:25"
+        "08:30–10:10"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
+    },
+    {
+      "date": "2026-09-29",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "Физиология",
+      "type": "laboratory",
+      "group_code": "МБ-201",
+      "semester": 3,
+      "hours": 4,
+      "is_cancelled": false,
+      "source_slots": [
+        "08:30–10:10"
+      ],
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-29",
       "start_time": "10:40",
-      "end_time": "14:30",
+      "end_time": "12:20",
       "subject_name": "Оптика, атомная физика",
-      "type": "class",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
+      "hours": 3,
       "is_cancelled": false,
       "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
-      ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
-    },
-    {
-      "date": "2026-09-30",
-      "start_time": "08:00",
-      "end_time": "10:10",
-      "subject_name": "История медицины",
-      "type": "class",
-      "group_code": "МБ-201",
-      "semester": 3,
-      "notes": "С 8:00 · 3×18",
-      "is_cancelled": false,
-      "source_slots": [
-        "08:00–10:10"
+        "10:40–12:20"
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-09-30",
-      "start_time": "10:40",
-      "end_time": "14:30",
-      "subject_name": "Органическая и физическая химия",
-      "type": "class",
+      "start_time": "08:30",
+      "end_time": "10:10",
+      "subject_name": "История медицины",
+      "type": "lecture",
       "group_code": "МБ-201",
       "semester": 3,
-      "notes": "Аудитория № 303 (учебный корпус № 2)",
-      "room": "303, корпус 2",
+      "hours": 2,
       "is_cancelled": false,
       "source_slots": [
-        "10:40–12:20",
-        "12:50–14:30"
+        "08:30–10:10"
       ],
-      "breaks": [
-        "12:20–12:50"
-      ],
-      "merged": true,
-      "merge_reason": "same_subject_same_date"
+      "breaks": [],
+      "merged": false,
+      "merge_reason": null,
+      "legacy_schedule": true,
+      "legacy_source": "schedule_half_1@b4aa4fb"
     },
     {
       "date": "2026-10-01",
-      "start_time": "08:30",      "end_time": "10:10",
+      "start_time": "08:30",
+      "end_time": "10:10",
       "subject_name": "Информационные технологии в здравоохранении",
       "type": "class",
       "group_code": "МБ-201",
@@ -1996,7 +1787,8 @@
       ],
       "merged": true,
       "merge_reason": "same_subject_same_date"
-    },    {
+    },
+    {
       "date": "2026-10-31",
       "start_time": "08:00",
       "end_time": "10:10",
@@ -2995,7 +2787,8 @@
       "source_slots": [
         "14:45–16:25"
       ],
-      "breaks": [],      "merged": false,
+      "breaks": [],
+      "merged": false,
       "merge_reason": null
     },
     {
@@ -3994,7 +3787,8 @@
       ],
       "breaks": [],
       "merged": false,
-      "merge_reason": null    },
+      "merge_reason": null
+    },
     {
       "date": "2027-01-01",
       "start_time": "10:40",
@@ -4575,89 +4369,6 @@
       "breaks": [],
       "merged": false,
       "merge_reason": null
-    }
-  ],
-  "alternating_series": [
-    {
-      "weekday": 1,
-      "start_time": "10:40",
-      "end_time": "12:20",
-      "subjects": [
-        "Оптика, атомная физика",
-        "Информатика, медицинская информатика"
-      ],
-      "dates": [
-        "2026-09-01",
-        "2026-09-08",
-        "2026-09-15",
-        "2026-09-22",
-        "2026-09-29",
-        "2026-10-06",
-        "2026-10-13",
-        "2026-10-20",
-        "2026-10-27",
-        "2026-11-03",
-        "2026-11-10",
-        "2026-11-17",
-        "2026-11-24",
-        "2026-12-01",
-        "2026-12-08",
-        "2026-12-15",
-        "2026-12-22",
-        "2026-12-29"
-      ],
-      "pattern": "A/B alternating"
-    },
-    {
-      "weekday": 3,
-      "start_time": "10:40",
-      "end_time": "12:20",
-      "subjects": [
-        "Теория вероятности и математическая статистика",
-        "Информационные технологии в здравоохранении"
-      ],
-      "dates": [
-        "2026-09-03",
-        "2026-09-10",
-        "2026-09-17",
-        "2026-09-24",
-        "2026-10-01",
-        "2026-10-08",
-        "2026-10-15",
-        "2026-10-22",
-        "2026-10-29"
-      ],
-      "pattern": "A/B alternating"
-    },
-    {
-      "weekday": 5,
-      "start_time": "10:40",
-      "end_time": "12:20",
-      "subjects": [
-        "Первая медицинская помощь",
-        "История медицины"
-      ],
-      "dates": [
-        "2026-09-05",
-        "2026-09-12",
-        "2026-09-19",
-        "2026-09-26",
-        "2026-10-03",
-        "2026-10-10",
-        "2026-10-17",
-        "2026-10-24",
-        "2026-10-31",
-        "2026-11-07",
-        "2026-11-14",
-        "2026-11-21",
-        "2026-11-28",
-        "2026-12-05",
-        "2026-12-12",
-        "2026-12-19",
-        "2026-12-26",
-        "2027-01-09"
-      ],
-      "pattern": "A/B alternating"
     }
   ]
 }
