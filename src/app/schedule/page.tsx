@@ -63,13 +63,6 @@ function weekTitle(startYmd: string): string {
   return `${fmt.format(start)} — ${fmtEnd.format(end)} · Хабаровск`;
 }
 function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
-function breakRange(value: string): { start: number; end: number } | null {
-  const parts = value.split(/[–-]/).map((x) => x.trim());
-  if (parts.length !== 2) return null;
-  const start = timeToMinutes(parts[0]);
-  const end = timeToMinutes(parts[1]);
-  return end > start ? { start, end } : null;
-}
 
 /** Pack overlapping events into side-by-side columns (classic calendar layout). */
 function layoutDayColumns(items: ScheduleItem[]): Array<{ item: ScheduleItem; col: number; cols: number }> {
