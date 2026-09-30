@@ -96,6 +96,7 @@ SELECT
     se.recurrence_group,
     se.parent_entry_id,
     se.source_detail,
+    se.breaks,
     se.event_kind,
     se.is_makeup,
     se.session_id,
@@ -164,6 +165,7 @@ SELECT
     se.recurrence_group,
     se.parent_entry_id,
     se.source_detail,
+    se.breaks,
     se.event_kind,
     se.is_makeup,
     se.session_id,
@@ -260,10 +262,10 @@ SQL;
 
             $insert = $this->db->prepare(
                 'INSERT INTO public.schedule_entries
-                    (schedule_id, subject_id, subject_name, date, start_time, end_time, type, room, building, notes, is_cancelled, sort_order, teacher, academic_hours, week_parity, recurrence_group, parent_entry_id, source_detail, event_kind, is_makeup, session_id, source)
+                    (schedule_id, subject_id, subject_name, date, start_time, end_time, type, room, building, notes, is_cancelled, sort_order, teacher, academic_hours, week_parity, recurrence_group, parent_entry_id, source_detail, breaks, event_kind, is_makeup, session_id, source)
                  VALUES
                     (:schedule_id, :subject_id, :subject_name, :date, :start_time, :end_time,
-                     CAST(:type AS public.schedule_type), :room, :building, :notes, :is_cancelled, :sort_order, :teacher, :academic_hours, :week_parity, :recurrence_group, :parent_entry_id, :source_detail, :event_kind, :is_makeup, :session_id, :source)
+                     CAST(:type AS public.schedule_type), :room, :building, :notes, :is_cancelled, :sort_order, :teacher, :academic_hours, :week_parity, :recurrence_group, :parent_entry_id, CAST(:breaks AS jsonb), :event_kind, :is_makeup, :session_id, :source)
                  RETURNING id'
             );
 
@@ -307,6 +309,7 @@ SQL;
                     'recurrence_group' => ($entry['recurrence_group'] ?? null) !== '' ? ($entry['recurrence_group'] ?? null) : null,
                     'parent_entry_id' => ($entry['parent_entry_id'] ?? null) ?: null,
                     'source_detail' => ($entry['source_detail'] ?? null) !== '' ? ($entry['source_detail'] ?? null) : null,
+                    'breaks' => json_encode(is_array($entry['breaks'] ?? null) ? array_values($entry['breaks']) : [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                     'event_kind' => ($entry['event_kind'] ?? 'class') ?: 'class',
                     'is_makeup' => (bool)($entry['is_makeup'] ?? false),
                     'session_id' => ($entry['session_id'] ?? null) ?: null,
