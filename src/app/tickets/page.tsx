@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { generateTicket, listTicketBanks, type BankQuestion } from "@/lib/api";
 import { Loader2, RefreshCw, Eye, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
 type Bank = {
   id: string;
@@ -156,7 +157,9 @@ function TicketsPageInner() {
               Вопрос {idx + 1}
               {qq.subject ? ` · ${qq.subject}` : ""}
             </div>
-            <p className="mt-2 font-medium leading-snug">{qq.text}</p>
+            <div className="mt-2 font-medium leading-snug">
+              <ChemRichText text={String(qq.text || "")} />
+            </div>
             {mode === "practice" && (qq.answer || qq.has_answer) && (
               <div className="mt-3">
                 <button
@@ -168,10 +171,9 @@ function TicketsPageInner() {
                   {reveal[qq.id] ? "Скрыть эталон" : "Показать эталон"}
                 </button>
                 {reveal[qq.id] && (
-                  <div
-                    className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700"
-                    dangerouslySetInnerHTML={{ __html: String(qq.answer || "") }}
-                  />
+                  <div className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                    <ChemRichText text={String(qq.answer || "")} asHtml />
+                  </div>
                 )}
               </div>
             )}
