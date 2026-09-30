@@ -191,28 +191,28 @@ export async function createGroup(..._args: any[]): Promise<any> { return api(`/
 export async function createSubject(..._args: any[]): Promise<any> { return api(`/api-compat/createSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function deleteGroup(..._args: any[]): Promise<any> { return api(`/api-compat/deleteGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function deleteSubject(..._args: any[]): Promise<any> { return api(`/api-compat/deleteSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function finishPreparation(..._args: any[]): Promise<any> { return api(`/api-compat/finishPreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function generateTicket(..._args: any[]): Promise<any> { return api(`/api-compat/generateTicket`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function finishPreparation(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}/finish`, {method:"POST",body:"{}"}) as any; }
+export async function generateTicket(..._args: any[]): Promise<any> { const a=_args[0]||{}; return api(`/tickets/generate`, {method:"POST",body:JSON.stringify(a)}) as any; }
 export async function getFile(..._args: any[]): Promise<any> { return api(`/api-compat/getFile`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function getLecture(..._args: any[]): Promise<any> { return api(`/api-compat/getLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function getLessonPlan(..._args: any[]): Promise<any> { return api(`/api-compat/getLessonPlan`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getPreparation(..._args: any[]): Promise<any> { return api(`/api-compat/getPreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function getPreparation(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}`) as any; }
 export async function getQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/getQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getScheduleMeta(..._args: any[]): Promise<any> { return api(`/api-compat/getScheduleMeta`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function getScheduleMeta(course?:number,semester?:number): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api(`/schedule/meta${q.toString()?`?${q}`:""}`) as any; }
 export async function getSubjectGradebook(..._args: any[]): Promise<any> { const id=String(_args[0]??"").trim(); if(!id) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api(`/subjects/${encodeURIComponent(id)}/gradebook`) as any; }
 export async function getSubjectPlan(..._args: any[]): Promise<any> { const slug=String(_args[0]??"").trim(); if(!slug) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; return api(`/subject-plans/${encodeURIComponent(slug)}`) as any; }
-export async function getTrainer(..._args: any[]): Promise<any> { return api(`/api-compat/getTrainer`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function listCommunityPosts(..._args: any[]): Promise<any> { return api(`/api-compat/listCommunityPosts`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function listLectures(..._args: any[]): Promise<any> { return api(`/api-compat/listLectures`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api(`/api-compat/listQuestionSubjects`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function listQuestions(..._args: any[]): Promise<any> { return api(`/api-compat/listQuestions`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function getTrainer(id:string): Promise<any> { return api(`/trainers/${encodeURIComponent(String(id))}`) as any; }
+export async function listCommunityPosts(..._args: any[]): Promise<any> { return api(`/community/posts`) as any; }
+export async function listLectures(subject?:string): Promise<any> { const q=subject?`?subject=${encodeURIComponent(subject)}`:""; return api(`/lectures${q}`) as any; }
+export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api(`/questions/subjects`) as any; }
+export async function listQuestions(params:Record<string,unknown>={ }): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api(`/questions${q.toString()?`?${q}`:""}`) as any; }
 export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return api(`/subjects-catalog`) as any; }
 export async function listTicketBanks(..._args: any[]): Promise<any> { return api(`/tickets`) as any; }
-export async function listTrainers(..._args: any[]): Promise<any> { return api(`/api-compat/listTrainers`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function preparationAiReview(..._args: any[]): Promise<any> { return api(`/api-compat/preparationAiReview`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function listTrainers(..._args: any[]): Promise<any> { return api(`/trainers`) as any; }
+export async function preparationAiReview(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}/ai-review`, {method:"POST",body:"{}"}) as any; }
 export async function register(..._args: any[]): Promise<any> { return api(`/api-compat/register`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function reportQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/reportQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function savePreparation(..._args: any[]): Promise<any> { return api(`/api-compat/savePreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function startPreparation(..._args: any[]): Promise<any> { return api(`/api-compat/startPreparation`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function savePreparation(sessionId:string,payload:Record<string,unknown>): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}`, {method:"PATCH",body:JSON.stringify(payload)}) as any; }
+export async function startPreparation(testId:string,mode:"full"|"count"="full",questionLimit?:number): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/preparation/start`, {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})}) as any; }
 export async function updateGroup(..._args: any[]): Promise<any> { return api(`/api-compat/updateGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function updateSubject(..._args: any[]): Promise<any> { return api(`/api-compat/updateSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
