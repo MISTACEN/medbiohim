@@ -1,1 +1,404 @@
-PLACEHOLDER_USE_FILE
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { getAccountSettings } from "@/lib/settings-api";
+import {
+  answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
+  getTraining, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
+  type TrainingLabelMode, type TrainingLayout, type TrainingQuestion,
+} from "@/lib/content-api";
+import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
+import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
+
+type AnswerRow = {
+  id: string;
+  question_id: string;
+  order: number;
+  user_answer?: string | null;
+  is_correct?: boolean | null;
+  is_skipped?: boolean;
+  options: Array<{ id: string; label: string; correct?: boolean }>;
+  question_snapshot: TrainingQuestion;
+  review_snapshot?: any;
+};
+
+export default function HistologyTrainer({ embedded = false }: { embedded?: boolean }) {
+  const [topics, setTopics] = useState<string[]>([]);
+  const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Training[]>([]);
+  const [training, setTraining] = useState<Training | null>(null);
+  const [answers, setAnswers] = useState<AnswerRow[]>([]);
+  const [active, setActive] = useState(0);
+  const [setup, setSetup] = useState(true);
+  const [result, setResult] = useState<any>(null);
+  const [review, setReview] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
+  const [mobileList, setMobileList] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [contentType, setContentType] = useState<TrainingContentType>("all");
+  const [count, setCount] = useState("20");
+  const [custom, setCustom] = useState("");
+  const [allQuestions, setAllQuestions] = useState(false);
+  const [labelMode, setLabelMode] = useState<TrainingLabelMode>("without");
+  const [layout, setLayout] = useState<TrainingLayout>("top");
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [section, setSection] = useState<"atlas" | "trainer">("atlas");
+  const [atlasTopic, setAtlasTopic] = useState<string>("");
+  const [lightbox, setLightbox] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([listTrainerFeed("histology", "mbh", 500), listTrainings(), getAccountSettings()]).then(([feed, history, account]) => {
+      if (feed.ok) {
+        setFeedItems(feed.data.items || []);
+        setTopics(Array.from(new Set(feed.data.items.flatMap((x: any) => Array.isArray(x.tags) ? x.tags : []))).sort());
+      }
+      if (history.ok) setSessions(history.data.items);
+      if (account.ok) {
+        const saved = String(account.data.preferences?.trainer_layout || "top");
+        if (saved === "sidebar" || saved === "list" || saved === "top") setLayout(saved);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const loadSession = async (id: string, showResult = false) => {
+    setWorking(true);
+    setError(null);
+    const r = await getTraining(id);
+    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    const nextAnswers = r.data.answers as AnswerRow[];
+    setTraining(r.data.training);
+    setAnswers(nextAnswers);
+    setActive(Math.min(r.data.training.current_index || 0, Math.max(0, nextAnswers.length - 1)));
+    setSetup(false);
+    setReview(false);
+    if (showResult || r.data.training.status === "completed") {
+      const total = nextAnswers.length;
+      const correct = nextAnswers.filter((x) => x.is_correct === true).length;
+      const wrong = nextAnswers.filter((x) => x.is_correct === false).length;
+      const skipped = nextAnswers.filter((x) => x.is_skipped || x.user_answer == null).length;
+      const percent = total ? Number(((correct / total) * 100).toFixed(1)) : Number(r.data.training.score || 0);
+      setResult({ total, correct, wrong, skipped, percent, grade: percent >= 90 ? 5 : percent >= 75 ? 4 : percent >= 60 ? 3 : 2 });
+    } else setResult(null);
+    setWorking(false);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("training");
+    if (id) void loadSession(id);
+  }, []);
+
+  const start = async () => {
+    setWorking(true);
+    setError(null);
+    const n = allQuestions ? 500 : Math.max(1, Number(custom || count));
+    const r = await createHistologyTraining({
+      topics: selectedTopics,
+      content_type: contentType,
+      question_count: n,
+      all_questions: allQuestions,
+      label_mode: labelMode === "with" ? "without" : labelMode,
+    });
+    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    const tid = r.data.training.id;
+    if (embedded && typeof window !== "undefined") {
+      window.location.assign("/trainers/feed/histology?training=" + encodeURIComponent(tid));
+      return;
+    }
+    await loadSession(tid);
+  };
+
+  const answer = async (value: string | null, skip = false) => {
+    if (!training || !answers[active] || working) return;
+    const a = answers[active];
+    if (a.user_answer != null || a.is_skipped) return;
+    setWorking(true);
+    const r = await answerTrainingQuestion(training.id, a.order, value, skip);
+    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    setAnswers((v) => v.map((x, i) => i === active ? { ...x, user_answer: value, is_correct: r.data.correct, is_skipped: skip } : x));
+    setSessions((v) => v.map((x) => x.id === training.id ? { ...x, answered_count: (x.answered_count || 0) + 1, current_index: a.order } : x));
+    setWorking(false);
+  };
+
+  const finish = async () => {
+    if (!training) return;
+    setWorking(true);
+    const r = await completeTraining(training.id);
+    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    setTraining(r.data.training);
+    setResult(r.data.stats);
+    setSessions((v) => v.map((x) => x.id === training.id ? { ...x, ...r.data.training, answered_count: answers.length } : x));
+    setWorking(false);
+  };
+
+  const restart = async (id: string) => {
+    setWorking(true);
+    const r = await cancelTraining(id);
+    if (!r.ok) setError(r.error.message);
+    else setSessions((v) => v.map((x) => x.id === id ? { ...x, status: "cancelled" } : x));
+    setWorking(false);
+  };
+
+  const current = answers[active];
+  const answered = answers.filter((x) => x.user_answer != null || x.is_skipped).length;
+  const wrong = answers.filter((x) => x.is_correct === false);
+
+  const topicsForSetup = useMemo(() => {
+    if (!feedItems.length) return topics;
+    const isEm = (x: any) => {
+      const tags = Array.isArray(x.tags) ? x.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+      const mode = String(x.mode_set || "").toLowerCase();
+      return tags.some((tg: string) => tg.includes("electron") || tg.includes("электронограм")) || mode.includes("electron");
+    };
+    const filtered = feedItems.filter((x) => {
+      if (contentType === "electronogram") return isEm(x);
+      if (contentType === "preparation") return !isEm(x);
+      return true;
+    });
+    const set = new Set<string>();
+    for (const x of filtered) for (const tag of (Array.isArray(x.tags) ? x.tags : [])) set.add(String(tag));
+    return Array.from(set).sort();
+  }, [topics, feedItems, contentType]);
+
+  const atlasItems = useMemo(() => {
+    const isEm = (x: any) => {
+      const tags = Array.isArray(x.tags) ? x.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+      const mode = String(x.mode_set || "").toLowerCase();
+      return tags.some((tg: string) => tg.includes("electron") || tg.includes("электронограм")) || mode.includes("electron");
+    };
+    let list = feedItems.slice();
+    if (contentType === "electronogram") list = list.filter(isEm);
+    else if (contentType === "preparation") list = list.filter((x) => !isEm(x));
+    if (atlasTopic) list = list.filter((x) => Array.isArray(x.tags) && x.tags.map(String).includes(atlasTopic));
+    const seenId = new Set<string>(), seenKey = new Set<string>(), seenEmName = new Set<string>();
+    const deduped: any[] = [];
+    for (const item of list) {
+      const id = String(item?.id || "");
+      const src = String(item?.source_key || item?.preparation?.imagePath || item?.preparation?.imageUrl || "");
+      const name = String(item?.preparation?.name || "").trim().toLowerCase();
+      const em = isEm(item);
+      if (id && seenId.has(id)) continue;
+      if (src && seenKey.has(src)) continue;
+      if (em && name && seenEmName.has(name)) continue;
+      if (id) seenId.add(id);
+      if (src) seenKey.add(src);
+      if (em && name) seenEmName.add(name);
+      deduped.push(item);
+    }
+    return deduped;
+  }, [feedItems, contentType, atlasTopic]);
+
+  const atlasByTopic = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const item of atlasItems) {
+      const tags = Array.isArray(item.tags) && item.tags.length ? item.tags.map(String) : ["Без темы"];
+      const key = atlasTopic || tags[0];
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
+  }, [atlasItems, atlasTopic]);
+
+  const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
+  const hasMoreHistory = sessions.length > 4;
+
+  const question = (a: AnswerRow, i: number, compact = false) => (
+    <HistologyQuestionCard
+      key={a.id}
+      a={a}
+      i={i}
+      total={answers.length}
+      compact={compact}
+      labelMode={training?.label_mode}
+      contentType={training?.content_type}
+      working={working}
+      ImageBox={ImageBox}
+      onAnswer={(value, skip) => void answer(value, !!skip)}
+    />
+  );
+
+  if (loading) return <div className="card p-8 text-sm text-slate-500">Загрузка…</div>;
+
+  if (setup && !training) {
+    return (
+      <div className={embedded ? "space-y-5" : "mx-auto max-w-6xl space-y-5"}>
+        {!embedded && (
+          <header>
+            <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предметам</Link>
+            <h1 className="page-title mt-3">Микропрепараты</h1>
+            <p className="page-subtitle">Атлас с подписями или тренажёр.</p>
+          </header>
+        )}
+        {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас с подписями или тренажёр.</p></div>)}
+
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас (с подписями)</button>
+          <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>
+        </div>
+
+        {section === "atlas" && (
+          <div className="space-y-5">
+            <section className="card space-y-4 p-5">
+              <div>
+                <h2 className="font-bold">Тип</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {([["all", "Всё"], ["preparation", "Микропрепараты"], ["electronogram", "Электронограммы"]] as [TrainingContentType, string][]).map((x) => (
+                    <label key={x[0]} className={"rounded-xl border px-4 py-2 text-sm " + (contentType === x[0] ? "border-indigo-400 bg-indigo-50" : "")}>
+                      <input type="radio" className="mr-2" checked={contentType === x[0]} onChange={() => { setContentType(x[0]); setAtlasTopic(""); }} />{x[1]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h2 className="font-bold">Темы</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setAtlasTopic("")} className={"rounded-xl border px-3 py-2 text-sm " + (!atlasTopic ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>Все темы</button>
+                  {topicsForSetup.map((tg) => (
+                    <button key={tg} type="button" onClick={() => setAtlasTopic(atlasTopic === tg ? "" : tg)} className={"rounded-xl border px-3 py-2 text-sm " + (atlasTopic === tg ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>{topicLabel(tg)}</button>
+                  ))}
+                </div>
+              </div>
+            </section>
+            {atlasByTopic.length === 0 ? (
+              <div className="card p-8 text-center text-sm text-slate-500">Нет фото по выбранному фильтру.</div>
+            ) : atlasByTopic.map(([topic, items]) => (
+              <section key={topic} className="card p-5">
+                <h3 className="text-lg font-bold">{topicLabel(topic)}</h3>
+                <p className="mt-1 text-xs text-slate-500">{items.length} фото · нажмите, чтобы открыть с подписями</p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {items.map((card: any) => (
+                    <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
+                      <div className="aspect-square bg-slate-100"><AtlasThumb id={String(card.id)} /></div>
+                      <div className="p-2 text-xs font-medium text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {section === "trainer" && (
+          <div className="space-y-5">
+            <section className="card space-y-4 p-5">
+              <div>
+                <h2 className="font-bold">Тип</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {([["all", "Всё"], ["preparation", "Микропрепараты"], ["electronogram", "Электронограммы"]] as [TrainingContentType, string][]).map((x) => (
+                    <label key={x[0]} className={"rounded-xl border px-4 py-2 text-sm " + (contentType === x[0] ? "border-indigo-400 bg-indigo-50" : "")}>
+                      <input type="radio" className="mr-2" checked={contentType === x[0]} onChange={() => setContentType(x[0])} />{x[1]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h2 className="font-bold">Режим ответа</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {([["without", "Варианты"], ["manual", "Ввод вручную"]] as [TrainingLabelMode, string][]).map((x) => (
+                    <label key={x[0]} className={"rounded-xl border px-4 py-2 text-sm " + (labelMode === x[0] ? "border-indigo-400 bg-indigo-50" : "")}>
+                      <input type="radio" className="mr-2" checked={labelMode === x[0]} onChange={() => setLabelMode(x[0])} />{x[1]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h2 className="font-bold">Количество</h2>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {["10", "20", "30", "50"].map((n) => (
+                    <button key={n} type="button" onClick={() => { setCount(n); setAllQuestions(false); }} className={"rounded-xl border px-3 py-2 text-sm " + (!allQuestions && count === n ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>{n}</button>
+                  ))}
+                  <button type="button" onClick={() => setAllQuestions(true)} className={"rounded-xl border px-3 py-2 text-sm " + (allQuestions ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>Все</button>
+                  <input value={custom} onChange={(e) => { setCustom(e.target.value); setAllQuestions(false); }} placeholder="своё" className="w-20 rounded-xl border px-3 py-2 text-sm" />
+                </div>
+              </div>
+              {error && <p className="text-sm text-rose-600">{error}</p>}
+              <button disabled={working} onClick={() => void start()} className="btn-primary">Начать</button>
+            </section>
+
+            {sessions.length > 0 && (
+              <section className="card p-5">
+                <h2 className="font-bold">История</h2>
+                <div className="mt-3 space-y-2">
+                  {visibleSessions.map((t) => (
+                    <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+                      <span>{historyLabel(t)} · {t.content_type || "all"} · {t.answered_count || 0}/{t.total_questions || t.question_count}</span>
+                      <div className="flex gap-2">
+                        {t.status === "in_progress" && <button type="button" onClick={() => void loadSession(t.id)} className="rounded-lg border px-2 py-1">Продолжить</button>}
+                        {t.status === "completed" && <button type="button" onClick={() => void loadSession(t.id, true)} className="rounded-lg border px-2 py-1">Разбор</button>}
+                        {t.status === "in_progress" && <button type="button" onClick={() => void restart(t.id)} className="rounded-lg border px-2 py-1 text-rose-600">Отменить</button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {hasMoreHistory && (
+                  <button type="button" onClick={() => setHistoryExpanded(!historyExpanded)} className="mt-2 text-sm text-indigo-600">
+                    {historyExpanded ? "Свернуть" : "Показать ещё"} <ChevronDown className="inline h-4 w-4" />
+                  </button>
+                )}
+              </section>
+            )}
+          </div>
+        )}
+
+        {lightbox && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setLightbox(null)}>
+            <div className="max-h-[90vh] max-w-3xl overflow-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
+              <ImageBox id={String(lightbox.id)} />
+              <h3 className="mt-3 text-lg font-bold">{lightbox.preparation?.name}</h3>
+              {Array.isArray(lightbox.preparation?.captions) && lightbox.preparation.captions.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                  {lightbox.preparation.captions.map((c: string, i: number) => <li key={i}>{c}</li>)}
+                </ul>
+              )}
+              <button type="button" onClick={() => setLightbox(null)} className="btn-primary mt-4">Закрыть</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (result && !review) {
+    return (
+      <div className={embedded ? "space-y-5" : "mx-auto max-w-3xl space-y-5"}>
+        <div className="card p-6 text-center">
+          <h2 className="text-2xl font-bold">Результат</h2>
+          <p className="mt-2 text-4xl font-bold text-indigo-600">{result.percent}%</p>
+          <p className="mt-1 text-sm text-slate-500">Оценка: {result.grade} · верно {result.correct} · ошибки {result.wrong} · пропуски {result.skipped}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={() => setReview(true)} className="btn-primary">Разбор</button>
+            <button type="button" onClick={() => { setTraining(null); setAnswers([]); setSetup(true); setResult(null); }} className="rounded-xl border px-4 py-2">К списку</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const finishBar = (
+    <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={working} onClick={() => void finish()} className="btn-primary">Завершить</button>
+      <button type="button" onClick={() => setMobileList(!mobileList)} className="rounded-xl border px-3 py-2 md:hidden"><Menu className="h-4 w-4" /></button>
+    </div>
+  );
+
+  return (
+    <div className={embedded ? "space-y-4" : "mx-auto max-w-6xl space-y-4"}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm text-slate-500">Отвечено {answered} / {answers.length}</div>
+        {finishBar}
+      </div>
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      <Dots answers={answers} current={active} onSelect={setActive} />
+      {current && question(current, active)}
+      <div className="flex justify-between">
+        <button type="button" disabled={active <= 0} onClick={() => setActive(active - 1)} className="rounded-xl border px-4 py-2"><ChevronLeft className="inline h-4 w-4" />Назад</button>
+        <button type="button" disabled={active >= answers.length - 1} onClick={() => setActive(active + 1)} className="rounded-xl border px-4 py-2">Далее<ChevronRight className="inline h-4 w-4" /></button>
+      </div>
+    </div>
+  );
+}
