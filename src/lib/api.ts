@@ -168,13 +168,13 @@ export async function adminListCommunity(..._args: any[]): Promise<any> { return
 export async function adminListHomeworks(..._args: any[]): Promise<any> { return api(`/api-compat/adminListHomeworks`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminListLectures(..._args: any[]): Promise<any> { return api(`/api-compat/adminListLectures`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminListMaterials(..._args: any[]): Promise<any> { return api(`/api-compat/adminListMaterials`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListQuestions(..._args: any[]): Promise<any> { return api(`/api-compat/adminListQuestions`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListSchedule(..._args: any[]): Promise<any> { return api(`/api-compat/adminListSchedule`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListUsers(..._args: any[]): Promise<any> { return api(`/api-compat/adminListUsers`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminOverview(..._args: any[]): Promise<any> { return api(`/api-compat/adminOverview`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminProblemCenter(..._args: any[]): Promise<any> { return api(`/api-compat/adminProblemCenter`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminPublishLecture(..._args: any[]): Promise<any> { return api(`/api-compat/adminPublishLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminRejectLecture(..._args: any[]): Promise<any> { return api(`/api-compat/adminRejectLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminListQuestions(..._args: any[]): Promise<any> { return api(`/admin/questions`) as any; }
+export async function adminListSchedule(groupId?:string,semester?:number): Promise<any> { const q=new URLSearchParams(); if(groupId)q.set("group_id",groupId); if(semester!=null)q.set("semester",String(semester)); return api(`/admin/schedule?${q}`) as any; }
+export async function adminListUsers(..._args: any[]): Promise<any> { return api(`/admin/users`) as any; }
+export async function adminOverview(..._args: any[]): Promise<any> { return api(`/admin/overview`) as any; }
+export async function adminProblemCenter(..._args: any[]): Promise<any> { return api(`/admin/problem-center`) as any; }
+export async function adminPublishLecture(id:string): Promise<any> { return api(`/admin/lectures/${encodeURIComponent(id)}/publish`, {method:"POST",body:"{}"}) as any; }
+export async function adminRejectLecture(id:string): Promise<any> { return api(`/admin/lectures/${encodeURIComponent(id)}/reject`, {method:"POST",body:"{}"}) as any; }
 export async function adminSaveSchedule(..._args: any[]): Promise<any> { return api(`/api-compat/adminSaveSchedule`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminSetTelegramWebhook(..._args: any[]): Promise<any> { return api(`/api-compat/adminSetTelegramWebhook`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminSetUserRole(..._args: any[]): Promise<any> { return api(`/api-compat/adminSetUserRole`, { method: "POST", body: JSON.stringify(_args) }) as any; }
