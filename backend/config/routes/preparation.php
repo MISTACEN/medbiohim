@@ -24,10 +24,11 @@ return static function (Router $router): void {
    if(!$ids){Response::error('NO_QUESTIONS','В тесте нет опубликованных вопросов', $r->requestId,422);return;}
    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' and mode=:mode and (question_limit is not distinct from :lim) limit 1");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit]); $existing=$s->fetch();
-   if($existing){Response::success(['session'=>$existing],$r->requestId);return;}
+   if($existing){$existingIds=$existing['question_ids']??[];if(is_string($existingIds)){ $existingIds=trim($existingIds);$existingIds=($existingIds!==''&&$existingIds!=='{}')?str_getcsv(substr($existingIds,1,-1),',','"','\\'):[]; }$existing['question_ids']=is_array($existingIds)?array_values(array_filter(array_map('strval',$existingIds))):[];Response::success(['session'=>$existing],$r->requestId);return;}
    $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids) values(:uid,:tid,:mode,:lim,:ids) returning *");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
-   Response::success(['session'=>$s->fetch(),'question_ids'=>$ids],$r->requestId,201);
+   $created=$s->fetch(); if(is_array($created))$created['question_ids']=$ids;
+   Response::success(['session'=>$created,'question_ids'=>$ids],$r->requestId,201);
   }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
@@ -80,6 +81,7 @@ return static function (Router $router): void {
   if(!$auth($r))return;try{$db=Connection::pdo();$s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
    $a=$db->prepare("select r.*,q.text as question_text,q.subject_id,q.module_id,q.topic_id,m.name as module_name,top.name as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
+   $finishIds=$session['question_ids']??[];if(is_string($finishIds)){ $finishIds=trim($finishIds);$finishIds=($finishIds!==''&&$finishIds!=='{}')?str_getcsv(substr($finishIds,1,-1),',','"','\\'):[]; }if(!is_array($finishIds))$finishIds=[];$session['question_ids']=array_values(array_filter(array_map('strval',$finishIds)));
    $total=count($session['question_ids']);$correct=count(array_filter($rows,static fn($x)=>(bool)$x['is_correct']));$answered=count($rows);$percent=$total?round($correct/$total*100,2):0;
    $topic=[];foreach($rows as $x){$k=$x['topic_id']?:'unknown';if(!isset($topic[$k]))$topic[$k]=['topic_id'=>$x['topic_id'],'topic_name'=>$x['topic_name']?:'Без темы','total'=>0,'correct'=>0];$topic[$k]['total']++;if($x['is_correct'])$topic[$k]['correct']++;}
    foreach($topic as &$v)$v['percent']=round($v['correct']/$v['total']*100,2);unset($v);
