@@ -1,72 +1,46 @@
-# Chemical Engine Beta — implementation plan
+# Chemical Engine Beta — working-state contract
 
-## Goals
+## Purpose
 
-The chemistry section is a reusable engine, not a collection of manually drawn pages.
+Beta is an isolated chemistry layer that can be merged into the main application without making the main branch depend on unfinished chemistry features.
 
-### Required capabilities
+## Working now
 
-- resolve a chemical entity by name, synonym, SMILES, InChI or InChIKey
-- normalize identifiers
-- render 2D structures as SVG
-- render 3D structures
-- edit molecules and reactions
-- generate Fischer, Haworth, Newman, sawhorse and chair views
-- represent stereochemistry
-- represent reactions and reaction steps
-- preserve source/provenance
-- connect chemical objects to existing questions/tests/trainers
-- later accept formula photographs and validate OCR candidates
+- chemical resolver API
+- PubChem lookup by name, SMILES, InChI and InChIKey
+- provenance metadata
+- 2D chemical image retrieval
+- 3D conformer record retrieval
+- chemistry health endpoint
+- chemistry landing page
+- Supabase chemical schema with RLS
+- dependency foundation for RDKit.js, Ketcher and 3Dmol.js
+- CI build gate on the beta branch
 
-## Rendering policy
+## Contract
 
-Prefer generated SVG from a canonical structure. External images are a fallback/reference and must retain provenance.
+A chemical molecule is represented by identifiers and normalized properties. UI components consume this object; they do not own chemical truth.
 
-## Trusted-source policy
+External images are references. When possible, a canonical structure is the source from which local SVG/PNG representations are generated.
 
-Primary lookup source in the first beta is PubChem PUG REST. ChEBI/Rhea/other scientific sources can be added behind the same resolver contract. Arbitrary image search is not a source of truth.
+## Safe promotion path
 
-## API
+1. keep beta isolated
+2. build and verify each chemistry module
+3. populate test fixtures
+4. run database migration checks
+5. run browser smoke tests
+6. compare beta against main
+7. open a draft PR
+8. merge only after the chemistry contract and regression tests pass
 
-`GET /api/chemistry/resolve?query=benzene`
+## Next implementation order
 
-Returns a normalized candidate with source and image URLs.
-
-Future endpoints:
-
-- `POST /api/chemistry/structure`
-- `POST /api/chemistry/reaction`
-- `POST /api/chemistry/recognize-image`
-- `GET /api/chemistry/molecules/:id`
-- `GET /api/chemistry/reactions/:id`
-
-## Security
-
-- only public/publishable Supabase credentials may reach the browser
-- external source URLs are stored as provenance
-- uploaded images are untrusted input
-- OCR output is a candidate, never an authoritative structure
-- canonical chemical records require validation before publication
-
-## Phases
-
-### Phase A — foundation
-Resolver, types, provenance, database tables, 2D/3D dependencies.
-
-### Phase B — structure
-RDKit.js rendering, Ketcher editor, molecule viewer and structure comparison.
-
-### Phase C — projections
-Fischer, Haworth, Newman, sawhorse and chair.
-
-### Phase D — reactions
-Reaction model, reaction editor, reaction SMARTS, mechanism steps and animated electron arrows.
-
-### Phase E — analytical chemistry
-UV-Vis, IR, NMR, MS, TLC, GC and HPLC visualizers.
-
-### Phase F — learning
-Generated variants, structure-answer checking, reaction prediction exercises and links to existing question banks.
-
-### Phase G — image recognition
-Photo upload, OCR/chemical recognition, candidate generation, validation and provenance.
+1. RDKit.js WASM initialization + SVG renderer
+2. Ketcher editor with import/export
+3. 3Dmol interactive viewer
+4. Fischer/Haworth/Newman/Sawhorse/Chair renderers
+5. reaction editor + mechanism graph
+6. calculators and analytical visualizers
+7. image recognition pipeline with human validation
+8. chemistry question generator and structure-answer checker
