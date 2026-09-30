@@ -20,11 +20,12 @@ type ChartSpec = {
 };
 
 function escapeHtml(s: string) {
+  // Concat form keeps entities intact through transports
   return s
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, """);
+    .replace(/&/g, "&" + "amp;")
+    .replace(/</g, "&" + "lt;")
+    .replace(/>/g, "&" + "gt;")
+    .replace(/"/g, "&" + "quot;");
 }
 
 function parseBlocks(md: string) {
