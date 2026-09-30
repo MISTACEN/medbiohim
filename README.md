@@ -1,22 +1,35 @@
 # MEDBIOHIM
 
+## Ветки (важно)
+
+| Ветка | Роль |
+|-------|------|
+| **`main`** | **Прод** — source of truth, Vercel production |
+| **`beta`** | **Только тесты и эксперименты** — не деплоить как production |
+
+Подробно: **[BRANCHES.md](BRANCHES.md)** · журнал экспериментов: **[docs/ACTIVE-EXPERIMENTS.md](docs/ACTIVE-EXPERIMENTS.md)**
+
+Коммиты на `beta`: префиксы `experiment:` / `test:` / `wip:`. На `main` — только готовое к проду.
+
 ## Frontend (repo root) → Vercel
 Next.js App Router.
 - Browser API base: `/api/v1`
-- Vercel server-side proxy target: `SPACEWEB_API_ORIGIN` (current test SpaceWeb origin is HTTP)
-- If SpaceWeb document root is `backend/public`, the API origin is `http://YOUR-SPACEWEB/api/v1` for the current test environment — **not** `/public/api/v1`.
-- **Strict TypeScript** (`tsconfig` strict): `unknown` from `AdminDbRow` / `Record<string, unknown>` must be stringified before JSX (`String(...)` or `display(...)`). See **[docs/dev-notes.md](docs/dev-notes.md)**.
+- Vercel server-side proxy target: `SPACEWEB_API_ORIGIN`
+- Chemistry (на main): `/chemistry`, `/api/chemistry/resolve`, `/api/chemistry/health` — см. [docs/chemical-engine.md](docs/chemical-engine.md)
+- **Strict TypeScript**: see **[docs/dev-notes.md](docs/dev-notes.md)**.
 
 ## backend/ → SpaceWeb
-PHP API. The intended SpaceWeb document root is `backend/public/`.
+PHP API. Document root: `backend/public/`.
 Copy `.env.example` → `.env`. Folder `data/` must be writable.
 
 ## Deployment chain
-`Browser → Vercel /api/v1 → SpaceWeb /api/v1 → PHP front controller → Supabase`
+`Browser → Vercel /api/v1 → SpaceWeb /api/v1 → PHP → Supabase`
 
 ## Docs
-- [docs/dev-notes.md](docs/dev-notes.md) — правила фронта (TS/ReactNode, AdminDbRow, чтобы Vercel не падал)
+- [BRANCHES.md](BRANCHES.md) — main vs beta
+- [docs/ACTIVE-EXPERIMENTS.md](docs/ACTIVE-EXPERIMENTS.md) — что тестируется на beta
+- [docs/chemical-engine.md](docs/chemical-engine.md)
+- [docs/dev-notes.md](docs/dev-notes.md)
 - [docs/platform-concept-medbiohim.md](docs/platform-concept-medbiohim.md)
-- [docs/subject-content-matrix.md](docs/subject-content-matrix.md)
 
-Synced: 2026-09-23
+Synced: 2026-09-30
