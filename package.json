@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "predeploy:audit": "node scripts/predeploy-audit.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",
@@ -14,10 +16,8 @@
     "react-dom": "^19.0.0",
     "lucide-react": "^0.468.0",
     "clsx": "^2.1.1",
-    "@rdkit/rdkit": "^2026.3.6",
-    "ketcher-core": "^3.18.0",
-    "ketcher-react": "^3.18.0",
-    "3dmol": "^2.5.5"
+    "xlsx": "npm:@keep-lts/xlsx@^0.18.6",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
@@ -25,9 +25,12 @@
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.7.0",
     "tailwindcss": "^3.4.16",
-    "postcss": "^8.4.49",
+    "postcss": "^8.5.28",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.1.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.28"
   }
 }
