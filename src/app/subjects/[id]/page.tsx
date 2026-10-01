@@ -1,28 +1,13 @@
 "use client";
 
-/**
- * Страница «Предмет + Курс + Семестр».
- * Блоки: план, билеты, практика, лекции, материалы, SRS, прогресс.
- */
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import {
-  BookOpen,
-  Brain,
-  ChevronLeft,
-  FileQuestion,
-  FolderOpen,
-  GraduationCap,
-  ListChecks,
-  TrendingUp,
-} from "lucide-react";
-import {
-  getSubject,
-  getSubjectPlan,
-  listSubjectsCatalog,
-  type SubjectPlan,
-  type SubjectPlanWeek,
-} from "@/lib/api";
+import { useEffect, useState, type ComponentType } from "react";
+import { BookOpen, Brain, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
+import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 
 type Subject = {
   id: string;
@@ -30,84 +15,125 @@ type Subject = {
   course_number?: number | null;
   semester?: number | null;
   control_type?: string | null;
+  total_hours?: number | null;
+  credits?: number | null;
+  slug?: string | null;
 };
-type Topic = { id?: string; title?: string };
-type Module = { id?: string; title?: string; topics?: Topic[] };
-type BlockId = "plan" | "tickets" | "practice" | "lectures" | "materials" | "cards" | "progress";
+type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-const BLOCKS: Array<{ id: BlockId; label: string; icon: typeof BookOpen }> = [
-  { id: "plan", label: "Учебный план", icon: GraduationCap },
-  { id: "tickets", label: "Билеты", icon: FileQuestion },
-  { id: "practice", label: "Практика", icon: ListChecks },
-  { id: "lectures", label: "Лекции", icon: BookOpen },
-  { id: "materials", label: "Материалы", icon: FolderOpen },
-  { id: "cards", label: "Карточки SRS", icon: Brain },
-  { id: "progress", label: "Прогресс", icon: TrendingUp },
-];
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "cards" | "progress";
 
-const SLUG_BY_NAME: Record<string, string> = {
-  "органическая и физическая химия": "organic_chemistry",
-  физиология: "physiology",
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "cards", "progress"];
+
+const slugNames: Record<string, string> = {
   "гистология, цитология": "histology",
   гистология: "histology",
+  физиология: "physiology",
+  "органическая и физическая химия": "organic_chemistry",
 };
+const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
 
-function semesterLabel(s?: number | null) {
-  if (s == null) return "семестр";
-  return s % 2 === 1 ? `Осенний · ${s}` : `Весенний · ${s}`;
+function isTabId(v: string): v is TabId {
+  return (TAB_IDS as string[]).includes(v);
+}
+
+function materialTypeLabel(type?: string | null) {
+  const map: Record<string, string> = { lecture: "Лекция", pdf: "PDF", pptx: "Презентация", docx: "Word", lab: "Лабораторная", table: "Таблица", html: "Страница", video: "Видео", other: "Материал" };
+  return map[String(type || "")] || String(type || "Материал");
+}
+
+function stripHtml(html?: string | null) {
+  return String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
+  const [gradebook, setGradebook] = useState<any[]>([]);
+  const [tests, setTests] = useState<ApiTest[]>([]);
+  const [materials, setMaterials] = useState<SubjectMaterial[]>([]);
+  const [materialsRich, setMaterialsRich] = useState<any[]>([]);
+  const [lectures, setLectures] = useState<any[]>([]);
+  const [banks, setBanks] = useState<any[]>([]);
+  const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [block, setBlock] = useState<BlockId>("plan");
   const [subjectId, setSubjectId] = useState("");
+  const [tab, setTab] = useState<TabId>("plan");
+  // Материалы: модальное чтение без перехода со страницы предмета.
+  const [activeMaterial, setActiveMaterial] = useState<any | null>(null);
+  // Билеты: встроенный генератор.
+  const [ticketBankId, setTicketBankId] = useState("");
+  const [ticketCount, setTicketCount] = useState(3);
+  const [ticketMode, setTicketMode] = useState<"practice" | "exam">("exam");
+  const [ticketBusy, setTicketBusy] = useState(false);
+  const [ticketQuestions, setTicketQuestions] = useState<any[]>([]);
+  const [ticketTitle, setTicketTitle] = useState("");
+  const [ticketNote, setTicketNote] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const fromHash = window.location.hash.replace(/^#/, "");
+    const fromQuery = new URLSearchParams(window.location.search).get("tab");
+    const initial = fromQuery || fromHash;
+    if (initial && isTabId(initial)) setTab(initial);
+
+    const onHash = () => {
+      const h = window.location.hash.replace(/^#/, "");
+      if (h && isTabId(h)) setTab(h);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const p = await params;
-      if (cancelled) return;
-      setSubjectId(p.id);
       try {
+        const p = await params;
+        if (cancelled) return;
+        setSubjectId(p.id);
         const cat = await listSubjectsCatalog();
-        if (cat.ok) {
-          const byId = cat.data.items.find((x) => x.id === p.id || x.slug === p.id);
-          const byName = cat.data.items.find(
-            (x) => x.name.toLowerCase() === decodeURIComponent(p.id).toLowerCase()
-          );
-          const hit = byId || byName;
-          if (hit) {
-            setSubject({
-              id: hit.id,
-              name: hit.name,
-              course_number: hit.course ?? 2,
-              semester: 3,
-              control_type: hit.control_type || null,
-            });
-            const slug = hit.slug || SLUG_BY_NAME[hit.name.toLowerCase()];
-            if (slug) {
-              const pr = await getSubjectPlan(slug);
-              if (pr.ok) setPlan(pr.data.plan);
-            }
-          }
-        }
+        const hit = cat.ok
+          ? cat.data.items.find((x: any) => x.id === p.id || x.slug === p.id) ||
+            cat.data.items.find((x: any) => x.name.toLowerCase() === decodeURIComponent(p.id).toLowerCase())
+          : null;
         const r = await getSubject(p.id);
         if (cancelled) return;
-        if (r.ok) {
-          const s = r.data.subject as Subject;
-          setSubject((prev) => prev || s);
-          setModules(Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
-          const slug =
-            SLUG_BY_NAME[(s.name || "").toLowerCase()] ||
-            (s.name || "").toLowerCase().replace(/\s+/g, "_");
-          const pr = await getSubjectPlan(slug);
-          if (pr.ok) setPlan(pr.data.plan);
-        } else if (!subject) {
+        if (!r.ok && !hit) {
           setError(r.error.message);
+          setLoading(false);
+          return;
+        }
+        const s: any = r.ok ? r.data.subject : hit;
+        setSubject(s);
+        setModules(r.ok && Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
+        const slug = slugNames[(s?.name || "").toLowerCase()] || s?.slug || "";
+        if (slug) {
+          const pr = await getSubjectPlan(slug);
+          if (pr.ok && !cancelled) setPlan(pr.data.plan);
+        }
+        if (s?.id) {
+          const [gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
+            getSubjectGradebook(s.id),
+            listTests(s.id),
+            listSubjectMaterials({ subjectId: s.id }),
+            listTicketBanks(),
+            getProgress(),
+            listMaterials(slug ? { subjectSlug: slug } : {}),
+            listLectures(),
+          ]);
+          if (!cancelled) {
+            if (gb.ok) setGradebook(gb.data.items || []);
+            if (tt.ok) setTests(tt.data.items || []);
+            if (mm.ok) setMaterials(mm.data.items || []);
+            if (bb.ok) setBanks(bb.data.items || []);
+            if (pg.ok) setProgress(pg.data);
+            if (mr.ok) setMaterialsRich(mr.data.items || []);
+            if (ll.ok) setLectures(ll.data.items || []);
+          }
         }
       } catch {
         if (!cancelled) setError("Не удалось загрузить предмет");
@@ -118,20 +144,76 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
+  function selectTab(id: TabId) {
+    setTab(id);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", id);
+      url.hash = id;
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
+
   const course = subject?.course_number ?? 2;
-  const semester = subject?.semester ?? 3;
-  const q = useMemo(
-    () =>
-      new URLSearchParams({
-        subject: subjectId || subject?.id || "",
-        course: String(course),
-        semester: String(semester),
-      }).toString(),
-    [subjectId, subject?.id, course, semester]
-  );
+  const sem = subject?.semester ?? 3;
+  const slug = resolveSubjectSlug(subjectId, subject?.name);
+  const histology = slug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
+  const query = new URLSearchParams({
+    subject: subjectId,
+    subject_slug: slug,
+    course: String(course),
+    semester: String(sem),
+  }).toString();
+  const subjectBanks = banks.filter((b) => /гистол/i.test(b.subject || "") || b.subject_slug === slug);
+  const subjectTests = tests.filter((t) => {
+    if (!t.subject_id || t.subject_id === subject?.id) return true;
+    if (histology && (t.subject_id === "histology" || /цитолог|эмбриолог|гистолог/i.test(String(t.title || t.name || "")))) return true;
+    return false;
+  });
+  const subjName = (subject?.name || "").toLowerCase();
+  const subjectLectures = lectures.filter((l) => {
+    const ls = String(l?.subject || "").toLowerCase().trim();
+    if (!ls || !subjName) return false;
+    return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
+  });
+
+  // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.
+  useEffect(() => {
+    if (!ticketBankId && subjectBanks.length) setTicketBankId(String(subjectBanks[0].id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [banks, slug]);
+
+  async function genTicket() {
+    if (!ticketBankId || ticketBusy) return;
+    setTicketBusy(true);
+    setReveal({});
+    setTicketNote(null);
+    const res = await generateTicket(ticketBankId, ticketCount, ticketMode);
+    setTicketBusy(false);
+    if (!res.ok) {
+      setTicketNote(res.error.message);
+      return;
+    }
+    setTicketQuestions(res.data.questions || []);
+    setTicketTitle(res.data.bank?.title || "");
+  }
+
+  const nav: { id: TabId; label: string; Icon: ComponentType<{ className?: string }> }[] = [
+    { id: "plan", label: "Учебный план", Icon: GraduationCap },
+    { id: "tickets", label: "Билеты", Icon: FileQuestion },
+    { id: "tests", label: "Тесты", Icon: FileQuestion },
+    { id: "practice", label: "Практика", Icon: ListChecks },
+    { id: "lectures", label: "Лекции", Icon: BookOpen },
+    { id: "materials", label: "Материалы", Icon: FolderOpen },
+    { id: "trainer", label: "Микропрепараты", Icon: Microscope },
+    { id: "cards", label: "Карточки SRS", Icon: Brain },
+    { id: "progress", label: "Прогресс", Icon: TrendingUp },
+  ];
+
+  if (loading) return <div className="card p-6 text-sm text-slate-500">Загрузка предмета…</div>;
+  if (error && !subject) return <div className="card p-6 text-sm text-rose-600">{error}</div>;
 
   return (
     <div className="space-y-6">
@@ -139,159 +221,398 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         <ChevronLeft className="h-4 w-4" />К предметам
       </Link>
 
-      {loading ? (
-        <div className="card p-6 text-sm text-slate-500">Загрузка предмета…</div>
-      ) : error && !subject ? (
-        <div className="card p-6 text-sm text-rose-600">{error}</div>
-      ) : subject ? (
-        <>
-          <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">
-              Предмет · Курс · Семестр
-            </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-              {subject.name}
-            </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              {course} курс · {semesterLabel(semester)}
-              {subject.control_type
-                ? ` · ${
-                    subject.control_type === "exam"
-                      ? "Экзамен"
-                      : subject.control_type === "credit"
-                        ? "Зачёт"
-                        : subject.control_type
-                  }`
-                : ""}
-            </p>
-            <p className="mt-3 max-w-2xl text-sm text-slate-500">
-              План, билеты, практика, лекции, материалы, карточки и прогресс — в одном месте.
-            </p>
-          </header>
+      <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Предмет · Курс · Семестр</p>
+        <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{subject?.name}</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          {course} курс · {semester(sem)} · {sem}
+          {subject?.control_type
+            ? " · " +
+              (subject.control_type === "exam" ? "Экзамен" : subject.control_type === "credit" ? "Зачёт" : subject.control_type)
+            : ""}
+        </p>
+      </header>
 
-          <div className="flex flex-wrap gap-2">
-            {BLOCKS.map((b) => {
-              const Icon = b.icon;
-              const active = block === b.id;
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => setBlock(b.id)}
-                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                    active
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {b.label}
-                </button>
-              );
-            })}
+      <section className="card border-indigo-100 bg-indigo-50/40 p-4">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <b>Учебная нагрузка:</b>
+          {subject?.total_hours != null && <span>{subject.total_hours} ч</span>}
+          {subject?.credits != null && <span>· {subject.credits} з.е.</span>}
+        </div>
+        {gradebook.length > 0 && (
+          <div className="mt-2 text-sm text-slate-600">
+            <b>Для зачётки:</b>{" "}
+            {gradebook.map((g: any, i: number) => (
+              <span key={i}>
+                {i ? " · " : ""}
+                {g.display_name}
+                {g.hours != null ? " (" + g.hours + (g.credits != null ? "/" + g.credits : " ч") + ")" : ""}
+              </span>
+            ))}
           </div>
+        )}
+      </section>
 
-          <section className="card space-y-4 p-5">
-            {block === "plan" && (
-              <>
-                <div>
-                  <h2 className="text-lg font-bold">Учебный план</h2>
-                  <p className="text-sm text-slate-500">
-                    {plan
-                      ? `Контроль: ${plan.control || "—"} · ${(plan.weeks || []).length} занятий`
-                      : "Темы и сроки семестра"}
-                  </p>
-                </div>
-                {plan?.weeks?.length ? (
-                  <div className="space-y-3">
-                    {(plan.weeks as SubjectPlanWeek[]).map((w, i) => (
-                      <article key={w.date || w.week || i} className="rounded-xl border bg-slate-50 p-4">
-                        <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                          {w.date && <span>{w.date}</span>}
-                          {w.week != null && <span>Неделя {w.week}</span>}
+      <nav className="flex flex-wrap gap-2" role="tablist" aria-label="Разделы предмета">
+        {nav.map(({ id, label, Icon }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => selectTab(id)}
+              className={
+                "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition " +
+                (active
+                  ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
+              }
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div role="tabpanel" className="min-h-[12rem]">
+        {tab === "plan" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Учебный план</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : "План ещё не загружен."}
+            </p>
+            {plan?.weeks?.length ? (
+              <div className="mt-4 grid gap-3">
+                {(plan.weeks as SubjectPlanWeek[]).map((w: any, i: number) => (
+                  <article key={i} className="rounded-xl border bg-slate-50 p-4">
+                    <div className="text-xs text-slate-400">
+                      {w.date || ""}
+                      {w.week != null ? " · неделя " + w.week : ""}
+                    </div>
+                    {w.lecture && (
+                      <div className="mt-2 text-sm">
+                        <b className="text-indigo-700">Лекция:</b> {w.lecture}
+                      </div>
+                    )}
+                    {w.practice && (
+                      <div className="text-sm">
+                        <b className="text-emerald-700">Практика:</b> {w.practice}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : modules.length ? (
+              <div className="mt-4 space-y-2">
+                {modules.map((m, i) => (
+                  <details key={m.id || i} className="rounded-xl border" open={i === 0}>
+                    <summary className="cursor-pointer px-4 py-3 font-semibold">{m.title || "Модуль " + (i + 1)}</summary>
+                    <div className="border-t px-4 py-2 text-sm">
+                      {(m.topics || []).map((tp, j) => (
+                        <div key={tp.id || j} className="border-b py-2 last:border-0">
+                          {tp.title}
                         </div>
-                        {w.lecture && (
-                          <div className="mt-2 text-sm">
-                            <span className="font-medium text-indigo-700">Лекция: </span>
-                            {w.lecture}
-                          </div>
-                        )}
-                        {w.practice && (
-                          <div className="text-sm">
-                            <span className="font-medium text-emerald-700">Практика: </span>
-                            {w.practice}
-                          </div>
-                        )}
-                      </article>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        )}
+
+        {tab === "tickets" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Билеты</h2>
+            <p className="mt-1 text-sm text-slate-500">Генератор билетов прямо здесь — никуда переходить не нужно. Билеты отдельный банк, с SRS не смешиваются.</p>
+            {ticketBankAvailable(slug) && subjectBanks.length ? (
+              <>
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <select
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm md:col-span-2"
+                    value={ticketBankId}
+                    onChange={(e) => setTicketBankId(e.target.value)}
+                  >
+                    {subjectBanks.map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.title} ({b.count})</option>
                     ))}
-                  </div>
-                ) : modules.length ? (
-                  modules.map((m, i) => (
-                    <details key={m.id || m.title || i} className="rounded-xl border" open={i === 0}>
-                      <summary className="cursor-pointer px-4 py-3 font-medium">
-                        {m.title || `Модуль ${i + 1}`}
-                      </summary>
-                      <ul className="border-t px-4 py-2 text-sm">
-                        {(m.topics || []).map((t, j) => (
-                          <li key={t.id || j} className="border-b border-slate-50 py-2 last:border-0">
-                            {t.title}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500">План ещё не загружен.</p>
+                  </select>
+                  <select
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={ticketCount}
+                    onChange={(e) => setTicketCount(Number(e.target.value))}
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n} вопрос(а)</option>
+                    ))}
+                  </select>
+                  <select
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={ticketMode}
+                    onChange={(e) => setTicketMode(e.target.value as "practice" | "exam")}
+                  >
+                    <option value="practice">Практика (с эталоном)</option>
+                    <option value="exam">Экзамен</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-primary inline-flex items-center justify-center gap-2 text-sm md:col-span-4"
+                    onClick={() => void genTicket()}
+                    disabled={ticketBusy || !ticketBankId}
+                  >
+                    {ticketBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    Сгенерировать билет
+                  </button>
+                </div>
+                {ticketNote && <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{ticketNote}</div>}
+                {ticketQuestions.length > 0 && (
+                  <>
+                    {ticketTitle && <h3 className="mt-5 text-base font-semibold">{ticketTitle}</h3>}
+                    <ol className="mt-3 space-y-4">
+                      {ticketQuestions.map((qq: any, idx: number) => (
+                        <li key={qq.id || idx} className="rounded-xl border bg-slate-50 p-4">
+                          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Вопрос {idx + 1}{qq.subject ? ` · ${qq.subject}` : ""}</div>
+                          <div className="mt-2 font-medium leading-snug">
+                            <ChemRichText text={String(qq.text || "")} />
+                          </div>
+                          {ticketMode === "practice" && (qq.answer || qq.has_answer) && (
+                            <div className="mt-3">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-sm text-indigo-600"
+                                onClick={() => setReveal((r) => ({ ...r, [qq.id]: !r[qq.id] }))}
+                              >
+                                <Eye className="h-4 w-4" />
+                                {reveal[qq.id] ? "Скрыть эталон" : "Показать эталон"}
+                              </button>
+                              {reveal[qq.id] && (
+                                <div className="mt-2 rounded-xl bg-white p-3 text-sm text-slate-700">
+                                  <ChemRichText text={String(qq.answer || "")} asHtml />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
                 )}
               </>
-            )}
-
-            {block === "tickets" && (
-              <Block title="Билеты и вопросы" text="Тренировка к экзамену по этому предмету." href={`/tickets?${q}`} cta="Открыть билеты" />
-            )}
-            {block === "practice" && (
-              <Block title="Практика" text="Тренажёры по темам предмета." href={`/practice?${q}`} cta="К практике" />
-            )}
-            {block === "lectures" && (
-              <Block title="Лекции" text="Страницы лекций с формулами и видео." href={`/lectures?${q}`} cta="К лекциям" />
-            )}
-            {block === "materials" && (
-              <Block title="Материалы" text="Таблицы, PDF, схемы — наполняет админ." href={`/materials?${q}`} cta="К материалам" />
-            )}
-            {block === "cards" && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold">Карточки SRS</h2>
-                <p className="text-sm text-slate-500">
-                  Общие (преподаватель) и личные. При смене семестра личные не копируются автоматически.
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Link href={`/cards?${q}&scope=shared`} className="rounded-xl border p-4 hover:bg-slate-50">
-                    <div className="font-semibold">Общие</div>
-                    <p className="mt-1 text-xs text-slate-500">Создаёт преподаватель</p>
-                  </Link>
-                  <Link href={`/cards?${q}&scope=personal`} className="rounded-xl border p-4 hover:bg-slate-50">
-                    <div className="font-semibold">Мои</div>
-                    <p className="mt-1 text-xs text-slate-500">Термины, формулы</p>
-                  </Link>
-                </div>
-              </div>
-            )}
-            {block === "progress" && (
-              <Block title="Прогресс по предмету" text="Покрытие, точность, готовность к экзамену." href={`/progress?${q}`} cta="Смотреть прогресс" />
+            ) : (
+              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Банк билетов для этого предмета пока не подключён.
+              </p>
             )}
           </section>
-        </>
-      ) : null}
-    </div>
-  );
-}
+        )}
 
-function Block({ title, text, href, cta }: { title: string; text: string; href: string; cta: string }) {
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold">{title}</h2>
-      <p className="text-sm text-slate-500">{text}</p>
-      <Link href={href} className="btn-primary inline-flex">{cta}</Link>
+        {tab === "tests" && (
+          <section className="card space-y-4 p-5">
+            <div>
+              <h2 className="text-lg font-bold">Тесты</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {histology
+                  ? "Закрытые тесты по цитологии и эмбриологии + банк предмета. Режим выбирается кнопкой на карточке."
+                  : "Все тесты предмета — сразу с кнопками режима, без перехода в общий раздел."}
+              </p>
+            </div>
+            {subjectTests.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {subjectTests.map((t) => (
+                  <div key={t.id} className="rounded-xl border bg-slate-50 p-4">
+                    <div className="font-semibold">{t.title || t.name || "Тест"}</div>
+                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">Подготовка</Link>
+                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id) + "?mode=exam"} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300">Экзамен</Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Тесты для этого предмета пока не подключены. После импорта SQL они появятся здесь.
+              </p>
+            )}
+          </section>
+        )}
+
+        {tab === "practice" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Практика</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {histology ? "Микропрепараты, электронограммы и задания МБХ." : "Темы и практические задания предмета."}
+            </p>
+            {modules.length > 0 && (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {modules.slice(0, 6).map((m, i) => (
+                  <div key={m.id || i} className="rounded-xl border p-3 text-sm font-medium">
+                    {m.title}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link href={histology ? "/trainers/feed/histology" : "/practice?" + query} className="btn-primary mt-4 inline-flex">
+              {histology ? "Открыть тренажёр" : "Открыть практику"}
+            </Link>
+          </section>
+        )}
+
+        {tab === "lectures" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Лекции</h2>
+            <p className="mt-1 text-sm text-slate-500">Лекции этого предмета — открываются в один клик.</p>
+            {subjectLectures.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {subjectLectures.map((lec: any) => (
+                  <Link
+                    key={lec.id}
+                    href={"/lectures/" + encodeURIComponent(lec.id)}
+                    className="flex gap-3 rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold leading-snug">{lec.title}</div>
+                      {lec.summary && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{lec.summary}</p>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Опубликованных лекций по этому предмету пока нет.
+              </p>
+            )}
+          </section>
+        )}
+
+        {tab === "materials" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Материалы</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {materialsRich.length
+                ? materialsRich.length + " материалов — читаются прямо здесь, оригинал доступен отдельно."
+                : "Материалы пока не найдены."}
+            </p>
+            {materialsRich.length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {materialsRich.map((m: any) => (
+                  <article key={m.id} className="rounded-xl border bg-slate-50 p-4">
+                    <div className="font-semibold leading-snug">{m.title}</div>
+                    <div className="mt-1 text-xs text-slate-500">{materialTypeLabel(m.type)}{m.source?.name ? " · " + m.source.name : ""}</div>
+                    {stripHtml(m.content_html) && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{stripHtml(m.content_html)}</p>}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" className="btn-primary text-xs" onClick={() => setActiveMaterial(m)}>Читать</button>
+                      {m.source?.download_url ? (
+                        <a href={m.source.download_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                          <ExternalLink className="h-3.5 w-3.5" /> Исходник
+                        </a>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === "trainer" && (
+          histology ? (
+            <HistologyTrainer embedded />
+          ) : (
+            <section className="card p-5">
+              <h2 className="text-lg font-bold">Микропрепараты</h2>
+              <p className="mt-1 text-sm text-slate-500">Для этого предмета тренажёр не подключён.</p>
+            </section>
+          )
+        )}
+
+        {tab === "cards" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Карточки SRS</h2>
+            <p className="mt-1 text-sm text-slate-500">Общие и личные карточки — отдельно от билетов.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Link href={"/cards?" + query + "&scope=shared"} className="rounded-xl border p-4 hover:bg-slate-50">
+                <b>Общие</b>
+                <div className="mt-1 text-xs text-slate-500">Преподаватель</div>
+              </Link>
+              <Link href={"/cards?" + query + "&scope=personal"} className="rounded-xl border p-4 hover:bg-slate-50">
+                <b>Мои</b>
+                <div className="mt-1 text-xs text-slate-500">Личные термины</div>
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {tab === "progress" && (
+          <section className="card p-5">
+            <h2 className="text-lg font-bold">Прогресс</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="text-xs text-slate-500">Общий</div>
+                <b className="text-2xl">{progress?.overall_pct != null ? Math.round(progress.overall_pct) + "%" : "—"}</b>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="text-xs text-slate-500">Тесты</div>
+                <b className="text-2xl">{tests.length}</b>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="text-xs text-slate-500">Материалы</div>
+                <b className="text-2xl">{materials.length}</b>
+              </div>
+            </div>
+            {tests.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {tests.slice(0, 6).map((t) => (
+                  <Link key={t.id} href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50">
+                    {t.title || t.name || "Тест"} · {t.questions_count || 0} вопросов
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+
+      {activeMaterial && (
+        <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6" onMouseDown={() => setActiveMaterial(null)}>
+          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+            <header className="flex items-start justify-between gap-4 border-b px-5 py-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{subject?.name} · {materialTypeLabel(activeMaterial.type)}</div>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900">{activeMaterial.title}</h2>
+                {activeMaterial.source?.name && <div className="mt-1 text-xs text-slate-500">Исходный файл: {activeMaterial.source.name}</div>}
+              </div>
+              <button type="button" className="rounded-xl p-2 hover:bg-slate-100" onClick={() => setActiveMaterial(null)} aria-label="Закрыть"><X className="h-5 w-5" /></button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-auto p-5">
+              {activeMaterial.content_html ? (
+                <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: activeMaterial.content_html }} />
+              ) : activeMaterial.external_url ? (
+                <iframe src={activeMaterial.external_url} title={activeMaterial.title} className="h-full min-h-[60vh] w-full rounded-xl border" />
+              ) : (
+                <div className="rounded-2xl bg-slate-50 p-8 text-sm text-slate-500">У этого материала пока нет преобразованного текста.</div>
+              )}
+            </div>
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50 px-5 py-4">
+              <span className="text-xs text-slate-500">{activeMaterial.source_key ? "Источник: " + activeMaterial.source_key : "Источник не указан"}</span>
+              <div className="flex gap-2">
+                {activeMaterial.source?.download_url ? (
+                  <a href={activeMaterial.source.download_url} target="_blank" rel="noreferrer" className="btn-pill inline-flex items-center gap-2 text-sm">
+                    <ExternalLink className="h-4 w-4" /> Открыть оригинал
+                  </a>
+                ) : null}
+                <button type="button" className="btn-primary text-sm" onClick={() => setActiveMaterial(null)}>Закрыть</button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
