@@ -1,0 +1,128 @@
+import { existsSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
+import { join, relative, extname } from "node:path";
+import { spawnSync } from "node:child_process";
+
+const root = process.cwd();
+let failures = 0;
+let warnings = 0;
+
+const pass = (m) => console.log("[PASS] " + m);
+const warn = (m) => { warnings++; console.log("[WARN] " + m); };
+const fail = (m) => { failures++; console.error("[FAIL] " + m); };
+
+function run(command, args, label) {
+  const r = spawnSync(command, args, {
+    cwd: root,
+    stdio: "inherit",
+    shell: process.platform === "win32"
+  });
+  if (r.status === 0) pass(label);
+  else fail(label + " (exit " + (r.status ?? "unknown") + ")");
+  return r.status === 0;
+}
+
+async function walk(dir, out = []) {
+  if (!existsSync(dir)) return out;
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (["node_modules", ".next", ".git", "dist", "out"].includes(entry.name)) continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) await walk(path, out);
+    else out.push(path);
+  }
+  return out;
+}
+
+console.log("MEDBIOHIM PRE-DEPLOY AUDIT");
+console.log("==========================");
+
+for (const required of [
+  "package.json",
+  "tsconfig.json",
+  "next.config.ts",
+  "src/app/api/v1/[...path]/route.ts",
+  "backend",
+  ".env.example"
+]) {
+  if (existsSync(join(root, required))) pass("required: " + required);
+  else fail("missing required path: " + required);
+}
+
+if (!existsSync(join(root, "package-lock.json"))) {
+  warn("package-lock.json is not tracked/present; npm/Vercel resolve dependency ranges instead of a locked tree");
+}
+
+if (!existsSync(join(root, "eslint.config.js")) &&
+    !existsSync(join(root, "eslint.config.mjs")) &&
+    !existsSync(join(root, "eslint.config.cjs"))) {
+  warn("no ESLint flat-config file found; npm run lint may not be usable with ESLint 9");
+}
+
+const sourceFiles = await walk(join(root, "src"));
+const backendFiles = await walk(join(root, "backend"));
+const codeFiles = [...sourceFiles, ...backendFiles].filter((x) =>
+  [".ts", ".tsx", ".js", ".jsx", ".php"].includes(extname(x))
+);
+
+const escaped = [];
+for (const file of codeFiles) {
+  const text = await readFile(file, "utf8");
+  if (/\\\\n\\s*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)/.test(text)) {
+    escaped.push(relative(root, file));
+  }
+}
+if (escaped.length) fail("literal escaped-newline source artifacts: " + escaped.join(", "));
+else pass("no literal escaped-newline source artifacts");
+
+const proxyPath = join(root, "src/app/api/v1/[...path]/route.ts");
+if (existsSync(proxyPath)) {
+  const proxy = await readFile(proxyPath, "utf8");
+  if (proxy.includes("SPACEWEB_API_ORIGIN")) pass("Vercel -> SpaceWeb proxy contract present");
+  else fail("SPACEWEB_API_ORIGIN is not referenced by the Vercel API proxy");
+}
+
+if (existsSync(join(root, "api/index.php"))) {
+  fail("legacy root api/index.php exists; architecture expects Next proxy -> SpaceWeb");
+} else {
+  pass("no legacy root api/index.php");
+}
+
+console.log("\nProduction compilation:");
+run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "typecheck"], "TypeScript");
+run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], "Next.js production build");
+
+const php = spawnSync("php", ["-v"], {
+  cwd: root,
+  stdio: "ignore",
+  shell: process.platform === "win32"
+});
+
+if (php.status === 0) {
+  let phpOk = true;
+  const phpFiles = backendFiles.filter((x) => extname(x) === ".php");
+  for (const file of phpFiles) {
+    const r = spawnSync("php", ["-l", file], {
+      cwd: root,
+      stdio: "pipe",
+      shell: process.platform === "win32",
+      encoding: "utf8"
+    });
+    if (r.status !== 0) {
+      phpOk = false;
+      fail("PHP syntax: " + relative(root, file) + "\n" + (r.stdout || "") + (r.stderr || ""));
+    }
+  }
+  if (phpOk) pass("PHP syntax (" + phpFiles.length + " files)");
+} else {
+  warn("PHP CLI is not installed locally; backend syntax check must run in CI/SpaceWeb");
+}
+
+console.log("\n==========================");
+console.log("FAIL: " + failures + "  WARN: " + warnings);
+
+if (failures) {
+  console.error("DEPLOY STATUS: BLOCKED");
+  process.exit(1);
+}
+
+console.log(warnings ? "DEPLOY STATUS: PASS WITH WARNINGS" : "DEPLOY STATUS: PASS");

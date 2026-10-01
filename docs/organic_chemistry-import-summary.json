@@ -1,0 +1,10 @@
+{
+  "subject_slug": "organic_chemistry",
+  "subject": "Органическая и физическая химия",
+  "open_tasks": 260,
+  "test_packs": 18,
+  "test_questions": 101,
+  "source_files": ["orgchem_tasks_full.json", "orgchem_tests_dvgmu_2016.json"],
+  "sql": "docs/20260929_import_organic_chemistry_exam_questions_uuid.sql",
+  "updated_at": "2026-09-29T14:54:32.448985+00:00"
+}

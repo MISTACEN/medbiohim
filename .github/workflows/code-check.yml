@@ -1,0 +1,47 @@
+name: MEDBIOHIM code checks
+
+on:
+  push:
+    branches: [main, beta]
+  pull_request:
+    branches: [main, beta]
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify Vercel/SpaceWeb architecture
+        run: |
+          set -euo pipefail
+          test -f src/app/api/v1/'[...path]'/route.ts
+          test ! -f api/index.php
+          grep -q 'SPACEWEB_API_ORIGIN' src/app/api/v1/'[...path]'/route.ts
+          grep -q 'NEXT_PUBLIC_API_URL' .env.example
+      - name: Detect literal escaped-newline source artifacts
+        run: |
+          set -euo pipefail
+          if grep -RInE '\\n[[:space:]]*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)' src backend --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.php'; then
+            echo 'Found a literal \\n embedded in source code.'
+            exit 1
+          fi
+      - name: Full local-equivalent pre-deploy audit
+        run: npm run predeploy:audit
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - name: PHP syntax check
+        run: |
+          set -euo pipefail
+          find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l

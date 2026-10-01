@@ -1,0 +1,35 @@
+name: Package MEDBIOHIM source
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build full source archive
+        run: |
+          set -euo pipefail
+          rm -f "$GITHUB_WORKSPACE/medbiohim-full-$GITHUB_SHA.zip"
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-full-$GITHUB_SHA.zip" . -x '.git/*' -x 'node_modules/*' -x '.next/*' -x '*/.env' -x '.env'
+
+      - name: Build backend archive
+        run: |
+          set -euo pipefail
+          rm -f "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip"
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip" backend -x 'backend/.env' -x 'backend/.env.*'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medbiohim-full-${{ github.sha }}
+          path: medbiohim-full-${{ github.sha }}.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medbiohim-backend-${{ github.sha }}
+          path: medbiohim-backend-${{ github.sha }}.zip
+          if-no-files-found: error

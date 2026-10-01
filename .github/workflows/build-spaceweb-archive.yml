@@ -17,7 +17,7 @@ jobs:
           rm -f /tmp/medbiohim-spaceweb/backend/.env
           printf 'MEDBIOHIM SpaceWeb archive\nSource: $GITHUB_SHA\nKeep production backend/.env on SpaceWeb.\n' > /tmp/medbiohim-spaceweb/SPACEWEB-UPDATE.txt
           cd /tmp/medbiohim-spaceweb
-          zip -qr "$GITHUB_WORKSPACE/medbiohim-spaceweb-${GITHUB_SHA}.zip" backend SPACEWEB-UPDATE.txt
+          zip -qr "$GITHUB_WORKSPACE/medbiohim-spaceweb-$GITHUB_SHA.zip" backend SPACEWEB-UPDATE.txt
       - uses: actions/upload-artifact@v4
         with:
           name: medbiohim-spaceweb-backend-${{ github.sha }}

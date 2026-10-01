@@ -1,0 +1,6 @@
+MEDBIOHIM SpaceWeb deploy marker
+Updated: 2026-09-24
+Reference: supplied working backend archive backend (12).zip
+Document root for API: backend/public
+API health: /api/v1/health (or /public/api/v1/health when public is not the document root)
+Secrets are NOT stored in GitHub; keep backend/.env on SpaceWeb.

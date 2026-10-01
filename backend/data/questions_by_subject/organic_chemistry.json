@@ -1,0 +1,10 @@
+{
+  "subject_slug": "organic_chemistry",
+  "subject": "Органическая и физическая химия",
+  "count": 80,
+  "kind": "ticket",
+  "for_exam": true,
+  "items": [],
+  "_progress": "GitHub has docs/orgchem-import/micro/m01.json … m16.json (tasks 1–80). Run: python3 docs/orgchem-import/assemble_from_micros.py after m17–m52. Full 260 in artifacts.",
+  "_assemble": "for i in $(seq -w 1 52); do cat docs/orgchem-import/micro/m$i.json; done | jq -s '{subject_slug:\"organic_chemistry\",subject:\"Органическая и физическая химия\",count:(map(.items)|add|length),kind:\"ticket\",for_exam:true,items:(map(.items)|add)}'"
+}

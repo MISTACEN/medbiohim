@@ -1,0 +1,145 @@
+name: Deploy backend to SpaceWeb
+
+# Deploys backend/src/** and config/routes/platform.php to the SpaceWeb FTP
+# account. Requires repository secret FTP_PASSWORD (the FTP account password).
+# Runs automatically when backend code changes on main, or manually via
+# Actions → "Deploy backend to SpaceWeb" → "Run workflow".
+#
+# SETUP: this file must live at .github/workflows/deploy-backend.yml
+# (see deploy/SETUP.md for the two one-time setup steps).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "backend/src/**"
+      - "backend/config/routes/platform.php"
+      - ".github/workflows/deploy-backend.yml"
+
+concurrency:
+  group: deploy-spaceweb
+  cancel-in-progress: false
+
+env:
+  FTP_HOST: 77.222.40.198
+  FTP_USER: ryazansev3_logigpt
+  FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard secret
+        run: |
+          if [ -z "$FTP_PASS" ]; then
+            echo "::error::Repository secret FTP_PASSWORD is not set. Add it in Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Discover site root on FTP
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="ftp://$FTP_HOST"
+          AUTH=(--ssl -k --max-time 30 -u "$FTP_USER:$FTP_PASS")
+
+          list_dirs() {
+            curl -sS "${AUTH[@]}" "$BASE/$1" 2>/dev/null \
+              | awk '$1 ~ /^d/ { $1=$2=$3=$4=$5=$6=$7=$8=""; sub(/^ +/,""); print }' \
+              | grep -vE '^\.\.?$' || true
+          }
+
+          has_backend() {
+            curl -sS "${AUTH[@]}" "$BASE/$1backend/public/" 2>/dev/null | grep -q "index.php"
+          }
+
+          declare -a level=("")
+          found=""
+          for depth in 0 1 2 3; do
+            declare -a next=()
+            for p in "${level[@]}"; do
+              if [ -z "$p" ] && [ "$depth" != "0" ]; then continue; fi
+              if has_backend "$p"; then found="$p"; break; fi
+              while IFS= read -r d; do
+                case "$d" in logs|cgi-bin|.ftpquota|.*) continue;; esac
+                next+=("$p$d/")
+              done < <(list_dirs "$p")
+            done
+            [ -n "$found" ] && break
+            [ "${#next[@]}" -eq 0 ] && break
+            level=("${next[@]}")
+          done
+
+          if [ -z "$found" ]; then
+            echo "::error::backend/public/index.php not found on FTP (searched 3 levels)."
+            echo "Top-level listing:"
+            curl -sS "${AUTH[@]}" "$BASE/" || true
+            exit 1
+          fi
+          echo "Site root on FTP: /${found}"
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+          echo "### Site root: \`/${found}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Backup current server copy
+        run: |
+          SITE="${{ steps.discover.outputs.found }}"
+          mkdir -p backup
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+          set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
+          mirror --verbose '${SITE}backend/src' backup/src;
+          bye" || echo "::warning::backup of backend/src incomplete — continuing"
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+          set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
+          get -O backup/ '${SITE}backend/config/routes/platform.php';
+          bye" || echo "::warning::backup of platform.php failed — continuing"
+
+      - name: Deploy backend/src (full overwrite, no deletions)
+        run: |
+          SITE="${{ steps.discover.outputs.found }}"
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+          set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
+          mirror -R --verbose ./backend/src '${SITE}backend/src';
+          bye"
+
+      - name: Deploy platform.php + cleanup stale payload files
+        run: |
+          SITE="${{ steps.discover.outputs.found }}"
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+          set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
+          put -O '${SITE}backend/config/routes/' backend/config/routes/platform.php;
+          rm -f '${SITE}backend/config/routes/trainings.payload.0.b64';
+          rm -f '${SITE}backend/config/routes/trainings.payload.1.b64';
+          bye"
+
+      - name: Verify deployed files
+        run: |
+          set -euo pipefail
+          SITE="${{ steps.discover.outputs.found }}"
+          mkdir -p verify
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+          set ftp:ssl-allow yes; set ssl:verify-certificate no;
+          get -O verify/ '${SITE}backend/src/Bootstrap.php';
+          get -O verify/ '${SITE}backend/src/Repositories/TestRepository.php';
+          get -O verify/ '${SITE}backend/config/routes/platform.php';
+          get -O verify/ '${SITE}backend/src/Services/AccountSettingsService.php';
+          bye"
+          grep -q "The use statement with non-compound name" verify/Bootstrap.php
+          grep -q "questions_count" verify/TestRepository.php
+          grep -q "use Medbiohim\\\\Services\\\\B2Storage;" verify/platform.php
+          grep -q "function getPreferences" verify/AccountSettingsService.php
+          echo "### Deploy verified: Bootstrap.php + TestRepository.php + platform.php + AccountSettingsService.php markers present" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 14
+          if-no-files-found: ignore
