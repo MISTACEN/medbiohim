@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Play, Loader2, CheckCircle2 } from "lucide-react";
+import { Play, Loader2, CheckCircle2, Lock } from "lucide-react";
 import {
   listTests,
   getTest,
@@ -15,6 +15,7 @@ import {
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { Confetti } from "@/components/ui/Confetti";
 import { QuestionReport } from "@/components/QuestionReport";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
 type UiTest = {
   id: string;
@@ -138,7 +139,7 @@ export default function TestsPage() {
   }
 
   async function submit() {
-    if (!active) return;
+    if (!active || result) return; // завершённый тест нельзя пересдать/изменить
     setBusy(true);
     let score = 0;
     const max = active.questions.length;
@@ -168,6 +169,7 @@ export default function TestsPage() {
   if (loading) return <SkeletonCards count={3} />;
 
   if (active) {
+    const locked = result !== null;
     return (
       <div className="space-y-6">
         <Confetti active={celebrate} />
@@ -180,32 +182,64 @@ export default function TestsPage() {
             ← К списку
           </button>
         </div>
-        {active.questions.map((q, i) => (
-          <div key={q.id} className="card space-y-3">
-            <div className="font-medium">
-              {i + 1}. {q.body}
-            </div>
-            <div className="space-y-2">
-              {q.options.map((opt, oi) => (
-                <label
-                  key={oi}
-                  className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
-                    picks[i] === oi ? "border-blue-500 bg-blue-50" : "border-slate-100"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`q-${i}`}
-                    checked={picks[i] === oi}
-                    onChange={() => setPicks((p) => ({ ...p, [i]: oi }))}
-                  />
-                  {opt}
-                </label>
-              ))}
-            </div>
-            <QuestionReport questionId={q.id} />
+        {locked && (
+          <div className="card flex items-center gap-3 border-amber-200 bg-amber-50 text-amber-800">
+            <Lock className="h-5 w-5 shrink-0" />
+            <p className="text-sm">Тест завершён — ответы изменить уже нельзя, но можно посмотреть свои ответы и какие должны были быть правильными.</p>
           </div>
-        ))}
+        )}
+        {active.questions.map((q, i) => {
+          const correctIdx = active.answersKey[i];
+          const myPick = picks[i];
+          const missed = locked && correctIdx != null && myPick !== correctIdx;
+          return (
+            <div key={q.id} className="card space-y-3">
+              <div className="font-medium">
+                {i + 1}. {q.body}
+              </div>
+              <div className="space-y-2">
+                {q.options.map((opt, oi) => {
+                  const isPicked = myPick === oi;
+                  const isCorrect = locked && correctIdx === oi;
+                  const isWrongPick = locked && isPicked && correctIdx !== oi;
+                  return (
+                    <label
+                      key={oi}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
+                        locked ? "cursor-default " : "cursor-pointer "
+                      }${
+                        isCorrect
+                          ? "border-emerald-500 bg-emerald-50"
+                          : isWrongPick
+                            ? "border-rose-400 bg-rose-50"
+                            : isPicked
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-slate-100"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`q-${i}`}
+                        checked={isPicked}
+                        disabled={locked}
+                        onChange={() => setPicks((p) => ({ ...p, [i]: oi }))}
+                      />
+                      <span className="flex-1">{opt}</span>
+                      {isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
+                    </label>
+                  );
+                })}
+              </div>
+              {missed && correctIdx != null && (
+                <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                  <span className="font-semibold">Правильный ответ: </span>
+                  <ChemRichText text={q.options[correctIdx] ?? ""} className="mt-1 text-sm" />
+                </div>
+              )}
+              <QuestionReport questionId={q.id} />
+            </div>
+          );
+        })}
         {result ? (
           <div className="card flex items-center gap-3 text-emerald-700">
             <CheckCircle2 className="h-6 w-6" />

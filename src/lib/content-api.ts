@@ -44,6 +44,11 @@ export type TrainerCard = {
   tags?: string[];
   difficulty?: number | null;
   source_key?: string | null;
+  /** Привязка к учебному плану (для группировки «по темам занятий») */
+  plan_module_id?: string | null;
+  plan_topic_id?: string | null;
+  plan_module_title?: string | null;
+  plan_topic_title?: string | null;
 };
 
 export { getTrainerImageUrl };

@@ -9,6 +9,7 @@ import {
   getTraining, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
   type TrainingLabelMode, type TrainingLayout, type TrainingQuestion,
 } from "@/lib/content-api";
+import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
 import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
 
@@ -148,40 +149,32 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const answered = answers.filter((x) => x.user_answer != null || x.is_skipped).length;
   const wrong = answers.filter((x) => x.is_correct === false);
 
+  // Фильтр атласа — по темам занятий (название темы плана; если привязки к
+  // плану ещё нет, lessonKeyOf возвращается к первой метке карточки).
   const topicsForSetup = useMemo(() => {
-    if (!feedItems.length) return topics;
-    const isEm = (x: any) => {
-      const tags = Array.isArray(x.tags) ? x.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-      const mode = String(x.mode_set || "").toLowerCase();
-      return tags.some((tg: string) => tg.includes("electron") || tg.includes("электронограм")) || mode.includes("electron");
-    };
     const filtered = feedItems.filter((x) => {
-      if (contentType === "electronogram") return isEm(x);
-      if (contentType === "preparation") return !isEm(x);
+      if (contentType === "electronogram") return isElectronogramCard(x);
+      if (contentType === "preparation") return !isElectronogramCard(x);
       return true;
     });
+    if (!filtered.length) return topics.slice().sort(compareLessons);
     const set = new Set<string>();
-    for (const x of filtered) for (const tag of (Array.isArray(x.tags) ? x.tags : [])) set.add(String(tag));
-    return Array.from(set).sort();
+    for (const x of filtered) set.add(lessonKeyOf(x));
+    return Array.from(set).sort(compareLessons);
   }, [topics, feedItems, contentType]);
 
   const atlasItems = useMemo(() => {
-    const isEm = (x: any) => {
-      const tags = Array.isArray(x.tags) ? x.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-      const mode = String(x.mode_set || "").toLowerCase();
-      return tags.some((tg: string) => tg.includes("electron") || tg.includes("электронограм")) || mode.includes("electron");
-    };
     let list = feedItems.slice();
-    if (contentType === "electronogram") list = list.filter(isEm);
-    else if (contentType === "preparation") list = list.filter((x) => !isEm(x));
-    if (atlasTopic) list = list.filter((x) => Array.isArray(x.tags) && x.tags.map(String).includes(atlasTopic));
+    if (contentType === "electronogram") list = list.filter(isElectronogramCard);
+    else if (contentType === "preparation") list = list.filter((x) => !isElectronogramCard(x));
+    if (atlasTopic) list = list.filter((x) => lessonKeyOf(x) === atlasTopic);
     const seenId = new Set<string>(), seenKey = new Set<string>(), seenEmName = new Set<string>();
     const deduped: any[] = [];
     for (const item of list) {
       const id = String(item?.id || "");
       const src = String(item?.source_key || item?.preparation?.imagePath || item?.preparation?.imageUrl || "");
       const name = String(item?.preparation?.name || "").trim().toLowerCase();
-      const em = isEm(item);
+      const em = isElectronogramCard(item);
       if (id && seenId.has(id)) continue;
       if (src && seenKey.has(src)) continue;
       if (em && name && seenEmName.has(name)) continue;
@@ -196,12 +189,22 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const atlasByTopic = useMemo(() => {
     const map = new Map<string, any[]>();
     for (const item of atlasItems) {
-      const tags = Array.isArray(item.tags) && item.tags.length ? item.tags.map(String) : ["Без темы"];
-      const key = atlasTopic || tags[0];
+      const key = atlasTopic || lessonKeyOf(item);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
+    // Внутри занятия: препараты по алфавиту, затем электронограммы в
+    // фиксированном порядке атласа (три ряда).
+    const within = (a: any, b: any) => {
+      const ea = isElectronogramCard(a), eb = isElectronogramCard(b);
+      const byName = String(a.preparation?.name || "").localeCompare(String(b.preparation?.name || ""), "ru");
+      if (ea !== eb) return ea ? 1 : -1;
+      if (ea && eb) return emPlanRank(a) - emPlanRank(b) || byName;
+      return byName;
+    };
+    return Array.from(map.entries())
+      .sort((a, b) => compareLessons(a[0], b[0]))
+      .map(([title, items]) => [title, items.sort(within)] as [string, any[]]);
   }, [atlasItems, atlasTopic]);
 
   const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
@@ -255,7 +258,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                 </div>
               </div>
               <div>
-                <h2 className="font-bold">Темы</h2>
+                <h2 className="font-bold">Темы занятий</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => setAtlasTopic("")} className={"rounded-xl border px-3 py-2 text-sm " + (!atlasTopic ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>Все темы</button>
                   {topicsForSetup.map((tg) => (
@@ -275,6 +278,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                     <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
                       <div className="aspect-square bg-slate-100"><AtlasThumb id={String(card.id)} /></div>
                       <div className="p-2 text-xs font-medium text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
+                      <div className="px-2 pb-2 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
                     </button>
                   ))}
                 </div>
@@ -350,6 +354,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
             <div className="max-h-[90vh] max-w-3xl overflow-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
               <ImageBox id={String(lightbox.id)} />
               <h3 className="mt-3 text-lg font-bold">{lightbox.preparation?.name}</h3>
+              <div className="mt-1 text-xs font-medium text-indigo-500">Занятие: {topicLabel(lessonKeyOf(lightbox))}</div>
               {Array.isArray(lightbox.preparation?.captions) && lightbox.preparation.captions.length > 0 && (
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
                   {lightbox.preparation.captions.map((c: string, i: number) => <li key={i}>{c}</li>)}
