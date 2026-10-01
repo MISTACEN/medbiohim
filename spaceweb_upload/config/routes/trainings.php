@@ -8,8 +8,22 @@ if ($__code === false) {
 }
 $__tmp = tempnam(sys_get_temp_dir(), 'mbh_tr_');
 file_put_contents($__tmp, $__code);
+$__previous_error_handler = set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+    // The decoded route is loaded in the global namespace. PHP 8.x emits E_WARNING
+    // for "use PDO;" there; MEDBIOHIM converts warnings to ErrorException, so
+    // suppress only this harmless compatibility warning and delegate everything else.
+    if ($severity === E_WARNING && str_contains($message, "The use statement with non-compound name 'PDO' has no effect")) {
+        return true;
+    }
+    return false;
+});
 try {
     return require $__tmp;
 } finally {
+    if ($__previous_error_handler !== null) {
+        restore_error_handler();
+    } else {
+        restore_error_handler();
+    }
     @unlink($__tmp);
 }
