@@ -1,6 +1,6 @@
 {
   "purpose": "exam_tickets",
-  "total": 733,
+  "total": 1083,
   "timezone": "Asia/Vladivostok",
   "subjects": {
     "biology": {"subject": "Биология", "count": 163, "file": "questions_by_subject/biology.json"},
@@ -10,8 +10,9 @@
     "history": {"subject": "История России", "count": 82, "file": "questions_by_subject/history.json"},
     "math": {"subject": "Математика", "count": 31, "file": "questions_by_subject/math.json"},
     "математический_анализ": {"subject": "Математический анализ", "count": 18, "file": "questions_by_subject/математический_анализ.json"},
-    "physiology": {"subject": "Физиология", "count": 8, "file": "questions_by_subject/physiology.json"}
+    "physiology": {"subject": "Физиология", "count": 8, "file": "questions_by_subject/physiology.json"},
+    "histology": {"subject": "Гистология, цитология", "count": 350, "file": "questions_by_subject/histology.json"}
   },
-  "updated_at": "2026-09-17",
-  "note": "All questions kind=ticket for_exam=true. No HOBA naming."
+  "updated_at": "2026-09-28",
+  "note": "All questions kind=ticket for_exam=true. No HOBA naming. Histology bank added 2026-09-28."
 }

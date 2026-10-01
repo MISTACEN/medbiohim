@@ -1,4 +1,4 @@
--- Chemistry Engine Beta
+-- Chemistry Engine (promoted from beta experiment → main 2026-09-30)
 create table if not exists public.chemical_molecules (
   id uuid primary key default gen_random_uuid(), name text not null, formula text,
   molecular_weight numeric, cid bigint, canonical_smiles text, isomeric_smiles text,
@@ -76,6 +76,7 @@ create policy "chemical reaction steps are readable for published reactions" on 
 drop policy if exists "chemical sources are readable" on public.chemical_sources;
 create policy "chemical sources are readable" on public.chemical_sources for select to anon, authenticated using (true);
 drop policy if exists "chemical spectra are readable for published molecules" on public.chemical_spectra;
+drop policy if exists "chemical spectra are readable for published reactions" on public.chemical_spectra;
 create policy "chemical spectra are readable for published molecules" on public.chemical_spectra for select to anon, authenticated using (molecule_id is null or exists (select 1 from public.chemical_molecules m where m.id=molecule_id and m.is_published=true));
 drop policy if exists "chemical functional groups are readable" on public.chemical_functional_groups;
 create policy "chemical functional groups are readable" on public.chemical_functional_groups for select to anon, authenticated using (true);

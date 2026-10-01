@@ -26,5 +26,6 @@
       ]
     }
   ],
-  "updated_at": "2026-09-15T00:00:00Z"
+  "updated_at": "2026-09-29T16:01:41Z",
+  "_orgchem_note": "18 orgchem packs: docs/orgchem-import/tests_packs.json — merge into items. Full in artifacts/backend/data/tests.json"
 }
