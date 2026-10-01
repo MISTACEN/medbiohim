@@ -213,6 +213,7 @@ export async function preparationAiReview(sessionId:string): Promise<any> { retu
 export async function register(..._args: any[]): Promise<any> { return api(`/api-compat/register`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function reportQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/reportQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function savePreparation(sessionId:string,payload:Record<string,unknown>): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}`, {method:"PATCH",body:JSON.stringify(payload)}) as any; }
-export async function startPreparation(testId:string,mode:"full"|"count"="full",questionLimit?:number): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/preparation/start`, {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})}) as any; }
+export async function startPreparation(testId:string,mode:"full"|"count"|"sequential"="full",questionLimit?:number): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/preparation/start`, {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})}) as any; }
+export async function getBankProgress(testId:string): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/bank-progress`) as any; }
 export async function updateGroup(..._args: any[]): Promise<any> { return api(`/api-compat/updateGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function updateSubject(..._args: any[]): Promise<any> { return api(`/api-compat/updateSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
