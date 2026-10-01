@@ -9,8 +9,8 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   adminListSchedule,
+  getScheduleMeta,
   adminSaveSchedule,
-  adminSaveScheduleLocal,
   listGroups,
   hasToken,
   type ScheduleItem,
@@ -87,7 +87,7 @@ function dedupeItems(list: ScheduleItem[]): ScheduleItem[] {
 }
 
 export default function AdminSchedulePage() {
-  const [groups, setGroups] = useState<Array<{ id: string; name?: string; code?: string }>>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name?: string; code?: string; course_number?: number | null }>>([]);
   const [groupId, setGroupId] = useState("");
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [weekStart, setWeekStart] = useState(() => ymdFromKhToday());
@@ -97,12 +97,14 @@ export default function AdminSchedulePage() {
   const [source, setSource] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [edit, setEdit] = useState<ScheduleItem | null>(null);
+  const [meta, setMeta] = useState<{periods:Array<{id:string;title:string;start_date:string;end_date?:string|null;notes?:string|null}>}>({periods:[]});
+  const currentGroup = groups.find((g) => String(g.id) === String(groupId));
 
   useEffect(() => {
     void (async () => {
       const g = await listGroups();
       if (g.ok) {
-        const list = (g.data.items || []) as Array<{ id: string; name?: string; code?: string }>;
+        const list = (g.data.items || []) as Array<{ id: string; name?: string; code?: string; course_number?: number | null }>;
         setGroups(list);
         const mb = list.find((x) => (x.code || "").includes("МБ-201") || (x.name || "").includes("201"));
         if (mb) setGroupId(String(mb.id));
@@ -124,6 +126,8 @@ export default function AdminSchedulePage() {
     if (!hasToken()) { setLoading(false); return; }
     if (!groupId) { setLoading(false); return; }
     setLoading(true); setNote(null);
+    const metaRes = await getScheduleMeta(2, 3);
+    if (metaRes.ok) setMeta({ periods: metaRes.data.periods });
     const res = await adminListSchedule(groupId, 3);
     setLoading(false);
     if (res.ok) {
@@ -205,17 +209,12 @@ export default function AdminSchedulePage() {
     const clean = dedupeItems(items).map((x) => ({ ...x, group_id: groupId }));
     setItems(clean);
     const db = await adminSaveSchedule({ group_id: groupId, semester: 3, entries: clean });
-    const local = await adminSaveScheduleLocal(clean);
     setSaving(false);
-    if (!db.ok && !local.ok) {
+    if (!db.ok) {
       setNote(db.error.message);
       return;
     }
-    setNote(
-      db.ok
-        ? `Сохранено в БД · версия ${(db.data as { version?: number }).version ?? "—"} · ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} занятий${local.ok ? ` · кэш JSON ${local.data.count}` : ""}`
-        : `БД недоступна (${db.error.message}) · записан только кэш JSON: ${local.ok ? local.data.count : "ошибка"}`
-    );
+    setNote(`Сохранено в БД · версия ${(db.data as { version?: number }).version ?? "—"} · ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} занятий`);
     await load();
   }
 
@@ -235,6 +234,7 @@ export default function AdminSchedulePage() {
           <Link href="/admin" className="text-sm text-primary">← Админ</Link>
           <h1 className="page-title mt-1">CMS · Расписание</h1>
           <p className="page-subtitle">Сетка · drag-and-drop · БД primary · {source || "—"}</p>
+          <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3"><div className="text-[11px] font-bold uppercase tracking-wide text-indigo-500">Сейчас редактируется расписание</div><div className="mt-1 text-lg font-bold text-indigo-950">{currentGroup?.name || "Группа не выбрана"}</div><div className="text-sm text-indigo-700">{currentGroup?.code || "—"} · {currentGroup?.course_number || "—"} курс · 3 семестр</div></div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-secondary" onClick={addItem}><Plus className="h-4 w-4" /> Занятие</button>
@@ -243,6 +243,10 @@ export default function AdminSchedulePage() {
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Сохранить
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {meta.periods.map((p) => <div key={p.id} className="rounded-xl border bg-slate-50 px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -297,6 +301,7 @@ export default function AdminSchedulePage() {
                             className="mb-1 cursor-grab rounded-lg bg-indigo-50 px-2 py-1 text-left text-xs shadow-sm hover:bg-indigo-100"
                           >
                             <div className="font-semibold">{it.subject_name || "—"}</div>
+                            <div className="text-[10px] text-slate-500">{it.teacher || ""}{it.week_parity ? ` · ${it.week_parity === "numerator" ? "числ." : it.week_parity === "denominator" ? "знам." : "все"}` : ""}</div>
                             <div className="text-[10px] text-slate-500">{TYPE_LABELS[it.type] || it.type} · {(it.start_time || "").slice(0, 5)}</div>
                           </div>
                         ))}
@@ -345,6 +350,37 @@ export default function AdminSchedulePage() {
               placeholder="Аудитория"
               value={edit.room ?? ""}
               onChange={(e) => setEdit({ ...edit, room: e.target.value })}
+            />
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              placeholder="Преподаватель"
+              value={edit.teacher ?? ""}
+              onChange={(e) => setEdit({ ...edit, teacher: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number" min="1" max="8"
+                className="rounded-xl border px-3 py-2"
+                placeholder="Академические часы"
+                value={edit.academic_hours ?? ""}
+                onChange={(e) => setEdit({ ...edit, academic_hours: e.target.value ? Number(e.target.value) : null })}
+              />
+              <select
+                className="rounded-xl border px-3 py-2"
+                value={edit.week_parity ?? ""}
+                onChange={(e) => setEdit({ ...edit, week_parity: (e.target.value || null) as ScheduleItem["week_parity"] })}
+              >
+                <option value="">Без чередования</option>
+                <option value="numerator">Числитель</option>
+                <option value="denominator">Знаменатель</option>
+                <option value="all">Все недели</option>
+              </select>
+            </div>
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              placeholder="Уточнение / источник"
+              value={edit.source_detail ?? ""}
+              onChange={(e) => setEdit({ ...edit, source_detail: e.target.value })}
             />
             <div className="flex justify-between gap-2">
               <button

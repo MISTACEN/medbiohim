@@ -3,17 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  Bot,
   Activity,
   BookOpen,
   CalendarDays,
   GraduationCap,
   HardDrive,
+  FileSpreadsheet,
   LayoutDashboard,
   RefreshCw,
   Settings2,
   ShieldCheck,
   Ticket,
   Users,
+  UploadCloud,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
@@ -98,6 +101,11 @@ export default function AdminToolsPage() {
             <Link href="/admin/schedule" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700">
               <CalendarDays className="h-4 w-4" /> Сетка расписания
             </Link>
+            <Link href="/admin/tests" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700"><FileSpreadsheet className="h-4 w-4" /> Управление тестами</Link>
+            <Link href="/admin/content-import" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-700"><FileSpreadsheet className="h-4 w-4" /> Импорт тестов</Link>
+            <Link href="/admin/content-package" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-semibold text-violet-700"><UploadCloud className="h-4 w-4" /> Импорт контента</Link>
+            <Link href="/admin/telegram" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-sky-50 px-3 py-2.5 text-sm font-semibold text-sky-700"><Bot className="h-4 w-4" /> Telegram → ДЗ</Link>
+            <Link href="/admin/database" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700"><HardDrive className="h-4 w-4" /> База / Excel</Link>
             <Link href="/admin/questions" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700">
               <Ticket className="h-4 w-4" /> Вопросы / билеты
             </Link>
