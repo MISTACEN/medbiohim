@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, Brain, ChevronLeft, FileQuestion, FolderOpen, GraduationCap, ListChecks, Microscope, TrendingUp } from "lucide-react";
-import { getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { BookOpen, Brain, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 
 type Subject = {
@@ -36,6 +37,15 @@ function isTabId(v: string): v is TabId {
   return (TAB_IDS as string[]).includes(v);
 }
 
+function materialTypeLabel(type?: string | null) {
+  const map: Record<string, string> = { lecture: "Лекция", pdf: "PDF", pptx: "Презентация", docx: "Word", lab: "Лабораторная", table: "Таблица", html: "Страница", video: "Видео", other: "Материал" };
+  return map[String(type || "")] || String(type || "Материал");
+}
+
+function stripHtml(html?: string | null) {
+  return String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -43,12 +53,25 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const [gradebook, setGradebook] = useState<any[]>([]);
   const [tests, setTests] = useState<ApiTest[]>([]);
   const [materials, setMaterials] = useState<SubjectMaterial[]>([]);
+  const [materialsRich, setMaterialsRich] = useState<any[]>([]);
+  const [lectures, setLectures] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subjectId, setSubjectId] = useState("");
   const [tab, setTab] = useState<TabId>("plan");
+  // Материалы: модальное чтение без перехода со страницы предмета.
+  const [activeMaterial, setActiveMaterial] = useState<any | null>(null);
+  // Билеты: встроенный генератор.
+  const [ticketBankId, setTicketBankId] = useState("");
+  const [ticketCount, setTicketCount] = useState(3);
+  const [ticketMode, setTicketMode] = useState<"practice" | "exam">("exam");
+  const [ticketBusy, setTicketBusy] = useState(false);
+  const [ticketQuestions, setTicketQuestions] = useState<any[]>([]);
+  const [ticketTitle, setTicketTitle] = useState("");
+  const [ticketNote, setTicketNote] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -93,12 +116,14 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           if (pr.ok && !cancelled) setPlan(pr.data.plan);
         }
         if (s?.id) {
-          const [gb, tt, mm, bb, pg] = await Promise.all([
+          const [gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
             getSubjectGradebook(s.id),
             listTests(s.id),
             listSubjectMaterials({ subjectId: s.id }),
             listTicketBanks(),
             getProgress(),
+            listMaterials(slug ? { subjectSlug: slug } : {}),
+            listLectures(),
           ]);
           if (!cancelled) {
             if (gb.ok) setGradebook(gb.data.items || []);
@@ -106,6 +131,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             if (mm.ok) setMaterials(mm.data.items || []);
             if (bb.ok) setBanks(bb.data.items || []);
             if (pg.ok) setProgress(pg.data);
+            if (mr.ok) setMaterialsRich(mr.data.items || []);
+            if (ll.ok) setLectures(ll.data.items || []);
           }
         }
       } catch {
@@ -145,6 +172,33 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     if (histology && (t.subject_id === "histology" || /цитолог|эмбриолог|гистолог/i.test(String(t.title || t.name || "")))) return true;
     return false;
   });
+  const subjName = (subject?.name || "").toLowerCase();
+  const subjectLectures = lectures.filter((l) => {
+    const ls = String(l?.subject || "").toLowerCase().trim();
+    if (!ls || !subjName) return false;
+    return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
+  });
+
+  // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.
+  useEffect(() => {
+    if (!ticketBankId && subjectBanks.length) setTicketBankId(String(subjectBanks[0].id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [banks, slug]);
+
+  async function genTicket() {
+    if (!ticketBankId || ticketBusy) return;
+    setTicketBusy(true);
+    setReveal({});
+    setTicketNote(null);
+    const res = await generateTicket(ticketBankId, ticketCount, ticketMode);
+    setTicketBusy(false);
+    if (!res.ok) {
+      setTicketNote(res.error.message);
+      return;
+    }
+    setTicketQuestions(res.data.questions || []);
+    setTicketTitle(res.data.bank?.title || "");
+  }
 
   const nav: { id: TabId; label: string; Icon: ComponentType<{ className?: string }> }[] = [
     { id: "plan", label: "Учебный план", Icon: GraduationCap },
@@ -273,53 +327,109 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         {tab === "tickets" && (
           <section className="card p-5">
             <h2 className="text-lg font-bold">Билеты</h2>
-            <p className="mt-1 text-sm text-slate-500">Билеты остаются отдельным банком и не смешиваются с SRS.</p>
+            <p className="mt-1 text-sm text-slate-500">Генератор билетов прямо здесь — никуда переходить не нужно. Билеты отдельный банк, с SRS не смешиваются.</p>
             {ticketBankAvailable(slug) && subjectBanks.length ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {subjectBanks.map((b: any) => (
-                  <div key={b.id} className="rounded-xl border p-4">
-                    <b>{b.title}</b>
-                    <div className="mt-1 text-xs text-slate-500">{b.count} вопросов</div>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <select
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm md:col-span-2"
+                    value={ticketBankId}
+                    onChange={(e) => setTicketBankId(e.target.value)}
+                  >
+                    {subjectBanks.map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.title} ({b.count})</option>
+                    ))}
+                  </select>
+                  <select
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={ticketCount}
+                    onChange={(e) => setTicketCount(Number(e.target.value))}
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n} вопрос(а)</option>
+                    ))}
+                  </select>
+                  <select
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={ticketMode}
+                    onChange={(e) => setTicketMode(e.target.value as "practice" | "exam")}
+                  >
+                    <option value="practice">Практика (с эталоном)</option>
+                    <option value="exam">Экзамен</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-primary inline-flex items-center justify-center gap-2 text-sm md:col-span-4"
+                    onClick={() => void genTicket()}
+                    disabled={ticketBusy || !ticketBankId}
+                  >
+                    {ticketBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    Сгенерировать билет
+                  </button>
+                </div>
+                {ticketNote && <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{ticketNote}</div>}
+                {ticketQuestions.length > 0 && (
+                  <>
+                    {ticketTitle && <h3 className="mt-5 text-base font-semibold">{ticketTitle}</h3>}
+                    <ol className="mt-3 space-y-4">
+                      {ticketQuestions.map((qq: any, idx: number) => (
+                        <li key={qq.id || idx} className="rounded-xl border bg-slate-50 p-4">
+                          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Вопрос {idx + 1}{qq.subject ? ` · ${qq.subject}` : ""}</div>
+                          <div className="mt-2 font-medium leading-snug">
+                            <ChemRichText text={String(qq.text || "")} />
+                          </div>
+                          {ticketMode === "practice" && (qq.answer || qq.has_answer) && (
+                            <div className="mt-3">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-sm text-indigo-600"
+                                onClick={() => setReveal((r) => ({ ...r, [qq.id]: !r[qq.id] }))}
+                              >
+                                <Eye className="h-4 w-4" />
+                                {reveal[qq.id] ? "Скрыть эталон" : "Показать эталон"}
+                              </button>
+                              {reveal[qq.id] && (
+                                <div className="mt-2 rounded-xl bg-white p-3 text-sm text-slate-700">
+                                  <ChemRichText text={String(qq.answer || "")} asHtml />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                )}
+              </>
             ) : (
               <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 Банк билетов для этого предмета пока не подключён.
               </p>
             )}
-            <Link href={"/tickets?" + query} className="btn-primary mt-4 inline-flex">
-              Открыть билеты
-            </Link>
           </section>
         )}
 
         {tab === "tests" && (
           <section className="card space-y-4 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold">Тесты</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {histology
-                    ? "Закрытые тесты по цитологии и эмбриологии + банк предмета."
-                    : "Выбор темы, источника, режима и количества случайных вопросов."}
-                </p>
-              </div>
-              <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/tests"} className="btn-primary inline-flex shrink-0">
-                Открыть раздел тестов
-              </Link>
+            <div>
+              <h2 className="text-lg font-bold">Тесты</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {histology
+                  ? "Закрытые тесты по цитологии и эмбриологии + банк предмета. Режим выбирается кнопкой на карточке."
+                  : "Все тесты предмета — сразу с кнопками режима, без перехода в общий раздел."}
+              </p>
             </div>
             {subjectTests.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 {subjectTests.map((t) => (
-                  <Link
-                    key={t.id}
-                    href={"/tests/preparation/" + encodeURIComponent(t.id) + "?mode=solve&count=20"}
-                    className="rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
-                  >
+                  <div key={t.id} className="rounded-xl border bg-slate-50 p-4">
                     <div className="font-semibold">{t.title || t.name || "Тест"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов · нажмите, чтобы начать</div>
-                  </Link>
+                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">Подготовка</Link>
+                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id) + "?mode=exam"} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300">Экзамен</Link>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -354,10 +464,30 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         {tab === "lectures" && (
           <section className="card p-5">
             <h2 className="text-lg font-bold">Лекции</h2>
-            <p className="mt-1 text-sm text-slate-500">Лекции открываются отдельной страницей.</p>
-            <Link href={"/lectures?" + query} className="btn-primary mt-4 inline-flex">
-              К лекциям
-            </Link>
+            <p className="mt-1 text-sm text-slate-500">Лекции этого предмета — открываются в один клик.</p>
+            {subjectLectures.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {subjectLectures.map((lec: any) => (
+                  <Link
+                    key={lec.id}
+                    href={"/lectures/" + encodeURIComponent(lec.id)}
+                    className="flex gap-3 rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold leading-snug">{lec.title}</div>
+                      {lec.summary && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{lec.summary}</p>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Опубликованных лекций по этому предмету пока нет.
+              </p>
+            )}
           </section>
         )}
 
@@ -365,21 +495,29 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           <section className="card p-5">
             <h2 className="text-lg font-bold">Материалы</h2>
             <p className="mt-1 text-sm text-slate-500">
-              {materials.length ? materials.length + " материалов доступно для предмета." : "Материалы пока не найдены."}
+              {materialsRich.length
+                ? materialsRich.length + " материалов — читаются прямо здесь, оригинал доступен отдельно."
+                : "Материалы пока не найдены."}
             </p>
-            {materials.length > 0 && (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {materials.slice(0, 8).map((m) => (
-                  <div key={m.id} className="rounded-xl border p-3">
-                    <div className="font-medium">{m.title}</div>
-                    <div className="mt-1 text-xs text-slate-500">{m.type}</div>
-                  </div>
+            {materialsRich.length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {materialsRich.map((m: any) => (
+                  <article key={m.id} className="rounded-xl border bg-slate-50 p-4">
+                    <div className="font-semibold leading-snug">{m.title}</div>
+                    <div className="mt-1 text-xs text-slate-500">{materialTypeLabel(m.type)}{m.source?.name ? " · " + m.source.name : ""}</div>
+                    {stripHtml(m.content_html) && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{stripHtml(m.content_html)}</p>}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" className="btn-primary text-xs" onClick={() => setActiveMaterial(m)}>Читать</button>
+                      {m.source?.download_url ? (
+                        <a href={m.source.download_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                          <ExternalLink className="h-3.5 w-3.5" /> Исходник
+                        </a>
+                      ) : null}
+                    </div>
+                  </article>
                 ))}
               </div>
             )}
-            <Link href={"/materials?" + query} className="btn-primary mt-4 inline-flex">
-              Открыть все материалы
-            </Link>
           </section>
         )}
 
@@ -440,6 +578,41 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           </section>
         )}
       </div>
+
+      {activeMaterial && (
+        <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6" onMouseDown={() => setActiveMaterial(null)}>
+          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+            <header className="flex items-start justify-between gap-4 border-b px-5 py-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{subject?.name} · {materialTypeLabel(activeMaterial.type)}</div>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900">{activeMaterial.title}</h2>
+                {activeMaterial.source?.name && <div className="mt-1 text-xs text-slate-500">Исходный файл: {activeMaterial.source.name}</div>}
+              </div>
+              <button type="button" className="rounded-xl p-2 hover:bg-slate-100" onClick={() => setActiveMaterial(null)} aria-label="Закрыть"><X className="h-5 w-5" /></button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-auto p-5">
+              {activeMaterial.content_html ? (
+                <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: activeMaterial.content_html }} />
+              ) : activeMaterial.external_url ? (
+                <iframe src={activeMaterial.external_url} title={activeMaterial.title} className="h-full min-h-[60vh] w-full rounded-xl border" />
+              ) : (
+                <div className="rounded-2xl bg-slate-50 p-8 text-sm text-slate-500">У этого материала пока нет преобразованного текста.</div>
+              )}
+            </div>
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50 px-5 py-4">
+              <span className="text-xs text-slate-500">{activeMaterial.source_key ? "Источник: " + activeMaterial.source_key : "Источник не указан"}</span>
+              <div className="flex gap-2">
+                {activeMaterial.source?.download_url ? (
+                  <a href={activeMaterial.source.download_url} target="_blank" rel="noreferrer" className="btn-pill inline-flex items-center gap-2 text-sm">
+                    <ExternalLink className="h-4 w-4" /> Открыть оригинал
+                  </a>
+                ) : null}
+                <button type="button" className="btn-primary text-sm" onClick={() => setActiveMaterial(null)}>Закрыть</button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
