@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Боковое меню — короткая навигация по концепции Медбиохим.
+ * Боковое меню — короткая навигация.
  * Лекции, билеты, практика, материалы, SRS — внутри страницы предмета.
  */
 import Link from "next/link";
@@ -20,6 +20,7 @@ import {
   Bot,
   Calculator,
   Search,
+  FlaskConical,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -31,8 +32,10 @@ const navItems = [
   { href: "/subjects", label: "Предметы", icon: BookOpen },
   { href: "/homework", label: "Задания", icon: ClipboardList },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
+  { href: "/academic", label: "Учебный план", icon: ClipboardList },
   { href: "/community", label: "Сообщество", icon: Users },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
+  { href: "/chemistry", label: "Химия", icon: FlaskConical },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
 ];
 
@@ -75,12 +78,7 @@ export function Sidebar() {
           <Shield className="h-5 w-5" />
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
-            <span className="rounded-full bg-amber-400/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-950">
-              beta
-            </span>
-          </div>
+          <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
           <div className="text-[10px] font-medium uppercase tracking-wider opacity-60">
             предмет · курс · семестр
           </div>
