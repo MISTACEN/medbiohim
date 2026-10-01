@@ -84,6 +84,115 @@ return static function (Router $r): void {
         }
     });
 
+    $bankAdmin = static function (Request $q): bool {
+        return RequireAuth::handle($q) && RequireRole::handle($q, ['admin']);
+    };
+
+    $r->put('/api/v1/admin/question-bank/{id}', static function (Request $q, array $p) use ($bankAdmin): void {
+        if (!$bankAdmin($q)) return;
+        $id = trim((string) ($p['id'] ?? ''));
+        if ($id === '') {
+            Response::error('VALIDATION_ERROR', 'Question id required', $q->requestId, 422);
+            return;
+        }
+
+        $db = null;
+        try {
+            $db = \Medbiohim\\Database\\Connection::pdo();
+            $db->beginTransaction();
+
+            $st = $db->prepare('SELECT id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at FROM public.questions WHERE id=:id LIMIT 1 FOR UPDATE');
+            $st->execute(['id' => $id]);
+            $current = $st->fetch(\\PDO::FETCH_ASSOC);
+            if (!$current) {
+                $db->rollBack();
+                Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
+                return;
+            }
+
+            $type = (string) ($q->json('type', $current['type'] ?? 'mcq'));
+            $text = trim((string) ($q->json('text', $current['text'] ?? '')));
+            $answer = (string) ($q->json('answer', $current['answer'] ?? ''));
+            $options = $q->json('options', null);
+
+            if ($text === '') {
+                $db->rollBack();
+                Response::error('VALIDATION_ERROR', 'Question text is required', $q->requestId, 422);
+                return;
+            }
+            if ($type === 'mcq') {
+                if (!is_array($options) || count($options) < 2) {
+                    $db->rollBack();
+                    Response::error('VALIDATION_ERROR', 'Для выбора нужно минимум 2 варианта ответа', $q->requestId, 422);
+                    return;
+                }
+                $normalized = [];
+                $correctCount = 0;
+                foreach ($options as $item) {
+                    if (is_array($item)) {
+                        $label = trim((string) ($item['label'] ?? ''));
+                        $correct = (bool) ($item['correct'] ?? false);
+                    } else {
+                        $label = trim((string) $item);
+                        $correct = false;
+                    }
+                    if ($label === '') {
+                        $db->rollBack();
+                        Response::error('VALIDATION_ERROR', 'Все варианты ответа должны иметь текст', $q->requestId, 422);
+                        return;
+                    }
+                    if ($correct) $correctCount++;
+                    $normalized[] = ['label' => $label, 'correct' => $correct];
+                }
+                if ($correctCount < 1) {
+                    $db->rollBack();
+                    Response::error('VALIDATION_ERROR', 'Отметьте хотя бы один правильный вариант', $q->requestId, 422);
+                    return;
+                }
+                $options = $normalized;
+            } else {
+                if ($options !== null && !is_array($options)) $options = null;
+            }
+
+            $old = $current;
+            if (isset($old['options']) && is_string($old['options'])) {
+                $old['options'] = json_decode($old['options'], true) ?? [];
+            }
+            $version = $db->prepare("SELECT COALESCE(MAX(version_no),0)+1 FROM public.content_versions WHERE table_name='questions' AND row_key = :row_key::jsonb");
+            $rowKey = json_encode(['id' => $id], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $version->execute(['row_key' => $rowKey]);
+            $versionNo = (int) $version->fetchColumn();
+
+            $snapshot = $db->prepare("INSERT INTO public.content_versions(table_name,row_key,version_no,data,source,actor_user_id) VALUES ('questions',:row_key::jsonb,:version_no,:data::jsonb,'admin_ui',:actor)");
+            $snapshot->execute([
+                'row_key' => $rowKey,
+                'version_no' => $versionNo,
+                'data' => json_encode($old, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'actor' => $q->user->id ?? null,
+            ]);
+
+            $upd = $db->prepare('UPDATE public.questions SET type=:type,text=:text,answer=:answer,options=:options::jsonb WHERE id=:id');
+            $upd->execute([
+                'id' => $id,
+                'type' => $type,
+                'text' => $text,
+                'answer' => $answer,
+                'options' => json_encode($options ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+            $st2 = $db->prepare('SELECT id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at FROM public.questions WHERE id=:id LIMIT 1');
+            $st2->execute(['id' => $id]);
+            $row = $st2->fetch(\\PDO::FETCH_ASSOC);
+            if (isset($row['options']) && is_string($row['options'])) $row['options'] = json_decode($row['options'], true) ?? [];
+
+            $db->commit();
+            Response::success(['question' => $row, 'version_no' => $versionNo], $q->requestId);
+        } catch (\\Throwable $e) {
+            if ($db instanceof \\PDO && $db->inTransaction()) $db->rollBack();
+            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+        }
+    });
+
     $r->delete('/api/v1/admin/questions/{id}', static function (Request $q, array $p) use ($manager): void {
         if (!$manager($q)) return;
         try {
