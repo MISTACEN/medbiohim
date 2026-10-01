@@ -63,16 +63,24 @@ return static function (Router $router): void {
    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' order by last_saved_at desc nulls last, started_at desc nulls last limit 1");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
    if($existing){
-    $existingIds=$existing['question_ids']??[];
-    if(is_string($existingIds)){
-      $trim=trim($existingIds);
-      if($trim===''||$trim==='{}'){$existingIds=[];}
-      elseif($trim[0]==='{'&&substr($trim,-1)==='}'){$inner=substr($trim,1,-1);$existingIds=$inner===''?[]:str_getcsv($inner,',','"','\\');}
-      else {$existingIds=array_values(array_filter(array_map('trim',preg_split('/[,;]+/',$trim))));}
+    // Возобновляем только тот же режим. Для «весь банк подряд» старая случайная сессия
+    // не должна перехватывать запуск — она закрывается, и создаётся последовательная.
+    if((string)($existing['mode']??'')!==$mode && $mode==='sequential'){
+      $cancel=$db->prepare("update public.test_preparation_sessions set status='cancelled',last_saved_at=now() where id=:id");
+      $cancel->execute(['id'=>$existing['id']]);
+      $existing=null;
+    } else {
+      $existingIds=$existing['question_ids']??[];
+      if(is_string($existingIds)){
+        $trim=trim($existingIds);
+        if($trim===''||$trim==='{}'){$existingIds=[];}
+        elseif($trim[0]==='{'&&substr($trim,-1)==='}'){$inner=substr($trim,1,-1);$existingIds=$inner===''?[]:str_getcsv($inner,',','"','\\');}
+        else {$existingIds=array_values(array_filter(array_map('trim',preg_split('/[,;]+/',$trim))));}
+      }
+      if(!is_array($existingIds))$existingIds=[];
+      $existing['question_ids']=array_values(array_filter(array_map('strval',$existingIds)));
+      Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;
     }
-    if(!is_array($existingIds))$existingIds=[];
-    $existing['question_ids']=array_values(array_filter(array_map('strval',$existingIds)));
-    Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;
    }
 
    $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids) values(:uid,:tid,:mode,:lim,:ids) returning *");
