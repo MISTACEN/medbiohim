@@ -33,17 +33,33 @@ return static function (Router $r): void {
     $r->get('/api/v1/subject-plans/{slug}', static function (Request $q, array $p): void {
         if (!RequireAuth::handle($q)) return;
         $slug = (string) ($p['slug'] ?? '');
-        $plan = (new ContentStore())->getSubjectPlan($slug);
+        $store = new ContentStore();
+        $plan = $store->getSubjectPlan($slug);
+
+        // A subject can exist before its thematic plan is imported.
+        // Keep the API contract successful so the UI does not treat
+        // "plan not imported yet" as a transport/error condition.
         if ($plan === null) {
-            Response::error('NOT_FOUND', 'План предмета не найден', $q->requestId, 404);
+            Response::success([
+                'plan' => null,
+                'schedule_count' => 0,
+                'schedule_sample' => [],
+                'available' => false,
+            ], $q->requestId);
             return;
         }
+
         $name = (string) ($plan['subject'] ?? '');
         $sched = array_values(array_filter(
-            (new ContentStore())->listSchedule(),
+            $store->listSchedule(),
             static fn($row) => (string) ($row['subject_name'] ?? '') === $name
         ));
-        Response::success(['plan' => $plan, 'schedule_count' => count($sched), 'schedule_sample' => array_slice($sched, 0, 5)], $q->requestId);
+        Response::success([
+            'plan' => $plan,
+            'schedule_count' => count($sched),
+            'schedule_sample' => array_slice($sched, 0, 5),
+            'available' => true,
+        ], $q->requestId);
     });
 
     $r->get('/api/v1/lesson-plan', static function (Request $q, array $p): void {
