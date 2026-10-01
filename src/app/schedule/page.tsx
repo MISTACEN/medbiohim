@@ -5,7 +5,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen,
 } from "lucide-react";
 import Link from "next/link";
-import { listSchedule, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek } from "@/lib/api";
+import { listSchedule, getScheduleMeta, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
@@ -61,6 +61,11 @@ function weekTitle(startYmd: string): string {
   const fmt=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",timeZone:"UTC"});
   const fmtEnd=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
   return `${fmt.format(start)} — ${fmtEnd.format(end)} · Хабаровск`;
+}
+function formatMinutes(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
 }
 function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
 
@@ -121,13 +126,19 @@ function ScheduleCard({
   const start = timeToMinutes(item.start_time);
   const end = timeToMinutes(item.end_time);
   const top = Math.max(0, (start - GRID_START_MIN) * PX_PER_MIN);
-  const height = Math.max(58, (end - start) * PX_PER_MIN);
+  const height = Math.max(66, (end - start) * PX_PER_MIN);
   const type = TYPE_CLASS[item.type] || TYPE_CLASS.other;
   const subject = item.subject_name || "Занятие";
   const location = [item.building, item.room].filter(Boolean).join(", ");
+  const typeLabel = TYPE_LABELS[item.type] || "Занятие";
+  const parityLabel =
+    item.week_parity === "numerator" ? "числитель" :
+    item.week_parity === "denominator" ? "знаменатель" :
+    item.week_parity === "all" ? "каждую неделю" : null;
   const gap = 3;
   const widthPct = 100 / cols;
   const leftPct = col * widthPct;
+
   return (
     <article
       role="button"
@@ -143,20 +154,89 @@ function ScheduleCard({
         width: `calc(${widthPct}% - ${gap * 2}px)`,
         zIndex: 4 + col,
       }}
-      title={`${subject} · нажмите для темы занятия`}
+      title={[
+        subject,
+        `${formatMinutes(start)}–${formatMinutes(end)}`,
+        typeLabel,
+        item.academic_hours ? `${item.academic_hours} ак. ч.` : null,
+        parityLabel,
+        item.notes,
+        location,
+      ].filter(Boolean).join(" · ")}
     >
-      <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>{subject}</div>
-      <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px] font-semibold opacity-80">
-        <span className="truncate">{TYPE_LABELS[item.type] || item.type}</span>
-        {item.is_cancelled && <span>ОТМЕНЕНО</span>}
-      </div>
-      <div className="mt-0.5 text-[11px] font-semibold opacity-75">{item.start_time.slice(0, 5)}–{item.end_time.slice(0, 5)}</div>
-      {location && cols === 1 && (
-        <div className="mt-1 flex items-center gap-1 text-[10px] opacity-75">
-          <MapPin className="h-3 w-3 shrink-0" />
-          {location}
-        </div>
-      )}
+      {(() => {
+        const breaks = (item.breaks || [])
+          .map((value: string) => breakRange(value))
+          .filter(Boolean) as Array<{start:number;end:number}>;
+        const points = [start, ...breaks.flatMap((b) => [b.start, b.end]), end].sort((a,b) => a-b);
+        const segments: Array<{start:number;end:number;isBreak:boolean}> = [];
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i], b = points[i + 1];
+          if (b <= a) continue;
+          const isBreak = breaks.some((br) => br.start === a && br.end === b);
+          segments.push({start:a,end:b,isBreak});
+        }
+
+        let lessonPart = 0;
+        return segments.map((seg, index) => {
+          const topPct = ((seg.start - start) / Math.max(1, end - start)) * 100;
+          const heightPct = ((seg.end - seg.start) / Math.max(1, end - start)) * 100;
+
+          if (seg.isBreak) {
+            return (
+              <div
+                key={"segment-break-" + index}
+                className="absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/50 bg-slate-100/90 text-[9px] font-bold text-slate-600"
+                style={{top: topPct + "%", height: heightPct + "%"}}
+              >
+                Перерыв · {formatMinutes(seg.start)}–{formatMinutes(seg.end)}
+              </div>
+            );
+          }
+
+          lessonPart++;
+          const label = lessonPart > 1 ? `${subject} · продолжение` : subject;
+
+          return (
+            <div
+              key={"segment-lesson-" + index}
+              className="absolute left-0 right-0 overflow-hidden px-2 py-1.5"
+              style={{top: topPct + "%", height: heightPct + "%"}}
+            >
+              <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>
+                {label}
+              </div>
+
+              <div className="mt-0.5 text-[10px] font-semibold opacity-75">
+                {formatMinutes(seg.start)}–{formatMinutes(seg.end)}
+              </div>
+
+              {lessonPart === 1 && (
+                <div className="mt-1 space-y-0.5 text-[9px] font-semibold leading-tight opacity-75">
+                  <div className="truncate">
+                    {typeLabel}
+                    {item.academic_hours ? ` · ${item.academic_hours} ак. ч.` : ""}
+                    {parityLabel ? ` · ${parityLabel}` : ""}
+                  </div>
+                  {item.notes && height >= 130 && (
+                    <div className="line-clamp-2 font-medium">
+                      {item.notes}
+                    </div>
+                  )}
+                  {location && cols === 1 && height >= 120 && (
+                    <div className="truncate">
+                      <MapPin className="mr-0.5 inline h-2.5 w-2.5" />
+                      {location}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        });
+      })()}
+
+      {item.is_cancelled && <div className="absolute right-2 top-1 z-20 text-[9px] font-bold">ОТМЕНЕНО</div>}
     </article>
   );
 }
@@ -174,29 +254,35 @@ export default function SchedulePage() {
   const [lesson, setLesson] = useState<SubjectPlanWeek|null>(null);
   const [lessonLoading, setLessonLoading] = useState(false);
   const [lessonWeeks, setLessonWeeks] = useState<SubjectPlanWeek[]>([]);
+  const [meta, setMeta] = useState<ScheduleMeta>({ periods: [], duration_rules: [] });
 
   useEffect(() => {
     const tick = () => setNow(nowParts());
     tick();
     const id = window.setInterval(tick, 15000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [user?.course, user?.semester]);
 
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     setLoading(true); setError(null);
-    void listSchedule(SEMESTER_FROM, SEMESTER_TO).then((res) => {
+    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course, user?.semester)]).then(([res, metaRes]) => {
       if (res.ok) {
         setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
         const payload = res.data as { items: ScheduleItem[]; source?: string };
         setSource(payload.source || "db");
         if ((res.data.items || []).length === 0) {
-          setError("На весь семестр нет занятий. Назначьте группу в CMS или проверьте Supabase schedule_entries.");
+          setError(
+            user?.groupName
+              ? "Для назначенной группы Supabase не вернул занятия. Проверьте активную версию schedules и связанные schedule_entries."
+              : "Учебная группа не назначена. Назначьте её в CMS, чтобы расписание могло быть загружено."
+          );
         }
       } else {
         setAllItems([]);
         setError(res.error.message || "Не удалось загрузить расписание");
       }
+      if (metaRes.ok) setMeta(metaRes.data);
       setLoading(false);
     });
   }, []);
@@ -242,15 +328,16 @@ export default function SchedulePage() {
 
   const today = now.date;
   const first = allItems[0] || items[0];
-  const course = user?.course ?? 2;
-  const semester = first?.semester ?? user?.semester ?? 3;
-  const groupName = user?.groupName || first?.group_name || first?.group_code || "МБ-201 (общая сетка)";
+  const course = user?.course ?? first?.course_number ?? null;
+  const semester = first?.semester ?? user?.semester ?? null;
+  const groupName = user?.groupName || first?.group_name || first?.group_code || "Учебная группа не назначена";
   const groupMissing = !user?.groupName && allItems.length === 0;
   const currentDayItems = grouped.get(today) || [];
   const showNowLine = now.minutes >= GRID_START_MIN && now.minutes <= 18 * 60 + 30;
   const nowTop = (now.minutes - GRID_START_MIN) * PX_PER_MIN;
   const weekCount = items.length;
   const totalCount = allItems.length;
+  const activePeriod = meta.periods.find((p) => p.start_date <= weekEnd && (!p.end_date || p.end_date >= weekStart));
 
   return (
     <div className="space-y-5">
@@ -266,7 +353,7 @@ export default function SchedulePage() {
             <CalendarDays className="h-6 w-6" style={{ color: "var(--primary)" }} />
             <h1 className="page-title">Расписание</h1>
           </div>
-          <p className="page-subtitle">{groupName} · {course} курс · семестр {semester} · 2026/2027</p>
+          <p className="page-subtitle">{groupName}{course != null ? ` · ${course} курс` : ""}{semester != null ? ` · семестр ${semester}` : ""} · 2026/2027</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
               <Database className="h-3.5 w-3.5" /> {source === "db" ? "Supabase" : source === "local" ? "резервные данные" : source} · {totalCount} занятий за семестр
@@ -290,12 +377,13 @@ export default function SchedulePage() {
           ))}
         </div>
         <div className="schedule-period">{weekTitle(weekStart)} · на неделе {weekCount}</div>
+        {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
       </div>
 
       {groupMissing && !loading && (
         <div className="schedule-config-warning">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <div><b>Учебная группа не назначена.</b><p>CMS → Пользователи: группа и семестр. Пока показывается общая сетка МБ-201 (если есть в резерве).</p></div>
+          <div><b>Учебная группа не назначена.</b><p>CMS → Пользователи: назначьте учебную группу. Расписание без подтверждённой группы не подставляется автоматически.</p></div>
         </div>
       )}
       {error && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb,var(--danger) 10%,transparent)", color: "var(--danger)" }}>{error}</div>}
@@ -303,6 +391,8 @@ export default function SchedulePage() {
       {loading ? <SkeletonCards count={4} /> : (
         <>
           {view === "week" && (
+            <div className="space-y-3">
+              {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}
             <div className="schedule-shell">
               <div className="schedule-scroll">
                 <div className="schedule-grid" style={{ minWidth: 920 }}>
@@ -341,6 +431,7 @@ export default function SchedulePage() {
                   На эту неделю занятий нет (в семестре загружено {totalCount}). Листайте ← → или откройте «Семестр».
                 </p>
               )}
+            </div>
             </div>
           )}
 
@@ -455,6 +546,14 @@ export default function SchedulePage() {
                 </div>
               </div>
             )}
+
+            <div className="mt-3 grid gap-2 rounded-xl border p-3 text-xs sm:grid-cols-2">
+              {selected.teacher && <div><b>Преподаватель:</b> {selected.teacher}</div>}
+              {selected.academic_hours && <div><b>Академическая нагрузка:</b> {selected.academic_hours} ак. ч.</div>}
+              {selected.week_parity && <div><b>Чередование:</b> {selected.week_parity === "numerator" ? "числитель" : selected.week_parity === "denominator" ? "знаменатель" : "все недели"}</div>}
+              {selected.source_detail && <div className="sm:col-span-2"><b>Источник/уточнение:</b> {selected.source_detail}</div>}
+              {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Перенос / пересдача</div>}
+            </div>
 
             {(selected.room||selected.notes) && (
               <div className="mt-3 text-xs opacity-60">
