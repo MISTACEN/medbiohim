@@ -5,15 +5,30 @@ namespace Medbiohim\Services;
 
 use Medbiohim\Support\Env;
 use Medbiohim\Support\HttpClient;
+use Medbiohim\Support\SupabaseKeyHeaders;
 
 final class ScheduleRestStore
 {
-    private static function request(string $method, string $path): array
+    private static function request(string $method, string $path, ?string $accessToken = null): array
     {
         $url = rtrim((string) Env::get('SUPABASE_URL', ''), '/');
-        $key = (string) Env::get('SUPABASE_SERVICE_KEY', '');
-        if ($url === '' || $key === '') throw new \RuntimeException('Supabase REST is not configured');
-        $res = HttpClient::request($method, $url . '/rest/v1/' . ltrim($path, '/'), null, ['apikey: ' . $key, 'Authorization: Bearer ' . $key], 15);
+        $serviceKey = (string) Env::get('SUPABASE_SERVICE_KEY', '');
+        $anonKey = (string) Env::get('SUPABASE_ANON_KEY', '');
+        $token = trim((string) ($accessToken ?? ''));
+
+        if ($url === '' || ($serviceKey === '' && $token === '')) {
+            throw new \RuntimeException('Supabase REST is not configured');
+        }
+
+        $apiKey = $token !== '' ? ($anonKey !== '' ? $anonKey : $serviceKey) : $serviceKey;
+        $authorization = $token !== '' ? $token : $serviceKey;
+        $res = HttpClient::request(
+            $method,
+            $url . '/rest/v1/' . ltrim($path, '/'),
+            null,
+            ($token !== '' ? ['apikey: ' . $apiKey, 'Authorization: Bearer ' . $authorization] : SupabaseKeyHeaders::service($serviceKey)),
+            15
+        );
         if ($res['status'] < 200 || $res['status'] >= 300) {
             $body = is_array($res['json']) ? json_encode($res['json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : trim((string) $res['body']);
             throw new \RuntimeException('Supabase schedule request failed (' . $res['status'] . '): ' . substr((string) $body, 0, 700));
@@ -31,26 +46,38 @@ final class ScheduleRestStore
         return '(' . implode(',', array_values(array_unique($clean))) . ')';
     }
 
-    public static function listForUser(string $userId, ?string $from = null, ?string $to = null): array
+    public static function listForUser(
+        string $userId,
+        ?string $from = null,
+        ?string $to = null,
+        ?string $accessToken = null
+    ): array
     {
-        $users = self::request('GET', 'users?id=eq.' . rawurlencode($userId) . '&select=course_number,semester');
+        $users = self::request(
+            'GET',
+            'users?id=eq.' . rawurlencode($userId) . '&select=id,email,full_name,course_number,semester',
+            $accessToken
+        );
         $userCourse = $users[0]['course_number'] ?? null;
         $userSemester = isset($users[0]['semester']) && $users[0]['semester'] !== null ? (int) $users[0]['semester'] : null;
 
-        $memberships = self::request('GET', 'group_memberships?user_id=eq.' . rawurlencode($userId) . '&is_active=eq.true&select=group_id');
+        $memberships = self::request(
+            'GET',
+            'group_memberships?user_id=eq.' . rawurlencode($userId) . '&is_active=eq.true&select=group_id',
+            $accessToken
+        );
         $groupIds = [];
         foreach ($memberships as $row) if (!empty($row['group_id'])) $groupIds[] = (string) $row['group_id'];
 
-        if (!$groupIds && $userCourse !== null) {
-            $groups = self::request('GET', 'groups?course_number=eq.' . (int) $userCourse . '&is_active=eq.true&select=id&order=name.asc');
-            $ids = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), $groups)));
-            if (count($ids) === 1) $groupIds = $ids;
-        }
         if (!$groupIds) return [];
 
         $groupFilter = self::inUuidList($groupIds);
         $semesterFilter = $userSemester !== null ? '&semester=eq.' . $userSemester : '';
-        $schedules = self::request('GET', 'schedules?group_id=in.' . $groupFilter . '&is_active=eq.true' . $semesterFilter . '&select=id,group_id,semester,version,academic_year,created_at&order=group_id.asc,semester.asc.nullslast,version.desc,created_at.desc');
+        $schedules = self::request(
+            'GET',
+            'schedules?group_id=in.' . $groupFilter . '&is_active=eq.true' . $semesterFilter . '&select=id,group_id,semester,version,academic_year,created_at&order=group_id.asc,semester.asc.nullslast,version.desc,created_at.desc',
+            $accessToken
+        );
 
         $latest = [];
         foreach ($schedules as $schedule) {
@@ -60,20 +87,28 @@ final class ScheduleRestStore
         if (!$latest) return [];
 
         $scheduleIds = array_values(array_filter(array_map(static fn($x) => (string) ($x['id'] ?? ''), array_values($latest))));
-        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,room,building,notes,is_cancelled&order=date.asc,start_time.asc';
+        $entryPath = 'schedule_entries?schedule_id=in.' . self::inUuidList($scheduleIds) . '&select=id,schedule_id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,session_id,room,building,notes,is_cancelled,teacher,academic_hours,week_parity,recurrence_group,parent_entry_id,source_detail,source,breaks&order=date.asc,start_time.asc';
         if ($from !== null && $from !== '') $entryPath .= '&date=gte.' . rawurlencode($from);
         if ($to !== null && $to !== '') $entryPath .= '&date=lte.' . rawurlencode($to);
-        $entries = self::request('GET', $entryPath);
+        $entries = self::request('GET', $entryPath, $accessToken);
 
         $groupMap = [];
-        foreach (self::request('GET', 'groups?id=in.' . $groupFilter . '&select=id,name,code,course_number') as $group) {
+        foreach (self::request(
+            'GET',
+            'groups?id=in.' . $groupFilter . '&select=id,name,code,course_number',
+            $accessToken
+        ) as $group) {
             $groupMap[(string) ($group['id'] ?? '')] = $group;
         }
 
         $subjectIds = array_values(array_unique(array_filter(array_map(static fn($x) => (string) ($x['subject_id'] ?? ''), $entries))));
         $subjectMap = [];
         if ($subjectIds) {
-            foreach (self::request('GET', 'subjects?id=in.' . self::inUuidList($subjectIds) . '&select=id,name') as $subject) {
+            foreach (self::request(
+                'GET',
+                'subjects?id=in.' . self::inUuidList($subjectIds) . '&select=id,name',
+                $accessToken
+            ) as $subject) {
                 $subjectMap[(string) ($subject['id'] ?? '')] = (string) ($subject['name'] ?? '');
             }
         }
@@ -106,10 +141,24 @@ final class ScheduleRestStore
                 'start_time' => $entry['start_time'] ?? null,
                 'end_time' => $entry['end_time'] ?? null,
                 'type' => (string) ($entry['type'] ?? 'other'),
+                'event_kind' => (string) ($entry['event_kind'] ?? 'class'),
+                'is_makeup' => (bool) ($entry['is_makeup'] ?? false),
+                'session_id' => $entry['session_id'] ?? null,
                 'room' => $entry['room'] ?? null,
                 'building' => $entry['building'] ?? null,
                 'notes' => $entry['notes'] ?? null,
                 'is_cancelled' => (bool) ($entry['is_cancelled'] ?? false),
+                'teacher' => $entry['teacher'] ?? null,
+                'academic_hours' => isset($entry['academic_hours']) ? (int)$entry['academic_hours'] : null,
+                'week_parity' => $entry['week_parity'] ?? null,
+                'recurrence_group' => $entry['recurrence_group'] ?? null,
+                'parent_entry_id' => $entry['parent_entry_id'] ?? null,
+                'source_detail' => $entry['source_detail'] ?? null,
+                'breaks' => is_array($entry['breaks'] ?? null) ? $entry['breaks'] : [],
+                'event_kind' => (string)($entry['event_kind'] ?? 'class'),
+                'is_makeup' => (bool)($entry['is_makeup'] ?? false),
+                'session_id' => $entry['session_id'] ?? null,
+                'source' => $entry['source'] ?? 'official',
             ];
         }
         usort($out, static fn(array $a, array $b): int => ((string)($a['date'] ?? '') . ' ' . (string)($a['start_time'] ?? '')) <=> ((string)($b['date'] ?? '') . ' ' . (string)($b['start_time'] ?? '')));
