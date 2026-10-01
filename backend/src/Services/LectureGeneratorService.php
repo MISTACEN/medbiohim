@@ -5,7 +5,8 @@ namespace Medbiohim\Services;
 
 use Medbiohim\Support\ContentStore;
 use Medbiohim\Support\Env;
-use Medbiohim\Support\HttpClient;
+use Medbiohim\Support\LlmGateway;
+use Medbiohim\Support\Logger;
 use Medbiohim\Support\Str;
 
 /** Generates lecture drafts from subject plan + knowledge base (+ optional LLM). RF media first. */
@@ -53,19 +54,23 @@ final class LectureGeneratorService
         $media = $this->buildMediaSuggestions($subjectName, $topic);
         $mode = 'template';
         $model = null;
+        $provider = null;
 
-        $llmKey = Env::get('LLM_API_KEY') ?: Env::get('OPENAI_API_KEY');
-        if ($llmKey) {
-            try {
-                $body = $this->llmLecture($subjectName, $topic, $planContext, $chunks, $extraNotes, $llmKey);
-                $mode = 'llm';
-                $model = Env::get('LLM_MODEL', 'gpt-4o-mini');
-            } catch (\Throwable $e) {
-                $body = $this->templateLecture($subjectName, $topic, $planContext, $chunks, $extraNotes);
-                $mode = 'template-fallback';
-            }
-        } else {
+        try {
+            $messages = [
+                ['role' => 'system', 'content' => 'Ты методист медицинского вуза. Пиши учебную лекцию на русском для студентов. Опирайся только на переданный учебный план и фрагменты базы знаний. Не выдумывай официальные клинические рекомендации. Если данных недостаточно — прямо укажи это. Верни только Markdown лекции.'],
+                ['role' => 'user', 'content' => $this->lecturePrompt($subjectName, $topic, $planContext, $chunks, $extraNotes)],
+            ];
+            $llm = LlmGateway::chat($messages, LlmGateway::TASK_LONG, 0.4);
+            $body = trim((string)($llm['text'] ?? ''));
+            if ($body === '') throw new \RuntimeException('LLM returned empty lecture');
+            $mode = 'llm';
+            $model = $llm['model'] ?? null;
+            $provider = $llm['provider'] ?? null;
+        } catch (\Throwable $e) {
+            Logger::error('lecture_llm_failed', ['subject' => $subjectSlug, 'topic' => $topic, 'error' => $e->getMessage()]);
             $body = $this->templateLecture($subjectName, $topic, $planContext, $chunks, $extraNotes);
+            $mode = 'template-fallback';
         }
 
         return [
@@ -80,6 +85,7 @@ final class LectureGeneratorService
             'generation' => [
                 'mode' => $mode,
                 'model' => $model,
+                'provider' => $provider,
                 'retrieved' => count($hits),
                 'generated_at' => gmdate('c'),
                 'notes' => $extraNotes,
@@ -174,39 +180,13 @@ final class LectureGeneratorService
     }
 
     /** @param list<string> $chunks */
-    private function llmLecture(string $subject, string $topic, string $planContext, array $chunks, ?string $notes, string $apiKey): string
+    private function lecturePrompt(string $subject, string $topic, string $planContext, array $chunks, ?string $notes): string
     {
-        $base = rtrim(Env::get('LLM_BASE_URL', 'https://api.openai.com/v1') ?? 'https://api.openai.com/v1', '/');
-        $model = Env::get('LLM_MODEL', 'gpt-4o-mini') ?? 'gpt-4o-mini';
         $ctx = implode("\n---\n", array_slice($chunks, 0, 6));
-        $system = 'Ты методист медвуза (медицинская биохимия). Пишешь лекцию на русском в Markdown для студентов 2 курса. Опирайся на учебный план и фрагменты базы. Не выдумывай официальные клинические рекомендации.';
-        $user = "Предмет: {$subject}\nТема: {$topic}\n\nПлан:\n{$planContext}\n\nФрагменты базы:\n{$ctx}\n\n";
-        if ($notes) {
-            $user .= "Доп. указания: {$notes}\n";
-        }
-        $user .= 'Напиши лекцию (800–1500 слов) в Markdown: цели, материал, термины, самопроверка.';
-
-        $payload = [
-            'model' => $model,
-            'temperature' => 0.4,
-            'messages' => [
-                ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => $user],
-            ],
-        ];
-        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json',
-        ], 60);
-        $body = $res['body'] ?? [];
-        if (!is_array($body)) {
-            throw new \RuntimeException('LLM bad response');
-        }
-        $text = (string) ($body['choices'][0]['message']['content'] ?? '');
-        if (trim($text) === '') {
-            throw new \RuntimeException('LLM empty');
-        }
-        return trim($text);
+        $user = "Предмет: {$subject}\nТема: {$topic}\n\nУчебный план:\n{$planContext}\n\nФрагменты базы знаний:\n{$ctx}\n\n";
+        if ($notes) $user .= "Дополнительные указания: {$notes}\n\n";
+        $user .= 'Составь полноценную лекцию 800–1500 слов: цели, ключевые термины, основная теория, механизмы/связи, практическое или клиническое значение только если подтверждается контекстом, краткий вывод и 5 вопросов для самопроверки.';
+        return $user;
     }
 
     /** @return list<array<string,mixed>> */
