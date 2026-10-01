@@ -33,7 +33,7 @@ export const SUBJECT_HAS_TICKET_BANK: Record<string, boolean> = {
   math: true,
   history: true,
   математический_анализ: true,
-  histology: false,
+  histology: true,
   optics: false,
   informatics: false,
   it_health: false,

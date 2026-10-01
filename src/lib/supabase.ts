@@ -52,10 +52,13 @@ export function parseOAuthTokensFromUrl(href: string): {
 
 export { SUPABASE_URL, SUPABASE_ANON };
 
-/** Optional Telegram bot deep-link for one-tap login. */
-export function getTelegramBotUrl(): string | null {
-  const u = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL?.trim();
-  return u || null;
+/** Start Telegram Login via Supabase custom OIDC provider. */
+export function startTelegramOAuth(redirectTo?: string) {
+  if (typeof window === "undefined") return;
+  const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
+  const redirect = redirectTo || `${appOrigin}/auth/callback`;
+  const url = `${SUPABASE_URL}/auth/v1/authorize?provider=custom:telegram&redirect_to=${encodeURIComponent(redirect)}`;
+  window.location.href = url;
 }
 
 /** Start VK OAuth via Supabase (requires VK provider enabled in dashboard). */
@@ -66,7 +69,7 @@ export function startVkOAuth(redirectTo?: string) {
   const redirect = redirectTo || `${appOrigin}/auth/callback`;
   const url =
     `${SUPABASE_URL}/auth/v1/authorize` +
-    `?provider=vk` +
+    `?provider=custom:vk` +
     `&redirect_to=${encodeURIComponent(redirect)}`;
   window.location.href = url;
 }

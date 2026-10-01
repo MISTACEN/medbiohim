@@ -170,3 +170,14 @@ export async function srsListCards(limit = 100, subject_slug?: string) {
   if (subject_slug) p.set("subject_slug", subject_slug);
   return api<{ items: SrsCard[]; count: number }>(`/srs/cards?${p}`);
 }
+
+/* —— Persistent AI chat —— */
+export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter";
+export type AiConversation = { id:string; title:string; provider:AiProvider; model?:string|null; subject_slug?:string|null; created_at:string; updated_at:string };
+export type AiMessage = { id:string; role:"system"|"user"|"assistant"; content:string; provider?:string|null; model?:string|null; created_at:string };
+export async function aiProviders(){ return api<{region:string;providers:Record<Exclude<AiProvider,"auto">,{configured:boolean;available:boolean;model?:string;reason?:string|null}>;default:AiProvider} >("/ai/providers"); }
+export async function aiConversations(){ return api<{items:AiConversation[]}>("/ai/conversations"); }
+export async function aiCreateConversation(payload?:{title?:string;provider?:AiProvider;subject_slug?:string}){ return api<{conversation:AiConversation}>("/ai/conversations",{method:"POST",body:JSON.stringify(payload||{})}); }
+export async function aiGetConversation(id:string){ return api<{conversation:AiConversation;messages:AiMessage[]}>(`/ai/conversations/${encodeURIComponent(id)}`); }
+export async function aiDeleteConversation(id:string){ return api<{deleted:boolean}>(`/ai/conversations/${encodeURIComponent(id)}`,{method:"DELETE"}); }
+export async function aiSendMessage(id:string,content:string,provider?:AiProvider,subject_slug?:string){ return api<{conversation:AiConversation;user_message:AiMessage;assistant_message:AiMessage}>(`/ai/conversations/${encodeURIComponent(id)}/messages`,{method:"POST",body:JSON.stringify({content,provider,subject_slug})}); }
