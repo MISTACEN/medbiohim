@@ -230,7 +230,7 @@ export default function TestsPage() {
                   );
                 })}
               </div>
-              {missed && (
+              {missed && correctIdx != null && (
                 <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
                   <span className="font-semibold">Правильный ответ: </span>
                   <ChemRichText text={q.options[correctIdx] ?? ""} className="mt-1 text-sm" />
