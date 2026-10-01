@@ -166,23 +166,27 @@ return static function (Router $router): void {
         $source = 'db';
 
         try {
-            $sql = 'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
-                           preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
-                           is_published, created_at, updated_at
-                    FROM public.trainer_feed_cards
-                    WHERE is_published = true';
+            $sql = 'SELECT c.id, c.subject_id, c.subject_slug, c.specialty_slug, c.mode_set,
+                           c.preparation, c.hotspots, c.question, c.tags, c.difficulty, c.source_key, c.source_file_id,
+                           c.is_published, c.created_at, c.updated_at,
+                           c.plan_module_id, c.plan_topic_id,
+                           tm.title AS plan_module_title, tt.title AS plan_topic_title
+                    FROM public.trainer_feed_cards c
+                    LEFT JOIN public.modules tm ON tm.id = c.plan_module_id
+                    LEFT JOIN public.topics tt ON tt.id = c.plan_topic_id
+                    WHERE c.is_published = true';
             $paramsSql = [];
 
             if ($subjectSlug !== '') {
-                $sql .= ' AND subject_slug = :subject_slug';
+                $sql .= ' AND c.subject_slug = :subject_slug';
                 $paramsSql['subject_slug'] = $subjectSlug;
             }
             if ($specialtySlug !== '') {
-                $sql .= ' AND specialty_slug = :specialty_slug';
+                $sql .= ' AND c.specialty_slug = :specialty_slug';
                 $paramsSql['specialty_slug'] = $specialtySlug;
             }
 
-            $sql .= ' ORDER BY id LIMIT :limit OFFSET :offset';
+            $sql .= ' ORDER BY c.id LIMIT :limit OFFSET :offset';
             $stmt = Connection::pdo()->prepare($sql);
             foreach ($paramsSql as $key => $value) $stmt->bindValue($key, $value);
             $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
@@ -192,7 +196,7 @@ return static function (Router $router): void {
 
             if (count($items) === 0) {
                 $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
-                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at'
+                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module:modules(title),plan_topic:topics(title)'
                 );
                 if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
                 if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
@@ -203,7 +207,7 @@ return static function (Router $router): void {
         } catch (Throwable $e) {
             try {
                 $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
-                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at'
+                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module:modules(title),plan_topic:topics(title)'
                 );
                 if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
                 if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
@@ -226,6 +230,17 @@ return static function (Router $router): void {
         }
         unset($item);
 
+        // PostgREST fallback returns embedded rows; flatten them to *_title fields.
+        foreach ($items as &$item) {
+            foreach (['plan_module' => 'plan_module_title', 'plan_topic' => 'plan_topic_title'] as $embed => $flat) {
+                if (isset($item[$embed])) {
+                    if (is_array($item[$embed])) $item[$flat] = $item[$embed]['title'] ?? null;
+                    unset($item[$embed]);
+                }
+            }
+        }
+        unset($item);
+
         Response::success([
             'items' => array_values($items),
             'limit' => $limit,
@@ -239,11 +254,15 @@ return static function (Router $router): void {
 
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT id, subject_id, subject_slug, specialty_slug, mode_set,
-                        preparation, hotspots, question, tags, difficulty, source_key, source_file_id,
-                        is_published, created_at, updated_at
-                 FROM public.trainer_feed_cards
-                 WHERE id = :id AND is_published = true
+                'SELECT c.id, c.subject_id, c.subject_slug, c.specialty_slug, c.mode_set,
+                        c.preparation, c.hotspots, c.question, c.tags, c.difficulty, c.source_key, c.source_file_id,
+                        c.is_published, c.created_at, c.updated_at,
+                        c.plan_module_id, c.plan_topic_id,
+                        tm.title AS plan_module_title, tt.title AS plan_topic_title
+                 FROM public.trainer_feed_cards c
+                 LEFT JOIN public.modules tm ON tm.id = c.plan_module_id
+                 LEFT JOIN public.topics tt ON tt.id = c.plan_topic_id
+                 WHERE c.id = :id AND c.is_published = true
                  LIMIT 1'
             );
             $stmt->execute(['id' => (string) ($params['id'] ?? '')]);
@@ -495,7 +514,7 @@ return static function (Router $router): void {
             try {
                 Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
             } catch (\Throwable $x) {
-                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
+                Response::error('DB_ERROR', $x->getMessage(), 500);
             }
         }
     });
@@ -509,7 +528,7 @@ return static function (Router $router): void {
             Response::success($meta, $req->requestId);
         } catch (Throwable $e) {
             try { Response::success(SupabaseRest::calendarMeta($course, $semester), $req->requestId); }
-            catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500); }
+            catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), 500); }
         }
     });
 
@@ -542,7 +561,7 @@ return static function (Router $router): void {
             try {
                 Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
             } catch (\Throwable $x) {
-                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
+                Response::error('DB_ERROR', $x->getMessage(), 500);
             }
         }
     });
