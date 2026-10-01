@@ -340,6 +340,15 @@ export default function PreparationPage() {
       </div>
 
       <div className="card space-y-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-indigo-600 px-2 text-sm font-extrabold text-white">
+            {String(idx + 1).padStart(2, "0")}
+          </span>
+          <div>
+            <div className="text-sm font-bold text-slate-700">Вопрос {idx + 1} из {questions.length}</div>
+            <div className="text-xs text-slate-400">{mode === "sequential" ? "Последовательный проход по всему банку" : "Текущий режим прохождения"}</div>
+          </div>
+        </div>
         <ChemRichText text={String(q.text || q.body || "")} className="text-lg font-semibold" />
 
         {isOpen ? (
