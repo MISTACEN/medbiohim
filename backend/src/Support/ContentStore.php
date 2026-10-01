@@ -3,466 +3,201 @@ declare(strict_types=1);
 
 namespace Medbiohim\Support;
 
+use Medbiohim\Services\SupabaseRest;
+
+/**
+ * Persistent content facade.
+ *
+ * IMPORTANT: this class no longer reads/writes backend/data/*.json.
+ * Supabase is the single source of truth. JSONB is used only where the
+ * existing product contract is document-shaped (site content and subject plans).
+ */
 final class ContentStore
 {
-    private string $dir;
-
-    public function __construct(?string $dir = null)
+    private function content(string $key, array $default=[]): array
     {
-        $this->dir = $dir ?: dirname(__DIR__, 2) . '/data';
-        if (!is_dir($this->dir)) {
-            @mkdir($this->dir, 0775, true);
-        }
+        $rows = SupabaseRest::select('site_content?key=eq.'.rawurlencode($key).'&select=payload');
+        return isset($rows[0]['payload']) && is_array($rows[0]['payload']) ? $rows[0]['payload'] : $default;
     }
 
-    private function read(string $file, mixed $default): mixed
+    private function saveContent(string $key, array $payload): array
     {
-        $p = $this->dir . '/' . $file;
-        if (!is_file($p)) return $default;
-        $raw = file_get_contents($p);
-        if ($raw === false || trim($raw) === '') return $default;
-        $v = json_decode($raw, true);
-        return $v ?? $default;
-    }
-
-    private function write(string $file, mixed $data): mixed
-    {
-        $p = $this->dir . '/' . $file;
-        $tmp = $p . '.tmp';
-        $j = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-        if ($j === false || file_put_contents($tmp, $j . PHP_EOL, LOCK_EX) === false) {
-            throw new \RuntimeException('Could not write content');
+        $existing = SupabaseRest::select('site_content?key=eq.'.rawurlencode($key).'&select=key');
+        if ($existing) {
+            SupabaseRest::patch('site_content?key=eq.'.rawurlencode($key), ['payload'=>$payload,'updated_at'=>gmdate('c')], false);
+        } else {
+            SupabaseRest::insert('site_content', ['key'=>$key,'payload'=>$payload,'updated_at'=>gmdate('c')], false);
         }
-        if (!@rename($tmp, $p)) {
-            @unlink($tmp);
-            throw new \RuntimeException('Could not replace content file');
-        }
-        return $data;
+        return $payload;
     }
 
     public function getSite(): array
     {
-        $d = $this->read('site.json', []);
-        return array_merge(
-            ['title' => 'Медбиохим', 'subtitle' => 'Учебная платформа', 'description' => '', 'announcement_banner' => '', 'contacts' => []],
-            isset($d['site']) && is_array($d['site']) ? $d['site'] : []
-        );
+        return array_merge(['title'=>'Медбиохим','subtitle'=>'Учебная платформа','description'=>'','announcement_banner'=>'','contacts'=>[]], $this->content('site'));
     }
 
     public function updateSite(array $p): array
     {
-        $s = $this->getSite();
-        foreach ($p as $k => $v) $s[$k] = $v;
-        $this->write('site.json', ['site' => $s, 'updated_at' => gmdate('c')]);
-        return $s;
+        $site=array_merge($this->getSite(),$p);
+        $this->saveContent('site',$site);
+        return $site;
     }
 
     public function listAnnouncements(): array
     {
-        $d = $this->read('announcements.json', []);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : (is_array($d) ? $d : []);
+        $d=$this->content('announcements',['items'=>[]]);
+        return isset($d['items'])&&is_array($d['items'])?$d['items']:[];
     }
 
     public function createAnnouncement(array $d): array
     {
-        $a = $this->listAnnouncements();
-        $r = array_merge(['id' => bin2hex(random_bytes(8)), 'created_at' => gmdate('c'), 'pinned' => false], $d);
-        $a[] = $r;
-        $this->write('announcements.json', ['items' => $a]);
-        return $r;
+        $items=$this->listAnnouncements();
+        $row=array_merge(['id'=>'ann-'.bin2hex(random_bytes(8)),'created_at'=>gmdate('c'),'pinned'=>false],$d);
+        $items[]=$row; $this->saveContent('announcements',['items'=>$items]); return $row;
     }
 
-    public function updateAnnouncement(string $id, array $p): ?array
+    public function updateAnnouncement(string $id,array $p): ?array
     {
-        $a = $this->listAnnouncements();
-        foreach ($a as $i => $r) {
-            if ((string) ($r['id'] ?? '') === $id) {
-                $a[$i] = array_merge($r, $p, ['updated_at' => gmdate('c')]);
-                $this->write('announcements.json', ['items' => $a]);
-                return $a[$i];
-            }
-        }
+        $items=$this->listAnnouncements();
+        foreach($items as $i=>$row) if((string)($row['id']??'')===$id){$items[$i]=array_merge($row,$p,['updated_at'=>gmdate('c')]);$this->saveContent('announcements',['items'=>$items]);return $items[$i];}
         return null;
     }
 
     public function deleteAnnouncement(string $id): bool
     {
-        $a = $this->listAnnouncements();
-        $b = array_values(array_filter($a, static fn($r) => (string) ($r['id'] ?? '') !== $id));
-        if (count($a) === count($b)) return false;
-        $this->write('announcements.json', ['items' => $b]);
-        return true;
+        $items=$this->listAnnouncements(); $next=array_values(array_filter($items,fn($r)=>(string)($r['id']??'')!==$id));
+        if(count($items)==count($next))return false; $this->saveContent('announcements',['items'=>$next]); return true;
     }
 
     public function listCurriculum(): array
     {
-        $master = $this->read('curriculum_master.json', []);
-        if (isset($master['items']) && is_array($master['items'])) return $master['items'];
-        $d = $this->read('curriculum.json', ['items' => []]);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
+        return SupabaseRest::listSubjects();
     }
 
     public function saveCurriculum(array $items): array
     {
-        $this->write('curriculum_master.json', [
-            'version' => 2,
-            'source' => 'admin',
-            'courses' => [1, 2, 3, 4, 5, 6],
-            'items' => array_values($items),
-            'updated_at' => gmdate('c'),
-        ]);
-        return array_values($items);
+        foreach($items as $item){
+            if(!is_array($item)||empty($item['name']))continue;
+            SupabaseRest::createSubject($item);
+        }
+        return $this->listCurriculum();
     }
 
-    public function curriculumPlan(): array
-    {
-        $d = $this->read('curriculum_master.json', []);
-        return is_array($d) && $d ? $d : $this->read('curriculum.json', []);
-    }
+    public function curriculumPlan(): array { return $this->content('curriculum',['items'=>$this->listCurriculum()]); }
 
     public function listTestsLocal(): array
     {
-        $d = $this->read('tests.json', []);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : (is_array($d) ? $d : []);
-    }
-
-    public function saveTestsLocal(array $items): array
-    {
-        $this->write('tests.json', ['items' => array_values($items), 'updated_at' => gmdate('c')]);
-        return array_values($items);
+        $tests=SupabaseRest::select('tests?is_published=eq.true&select=id,subject_id,module_id,topic_id,title,time_limit_sec,max_attempts,is_published,created_at&order=created_at.desc');
+        foreach($tests as &$t){$q=SupabaseRest::select('test_questions?test_id=eq.'.rawurlencode((string)$t['id']).'&select=question_id,order_index&order=order_index.asc');$t['questions']=$q;$t['questions_count']=count($q);$t['source']='db';}unset($t);
+        return $tests;
     }
 
     public function listSchedule(): array
     {
-        $d = $this->read('schedule.json', []);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : (is_array($d) ? $d : []);
-        $partsDir = $this->dir . '/schedule_parts';
-        if (is_dir($partsDir)) {
-            foreach (glob($partsDir . '/schedule_*.json') ?: [] as $file) {
-                $raw = file_get_contents($file);
-                $j = $raw ? json_decode($raw, true) : null;
-                if (!is_array($j)) continue;
-                $chunk = isset($j['items']) && is_array($j['items']) ? $j['items'] : [];
-                foreach ($chunk as $row) {
-                    if (!is_array($row) || empty($row['date'])) continue;
-                    $key = ($row['date'] ?? '') . '|' . ($row['start_time'] ?? '') . '|' . ($row['subject_name'] ?? '');
-                    $items[$key] = $row;
-                }
-            }
-            $uniq = [];
-            foreach ($items as $row) {
-                if (!is_array($row)) continue;
-                $key = ($row['date'] ?? '') . '|' . ($row['start_time'] ?? '') . '|' . ($row['subject_name'] ?? '');
-                $uniq[$key] = $row;
-            }
-            $items = array_values($uniq);
-        }
-        usort($items, static fn($a, $b) => strcmp((string)($a['date'] ?? ''), (string)($b['date'] ?? '')) ?: strcmp((string)($a['start_time'] ?? ''), (string)($b['start_time'] ?? '')));
-        return $items;
+        $rows=SupabaseRest::select('schedule_entries?select=id,schedule_id,subject_id,date,start_time,end_time,type,room,building,notes,is_cancelled,subject_name,sort_order&order=date.asc,start_time.asc');
+        return $rows;
     }
 
-    public function scheduleMeta(): array
-    {
-        $d = $this->read('schedule.json', []);
-        return isset($d['meta']) && is_array($d['meta']) ? $d['meta'] : [];
-    }
+    public function scheduleMeta(): array { return $this->content('schedule_meta',[]); }
 
-    public function readRawSubjectsCatalog(): array
-    {
-        $d = $this->read('subjects_catalog.json', []);
-        return is_array($d) ? $d : [];
-    }
-
-    public function listSubjectsCatalog(): array
-    {
-        $d = $this->read('subjects_catalog.json', []);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-    }
+    public function readRawSubjectsCatalog(): array { return ['items'=>SupabaseRest::listSubjects()]; }
+    public function listSubjectsCatalog(): array { return SupabaseRest::listSubjects(); }
 
     public function getSubjectPlan(string $slug): ?array
     {
-        $d = $this->read('subject_plans.json', []);
-        $plans = isset($d['plans']) && is_array($d['plans']) ? $d['plans'] : [];
-        return isset($plans[$slug]) && is_array($plans[$slug]) ? $plans[$slug] : null;
+        $d=$this->content('subject_plan:'.$slug,[]);
+        return $d?:null;
     }
 
     public function listSubjectPlans(): array
     {
-        $d = $this->read('subject_plans.json', []);
-        return isset($d['plans']) && is_array($d['plans']) ? $d['plans'] : [];
+        $rows=SupabaseRest::select('site_content?key=like.subject_plan:*&select=key,payload');
+        $out=[]; foreach($rows as $r) if(isset($r['payload'])&&is_array($r['payload']))$out[(string)$r['key']]= $r['payload']; return $out;
     }
 
-    public function saveSchedule(array $items, ?array $meta = null): array
+    public function saveSchedule(array $items,?array $meta=null): array
     {
-        $payload = [
-            'meta' => $meta ?? $this->scheduleMeta() ?: ['title' => 'Расписание', 'group_code' => 'МБ-201'],
-            'items' => array_values($items),
-            'count' => count($items),
-            'updated_at' => gmdate('c'),
-            'source' => 'admin_cms',
-        ];
-        $this->write('schedule.json', $payload);
-        return array_values($items);
+        throw new \RuntimeException('Legacy JSON schedule write disabled; use /api/v1/admin/schedule');
     }
 
     public function listCommunityPosts(): array
     {
-        $d = $this->read('community.json', []);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : (is_array($d) ? $d : []);
+        return SupabaseRest::select('community_posts?is_deleted=eq.false&select=id,author_id,group_id,tag,text,title,body,created_at,updated_at&order=created_at.desc');
     }
 
     public function createCommunityPost(array $d): array
     {
-        $a = $this->listCommunityPosts();
-        $r = array_merge(['id' => bin2hex(random_bytes(8)), 'created_at' => gmdate('c')], $d);
-        $a[] = $r;
-        $this->write('community.json', ['items' => $a]);
-        return $r;
+        $row=SupabaseRest::insert('community_posts',['author_id'=>$d['author_id'],'group_id'=>$d['group_id']??null,'tag'=>$d['tag']??null,'text'=>$d['text']??($d['body']??''),'title'=>$d['title']??null,'body'=>$d['body']??null],true);
+        return $row[0]??[];
     }
 
-    public function updateCommunityPost(string $id, array $p): ?array
+    public function updateCommunityPost(string $id,array $p): ?array
     {
-        $a = $this->listCommunityPosts();
-        foreach ($a as $i => $r) {
-            if ((string) ($r['id'] ?? '') === $id) {
-                $a[$i] = array_merge($r, $p, ['updated_at' => gmdate('c')]);
-                $this->write('community.json', ['items' => $a]);
-                return $a[$i];
-            }
-        }
-        return null;
+        $row=SupabaseRest::patch('community_posts?id=eq.'.rawurlencode($id),$p,true); return $row[0]??null;
     }
 
     public function deleteCommunityPost(string $id): bool
     {
-        $a = $this->listCommunityPosts();
-        $b = array_values(array_filter($a, static fn($r) => (string) ($r['id'] ?? '') !== $id));
-        if (count($a) === count($b)) return false;
-        $this->write('community.json', ['items' => $b]);
-        return true;
+        SupabaseRest::patch('community_posts?id=eq.'.rawurlencode($id),['is_deleted'=>true],false); return true;
     }
 
     public function listQuestionsBank(): array
     {
-        $d = $this->read('questions_bank.json', []);
-        return isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
+        return SupabaseRest::select('exam_questions?is_published=eq.true&select=id,subject_id,subject_name,subject_slug,topic,text,answer,kind,type,for_exam,for_ticket,source,is_published,created_at,updated_at&order=created_at.asc');
     }
 
-    public function saveQuestionsBank(array $items): array
-    {
-        $this->write('questions_bank.json', [
-            'items' => array_values($items),
-            'count' => count($items),
-            'updated_at' => gmdate('c'),
-            'source' => 'admin',
-        ]);
-        return array_values($items);
-    }
+    public function saveQuestionsBank(array $items): array { return $this->listQuestionsBank(); }
 
     public function upsertQuestion(array $q): array
     {
-        $items = $this->listQuestionsBank();
-        $id = (string) ($q['id'] ?? '');
-        if ($id === '') {
-            $id = 'q-' . bin2hex(random_bytes(6));
-            $q['id'] = $id;
-        }
-        $found = false;
-        foreach ($items as $i => $row) {
-            if ((string) ($row['id'] ?? '') === $id) {
-                $items[$i] = array_merge($row, $q, ['updated_at' => gmdate('c')]);
-                $found = true;
-                $q = $items[$i];
-                break;
-            }
-        }
-        if (!$found) {
-            $q['created_at'] = gmdate('c');
-            $items[] = $q;
-        }
-        $this->saveQuestionsBank($items);
-        return $q;
+        $id=(string)($q['id']??'');
+        $row=['subject_id'=>$q['subject_id']??null,'subject_name'=>(string)($q['subject_name']??$q['subject']??''),'subject_slug'=>$q['subject_slug']??null,'topic'=>$q['topic']??null,'text'=>(string)($q['text']??$q['question']??''),'answer'=>$q['answer']??null,'kind'=>'ticket','type'=>$q['type']??'open','for_exam'=>(bool)($q['for_exam']??true),'for_ticket'=>(bool)($q['for_ticket']??true),'source'=>$q['source']??'import','is_published'=>(bool)($q['is_published']??true)];
+        if($id!==''){$x=SupabaseRest::patch('exam_questions?id=eq.'.rawurlencode($id),$row,true);return $x[0]??array_merge(['id'=>$id],$row);}
+        $x=SupabaseRest::insert('exam_questions',$row,true);return $x[0]??$row;
     }
 
-    public function deleteQuestion(string $id): bool
+    public function deleteQuestion(string $id): bool { SupabaseRest::patch('exam_questions?id=eq.'.rawurlencode($id),['is_published'=>false],false);return true; }
+
+    public function listSessions(string $userId): array { return SupabaseRest::select('learning_sessions?user_id=eq.'.rawurlencode($userId).'&select=*&order=updated_at.desc'); }
+    public function getSession(string $userId,string $id): ?array { $x=SupabaseRest::select('learning_sessions?id=eq.'.rawurlencode($id).'&user_id=eq.'.rawurlencode($userId).'&select=*');return $x[0]??null; }
+    public function saveSession(array $s): array
     {
-        $items = $this->listQuestionsBank();
-        $b = array_values(array_filter($items, static fn($r) => (string) ($r['id'] ?? '') !== $id));
-        if (count($items) === count($b)) return false;
-        $this->saveQuestionsBank($b);
-        return true;
+        $id=(string)($s['id']??'');
+        $row=['user_id'=>$s['user_id'],'type'=>$s['type']??'practice','ref_id'=>$s['ref_id']??null,'title'=>$s['title']??'Сессия','status'=>$s['status']??'in_progress','current_index'=>(int)($s['current_index']??0),'answers'=>$s['answers']??new \stdClass(),'payload'=>$s['payload']??new \stdClass(),'score'=>$s['score']??null,'finished_at'=>$s['finished_at']??null,'updated_at'=>gmdate('c')];
+        if($id!==''){$x=SupabaseRest::patch('learning_sessions?id=eq.'.rawurlencode($id).'&user_id=eq.'.rawurlencode($s['user_id']),$row,true);return $x[0]??array_merge(['id'=>$id],$row);}
+        $x=SupabaseRest::insert('learning_sessions',$row,true);return $x[0]??$row;
     }
 
-    public function listSessions(string $userId): array
+    public function listNotes(string $userId): array { return SupabaseRest::select('notes?user_id=eq.'.rawurlencode($userId).'&select=id,user_id,target_type,target_id,text,created_at,updated_at&order=updated_at.desc'); }
+    public function upsertNote(array $n): array
     {
-        $d = $this->read('sessions.json', ['items' => []]);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-        return array_values(array_filter($items, static fn($s) => (string) ($s['user_id'] ?? '') === $userId));
+        $row=['user_id'=>$n['user_id'],'target_type'=>$n['target_type']??'question','target_id'=>$n['target_id'],'text'=>(string)($n['text']??$n['body']??'')];
+        $x=SupabaseRest::select('notes?user_id=eq.'.rawurlencode($n['user_id']).'&target_type=eq.'.rawurlencode($row['target_type']).'&target_id=eq.'.rawurlencode($row['target_id']).'&select=id');
+        if($x){$z=SupabaseRest::patch('notes?id=eq.'.rawurlencode($x[0]['id']),array_merge($row,['updated_at'=>gmdate('c')]),true);return $z[0]??$row;}
+        $z=SupabaseRest::insert('notes',$row,true);return $z[0]??$row;
     }
 
-    public function getSession(string $userId, string $id): ?array
+    public function listFavorites(string $userId): array { return SupabaseRest::select('favorites?user_id=eq.'.rawurlencode($userId).'&select=user_id,target_type,target_id,created_at&order=created_at.desc'); }
+    public function toggleFavorite(string $userId,string $targetType,string $targetId): array
     {
-        foreach ($this->listSessions($userId) as $s) {
-            if ((string) ($s['id'] ?? '') === $id) return $s;
-        }
-        return null;
+        $p='favorites?user_id=eq.'.rawurlencode($userId).'&target_type=eq.'.rawurlencode($targetType).'&target_id=eq.'.rawurlencode($targetId);
+        if(SupabaseRest::select($p)){SupabaseRest::deleteWhere($p);return ['favorited'=>false];}
+        SupabaseRest::insert('favorites',['user_id'=>$userId,'target_type'=>$targetType,'target_id'=>$targetId],false);return ['favorited'=>true];
     }
 
-    public function saveSession(array $session): array
+    public function findLessonPlan(?string $date,?string $subject,?string $slug=null): array
     {
-        $d = $this->read('sessions.json', ['items' => []]);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-        $id = (string) ($session['id'] ?? '');
-        if ($id === '') {
-            $id = 'sess-' . bin2hex(random_bytes(6));
-            $session['id'] = $id;
-        }
-        $found = false;
-        foreach ($items as $i => $s) {
-            if ((string) ($s['id'] ?? '') === $id) {
-                $items[$i] = array_merge($s, $session, ['updated_at' => gmdate('c')]);
-                $session = $items[$i];
-                $found = true;
-                break;
-            }
-        }
-        if (!$found) {
-            $session['created_at'] = gmdate('c');
-            $session['updated_at'] = gmdate('c');
-            $items[] = $session;
-        }
-        $this->write('sessions.json', ['items' => $items, 'updated_at' => gmdate('c')]);
-        return $session;
-    }
-
-    public function listNotes(string $userId): array
-    {
-        $d = $this->read('notes.json', ['items' => []]);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-        return array_values(array_filter($items, static fn($n) => (string) ($n['user_id'] ?? '') === $userId));
-    }
-
-    public function upsertNote(array $note): array
-    {
-        $d = $this->read('notes.json', ['items' => []]);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-        $id = (string) ($note['id'] ?? '');
-        if ($id === '') {
-            $id = 'note-' . bin2hex(random_bytes(5));
-            $note['id'] = $id;
-        }
-        $found = false;
-        foreach ($items as $i => $n) {
-            if ((string) ($n['id'] ?? '') === $id) {
-                $items[$i] = array_merge($n, $note, ['updated_at' => gmdate('c')]);
-                $note = $items[$i];
-                $found = true;
-                break;
-            }
-        }
-        if (!$found) {
-            $note['created_at'] = gmdate('c');
-            $items[] = $note;
-        }
-        $this->write('notes.json', ['items' => $items, 'updated_at' => gmdate('c')]);
-        return $note;
-    }
-
-    public function listFavorites(string $userId): array
-    {
-        $d = $this->read('favorites.json', ['items' => []]);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-        return array_values(array_filter($items, static fn($f) => (string) ($f['user_id'] ?? '') === $userId));
-    }
-
-    public function toggleFavorite(string $userId, string $targetType, string $targetId): array
-    {
-        $d = $this->read('favorites.json', ['items' => []]);
-        $items = isset($d['items']) && is_array($d['items']) ? $d['items'] : [];
-        foreach ($items as $i => $f) {
-            if ((string) ($f['user_id'] ?? '') === $userId && (string) ($f['target_type'] ?? '') === $targetType && (string) ($f['target_id'] ?? '') === $targetId) {
-                array_splice($items, $i, 1);
-                $this->write('favorites.json', ['items' => $items, 'updated_at' => gmdate('c')]);
-                return ['favorited' => false];
-            }
-        }
-        $items[] = [
-            'id' => 'fav-' . bin2hex(random_bytes(4)),
-            'user_id' => $userId,
-            'target_type' => $targetType,
-            'target_id' => $targetId,
-            'created_at' => gmdate('c'),
-        ];
-        $this->write('favorites.json', ['items' => $items, 'updated_at' => gmdate('c')]);
-        return ['favorited' => true];
-    }
-
-    public function findLessonPlan(?string $date, ?string $subject, ?string $slug = null): array
-    {
-        $plan = null;
-        if ($slug) $plan = $this->getSubjectPlan($slug);
-        if ($plan === null && $subject) {
-            $needle = mb_strtolower(trim($subject));
-            foreach ($this->listSubjectPlans() as $pl) {
-                $name = mb_strtolower((string) ($pl['subject'] ?? ''));
-                if ($name === $needle || str_contains($name, $needle) || str_contains($needle, $name)) {
-                    $plan = $pl;
-                    break;
-                }
-                foreach (($pl['aliases'] ?? []) as $a) {
-                    $al = mb_strtolower((string) $a);
-                    if ($al === $needle || str_contains($needle, $al) || str_contains($al, $needle)) {
-                        $plan = $pl;
-                        break 2;
-                    }
-                }
-            }
-        }
-        if ($plan === null) return ['lesson' => null, 'weeks' => [], 'plan_meta' => null];
-        $weeks = is_array($plan['weeks'] ?? null) ? $plan['weeks'] : [];
-        $week = null;
-        if ($date) {
-            foreach ($weeks as $w) {
-                if ((string) ($w['date'] ?? '') === $date) { $week = $w; break; }
-            }
-            if ($week === null) {
-                $best = null;
-                $bestDiff = 999999;
-                $ts = strtotime($date) ?: 0;
-                foreach ($weeks as $w) {
-                    $wd = (string) ($w['date'] ?? '');
-                    if ($wd === '') continue;
-                    $diff = abs((strtotime($wd) ?: 0) - $ts);
-                    if ($diff <= 4 * 86400 && $diff < $bestDiff) {
-                        $bestDiff = $diff;
-                        $best = $w;
-                    }
-                }
-                $week = $best;
-            }
-        }
-        return [
-            'lesson' => $week,
-            'weeks' => $weeks,
-            'plan_meta' => [
-                'subject' => $plan['subject'] ?? null,
-                'subject_slug' => $plan['subject_slug'] ?? null,
-                'control' => $plan['control'] ?? null,
-                'semester' => $plan['semester'] ?? null,
-            ],
-        ];
+        $plan=$slug?$this->getSubjectPlan($slug):null;
+        if($plan===null&&$subject){$needle=mb_strtolower(trim($subject));foreach($this->listSubjectPlans() as $p){$v=$p['subject']??'';if(mb_strtolower((string)$v)===$needle){$plan=$p;break;}}}
+        if($plan===null)return ['lesson'=>null,'weeks'=>[],'plan_meta'=>null];
+        $weeks=is_array($plan['weeks']??null)?$plan['weeks']:[];$lesson=null;
+        if($date)foreach($weeks as $w)if((string)($w['date']??'')===$date){$lesson=$w;break;}
+        return ['lesson'=>$lesson,'weeks'=>$weeks,'plan_meta'=>['subject'=>$plan['subject']??null,'subject_slug'=>$plan['subject_slug']??null,'control'=>$plan['control']??null,'semester'=>$plan['semester']??null]];
     }
 
     public function saveSubjectPlans(array $plans): array
     {
-        $map = [];
-        foreach ($plans as $pl) {
-            if (!is_array($pl)) continue;
-            $slug = (string) ($pl['subject_slug'] ?? '');
-            if ($slug === '') continue;
-            $map[$slug] = $pl;
-        }
-        $this->write('subject_plans.json', ['plans' => $map, 'updated_at' => gmdate('c')]);
-        return array_values($map);
+        foreach($plans as $p){if(!is_array($p)||empty($p['subject_slug']))continue;$this->saveContent('subject_plan:'.(string)$p['subject_slug'],$p);}
+        return $plans;
     }
 }
