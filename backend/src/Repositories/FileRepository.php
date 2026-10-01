@@ -33,6 +33,7 @@ final class FileRepository
             'by' => $data['uploaded_by'] ?? null,
             'gid' => $data['group_id'] ?? null,
             'vis' => $data['visibility'] ?? 'group',
+            'specialty' => ($data['specialty_slug'] ?? '') !== '' ? $data['specialty_slug'] : null,
         ]);
         $row = $stmt->fetch();
         if ($row === false) {
