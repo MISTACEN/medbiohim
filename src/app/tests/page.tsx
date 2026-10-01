@@ -8,11 +8,14 @@ import {
   getTest,
   startTestAttempt,
   finishAttempt,
+  getFile,
   hasToken,
   type ApiTest,
 } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { Confetti } from "@/components/ui/Confetti";
+import { QuestionReport } from "@/components/QuestionReport";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
 type UiTest = {
   id: string;
@@ -20,9 +23,11 @@ type UiTest = {
   subject: string;
   type: string;
   questionCount: number;
+  sourceFileId?: string | null;
+  sourceFileName?: string | null;
 };
 
-type Q = { id: string; body: string; options: string[] };
+type Q = { id: string; body: string; options: string[]; answer?: string | number | null; };
 
 export default function TestsPage() {
   const [items, setItems] = useState<UiTest[]>([]);
@@ -58,6 +63,8 @@ export default function TestsPage() {
               subject: String(t.subject_name || "—"),
               type: String(t.type || "test"),
               questionCount: Number(t.questions_count || 0),
+              sourceFileId: t.source_file_id || null,
+              sourceFileName: t.source_file_name || null,
             }))
           );
         } else setNote(res.error.message);
@@ -71,6 +78,13 @@ export default function TestsPage() {
       cancelled = true;
     };
   }, []);
+
+  async function openSource(test: UiTest) {
+    if (!test.sourceFileId) return;
+    const r = await getFile(test.sourceFileId);
+    if (r.ok && r.data.download?.url) window.open(r.data.download.url, "_blank", "noopener,noreferrer");
+    else setNote(r.ok ? "Исходный файл сейчас недоступен" : r.error.message);
+  }
 
   async function openTest(id: string) {
     setBusy(true);
@@ -87,14 +101,29 @@ export default function TestsPage() {
         setNote(attempt.error.message);
         return;
       }
-      const questions = (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => ({
-        id: String(q.id || i),
-        body: String(q.body || q.q || ""),
-        options: Array.isArray(q.options) ? (q.options as string[]).map(String) : [],
-      }));
-      const answersKey = Array.isArray((detail.data as { answers_local?: unknown }).answers_local)
+      const questions = (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => {
+        const rawOptions = Array.isArray(q.options) ? q.options : [];
+        const options = rawOptions.map((x: unknown) => {
+          if (typeof x === "object" && x !== null && "label" in x) return String((x as {label?:unknown}).label ?? "");
+          return String(x);
+        });
+        return { id: String(q.id || i), body: String(q.body || q.q || q.text || ""), options, answer: q.answer == null ? null : String(q.answer) };
+      });
+      const localAnswers = Array.isArray((detail.data as { answers_local?: unknown }).answers_local)
         ? ((detail.data as { answers_local: Array<number | null> }).answers_local || [])
         : [];
+      const answersKey = questions.map((q, i) => {
+        if (localAnswers[i] != null) return Number(localAnswers[i]);
+        const answer = q.answer == null ? "" : String(q.answer).trim();
+        if (answer === "") return null;
+        const n = Number(answer);
+        if (Number.isInteger(n) && n >= 0 && n < q.options.length) return n;
+        if (Number.isInteger(n) && n >= 1 && n <= q.options.length) return n - 1;
+        const byText = q.options.findIndex((x) => x.trim().toLowerCase() === answer.toLowerCase());
+        if (byText >= 0) return byText;
+        const byId = q.options.findIndex((x) => x.trim() === answer.replace(/^option[-_]?/i, ""));
+        return byId >= 0 ? byId : null;
+      });
       setActive({
         testId: id,
         attemptId: attempt.data.attempt.id,
@@ -155,7 +184,8 @@ export default function TestsPage() {
         {active.questions.map((q, i) => (
           <div key={q.id} className="card space-y-3">
             <div className="font-medium">
-              {i + 1}. {q.body}
+              {i + 1}.{" "}
+              <ChemRichText text={q.body} className="mt-1 space-y-2 text-sm font-medium" />
             </div>
             <div className="space-y-2">
               {q.options.map((opt, oi) => (
@@ -171,10 +201,11 @@ export default function TestsPage() {
                     checked={picks[i] === oi}
                     onChange={() => setPicks((p) => ({ ...p, [i]: oi }))}
                   />
-                  {opt}
+                  <ChemRichText text={opt} className="flex-1 space-y-1 text-sm" />
                 </label>
               ))}
             </div>
+            <QuestionReport questionId={q.id} />
           </div>
         ))}
         {result ? (
@@ -211,14 +242,17 @@ export default function TestsPage() {
                 <div className="text-lg font-semibold">{t.title}</div>
                 <div className="text-sm text-slate-500">{t.questionCount || "—"} вопросов</div>
               </div>
-              <button
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link><Link href={`/tests/preparation/${t.id}?mode=exam`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700">Экзамен</Link>
+                {t.sourceFileId && <button type="button" className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" onClick={() => void openSource(t)}>Исходник{t.sourceFileName ? " · " + t.sourceFileName : ""}</button>}
+                <button
                 type="button"
                 className="btn-primary inline-flex items-center gap-2 self-start"
                 disabled={busy}
                 onClick={() => void openTest(t.id)}
               >
-                <Play className="h-4 w-4" /> Начать
-              </button>
+                <Play className="h-4 w-4" /> Тест
+              </button></div>
             </div>
           ))}
         </div>
