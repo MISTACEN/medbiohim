@@ -216,115 +216,8 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
   return null;
 }
 
-async function authFallback(req: NextRequest, sub: string): Promise<NextResponse | null> {
-  if (!["auth/login", "auth/refresh", "auth/me"].includes(sub)) return null;
-
-  const endpoint =
-    sub === "auth/login"
-      ? "/auth/v1/token?grant_type=password"
-      : sub === "auth/refresh"
-        ? "/auth/v1/token?grant_type=refresh_token"
-        : "/auth/v1/user";
-
-  const headers = new Headers({
-    apikey: SUPABASE_ANON_KEY,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  });
-
-  const token = bearer(req);
-  if (sub === "auth/me") {
-    if (!token) {
-      return NextResponse.json(
-        { ok: false, error: { code: "UNAUTHORIZED", message: "Missing or invalid Authorization Bearer token" }, requestId: "vercel-auth-fallback" },
-        { status: 401 }
-      );
-    }
-    headers.set("Authorization", `Bearer ${token}`);
-  } else {
-    headers.set("Authorization", `Bearer ${SUPABASE_ANON_KEY}`);
-  }
-
-  try {
-    const init: RequestInit = { method: "POST", headers, cache: "no-store" };
-    if (sub === "auth/me") {
-      init.method = "GET";
-    } else {
-      init.body = await req.clone().text();
-    }
-
-    const response = await fetch(SUPABASE_URL + endpoint, init);
-    const raw = await response.text();
-    let data: any = {};
-    try { data = raw ? JSON.parse(raw) : {}; } catch {}
-
-    if (!response.ok) {
-      const message =
-        data?.error_description ||
-        data?.msg ||
-        data?.error ||
-        (sub === "auth/me" ? "Invalid or expired access token" : "Authentication failed");
-      return NextResponse.json(
-        { ok: false, error: { code: sub === "auth/me" ? "UNAUTHORIZED" : "AUTH_INVALID_CREDENTIALS", message }, requestId: "vercel-auth-fallback" },
-        { status: response.status }
-      );
-    }
-
-    if (sub === "auth/me") {
-      return NextResponse.json({
-        ok: true,
-        data: {
-          user: {
-            id: data?.id ?? null,
-            email: data?.email ?? null,
-            full_name: data?.user_metadata?.full_name ?? data?.user_metadata?.name ?? data?.email ?? null,
-            name: data?.user_metadata?.name ?? null,
-          },
-          roles: [],
-          groups: [],
-          course: null,
-          semester: null,
-        },
-        requestId: "vercel-auth-fallback",
-      });
-    }
-
-    return NextResponse.json(
-      {
-        ok: true,
-        data: {
-          access_token: data?.access_token ?? null,
-          refresh_token: data?.refresh_token ?? null,
-          expires_in: data?.expires_in ?? null,
-          token_type: data?.token_type ?? "bearer",
-          user: {
-            id: data?.user?.id ?? null,
-            email: data?.user?.email ?? null,
-            full_name: data?.user?.user_metadata?.full_name ?? data?.user?.user_metadata?.name ?? data?.user?.email ?? null,
-            role: data?.user?.role ?? data?.user?.user_metadata?.role ?? null,
-          },
-        },
-        requestId: "vercel-auth-fallback",
-      },
-      { status: 200 }
-    );
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: { code: "AUTH_UPSTREAM_ERROR", message: "Supabase Auth is unreachable from Vercel" }, requestId: "vercel-auth-fallback" },
-      { status: 502 }
-    );
-  }
-}
-
 async function proxy(req: NextRequest, pathParts: string[]) {
   const sub = pathParts.join("/");
-
-  // Keep login/refresh/me independent from the manually deployed SpaceWeb PHP
-  // version. Supabase Auth is the source of truth for the session itself.
-  if (sub === "auth/login" || sub === "auth/refresh") {
-    const auth = await authFallback(req, sub);
-    if (auth) return auth;
-  }
 
   if (sub.startsWith("trainers/feed")) {
     const fallback = await trainerFallback(req, pathParts);
@@ -382,17 +275,8 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   }
 
   if (!upstream) {
-    if (sub === "auth/me") {
-      const auth = await authFallback(req, sub);
-      if (auth) return auth;
-    }
     const msg = lastError instanceof Error ? lastError.message : "upstream unreachable";
     return NextResponse.json({ ok: false, error: { code: "UPSTREAM", message: msg }, requestId: "proxy" }, { status: 502 });
-  }
-
-  if (sub === "auth/me" && (upstream.status === 401 || upstream.status >= 500)) {
-    const auth = await authFallback(req, sub);
-    if (auth) return auth;
   }
 
   const buf = await upstream.arrayBuffer();
