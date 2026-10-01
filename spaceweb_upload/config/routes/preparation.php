@@ -34,7 +34,8 @@ return static function (Router $router): void {
    $s=$db->prepare("select ps.*,t.title as test_title from public.test_preparation_sessions ps join public.tests t on t.id=ps.test_id where ps.id=:id and ps.user_id=:uid");
    $s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Preparation session not found',$r->requestId,404);return;}
-   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.name as module_name,top.name as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
+   // modules/topics хранят название в колонке title (name не существует — SQLSTATE 42703).
+   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
    $q->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$session['question_ids'])).'}']);$questions=$q->fetchAll()?:[];
    $positions=array_flip(array_map('strval',$session['question_ids']));
    usort($questions,static fn($a,$b)=>(($positions[(string)$a['id']]??PHP_INT_MAX)<=>($positions[(string)$b['id']]??PHP_INT_MAX)));
@@ -64,7 +65,7 @@ return static function (Router $router): void {
  $router->post('/api/v1/tests/preparation/{id}/finish',static function(Request $r,array $p)use($auth):void{
   if(!$auth($r))return;try{$db=Connection::pdo();$s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
-   $a=$db->prepare("select r.*,q.text as question_text,q.subject_id,q.module_id,q.topic_id,m.name as module_name,top.name as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
+   $a=$db->prepare("select r.*,q.text as question_text,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
    $total=count($session['question_ids']);$correct=count(array_filter($rows,static fn($x)=>(bool)$x['is_correct']));$answered=count($rows);$percent=$total?round($correct/$total*100,2):0;
    $topic=[];foreach($rows as $x){$k=$x['topic_id']?:'unknown';if(!isset($topic[$k]))$topic[$k]=['topic_id'=>$x['topic_id'],'topic_name'=>$x['topic_name']?:'Без темы','total'=>0,'correct'=>0];$topic[$k]['total']++;if($x['is_correct'])$topic[$k]['correct']++;}
    foreach($topic as &$v)$v['percent']=round($v['correct']/$v['total']*100,2);unset($v);
@@ -79,7 +80,7 @@ return static function (Router $router): void {
    $db=Connection::pdo();
    $s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='completed'");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Completed preparation session not found',$r->requestId,404);return;}
-   $q=$db->prepare("select r.question_id,r.answer_text,r.is_correct,q.text,q.answer,m.name as module_name,top.name as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$q->execute(['sid'=>$session['id']]);$rows=$q->fetchAll()?:[];
+   $q=$db->prepare("select r.question_id,r.answer_text,r.is_correct,q.text,q.answer,m.title as module_name,top.title as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$q->execute(['sid'=>$session['id']]);$rows=$q->fetchAll()?:[];
    if(!$rows){Response::error('NO_RESULTS','Нет ответов для AI-разбора',$r->requestId,422);return;}
    $payload=[];foreach($rows as $x)$payload[]=['question_id'=>$x['question_id'],'question'=>$x['text'],'student_answer'=>$x['answer_text'],'correct_answer'=>$x['answer'],'is_correct'=>(bool)$x['is_correct'],'module'=>$x['module_name'],'topic'=>$x['topic_name']];
    $messages=[['role'=>'system','content'=>'Ты учебный AI-аналитик. Верни только JSON с ключами summary, strengths, weak_topics, error_breakdown, recommendations, next_practice. Не придумывай факты.'],['role'=>'user','content'=>json_encode(['results'=>$payload],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]];
