@@ -12,6 +12,45 @@ import {
   type PreparationQuestion,
 } from "@/lib/api";
 
+type QuestionOption = string | { label?: unknown; correct?: boolean };
+const optionLabel = (option: QuestionOption) =>
+  typeof option === "string" ? option : String(option?.label ?? "");
+const optionCorrect = (option: QuestionOption) =>
+  typeof option !== "string" && option?.correct === true;
+
+function parseSelection(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map((x) => String(x)).filter(Boolean);
+  } catch {}
+  return value.trim() ? [value.trim()] : [];
+}
+
+function correctLabels(q: any): string[] {
+  return Array.isArray(q?.options)
+    ? q.options.filter((o: QuestionOption) => optionCorrect(o)).map(optionLabel)
+    : [];
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  const norm = (xs: string[]) => Array.from(new Set(xs.map((x) => x.trim().toLowerCase()).filter(Boolean))).sort();
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+}
+
+function answerCorrect(q: any, value: string | undefined): boolean {
+  const selected = parseSelection(value);
+  const correct = correctLabels(q);
+  if (correct.length) return selected.length > 0 && sameSet(selected, correct);
+  return selected.length > 0 && selected[0].trim().toLowerCase() === String(q?.answer ?? "").trim().toLowerCase();
+}
+
+function answerDisplay(q: any, value: string | undefined): string {
+  const selected = parseSelection(value);
+  if (!selected.length) return "";
+  return selected.join("; ");
+}
+
 export default function PreparationPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -171,9 +210,9 @@ export default function PreparationPage() {
         <div className="space-y-3">
           <h2 className="text-lg font-bold">Разбор вопросов</h2>
           {questions.map((qq, i) => {
-            const user = String(answers[qq.id] || "").trim();
-            const etalon = String(qq.answer || "").trim();
-            const ok = user !== "" && user.toLowerCase() === etalon.toLowerCase();
+            const user = answerDisplay(qq, answers[qq.id]);
+            const etalon = correctLabels(qq).join("; ") || String(qq.answer || "").trim();
+            const ok = checked[qq.id] && answerCorrect(qq, answers[qq.id]);
             const missed = user === "";
             return (
               <div
@@ -219,9 +258,26 @@ export default function PreparationPage() {
     q.type === "practical" ||
     !Array.isArray(q.options) ||
     q.options.length === 0;
-  const correct = checked[q.id] && String(answers[q.id] || "").trim() === String(q.answer || "").trim();
+  const options: QuestionOption[] = Array.isArray(q.options) ? q.options : [];
+  const correctOptionLabels = correctLabels(q);
+  const isMulti = !isOpen && correctOptionLabels.length > 1;
+  const selectedOptions = parseSelection(answers[q.id]);
+  const correct = checked[q.id] && answerCorrect(q, answers[q.id]);
   const answeredCount = Object.keys(checked).length;
   const isLast = idx === questions.length - 1;
+
+  function toggleOption(label: string) {
+    if (checked[q.id]) return;
+    setAnswers((prev) => {
+      const current = parseSelection(prev[q.id]);
+      const next = isMulti
+        ? current.includes(label)
+          ? current.filter((x) => x !== label)
+          : [...current, label]
+        : [label];
+      return { ...prev, [q.id]: JSON.stringify(next) };
+    });
+  }
 
   return (
     <div className="space-y-5">
@@ -232,7 +288,11 @@ export default function PreparationPage() {
           </h1>
           <p className="page-subtitle">
             Вопрос {idx + 1} из {questions.length} · отвечено {answeredCount}
-            {isOpen ? " · письменный ответ" : " · выбор варианта"} · незавершённый тест сохраняется
+            {isOpen
+              ? " · письменный ответ"
+              : isMulti
+                ? " · можно выбрать несколько вариантов"
+                : " · выберите вариант"} · незавершённый тест сохраняется
             {" · "}
             {experience === "exam"
               ? "эталоны после завершения"
@@ -283,22 +343,52 @@ export default function PreparationPage() {
             </button>
           </>
         ) : (
-          (q.options || []).map((o, i) => (
+          <>
+            {options.map((o, i) => {
+            const label = optionLabel(o);
+            const selected = selectedOptions.includes(label);
+            const isCorrectOption = optionCorrect(o);
+            const stateClass = checked[q.id]
+              ? isCorrectOption
+                ? "border-emerald-400 bg-emerald-50"
+                : selected
+                  ? "border-rose-400 bg-rose-50"
+                  : "border-slate-200"
+              : selected
+                ? "border-indigo-400 bg-indigo-50"
+                : "border-slate-200 hover:bg-slate-50";
+            return (
+              <label
+                key={i}
+                className={"flex w-full cursor-pointer items-center gap-3 rounded-xl border p-3 text-left " + stateClass}
+              >
+                <input
+                  type={isMulti ? "checkbox" : "radio"}
+                  name={"q-" + q.id}
+                  checked={selected}
+                  disabled={!!checked[q.id]}
+                  onChange={() => toggleOption(label)}
+                  className="mt-0.5"
+                />
+                <ChemRichText text={label} className="flex-1 space-y-1" />
+              </label>
+            );
+            })}
             <button
-              key={i}
-              disabled={!!checked[q.id]}
-              onClick={() => void answer(String(o))}
-              className={`block w-full rounded-xl border p-3 text-left ${
-                checked[q.id] && String(o) === String(q.answer)
-                  ? "border-emerald-400 bg-emerald-50"
-                  : checked[q.id] && answers[q.id] === String(o)
-                    ? "border-rose-400 bg-rose-50"
-                    : "hover:bg-slate-50"
-              }`}
+              type="button"
+              disabled={!!checked[q.id] || selectedOptions.length === 0}
+              onClick={() => void answer(JSON.stringify(selectedOptions))}
+              className="btn-primary"
             >
-              <ChemRichText text={String(o)} className="space-y-1" />
+              {experience === "prepare"
+                ? isMulti
+                  ? "Проверить выбор"
+                  : "Проверить ответ"
+                : isMulti
+                  ? "Сохранить выбор"
+                  : "Сохранить ответ"}
             </button>
-          ))
+          </>
         )}
 
         <QuestionReport questionId={q.id} />
