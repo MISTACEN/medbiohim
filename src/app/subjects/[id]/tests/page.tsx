@@ -97,10 +97,11 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                <Link href={href(test.id, "prepare")} className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">🎯 Подготовка<div className="mt-1 text-xs font-normal text-indigo-600">сразу показать результат</div></Link>
-                <Link href={href(test.id, "solve")} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">📝 Решение<div className="mt-1 text-xs font-normal text-slate-500">решить и проверить после</div></Link>
-                <Link href={href(test.id, "exam")} className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-500">Экзамен<div className="mt-1 text-xs font-normal text-indigo-100">без ответов до конца</div></Link>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <Link href={`/tests/bank/${encodeURIComponent(test.id)}`} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">📚 Банк вопросов<div className="mt-1 text-xs font-normal text-emerald-700">все вопросы + ответы + режимы</div></Link>
+                <Link href={href(test.id, "prepare")} className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">🎯 Подготовка<div className="mt-1 text-xs font-normal text-indigo-600">случайная выборка, проверка сразу</div></Link>
+                <Link href={href(test.id, "solve")} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">📝 Решение<div className="mt-1 text-xs font-normal text-slate-500">случайная выборка, проверка в конце</div></Link>
+                <Link href={`/tests/preparation/${encodeURIComponent(test.id)}?flow=sequential&mode=prepare`} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500">↪ Весь банк подряд<div className="mt-1 text-xs font-normal text-emerald-50">1 → весь банк без пропусков</div></Link>
               </div>
             </article>
           ))}
