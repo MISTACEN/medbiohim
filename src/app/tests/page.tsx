@@ -283,7 +283,7 @@ export default function TestsPage() {
                 <div className="text-sm text-slate-500">{t.questionCount || "—"} вопросов</div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link><Link href={`/tests/preparation/${t.id}?mode=exam`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700">Экзамен</Link>
+                <Link href={`/tests/bank/${t.id}`} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">Банк вопросов</Link><Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link><Link href={`/tests/preparation/${t.id}?mode=exam`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700">Экзамен</Link>
                 {t.sourceFileId && <button type="button" className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" onClick={() => void openSource(t)}>Исходник{t.sourceFileName ? " · " + t.sourceFileName : ""}</button>}
                 <button
                 type="button"
