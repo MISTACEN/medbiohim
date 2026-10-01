@@ -278,6 +278,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                     <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
                       <div className="aspect-square bg-slate-100"><AtlasThumb id={String(card.id)} /></div>
                       <div className="p-2 text-xs font-medium text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
+                      <div className="px-2 pb-2 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
                     </button>
                   ))}
                 </div>
@@ -353,6 +354,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
             <div className="max-h-[90vh] max-w-3xl overflow-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
               <ImageBox id={String(lightbox.id)} />
               <h3 className="mt-3 text-lg font-bold">{lightbox.preparation?.name}</h3>
+              <div className="mt-1 text-xs font-medium text-indigo-500">Занятие: {topicLabel(lessonKeyOf(lightbox))}</div>
               {Array.isArray(lightbox.preparation?.captions) && lightbox.preparation.captions.length > 0 && (
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
                   {lightbox.preparation.captions.map((c: string, i: number) => <li key={i}>{c}</li>)}
