@@ -17,6 +17,8 @@ type Item = {
   control_type?: string | null;
   slug?: string;
   hours_note?: string;
+  total_hours?: number | null;
+  credits?: number | null;
   category?: string;
   icon?: string;
   blurb?: string;
@@ -63,8 +65,8 @@ function controlLabel(v?: string | null) {
 
 export default function SubjectsPage() {
   const { user } = useAuth();
-  const [course, setCourse] = useState<number | "">(user?.course ?? 2);
-  const [semester, setSemester] = useState<number | "">(3);
+  const [course, setCourse] = useState<number | "">(user?.course ?? "");
+  const [semester, setSemester] = useState<number | "">(user?.semester ?? "");
   const [items, setItems] = useState<Item[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,8 +74,9 @@ export default function SubjectsPage() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (user?.course != null && course === "") setCourse(user.course);
-  }, [user?.course, course]);
+    if (user?.course != null) setCourse(user.course);
+    if (user?.semester != null) setSemester(user.semester);
+  }, [user?.course, user?.semester]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,23 +109,8 @@ export default function SubjectsPage() {
             })
           );
         } else if (cat.ok) {
-          let list: Item[] = (cat.data.items || []).map((x: Item) => ({
-            id: x.slug || x.id,
-            name: x.name,
-            course_number: x.course_number ?? x.course ?? 2,
-            semester: x.semester ?? 3,
-            control_type: x.control_type,
-            slug: x.slug,
-            hours_note: x.hours_note,
-            category: x.category || "Другое",
-            icon: x.icon,
-            blurb: x.blurb,
-          }));
-          if (course !== "") list = list.filter((x) => x.course_number === course);
-          if (semester !== "") list = list.filter((x) => x.semester === semester);
-          setItems(list);
-          if (list.length === 0) setNote("Для выбранного курса и семестра предметов нет.");
-          else if (!r.ok) setNote("Показан официальный каталог. БД временно недоступна.");
+          setItems([]);
+          setNote("Для выбранного курса и семестра данные из основной БД недоступны. Устаревший каталог не подставляется.");
         } else {
           setItems([]);
           setNote(r.ok ? "Пусто" : r.error.message);
@@ -234,7 +222,7 @@ export default function SubjectsPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((s) => {
                 const Icon = subjectIcon(s.icon);
-                const href = `/subjects/${encodeURIComponent(s.slug || s.id)}`;
+                const href = `/subjects/${encodeURIComponent(s.id)}`;
                 return (
                   <div key={s.id} className="group flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--primary)]/35 hover:shadow-md">
                     <Link href={href} className="flex flex-1 gap-3">
@@ -244,6 +232,7 @@ export default function SubjectsPage() {
                         {s.blurb && <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">{s.blurb}</p>}
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                           {controlLabel(s.control_type) && <span className="rounded-full bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]">{controlLabel(s.control_type)}</span>}
+                          {s.total_hours != null && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.total_hours} ч{s.credits != null ? ` / ${s.credits} з.е.` : ""}</span>}
                           {s.hours_note && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.hours_note}</span>}
                         </div>
                       </div>
