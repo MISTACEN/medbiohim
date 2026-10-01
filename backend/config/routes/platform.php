@@ -514,7 +514,7 @@ return static function (Router $router): void {
             try {
                 Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
             } catch (\Throwable $x) {
-                Response::error('DB_ERROR', $x->getMessage(), 500);
+                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
             }
         }
     });
@@ -528,7 +528,7 @@ return static function (Router $router): void {
             Response::success($meta, $req->requestId);
         } catch (Throwable $e) {
             try { Response::success(SupabaseRest::calendarMeta($course, $semester), $req->requestId); }
-            catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), 500); }
+            catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500); }
         }
     });
 
@@ -561,7 +561,7 @@ return static function (Router $router): void {
             try {
                 Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
             } catch (\Throwable $x) {
-                Response::error('DB_ERROR', $x->getMessage(), 500);
+                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
             }
         }
     });
