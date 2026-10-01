@@ -46,13 +46,15 @@ return static function (Router $router): void {
  $router->post('/api/v1/tests/{id}/preparation/start',static function(Request $r,array $p)use($auth):void{
   if(!$auth($r))return;
   $testId=(string)$p['id']; $body=is_array($r->jsonBody??null)?$r->jsonBody:[];
-  $mode=($body['mode']??'full')==='count'?'count':'full'; $limit=$mode==='count'?max(1,min(200,(int)($body['question_limit']??10))):null;
+  $requestedMode=(string)($body['mode']??'full');
+  $mode=$requestedMode==='sequential'?'sequential':($requestedMode==='count'?'count':'full');
+  $limit=$mode==='count'?max(1,min(200,(int)($body['question_limit']??10))):null;
   try{
    $db=Connection::pdo();
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
-   // Каждая новая попытка получает случайный порядок.
-   shuffle($ids);
+   // sequential = весь банк в исходном порядке; count/full остаются существующими режимами.
+   if($mode!=='sequential') shuffle($ids);
    if($limit!==null)$ids=array_slice($ids,0,$limit);
    if(!$ids){Response::error('NO_QUESTIONS','В тесте нет опубликованных вопросов', $r->requestId,422);return;}
 
@@ -89,6 +91,41 @@ return static function (Router $router): void {
    }
    Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);
   }
+ });
+
+ $router->get('/api/v1/tests/{id}/bank-progress',static function(Request $r,array $p)use($auth):void{
+  if(!$auth($r))return;
+  try{
+    $db=Connection::pdo();
+    $tid=(string)$p['id'];
+    $totalQ=$db->prepare("select count(*) from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null");
+    $totalQ->execute(['tid'=>$tid]);$total=(int)$totalQ->fetchColumn();
+
+    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and mode='sequential' order by started_at desc limit 1");
+    $s->execute(['uid'=>$r->user->id,'tid'=>$tid]);$session=$s->fetch();
+
+    $answered=0;$correct=0;
+    if($session){
+      $a=$db->prepare("select count(*) total,count(*) filter(where is_correct=true) correct from public.test_preparation_results where session_id=:sid");
+      $a->execute(['sid'=>$session['id']]);$row=$a->fetch()?:[];
+      $answered=(int)($row['total']??0);$correct=(int)($row['correct']??0);
+    }
+    $completed=(bool)($session && $session['status']==='completed' && $total>0 && $answered >= $total);
+    Response::success([
+      'total'=>$total,
+      'answered'=>$answered,
+      'correct'=>$correct,
+      'remaining'=>max(0,$total-$answered),
+      'completed'=>$completed,
+      'session'=>$session ? [
+        'id'=>$session['id'],
+        'status'=>$session['status'],
+        'current_index'=>(int)$session['current_index'],
+        'started_at'=>$session['started_at'],
+        'completed_at'=>$session['completed_at']??null
+      ] : null
+    ],$r->requestId);
+  }catch(\Throwable $e){Response::error('PROGRESS_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
  $router->get('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
