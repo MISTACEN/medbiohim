@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+/**
+ * Карточки SRS (SM-2). Не экзаменационные билеты — они на /tickets.
+ */
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   srsSummary,
   srsDue,
@@ -9,7 +14,8 @@ import {
   type SrsCard,
   type SrsSummary,
 } from "@/lib/features-api";
-import { Brain, Loader2, RotateCcw, Check, Flame } from "lucide-react";
+import { Brain, Loader2, RotateCcw, Check, Flame, ChevronLeft } from "lucide-react";
+import { resolveSubjectSlug } from "@/lib/subjectSlug";
 
 type Rating = 1 | 2 | 3 | 4;
 
@@ -20,7 +26,14 @@ const RATING_BTNS: Array<{ r: Rating; label: string; hint: string; className: st
   { r: 4, label: "Легко", hint: "длиннее", className: "bg-sky-500 hover:bg-sky-600 text-white" },
 ];
 
-export default function CardsPage() {
+function CardsPageInner() {
+  const search = useSearchParams();
+  const fromUrl = useMemo(() => {
+    const slug = search.get("subject_slug") || search.get("slug") || "";
+    const id = search.get("subject") || "";
+    return resolveSubjectSlug(slug || id);
+  }, [search]);
+
   const [summary, setSummary] = useState<SrsSummary | null>(null);
   const [queue, setQueue] = useState<SrsCard[]>([]);
   const [idx, setIdx] = useState(0);
@@ -34,10 +47,7 @@ export default function CardsPage() {
   const refresh = useCallback(async (slug?: string) => {
     setLoading(true);
     setError(null);
-    const [sumRes, dueRes] = await Promise.all([
-      srsSummary(),
-      srsDue(25, slug || undefined),
-    ]);
+    const [sumRes, dueRes] = await Promise.all([srsSummary(), srsDue(25, slug || undefined)]);
     setLoading(false);
     if (!sumRes.ok) {
       setError(sumRes.error.message);
@@ -54,8 +64,9 @@ export default function CardsPage() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (fromUrl) setSubjectSlug(fromUrl);
+    void refresh(fromUrl || undefined);
+  }, [refresh, fromUrl]);
 
   const card = queue[idx] || null;
 
@@ -82,11 +93,8 @@ export default function CardsPage() {
     setSummary(res.data.summary);
     setDoneToday((n) => n + 1);
     setFlipped(false);
-    if (idx + 1 < queue.length) {
-      setIdx(idx + 1);
-    } else {
-      await refresh(subjectSlug || undefined);
-    }
+    if (idx + 1 < queue.length) setIdx(idx + 1);
+    else await refresh(subjectSlug || undefined);
   }
 
   if (loading) {
@@ -99,6 +107,15 @@ export default function CardsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {fromUrl && (
+        <Link
+          href={`/subjects/${encodeURIComponent(fromUrl)}`}
+          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+        >
+          <ChevronLeft className="h-4 w-4" />К предмету
+        </Link>
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -106,7 +123,8 @@ export default function CardsPage() {
             Карточки SRS
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Интервальное повторение (SM-2) по всем предметам. Ошибки закрепляются, лёгкое уходит дальше.
+            Интервальное повторение (SM-2). Не экзаменационные билеты — они в разделе «Билеты».
+            {subjectSlug ? ` · ${subjectSlug}` : ""}
           </p>
         </div>
         {summary && (
@@ -117,11 +135,8 @@ export default function CardsPage() {
             <span className="rounded-full border border-[var(--border)] px-3 py-1">
               В колоде: {summary.total}
             </span>
-            <span className="rounded-full border border-[var(--border)] px-3 py-1">
-              Новых доступно: {summary.new_available}
-            </span>
             {doneToday > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 font-medium text-orange-800 dark:bg-orange-950/50 dark:text-orange-200">
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 font-medium text-orange-800">
                 <Flame className="h-3.5 w-3.5" /> сегодня {doneToday}
               </span>
             )}
@@ -156,18 +171,13 @@ export default function CardsPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-          {error}
-        </div>
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
       {!card ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-10 text-center shadow-sm">
           <Check className="mx-auto h-10 w-10 text-[var(--success)]" />
           <p className="mt-3 font-semibold">На сейчас карточек нет</p>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Добавьте новые в колоду или зайдите позже — интервалы пересчитаются.
-          </p>
           <button
             type="button"
             onClick={() => void loadMore()}
@@ -181,27 +191,24 @@ export default function CardsPage() {
           <div className="text-xs text-[var(--muted)]">
             {idx + 1} / {queue.length}
             {card.subject ? ` · ${card.subject}` : ""}
-            {card.topic ? ` · ${card.topic}` : ""}
           </div>
-
           <button
             type="button"
             onClick={() => setFlipped((f) => !f)}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-left shadow-sm transition hover:border-[var(--primary)]/40 min-h-[220px]"
+            className="min-h-[220px] w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-left shadow-sm"
           >
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-              {flipped ? "Ответ" : "Вопрос"} · нажмите, чтобы перевернуть
+              {flipped ? "Ответ" : "Вопрос"}
             </div>
             <div className="whitespace-pre-wrap text-base leading-relaxed">
-              {flipped ? card.back || "— (нет эталонного ответа)" : card.front}
+              {flipped ? card.back || "—" : card.front}
             </div>
           </button>
-
           {!flipped ? (
             <button
               type="button"
               onClick={() => setFlipped(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-sm font-semibold hover:bg-[var(--primary-soft)]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-sm font-semibold"
             >
               <RotateCcw className="h-4 w-4" /> Показать ответ
             </button>
@@ -221,12 +228,16 @@ export default function CardsPage() {
               ))}
             </div>
           )}
-
-          <p className="text-center text-[11px] text-[var(--muted)]">
-            Снова → сразу · Трудно → короче интервал · Хорошо / Легко → дальше по SM-2
-          </p>
         </>
       )}
     </div>
+  );
+}
+
+export default function CardsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка карточек…</div>}>
+      <CardsPageInner />
+    </Suspense>
   );
 }
