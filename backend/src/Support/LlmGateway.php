@@ -130,4 +130,447 @@ final class LlmGateway
         if (trim($text) === '') throw new \RuntimeException('Empty LLM content');
         return trim($text);
     }
+    /** Explicit provider used by the persistent AI chat. */
+    public static function chatProvider(string $provider, array $messages, float $temperature = 0.4): array
+    {
+        $provider = strtolower(trim($provider));
+        if ($provider === 'auto') {
+            $preferred = strtolower((string)(Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq') ?? 'groq'));
+            $chain = array_values(array_unique([$preferred, 'groq', 'gigachat', 'gemini', 'mistral', 'openrouter']));
+            $errors = [];
+            foreach ($chain as $p) {
+                try { return self::chatProvider($p, $messages, $temperature); }
+                catch (\Throwable $e) { $errors[] = $p . ': ' . Str::sub($e->getMessage(), 0, 160); }
+            }
+            throw new \RuntimeException('AI providers unavailable: ' . implode(' | ', $errors));
+        }
+        if (self::isRegionBlocked($provider)) {
+            throw new \RuntimeException(self::regionBlockReason($provider));
+        }
+        if ($provider === 'gigachat' || $provider === 'giga') {
+            return self::chatGigaChat($messages, $temperature);
+        }
+        if ($provider === 'groq') {
+            return self::chatGroq($messages, $temperature);
+        }
+        if ($provider === 'gemini' || $provider === 'google') {
+            return self::chatGemini($messages, $temperature);
+        }
+        if ($provider === 'mistral') {
+            return self::chatMistral($messages, $temperature);
+        }
+        if ($provider === 'openrouter') {
+            return self::chatOpenRouter($messages, $temperature);
+        }
+        throw new \InvalidArgumentException('Unknown AI provider: ' . $provider);
+    }
+
+    /**
+     * Multimodal image understanding for ingestion/OCR workflows.
+     * Accepts OpenAI-compatible image_url data URLs in message content.
+     * Provider is selected by LLM_VISION_PROVIDER=auto|gemini|openrouter.
+     */
+    public static function vision(array $messages, float $temperature = 0.1): array
+    {
+        $preferred = strtolower(trim((string) (Env::get('LLM_VISION_PROVIDER', 'auto') ?? 'auto')));
+        $chain = $preferred === 'auto'
+            ? ['gemini', 'openrouter']
+            : [$preferred, 'gemini', 'openrouter'];
+        $errors = [];
+        foreach (array_values(array_unique($chain)) as $provider) {
+            try {
+                if ($provider === 'gemini') return self::visionGemini($messages, $temperature);
+                if ($provider === 'openrouter') return self::visionOpenRouter($messages, $temperature);
+            } catch (\Throwable $e) {
+                $errors[] = $provider . ': ' . Str::sub($e->getMessage(), 0, 180);
+            }
+        }
+        throw new \RuntimeException('Vision providers unavailable: ' . implode(' | ', $errors));
+    }
+
+    /** @param list<array{role:string,content:mixed}> $messages */
+    private static function visionOpenRouter(array $messages, float $temperature): array
+    {
+        $key = trim((string) (Env::get('OPENROUTER_API_KEY', '') ?? ''));
+        if ($key === '') throw new \RuntimeException('OPENROUTER_API_KEY is not configured');
+        $base = rtrim((string) (Env::get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1') ?? 'https://openrouter.ai/api/v1'), '/');
+        $model = (string) (Env::get('OPENROUTER_VISION_MODEL', '') ?: Env::get('OPENROUTER_MODEL', 'google/gemini-2.5-flash'));
+        if ($model === '') throw new \RuntimeException('OPENROUTER_VISION_MODEL is not configured');
+        $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
+        $headers = [
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json',
+            'HTTP-Referer: https://medbiohim.vercel.app',
+            'X-Title: MEDBIOHIM Telegram ingestion',
+        ];
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException('OpenRouter vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $text = (string) ($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text) === '') throw new \RuntimeException('OpenRouter vision returned empty content');
+        return ['text' => trim($text), 'provider' => 'openrouter', 'model' => $model, 'mode' => 'api'];
+    }
+
+    /** @param list<array{role:string,content:mixed}> $messages */
+    private static function visionGemini(array $messages, float $temperature): array
+    {
+        $key = trim((string) (Env::get('GEMINI_API_KEY', '') ?? ''));
+        if ($key === '') throw new \RuntimeException('GEMINI_API_KEY is not configured');
+        $base = rtrim((string) (Env::get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta') ?? 'https://generativelanguage.googleapis.com/v1beta'), '/');
+        $model = (string) (self::normalizeGeminiModel(Env::get('GEMINI_VISION_MODEL', '') ?: Env::get('GEMINI_MODEL', 'gemini-3.6-flash')));
+        $system = '';
+        $contents = [];
+        foreach ($messages as $m) {
+            $role = (string) ($m['role'] ?? 'user');
+            $content = $m['content'] ?? '';
+            if ($role === 'system') {
+                $system .= ($system !== '' ? "\\n" : '') . (string) $content;
+                continue;
+            }
+            $parts = [];
+            if (is_string($content)) {
+                $parts[] = ['text' => $content];
+            } elseif (is_array($content)) {
+                foreach ($content as $part) {
+                    if (!is_array($part)) continue;
+                    if (($part['type'] ?? '') === 'text') {
+                        $parts[] = ['text' => (string) ($part['text'] ?? '')];
+                        continue;
+                    }
+                    if (($part['type'] ?? '') === 'image_url') {
+                        $url = (string) ($part['image_url']['url'] ?? '');
+                        if (preg_match('#^data:([^;]+);base64,(.+)$#s', $url, $m2)) {
+                            $parts[] = ['inline_data' => ['mime_type' => $m2[1], 'data' => $m2[2]]];
+                        }
+                    }
+                }
+            }
+            if ($parts) $contents[] = ['role' => $role === 'assistant' ? 'model' : 'user', 'parts' => $parts];
+        }
+        if (!$contents) throw new \InvalidArgumentException('At least one multimodal user message is required');
+        $payload = [
+            'contents' => $contents,
+            'generationConfig' => [
+                'temperature' => $temperature,
+                'maxOutputTokens' => (int) (Env::get('GEMINI_MAX_OUTPUT_TOKENS', '2048') ?? 2048),
+            ],
+        ];
+        if ($system !== '') $payload['systemInstruction'] = ['parts' => [['text' => $system]]];
+        $res = HttpClient::request('POST', $base . '/models/' . rawurlencode($model) . ':generateContent', $payload, [
+            'x-goog-api-key: ' . $key,
+            'Content-Type: application/json',
+        ], 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException('Gemini vision HTTP ' . (int) ($res['status'] ?? 0) . ': ' . Str::sub((string) ($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $parts = $body['candidates'][0]['content']['parts'] ?? [];
+        $text = '';
+        foreach ($parts as $part) if (is_array($part) && isset($part['text'])) $text .= (string) $part['text'];
+        if (trim($text) === '') throw new \RuntimeException('Gemini vision returned empty content');
+        return ['text' => trim($text), 'provider' => 'gemini', 'model' => $model, 'mode' => 'api'];
+    }
+
+    private static function backendRegion(): string
+    {
+        return strtolower(trim((string)(Env::get('AI_BACKEND_REGION', 'ru') ?? 'ru')));
+    }
+
+    private static function isRegionBlocked(string $provider): bool
+    {
+        $region = self::backendRegion();
+        // SpaceWeb production is in Russia. Google Gemini API/AI Studio performs
+        // supported-region checks against the request origin, so do not advertise
+        // Gemini as usable from a RU backend. This is configurable if the backend moves.
+        if ($region === 'ru' && in_array($provider, ['gemini', 'google'], true)) return true;
+        return false;
+    }
+
+    private static function regionBlockReason(string $provider): string
+    {
+        if (self::backendRegion() === 'ru' && in_array($provider, ['gemini', 'google'], true)) {
+            return 'Gemini недоступен из региона backend (RU): запрос выполняется с российского SpaceWeb-сервера. Переместите backend в поддерживаемый регион или выберите другой AI provider.';
+        }
+        return $provider . ' недоступен из региона backend';
+    }
+
+    public static function chatProvidersStatus(): array
+    {
+        $region = self::backendRegion();
+        $status = [
+            'region' => $region,
+            'providers' => [
+            'groq' => [
+                'configured' => (bool)Env::get('GROQ_API_KEY'),
+                'model' => Env::get('GROQ_MODEL', 'openai/gpt-oss-20b'),
+            ],
+            'gigachat' => [
+                'configured' => (bool)(Env::get('GIGACHAT_CREDENTIALS') || Env::get('GIGACHAT_ACCESS_TOKEN') || Env::get('LLM_PRIMARY_API_KEY')),
+                'model' => Env::get('GIGACHAT_MODEL', 'GigaChat'),
+            ],
+            'gemini' => [
+                'configured' => (bool)Env::get('GEMINI_API_KEY'),
+                'model' => self::normalizeGeminiModel(Env::get('GEMINI_MODEL', 'gemini-3.6-flash')),
+            ],
+            'mistral' => [
+                'configured' => (bool)Env::get('MISTRAL_API_KEY'),
+                'model' => Env::get('MISTRAL_MODEL', 'mistral-small-latest'),
+            ],
+            'openrouter' => [
+                'configured' => (bool)(Env::get('OPENROUTER_API_KEY') && Env::get('OPENROUTER_MODEL')),
+                'model' => Env::get('OPENROUTER_MODEL', ''),
+            ],
+            ],
+            'default' => Env::get('AI_CHAT_PRIMARY_PROVIDER', 'groq'),
+        ];
+        foreach ($status['providers'] as $name => &$item) {
+            $item['available'] = (bool)$item['configured'] && !self::isRegionBlocked($name);
+            $item['reason'] = self::isRegionBlocked($name) ? self::regionBlockReason($name) : null;
+        }
+        unset($item);
+        return $status;
+    }
+
+    private static function chatGroq(array $messages, float $temperature): array
+    {
+        $key = trim((string)(Env::get('GROQ_API_KEY', '') ?? ''));
+        if ($key === '') throw new \RuntimeException('GROQ_API_KEY is not configured');
+        $base = rtrim((string)(Env::get('GROQ_BASE_URL', 'https://api.groq.com/openai/v1') ?? 'https://api.groq.com/openai/v1'), '/');
+        $model = (string)(Env::get('GROQ_MODEL', 'openai/gpt-oss-20b') ?? 'openai/gpt-oss-20b');
+        $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, [
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json',
+        ], 90);
+        if (($res['status'] ?? 0) === 403) {
+            // Groq can deny a model because of organization/project permissions.
+            // Ask the models endpoint which production models this key can see,
+            // then retry once with an allowed model instead of failing the whole chain.
+            $fallback = self::groqAllowedFallback($key, $model, $base);
+            if ($fallback !== null) {
+                $model = $fallback;
+                $payload['model'] = $model;
+                $res = HttpClient::request('POST', $base . '/chat/completions', $payload, [
+                    'Authorization: Bearer ' . $key,
+                    'Content-Type: application/json',
+                ], 90);
+            }
+        }
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException('Groq HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $text = (string)($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text) === '') throw new \RuntimeException('Groq returned empty content');
+        return ['text' => trim($text), 'provider' => 'groq', 'model' => $model, 'mode' => 'api'];
+    }
+
+    private static function groqAllowedFallback(string $key, string $currentModel, string $base): ?string
+    {
+        $res = HttpClient::request('GET', $base . '/models', null, [
+            'Authorization: Bearer ' . $key,
+            'Accept: application/json',
+        ], 20);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) return null;
+        $models = $res['json']['data'] ?? [];
+        if (!is_array($models)) return null;
+        $preferred = [
+            'openai/gpt-oss-120b',
+            'openai/gpt-oss-20b',
+            'qwen/qwen3.8-27b',
+            'llama-3.3-70b-versatile',
+        ];
+        $available = [];
+        foreach ($models as $item) {
+            if (!is_array($item) || empty($item['id'])) continue;
+            $id = (string)$item['id'];
+            if ($id !== $currentModel) $available[$id] = true;
+        }
+        foreach ($preferred as $id) if (isset($available[$id])) return $id;
+        return null;
+    }
+
+    private static function chatGigaChat(array $messages, float $temperature): array
+    {
+        $base = rtrim((string)(Env::get('GIGACHAT_BASE_URL', 'https://api.giga.chat/v1') ?? 'https://api.giga.chat/v1'), '/');
+        $model = (string)(Env::get('GIGACHAT_MODEL', 'GigaChat') ?? 'GigaChat');
+        // Access tokens are short-lived (about 30 minutes). Prefer a freshly
+        // cached token obtained from the authorization key and refresh on 401.
+        $token = self::gigaAccessToken();
+        $payload = ['model'=>$model,'temperature'=>$temperature,'messages'=>self::normalizeTextMessages($messages)];
+        $headers = [
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'User-Agent: MEDBIOHIM/1.0',
+        ];
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) === 401) {
+            $token = self::gigaAccessToken(true);
+            $headers[0] = 'Authorization: Bearer ' . $token;
+            $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        }
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException('GigaChat HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,300));
+        }
+        $body=$res['json'] ?? [];
+        $text=(string)($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text)==='') throw new \RuntimeException('GigaChat returned empty content');
+        return ['text'=>trim($text),'provider'=>'gigachat','model'=>$model,'mode'=>'api'];
+    }
+
+    private static function gigaAccessToken(bool $forceRefresh = false): string
+    {
+        $credential = trim((string)(Env::get('GIGACHAT_CREDENTIALS') ?: Env::get('GIGACHAT_AUTH_KEY') ?: Env::get('LLM_PRIMARY_API_KEY') ?: ''));
+        if ($credential === '') {
+            $static = trim((string)(Env::get('GIGACHAT_ACCESS_TOKEN', '') ?? ''));
+            if ($static !== '') return $static;
+            throw new \RuntimeException('GigaChat credentials are not configured');
+        }
+        $scope = (string)(Env::get('GIGACHAT_SCOPE', 'GIGACHAT_API_PERS') ?? 'GIGACHAT_API_PERS');
+        $cache = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'medbiohim_gigachat_' . sha1($credential) . '.json';
+        if (!$forceRefresh && is_readable($cache)) {
+            $cached=json_decode((string)@file_get_contents($cache),true);
+            if (is_array($cached) && !empty($cached['access_token']) && (int)($cached['expires_at'] ?? 0) > time()+120) return (string)$cached['access_token'];
+        }
+        $rquid = self::uuid4();
+        $res = HttpClient::form('POST', 'https://ngw.devices.sberbank.ru:9443/api/v2/oauth', ['scope'=>$scope], [
+            'RqUID: ' . $rquid,
+            'Authorization: Basic ' . $credential,
+            'Accept: application/json',
+            'User-Agent: MEDBIOHIM/1.0',
+        ], 20);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException('GigaChat OAuth HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,500));
+        }
+        $body=$res['json'] ?? [];
+        $token=(string)($body['access_token'] ?? '');
+        if ($token==='') throw new \RuntimeException('GigaChat OAuth returned no access_token');
+        @file_put_contents($cache,json_encode(['access_token'=>$token,'expires_at'=>(int)($body['expires_at'] ?? time()+1500)]),LOCK_EX);
+        return $token;
+    }
+
+    private static function normalizeGeminiModel(?string $model): string
+    {
+        $model = trim((string)($model ?? ''));
+        if (str_starts_with($model, 'models/')) $model = substr($model, 7);
+        if ($model === '' || in_array($model, ['gemini-2.0-flash','gemini-2.0-flash-lite'], true)) {
+            return 'gemini-3.6-flash';
+        }
+        return $model;
+    }
+
+    private static function chatGemini(array $messages, float $temperature): array
+    {
+        // Gemini is executed by the Vercel proxy so the Google API sees the
+        // Vercel region, while GEMINI_API_KEY never leaves Vercel.
+        // Vision is supported by passing content parts through to the Vercel proxy.
+        // Each message may contain content: [{type:text,text:...},{type:image_url,image_url:{url:...}}].
+        $proxy = trim((string)(Env::get('GEMINI_VERCEL_PROXY_URL', '') ?? ''));
+        $secret = trim((string)(Env::get('GEMINI_VERCEL_PROXY_SECRET', '') ?? ''));
+        if ($proxy !== '' && $secret !== '') {
+            $res = HttpClient::request('POST', rtrim($proxy, '/'), [
+                'messages' => $messages,
+                'temperature' => $temperature,
+                'model' => self::normalizeGeminiModel(Env::get('GEMINI_MODEL', 'gemini-3.6-flash')),
+            ], [
+                'Authorization: Bearer ' . $secret,
+                'Content-Type: application/json',
+            ], 90);
+            if (($res['status'] ?? 0) >= 200 && ($res['status'] ?? 0) < 300) {
+                $body = $res['json'] ?? [];
+                if (is_string($body['text'] ?? null) && trim($body['text']) !== '') {
+                    return ['text'=>trim($body['text']),'provider'=>'gemini','model'=>(string)($body['model'] ?? Env::get('GEMINI_MODEL','gemini-3.6-flash')),'mode'=>'vercel-proxy'];
+                }
+            }
+            throw new \RuntimeException('Gemini Vercel proxy HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,500));
+        }
+
+        // Legacy direct mode, useful only when backend itself is deployed in a
+        // Gemini-supported region.
+        $key=trim((string)(Env::get('GEMINI_API_KEY','') ?? ''));
+        if($key==='') throw new \RuntimeException('GEMINI_API_KEY is not configured');
+        $base=rtrim((string)(Env::get('GEMINI_BASE_URL','https://generativelanguage.googleapis.com') ?? 'https://generativelanguage.googleapis.com'),'/');
+        $model=self::normalizeGeminiModel(Env::get('GEMINI_MODEL','gemini-3.6-flash'));
+        $system=''; $input=[];
+        foreach($messages as $m){ $role=(string)($m['role']??'user'); $content=(string)($m['content']??''); if($role==='system'){ $system.=($system!==''?"\n":'').$content; continue; } $input[]=['type'=>$role==='assistant'?'model_output':'user_input','content'=>[['type'=>'text','text'=>$content]]]; }
+        if(!$input) throw new \InvalidArgumentException('At least one user message is required');
+        $payload=['model'=>$model,'input'=>$input,'store'=>false,'generation_config'=>['temperature'=>$temperature,'max_output_tokens'=>(int)(Env::get('GEMINI_MAX_OUTPUT_TOKENS','2048')??2048)]];
+        if($system!=='') $payload['system_instruction']=$system;
+        $res=HttpClient::request('POST',$base.'/v1/interactions',$payload,['x-goog-api-key: '.$key,'Content-Type: application/json'],90);
+        if(($res['status']??0)<200||($res['status']??0)>=300) throw new \RuntimeException('Gemini Interactions HTTP '.(int)($res['status']??0).': '.Str::sub((string)($res['body']??''),0,500));
+        $body=$res['json']??[]; $text='';
+        foreach(($body['steps']??[]) as $step) foreach(($step['content']??[]) as $part) if(is_array($part)&&($part['type']??'')==='text') $text.=(string)($part['text']??'');
+        if(trim($text)==='') throw new \RuntimeException('Gemini Interactions returned empty content');
+        return ['text'=>trim($text),'provider'=>'gemini','model'=>$model,'mode'=>'interactions'];
+    }
+
+    private static function chatMistral(array $messages, float $temperature): array
+    {
+        $key = trim((string)(Env::get('MISTRAL_API_KEY', '') ?? ''));
+        if ($key === '') throw new \RuntimeException('MISTRAL_API_KEY is not configured');
+        $base = rtrim((string)(Env::get('MISTRAL_BASE_URL', 'https://api.mistral.ai/v1') ?? 'https://api.mistral.ai/v1'), '/');
+        $model = (string)(Env::get('MISTRAL_MODEL', 'mistral-small-latest') ?? 'mistral-small-latest');
+        return self::chatOpenAICompatible($base, $key, $model, self::normalizeTextMessages($messages), $temperature, 'mistral');
+    }
+
+    private static function chatOpenRouter(array $messages, float $temperature): array
+    {
+        $key = trim((string)(Env::get('OPENROUTER_API_KEY', '') ?? ''));
+        $model = trim((string)(Env::get('OPENROUTER_MODEL', '') ?? ''));
+        if ($key === '' || $model === '') throw new \RuntimeException('OPENROUTER_API_KEY and OPENROUTER_MODEL are required');
+        $base = rtrim((string)(Env::get('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1') ?? 'https://openrouter.ai/api/v1'), '/');
+        return self::chatOpenAICompatible($base, $key, $model, $messages, $temperature, 'openrouter', [
+            'HTTP-Referer: https://medbiohim.vercel.app',
+            'X-Title: MEDBIOHIM',
+        ]);
+    }
+
+    private static function normalizeTextMessages(array $messages): array
+    {
+        $out=[];
+        foreach($messages as $m){
+            if(!is_array($m)) continue;
+            $role=(string)($m['role']??'user');
+            if(!in_array($role,['system','user','assistant','tool'],true)) $role='user';
+            $content=$m['content']??'';
+            if(is_string($content)) $text=$content;
+            elseif(is_array($content)){
+                $parts=[];
+                foreach($content as $part){
+                    if(is_string($part)) $parts[]=$part;
+                    elseif(is_array($part) && isset($part['text'])) $parts[]=(string)$part['text'];
+                }
+                $text=implode("\n",$parts);
+            } else $text=(string)$content;
+            $out[]=['role'=>$role,'content'=>$text];
+        }
+        return $out;
+    }
+
+    private static function chatOpenAICompatible(string $base, string $key, string $model, array $messages, float $temperature, string $provider, array $extraHeaders = []): array
+    {
+        $payload = ['model' => $model, 'temperature' => $temperature, 'messages' => $messages];
+        $headers = array_merge([
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json',
+        ], $extraHeaders);
+        $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
+            throw new \RuntimeException(ucfirst($provider) . ' HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
+        }
+        $body = $res['json'] ?? [];
+        $text = (string)($body['choices'][0]['message']['content'] ?? '');
+        if (trim($text) === '') throw new \RuntimeException(ucfirst($provider) . ' returned empty content');
+        return ['text' => trim($text), 'provider' => $provider, 'model' => $model, 'mode' => 'api'];
+    }
+
+    private static function uuid4(): string
+    {
+        $d=random_bytes(16); $d[6]=chr((ord($d[6])&0x0f)|0x40); $d[8]=chr((ord($d[8])&0x3f)|0x80);
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s',str_split(bin2hex($d),4));
+    }
+
 }
