@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3 } from "lucide-react";
+import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3, Flag, Pencil, Save, X } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
-import { adminOverview, adminUpdateSite, adminListAnnouncements, adminCreateAnnouncement, adminDeleteAnnouncement, adminListUsers, adminSetUserRole, listGroups, listSubjects, adminListSchedule, adminSaveSchedule, createGroup, createSubject, hasToken, api, type ScheduleItem } from "@/lib/api";
+import { adminOverview, adminUpdateSite, adminListAnnouncements, adminCreateAnnouncement, adminDeleteAnnouncement, adminListUsers, adminSetUserRole, listGroups, listSubjects, adminListSchedule, adminSaveSchedule, createGroup, createSubject, updateGroup, deleteGroup, updateSubject, deleteSubject, hasToken, api, type ScheduleItem } from "@/lib/api";
 
 type Tab = "overview" | "schedule" | "subjects" | "groups" | "content" | "roles" | "tools";
 /** id optional — новые занятия ещё без id из БД */
@@ -47,6 +47,10 @@ export default function AdminPage() {
   const [course, setCourse] = useState("2");
   const [gName, setGName] = useState("");
   const [gCode, setGCode] = useState("");
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroup, setEditingGroup] = useState({ name: "", code: "", course: "2" });
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [editingSubject, setEditingSubject] = useState({ name: "", course: "2", semester: "3" });
 
   function msg(err = "", good = "") { setError(err); setOk(good); }
 
@@ -153,6 +157,7 @@ export default function AdminPage() {
           <Link href="/admin/questions" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Ticket className="h-4 w-4" />Экзаменационные билеты</Link>
           <Link href="/admin/lectures" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><BookOpen className="h-4 w-4" />AI-лекции</Link>
           <Link href="/admin/tools" className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700"><Settings2 className="h-4 w-4" />Импорт / tools</Link>
+          <Link href="/admin/problems" className="flex w-full items-center gap-3 rounded-xl bg-rose-50 px-3 py-2.5 text-left text-sm font-semibold text-rose-700"><Flag className="h-4 w-4" />Проблемы и работы</Link>
           <div className="my-2 border-t border-slate-100" />
           {([ ["overview", "Обзор", LayoutDashboard], ["schedule", "Расписание", CalendarDays], ["subjects", "Предметы", BookOpen], ["groups", "Группы", Users], ["content", "Контент", FileText], ["roles", "Пользователи", ShieldCheck], ["tools", "ДЗ / медиа", Settings2] ] as const).map(([id, label, Icon]) => (
             <button key={id} type="button" onClick={() => setTab(id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${tab === id ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"}`}>
@@ -194,7 +199,7 @@ export default function AdminPage() {
                 </div>
                 <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={add}><Plus className="h-4 w-4" />Занятие</button>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3"><div className="text-[11px] font-bold uppercase tracking-wide text-indigo-500">Сейчас редактируется расписание</div><div className="mt-1 text-lg font-bold text-indigo-950">{groups.find((g) => String(g.id) === String(groupId))?.name || "Группа не выбрана"}</div><div className="text-sm text-indigo-700">{groups.find((g) => String(g.id) === String(groupId))?.code || "—"} · {groups.find((g) => String(g.id) === String(groupId))?.course_number || "—"} курс · {semester} семестр</div></div><div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-sm">Группа<select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">{groups.map((g) => <option key={g.id} value={g.id}>{g.name || g.code}</option>)}</select></label>
                 <label className="text-sm">Семестр<select value={semester} onChange={(e) => setSemester(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="3">3</option><option value="4">4</option><option value="2">2</option><option value="1">1</option></select></label>
               </div>
@@ -229,7 +234,7 @@ export default function AdminPage() {
                 <input type="number" min={1} value={course} onChange={(e) => setCourse(e.target.value)} placeholder="Курс" className="w-full rounded-xl border px-3 py-2" />
                 <button className="btn-primary">Создать</button>
               </form>
-              <div className="card"><h2 className="mb-2 font-bold">Предметы</h2>{subjects.map((s) => <div key={s.id} className="border-b py-2 text-sm last:border-0"><b>{s.name}</b>{s.course_number && <span className="ml-2 text-slate-400">{s.course_number} курс</span>}</div>)}</div>
+              <div className="card"><h2 className="mb-2 font-bold">Предметы</h2><div className="divide-y">{subjects.map((s) => editingSubjectId === String(s.id) ? (<div key={s.id} className="space-y-2 py-3"><input value={editingSubject.name} onChange={(e) => setEditingSubject({ ...editingSubject, name: e.target.value })} className="w-full rounded-xl border px-3 py-2" /><div className="grid grid-cols-2 gap-2"><input type="number" min={1} max={6} value={editingSubject.course} onChange={(e) => setEditingSubject({ ...editingSubject, course: e.target.value })} className="rounded-xl border px-3 py-2" /><input type="number" min={1} max={12} value={editingSubject.semester} onChange={(e) => setEditingSubject({ ...editingSubject, semester: e.target.value })} className="rounded-xl border px-3 py-2" /></div><div className="flex gap-2"><button type="button" className="btn-primary inline-flex items-center gap-1" onClick={async () => { const r = await updateSubject(String(s.id), { name: editingSubject.name.trim(), course_number: Number(editingSubject.course) || 1, semester: Number(editingSubject.semester) || 1 }); if (!r.ok) return msg(r.error.message); setEditingSubjectId(null); msg("", "Предмет обновлён"); const x = await listSubjects(); if (x.ok) setSubjects(x.data.items as any[]); }}><Save className="h-4 w-4" />Сохранить</button><button type="button" className="btn-secondary inline-flex items-center gap-1" onClick={() => setEditingSubjectId(null)}><X className="h-4 w-4" />Отмена</button></div></div>) : (<div key={s.id} className="flex items-center justify-between gap-3 py-3 text-sm"><div><b>{s.name}</b>{s.course_number && <span className="ml-2 text-slate-400">{s.course_number} курс</span>}{s.semester && <span className="ml-2 text-slate-400">· {s.semester} семестр</span>}</div><div className="flex shrink-0 gap-2"><button type="button" className="rounded-lg border p-2 text-slate-600 hover:bg-slate-50" title="Редактировать" onClick={() => { setEditingSubjectId(String(s.id)); setEditingSubject({ name: String(s.name || ""), course: String(s.course_number || 2), semester: String(s.semester || 3) }); }}><Pencil className="h-4 w-4" /></button><button type="button" className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50" title="Удалить" onClick={async () => { if (!window.confirm(`Удалить предмет «${s.name}»?`)) return; const r = await deleteSubject(String(s.id)); if (!r.ok) return msg(r.error.message); msg("", "Предмет удалён"); const x = await listSubjects(); if (x.ok) setSubjects(x.data.items as any[]); }}><Trash2 className="h-4 w-4" /></button></div></div>))}</div></div>
             </div>
           )}
 
@@ -241,7 +246,7 @@ export default function AdminPage() {
                 <input value={gCode} onChange={(e) => setGCode(e.target.value)} placeholder="Код" className="w-full rounded-xl border px-3 py-2" />
                 <button className="btn-primary">Создать</button>
               </form>
-              <div className="card"><h2 className="mb-2 font-bold">Группы</h2>{groups.map((g) => <div key={g.id} className="border-b py-2 text-sm last:border-0"><b>{g.name}</b><span className="ml-2 text-slate-400">{g.code || ""}</span></div>)}</div>
+              <div className="card"><h2 className="mb-2 font-bold">Группы</h2><div className="divide-y">{groups.map((g) => editingGroupId === String(g.id) ? (<div key={g.id} className="space-y-2 py-3"><input value={editingGroup.name} onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })} className="w-full rounded-xl border px-3 py-2" /><div className="grid grid-cols-2 gap-2"><input value={editingGroup.code} onChange={(e) => setEditingGroup({ ...editingGroup, code: e.target.value })} placeholder="Код" className="rounded-xl border px-3 py-2" /><input type="number" min={1} max={6} value={editingGroup.course} onChange={(e) => setEditingGroup({ ...editingGroup, course: e.target.value })} placeholder="Курс" className="rounded-xl border px-3 py-2" /></div><div className="flex gap-2"><button type="button" className="btn-primary inline-flex items-center gap-1" onClick={async () => { const r = await updateGroup(String(g.id), { name: editingGroup.name.trim(), code: editingGroup.code.trim(), course_number: Number(editingGroup.course) || 1 }); if (!r.ok) return msg(r.error.message); setEditingGroupId(null); msg("", "Группа обновлена"); const x = await listGroups(); if (x.ok) setGroups(x.data.items as any[]); }}><Save className="h-4 w-4" />Сохранить</button><button type="button" className="btn-secondary inline-flex items-center gap-1" onClick={() => setEditingGroupId(null)}><X className="h-4 w-4" />Отмена</button></div></div>) : (<div key={g.id} className="flex items-center justify-between gap-3 py-3 text-sm"><div><b>{g.name}</b><span className="ml-2 text-slate-400">{g.code || ""}</span>{g.course_number && <span className="ml-2 text-slate-400">· {g.course_number} курс</span>}</div><div className="flex shrink-0 gap-2"><button type="button" className="rounded-lg border p-2 text-slate-600 hover:bg-slate-50" title="Редактировать" onClick={() => { setEditingGroupId(String(g.id)); setEditingGroup({ name: String(g.name || ""), code: String(g.code || ""), course: String(g.course_number || 2) }); }}><Pencil className="h-4 w-4" /></button><button type="button" className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50" title="Удалить" onClick={async () => { if (!window.confirm(`Удалить группу «${g.name}»?`)) return; const r = await deleteGroup(String(g.id)); if (!r.ok) return msg(r.error.message); msg("", "Группа удалена"); const x = await listGroups(); if (x.ok) { const list = x.data.items as any[]; setGroups(list); if (groupId === String(g.id)) setGroupId(String(list[0]?.id || "")); } }}><Trash2 className="h-4 w-4" /></button></div></div>))}</div></div>
             </div>
           )}
 
