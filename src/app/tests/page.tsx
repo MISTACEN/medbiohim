@@ -15,6 +15,7 @@ import {
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { Confetti } from "@/components/ui/Confetti";
 import { QuestionReport } from "@/components/QuestionReport";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
 type UiTest = {
   id: string;
@@ -183,7 +184,8 @@ export default function TestsPage() {
         {active.questions.map((q, i) => (
           <div key={q.id} className="card space-y-3">
             <div className="font-medium">
-              {i + 1}. {q.body}
+              {i + 1}.{" "}
+              <ChemRichText text={q.body} className="mt-1 space-y-2 text-sm font-medium" />
             </div>
             <div className="space-y-2">
               {q.options.map((opt, oi) => (
@@ -199,7 +201,7 @@ export default function TestsPage() {
                     checked={picks[i] === oi}
                     onChange={() => setPicks((p) => ({ ...p, [i]: oi }))}
                   />
-                  {opt}
+                  <ChemRichText text={opt} className="flex-1 space-y-1 text-sm" />
                 </label>
               ))}
             </div>
