@@ -6,6 +6,7 @@ import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import {
   startPreparation,
   getPreparation,
+  getBankProgress,
   savePreparation,
   finishPreparation,
   preparationAiReview,
@@ -64,8 +65,9 @@ export default function PreparationPage() {
   const [ai, setAi] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<"full" | "count" | null>(null);
+  const [mode, setMode] = useState<"full" | "count" | "sequential" | null>(null);
   const [limit, setLimit] = useState(10);
+  const [bankProgress, setBankProgress] = useState<any>(null);
   const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
     (search.get("mode") as any) === "exam"
       ? "exam"
@@ -74,7 +76,7 @@ export default function PreparationPage() {
         : "prepare"
   );
 
-  async function begin(m: "full" | "count", n?: number) {
+  async function begin(m: "full" | "count" | "sequential", n?: number) {
     setMode(m);
     setLoading(true);
     setError("");
@@ -89,6 +91,10 @@ export default function PreparationPage() {
       setSession(d.data.session);
       setQuestions(d.data.questions || []);
       setIdx(d.data.session.current_index || 0);
+      if (m === "sequential") {
+        const p = await getBankProgress(id);
+        if (p.ok) setBankProgress(p.data);
+      }
       const a: Record<string, string> = {};
       for (const x of d.data.answers || []) a[x.question_id] = x.answer_text || "";
       setAnswers(a);
@@ -103,11 +109,12 @@ export default function PreparationPage() {
 
   useEffect(() => {
     const requested = search.get("mode");
-    if (!requested || mode !== null) return;
+    const flow = search.get("flow");
+    if ((!requested && flow !== "sequential") || mode !== null) return;
     const n = Math.max(1, Number(search.get("count") || limit));
     setLimit(n);
     setExperience(requested === "exam" ? "exam" : requested === "solve" ? "solve" : "prepare");
-    void begin("count", n);
+    void begin(flow === "sequential" ? "sequential" : "count", flow === "sequential" ? undefined : n);
   }, [search, mode]);
 
   async function answer(v: string) {
@@ -160,13 +167,22 @@ export default function PreparationPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
+          {mode === "sequential" && bankProgress && (
+            <div className="mb-2 inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+              Банк: {bankProgress.answered ?? 0} / {bankProgress.total ?? questions.length}
+              {bankProgress.completed ? " · пройден полностью" : ""}
+            </div>
+          )}
           <h1 className="page-title">Гистология · проверка знаний</h1>
-          <p className="page-subtitle">Выберите объём: полный тест или случайная выборка. Незавершённый тест того же объёма откроется автоматически — он хранится, пока вы сами его не завершите.</p>
+          <p className="page-subtitle">Выберите объём. Режим «весь банк» проходит вопросы подряд в исходном порядке и фиксирует прогресс по всему банку.</p>
         </div>
         {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
         <div className="card space-y-4 p-6">
-          <button disabled={loading} onClick={() => void begin("full")} className="btn-primary w-full">
-            Полный тест
+          <button disabled={loading} onClick={() => void begin("sequential")} className="btn-primary w-full">
+            Пройти весь банк подряд
+          </button>
+          <button disabled={loading} onClick={() => void begin("full")} className="rounded-xl border px-4 py-2 font-semibold w-full">
+            Полный тест в случайном порядке
           </button>
           <div className="flex flex-wrap items-center gap-3">
             <input
@@ -288,6 +304,7 @@ export default function PreparationPage() {
           </h1>
           <p className="page-subtitle">
             Вопрос {idx + 1} из {questions.length} · отвечено {answeredCount}
+            {mode === "sequential" ? " · проход всего банка" : ""}
             {isOpen
               ? " · письменный ответ"
               : isMulti
