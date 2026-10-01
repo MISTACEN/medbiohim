@@ -182,6 +182,7 @@ export async function adminTelegramChats(..._args: any[]): Promise<any> { return
 export async function adminUpdateCommunity(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateCommunity`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminUpdateLecture(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminUpdateQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function adminUpdateBankQuestion(id:string,payload:Record<string,unknown>): Promise<any> { return api(`/admin/question-bank/${encodeURIComponent(id)}`, { method:"PUT", body:JSON.stringify(payload) }) as any; }
 export async function adminUpdateQuestionReport(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateQuestionReport`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminUpdateSite(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateSite`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function adminUpdateWork(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateWork`, { method: "POST", body: JSON.stringify(_args) }) as any; }
