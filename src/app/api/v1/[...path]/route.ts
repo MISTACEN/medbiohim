@@ -321,8 +321,10 @@ async function proxy(req: NextRequest, pathParts: string[]) {
 
   // Keep login/refresh/me independent from the manually deployed SpaceWeb PHP
   // version. Supabase Auth is the source of truth for the session itself.
-  const auth = await authFallback(req, sub);
-  if (auth) return auth;
+  if (sub === "auth/login" || sub === "auth/refresh") {
+    const auth = await authFallback(req, sub);
+    if (auth) return auth;
+  }
 
   if (sub.startsWith("trainers/feed")) {
     const fallback = await trainerFallback(req, pathParts);
@@ -380,8 +382,17 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   }
 
   if (!upstream) {
+    if (sub === "auth/me") {
+      const auth = await authFallback(req, sub);
+      if (auth) return auth;
+    }
     const msg = lastError instanceof Error ? lastError.message : "upstream unreachable";
     return NextResponse.json({ ok: false, error: { code: "UPSTREAM", message: msg }, requestId: "proxy" }, { status: 502 });
+  }
+
+  if (sub === "auth/me" && (upstream.status === 401 || upstream.status >= 500)) {
+    const auth = await authFallback(req, sub);
+    if (auth) return auth;
   }
 
   const buf = await upstream.arrayBuffer();
