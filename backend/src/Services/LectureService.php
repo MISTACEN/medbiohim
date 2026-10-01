@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Medbiohim\Services;
 
+use Medbiohim\Database\Connection;
+
 /** Lecture pages JSON store. Status: draft | pending_review | published | rejected | archived. */
 final class LectureService
 {
@@ -39,7 +41,48 @@ final class LectureService
     /** @return list<array<string,mixed>> */
     public function listPublished(?string $subjectSlug = null): array
     {
-        return $this->listAll('published', $subjectSlug);
+        $items = $this->listAll('published', $subjectSlug);
+        if ($subjectSlug !== 'histology') {
+            return $items;
+        }
+
+        try {
+            $stmt = Connection::pdo()->prepare(
+                'SELECT id, title, subject_slug, kind, prep_names, linked_prep_ids, body_markdown,
+                        description_algorithm_ref, is_published, created_at, updated_at
+                 FROM public.histology_lectures
+                 WHERE subject_slug = :subject_slug AND is_published = true
+                 ORDER BY title'
+            );
+            $stmt->execute(['subject_slug' => 'histology']);
+            $legacy = $stmt->fetchAll() ?: [];
+            foreach ($legacy as $row) {
+                $items[] = [
+                    'id' => 'histology-' . (string) $row['id'],
+                    'title' => (string) ($row['title'] ?? ''),
+                    'subject' => 'Гистология, цитология',
+                    'subject_slug' => 'histology',
+                    'topic' => (string) ($row['kind'] ?? 'Гистология'),
+                    'body_md' => (string) ($row['body_markdown'] ?? ''),
+                    'summary' => !empty($row['prep_names'])
+                        ? 'Связанные препараты: ' . implode(', ', (array) $row['prep_names'])
+                        : '',
+                    'media' => [],
+                    'sources' => [],
+                    'status' => 'published',
+                    'published_at' => $row['created_at'] ?? null,
+                    'created_at' => $row['created_at'] ?? null,
+                    'updated_at' => $row['updated_at'] ?? null,
+                    'legacy_histology_id' => $row['id'],
+                    'linked_prep_ids' => $row['linked_prep_ids'] ?? [],
+                    'description_algorithm_ref' => $row['description_algorithm_ref'] ?? null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Keep the normal lecture store available if the legacy table is unavailable.
+        }
+
+        return $items;
     }
 
     public function get(string $id): ?array
@@ -55,10 +98,47 @@ final class LectureService
     public function getPublished(string $id): ?array
     {
         $row = $this->get($id);
-        if ($row === null || ($row['status'] ?? '') !== 'published') {
+        if ($row !== null && ($row['status'] ?? '') === 'published') {
+            return $row;
+        }
+        if (!str_starts_with($id, 'histology-')) {
             return null;
         }
-        return $row;
+
+        $legacyId = substr($id, strlen('histology-'));
+        try {
+            $stmt = Connection::pdo()->prepare(
+                'SELECT id, title, subject_slug, kind, prep_names, linked_prep_ids, body_markdown,
+                        description_algorithm_ref, is_published, created_at, updated_at
+                 FROM public.histology_lectures
+                 WHERE id = :id AND subject_slug = :subject_slug AND is_published = true
+                 LIMIT 1'
+            );
+            $stmt->execute(['id' => $legacyId, 'subject_slug' => 'histology']);
+            $r = $stmt->fetch();
+            if ($r === false) return null;
+            return [
+                'id' => $id,
+                'title' => (string) ($r['title'] ?? ''),
+                'subject' => 'Гистология, цитология',
+                'subject_slug' => 'histology',
+                'topic' => (string) ($r['kind'] ?? 'Гистология'),
+                'body_md' => (string) ($r['body_markdown'] ?? ''),
+                'summary' => !empty($r['prep_names'])
+                    ? 'Связанные препараты: ' . implode(', ', (array) $r['prep_names'])
+                    : '',
+                'media' => [],
+                'sources' => [],
+                'status' => 'published',
+                'published_at' => $r['created_at'] ?? null,
+                'created_at' => $r['created_at'] ?? null,
+                'updated_at' => $r['updated_at'] ?? null,
+                'linked_prep_ids' => $r['linked_prep_ids'] ?? [],
+                'description_algorithm_ref' => $r['description_algorithm_ref'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /** @param array<string,mixed> $data */
