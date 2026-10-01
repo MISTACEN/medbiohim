@@ -1,12 +1,14 @@
-# Активные эксперименты — ветка `beta`
+# Активные эксперименты (ветка `beta`)
 
 > **`beta` = только тесты и эксперименты. Прод = `main`.**
 
 | Статус | Тема | Описание |
 |--------|------|----------|
-| 🟡 active | Structure renderers | RDKit SVG, Ketcher, 3Dmol, Фишер/Haworth/Newman/Chair |
-| 🟡 active | Reaction editor | Механизмы, reaction graph |
-| ✅ promoted → main | PubChem resolver | `/api/chemistry/*`, `/chemistry`, ChemicalMolecule |
-| ✅ promoted → main | chemical_* SQL | schema + seed (применить на Supabase) |
+| ✅ on main (educational) | Fischer/Haworth/Newman/Chair | SVG projection renderers |
+| ✅ on main (educational) | Mechanism curly arrows | SN2 + carbonyl demos |
+| 🟡 active on beta | RDKit exact coords → projections | точная стереохимия |
+| 🟡 active on beta | Animated electron arrows | step animation |
+| 🟡 active on beta | Ketcher / 3Dmol | editor + 3D viewer |
+| ✅ promoted | PubChem resolver + StructureImage | main |
 
-Подписывайте коммиты: `experiment(…):` / `test:` / `wip:`.
+Коммиты на beta: `experiment:` / `test:` / `wip:`.
