@@ -17,7 +17,7 @@ final class TestRepository
 
     public function listPublished(?string $subjectId = null): array
     {
-        $sql = "SELECT t.id, t.title, t.description, t.time_limit_sec, t.is_published,
+        $sql = "SELECT t.id, t.title, t.time_limit_sec, t.is_published,
                        t.subject_id, t.module_id, t.topic_id,
                        s.name AS subject_name, t.created_at,
                        cs.title AS source_title, cs.file_id AS source_file_id,
