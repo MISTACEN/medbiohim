@@ -13,6 +13,7 @@ use Medbiohim\Repositories\HomeworkRepository;
 use Medbiohim\Repositories\ScheduleRepository;
 use Medbiohim\Repositories\TestRepository;
 use Medbiohim\Repositories\UserRepository;
+use Medbiohim\Services\B2Storage;
 use Medbiohim\Services\ProgressService;
 use Medbiohim\Services\ScheduleRestStore;
 use Medbiohim\Services\SupabaseRest;
