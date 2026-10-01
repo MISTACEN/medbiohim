@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Mail, Shield } from "lucide-react";
 import { clearTokens, login, setTokens } from "@/lib/api";
-import { startGoogleOAuth, startMagicLink, startVkOAuth, getTelegramBotUrl } from "@/lib/supabase";
+import { startGoogleOAuth, startMagicLink, startVkOAuth, startTelegramOAuth } from "@/lib/supabase";
 
 function mapLoginError(code: string, message: string): string {
   const m = (message || "").toLowerCase();
@@ -30,7 +30,6 @@ export default function LoginPage() {
   const [magicLoading, setMagicLoading] = useState(false);
   const [othersOpen, setOthersOpen] = useState(true);
 
-  const telegramUrl = getTelegramBotUrl();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,23 +101,13 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
-          {telegramUrl ? (
-            <a
-              href={telegramUrl}
-              className="flex w-full items-center justify-center rounded-2xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700"
-            >
-              Открыть бота и войти →
-            </a>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-emerald-800/50 px-4 py-3 text-sm font-semibold text-white"
-              title="Задайте NEXT_PUBLIC_TELEGRAM_BOT_URL"
-            >
-              Скоро · бот подключается
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => startTelegramOAuth()}
+            className="flex w-full items-center justify-center rounded-2xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+          >
+            Войти через Telegram →
+          </button>
         </div>
 
         <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-sm">

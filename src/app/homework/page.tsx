@@ -34,6 +34,7 @@ function mapApi(h: ApiHomework): HomeworkItem {
     dueAt: h.due_at ? h.due_at.slice(0, 10) : "—",
     status,
     description: h.description || "",
+    attachments: h.attachments || [],
   };
 }
 
@@ -145,6 +146,28 @@ export default function HomeworkPage() {
               )}
               {h.status === "submitted" && (<span className="inline-flex items-center gap-1 text-sm text-blue-600"><Check className="h-4 w-4" /> Отправлено</span>)}
             </div>
+            {h.attachments && h.attachments.length > 0 && (
+              <div className="mt-4 border-t pt-4">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Материалы из Telegram</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {h.attachments.map((a) => (
+                    <div key={a.file_id} className="overflow-hidden rounded-xl border bg-gray-50">
+                      {a.inline_view && a.download_url && a.mime_type?.startsWith("image/") ? (
+                        <a href={a.download_url} target="_blank" rel="noreferrer" className="block">
+                          <img src={a.download_url} alt={a.caption || a.name || "Материал"} className="max-h-72 w-full object-contain bg-white" loading="lazy" />
+                        </a>
+                      ) : (
+                        <a href={a.download_url || "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 text-sm text-gray-700">
+                          <Upload className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{a.name || "Файл"}</span>
+                        </a>
+                      )}
+                      {a.caption && <div className="border-t px-3 py-2 text-xs text-gray-600">{a.caption}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {openId === h.id && (
               <div className="mt-4 space-y-3 border-t pt-4">
                 <p className="text-sm text-gray-600">{h.description}</p>
