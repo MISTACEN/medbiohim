@@ -10,6 +10,7 @@ use Medbiohim\Repositories\GroupRepository;
 use Medbiohim\Repositories\SubjectRepository;
 use Medbiohim\Repositories\UserRepository;
 use Medbiohim\Services\SupabaseRest;
+use Medbiohim\Services\SpecialtyAccess;
 
 return static function (Router $router): void {
     $router->get('/api/v1/me', static function (Request $req, array $params): void {
@@ -131,7 +132,13 @@ return static function (Router $router): void {
         $course = isset($req->query['course']) ? (int) $req->query['course'] : null;
         $semester = isset($req->query['semester']) ? (int) $req->query['semester'] : null;
         try {
-            Response::success(['items' => (new SubjectRepository())->listActive($course, $semester)], $req->requestId);
+            $items = (new SubjectRepository())->listActive($course, $semester);
+            $access = new SpecialtyAccess();
+            $items = array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
+                $slug = trim((string) ($item['specialty_slug'] ?? ''));
+                return $slug === '' || $access->userHasSpecialty($req->user->id, $slug);
+            }));
+            Response::success(['items' => $items], $req->requestId);
         } catch (\Throwable $e) {
             try {
                 Response::success(['items' => SupabaseRest::listSubjects($course, $semester)], $req->requestId);
@@ -152,6 +159,12 @@ return static function (Router $router): void {
                 Response::error('NOT_FOUND', 'Subject not found', $req->requestId, 404);
                 return;
             }
+            $subject = is_array($detail['subject'] ?? null) ? $detail['subject'] : [];
+            $specialty = trim((string) ($subject['specialty_slug'] ?? ''));
+            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+                Response::error('FORBIDDEN', 'Этот предмет недоступен для вашей специальности', $req->requestId, 403);
+                return;
+            }
             Response::success($detail, $req->requestId);
         } catch (\Throwable $e) {
             try {
@@ -170,6 +183,15 @@ return static function (Router $router): void {
                 ]);
                 Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
             }
+        }
+    });
+
+    $router->get('/api/v1/subjects/{id}/gradebook', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            Response::success(['items' => SupabaseRest::subjectGradebook((string)$params['id'])], $req->requestId);
+        } catch (\Throwable $e) {
+            Response::error('DB_UNAVAILABLE', 'Не удалось загрузить данные для зачётки', $req->requestId, 503);
         }
     });
 
