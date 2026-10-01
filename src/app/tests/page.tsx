@@ -27,7 +27,14 @@ type UiTest = {
   sourceFileName?: string | null;
 };
 
-type Q = { id: string; body: string; options: string[]; answer?: string | number | null; };
+type Option = string | { label?: unknown; correct?: boolean };
+type Q = {
+  id: string;
+  body: string;
+  options: Option[];
+  answer?: string | number | null;
+  type?: string;
+};
 
 export default function TestsPage() {
   const [items, setItems] = useState<UiTest[]>([]);
@@ -38,9 +45,8 @@ export default function TestsPage() {
     attemptId: string;
     title: string;
     questions: Q[];
-    answersKey: Array<number | null>;
   } | null>(null);
-  const [picks, setPicks] = useState<Record<number, number>>({});
+  const [picks, setPicks] = useState<Record<number, string[]>>({});
   const [result, setResult] = useState<{ score: number; max: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
@@ -102,34 +108,26 @@ export default function TestsPage() {
         return;
       }
       const questions = (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => {
-        const rawOptions = Array.isArray(q.options) ? q.options : [];
-        const options = rawOptions.map((x: unknown) => {
-          if (typeof x === "object" && x !== null && "label" in x) return String((x as {label?:unknown}).label ?? "");
+        const rawOptions = Array.isArray(q.options) ? (q.options as unknown[]) : [];
+        const options: Option[] = rawOptions.map((x: unknown) => {
+          if (typeof x === "object" && x !== null && "label" in x) {
+            return { label: String((x as { label?: unknown }).label ?? ""), correct: (x as { correct?: unknown }).correct === true };
+          }
           return String(x);
         });
-        return { id: String(q.id || i), body: String(q.body || q.q || q.text || ""), options, answer: q.answer == null ? null : String(q.answer) };
-      });
-      const localAnswers = Array.isArray((detail.data as { answers_local?: unknown }).answers_local)
-        ? ((detail.data as { answers_local: Array<number | null> }).answers_local || [])
-        : [];
-      const answersKey = questions.map((q, i) => {
-        if (localAnswers[i] != null) return Number(localAnswers[i]);
-        const answer = q.answer == null ? "" : String(q.answer).trim();
-        if (answer === "") return null;
-        const n = Number(answer);
-        if (Number.isInteger(n) && n >= 0 && n < q.options.length) return n;
-        if (Number.isInteger(n) && n >= 1 && n <= q.options.length) return n - 1;
-        const byText = q.options.findIndex((x) => x.trim().toLowerCase() === answer.toLowerCase());
-        if (byText >= 0) return byText;
-        const byId = q.options.findIndex((x) => x.trim() === answer.replace(/^option[-_]?/i, ""));
-        return byId >= 0 ? byId : null;
+        return {
+          id: String(q.id || i),
+          body: String(q.body || q.q || q.text || ""),
+          options,
+          answer: q.answer == null ? null : String(q.answer),
+          type: String(q.type || "mcq"),
+        };
       });
       setActive({
         testId: id,
         attemptId: attempt.data.attempt.id,
         title: String(detail.data.test.title || "Тест"),
         questions,
-        answersKey,
       });
     } catch {
       setNote("Не удалось начать тест");
@@ -143,8 +141,23 @@ export default function TestsPage() {
     setBusy(true);
     let score = 0;
     const max = active.questions.length;
-    active.questions.forEach((_, i) => {
-      if (active.answersKey[i] != null && picks[i] === active.answersKey[i]) score += 1;
+    active.questions.forEach((q, i) => {
+      const selected = (picks[i] || []).map((x) => x.trim().toLowerCase()).filter(Boolean).sort();
+      const correct = q.options
+        .filter((o) => typeof o !== "string" && o.correct === true)
+        .map((o) => String(o.label ?? "").trim().toLowerCase())
+        .filter(Boolean)
+        .sort();
+
+      if (q.type === "open" || q.type === "problem" || q.type === "theory" || q.type === "practical") {
+        const expected = String(q.answer || "").trim().toLowerCase();
+        if (selected.length === 1 && selected[0] === expected) score += 1;
+      } else if (correct.length && JSON.stringify(selected) === JSON.stringify(correct)) {
+        score += 1;
+      } else if (!correct.length && q.answer != null) {
+        const fallback = String(q.answer).trim().toLowerCase();
+        if (selected.length === 1 && selected[0] === fallback) score += 1;
+      }
     });
     await finishAttempt(active.attemptId, score, max);
     setResult({ score, max });
@@ -187,24 +200,51 @@ export default function TestsPage() {
               {i + 1}.{" "}
               <ChemRichText text={q.body} className="mt-1 space-y-2 text-sm font-medium" />
             </div>
-            <div className="space-y-2">
-              {q.options.map((opt, oi) => (
-                <label
-                  key={oi}
-                  className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
-                    picks[i] === oi ? "border-blue-500 bg-blue-50" : "border-slate-100"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`q-${i}`}
-                    checked={picks[i] === oi}
-                    onChange={() => setPicks((p) => ({ ...p, [i]: oi }))}
-                  />
-                  <ChemRichText text={opt} className="flex-1 space-y-1 text-sm" />
-                </label>
-              ))}
-            </div>
+            {q.type === "open" || q.type === "problem" || q.type === "theory" || q.type === "practical" ? (
+              <textarea
+                value={(picks[i] || [])[0] || ""}
+                onChange={(e) => setPicks((p) => ({ ...p, [i]: [e.target.value] }))}
+                className="min-h-32 w-full rounded-xl border p-3 text-sm"
+                placeholder="Введите ответ…"
+              />
+            ) : (
+              <>
+                {q.options.filter((o) => typeof o !== "string" && o.correct === true).length > 1 && (
+                  <div className="text-xs text-slate-500">Можно выбрать несколько вариантов.</div>
+                )}
+                <div className="space-y-2">
+                  {q.options.map((opt, oi) => {
+                    const label = typeof opt === "string" ? opt : String(opt.label ?? "");
+                    const multi = q.options.filter((o) => typeof o !== "string" && o.correct === true).length > 1;
+                    const selected = (picks[i] || []).includes(label);
+                    return (
+                      <label
+                        key={oi}
+                        className={"flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm " + (selected ? "border-blue-500 bg-blue-50" : "border-slate-100")}
+                      >
+                        <input
+                          type={multi ? "checkbox" : "radio"}
+                          name={"q-" + i}
+                          checked={selected}
+                          onChange={() =>
+                            setPicks((p) => {
+                              const current = p[i] || [];
+                              const next = multi
+                                ? current.includes(label)
+                                  ? current.filter((x) => x !== label)
+                                  : [...current, label]
+                                : [label];
+                              return { ...p, [i]: next };
+                            })
+                          }
+                        />
+                        <ChemRichText text={label} className="flex-1 space-y-1 text-sm" />
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             <QuestionReport questionId={q.id} />
           </div>
         ))}
