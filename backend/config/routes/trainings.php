@@ -20,10 +20,6 @@ $__previous_error_handler = set_error_handler(static function (int $severity, st
 try {
     return require $__tmp;
 } finally {
-    if ($__previous_error_handler !== null) {
-        restore_error_handler();
-    } else {
-        restore_error_handler();
-    }
+    restore_error_handler();
     @unlink($__tmp);
 }
