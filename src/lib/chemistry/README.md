@@ -1,10 +1,11 @@
-# Chemistry library contract
+# Chemistry library (core)
 
-The chemistry library is deliberately UI-independent.
+- `types.ts` — ChemicalMolecule, StructureImage, provenance
+- `pubchem.ts` — resolver → molecule + verified images
+- `structureImages.ts` — image priority helpers
+- `rdkitClient.ts` — optional client WASM SMILES→SVG
+- `validation.ts` — guard before UI
 
-- `types.ts` defines canonical objects.
-- `pubchem.ts` resolves external records.
-- `validation.ts` validates resolver output before it reaches UI/storage.
-- `fixtures.ts` contains deterministic records for future tests.
+UI: `StructureView` prefers RDKit SVG, falls back to PubChem PNG, always shows source.
 
-New renderers must consume `ChemicalMolecule` and never duplicate source data.
+See `docs/CHEMISTRY-CORE-PLAN.md`.
