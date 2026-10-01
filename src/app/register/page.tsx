@@ -33,7 +33,7 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const res = await register(email.trim(), password, fullName.trim());
+      const res = await register({ email: email.trim(), password, full_name: fullName.trim() });
       if (!res.ok) {
         const msg = res.error.message || "Ошибка регистрации";
         if (/rate limit/i.test(msg)) {
