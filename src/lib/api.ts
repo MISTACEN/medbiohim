@@ -210,7 +210,9 @@ export async function listSubjectsCatalog(..._args: any[]): Promise<any> { retur
 export async function listTicketBanks(..._args: any[]): Promise<any> { return api(`/tickets`) as any; }
 export async function listTrainers(..._args: any[]): Promise<any> { return api(`/trainers`) as any; }
 export async function preparationAiReview(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}/ai-review`, {method:"POST",body:"{}"}) as any; }
-export async function register(..._args: any[]): Promise<any> { return api(`/api-compat/register`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+export async function register(payload: {email:string; password:string; full_name?:string; name?:string}): Promise<any> {
+  return api(`/auth/register`, { method: "POST", body: JSON.stringify(payload) }) as any;
+}
 export async function reportQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/reportQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
 export async function savePreparation(sessionId:string,payload:Record<string,unknown>): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}`, {method:"PATCH",body:JSON.stringify(payload)}) as any; }
 export async function startPreparation(testId:string,mode:"full"|"count"="full",questionLimit?:number): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/preparation/start`, {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})}) as any; }
