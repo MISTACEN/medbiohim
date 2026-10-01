@@ -1,7 +1,12 @@
 /**
  * Optional client-only RDKit WASM bridge.
- * Does not hard-depend on @rdkit/rdkit at build time — dynamic import.
- * If package is missing, returns null and UI falls back to PubChem images.
+ * Loads the RDKit WASM build from CDN at runtime — no build-time dependency
+ * and no bundler wasm configuration needed. If loading fails, returns null
+ * and the UI falls back to PubChem images.
+ *
+ * NOTE: a previous version used `import(/* webpackIgnore: true *\/ "@rdkit/rdkit")`,
+ * which could never work in the browser (bare specifier at runtime, package
+ * not installed). CDN loading matches how 3Dmol.js is already loaded here.
  */
 
 export type RdkitModule = {
@@ -14,6 +19,17 @@ export type RdkitModule = {
   } | null;
 };
 
+declare global {
+  interface Window {
+    initRDKitModule?: (config?: {
+      locateFile?: (file: string, prefix: string) => string;
+    }) => Promise<RdkitModule>;
+  }
+}
+
+const RDKIT_VERSION = "2026.3.6";
+const RDKIT_CDN = `https://unpkg.com/@rdkit/rdkit@${RDKIT_VERSION}/dist`;
+
 let rdkitPromise: Promise<RdkitModule | null> | null = null;
 
 export function loadRdkit(): Promise<RdkitModule | null> {
@@ -22,19 +38,50 @@ export function loadRdkit(): Promise<RdkitModule | null> {
 
   rdkitPromise = (async () => {
     try {
-      // Optional dependency — install with: npm i @rdkit/rdkit
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mod: any = await import(/* webpackIgnore: true */ "@rdkit/rdkit");
-      const init = mod.default || mod;
-      const RDKit = typeof init === "function" ? await init() : init;
+      if (typeof window.initRDKitModule !== "function") {
+        await injectScript(`${RDKIT_CDN}/RDKit_minimal.js`);
+      }
+      const init = window.initRDKitModule;
+      if (typeof init !== "function") return null;
+      const RDKit = await init({
+        locateFile: (file) => `${RDKIT_CDN}/${file}`,
+      });
       if (!RDKit?.get_mol) return null;
-      return RDKit as RdkitModule;
+      return RDKit;
     } catch {
       return null;
     }
   })();
 
   return rdkitPromise;
+}
+
+function injectScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.loaded === "1") {
+        resolve();
+      } else {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+      }
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.addEventListener(
+      "load",
+      () => {
+        script.dataset.loaded = "1";
+        resolve();
+      },
+      { once: true },
+    );
+    script.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+    document.head.appendChild(script);
+  });
 }
 
 /** SMILES → SVG markup via RDKit, or null if unavailable. */

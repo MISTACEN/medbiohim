@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { QuestionReport } from "@/components/QuestionReport";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import {
   startPreparation,
   getPreparation,
@@ -183,7 +184,7 @@ export default function PreparationPage() {
                 }
               >
                 <div className="text-xs text-slate-500">Вопрос {i + 1}</div>
-                <div className="mt-1 font-medium">{qq.text || qq.body}</div>
+                <ChemRichText text={String(qq.text || qq.body || "")} className="mt-1 font-medium" />
                 <div className="mt-3 space-y-1">
                   <div>
                     <span className="text-slate-500">Ваш ответ: </span>
@@ -191,7 +192,7 @@ export default function PreparationPage() {
                   </div>
                   <div>
                     <span className="text-slate-500">Правильный ответ: </span>
-                    <span className="font-semibold text-emerald-800">{etalon || "—"}</span>
+                    <div className="font-semibold text-emerald-800"><ChemRichText text={etalon || "—"} className="inline" /></div>
                   </div>
                 </div>
               </div>
@@ -262,7 +263,7 @@ export default function PreparationPage() {
       </div>
 
       <div className="card space-y-5">
-        <div className="text-lg font-semibold">{q.text || q.body}</div>
+        <ChemRichText text={String(q.text || q.body || "")} className="text-lg font-semibold" />
 
         {isOpen ? (
           <>
@@ -295,7 +296,7 @@ export default function PreparationPage() {
                     : "hover:bg-slate-50"
               }`}
             >
-              {o}
+              <ChemRichText text={String(o)} className="space-y-1" />
             </button>
           ))
         )}
@@ -305,7 +306,7 @@ export default function PreparationPage() {
         {checked[q.id] && experience === "prepare" && (
           <div className={correct ? "rounded-xl bg-emerald-50 p-4 text-emerald-700" : "rounded-xl bg-rose-50 p-4 text-rose-700"}>
             {correct ? "✓ Ответ совпал с эталоном" : "✗ Ответ требует разбора"}
-            <div className="mt-1 whitespace-pre-wrap text-sm">Эталон: {q.answer || "—"}</div>
+            <div className="mt-1 text-sm">Эталон: <ChemRichText text={String(q.answer || "—")} className="mt-1 whitespace-pre-wrap" /></div>
             {isOpen && (
               <div className="mt-2 text-xs opacity-70">
                 Для развёрнутых задач точное совпадение не заменяет смысловую проверку; используйте эталон для самопроверки.
