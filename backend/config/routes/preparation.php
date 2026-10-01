@@ -9,6 +9,40 @@ use Medbiohim\Database\Connection;
 return static function (Router $router): void {
  $auth=static function(Request $r):bool{return RequireAuth::handle($r);};
 
+ $normalizeAnswerList=static function($value):array{
+  if(is_array($value)){$items=$value;}
+  elseif(is_string($value)){
+   $decoded=json_decode($value,true);
+   $items=is_array($decoded)?$decoded:[$value];
+  }else{$items=[];}
+  $out=[];
+  foreach($items as $item){
+   $s=trim((string)$item);
+   if($s!=='')$out[]=mb_strtolower($s);
+  }
+  $out=array_values(array_unique($out));
+  sort($out);
+  return $out;
+ };
+ $isAnswerCorrect=static function(string $type,$given,$answer,$options)use($normalizeAnswerList):bool{
+  if($type==='mcq'){
+   $opts=is_array($options)?$options:(is_string($options)?(json_decode($options,true)?:[]):[]);
+   $correct=[];
+   foreach($opts as $opt){
+    if(is_array($opt)&&!empty($opt['correct'])){
+     $correct[]=trim((string)($opt['label']??''));
+    }
+   }
+   if($correct){
+    $givenList=$normalizeAnswerList($given);
+    $correctList=$normalizeAnswerList($correct);
+    return $givenList!==[] && $givenList===$correctList;
+   }
+  }
+  return $given!==null && trim(mb_strtolower((string)$given))===trim(mb_strtolower((string)$answer));
+ };
+
+
  $router->post('/api/v1/tests/{id}/preparation/start',static function(Request $r,array $p)use($auth):void{
   if(!$auth($r))return;
   $testId=(string)$p['id']; $body=is_array($r->jsonBody??null)?$r->jsonBody:[];
@@ -88,9 +122,12 @@ return static function (Router $router): void {
    if(!$s){$db->rollBack();Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
    $idx=array_key_exists('current_index',$b)?max(0,(int)$b['current_index']):(int)$s['current_index'];
    if(isset($b['question_id'])){
-    $ans=$db->prepare("select answer from public.questions where id=:qid");$ans->execute(['qid'=>$b['question_id']]);$correct=$ans->fetchColumn();
+    $ans=$db->prepare("select answer,type,options from public.questions where id=:qid");$ans->execute(['qid'=>$b['question_id']]);$row=$ans->fetch();
+    $correct=$row['answer']??null;
+    $type=(string)($row['type']??'open');
+    $options=$row['options']??[];
     $given=array_key_exists('answer_text',$b)?(string)$b['answer_text']:null;
-    $ok=$correct!==false && $given!==null && trim(mb_strtolower($given))===trim(mb_strtolower((string)$correct));
+    $ok=$row!==false && $given!==null && $isAnswerCorrect($type,$given,$correct,$options);
     $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score) values(:sid,:uid,:tid,:qid,:a,:ok,:score) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answered_at=now()");
     $up->execute(['sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,'ok'=>$ok,'score'=>$ok?1:0]);
    }
