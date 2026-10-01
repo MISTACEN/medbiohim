@@ -109,7 +109,14 @@ export function HistologyQuestionCard({
                 : "Не отвечен"}
         </span>
       </div>
-      <ImageBox id={a.question_id} />
+      <div className="relative">
+        <ImageBox id={a.question_id} />
+        {showPrepName ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8">
+            <div className="text-sm font-semibold text-white drop-shadow">{showPrepName}</div>
+          </div>
+        ) : null}
+      </div>
       <div className={compact ? "p-4" : "p-5"}>
         {showPrepName ? (
           <div

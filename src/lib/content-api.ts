@@ -148,6 +148,9 @@ export async function createHistologyTraining(payload: {
   question_count: number;
   all_questions: boolean;
   label_mode: TrainingLabelMode;
+  /** Конкретные карточки (id из feed) — приоритет над random count */
+  card_ids?: string[];
+  force?: boolean;
 }) {
   return api<{ training: Training; questions: TrainingQuestion[] }>("/trainings", {
     method: "POST",

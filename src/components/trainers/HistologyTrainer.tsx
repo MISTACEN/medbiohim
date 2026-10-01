@@ -39,6 +39,8 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const [working, setWorking] = useState(false);
   const [mobileList, setMobileList] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [pickMode, setPickMode] = useState(false);
   const [contentType, setContentType] = useState<TrainingContentType>("all");
   const [count, setCount] = useState("20");
   const [custom, setCustom] = useState("");
@@ -102,8 +104,10 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
       topics: selectedTopics,
       content_type: contentType,
       question_count: n,
-      all_questions: allQuestions,
+      all_questions: allQuestions || selectedCardIds.length > 0,
       label_mode: labelMode === "with" ? "without" : labelMode,
+      card_ids: selectedCardIds.length ? selectedCardIds : undefined,
+      force: true,
     });
     if (!r.ok) { setError(r.error.message); setWorking(false); return; }
     const tid = r.data.training.id;
@@ -320,8 +324,69 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                   <input value={custom} onChange={(e) => { setCustom(e.target.value); setAllQuestions(false); }} placeholder="своё" className="w-20 rounded-xl border px-3 py-2 text-sm" />
                 </div>
               </div>
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-bold">Темы занятий / выбор карточек</h2>
+                  <button type="button" onClick={() => setPickMode(!pickMode)} className="text-sm text-indigo-600">
+                    {pickMode ? "Скрыть выбор" : "Выбрать конкретные"}
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {topicsForSetup.map((tg) => {
+                    const on = selectedTopics.includes(tg);
+                    return (
+                      <button key={tg} type="button" onClick={() => setSelectedTopics((v) => on ? v.filter((x) => x !== tg) : [...v, tg])}
+                        className={"rounded-xl border px-3 py-2 text-sm " + (on ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>
+                        {topicLabel(tg)}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTopics.length > 0 && (
+                  <button type="button" className="mt-2 text-xs text-slate-500" onClick={() => setSelectedTopics([])}>Сбросить темы</button>
+                )}
+                {pickMode && (
+                  <div className="mt-4 max-h-80 space-y-3 overflow-y-auto rounded-xl border p-3">
+                    {atlasByTopic.map(([topic, items]) => (
+                      <div key={topic}>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <b className="text-sm">{topicLabel(topic)}</b>
+                          <button type="button" className="text-xs text-indigo-600" onClick={() => {
+                            const ids = items.map((c: any) => String(c.id));
+                            setSelectedCardIds((prev) => {
+                              const allOn = ids.every((id: string) => prev.includes(id));
+                              return allOn ? prev.filter((id) => !ids.includes(id)) : Array.from(new Set([...prev, ...ids]));
+                            });
+                          }}>все / снять</button>
+                        </div>
+                        <div className="space-y-1">
+                          {items.map((card: any) => {
+                            const id = String(card.id);
+                            const on = selectedCardIds.includes(id);
+                            const em = isElectronogramCard(card);
+                            return (
+                              <label key={id} className={"flex cursor-pointer items-start gap-2 rounded-lg border px-2 py-1.5 text-xs " + (on ? "border-indigo-300 bg-indigo-50" : "")}>
+                                <input type="checkbox" className="mt-0.5" checked={on} onChange={() => setSelectedCardIds((v) => on ? v.filter((x) => x !== id) : [...v, id])} />
+                                <span>
+                                  <span className="font-medium">{card.preparation?.name || "Препарат"}</span>
+                                  {em ? <span className="ml-1 text-indigo-500">ЭМ</span> : null}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {selectedCardIds.length > 0 && (
+                      <p className="text-xs text-slate-600">Выбрано: {selectedCardIds.length}. Будут только эти карточки.</p>
+                    )}
+                  </div>
+                )}
+              </div>
               {error && <p className="text-sm text-rose-600">{error}</p>}
-              <button disabled={working} onClick={() => void start()} className="btn-primary">Начать</button>
+              <button disabled={working} onClick={() => void start()} className="btn-primary">
+                {selectedCardIds.length ? `Начать (${selectedCardIds.length})` : "Начать"}
+              </button>
             </section>
 
             {sessions.length > 0 && (
