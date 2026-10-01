@@ -17,19 +17,44 @@ return static function (Router $router): void {
    $db=Connection::pdo();
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
-   // Каждая новая попытка получает случайный порядок. Это относится и к полному
-   // тесту, и к короткой тренировке с выбранным количеством вопросов.
+   // Каждая новая попытка получает случайный порядок.
    shuffle($ids);
    if($limit!==null)$ids=array_slice($ids,0,$limit);
    if(!$ids){Response::error('NO_QUESTIONS','В тесте нет опубликованных вопросов', $r->requestId,422);return;}
-   $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' and mode=:mode and (question_limit is not distinct from :lim) limit 1");
-   $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit]); $existing=$s->fetch();
-   if($existing){$existingIds=$existing['question_ids']??[];if(is_string($existingIds)){ $existingIds=trim($existingIds);$existingIds=($existingIds!==''&&$existingIds!=='{}')?str_getcsv(substr($existingIds,1,-1),',','"','\\'):[]; }$existing['question_ids']=is_array($existingIds)?array_values(array_filter(array_map('strval',$existingIds))):[];Response::success(['session'=>$existing],$r->requestId);return;}
+
+   // Уникальный ключ (user_id, test_id, status) — ищем ЛЮБУЮ in_progress по user+test,
+   // иначе INSERT падает с 23505, если mode/limit отличаются от старой сессии.
+   $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' order by last_saved_at desc nulls last, started_at desc nulls last limit 1");
+   $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
+   if($existing){
+    $existingIds=$existing['question_ids']??[];
+    if(is_string($existingIds)){
+      $trim=trim($existingIds);
+      if($trim===''||$trim==='{}'){$existingIds=[];}
+      elseif($trim[0]==='{'&&substr($trim,-1)==='}'){$inner=substr($trim,1,-1);$existingIds=$inner===''?[]:str_getcsv($inner,',','"','\\');}
+      else {$existingIds=array_values(array_filter(array_map('trim',preg_split('/[,;]+/',$trim))));}
+    }
+    if(!is_array($existingIds))$existingIds=[];
+    $existing['question_ids']=array_values(array_filter(array_map('strval',$existingIds)));
+    Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;
+   }
+
    $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids) values(:uid,:tid,:mode,:lim,:ids) returning *");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
    $created=$s->fetch(); if(is_array($created))$created['question_ids']=$ids;
    Response::success(['session'=>$created,'question_ids'=>$ids],$r->requestId,201);
-  }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
+  }catch(\Throwable $e){
+   // Повторная гонка по unique — вернуть существующую сессию
+   if(str_contains($e->getMessage(),'test_preparation_sessions_user_id_test_id_status_key')||str_contains($e->getMessage(),'23505')){
+    try{
+      $db=Connection::pdo();
+      $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' limit 1");
+      $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
+      if($existing){Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;}
+    }catch(\Throwable $e2){}
+   }
+   Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);
+  }
  });
 
  $router->get('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
@@ -37,8 +62,6 @@ return static function (Router $router): void {
    $s=$db->prepare("select ps.*,t.title as test_title from public.test_preparation_sessions ps join public.tests t on t.id=ps.test_id where ps.id=:id and ps.user_id=:uid");
    $s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Preparation session not found',$r->requestId,404);return;}
-   // PDO PostgreSQL может вернуть uuid[] как строку вида {uuid,uuid}, а не PHP-массив.
-   // Нормализуем значение один раз, чтобы frontend/API никогда не получал 422 из-за array_map().
    $questionIds=$session['question_ids']??[];
    if(is_string($questionIds)){
     $trim=trim($questionIds);
@@ -48,11 +71,9 @@ return static function (Router $router): void {
    }
    if(!is_array($questionIds))$questionIds=[];
    $questionIds=array_values(array_filter(array_map('strval',$questionIds),static fn($x)=>$x!==''));
-   // modules/topics хранят название в колонке title (name не существует — SQLSTATE 42703).
+   // modules/topics: колонка title (не name) — SQLSTATE 42703
    $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
    $q->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$questionIds)).'}']);$questions=$q->fetchAll()?:[];
-   // PostgreSQL не гарантирует порядок IN/ANY — возвращаем вопросы ровно в
-   // случайной последовательности, сохранённой в question_ids.
    $positions=array_flip($questionIds);
    $session['question_ids']=$questionIds;
    usort($questions,static fn($a,$b)=>(($positions[(string)$a['id']]??PHP_INT_MAX)<=>($positions[(string)$b['id']]??PHP_INT_MAX)));
