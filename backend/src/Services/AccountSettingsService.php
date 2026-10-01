@@ -65,7 +65,7 @@ final class AccountSettingsService
             'preferences' => $prefs,
             'sync' => [
                 'account_id' => $user['id'] ?? null,
-                'note' => 'Все данные (прогресс, SRS, избранное, сессии) привязаны к этому ID. Привязка Google/VK/почты не создаёт второй аккаунт.',
+                'note' => 'Все данные (прогресс, SRS, избранное, сессии) привязаны к этому ID. Привязка Google/VK/Telegram/почты не создаёт второй аккаунт.',
                 'scopes' => ['progress', 'srs_cards', 'favorites', 'notes', 'sessions', 'homework'],
             ],
         ];
@@ -106,7 +106,7 @@ final class AccountSettingsService
     public function startLinkProvider(string $accessToken, string $provider, string $redirectTo): array
     {
         $provider = strtolower(trim($provider));
-        $allowed = ['google', 'vk', 'github', 'discord', 'yandex'];
+        $allowed = ['google', 'custom:vk', 'custom:telegram', 'github', 'discord', 'yandex'];
         if (!in_array($provider, $allowed, true)) {
             throw new \InvalidArgumentException('Провайдер не поддерживается: ' . $provider);
         }
@@ -155,10 +155,15 @@ final class AccountSettingsService
         return $this->getAccount($accessToken);
     }
 
+    public function getPreferences(string $userId): array
+    {
+        return $this->loadPrefs($userId);
+    }
+
     public function savePreferences(string $userId, array $prefs): array
     {
         $current = $this->loadPrefs($userId);
-        $allowed = ['theme', 'locale', 'notify_email', 'notify_telegram', 'notify_homework', 'notify_lectures', 'media_prefer_ru'];
+        $allowed = ['theme', 'locale', 'notify_email', 'notify_telegram', 'notify_homework', 'notify_lectures', 'media_prefer_ru', 'trainer_layout'];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $prefs)) $current[$k] = $prefs[$k];
         }
@@ -171,7 +176,7 @@ final class AccountSettingsService
     {
         $defaults = [
             'theme' => 'system', 'locale' => 'ru', 'notify_email' => true, 'notify_telegram' => false,
-            'notify_homework' => true, 'notify_lectures' => true, 'media_prefer_ru' => true, 'updated_at' => null,
+            'notify_homework' => true, 'notify_lectures' => true, 'media_prefer_ru' => true, 'trainer_layout' => 'top', 'updated_at' => null,
         ];
         if ($userId === '') return $defaults;
         $path = $this->prefsPath($userId);
@@ -216,7 +221,7 @@ final class AccountSettingsService
     private function providerLabel(string $p): string
     {
         return match ($p) {
-            'email' => 'Почта / пароль', 'google' => 'Google', 'vk' => 'ВКонтакте',
+            'email' => 'Почта / пароль', 'google' => 'Google', 'vk' => 'ВКонтакте', 'custom:vk' => 'ВКонтакте', 'custom:telegram' => 'Telegram',
             'yandex' => 'Яндекс', 'github' => 'GitHub', 'discord' => 'Discord', 'phone' => 'Телефон', default => $p,
         };
     }
@@ -226,7 +231,8 @@ final class AccountSettingsService
         return [
             ['id' => 'email', 'label' => 'Почта / пароль', 'region' => 'any', 'enabled' => true, 'linkable' => false],
             ['id' => 'google', 'label' => 'Google', 'region' => 'global', 'enabled' => Env::get('OAUTH_GOOGLE_ENABLED', '1') !== '0', 'linkable' => true],
-            ['id' => 'vk', 'label' => 'ВКонтакте', 'region' => 'ru', 'enabled' => Env::get('OAUTH_VK_ENABLED', '1') !== '0', 'linkable' => true],
+            ['id' => 'custom:vk', 'label' => 'ВКонтакте', 'region' => 'ru', 'enabled' => Env::get('OAUTH_VK_ENABLED', '1') !== '0', 'linkable' => true],
+            ['id' => 'custom:telegram', 'label' => 'Telegram', 'region' => 'any', 'enabled' => Env::get('OAUTH_TELEGRAM_ENABLED', '1') !== '0', 'linkable' => true],
             ['id' => 'yandex', 'label' => 'Яндекс', 'region' => 'ru', 'enabled' => Env::get('OAUTH_YANDEX_ENABLED', '0') === '1', 'linkable' => true],
         ];
     }
