@@ -492,33 +492,37 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
 
         {tab === "materials" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Материалы</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {materialsRich.length
-                ? materialsRich.length + " материалов — читаются прямо здесь, оригинал доступен отдельно."
-                : "Материалы пока не найдены."}
-            </p>
-            {materialsRich.length > 0 && (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {materialsRich.map((m: any) => (
-                  <article key={m.id} className="rounded-xl border bg-slate-50 p-4">
-                    <div className="font-semibold leading-snug">{m.title}</div>
-                    <div className="mt-1 text-xs text-slate-500">{materialTypeLabel(m.type)}{m.source?.name ? " · " + m.source.name : ""}</div>
-                    {stripHtml(m.content_html) && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{stripHtml(m.content_html)}</p>}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" className="btn-primary text-xs" onClick={() => setActiveMaterial(m)}>Читать</button>
-                      {m.source?.download_url ? (
-                        <a href={m.source.download_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-                          <ExternalLink className="h-3.5 w-3.5" /> Исходник
-                        </a>
-                      ) : null}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+          histology ? (
+            <HistologyMaterials />
+          ) : (
+            <section className="card p-5">
+              <h2 className="text-lg font-bold">Материалы</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {materialsRich.length
+                  ? materialsRich.length + " материалов — читаются прямо здесь, оригинал доступен отдельно."
+                  : "Материалы пока не найдены."}
+              </p>
+              {materialsRich.length > 0 && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {materialsRich.map((m: any) => (
+                    <article key={m.id} className="rounded-xl border bg-slate-50 p-4">
+                      <div className="font-semibold leading-snug">{m.title}</div>
+                      <div className="mt-1 text-xs text-slate-500">{materialTypeLabel(m.type)}{m.source?.name ? " · " + m.source.name : ""}</div>
+                      {stripHtml(m.content_html) && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{stripHtml(m.content_html)}</p>}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" className="btn-primary text-xs" onClick={() => setActiveMaterial(m)}>Читать</button>
+                        {m.source?.download_url ? (
+                          <a href={m.source.download_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                            <ExternalLink className="h-3.5 w-3.5" /> Исходник
+                          </a>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )
         )}
 
         {tab === "trainer" && (
