@@ -8,6 +8,7 @@ import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
+import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 
 type Subject = {
   id: string;
@@ -455,9 +456,15 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 ))}
               </div>
             )}
-            <Link href={histology ? "/trainers/feed/histology" : "/practice?" + query} className="btn-primary mt-4 inline-flex">
-              {histology ? "Открыть тренажёр" : "Открыть практику"}
-            </Link>
+            {histology ? (
+              <button type="button" onClick={() => selectTab("trainer")} className="btn-primary mt-4 inline-flex">
+                Открыть тренажёр
+              </button>
+            ) : (
+              <Link href={"/practice?" + query} className="btn-primary mt-4 inline-flex">
+                Открыть практику
+              </Link>
+            )}
           </section>
         )}
 
