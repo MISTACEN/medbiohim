@@ -43,7 +43,16 @@ return static function (Router $router): void {
  };
 
 
- $router->post('/api/v1/tests/{id}/preparation/start',static function(Request $r,array $p)use($auth):void{
+ $resolveTestId=static function(\PDO $db,string $value):?string{
+  $value=trim($value);
+  if($value==='')return null;
+  $q=$db->prepare("select id::text from public.tests where id::text=:value or source_key=:value or source_key=:local limit 1");
+  $q->execute(['value'=>$value,'local'=>'local:'.$value]);
+  $id=$q->fetchColumn();
+  return $id===false?null:(string)$id;
+ };
+
+ $router->post('/api/v1/tests/{id}/preparation/start',static function(Request $r,array $p)use($auth,$resolveTestId):void{
   if(!$auth($r))return;
   $testId=(string)$p['id']; $body=is_array($r->jsonBody??null)?$r->jsonBody:[];
   $requestedMode=(string)($body['mode']??'full');
@@ -51,6 +60,9 @@ return static function (Router $router): void {
   $limit=$mode==='count'?max(1,min(200,(int)($body['question_limit']??10))):null;
   try{
    $db=Connection::pdo();
+   $resolvedTestId=$resolveTestId($db,$testId);
+   if($resolvedTestId===null){Response::error('NOT_FOUND','Test not found',$r->requestId,404);return;}
+   $testId=$resolvedTestId;
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
    // sequential = весь банк в исходном порядке; count/full остаются существующими режимами.
@@ -101,11 +113,12 @@ return static function (Router $router): void {
   }
  });
 
- $router->get('/api/v1/tests/{id}/bank-progress',static function(Request $r,array $p)use($auth):void{
+ $router->get('/api/v1/tests/{id}/bank-progress',static function(Request $r,array $p)use($auth,$resolveTestId):void{
   if(!$auth($r))return;
   try{
     $db=Connection::pdo();
-    $tid=(string)$p['id'];
+    $tid=$resolveTestId($db,(string)$p['id']);
+    if($tid===null){Response::error('NOT_FOUND','Test not found',$r->requestId,404);return;}
     $totalQ=$db->prepare("select count(*) from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null");
     $totalQ->execute(['tid'=>$tid]);$total=(int)$totalQ->fetchColumn();
 
