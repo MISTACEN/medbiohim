@@ -1,0 +1,76 @@
+<?php
+declare(strict_types=1);
+
+use MedbiohimDatabaseConnection;
+use MedbiohimHttpRequest;
+use MedbiohimHttpResponse;
+use MedbiohimHttpRouter;
+use MedbiohimMiddlewareRequireAuth;
+
+return static function (Router $router): void {
+    $router->get('/api/v1/materials/{id}/file', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+
+        $id = trim((string)($params['id'] ?? ''));
+        if ($id === '') { Response::error('BAD_REQUEST', 'Material id is required', $req->requestId, 400); return; }
+
+        try {
+            $stmt = Connection::pdo()->prepare(
+                'SELECT m.id, m.title, m.file_id, m.source_key, s.slug AS subject_slug,
+                        cs.source_path, cs.original_format, cs.mime_type
+                 FROM public.materials m
+                 JOIN public.subjects s ON s.id = m.subject_id
+                 LEFT JOIN public.content_sources cs ON cs.id = m.source_key
+                 WHERE m.id = :id AND m.is_published = true
+                 LIMIT 1'
+            );
+            $stmt->execute(['id' => $id]);
+            $row = $stmt->fetch();
+            if ($row === false) { Response::error('NOT_FOUND', 'Material not found', $req->requestId, 404); return; }
+
+            if (($row['subject_slug'] ?? '') !== 'histology') {
+                Response::error('FORBIDDEN', 'This material viewer is restricted to histology', $req->requestId, 403);
+                return;
+            }
+
+            $relative = trim((string)($row['source_path'] ?? ''));
+            if ($relative === '') { Response::error('NOT_FOUND', 'Material source file is not mapped', $req->requestId, 404); return; }
+
+            // Normalize legacy import paths to the current SpaceWeb content tree.
+            $relative = str_replace('\\', '/', $relative);
+            $relative = preg_replace('#^features/histology-content/#', 'content/histology/', $relative) ?? $relative;
+            $relative = preg_replace('#^content/histology-content/#', 'content/histology/', $relative) ?? $relative;
+            $relative = ltrim($relative, '/');
+            if (str_contains($relative, '..')) {
+                Response::error('BAD_REQUEST', 'Invalid material path', $req->requestId, 400); return;
+            }
+
+            $root = getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology');
+            $root = rtrim((string)$root, '/\\');
+            $candidate = $root . '/' . preg_replace('#^content/histology/#', '', $relative);
+            if (!is_file($candidate)) {
+                Response::error('NOT_FOUND', 'Material file is not deployed on the backend', $req->requestId, 404);
+                return;
+            }
+
+            $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+            $mimeMap = [
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc' => 'application/msword',
+                'pdf' => 'application/pdf',
+                'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+                'gif' => 'image/gif', 'webp' => 'image/webp',
+            ];
+            $mime = $mimeMap[$ext] ?? ((string)($row['mime_type'] ?? '') ?: 'application/octet-stream');
+            $name = basename($candidate);
+
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . (string)filesize($candidate));
+            header('Content-Disposition: inline; filename="' . str_replace('"', '', $name) . '"');
+            header('Cache-Control: private, max-age=300');
+            readfile($candidate);
+        } catch (Throwable $e) {
+            Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
+        }
+    });
+};
