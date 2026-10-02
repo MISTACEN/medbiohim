@@ -8,6 +8,7 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Middleware\RequireRole;
 use Medbiohim\Services\ExamQuestionStore;
 use Medbiohim\Support\ContentStore;
+use Medbiohim\Database\Connection;
 
 return static function (Router $r): void {
     $manager = static function (Request $q): bool {
@@ -98,12 +99,12 @@ return static function (Router $r): void {
 
         $db = null;
         try {
-            $db = \Medbiohim\\Database\\Connection::pdo();
+            $db = Connection::pdo();
             $db->beginTransaction();
 
             $st = $db->prepare('SELECT id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at FROM public.questions WHERE id=:id LIMIT 1 FOR UPDATE');
             $st->execute(['id' => $id]);
-            $current = $st->fetch(\\PDO::FETCH_ASSOC);
+            $current = $st->fetch(\PDO::FETCH_ASSOC);
             if (!$current) {
                 $db->rollBack();
                 Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
@@ -182,13 +183,13 @@ return static function (Router $r): void {
 
             $st2 = $db->prepare('SELECT id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at FROM public.questions WHERE id=:id LIMIT 1');
             $st2->execute(['id' => $id]);
-            $row = $st2->fetch(\\PDO::FETCH_ASSOC);
+            $row = $st2->fetch(\PDO::FETCH_ASSOC);
             if (isset($row['options']) && is_string($row['options'])) $row['options'] = json_decode($row['options'], true) ?? [];
 
             $db->commit();
             Response::success(['question' => $row, 'version_no' => $versionNo], $q->requestId);
-        } catch (\\Throwable $e) {
-            if ($db instanceof \\PDO && $db->inTransaction()) $db->rollBack();
+        } catch (\Throwable $e) {
+            if ($db instanceof \PDO && $db->inTransaction()) $db->rollBack();
             Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
         }
     });
