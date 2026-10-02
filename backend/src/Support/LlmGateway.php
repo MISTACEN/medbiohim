@@ -284,7 +284,14 @@ final class LlmGateway
         // SpaceWeb production is in Russia. Google Gemini API/AI Studio performs
         // supported-region checks against the request origin, so do not advertise
         // Gemini as usable from a RU backend. This is configurable if the backend moves.
-        if ($region === 'ru' && in_array($provider, ['gemini', 'google'], true)) return true;
+        if ($region === 'ru' && in_array($provider, ['gemini', 'google'], true)) {
+            // Gemini may be reached safely through the configured Vercel proxy.
+            // In that mode Google sees the proxy's supported region, not SpaceWeb RU.
+            $proxy = trim((string) (Env::get('GEMINI_VERCEL_PROXY_URL', '') ?? ''));
+            $secret = trim((string) (Env::get('GEMINI_VERCEL_PROXY_SECRET', '') ?? ''));
+            if ($proxy !== '' && $secret !== '') return false;
+            return true;
+        }
         return false;
     }
 
