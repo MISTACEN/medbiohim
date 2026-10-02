@@ -5,6 +5,18 @@ namespace Medbiohim\Support;
 
 final class HttpClient
 {
+    /** Sber GigaChat uses intermediate CA; allow disable via env. */
+    private static function applySsl($ch, string $url): void
+    {
+        $host = (string) (parse_url($url, PHP_URL_HOST) ?? '');
+        $isSber = str_contains($host, 'sberbank.ru') || str_contains($host, 'giga.chat') || str_contains($host, 'gigachat');
+        $forceOff = in_array(strtolower((string) (Env::get('GIGACHAT_VERIFY_SSL', '1') ?? '1')), ['0', 'false', 'no'], true);
+        if ($isSber || $forceOff) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
+    }
+
     /**
      * @param array<string, string> $headers
      * @return array{status: int, body: string, json: ?array}
@@ -43,6 +55,7 @@ final class HttpClient
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_CONNECTTIMEOUT => 5,
         ]);
+        self::applySsl($ch, $url);
         if ($payload !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         }
@@ -96,6 +109,7 @@ final class HttpClient
             'json' => is_array($json) ? $json : null,
         ];
     }
+
     /** @param array<string,string> $form */
     public static function form(string $method, string $url, array $form = [], array $headers = [], int $timeout = 15): array
     {
@@ -104,13 +118,14 @@ final class HttpClient
         if (extension_loaded('curl')) {
             $ch = curl_init($url);
             curl_setopt_array($ch, [CURLOPT_CUSTOMREQUEST=>$method, CURLOPT_RETURNTRANSFER=>true, CURLOPT_HTTPHEADER=>$headers, CURLOPT_TIMEOUT=>$timeout, CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_POSTFIELDS=>$payload]);
+            self::applySsl($ch, $url);
             $body = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch);
             if ($body === false) { Logger::error('http_client_curl_form',['error'=>$err,'url'=>$url]); return ['status'=>0,'body'=>'','json'=>null]; }
             $json=json_decode($body,true); return ['status'=>$status,'body'=>$body,'json'=>is_array($json)?$json:null];
         }
-        $opts=['http'=>['method'=>$method,'header'=>implode("\\r\\n",$headers),'timeout'=>$timeout,'ignore_errors'=>true,'content'=>$payload]];
+        $opts=['http'=>['method'=>$method,'header'=>implode("\r\n",$headers),'timeout'=>$timeout,'ignore_errors'=>true,'content'=>$payload]];
         $body=@file_get_contents($url,false,stream_context_create($opts)); $status=0;
-        if(isset($http_response_header[0])&&preg_match('/\\s(\\d{3})\\s/',$http_response_header[0],$m))$status=(int)$m[1];
+        if(isset($http_response_header[0])&&preg_match('/\s(\d{3})\s/',$http_response_header[0],$m))$status=(int)$m[1];
         if($body===false)return ['status'=>0,'body'=>'','json'=>null]; $json=json_decode($body,true); return ['status'=>$status,'body'=>$body,'json'=>is_array($json)?$json:null];
     }
 
