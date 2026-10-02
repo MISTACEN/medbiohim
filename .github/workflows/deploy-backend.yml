@@ -128,3 +128,5 @@ jobs:
           path: backup/
           retention-days: 14
           if-no-files-found: ignore
+
+# 2026-10-02: deploy the verified backend + histology content tree.
