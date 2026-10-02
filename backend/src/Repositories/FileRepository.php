@@ -20,8 +20,8 @@ final class FileRepository
         $stmt = $this->db->prepare(
             "INSERT INTO public.files
                 (original_name, mime_type, size_bytes, object_key, b2_file_id,
-                 uploaded_by, group_id, visibility, status)
-             VALUES (:name, :mime, :size, :key, :b2id, :by, :gid, :vis, 'active')
+                 uploaded_by, group_id, visibility, status, specialty_slug)
+             VALUES (:name, :mime, :size, :key, :b2id, :by, :gid, :vis, 'active', :specialty)
              RETURNING *"
         );
         $stmt->execute([
@@ -48,6 +48,21 @@ final class FileRepository
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function listForUser(string $userId, int $limit = 50): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM public.files
+             WHERE status = 'active' AND (uploaded_by = :uid OR visibility = 'public')
+             ORDER BY created_at DESC
+             LIMIT :lim"
+        );
+        $stmt->bindValue('uid', $userId, PDO::PARAM_STR);
+        $stmt->bindValue('lim', max(1, min($limit, 100)), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll() ?: [];
     }
 
     public function softDelete(string $id): bool
