@@ -33,6 +33,7 @@ return static function (Router $router): void {
         'platform.php',
         'tutor_rest.php',
         'ai_chat.php',
+        'presence.php',
         'calculators_rest.php',
         'lectures_rest.php',
         'search_rest.php',
