@@ -49,9 +49,15 @@ final class TestRepository
              LEFT JOIN public.subjects s ON s.id = t.subject_id
              LEFT JOIN public.content_sources cs ON cs.id = t.source_key
              LEFT JOIN public.files f ON f.id = cs.file_id AND f.status = 'active'
-             WHERE t.id = :id LIMIT 1"
+             WHERE t.id::text = :id
+               OR t.source_key = :id
+               OR t.source_key = :local_source_key
+             LIMIT 1"
         );
-        $stmt->execute(['id' => $id]);
+        $stmt->execute([
+            'id' => $id,
+            'local_source_key' => 'local:' . $id,
+        ]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
     }
