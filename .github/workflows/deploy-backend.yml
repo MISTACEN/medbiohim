@@ -1,0 +1,130 @@
+name: Deploy backend to SpaceWeb
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "backend/src/**"
+      - "backend/config/routes/**"
+      - "backend/config/**"
+      - "content/histology/**"
+      - ".github/workflows/deploy-backend.yml"
+
+concurrency:
+  group: deploy-spaceweb
+  cancel-in-progress: false
+
+env:
+  FTP_HOST: 77.222.40.198
+  FTP_USER: ryazansev3_logigpt
+  FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard secret
+        run: |
+          if [ -z "$FTP_PASS" ]; then
+            echo "::error::Repository secret FTP_PASSWORD is not set."
+            exit 1
+          fi
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Discover site root on FTP
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="ftp://$FTP_HOST"
+          AUTH=(--ssl -k --max-time 30 -u "$FTP_USER:$FTP_PASS")
+          list_dirs() {
+            curl -sS "${AUTH[@]}" "$BASE/$1" 2>/dev/null |
+              awk '$1 ~ /^d/ { $1=$2=$3=$4=$5=$6=$7=$8=""; sub(/^ +/,""); print }' |
+              grep -vE '^\.\.?$' || true
+          }
+          has_backend() {
+            curl -sS "${AUTH[@]}" "$BASE/$1backend/public/" 2>/dev/null | grep -q "index.php"
+          }
+          declare -a level=("")
+          found=""
+          for depth in 0 1 2 3; do
+            declare -a next=()
+            for p in "${level[@]}"; do
+              if [ -z "$p" ] && [ "$depth" != "0" ]; then continue; fi
+              if has_backend "$p"; then found="$p"; break; fi
+              while IFS= read -r d; do
+                case "$d" in logs|cgi-bin|.ftpquota|.*) continue;; esac
+                next+=("$p$d/")
+              done < <(list_dirs "$p")
+            done
+            [ -n "$found" ] && break
+            [ "${#next[@]}" -eq 0 ] && break
+            level=("${next[@]}")
+          done
+          if [ -z "$found" ]; then
+            echo "::error::backend/public/index.php not found on FTP."
+            exit 1
+          fi
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+
+      - name: Backup current backend
+        run: |
+          SITE="${{ steps.discover.outputs.found }}"
+          mkdir -p backup
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+            set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
+            mirror --verbose '${SITE}backend/src' backup/src;
+            bye" || true
+
+      - name: Deploy backend source and routes
+        run: |
+          SITE="${{ steps.discover.outputs.found }}"
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+            set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
+            mirror -R --verbose ./backend/src '${SITE}backend/src';
+            mirror -R --verbose ./backend/config/routes '${SITE}backend/config/routes';
+            bye"
+
+      - name: Deploy histology media when present in repository
+        run: |
+          SITE="${{ steps.discover.outputs.found }}"
+          if [ -d content/histology ]; then
+            lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+              set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
+              mirror -R --verbose ./content/histology '${SITE}content/histology';
+              bye"
+          else
+            echo "No content/histology in GitHub checkout; leaving existing server media untouched."
+          fi
+
+      - name: Verify deployed backend markers
+        run: |
+          set -euo pipefail
+          SITE="${{ steps.discover.outputs.found }}"
+          mkdir -p verify
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+            set ftp:ssl-allow yes; set ssl:verify-certificate no;
+            get -O verify/ '${SITE}backend/src/Repositories/TestRepository.php';
+            get -O verify/ '${SITE}backend/config/routes/preparation.php';
+            get -O verify/ '${SITE}backend/config/routes/tests.php';
+            get -O verify/ '${SITE}backend/config/routes/platform.php';
+            bye"
+          grep -q "source_key=:value" verify/TestRepository.php
+          grep -q "resolveTestId" verify/preparation.php
+          grep -q "resolveTestId" verify/tests.php
+          grep -q "trainers/feed/{id}/image" verify/platform.php
+          echo "Backend deployment verification passed."
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 14
+          if-no-files-found: ignore
