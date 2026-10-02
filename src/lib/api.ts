@@ -110,6 +110,16 @@ export async function finishAttempt(id:string,score?:number,maxScore?:number){re
 export async function listHomeworks(){return api<any>("/homeworks")}
 export async function submitHomework(id:string,textAnswer?:string,fileId?:string){return api<any>(`/homeworks/${id}/submit`,{method:"POST",body:JSON.stringify({text_answer:textAnswer,file_id:fileId})})}
 export async function uploadFile(file:File,groupId?:string,specialtySlug?:string){const fd=new FormData();fd.append("file",file);if(groupId)fd.append("group_id",groupId);if(specialtySlug)fd.append("specialty_slug",specialtySlug);return api<any>("/files/upload",{method:"POST",body:fd})}
+export async function fetchMaterialFile(id:string):Promise<Blob|null>{
+  if(typeof window==="undefined") return null;
+  const token=localStorage.getItem("mb_access_token");
+  try{
+    const res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store"});
+    if(!res.ok)return null;
+    return await res.blob();
+  }catch{return null;}
+}
+
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
 export async function listSessions(status?:string){return api<any>(`/sessions${status?`?status=${encodeURIComponent(status)}`:""}`)}
