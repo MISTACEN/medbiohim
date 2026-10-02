@@ -238,13 +238,13 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
           <header>
             <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предметам</Link>
             <h1 className="page-title mt-3">Микропрепараты</h1>
-            <p className="page-subtitle">Атлас с подписями или тренажёр.</p>
+            <p className="page-subtitle">Полный атлас по материалам тренажёра.</p>
           </header>
         )}
         {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас с подписями или тренажёр.</p></div>)}
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас (с подписями)</button>
+          <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>
           <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>\n        </div>
 
         {section === "atlas" && (
@@ -275,7 +275,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
             ) : atlasByTopic.map(([topic, items]) => (
               <section key={topic} className="card p-5">
                 <h3 className="text-lg font-bold">{topicLabel(topic)}</h3>
-                <p className="mt-1 text-xs text-slate-500">{items.length} фото · нажмите, чтобы открыть с подписями</p>
+                <p className="mt-1 text-xs text-slate-500">{items.length} фото · нажмите, чтобы открыть препарат</p>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {items.map((card: any) => (
                     <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
@@ -430,7 +430,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                   className="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
                   onClick={() => setLightbox(null)}
                 >
-                  Подробнее и файлы в «Материалах»
+                  Подробный материал и файлы
                 </Link>
                 <button type="button" onClick={() => setLightbox(null)} className="btn-primary">Закрыть атлас</button>
               </div>
