@@ -91,7 +91,7 @@ return static function (Router $router): void {
                        AND q.archived_at IS NULL
                      ORDER BY tq.order_index, q.id'
                 );
-                $q->execute(['test_id' => (string) $params['id']]);
+                $q->execute(['test_id' => (string) $test['id']]);
                 $questions = $q->fetchAll() ?: [];
                 Response::success(['test' => $test, 'questions' => $questions, 'source' => 'db'], $req->requestId);
                 return;
@@ -120,7 +120,7 @@ return static function (Router $router): void {
         try {
             $test = (new TestRepository())->findById($testId);
             if ($test !== null) {
-                $attempt = (new TestRepository())->startAttempt($testId, $req->user->id);
+                $attempt = (new TestRepository())->startAttempt((string) $test['id'], $req->user->id);
                 Response::success(['attempt' => array_merge($attempt, ['source' => 'db'])], $req->requestId, 201);
                 return;
             }
