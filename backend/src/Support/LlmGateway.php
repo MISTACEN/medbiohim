@@ -315,7 +315,7 @@ final class LlmGateway
             ],
             'gigachat' => [
                 'configured' => (bool)(Env::get('GIGACHAT_CREDENTIALS') || Env::get('GIGACHAT_ACCESS_TOKEN') || Env::get('LLM_PRIMARY_API_KEY')),
-                'model' => Env::get('GIGACHAT_MODEL', 'GigaChat'),
+                'model' => Env::get('GIGACHAT_MODEL', 'GigaChat-2-Max'),
             ],
             'gemini' => [
                 'configured' => (bool)Env::get('GEMINI_API_KEY'),
