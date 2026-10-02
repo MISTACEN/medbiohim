@@ -424,7 +424,16 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                   {lightbox.preparation.captions.map((c: string, i: number) => <li key={i}>{c}</li>)}
                 </ul>
               )}
-              <button type="button" onClick={() => setLightbox(null)} className="btn-primary mt-4">Закрыть</button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/subjects/histology?tab=materials"
+                  className="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                  onClick={() => setLightbox(null)}
+                >
+                  Подробнее и файлы в «Материалах»
+                </Link>
+                <button type="button" onClick={() => setLightbox(null)} className="btn-primary">Закрыть атлас</button>
+              </div>
             </div>
           </div>
         )}
