@@ -12,6 +12,7 @@ import {
 import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
 import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
+import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 
 type AnswerRow = {
   id: string;
@@ -48,7 +49,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const [labelMode, setLabelMode] = useState<TrainingLabelMode>("without");
   const [layout, setLayout] = useState<TrainingLayout>("top");
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [section, setSection] = useState<"atlas" | "trainer">("atlas");
+  const [section, setSection] = useState<"atlas" | "trainer" | "materials">("atlas");
   const [atlasTopic, setAtlasTopic] = useState<string>("");
   const [lightbox, setLightbox] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -245,7 +246,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас (с подписями)</button>
-          <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>
+          <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>\n          <button type="button" onClick={() => setSection("materials")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "materials" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Материалы</button>
         </div>
 
         {section === "atlas" && (
@@ -291,7 +292,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
           </div>
         )}
 
-        {section === "trainer" && (
+        {section === "materials" && (\n          <HistologyMaterials />\n        )}\n\n        {section === "trainer" && (
           <div className="space-y-5">
             <section className="card space-y-4 p-5">
               <div>
