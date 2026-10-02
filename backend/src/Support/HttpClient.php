@@ -8,10 +8,10 @@ final class HttpClient
     /** Sber GigaChat uses intermediate CA; allow disable via env. */
     private static function applySsl($ch, string $url): void
     {
-        $host = (string) (parse_url($url, PHP_URL_HOST) ?? '');
-        $isSber = str_contains($host, 'sberbank.ru') || str_contains($host, 'giga.chat') || str_contains($host, 'gigachat');
-        $forceOff = in_array(strtolower((string) (Env::get('GIGACHAT_VERIFY_SSL', '1') ?? '1')), ['0', 'false', 'no'], true);
-        if ($isSber || $forceOff) {
+        // TLS verification stays enabled by default. It may only be disabled
+        // explicitly for a controlled diagnostic environment.
+        $forceOff = in_array(strtolower((string) (Env::get('HTTP_VERIFY_SSL', '1') ?? '1')), ['0', 'false', 'no'], true);
+        if ($forceOff) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         }
