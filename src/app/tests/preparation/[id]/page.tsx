@@ -89,8 +89,16 @@ export default function PreparationPage() {
     const d = await getPreparation(s.data.session.id);
     if (d.ok) {
       setSession(d.data.session);
-      setQuestions(d.data.questions || []);
-      setIdx(d.data.session.current_index || 0);
+      const loadedQuestions: PreparationQuestion[] = Array.isArray(d.data.questions) ? d.data.questions : [];
+      setQuestions(loadedQuestions);
+      // A stale session can contain an index equal to/outside the current question list
+      // (for example after an interrupted/reloaded attempt). Never render a false
+      // "Нет вопросов" state just because the saved cursor is out of range.
+      const savedIndex = Math.max(0, Number(d.data.session.current_index) || 0);
+      const safeIndex = loadedQuestions.length > 0
+        ? Math.min(savedIndex, loadedQuestions.length - 1)
+        : 0;
+      setIdx(safeIndex);
       if (m === "sequential") {
         const p = await getBankProgress(id);
         if (p.ok) setBankProgress(p.data);
@@ -267,10 +275,28 @@ export default function PreparationPage() {
   if (!q)
     return (
       <div className="mx-auto max-w-3xl space-y-4 p-6">
-        <p className="text-sm text-slate-500">Нет вопросов в сессии.</p>
-        <button onClick={() => void finish(true)} className="btn-primary">
-          Завершить
-        </button>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <div className="font-semibold">Не удалось загрузить вопросы сессии.</div>
+          <div className="mt-1">
+            {error || (questions.length === 0
+              ? "Сессия создана, но API не вернул список вопросов."
+              : "Сохранённая позиция вопроса была вне диапазона.")}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {questions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIdx(Math.min(Math.max(0, idx), questions.length - 1))}
+              className="btn-primary"
+            >
+              Открыть вопросы
+            </button>
+          )}
+          <button type="button" onClick={() => router.push("/tests")} className="rounded-xl border px-4 py-2 font-semibold">
+            К тестам
+          </button>
+        </div>
       </div>
     );
 
