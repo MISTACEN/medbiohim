@@ -159,9 +159,42 @@ function ImageBlock({ raw }: { raw: string }) {
   );
 }
 
-export function LectureRenderer({ markdown }: { markdown: string }) {
+function sanitizeLectureHtml(raw: string): string {
+  if (typeof window === "undefined") return "";
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+  const allowed = new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","FONT"]);
+  const walk=(root: Node)=>{
+    [...root.childNodes].forEach(node=>{
+      if(node.nodeType!==Node.ELEMENT_NODE){ if(node.parentNode) walk(node); return; }
+      const el=node as HTMLElement;
+      if(!allowed.has(el.tagName)){ const p=el.parentNode; if(p){while(el.firstChild)p.insertBefore(el.firstChild,el);p.removeChild(el);} return; }
+      [...el.attributes].forEach(a=>{
+        const keep=["href","src","alt","title","target","rel","width","height","size","style"].includes(a.name);
+        if(!keep) el.removeAttribute(a.name);
+        if(a.name==="style"){
+          const safe=a.value.split(";").map(x=>x.trim()).filter(x=>/^(font-size|font-weight|font-style|text-decoration|text-align|color|background-color)\s*:\s*[^;]+$/i.test(x)&&!/url\s*\(|expression\s*\(|javascript:/i.test(x)).join(";");
+          if(safe)el.setAttribute("style",safe);else el.removeAttribute("style");
+        }
+      });
+      if(el.hasAttribute("href")||el.hasAttribute("src")){
+        const attr=el.hasAttribute("href")?"href":"src";
+        try{const u=new URL(el.getAttribute(attr)||"",window.location.origin);if(!["http:","https:"].includes(u.protocol))el.removeAttribute(attr);}catch{el.removeAttribute(attr);}
+      }
+      if(el.tagName==="IFRAME"){
+        const src=el.getAttribute("src")||"";
+        if(!/^https:\/\/(www\.)?(youtube\.com|youtube-nocookie\.com|rutube\.ru|vk\.com)\//i.test(src))el.remove();
+        else{el.setAttribute("allowfullscreen","true");el.setAttribute("loading","lazy");}
+      }
+      if(el.tagName==="A"){el.setAttribute("target","_blank");el.setAttribute("rel","noreferrer");}
+      if(el.parentNode)walk(el);
+    });
+  };
+  walk(doc.body); return doc.body.innerHTML;
+}
+export function LectureRenderer({ markdown, html }: { markdown: string; html?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const safeHtml = useMemo(() => html ? sanitizeLectureHtml(html) : "", [html]);
   const parts = useMemo(() => parseBlocks(markdown || ""), [markdown]);
 
   useEffect(() => {
