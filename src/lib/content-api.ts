@@ -95,13 +95,7 @@ export async function listTrainerFeed(
   );
 }
 
-export async function submitTrainerAnswer(payload: {
-  card_id: string;
-  option_id?: string;
-  answer_text?: string;
-  is_skipped?: boolean;
-  time_ms?: number;
-}) {
+) {
   return api<{ answer: Record<string, unknown>; correct: boolean | null }>(
     "/trainers/feed/answer",
     { method: "POST", body: JSON.stringify(payload) },
