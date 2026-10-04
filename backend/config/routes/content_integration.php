@@ -22,9 +22,10 @@ return static function (Router $router): void {
                            m.content_html, m.external_url, m.source_key, m.order_index,
                            m.is_published, m.created_at, m.updated_at,
                            s.name AS subject_name, s.slug AS subject_slug,
-                           s.specialty_slug
+                           s.specialty_slug, cs.id AS source_id
                     FROM public.materials m
                     JOIN public.subjects s ON s.id = m.subject_id
+                    LEFT JOIN public.content_sources cs ON cs.id::text = m.source_key
                     WHERE m.is_published = true';
             $paramsSql = [];
 
@@ -119,10 +120,12 @@ return static function (Router $router): void {
                            m.file_id, m.external_url, m.content_html, m.order_index,
                            m.is_published, m.created_at, m.updated_at, m.source_key,
                            s.name AS subject_name, s.slug AS subject_slug, s.specialty_slug,
+                           cs.id AS source_id,
                            f.original_name AS source_file_name, f.mime_type AS source_file_mime,
                            f.size_bytes AS source_file_size, f.object_key AS source_object_key
                     FROM public.materials m
                     JOIN public.subjects s ON s.id = m.subject_id
+                    LEFT JOIN public.content_sources cs ON cs.id::text = m.source_key
                     LEFT JOIN public.files f ON f.id = m.file_id AND f.status = \'active\'
                     WHERE m.is_published = true';
             $p = [];
@@ -157,6 +160,7 @@ return static function (Router $router): void {
             }));
             foreach ($items as &$item) {
                 $item['source'] = [
+                    'id' => $item['source_id'] ?? null,
                     'key' => $item['source_key'] ?? null,
                     'file_id' => $item['file_id'] ?? null,
                     'name' => $item['source_file_name'] ?? null,
