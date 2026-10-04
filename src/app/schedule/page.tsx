@@ -68,7 +68,14 @@ function formatMinutes(minutes: number) {
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
 }
 function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
-function breakRange(value: string): { start: number; end: number } | null {\n  const m = String(value || "").match(/(\\d{1,2}:\\d{2})\\s*(?:-|–|—|to)\\s*(\\d{1,2}:\\d{2})/i);\n  if (!m) return null;\n  const start = timeToMinutes(m[1]);\n  const end = timeToMinutes(m[2]);\n  return end > start ? { start, end } : null;\n}\n
+function breakRange(value: string): { start: number; end: number } | null {
+  const m = String(value || "").match(/(\d{1,2}:\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}:\d{2})/i);
+  if (!m) return null;
+  const start = timeToMinutes(m[1]);
+  const end = timeToMinutes(m[2]);
+  return end > start ? { start, end } : null;
+}
+
 /** Pack overlapping events into side-by-side columns (classic calendar layout). */
 function layoutDayColumns(items: ScheduleItem[]): Array<{ item: ScheduleItem; col: number; cols: number }> {
   const sorted = [...items].sort((a, b) => {
