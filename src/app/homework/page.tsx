@@ -72,6 +72,10 @@ export default function HomeworkPage() {
   });
 
   async function submitWork(id: string, file?: File | null) {
+    if (source !== "api") {
+      setNote("Задания временно недоступны. Обновите страницу позже.");
+      return;
+    }
     setBusy(true);
     try {
       let fileId: string | undefined;
@@ -79,32 +83,19 @@ export default function HomeworkPage() {
         const up = await uploadFile(file);
         if (!up.ok) {
           setNote(up.error.message);
-          setBusy(false);
           return;
         }
         fileId = up.data.file.id;
       }
-      if (source === "api") {
-        const res = await submitHomework(id, text || undefined, fileId);
-        if (!res.ok) {
-          setNote(res.error.message);
-          setBusy(false);
-          return;
-        }
-        await reload();
-        setOpenId(null);
-        setText("");
-        setNote("Работа отправлена");
-      } else {
-        setItems((prev) =>
-          prev.map((h) =>
-            h.id === id && (h.status === "pending" || h.status === "overdue")
-              ? { ...h, status: "submitted" as const }
-              : h
-          )
-        );
-        setOpenId(null);
+      const res = await submitHomework(id, text || undefined, fileId);
+      if (!res.ok) {
+        setNote(res.error.message);
+        return;
       }
+      await reload();
+      setOpenId(null);
+      setText("");
+      setNote("Работа отправлена");
     } catch {
       setNote("Ошибка отправки (login + API)");
     } finally {
