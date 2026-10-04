@@ -45,6 +45,10 @@ function CardsPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [doneToday, setDoneToday] = useState(0);
   const [subjectSlug, setSubjectSlug] = useState("");
+  const [scope, setScope] = useState<"shared" | "personal">(scopeFromUrl);
+  const [front, setFront] = useState("");
+  const [back, setBack] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const refresh = useCallback(async (slug?: string, selectedScope: "shared" | "personal" = scopeFromUrl) => {
     setLoading(true);
@@ -63,7 +67,7 @@ function CardsPageInner() {
     } else {
       setError(dueRes.error.message);
     }
-  }, []);
+  }, [scopeFromUrl]);
 
   useEffect(() => {
     if (fromUrl) setSubjectSlug(fromUrl);
@@ -74,8 +78,8 @@ function CardsPageInner() {
   const card = queue[idx] || null;
 
   async function loadMore() {
-    setBusy(true);
     if (scope === "personal") return;
+    setBusy(true);
     const res = await srsEnsure(20, subjectSlug || undefined);
     setBusy(false);
     if (!res.ok) {
@@ -192,7 +196,7 @@ function CardsPageInner() {
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
           <div className="mb-3 text-sm font-semibold">Создать личную карточку</div>
           <div className="grid gap-2">
-            <textarea value={front} onChange={(e) => setFront(e.target.value)} placeholder="Вопрос / термин" className="min-h-20 rounded-xl border px-3 py-2 text-sm" />
+            <textarea id="srs-personal-front" value={front} onChange={(e) => setFront(e.target.value)} placeholder="Вопрос / термин" className="min-h-20 rounded-xl border px-3 py-2 text-sm" />
             <textarea value={back} onChange={(e) => setBack(e.target.value)} placeholder="Ответ / определение" className="min-h-20 rounded-xl border px-3 py-2 text-sm" />
             <button type="button" disabled={adding || !front.trim()} onClick={() => void addPersonal()} className="btn-primary">{adding ? "Сохраняем…" : "Добавить карточку"}</button>
           </div>
@@ -207,13 +211,11 @@ function CardsPageInner() {
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-10 text-center shadow-sm">
           <Check className="mx-auto h-10 w-10 text-[var(--success)]" />
           <p className="mt-3 font-semibold">На сейчас карточек нет</p>
-          <button
-            type="button"
-            onClick={() => void loadMore()}
-            className="mt-4 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white"
-          >
-            Набрать колоду
-          </button>
+          {scope === "personal" ? (
+            <button type="button" onClick={() => document.getElementById("srs-personal-front")?.focus()} className="mt-4 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white">Создать личную карточку</button>
+          ) : (
+            <button type="button" onClick={() => void loadMore()} className="mt-4 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white">Набрать колоду</button>
+          )}
         </div>
       ) : (
         <>
