@@ -240,7 +240,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                 <div className="text-xs font-semibold uppercase tracking-wider text-indigo-500">{card.preparation?.name || "Препарат"}</div>
                 <h1 className="mt-2 text-xl font-extrabold sm:text-2xl">{card.question?.prompt || "Что изображено?"}</h1>
                 <div className="mt-5 grid gap-2">
-                  {(card.question?.options || []).map((option) => {
+                  {(card.question?.options || []).map((option: { id: string; label: string; correct?: boolean }) => {
                     const active = selected === option.id;
                     const correct = result !== null && option.correct;
                     return <button key={option.id} type="button" disabled={busy || result !== null} onClick={() => void choose(option.id)} className={"rounded-2xl border px-4 py-3 text-left text-sm transition " + (correct ? "border-emerald-400 bg-emerald-50 text-emerald-800" : active && result === false ? "border-rose-400 bg-rose-50 text-rose-800" : active ? "border-indigo-400 bg-indigo-50 text-indigo-800" : "border-slate-200 hover:bg-slate-50")}>{option.label}</button>;
@@ -251,7 +251,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                 ) : (
                   <>
                     <p className="mt-2">Показываем эталонный разбор.</p>
-                    {card.hotspots?.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{card.hotspots.map((h, i) => <div key={String(h.id || i)} className="rounded-xl bg-white/70 p-2"><span className="font-semibold">{String(h.id || "")}</span><span className="ml-2">{String(h.label || h.title || "")}</span></div>)}</div>}
+                    {card.hotspots?.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{card.hotspots.map((h: any, i: number) => <div key={String(h.id || i)} className="rounded-xl bg-white/70 p-2"><span className="font-semibold">{String(h.id || "")}</span><span className="ml-2">{String(h.label || h.title || "")}</span></div>)}</div>}
                     {card.question?.explanation && <p className="mt-3 leading-6">{card.question.explanation}</p>}
                   </>
                 )}</div>}
