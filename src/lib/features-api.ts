@@ -19,14 +19,6 @@ export type TutorAnswer = {
   model?: string | null;
   retrieved: number;
 };
-export async function tutorMeta() {
-  return api<{
-    index: { chunks: number; subjects: number; by_source?: Record<string, number> };
-    llm_enabled: boolean;
-    model?: string | null;
-    subjects: Array<{ subject: string; subject_slug: string; chunks: number }>;
-  }>("/tutor/meta");
-}
 export async function tutorAsk(
   question: string,
   opts?: { subject_slug?: string; history?: Array<{ role: string; content: string }>; top_k?: number }
