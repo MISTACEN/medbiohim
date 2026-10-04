@@ -25,6 +25,8 @@ type TrainerLayout = "sidebar" | "list" | "top";
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, refresh } = useAuth();
+  const search = useSearchParams();
+  const recoveryMode = search.get("recovery") === "1";
 
   const [account, setAccount] = useState<AccountSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,6 +155,8 @@ export default function SettingsPage() {
           <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} /> Обновить
         </button>
       </div>
+
+      {recoveryMode && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"><b>Восстановление пароля.</b> Сессия подтверждена. Задайте новый пароль ниже.</div>}
 
       {(msg || err) && (
         <div className={clsx("rounded-xl border px-4 py-3 text-sm", err ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-900")}>
