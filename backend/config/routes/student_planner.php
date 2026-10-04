@@ -20,7 +20,7 @@ return static function(Router $router): void {
             if($to!==''){ $where[]='h.due_date <= :to'; $p['to']=$to; }
             $sql="SELECT h.id,h.title,h.description,h.due_at,h.due_date,h.subject_id,h.group_id,h.created_by,h.created_by_role,h.created_at,
                          s.name AS subject_name,s.slug AS subject_slug,s.color_hex,
-                         hp.status AS my_status,hp.completed_at,
+                         hp.completed AS my_completed,hp.submitted_at AS completed_at,
                          hs.status AS submission_status,hs.id AS submission_id,hs.grade
                     FROM public.homeworks h
                     LEFT JOIN public.subjects s ON s.id=h.subject_id
@@ -53,7 +53,7 @@ return static function(Router $router): void {
                 $recovery[$key]['entries'][]=['date'=>$a['date'],'start_time'=>$a['start_time'],'status'=>$a['status'],'is_makeup'=>(bool)$a['is_makeup']];
             }
             foreach($homeworks as $h){
-                if(($h['my_status']??'')==='done'||($h['submission_status']??'')==='submitted'||($h['submission_status']??'')==='graded')continue;
+                if(!empty($h['my_completed'])||($h['submission_status']??'')==='submitted'||($h['submission_status']??'')==='graded')continue;
                 $key=(string)($h['subject_name']??'Без предмета');
                 if(!isset($recovery[$key]))$recovery[$key]=['subject_name'=>$key,'subject_slug'=>$h['subject_slug']??null,'color_hex'=>$h['color_hex']??null,'missed'=>0,'unexcused'=>0,'excused'=>0,'sick'=>0,'entries'=>[]];
                 $recovery[$key]['homeworks_pending']=($recovery[$key]['homeworks_pending']??0)+1;
@@ -86,11 +86,11 @@ return static function(Router $router): void {
         if(!RequireAuth::handle($req)) return;
         try {
             $db=Connection::pdo();$uid=(string)$req->user->id;$done=(bool)$req->json('done',false);
-            $q=$db->prepare("INSERT INTO public.homework_progress(homework_id,user_id,status,completed_at)
-                             VALUES(:h,:u,:s,CASE WHEN :done=true THEN now() ELSE NULL END)
-                             ON CONFLICT(homework_id,user_id) DO UPDATE SET status=EXCLUDED.status,completed_at=EXCLUDED.completed_at,updated_at=now()
+            $q=$db->prepare("INSERT INTO public.homework_progress(homework_id,user_id,completed,submitted_at)
+                             VALUES(:h,:u,:done,CASE WHEN :done=true THEN now() ELSE NULL END)
+                             ON CONFLICT(homework_id,user_id) DO UPDATE SET completed=EXCLUDED.completed,submitted_at=EXCLUDED.submitted_at
                              RETURNING *");
-            $q->execute(['h'=>(string)$params['id'],'u'=>$uid,'s'=>$done?'done':'pending','done'=>$done?'true':'false']);
+            $q->execute(['h'=>(string)$params['id'],'u'=>$uid,'done'=>$done]);
             Response::success(['progress'=>$q->fetch()],$req->requestId);
         } catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
     });
