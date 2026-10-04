@@ -21,40 +21,6 @@ use Medbiohim\Support\ContentStore;
 
 return static function (Router $router): void {
 
-    // --- ultra-safe probe (no heavy deps) ---
-    $router->get('/api/v1/debug/ping', static function (Request $req, array $params): void {
-        Response::success([
-            'pong' => true,
-            'php' => PHP_VERSION,
-            'time' => date('c'),
-            'has_ContentStore' => class_exists(ContentStore::class),
-            'has_UserRepository' => class_exists(UserRepository::class),
-            'has_ScheduleRepository' => class_exists(ScheduleRepository::class),
-        ], $req->requestId);
-    });
-
-    $router->get('/api/v1/debug/dashboard-probe', static function (Request $req, array $params): void {
-        $out = ['steps' => []];
-        try {
-            $out['steps'][] = 'php:'.PHP_VERSION;
-            $out['steps'][] = 'ContentStore:'.(class_exists(ContentStore::class)?'yes':'no');
-            if (class_exists(ContentStore::class)) {
-                try {
-                    $store = new ContentStore();
-                    $out['steps'][] = 'site:ok';
-                    try { $out['site'] = $store->getSite(); } catch (\Throwable $e) { $out['steps'][] = 'getSite:'.$e->getMessage(); }
-                    try { $out['ann'] = count($store->listAnnouncements()); } catch (\Throwable $e) { $out['steps'][] = 'ann:'.$e->getMessage(); }
-                    try { $out['sched_n'] = count($store->listSchedule()); } catch (\Throwable $e) { $out['steps'][] = 'sched:'.$e->getMessage(); }
-                } catch (\Throwable $e) {
-                    $out['steps'][] = 'ContentStore:'.$e->getMessage();
-                }
-            }
-        } catch (\Throwable $e) {
-            $out['steps'][] = 'fatal:'.$e->getMessage();
-        }
-        Response::success($out, $req->requestId);
-    });
-
     // --- dashboard always 200 ---
     $router->get('/api/v1/dashboard', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
