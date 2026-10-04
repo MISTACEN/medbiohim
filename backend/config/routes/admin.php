@@ -85,7 +85,7 @@ $adminGridTables = [
     'questions','tests','test_questions','test_attempts','test_answers',
     'homeworks','homework_progress','homework_submissions','schedules',
     'schedule_entries','academic_sessions','curriculum_items','student_academic_states','academic_progress_history','ai_study_plans','ai_study_plan_items','subject_gradebook_entries','community_posts','comments','notes','favorites',
-    'exam_questions','ticket_banks','progress_ledger','site_content','learning_sessions'
+    'exam_questions','ticket_banks','trainer_feed_cards','progress_ledger','site_content','learning_sessions'
 ];
 $adminGridGate = static function(Request $req)use($strictAdmin):bool{return $strictAdmin($req);};
 
@@ -110,6 +110,35 @@ $router->delete('/api/v1/admin/db/{table}/row',static function(Request $req,arra
 $router->get('/api/v1/admin/db/audit',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;$limit=min(500,max(1,(int)($req->query['limit']??200)));try{Response::success(['items'=>SupabaseRest::select('admin_change_log?select=*&order=created_at.desc&limit='.$limit)],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
 });
+$router->post('/api/v1/admin/db/audit/{id}/rollback',static function(Request $req,array $params)use($strictAdmin,$adminGridTables,$adminKeyMap):void{
+ if(!$strictAdmin($req))return;
+ try{
+  $log=SupabaseRest::select('admin_change_log?id=eq.'.rawurlencode((string)$params['id']).'&limit=1');
+  if(!$log){Response::error('NOT_FOUND','Audit entry not found',$req->requestId,404);return;}
+  $entry=$log[0];$table=(string)($entry['table_name']??'');$action=(string)($entry['action']??'');
+  if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not rollback-enabled',$req->requestId,403);return;}
+  $key=is_array($entry['row_key']??null)?$entry['row_key']:[];$old=is_array($entry['old_data']??null)?$entry['old_data']:null;
+  if(!$old||!$key){Response::error('VALIDATION_ERROR','Audit entry has no restorable data',$req->requestId,422);return;}
+  $filters=[];foreach($key as $k=>$v)$filters[]=$k.'=eq.'.rawurlencode((string)$v);
+  if($action==='update'){
+    $patch=$old;foreach(array_keys($key) as $k)unset($patch[$k]);
+    $current=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));
+    if(!$current){Response::error('NOT_FOUND','Current row not found',$req->requestId,404);return;}
+    $restored=SupabaseRest::patch($table.'?'.implode('&',$filters),$patch,true);
+    SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'rollback','table_name'=>$table,'row_key'=>$key,'old_data'=>$current[0],'new_data'=>$restored[0]??$old,'source'=>'admin_rollback'],false);
+    Response::success(['item'=>$restored[0]??$old],$req->requestId);return;
+  }
+  if($action==='delete'){
+    $current=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));
+    if($current){Response::error('CONFLICT','Row already exists; rollback would overwrite it',$req->requestId,409);return;}
+    $restored=SupabaseRest::insert($table,$old,true);
+    SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'rollback','table_name'=>$table,'row_key'=>$key,'old_data'=>null,'new_data'=>$restored[0]??$old,'source'=>'admin_rollback'],false);
+    Response::success(['item'=>$restored[0]??$old],$req->requestId);return;
+  }
+  Response::error('VALIDATION_ERROR','This audit action cannot be rolled back',$req->requestId,422);
+ }catch(\Throwable $e){Response::error('ROLLBACK_FAILED',$e->getMessage(),$req->requestId,422);}
+});
+
 $router->get('/api/v1/admin/db/tables', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
     if(!$adminGridGate($req))return;
     $items=[];
