@@ -42,7 +42,7 @@ export default function TutorPage() {
     if(ss.ok) {
       const list = (ss.data.items || [])
         .map((s: any) => ({ name: String(s.name || ""), slug: String(s.slug || "").trim() }))
-        .filter((s): s is { name: string; slug: string } => Boolean(s.slug));
+        .filter((s: { name: string; slug: string }): s is { name: string; slug: string } => Boolean(s.slug));
       setSubjects(list);
     }
     if(!cs.ok){setError(cs.error.message);setBooting(false);return;}
