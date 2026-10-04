@@ -414,9 +414,9 @@ export default function SchedulePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => addDaysYmd(d, -7))} aria-label="Предыдущая неделя"><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" className="schedule-today-btn" onClick={() => setWeekStart(startOfWeekYmd(nowParts().date))}>Сегодня</button>
-          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => addDaysYmd(d, 7))} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
+          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,-7); setSelectedDay(next); return next; })} aria-label="Предыдущая неделя"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" className="schedule-today-btn" onClick={() => { const t=nowParts().date; setSelectedDay(t); setWeekStart(startOfWeekYmd(t)); }}>Сегодня</button>
+          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,7); setSelectedDay(next); return next; })} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
 
