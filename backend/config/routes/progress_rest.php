@@ -16,18 +16,25 @@ return static function (Router $r): void {
         }
         $homeworks = [];
         $attempts = [];
+        $subjectId = trim((string) ($q->query['subject_id'] ?? ''));
         try {
             try {
                 $homeworks = (new HomeworkRepository())->listForUser($q->user->id);
+                if ($subjectId !== '') {
+                    $homeworks = array_values(array_filter($homeworks, static fn($h) => (string) ($h['subject_id'] ?? '') === $subjectId));
+                }
             } catch (\Throwable $e) {
                 try {
                     $homeworks = SupabaseAcademic::homeworksForUser($q->user->id);
+                    if ($subjectId !== '') {
+                        $homeworks = array_values(array_filter($homeworks, static fn($h) => (string) ($h['subject_id'] ?? '') === $subjectId));
+                    }
                 } catch (\Throwable $x) {
                     $homeworks = [];
                 }
             }
             try {
-                $attempts = (new TestRepository())->attemptsForUser($q->user->id);
+                $attempts = (new TestRepository())->attemptsForUser($q->user->id, $subjectId !== '' ? $subjectId : null);
             } catch (\Throwable $e) {
                 $attempts = [];
             }
