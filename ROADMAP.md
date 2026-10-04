@@ -320,3 +320,38 @@
 - [ ] admin can fix content;
 - [ ] AI has at least one verified provider;
 - [ ] документация отражает фактическое состояние.
+
+
+# Audit update — 2026-10-04
+
+Полный отчёт: docs/FULL-AUDIT-2026-10-04.md.
+Реестр: docs/UNFINISHED-REGISTRY.md.
+API audit: docs/API-COVERAGE-2026-10-04.md.
+
+## P0 blockers confirmed
+- P0: literal escaped newline in src/components/trainers/HistologyTrainer.tsx:248 breaks Code Checks before typecheck/build.
+- P0: historical /api-compat layer in src/lib/api.ts is used by real user/admin flows.
+- P0: sequential bank flow does not match the preparation page contract.
+- P0: preparation UI does not match structured question/options returned by backend.
+- P0: homework has a production mock fallback.
+- P0: admin schedule save uses the missing /api-compat route.
+
+## P1/P2 cleanup confirmed
+- P1: two backend deploy workflows.
+- P1: divergent spaceweb_upload copy.
+- P1: trainer media 404/502.
+- P1: AI provider runtime failures.
+- P2: stale frontend shadow tree.
+- P2: unused Sparkline.tsx.
+- P2: unused chemistry fixtures.
+- P2: stale deploy/hotfix docs.
+- P2: organic chemistry placeholder ID map.
+
+## Revised next order
+1. Clean runtime/API and restore green Code Checks.
+2. Fix preparation and sequential modes.
+3. Remove production mock fallbacks.
+4. Consolidate deploy/source copies.
+5. Close media and AI.
+6. Remove dead/legacy code and stale docs.
+7. Return to product roadmap.
