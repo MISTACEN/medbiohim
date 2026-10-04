@@ -148,83 +148,73 @@ export type SubjectPlan = any;
 export type SubjectPlanWeek = any;
 export type TelegramAdminChat = any;
 export type TrainerFeedCard = any;
-export async function adminDbTables(..._args: any[]): Promise<any> { return api(`/admin/db/tables`) as any; }
-export async function adminDbAudit(..._args: any[]): Promise<any> { return api(`/admin/db/audit`) as any; }
-export async function adminDbDelete(..._args: any[]): Promise<any> { return api(`/api-compat/adminDbDelete`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDbDeleteByKey(..._args: any[]): Promise<any> { return api(`/api-compat/adminDbDeleteByKey`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDbInsert(..._args: any[]): Promise<any> { return api(`/api-compat/adminDbInsert`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDbList(..._args: any[]): Promise<any> { return api(`/api-compat/adminDbList`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDbMeta(..._args: any[]): Promise<any> { return api(`/admin/db/meta`) as any; }
-export async function adminDbUpdate(..._args: any[]): Promise<any> { return api(`/api-compat/adminDbUpdate`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDbUpdateByKey(..._args: any[]): Promise<any> { return api(`/api-compat/adminDbUpdateByKey`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminBindTelegramChat(..._args: any[]): Promise<any> { return api(`/api-compat/adminBindTelegramChat`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminContentArchive(..._args: any[]): Promise<any> { return api(`/api-compat/adminContentArchive`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminContentImport(..._args: any[]): Promise<any> { return api(`/api-compat/adminContentImport`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminContentMove(..._args: any[]): Promise<any> { return api(`/api-compat/adminContentMove`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminCreateAnnouncement(..._args: any[]): Promise<any> { return api(`/api-compat/adminCreateAnnouncement`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminCreateHomework(..._args: any[]): Promise<any> { return api(`/api-compat/adminCreateHomework`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminCreateQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminCreateQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminCreateWork(..._args: any[]): Promise<any> { return api(`/api-compat/adminCreateWork`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDeleteAnnouncement(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteAnnouncement`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDeleteCommunity(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteCommunity`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDeleteHomework(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteHomework`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDeleteLecture(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDeleteMaterial(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteMaterial`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminDeleteQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminDeleteQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminGenerateLecture(..._args: any[]): Promise<any> { return api(`/api-compat/adminGenerateLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminImportContentPackage(..._args: any[]): Promise<any> { return api(`/api-compat/adminImportContentPackage`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListAnnouncements(..._args: any[]): Promise<any> { return api(`/api-compat/adminListAnnouncements`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListCommunity(..._args: any[]): Promise<any> { return api(`/api-compat/adminListCommunity`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListHomeworks(..._args: any[]): Promise<any> { return api(`/api-compat/adminListHomeworks`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListLectures(..._args: any[]): Promise<any> { return api(`/api-compat/adminListLectures`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListMaterials(..._args: any[]): Promise<any> { return api(`/api-compat/adminListMaterials`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminListQuestions(..._args: any[]): Promise<any> { return api(`/admin/questions`) as any; }
-export async function adminListSchedule(groupId?:string,semester?:number): Promise<any> { const q=new URLSearchParams(); if(groupId)q.set("group_id",groupId); if(semester!=null)q.set("semester",String(semester)); return api(`/admin/schedule?${q}`) as any; }
-export async function adminListUsers(..._args: any[]): Promise<any> { return api(`/admin/users`) as any; }
-export async function adminOverview(..._args: any[]): Promise<any> { return api(`/admin/overview`) as any; }
-export async function adminProblemCenter(..._args: any[]): Promise<any> { return api(`/admin/problem-center`) as any; }
-export async function adminPublishLecture(id:string): Promise<any> { return api(`/admin/lectures/${encodeURIComponent(id)}/publish`, {method:"POST",body:"{}"}) as any; }
-export async function adminRejectLecture(id:string): Promise<any> { return api(`/admin/lectures/${encodeURIComponent(id)}/reject`, {method:"POST",body:"{}"}) as any; }
-export async function adminSaveSchedule(..._args: any[]): Promise<any> { return api(`/api-compat/adminSaveSchedule`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminSetTelegramWebhook(..._args: any[]): Promise<any> { return api(`/api-compat/adminSetTelegramWebhook`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminSetUserRole(..._args: any[]): Promise<any> { return api(`/api-compat/adminSetUserRole`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminTelegramChats(..._args: any[]): Promise<any> { return api(`/api-compat/adminTelegramChats`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminUpdateCommunity(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateCommunity`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminUpdateLecture(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminUpdateQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminUpdateBankQuestion(id:string,payload:Record<string,unknown>): Promise<any> { return api(`/admin/question-bank/${encodeURIComponent(id)}`, { method:"PUT", body:JSON.stringify(payload) }) as any; }
-export async function adminUpdateQuestionReport(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateQuestionReport`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminUpdateSite(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateSite`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function adminUpdateWork(..._args: any[]): Promise<any> { return api(`/api-compat/adminUpdateWork`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function claimAdmin(..._args: any[]): Promise<any> { return api(`/api-compat/claimAdmin`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function createCommunityPost(..._args: any[]): Promise<any> { return api(`/api-compat/createCommunityPost`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function createGroup(..._args: any[]): Promise<any> { return api(`/api-compat/createGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function createSubject(..._args: any[]): Promise<any> { return api(`/api-compat/createSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function deleteGroup(..._args: any[]): Promise<any> { return api(`/api-compat/deleteGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function deleteSubject(..._args: any[]): Promise<any> { return api(`/api-compat/deleteSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function finishPreparation(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}/finish`, {method:"POST",body:"{}"}) as any; }
-export async function generateTicket(..._args: any[]): Promise<any> { const a=_args[0]||{}; return api(`/tickets/generate`, {method:"POST",body:JSON.stringify(a)}) as any; }
-export async function getFile(..._args: any[]): Promise<any> { return api(`/api-compat/getFile`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getLecture(..._args: any[]): Promise<any> { return api(`/api-compat/getLecture`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getLessonPlan(..._args: any[]): Promise<any> { return api(`/api-compat/getLessonPlan`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getPreparation(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}`) as any; }
-export async function getQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/getQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function getScheduleMeta(course?:number,semester?:number): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api(`/schedule/meta${q.toString()?`?${q}`:""}`) as any; }
-export async function getSubjectGradebook(..._args: any[]): Promise<any> { const id=String(_args[0]??"").trim(); if(!id) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api(`/subjects/${encodeURIComponent(id)}/gradebook`) as any; }
-export async function getSubjectPlan(..._args: any[]): Promise<any> { const slug=String(_args[0]??"").trim(); if(!slug) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; return api(`/subject-plans/${encodeURIComponent(slug)}`) as any; }
-export async function getTrainer(id:string): Promise<any> { return api(`/trainers/${encodeURIComponent(String(id))}`) as any; }
-export async function listCommunityPosts(..._args: any[]): Promise<any> { return api(`/community/posts`) as any; }
-export async function listLectures(subject?:string): Promise<any> { const q=subject?`?subject=${encodeURIComponent(subject)}`:""; return api(`/lectures${q}`) as any; }
-export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api(`/questions/subjects`) as any; }
-export async function listQuestions(params:Record<string,unknown>={ }): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api(`/questions${q.toString()?`?${q}`:""}`) as any; }
-export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return api(`/subjects-catalog`) as any; }
-export async function listTicketBanks(..._args: any[]): Promise<any> { return api(`/tickets`) as any; }
-export async function listTrainers(..._args: any[]): Promise<any> { return api(`/trainers`) as any; }
-export async function preparationAiReview(sessionId:string): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}/ai-review`, {method:"POST",body:"{}"}) as any; }
-export async function register(..._args: any[]): Promise<any> { return api(`/api-compat/register`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function reportQuestion(..._args: any[]): Promise<any> { return api(`/api-compat/reportQuestion`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function savePreparation(sessionId:string,payload:Record<string,unknown>): Promise<any> { return api(`/tests/preparation/${encodeURIComponent(sessionId)}`, {method:"PATCH",body:JSON.stringify(payload)}) as any; }
-export async function startPreparation(testId:string,mode:"full"|"count"|"sequential"="full",questionLimit?:number): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/preparation/start`, {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})}) as any; }
-export async function getBankProgress(testId:string): Promise<any> { return api(`/tests/${encodeURIComponent(testId)}/bank-progress`) as any; }
-export async function updateGroup(..._args: any[]): Promise<any> { return api(`/api-compat/updateGroup`, { method: "POST", body: JSON.stringify(_args) }) as any; }
-export async function updateSubject(..._args: any[]): Promise<any> { return api(`/api-compat/updateSubject`, { method: "POST", body: JSON.stringify(_args) }) as any; }
+
+export async function adminDbAudit(limit = 200): Promise<any> { return api("/admin/db/audit?limit=" + encodeURIComponent(String(limit))) as any; }
+export async function adminDbDelete(table:string,id:string): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminDbDeleteByKey(table:string,key:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/row", { method:"DELETE", body:JSON.stringify({key}) }) as any; }
+export async function adminDbInsert(table:string,row:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table), { method:"POST", body:JSON.stringify(row) }) as any; }
+export async function adminDbList(table:string,limit=200): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "?limit=" + encodeURIComponent(String(limit))) as any; }
+export async function adminDbMeta(..._args: any[]): Promise<any> { return api("/admin/db/meta") as any; }
+export async function adminDbUpdate(table:string,id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
+export async function adminDbUpdateByKey(table:string,key:Record<string,unknown>,payload:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/row", { method:"PATCH", body:JSON.stringify({key,row:payload}) }) as any; }
+export async function adminBindTelegramChat(chatId:string|number,groupId:string): Promise<any> { return api("/admin/telegram/chats/" + encodeURIComponent(String(chatId)) + "/bind", { method:"POST", body:JSON.stringify({group_id:groupId}) }) as any; }
+export async function adminContentArchive(table:string,id:string): Promise<any> { return api("/admin/content/archive", { method:"POST", body:JSON.stringify({table,id}) }) as any; }
+export async function adminContentImport(payload:Record<string,unknown>): Promise<any> { return api("/admin/content/import", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminCreateAnnouncement(title:string,body:string,pinned=false): Promise<any> { return api("/admin/announcements", { method:"POST", body:JSON.stringify({title,body,pinned}) }) as any; }
+export async function adminCreateHomework(payload:Record<string,unknown>): Promise<any> { return api("/admin/homeworks", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminCreateQuestion(payload:Record<string,unknown>): Promise<any> { return api("/admin/questions", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminCreateWork(payload:Record<string,unknown>): Promise<any> { return api("/admin/problem-center/work", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminDeleteAnnouncement(id:string): Promise<any> { return api("/admin/announcements/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminDeleteCommunity(id:string): Promise<any> { return api("/admin/community/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminDeleteHomework(id:string): Promise<any> { return api("/admin/homeworks/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminDeleteLecture(id:string): Promise<any> { return api("/admin/lectures/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminDeleteMaterial(id:string): Promise<any> { return api("/admin/materials/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminDeleteQuestion(id:string): Promise<any> { return api("/admin/questions/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function adminGenerateLecture(payload:Record<string,unknown>): Promise<any> { return api("/admin/lectures/generate", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminImportContentPackage(payload:Record<string,unknown>): Promise<any> { return api("/admin/content/package/import", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminListAnnouncements(): Promise<any> { return api("/admin/announcements") as any; }
+export async function adminListCommunity(): Promise<any> { return api("/admin/community") as any; }
+export async function adminListHomeworks(): Promise<any> { return api("/admin/homeworks") as any; }
+export async function adminListLectures(status?:string,subject?:string): Promise<any> { const q=new URLSearchParams(); if(status)q.set("status",status); if(subject)q.set("subject",subject); return api("/admin/lectures" + (q.toString()?"?"+q:"")) as any; }
+export async function adminListMaterials(): Promise<any> { return api("/admin/materials") as any; }
+export async function adminListQuestions(..._args: any[]): Promise<any> { return api("/admin/questions") as any; }
+export async function adminListSchedule(groupId?:string,semester?:number): Promise<any> { const q=new URLSearchParams(); if(groupId)q.set("group_id",groupId); if(semester!=null)q.set("semester",String(semester)); return api("/admin/schedule" + (q.toString()?"?"+q:"")) as any; }
+export async function adminListUsers(): Promise<any> { return api("/admin/users") as any; }
+export async function adminOverview(): Promise<any> { return api("/admin/overview") as any; }
+export async function adminProblemCenter(): Promise<any> { return api("/admin/problem-center") as any; }
+export async function adminPublishLecture(id:string): Promise<any> { return api("/admin/lectures/" + encodeURIComponent(id) + "/publish", {method:"POST",body:"{}"}) as any; }
+export async function adminRejectLecture(id:string): Promise<any> { return api("/admin/lectures/" + encodeURIComponent(id) + "/reject", {method:"POST",body:"{}"}) as any; }
+export async function adminSaveSchedule(payload:Record<string,unknown>): Promise<any> { return api("/admin/schedule", { method:"PUT", body:JSON.stringify(payload) }) as any; }
+export async function adminSetTelegramWebhook(): Promise<any> { return api("/admin/telegram/set-webhook", { method:"POST", body:"{}" }) as any; }
+export async function adminSetUserRole(userId:string,role:string,action="assign"): Promise<any> { return api("/admin/users/roles", { method:"POST", body:JSON.stringify({user_id:userId,role,action}) }) as any; }
+export async function adminTelegramChats(): Promise<any> { return api("/admin/telegram/chats") as any; }
+export async function adminUpdateCommunity(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/community/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
+export async function adminUpdateLecture(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/lectures/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
+export async function adminUpdateQuestion(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/questions/" + encodeURIComponent(id), { method:"PUT", body:JSON.stringify(payload) }) as any; }
+export async function adminUpdateBankQuestion(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/question-bank/" + encodeURIComponent(id), { method:"PUT", body:JSON.stringify(payload) }) as any; }
+export async function adminUpdateQuestionReport(id:string,status:string): Promise<any> { return api("/admin/question-reports/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify({status}) }) as any; }
+export async function adminUpdateSite(site:Record<string,unknown>): Promise<any> { return api("/admin/site", { method:"PUT", body:JSON.stringify(site) }) as any; }
+export async function adminUpdateWork(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/problem-center/work/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
+export async function createCommunityPost(title:string,body:string): Promise<any> { return api("/community/posts", { method:"POST", body:JSON.stringify({title,body}) }) as any; }
+export async function createGroup(payload:Record<string,unknown>): Promise<any> { return api("/groups", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function createSubject(payload:Record<string,unknown>): Promise<any> { return api("/subjects", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function deleteGroup(id:string): Promise<any> { return api("/groups/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function deleteSubject(id:string): Promise<any> { return api("/subjects/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
+export async function finishPreparation(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId) + "/finish", {method:"POST",body:"{}"}) as any; }
+export async function generateTicket(payload:Record<string,unknown>): Promise<any> { return api("/tickets/generate", {method:"POST",body:JSON.stringify(payload)}) as any; }
+export async function getFile(id:string): Promise<any> { return api("/files/" + encodeURIComponent(id)) as any; }
+export async function getLecture(id:string): Promise<any> { return api("/lectures/" + encodeURIComponent(id)) as any; }
+export async function getLessonPlan(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/lesson-plan" + (q.toString()?"?"+q:"")) as any; }
+export async function getPreparation(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId)) as any; }
+export async function getQuestion(id:string): Promise<any> { return api("/questions/" + encodeURIComponent(id)) as any; }
+export async function getScheduleMeta(course?:number,semester?:number): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api("/schedule/meta" + (q.toString()?"?"+q:"")) as any; }
+export async function getSubjectGradebook(id:string): Promise<any> { const clean=String(id??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api("/subjects/" + encodeURIComponent(clean) + "/gradebook") as any; }
+export async function getSubjectPlan(slug:string): Promise<any> { const clean=String(slug??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; return api("/subject-plans/" + encodeURIComponent(clean)) as any; }
+export async function preparationAiReview(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId) + "/ai-review", {method:"POST",body:"{}"}) as any; }
+export async function register(email:string,password:string,fullName:string): Promise<any> { return api("/auth/register", { method:"POST", body:JSON.stringify({email,password,full_name:fullName}) }) as any; }
+export async function reportQuestion(questionId:string,category:string,message=""): Promise<any> { return api("/questions/" + encodeURIComponent(questionId) + "/report", { method:"POST", body:JSON.stringify({category,message}) }) as any; }
+export async function savePreparation(sessionId:string,payload:Record<string,unknown>): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId), {method:"PATCH",body:JSON.stringify(payload)}) as any; }
+export async function startPreparation(testId:string,mode:"full"|"count"|"sequential"="full",questionLimit?:number): Promise<any> { return api("/tests/" + encodeURIComponent(testId) + "/preparation/start", {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit})}) as any; }
+export async function getBankProgress(testId:string): Promise<any> { return api("/tests/" + encodeURIComponent(testId) + "/bank-progress") as any; }
+export async function updateGroup(id:string,payload:Record<string,unknown>): Promise<any> { return api("/groups/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
+export async function updateSubject(id:string,payload:Record<string,unknown>): Promise<any> { return api("/subjects/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
