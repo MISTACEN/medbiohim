@@ -23,6 +23,45 @@ function stripHtml(html?: string | null) {
   return String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function MaterialBody({ material }: { material: ApiMaterial }) {
+  const url = material.source?.download_url ? String(material.source.download_url) : "";
+  const mime = String(material.source?.mime_type || "").toLowerCase();
+
+  if (material.content_html) {
+    return <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: material.content_html }} />;
+  }
+
+  if (material.external_url) {
+    return <iframe src={material.external_url} title={material.title} className="h-full min-h-[60vh] w-full rounded-xl border" />;
+  }
+
+  if (url && mime.startsWith("image/")) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center rounded-2xl bg-slate-50 p-4">
+        <img src={url} alt={material.title} className="max-h-[70vh] max-w-full rounded-xl object-contain" />
+      </div>
+    );
+  }
+
+  if (url && mime.includes("pdf")) {
+    return <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-xl border" />;
+  }
+
+  return (
+    <div className="rounded-2xl bg-slate-50 p-8 text-sm text-slate-600">
+      <div className="font-semibold text-slate-800">Файл доступен как оригинал</div>
+      <p className="mt-1">Для DOCX/PPTX и других форматов браузер может использовать внешнюю программу просмотра.</p>
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className="btn-primary mt-4 inline-flex">
+          Открыть файл
+        </a>
+      ) : (
+        <div className="mt-2 text-slate-500">Ссылка на файл пока недоступна.</div>
+      )}
+    </div>
+  );
+}
+
 export default function MaterialsPage() {
   const searchParams = useSearchParams();
   const initialSubjectSlug = searchParams.get("subject_slug") || "";
@@ -111,7 +150,7 @@ export default function MaterialsPage() {
               <button type="button" className="rounded-xl p-2 hover:bg-slate-100" onClick={() => setActive(null)} aria-label="Закрыть"><X className="h-5 w-5" /></button>
             </header>
             <div className="min-h-0 flex-1 overflow-auto p-5">
-              {active.content_html ? <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: active.content_html }} /> : active.external_url ? <iframe src={active.external_url} title={active.title} className="h-full min-h-[60vh] w-full rounded-xl border" /> : active.source?.download_url && String(active.source?.mime_type || "").startsWith("image/") ? <div className="flex min-h-[60vh] items-center justify-center rounded-2xl bg-slate-50 p-4"><img src={String(active.source.download_url)} alt={active.title} className="max-h-[70vh] max-w-full rounded-xl object-contain" /></div> : active.source?.download_url && String(active.source?.mime_type || "").includes("pdf") ? <iframe src={String(active.source.download_url)} title={active.title} className="h-[70vh] w-full rounded-xl border" /> : <div className="rounded-2xl bg-slate-50 p-8 text-sm text-slate-600"><div className="font-semibold text-slate-800">Файл доступен как оригинал</div><p className="mt-1">Для DOCX/PPTX и других форматов браузер может использовать внешнюю программу просмотра.</p>{active.source?.download_url ? <a href={active.source.download_url} target="_blank" rel="noreferrer" className="btn-primary mt-4 inline-flex">Открыть файл</a> : <div className="mt-2 text-slate-500">Ссылка на файл пока недоступна.</div>}</div>
+              <MaterialBody material={active} />
             </div>
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50 px-5 py-4">
               <span className="text-xs text-slate-500">{active.source_key ? "Источник: " + active.source_key : "Источник не указан"}</span>
