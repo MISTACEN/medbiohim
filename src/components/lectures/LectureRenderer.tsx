@@ -294,7 +294,6 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
         }
         return null;
       })}
-      }
       <style>{`
         .lec-table-wrap { overflow-x: auto; margin: 1rem 0; }
         .lec-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
