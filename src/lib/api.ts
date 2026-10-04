@@ -112,11 +112,25 @@ export async function submitHomework(id:string,textAnswer?:string,fileId?:string
 export async function uploadFile(file:File,groupId?:string,specialtySlug?:string){const fd=new FormData();fd.append("file",file);if(groupId)fd.append("group_id",groupId);if(specialtySlug)fd.append("specialty_slug",specialtySlug);return api<any>("/files/upload",{method:"POST",body:fd})}
 export async function fetchMaterialFile(id:string):Promise<Blob|null>{
   if(typeof window==="undefined") return null;
-  const token=localStorage.getItem("mb_access_token");
+  const token=getToken();
   try{
-    const res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store"});
+    let res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store"});
+    if(res.status===401){
+      const refreshToken=getRefreshToken();
+      if(refreshToken){
+        const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});
+        if(rr.ok){
+          const parsed=JSON.parse(await rr.text()) as {data?:{access_token?:string;refresh_token?:string}};
+          if(parsed.data?.access_token){
+            setTokens(parsed.data.access_token,parsed.data.refresh_token);
+            res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:{Authorization:`Bearer ${parsed.data.access_token}`},cache:"no-store"});
+          }
+        }
+      }
+    }
     if(!res.ok)return null;
-    return await res.blob();
+    const blob=await res.blob();
+    return blob.size?blob:null;
   }catch{return null;}
 }
 
