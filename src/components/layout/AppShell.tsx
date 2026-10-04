@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className="lg:pl-[17.25rem]">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
         <main className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
           {children}
