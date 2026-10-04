@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen,
+  CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3,
 } from "lucide-react";
 import Link from "next/link";
 import { listSchedule, getScheduleMeta, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
@@ -62,6 +62,40 @@ function weekTitle(startYmd: string): string {
   const fmtEnd=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
   return `${fmt.format(start)} — ${fmtEnd.format(end)} · Хабаровск`;
 }
+function monthStartYmd(ymd: string): string {
+  const {y,m}=parseYmd(ymd);
+  return `${y}-${String(m).padStart(2,"0")}-01`;
+}
+function addMonthsYmd(ymd: string, delta: number): string {
+  const {y,m}=parseYmd(ymd);
+  const d=new Date(Date.UTC(y,m-1+delta,1,12));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-01`;
+}
+function monthTitle(ymd: string): string {
+  const {y,m}=parseYmd(ymd);
+  return new Intl.DateTimeFormat("ru-RU",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,1,12)));
+}
+function monthGridDays(ymd: string): string[] {
+  const first=monthStartYmd(ymd);
+  const monday=startOfWeekYmd(first);
+  return Array.from({length:42},(_,i)=>addDaysYmd(monday,i));
+}
+function dateLabelRu(ymd: string): string {
+  const {y,m,d}=parseYmd(ymd);
+  return new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,d,12)));
+}
+function shortDateRu(ymd: string): string {
+  const {y,m,d}=parseYmd(ymd);
+  return new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"2-digit",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,d,12)));
+}
+function subjectColorKey(type: string): string {
+  if (type==="practice") return "practice";
+  if (type==="laboratory") return "lab";
+  if (type==="exam" || type==="credit") return "exam";
+  if (type==="seminar") return "seminar";
+  return "lecture";
+}
+
 function formatMinutes(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -253,6 +287,8 @@ export default function SchedulePage() {
   const [now, setNow] = useState(() => nowParts());
   const [weekStart, setWeekStart] = useState(() => startOfWeekYmd(nowParts().date));
   const [view, setView] = useState<"day"|"week"|"month"|"semester">("week");
+  const [selectedDay, setSelectedDay] = useState(() => nowParts().date);
+  const [monthStart, setMonthStart] = useState(() => monthStartYmd(nowParts().date));
   const [allItems, setAllItems] = useState<ScheduleItem[]>([]);
   const [source, setSource] = useState("db");
   const [loading, setLoading] = useState(true);
@@ -298,7 +334,7 @@ export default function SchedulePage() {
     });
   }, []);
 
-  const days = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ key: addDaysYmd(weekStart, i) })), [weekStart]);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => ({ key: addDaysYmd(weekStart, i) })), [weekStart]);
   const weekEnd = addDaysYmd(weekStart, 6);
   const items = useMemo(
     () => allItems.filter((it) => it.date && it.date >= weekStart && it.date <= weekEnd),
@@ -343,7 +379,10 @@ export default function SchedulePage() {
   const semester = first?.semester ?? user?.semester ?? null;
   const groupName = user?.groupName || first?.group_name || first?.group_code || "Учебная группа не назначена";
   const groupMissing = !user?.groupName && allItems.length === 0;
-  const currentDayItems = grouped.get(today) || [];
+  const currentDayItems = grouped.get(selectedDay) || [];
+  const monthDays = useMemo(() => monthGridDays(monthStart), [monthStart]);
+  const monthItems = useMemo(() => allItems.filter((it) => it.date?.startsWith(monthStart.slice(0,7))), [allItems, monthStart]);
+  const semesterWeeks = useMemo(() => Array.from({ length: 21 }, (_, i) => { const start = addDaysYmd(SEMESTER_FROM, i * 7); const end = addDaysYmd(start, 6); const weekItems = allItems.filter((it) => it.date >= start && it.date <= end); return { index:i+1, start, end, items:weekItems }; }), [allItems]);
   const showNowLine = now.minutes >= GRID_START_MIN && now.minutes <= 18 * 60 + 30;
   const nowTop = (now.minutes - GRID_START_MIN) * PX_PER_MIN;
   const weekCount = items.length;
@@ -375,9 +414,9 @@ export default function SchedulePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => addDaysYmd(d, -7))} aria-label="Предыдущая неделя"><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" className="schedule-today-btn" onClick={() => setWeekStart(startOfWeekYmd(nowParts().date))}>Сегодня</button>
-          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => addDaysYmd(d, 7))} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
+          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,-7); setSelectedDay(next); return next; })} aria-label="Предыдущая неделя"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" className="schedule-today-btn" onClick={() => { const t=nowParts().date; setSelectedDay(t); setWeekStart(startOfWeekYmd(t)); }}>Сегодня</button>
+          <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,7); setSelectedDay(next); return next; })} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
 
@@ -406,7 +445,7 @@ export default function SchedulePage() {
               {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p: any) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}
             <div className="schedule-shell">
               <div className="schedule-scroll">
-                <div className="schedule-grid" style={{ minWidth: 920 }}>
+                <div className="schedule-grid" style={{ minWidth: 1080 }}>
                   <div className="schedule-corner"><Clock className="h-4 w-4" /></div>
                   {days.map(({ key }) => (
                     <div key={key} className={`schedule-day-head ${key===today?"schedule-day-today":""}`}>
@@ -439,7 +478,7 @@ export default function SchedulePage() {
               </div>
               {weekCount===0 && (
                 <p className="p-4 text-center text-sm" style={{ color: "var(--muted)" }}>
-                  На эту неделю занятий нет (в семестре загружено {totalCount}). Листайте ← → или откройте «Семестр».
+                  На эту неделю занятий нет (в семестре загружено {totalCount}). Листайте ← →, откройте «Месяц» или «Семестр».
                 </p>
               )}
             </div>
@@ -450,7 +489,7 @@ export default function SchedulePage() {
             <div className="space-y-3">
               <div className="schedule-day-picker">
                 {days.map(({ key }) => (
-                  <button key={key} type="button" className={key===today?"schedule-day-pill schedule-day-pill-active":"schedule-day-pill"} onClick={()=>setWeekStart(startOfWeekYmd(key))}>
+                  <button key={key} type="button" className={key===today?"schedule-day-pill schedule-day-pill-active":"schedule-day-pill"} onClick={()=>{setSelectedDay(key);setWeekStart(startOfWeekYmd(key));setView("day")}}>
                     <span>{weekdayShortRu(key)}</span><b>{dayDateRu(key)}</b>
                   </button>
                 ))}
@@ -471,24 +510,89 @@ export default function SchedulePage() {
             </div>
           )}
 
-          {(view==="month"||view==="semester") && (
-            <div className="card space-y-3 p-5">
-              <h2 className="text-lg font-bold">{view==="month"?"Месяц":"Весь семестр"} · {totalCount} занятий</h2>
-              <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-                {allItems
-                  .slice()
-                  .sort((a,b)=>`${a.date}${a.start_time}`.localeCompare(`${b.date}${b.start_time}`))
-                  .filter((it)=> view==="semester" || it.date.startsWith(weekStart.slice(0,7)))
-                  .map((it)=>(
-                    <button key={it.id||`${it.date}-${it.start_time}`} type="button" className="flex w-full gap-3 rounded-xl border px-3 py-2 text-left text-sm hover:border-indigo-300" onClick={()=>openLesson(it)}>
-                      <span className="w-24 shrink-0 font-mono text-xs opacity-70">{it.date}</span>
-                      <span className="w-20 shrink-0 text-xs">{it.start_time.slice(0,5)}</span>
-                      <span className="font-semibold">{it.subject_name}</span>
-                      <span className="ml-auto text-xs opacity-60">{TYPE_LABELS[it.type]||it.type}</span>
-                    </button>
-                  ))}
+          {view === "month" && (
+            <section className="schedule-month-shell">
+              <div className="schedule-view-toolbar">
+                <div>
+                  <div className="schedule-view-kicker"><CalendarDays className="h-4 w-4" /> Календарь месяца</div>
+                  <h2 className="schedule-view-title">{monthTitle(monthStart)}</h2>
+                  <p className="schedule-view-subtitle">{monthItems.length} занятий · нажмите на день для подробностей</p>
+                </div>
+                <div className="schedule-toolbar-actions">
+                  <button type="button" className="schedule-icon-btn" onClick={()=>setMonthStart((d)=>addMonthsYmd(d,-1))} aria-label="Предыдущий месяц"><ChevronLeft className="h-4 w-4"/></button>
+                  <button type="button" className="schedule-today-btn" onClick={()=>{const t=nowParts().date;setMonthStart(monthStartYmd(t));setSelectedDay(t)}}>Сегодня</button>
+                  <button type="button" className="schedule-icon-btn" onClick={()=>setMonthStart((d)=>addMonthsYmd(d,1))} aria-label="Следующий месяц"><ChevronRight className="h-4 w-4"/></button>
+                </div>
               </div>
-            </div>
+              <div className="schedule-month-layout">
+                <div className="schedule-month-grid">
+                  {["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map((d)=><div key={d} className="schedule-month-weekday">{d}</div>)}
+                  {monthDays.map((day)=>{
+                    const inMonth=day.startsWith(monthStart.slice(0,7));
+                    const dayItems=allItems.filter((it)=>it.date===day).sort((a,b)=>a.start_time.localeCompare(b.start_time));
+                    const isToday=day===today;
+                    const isSelected=day===selectedDay;
+                    return (
+                      <button key={day} type="button" onClick={()=>setSelectedDay(day)} className={`schedule-month-cell ${inMonth?"":"schedule-month-cell-muted"} ${isToday?"schedule-month-cell-today":""} ${isSelected?"schedule-month-cell-selected":""}`}>
+                        <div className="schedule-month-cell-head"><span className="schedule-month-day-number">{parseYmd(day).d}</span>{dayItems.length>0&&<span className="schedule-month-count">{dayItems.length}</span>}</div>
+                        <div className="schedule-month-events">
+                          {dayItems.slice(0,3).map((it)=><span key={it.id||`${day}-${it.start_time}-${it.subject_name}`} className={`schedule-mini-event schedule-mini-${subjectColorKey(it.type)}`}><b>{it.start_time.slice(0,5)}</b> <span>{it.subject_name||"Занятие"}</span></span>)}
+                          {dayItems.length>3&&<span className="schedule-more">+ ещё {dayItems.length-3}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <aside className="schedule-month-side">
+                  <div className="schedule-side-label"><Target className="h-4 w-4"/> Выбранный день</div>
+                  <div className="schedule-side-date">{dateLabelRu(selectedDay)}</div>
+                  {selectedDay===today&&<span className="schedule-current-pill"><span/>Сегодня</span>}
+                  <div className="schedule-side-summary"><b>{currentDayItems.length}</b><span>{currentDayItems.length===1?"занятие":currentDayItems.length>=2&&currentDayItems.length<=4?"занятия":"занятий"}</span></div>
+                  <div className="schedule-side-list">
+                    {currentDayItems.length===0?<div className="schedule-empty"><CalendarDays className="h-5 w-5"/><span>Свободный день</span></div>:currentDayItems.map((it)=>
+                      <button key={it.id||`${it.start_time}-${it.subject_name}`} type="button" className={`schedule-side-item schedule-side-${subjectColorKey(it.type)}`} onClick={()=>openLesson(it)}>
+                        <div className="schedule-side-time">{it.start_time.slice(0,5)}–{it.end_time.slice(0,5)}</div>
+                        <div className="schedule-side-subject">{it.subject_name||"Занятие"}</div>
+                        <div className="schedule-side-meta">{TYPE_LABELS[it.type]||it.type}{it.room?` · Ауд. ${it.room}`:""}</div>
+                      </button>
+                    )}
+                  </div>
+                </aside>
+              </div>
+            </section>
+          )}
+          {view === "semester" && (
+            <section className="schedule-semester-shell">
+              <div className="schedule-view-toolbar">
+                <div>
+                  <div className="schedule-view-kicker"><GraduationCap className="h-4 w-4" /> Учебный ритм</div>
+                  <h2 className="schedule-view-title">Семестр 2026/2027</h2>
+                  <p className="schedule-view-subtitle">Теоретическое обучение · 01.09.2026 — 21.01.2027 · {totalCount} занятий</p>
+                </div>
+                <div className="schedule-semester-status"><CheckCircle2 className="h-4 w-4"/> {activePeriod?.title||"Текущий учебный блок"}</div>
+              </div>
+              <div className="schedule-semester-metrics">
+                <div className="schedule-semester-metric"><span className="metric-icon metric-blue"><CalendarDays/></span><div><b>{semesterWeeks.filter(w=>w.items.length>0).length}</b><small>активных недель</small></div></div>
+                <div className="schedule-semester-metric"><span className="metric-icon metric-green"><CheckCircle2/></span><div><b>{allItems.filter(it=>it.date<today).length}</b><small>занятий прошло</small></div></div>
+                <div className="schedule-semester-metric"><span className="metric-icon metric-violet"><Layers3/></span><div><b>{new Set(allItems.map(it=>it.subject_name).filter(Boolean)).size}</b><small>дисциплин</small></div></div>
+                <div className="schedule-semester-metric"><span className="metric-icon metric-amber"><Clock/></span><div><b>{allItems.reduce((sum,it)=>sum+(Number(it.academic_hours)||0),0)}</b><small>акад. часов</small></div></div>
+              </div>
+              <div className="schedule-semester-progress">
+                <div className="schedule-semester-progress-top"><b>Прогресс семестра</b><span>Неделя {Math.min(21,Math.max(1,Math.floor(Math.max(0,(new Date(today+"T12:00:00").getTime()-new Date(SEMESTER_FROM+"T12:00:00").getTime())/86400000)/7)+1))} из 21</span></div>
+                <div className="schedule-semester-progress-track"><div className="schedule-semester-progress-fill" style={{width:`${Math.min(100,Math.max(0,((new Date(today+"T12:00:00").getTime()-new Date(SEMESTER_FROM+"T12:00:00").getTime())/(new Date(SEMESTER_TO+"T12:00:00").getTime()-new Date(SEMESTER_FROM+"T12:00:00").getTime()))*100))}%`}}/></div>
+                <div className="schedule-semester-progress-scale"><span>1 сен</span><span>Экватор · 10 нед.</span><span>Зачётная · 19 нед.</span><span>21 янв</span></div>
+              </div>
+              <div className="schedule-semester-timeline">
+                {semesterWeeks.map((w)=>{
+                  const isCurrent=today>=w.start&&today<=w.end; const isPast=w.end<today; const preview=w.items.slice(0,4);
+                  return <button key={w.index} type="button" onClick={()=>{setWeekStart(startOfWeekYmd(w.start));setView("week")}} className={`schedule-semester-week ${isCurrent?"current":""} ${isPast?"past":""}`}>
+                    <div className="schedule-semester-week-head"><span className="schedule-week-no">Неделя {w.index}</span><span>{shortDateRu(w.start)} — {shortDateRu(w.end)}</span></div>
+                    <div className="schedule-semester-week-track"><span className="schedule-week-fill" style={{width:`${Math.min(100,Math.max(12,w.items.length*9))}%`}}/></div>
+                    <div className="schedule-semester-week-info"><b>{w.items.length}</b><span>занятий</span><div className="schedule-week-subjects">{preview.map((it,i)=><span key={i}>{it.subject_name}</span>)}{w.items.length>4&&<span>+{w.items.length-4}</span>}</div></div>
+                  </button>;
+                })}
+              </div>
+            </section>
           )}
         </>
       )}

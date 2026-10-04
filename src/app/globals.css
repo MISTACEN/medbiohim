@@ -245,7 +245,7 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 /* —— Schedule CMS-style calendar —— */
 .schedule-shell{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:var(--card);box-shadow:var(--glass-shadow)}
 .schedule-scroll{overflow-x:auto}
-.schedule-grid{display:grid;grid-template-columns:76px repeat(6,minmax(140px,1fr));grid-template-rows:64px 693px}
+.schedule-grid{display:grid;grid-template-columns:76px repeat(7,minmax(140px,1fr));grid-template-rows:64px 693px}
 .schedule-corner{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);background:color-mix(in srgb,var(--primary-soft) 35%,var(--card))}
 .schedule-day-head{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;text-transform:capitalize;color:var(--muted);background:color-mix(in srgb,var(--background) 75%,var(--card))}
 .schedule-day-head strong{font-size:17px;line-height:1.2;color:var(--text)}
@@ -279,7 +279,7 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 .schedule-day-pill{display:flex;min-width:76px;flex-direction:column;align-items:center;border:1px solid var(--border);border-radius:13px;padding:8px 10px;background:var(--card);color:var(--muted)}
 .schedule-day-pill b{color:var(--text)}
 .schedule-day-pill-active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
-@media (max-width:767px){.schedule-grid{grid-template-columns:58px repeat(6,minmax(120px,1fr))}.schedule-day-head strong{font-size:14px}.schedule-tab{padding:7px 10px}}
+@media (max-width:767px){.schedule-grid{grid-template-columns:58px repeat(7,minmax(120px,1fr))}.schedule-day-head strong{font-size:14px}.schedule-tab{padding:7px 10px}}
 
 @media (max-width: 767px) {
   html[data-theme="aurora-glass"] body,
@@ -343,4 +343,89 @@ html[data-theme="aero-glass"] .text-slate-500 {
 }
 @media (max-width:767px) {
   html[data-theme="aero-glass"] body { background-attachment: scroll; }
+}
+
+/* —— Schedule Aero redesign: month + semester —— */
+.schedule-month-shell,.schedule-semester-shell{
+  overflow:hidden;border:1px solid var(--border);border-radius:24px;background:color-mix(in srgb,var(--card) 88%,transparent);
+  box-shadow:var(--glass-shadow);backdrop-filter:blur(22px) saturate(135%);-webkit-backdrop-filter:blur(22px) saturate(135%);
+}
+.schedule-view-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px 22px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,color-mix(in srgb,var(--card) 96%,transparent),color-mix(in srgb,var(--primary-soft) 24%,var(--card)));}
+.schedule-view-kicker{display:flex;align-items:center;gap:7px;color:var(--primary);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;}
+.schedule-view-title{margin-top:3px;font-size:24px;line-height:1.2;font-weight:800;letter-spacing:-.025em;color:var(--text);}
+.schedule-view-subtitle{margin-top:4px;color:var(--muted);font-size:12px;}
+.schedule-toolbar-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.schedule-month-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:0;}
+.schedule-month-grid{display:grid;grid-template-columns:repeat(7,minmax(105px,1fr));border-right:1px solid var(--border);}
+.schedule-month-weekday{height:42px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:color-mix(in srgb,var(--primary-soft) 20%,var(--card));}
+.schedule-month-cell{min-width:0;min-height:128px;padding:8px;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--card) 88%,transparent);text-align:left;color:var(--text);transition:.18s;cursor:pointer;}
+.schedule-month-cell:nth-child(7n){border-right:0;}
+.schedule-month-cell:hover{background:color-mix(in srgb,var(--primary-soft) 42%,var(--card));}
+.schedule-month-cell-muted{opacity:.42;background:color-mix(in srgb,var(--background) 80%,var(--card));}
+.schedule-month-cell-today{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--primary) 50%,transparent);background:color-mix(in srgb,var(--primary-soft) 36%,var(--card));}
+.schedule-month-cell-selected{background:color-mix(in srgb,var(--primary-soft) 54%,var(--card));box-shadow:inset 0 0 0 2px var(--primary);}
+.schedule-month-cell-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.schedule-month-day-number{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:50%;font-size:13px;font-weight:800;}
+.schedule-month-cell-today .schedule-month-day-number{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;box-shadow:0 4px 10px color-mix(in srgb,var(--primary) 28%,transparent);}
+.schedule-month-count{border-radius:999px;padding:2px 6px;background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary);font-size:9px;font-weight:800;}
+.schedule-month-events{display:flex;flex-direction:column;gap:4px;}
+.schedule-mini-event{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:7px;padding:4px 6px;font-size:9px;font-weight:600;}
+.schedule-mini-event b{font-size:8px;margin-right:3px;}
+.schedule-mini-lecture{background:color-mix(in srgb,#6366f1 16%,var(--card));color:#4f46e5;}
+.schedule-mini-practice{background:color-mix(in srgb,#10b981 17%,var(--card));color:#047857;}
+.schedule-mini-lab{background:color-mix(in srgb,#f59e0b 20%,var(--card));color:#b45309;}
+.schedule-mini-seminar{background:color-mix(in srgb,#06b6d4 16%,var(--card));color:#0e7490;}
+.schedule-mini-exam{background:color-mix(in srgb,#f43f5e 16%,var(--card));color:#be123c;}
+.schedule-more{padding-left:5px;color:var(--muted);font-size:9px;font-weight:700;}
+.schedule-month-side{padding:20px;background:linear-gradient(180deg,color-mix(in srgb,var(--primary-soft) 25%,var(--card)),color-mix(in srgb,var(--card) 92%,transparent));}
+.schedule-side-label{display:flex;align-items:center;gap:7px;color:var(--primary);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;}
+.schedule-side-date{margin-top:8px;font-size:20px;line-height:1.25;font-weight:800;color:var(--text);}
+.schedule-current-pill{display:inline-flex;align-items:center;gap:5px;margin-top:8px;border-radius:999px;padding:4px 8px;background:color-mix(in srgb,var(--success) 12%,transparent);color:var(--success);font-size:10px;font-weight:800;}
+.schedule-current-pill span{width:6px;height:6px;border-radius:50%;background:var(--success);}
+.schedule-side-summary{display:flex;align-items:baseline;gap:6px;margin-top:18px;padding:12px 13px;border:1px solid var(--border);border-radius:14px;background:var(--card);}
+.schedule-side-summary b{font-size:25px;line-height:1;color:var(--text);}
+.schedule-side-summary span{font-size:11px;color:var(--muted);}
+.schedule-side-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.schedule-side-item{width:100%;padding:11px 12px;border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:13px;background:var(--card);text-align:left;color:var(--text);box-shadow:0 4px 14px color-mix(in srgb,var(--primary) 7%,transparent);transition:.18s;}
+.schedule-side-item:hover{transform:translateY(-1px);box-shadow:0 8px 18px color-mix(in srgb,var(--primary) 12%,transparent);}
+.schedule-side-practice{border-left-color:#10b981}.schedule-side-lab{border-left-color:#f59e0b}.schedule-side-exam{border-left-color:#f43f5e}.schedule-side-seminar{border-left-color:#06b6d4}
+.schedule-side-time{font-size:10px;font-weight:800;color:var(--primary);}
+.schedule-side-subject{margin-top:3px;font-size:13px;font-weight:800;line-height:1.25;}
+.schedule-side-meta{margin-top:4px;font-size:9px;color:var(--muted);}
+.schedule-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:145px;border:1px dashed var(--border);border-radius:14px;color:var(--muted);font-size:11px;}
+.schedule-semester-status{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:color-mix(in srgb,var(--success) 11%,transparent);color:var(--success);font-size:11px;font-weight:800;}
+.schedule-semester-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 22px;}
+.schedule-semester-metric{display:flex;align-items:center;gap:10px;padding:13px;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--card) 86%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.65);}
+.schedule-semester-metric b{display:block;font-size:20px;line-height:1.1;color:var(--text);}
+.schedule-semester-metric small{display:block;margin-top:2px;font-size:9px;color:var(--muted);}
+.metric-icon{display:flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:12px;color:#fff;box-shadow:inset 0 1px 1px rgba(255,255,255,.55);}
+.metric-icon svg{width:18px;height:18px}.metric-blue{background:linear-gradient(135deg,#60a5fa,#2563eb)}.metric-green{background:linear-gradient(135deg,#34d399,#059669)}.metric-violet{background:linear-gradient(135deg,#a78bfa,#6d28d9)}.metric-amber{background:linear-gradient(135deg,#fbbf24,#d97706)}
+.schedule-semester-progress{margin:0 22px 18px;padding:15px;border:1px solid var(--border);border-radius:17px;background:color-mix(in srgb,var(--primary-soft) 20%,var(--card));}
+.schedule-semester-progress-top{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--text);}
+.schedule-semester-progress-top span{color:var(--primary);font-weight:800;}
+.schedule-semester-progress-track{height:10px;margin-top:9px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--muted) 12%,transparent);box-shadow:inset 0 1px 2px rgba(0,0,0,.06);}
+.schedule-semester-progress-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,#4cc9f0,#168cff,#6366f1);box-shadow:0 0 12px color-mix(in srgb,var(--primary) 35%,transparent);transition:width .4s ease;}
+.schedule-semester-progress-scale{display:flex;justify-content:space-between;margin-top:6px;color:var(--muted);font-size:8px;}
+.schedule-semester-timeline{padding:0 22px 22px;display:flex;flex-direction:column;gap:7px;}
+.schedule-semester-week{display:grid;grid-template-columns:125px minmax(120px,1fr) minmax(260px,2fr);align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:13px;background:color-mix(in srgb,var(--card) 88%,transparent);color:var(--text);text-align:left;transition:.18s;}
+.schedule-semester-week:hover{transform:translateX(2px);border-color:color-mix(in srgb,var(--primary) 35%,var(--border));background:color-mix(in srgb,var(--primary-soft) 24%,var(--card));}
+.schedule-semester-week.current{border-color:color-mix(in srgb,var(--primary) 60%,var(--border));box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 10%,transparent),0 8px 22px color-mix(in srgb,var(--primary) 10%,transparent);}
+.schedule-semester-week.past{opacity:.76;}
+.schedule-semester-week-head{display:flex;flex-direction:column;gap:2px;font-size:9px;color:var(--muted);}
+.schedule-week-no{font-size:11px;font-weight:800;color:var(--text);}
+.schedule-semester-week-track{height:7px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--muted) 11%,transparent);}
+.schedule-week-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--primary));}
+.schedule-semester-week-info{display:flex;align-items:center;gap:5px;min-width:0;font-size:9px;color:var(--muted);}
+.schedule-semester-week-info b{font-size:13px;color:var(--text);}
+.schedule-week-subjects{display:flex;gap:4px;min-width:0;margin-left:8px;overflow:hidden;}
+.schedule-week-subjects span{max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:3px 6px;background:color-mix(in srgb,var(--primary) 8%,transparent);color:var(--primary);font-weight:700;}
+@media (max-width:900px){
+  .schedule-month-layout{grid-template-columns:1fr}.schedule-month-grid{border-right:0}.schedule-month-side{border-top:1px solid var(--border)}
+  .schedule-semester-metrics{grid-template-columns:repeat(2,1fr)}.schedule-semester-week{grid-template-columns:105px minmax(90px,1fr);}.schedule-semester-week-info{grid-column:1/-1}
+}
+@media (max-width:767px){
+  .schedule-view-toolbar{padding:16px;align-items:flex-start;flex-direction:column}.schedule-view-title{font-size:20px}.schedule-toolbar-actions{align-self:stretch;justify-content:space-between}
+  .schedule-month-grid{grid-template-columns:repeat(7,minmax(78px,1fr));overflow-x:auto}.schedule-month-cell{min-height:105px;padding:6px}.schedule-month-weekday{min-width:78px}
+  .schedule-semester-metrics{grid-template-columns:1fr 1fr;padding:14px}.schedule-semester-progress{margin:0 14px 14px}.schedule-semester-timeline{padding:0 14px 14px}
+  .schedule-semester-week{grid-template-columns:1fr;padding:10px}.schedule-semester-week-track{order:3}.schedule-semester-week-info{grid-column:auto;flex-wrap:wrap}
 }
