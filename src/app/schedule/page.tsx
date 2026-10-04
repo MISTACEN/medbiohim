@@ -27,6 +27,10 @@ const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","
 const GRID_START_MIN = 8 * 60;
 const PX_PER_MIN = 1.05;
 const SUBJECT_PALETTE = ["#2563eb","#7c3aed","#059669","#ea580c","#db2777","#0891b2","#65a30d","#9333ea","#0284c7","#ca8a04","#e11d48","#0f766e"];
+const TYPE_COLORS: Record<string,string> = {
+  lecture:"#6366f1", practice:"#10b981", laboratory:"#f59e0b", seminar:"#06b6d4",
+  exam:"#f43f5e", credit:"#8b5cf6", consultation:"#3b82f6", other:"#64748b",
+};
 function subjectColor(item:any): string {
   if (typeof item?.color_hex === "string" && /^#[0-9a-fA-F]{6}$/.test(item.color_hex)) return item.color_hex;
   const raw=String(item?.subject_slug||item?.subject_name||"subject");
@@ -181,6 +185,7 @@ function ScheduleCard({
   const location = [item.building, item.room].filter(Boolean).join(", ");
   const typeLabel = TYPE_LABELS[item.type] || "Занятие";
   const accent = subjectColor(item);
+  const typeColor = TYPE_COLORS[item.type] || TYPE_COLORS.other;
   const attendance = item.attendance_status as string | undefined;
   const parityLabel =
     item.week_parity === "numerator" ? "числитель" :
@@ -198,8 +203,10 @@ function ScheduleCard({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(item); }}
       className={`schedule-card absolute cursor-pointer overflow-hidden rounded-xl border p-2 shadow-sm transition hover:z-20 hover:-translate-y-0.5 hover:shadow-md ${type} ${item.is_cancelled ? "schedule-cancelled" : ""} ${item.is_makeup ? "opacity-60" : ""}`}
       style={{
+        background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 24%, var(--card)), color-mix(in srgb, ${accent} 10%, var(--card)))`,
+        border: `1px solid color-mix(in srgb, ${typeColor} 42%, var(--border))`,
         borderLeft: `4px ${item.is_makeup ? "dashed" : "solid"} ${accent}`,
-        boxShadow: `inset 0 3px 0 ${accent}66, 0 1px 3px rgba(15,23,42,.08)`,
+        boxShadow: `inset 0 3px 0 ${typeColor}66, 0 1px 3px rgba(15,23,42,.08)`,
         top,
         height,
         minHeight: height,
