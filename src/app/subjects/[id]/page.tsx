@@ -421,6 +421,12 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </p>
             </div>
             {subjectTests.length > 0 ? (
+              <>
+              <div className="flex flex-wrap gap-2">
+                <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/tests"} className="btn-primary inline-flex items-center gap-2 text-sm">
+                  <ListChecks className="h-4 w-4" /> Открыть весь раздел тестов
+                </Link>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {subjectTests.map((t) => (
                   <div key={t.id} className="rounded-xl border bg-slate-50 p-4">
@@ -433,6 +439,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                   </div>
                 ))}
               </div>
+              </>
             ) : (
               <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 Тесты для этого предмета пока не подключены. После импорта SQL они появятся здесь.
