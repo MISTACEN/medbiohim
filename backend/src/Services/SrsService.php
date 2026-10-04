@@ -231,7 +231,16 @@ final class SrsService
 
     public function removeCard(string $userId, string $cardId): bool
     {
-        SupabaseRest::deleteWhere('srs_cards?id=eq.' . rawurlencode($cardId) . '&user_id=eq.' . rawurlencode($userId));
+        $rows = SupabaseRest::select(
+            'srs_cards?id=eq.' . rawurlencode($cardId)
+            . '&user_id=eq.' . rawurlencode($userId)
+            . '&select=id&limit=1'
+        );
+        if (!$rows) return false;
+        SupabaseRest::deleteWhere(
+            'srs_cards?id=eq.' . rawurlencode($cardId)
+            . '&user_id=eq.' . rawurlencode($userId)
+        );
         return true;
     }
 
