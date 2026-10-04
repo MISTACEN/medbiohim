@@ -140,14 +140,7 @@ export async function srsReview(card_id: string, rating: 1 | 2 | 3 | 4) {
     body: JSON.stringify({ card_id, rating }),
   });
 }
-export async function srsAddCard(payload: {
-  id?: string;
-  front?: string;
-  back?: string;
-  subject?: string;
-  subject_slug?: string;
-  topic?: string;
-}) {
+) {
   return api<{ card: SrsCard }>("/srs/cards", { method: "POST", body: JSON.stringify(payload) });
 }
 export async function srsListCards(limit = 100, subject_slug?: string) {
