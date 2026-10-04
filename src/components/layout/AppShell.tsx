@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { hasToken, presenceHeartbeat } from "@/lib/api";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,6 +15,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Keep the server HTML and the first client render identical to avoid React #418.
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasToken()) return;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const beat = () => { void presenceHeartbeat(); };
+    beat();
+    timer = setInterval(beat, 60_000);
+    return () => { if (timer) clearInterval(timer); };
   }, []);
 
   if (!mounted) {
