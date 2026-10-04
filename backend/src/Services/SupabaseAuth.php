@@ -114,7 +114,8 @@ final class SupabaseAuth
         if (!$this->isConfigured()) {
             return ['ok' => false, 'code' => 'AUTH_NOT_CONFIGURED', 'message' => 'Supabase Auth is not configured on the server', 'status' => 503];
         }
-        $url = $this->baseUrl . '/auth/v1/recover';
+        $redirect = trim((string) \Medbiohim\Support\Env::get('AUTH_RECOVERY_REDIRECT', 'https://medbiohim.vercel.app/auth/callback'));
+        $url = $this->baseUrl . '/auth/v1/recover?redirect_to=' . rawurlencode($redirect);
         $res = HttpClient::request('POST', $url, ['email' => $email], [
             'apikey: ' . $this->apiKey(),
             'Authorization: Bearer ' . $this->apiKey(),
