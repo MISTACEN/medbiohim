@@ -57,9 +57,6 @@ export async function listCalculators() {
     count: number;
   }>("/calculators");
 }
-export async function getCalculator(id: string) {
-  return api<{ calculator: CalculatorDef }>(`/calculators/${encodeURIComponent(id)}`);
-}
 export async function computeCalculator(id: string, input: Record<string, string | number>) {
   return api<{
     id: string;
