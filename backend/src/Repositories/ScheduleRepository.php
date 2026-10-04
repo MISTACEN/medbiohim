@@ -81,6 +81,8 @@ SELECT
     ls.version,
     se.subject_id,
     COALESCE(se.subject_name, subj.name) AS subject_name,
+    subj.slug AS subject_slug,
+    subj.color_hex,
     se.date,
     to_char(se.date, 'Dy') AS weekday_short,
     se.start_time,
