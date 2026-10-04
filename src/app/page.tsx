@@ -19,6 +19,8 @@ type Dash = {
   homeworks: Array<Record<string, unknown>>;
   schedule: Array<Record<string, unknown>>;
   tests: Array<Record<string, unknown>>;
+  degraded?: boolean;
+  service_notice?: string | null;
 };
 
 function khNowParts() {
@@ -71,8 +73,10 @@ export default function DashboardPage() {
             homeworks: res.data.homeworks || [],
             schedule: res.data.schedule || [],
             tests: res.data.tests || [],
+            degraded: Boolean(res.data.degraded),
+            service_notice: res.data.service_notice || null,
           });
-          setError(null);
+          setError(res.data.degraded ? (res.data.service_notice || 'Часть данных главной страницы временно недоступна.') : null);
         } else {
           const code = res.error.code || "";
           const msg = res.error.message || "Ошибка загрузки";
