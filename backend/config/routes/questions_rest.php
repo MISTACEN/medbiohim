@@ -80,13 +80,5 @@ return static function (Router $r): void {
         }
     });
 
-    $r->get('/api/v1/trainers', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q)) return;
-        Response::error('GONE','Legacy trainers catalog removed; use /api/v1/trainers/feed',$q->requestId,410);
-    });
 
-    $r->get('/api/v1/trainers/{id}', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q)) return;
-        Response::error('GONE','Legacy trainer endpoint removed; use /api/v1/trainers/feed',$q->requestId,410);
-    });
 };
