@@ -73,28 +73,6 @@ html.dark[data-theme="midnight"] {
   --glass-shadow: 0 14px 42px rgba(0, 0, 0, 0.3);
 }
 
-html[data-theme="aero-glass"] {
-  --primary: #087fe8;
-  --primary-dark: #0068c7;
-  --primary-soft: #e9f8ff;
-  --accent: #18c8a8;
-  --success: #11b884;
-  --danger: #ef5875;
-  --warning: #eca83b;
-  --background: #eaf7ff;
-  --card: rgba(255, 255, 255, 0.76);
-  --text: #102b4a;
-  --muted: #6f8499;
-  --sidebar: rgba(247, 253, 255, 0.82);
-  --sidebar-text: #294966;
-  --sidebar-active: #087fe8;
-  --border: rgba(57, 151, 214, 0.17);
-  --hero-from: rgba(94, 208, 255, 0.95);
-  --hero-to: rgba(49, 205, 166, 0.95);
-  --body-art: radial-gradient(circle at 7% 9%, rgba(122, 221, 255, 0.55), transparent 30%), radial-gradient(circle at 92% 17%, rgba(71, 231, 184, 0.28), transparent 27%), radial-gradient(circle at 50% 90%, rgba(125, 144, 255, 0.2), transparent 34%);
-  --glass-shadow: 0 18px 50px rgba(23, 126, 184, 0.13);
-}
-
 html[data-theme="aurora-glass"] {
   --primary: #168cff;
   --primary-dark: #0b73de;
@@ -192,8 +170,6 @@ body {
   .app-sidebar-active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
 }
 
-html[data-theme="aero-glass"] .card,
-html[data-theme="aero-glass"] .hero-banner,
 html[data-theme="aurora-glass"] .card,
 html[data-theme="medical-glass"] .card,
 html[data-theme="crystal-glass"] .card,
@@ -204,7 +180,6 @@ html[data-theme="crystal-glass"] .hero-banner {
   -webkit-backdrop-filter: blur(22px) saturate(130%);
 }
 
-html[data-theme="aero-glass"] .app-sidebar,
 html[data-theme="aurora-glass"] .app-sidebar,
 html[data-theme="medical-glass"] .app-sidebar,
 html[data-theme="crystal-glass"] .app-sidebar {
@@ -214,8 +189,6 @@ html[data-theme="crystal-glass"] .app-sidebar {
   -webkit-backdrop-filter: blur(22px) saturate(135%);
 }
 
-html[data-theme="aero-glass"] .app-sidebar .border-white\/10,
-html[data-theme="aero-glass"] .app-sidebar .bg-white\/5,
 html[data-theme="aurora-glass"] .app-sidebar .border-white\/10,
 html[data-theme="medical-glass"] .app-sidebar .border-white\/10,
 html[data-theme="crystal-glass"] .app-sidebar .border-white\/10 { border-color: var(--border) !important; }
@@ -223,23 +196,15 @@ html[data-theme="aurora-glass"] .app-sidebar .bg-white\/5,
 html[data-theme="medical-glass"] .app-sidebar .bg-white\/5,
 html[data-theme="crystal-glass"] .app-sidebar .bg-white\/5 { background: color-mix(in srgb, var(--primary) 5%, transparent) !important; }
 
-html[data-theme="aero-glass"] .bg-white,
 html[data-theme="aurora-glass"] .bg-white,
 html[data-theme="medical-glass"] .bg-white,
 html[data-theme="crystal-glass"] .bg-white { background-color: color-mix(in srgb, var(--card) 92%, transparent) !important; }
-html[data-theme="aero-glass"] .bg-slate-50,
-html[data-theme="aero-glass"] .bg-slate-50\/80,
 html[data-theme="aurora-glass"] .bg-slate-50,
 html[data-theme="medical-glass"] .bg-slate-50,
 html[data-theme="crystal-glass"] .bg-slate-50,
 html[data-theme="aurora-glass"] .bg-slate-50\/80,
 html[data-theme="medical-glass"] .bg-slate-50\/80,
 html[data-theme="crystal-glass"] .bg-slate-50\/80 { background-color: color-mix(in srgb, var(--card) 72%, var(--primary-soft)) !important; }
-html[data-theme="aero-glass"] .text-slate-900,
-html[data-theme="aero-glass"] .text-slate-800,
-html[data-theme="aero-glass"] .text-slate-700,
-html[data-theme="aero-glass"] .text-slate-600,
-html[data-theme="aero-glass"] .text-slate-500,
 html[data-theme="aurora-glass"] .text-slate-900,
 html[data-theme="medical-glass"] .text-slate-900,
 html[data-theme="crystal-glass"] .text-slate-900,
@@ -255,9 +220,6 @@ html[data-theme="crystal-glass"] .text-slate-600,
 html[data-theme="aurora-glass"] .text-slate-500,
 html[data-theme="medical-glass"] .text-slate-500,
 html[data-theme="crystal-glass"] .text-slate-500 { color: var(--muted) !important; }
-html[data-theme="aero-glass"] .border-slate-200,
-html[data-theme="aero-glass"] .border-slate-200\/80,
-html[data-theme="aero-glass"] .border-slate-100,
 html[data-theme="aurora-glass"] .border-slate-200,
 html[data-theme="medical-glass"] .border-slate-200,
 html[data-theme="crystal-glass"] .border-slate-200,
@@ -267,8 +229,6 @@ html[data-theme="crystal-glass"] .border-slate-200\/80,
 html[data-theme="aurora-glass"] .border-slate-100,
 html[data-theme="medical-glass"] .border-slate-100,
 html[data-theme="crystal-glass"] .border-slate-100 { border-color: var(--border) !important; }
-html[data-theme="aero-glass"] .bg-indigo-600,
-html[data-theme="aero-glass"] .bg-indigo-500,
 html[data-theme="aurora-glass"] .bg-indigo-600,
 html[data-theme="medical-glass"] .bg-indigo-600,
 html[data-theme="crystal-glass"] .bg-indigo-600 { background: linear-gradient(135deg, var(--primary), var(--accent)) !important; }
@@ -325,160 +285,4 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
   html[data-theme="aurora-glass"] body,
   html[data-theme="medical-glass"] body,
   html[data-theme="crystal-glass"] body { background-attachment: scroll; }
-}
-
-
-/* Approved Aero Glass reference: glossy, tactile, airy surfaces. */
-html[data-theme="aero-glass"] body {
-  background-attachment: fixed;
-}
-html[data-theme="aero-glass"] .card {
-  border-color: rgba(255,255,255,.72);
-  box-shadow: 0 18px 48px rgba(54,145,190,.13), inset 0 1px 0 rgba(255,255,255,.9);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-}
-html[data-theme="aero-glass"] .hero-banner {
-  backdrop-filter: blur(28px) saturate(170%);
-  -webkit-backdrop-filter: blur(28px) saturate(170%);
-  box-shadow: 0 24px 60px rgba(42,150,196,.18), inset 0 1px 0 rgba(255,255,255,.85);
-}
-html[data-theme="aero-glass"] .app-sidebar {
-  border-right: 1px solid rgba(255,255,255,.78);
-  box-shadow: 16px 0 44px rgba(42,130,180,.09);
-  backdrop-filter: blur(26px) saturate(155%);
-  -webkit-backdrop-filter: blur(26px) saturate(155%);
-}
-html[data-theme="aero-glass"] .app-sidebar-active {
-  background: linear-gradient(180deg,#20a6ff 0%,#087fe8 52%,#0068c7 100%);
-  box-shadow: 0 8px 18px rgba(0,119,230,.24), inset 0 1px 1px rgba(255,255,255,.55);
-}
-html[data-theme="aero-glass"] .aero-gloss {
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 8px 18px rgba(0,119,230,.14), inset 0 1px 0 rgba(255,255,255,.8);
-}
-html[data-theme="aero-glass"] .aero-gloss::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 52% 0;
-  background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,0));
-  pointer-events: none;
-}
-html[data-theme="aero-glass"] .aero-chip {
-  border: 1px solid rgba(116,194,235,.35);
-  background: rgba(255,255,255,.58);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-html[data-theme="aero-glass"] .aero-quick-card {
-  border: 1px solid rgba(255,255,255,.72);
-  background: rgba(255,255,255,.56);
-  box-shadow: 0 14px 32px rgba(65,143,190,.11), inset 0 1px 0 rgba(255,255,255,.85);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-}
-html[data-theme="aero-glass"] .aero-quick-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 34px rgba(51,143,190,.15), inset 0 1px 0 rgba(255,255,255,.92);
-}
-html[data-theme="aero-glass"] .aero-section-title::before {
-  content: "";
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  margin-right: 9px;
-  border-radius: 999px;
-  background: linear-gradient(135deg,#16a8ff,#10b981);
-  box-shadow: 0 0 0 4px rgba(16,185,129,.08);
-}
-html[data-theme="aero-glass"] .aero-hero {
-  background: linear-gradient(135deg,#53c7ff 0%,#13b1eb 42%,#19cda1 100%);
-}
-html[data-theme="aero-glass"] .aero-progress-track {
-  background: rgba(255,255,255,.48);
-  box-shadow: inset 0 1px 2px rgba(39,104,137,.1);
-}
-html[data-theme="aero-glass"] .aero-progress-fill {
-  background: linear-gradient(90deg,#05b2ff 0%,#087fe8 48%,#11b884 100%);
-  box-shadow: 0 0 12px rgba(0,119,230,.38);
-}
-@media (max-width:767px) {
-  html[data-theme="aero-glass"] body { background-attachment: scroll; }
-}
-
-
-html[data-theme="aero-glass"] .subject-tabs {
-  padding: 5px;
-  border: 1px solid rgba(255,255,255,.78);
-  border-radius: 18px;
-  background: rgba(255,255,255,.42);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.86), 0 10px 24px rgba(47,133,181,.07);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-html[data-theme="aero-glass"] .subject-tab {
-  border-color: rgba(104,173,213,.22);
-  background: rgba(255,255,255,.5);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
-}
-html[data-theme="aero-glass"] .subject-tab[aria-selected="true"] {
-  border-color: rgba(255,255,255,.55);
-  background: linear-gradient(180deg,#20a6ff 0%,#087fe8 54%,#0068c7 100%) !important;
-  color: #fff !important;
-  box-shadow: 0 8px 18px rgba(0,119,230,.22), inset 0 1px 1px rgba(255,255,255,.45);
-}
-html[data-theme="aero-glass"] .schedule-shell {
-  border-radius: 26px;
-  border-color: rgba(255,255,255,.8);
-  background: rgba(255,255,255,.64);
-  box-shadow: 0 20px 48px rgba(48,132,181,.13), inset 0 1px 0 rgba(255,255,255,.9);
-  backdrop-filter: blur(22px) saturate(145%);
-  -webkit-backdrop-filter: blur(22px) saturate(145%);
-}
-html[data-theme="aero-glass"] .schedule-corner {
-  background: rgba(236,249,255,.82);
-}
-html[data-theme="aero-glass"] .schedule-day-head {
-  background: rgba(255,255,255,.72);
-  border-bottom-color: rgba(93,161,201,.15);
-}
-html[data-theme="aero-glass"] .schedule-day-today {
-  background: linear-gradient(180deg,rgba(206,242,255,.92),rgba(234,252,255,.72));
-}
-html[data-theme="aero-glass"] .schedule-times,
-html[data-theme="aero-glass"] .schedule-day-column {
-  background-color: rgba(255,255,255,.34);
-}
-html[data-theme="aero-glass"] .schedule-card {
-  border-width: 1px;
-  border-color: rgba(255,255,255,.82) !important;
-  box-shadow: 0 8px 18px rgba(42,124,174,.13), inset 0 1px 0 rgba(255,255,255,.75);
-  backdrop-filter: blur(12px) saturate(135%);
-  -webkit-backdrop-filter: blur(12px) saturate(135%);
-}
-html[data-theme="aero-glass"] .schedule-lecture { background: linear-gradient(135deg,rgba(100,201,255,.86),rgba(117,167,255,.76)); }
-html[data-theme="aero-glass"] .schedule-practice { background: linear-gradient(135deg,rgba(96,226,180,.84),rgba(47,190,153,.74)); }
-html[data-theme="aero-glass"] .schedule-lab { background: linear-gradient(135deg,rgba(255,218,105,.88),rgba(255,177,65,.77)); }
-html[data-theme="aero-glass"] .schedule-seminar { background: linear-gradient(135deg,rgba(92,223,229,.84),rgba(40,185,205,.73)); }
-html[data-theme="aero-glass"] .schedule-exam { background: linear-gradient(135deg,rgba(255,132,158,.86),rgba(235,76,121,.74)); }
-html[data-theme="aero-glass"] .schedule-credit { background: linear-gradient(135deg,rgba(192,156,255,.84),rgba(127,91,230,.74)); }
-html[data-theme="aero-glass"] .schedule-other { background: linear-gradient(135deg,rgba(158,206,255,.82),rgba(105,163,241,.72)); }
-html[data-theme="aero-glass"] .schedule-tabs {
-  border-color: rgba(255,255,255,.8);
-  background: rgba(255,255,255,.55);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 8px 18px rgba(43,131,177,.06);
-}
-html[data-theme="aero-glass"] .schedule-tab-active {
-  background: linear-gradient(180deg,#2da9ff 0%,#087fe8 55%,#0068c7 100%);
-  box-shadow: 0 6px 16px rgba(0,119,230,.22), inset 0 1px 1px rgba(255,255,255,.45);
-}
-html[data-theme="aero-glass"] .schedule-day-pill {
-  border-color: rgba(255,255,255,.82);
-  background: rgba(255,255,255,.58);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
-}
-html[data-theme="aero-glass"] .schedule-day-pill-active {
-  background: linear-gradient(180deg,rgba(216,246,255,.98),rgba(234,252,255,.75));
-  border-color: rgba(8,127,232,.45);
 }
