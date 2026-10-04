@@ -19,9 +19,6 @@ export type TutorAnswer = {
   model?: string | null;
   retrieved: number;
 };
-export async function tutorAsk(
-  question: string,
-  opts?: { subject_slug?: string; history?: Array<{ role: string; content: string }>; top_k?: number }
 ) {
   return api<TutorAnswer>("/tutor/ask", {
     method: "POST",
