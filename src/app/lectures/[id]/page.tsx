@@ -60,7 +60,7 @@ export default function LectureViewPage() {
       </header>
 
       <article className="card p-6">
-        <LectureRenderer markdown={lec.body_md || ""} />
+        <LectureRenderer markdown={lec.body_md || ""} html={lec.body_html || ""} />
       </article>
 
       {media.length > 0 && (

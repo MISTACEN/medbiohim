@@ -159,9 +159,42 @@ function ImageBlock({ raw }: { raw: string }) {
   );
 }
 
-export function LectureRenderer({ markdown }: { markdown: string }) {
+function sanitizeLectureHtml(raw: string): string {
+  if (typeof window === "undefined") return "";
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+  const allowed = new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","FONT"]);
+  const walk=(root: Node)=>{
+    [...root.childNodes].forEach(node=>{
+      if(node.nodeType!==Node.ELEMENT_NODE){ if(node.parentNode) walk(node); return; }
+      const el=node as HTMLElement;
+      if(!allowed.has(el.tagName)){ const p=el.parentNode; if(p){while(el.firstChild)p.insertBefore(el.firstChild,el);p.removeChild(el);} return; }
+      [...el.attributes].forEach(a=>{
+        const keep=["href","src","alt","title","target","rel","width","height","size","style"].includes(a.name);
+        if(!keep) el.removeAttribute(a.name);
+        if(a.name==="style"){
+          const safe=a.value.split(";").map(x=>x.trim()).filter(x=>/^(font-size|font-weight|font-style|text-decoration|text-align|color|background-color)\s*:\s*[^;]+$/i.test(x)&&!/url\s*\(|expression\s*\(|javascript:/i.test(x)).join(";");
+          if(safe)el.setAttribute("style",safe);else el.removeAttribute("style");
+        }
+      });
+      if(el.hasAttribute("href")||el.hasAttribute("src")){
+        const attr=el.hasAttribute("href")?"href":"src";
+        try{const u=new URL(el.getAttribute(attr)||"",window.location.origin);if(!["http:","https:"].includes(u.protocol))el.removeAttribute(attr);}catch{el.removeAttribute(attr);}
+      }
+      if(el.tagName==="IFRAME"){
+        const src=el.getAttribute("src")||"";
+        if(!/^https:\/\/(www\.)?(youtube\.com|youtube-nocookie\.com|rutube\.ru|vk\.com)\//i.test(src))el.remove();
+        else{el.setAttribute("allowfullscreen","true");el.setAttribute("loading","lazy");}
+      }
+      if(el.tagName==="A"){el.setAttribute("target","_blank");el.setAttribute("rel","noreferrer");}
+      if(el.parentNode)walk(el);
+    });
+  };
+  walk(doc.body); return doc.body.innerHTML;
+}
+export function LectureRenderer({ markdown, html }: { markdown: string; html?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const safeHtml = useMemo(() => html ? sanitizeLectureHtml(html) : "", [html]);
   const parts = useMemo(() => parseBlocks(markdown || ""), [markdown]);
 
   useEffect(() => {
@@ -216,11 +249,11 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
       }
     });
     void libs.mermaid?.run({ nodes: ref.current.querySelectorAll(".mermaid") });
-  }, [ready, parts]);
+  }, [ready, parts, safeHtml]);
 
   return (
     <div ref={ref} className="lecture-body space-y-1 text-sm leading-relaxed">
-      {parts.map((p, i) => {
+      {safeHtml ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
         if (p.kind === "md") {
           return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
         }
@@ -261,12 +294,13 @@ export function LectureRenderer({ markdown }: { markdown: string }) {
         }
         return null;
       })}
+      }
       <style>{`
         .lec-table-wrap { overflow-x: auto; margin: 1rem 0; }
         .lec-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .lec-table th, .lec-table td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; }
         .lec-table th { background: #f8fafc; font-weight: 600; }
-        .lec-math { margin: 0.75rem 0; overflow-x: auto; }
+        .lec-math { margin: 0.75rem 0; overflow-x: auto; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
       `}</style>
     </div>
   );

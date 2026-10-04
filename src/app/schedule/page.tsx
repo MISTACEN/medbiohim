@@ -282,7 +282,7 @@ function ScheduleCard({
   );
 }
 
-export default function SchedulePage() {
+export default function SchedulePage({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth();
   const [now, setNow] = useState(() => nowParts());
   const [weekStart, setWeekStart] = useState(() => startOfWeekYmd(nowParts().date));
@@ -397,6 +397,7 @@ export default function SchedulePage() {
         .schedule-now-label{position:absolute;left:8px;top:-11px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:#f43f5e;color:#fff}
       `}} />
 
+      {!embedded && (
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -419,6 +420,7 @@ export default function SchedulePage() {
           <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,7); setSelectedDay(next); return next; })} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="schedule-tabs">
@@ -447,16 +449,16 @@ export default function SchedulePage() {
               <div className="schedule-scroll">
                 <div className="schedule-grid" style={{ minWidth: 1080 }}>
                   <div className="schedule-corner"><Clock className="h-4 w-4" /></div>
-                  {days.map(({ key }) => (
-                    <div key={key} className={`schedule-day-head ${key===today?"schedule-day-today":""}`}>
+                  {days.map(({ key }, dayIndex) => (
+                    <div key={key} style={{gridColumn:dayIndex+2,gridRow:1}} className={`schedule-day-head ${key===today?"schedule-day-today":""}>
                       <div>{weekdayShortRu(key)}</div>
                       <strong>{dayDateRu(key)}</strong>
                       {key===today && <span>Сегодня</span>}
                     </div>
                   ))}
-                  <div className="schedule-times">{SLOTS.map((t)=><div key={t} className="schedule-time">{t}</div>)}</div>
+                  <div className="schedule-times" style={{gridColumn:1,gridRow:2}}>{SLOTS.map((t)=><div key={t} className="schedule-time">{t}</div>)}</div>
                   {days.map(({ key }) => (
-                    <div key={key} className="schedule-day-column relative">
+                    <div key={key} style={{gridColumn:dayIndex+2,gridRow:2}} className="schedule-day-column relative">
                       {SLOTS.map((t)=><div key={t} className="schedule-hour-line" />)}
                       {layoutDayColumns(grouped.get(key)||[]).map(({ item, col, cols })=>(
                         <ScheduleCard
