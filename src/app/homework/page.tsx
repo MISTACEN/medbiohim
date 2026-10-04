@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Check, CheckCircle2, ClipboardList, Loader2, Plus, Upload, X } from "lucide-react";
 import { listHomeworks, createHomework, setHomeworkDone, submitHomework, uploadFile, listSubjectsCatalog, type ApiHomework } from "@/lib/api";
 
-type Homework = ApiHomework & { due_date?: string; my_status?: string; created_by_role?: string; subject_slug?: string; color_hex?: string };
+type Homework = ApiHomework & { due_date?: string; my_status?: string; my_completed?: boolean; created_by_role?: string; subject_slug?: string; color_hex?: string };
 const PALETTE=["#2563eb","#7c3aed","#059669","#ea580c","#db2777","#0891b2","#65a30d","#9333ea","#0284c7","#ca8a04","#e11d48","#0f766e"];
 function colorFor(h:any){if(/^#[0-9a-fA-F]{6}$/.test(String(h?.color_hex||"")))return h.color_hex;let s=String(h?.subject_slug||h?.subject_name||"subject"),n=0;for(let i=0;i<s.length;i++)n=((n<<5)-n+s.charCodeAt(i))|0;return PALETTE[Math.abs(n)%PALETTE.length]}
 function monthDays(month:string){const [y,m]=month.split("-").map(Number);const first=new Date(Date.UTC(y,m-1,1));const start=(first.getUTCDay()+6)%7;const count=new Date(Date.UTC(y,m,0)).getUTCDate();const out:string[]=[];for(let i=0;i<start;i++){const d=new Date(Date.UTC(y,m-1,1-start+i));out.push(d.toISOString().slice(0,10))}for(let d=1;d<=count;d++)out.push(`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`);while(out.length%7)out.push(new Date(Date.UTC(y,m-1,count+(out.length-(start+count))+1)).toISOString().slice(0,10));return out}
-function status(h:Homework){if(h.my_status==="done"||h.submission_status==="submitted"||h.submission_status==="graded")return "done";if(h.due_date&&h.due_date<new Date().toISOString().slice(0,10))return "overdue";return "pending"}
+function status(h:Homework){if(h.my_completed===true||h.submission_status==="submitted"||h.submission_status==="graded")return "done";if(h.due_date&&h.due_date<new Date().toISOString().slice(0,10))return "overdue";return "pending"}
 
 export default function HomeworkPage(){
  const [items,setItems]=useState<Homework[]>([]);const [subjects,setSubjects]=useState<any[]>([]);
@@ -27,7 +27,7 @@ export default function HomeworkPage(){
  const pending=items.filter(h=>status(h)!=="done").length;
  async function toggle(h:Homework){setBusy(h.id);const done=status(h)!=="done";const r=await setHomeworkDone(h.id,done);if(r.ok)setItems(xs=>xs.map(x=>x.id===h.id?{...x,my_status:done?"done":"pending"}:x));else setError(r.error.message);setBusy(null)}
  async function add(){if(!form.title.trim()||!form.subject_id||!form.due_date)return;setBusy("add");const r=await createHomework(form);if(r.ok){setShowAdd(false);setForm({title:"",description:"",subject_id:"",due_date:selectedDate});await reload()}else setError(r.error.message);setBusy(null)}
- async function submit(h:Homework,file?:File){setBusy(h.id);let fid:string|undefined;if(file){const u=await uploadFile(file);if(!u.ok){setError(u.error.message);setBusy(null);return}fid=u.data.file.id}const r=await submitHomework(h.id,answer||undefined,fid);if(r.ok){setItems(xs=>xs.map(x=>x.id===h.id?{...x,my_status:"done",submission_status:"submitted"}:x));setAnswer("");setOpenId(null)}else setError(r.error.message);setBusy(null)}
+ async function submit(h:Homework,file?:File){setBusy(h.id);let fid:string|undefined;if(file){const u=await uploadFile(file);if(!u.ok){setError(u.error.message);setBusy(null);return}fid=u.data.file.id}const r=await submitHomework(h.id,answer||undefined,fid);if(r.ok){setItems(xs=>xs.map(x=>x.id===h.id?{...x,my_completed:true,submission_status:"submitted"}:x));setAnswer("");setOpenId(null)}else setError(r.error.message);setBusy(null)}
 
  return <div className="space-y-5">
   <header className="flex flex-wrap items-end justify-between gap-3">
