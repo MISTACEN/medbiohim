@@ -315,3 +315,74 @@ backend/config/routes/trainings.php выглядит необычно, пото�
 - документации на несуществующие recovery-файлы;
 - placeholder data maps;
 - неиспользуемых UI utilities без причины.
+
+
+# Deep pass 2 — hidden features and runtime traces
+
+Проведён дополнительный анализ не только видимых страниц, но и следов функций в backend/frontend/DB.
+
+## Новые найденные элементы
+
+### D2-1 — Presence был backend-only и не использовался сайтом
+Backend имел:
+- POST /presence/heartbeat
+- GET /admin/presence
+
+Но root AppShell не отправлял heartbeat и в UI не было online-представления.
+
+**Исправлено:** AppShell теперь отправляет heartbeat авторизованного пользователя примерно раз в минуту; Admin → System показывает пользователей online за 3 минуты.
+
+### D2-2 — Проверка ДЗ была недоделана
+AdminMissingTools содержал GradeBox и вызывал POST /submissions/{id}/grade, а backend route отсутствовал.
+
+**Исправлено:** добавлен /api/v1/submissions/{id}/grade с проверкой роли и диапазона 0–100.
+
+### D2-3 — Защищённые файлы материалов могли ломаться после истечения access token
+fetchMaterialFile делал единичный fetch без refresh.
+
+**Исправлено:** при 401 выполняется refresh и повторная загрузка файла.
+
+### D2-4 — Dashboard при DB/API сбое подставлял пустой успешный набор
+Главная создавала empty Dash, хотя это визуально могло выглядеть как реальное отсутствие данных.
+
+**Исправлено:** error state остаётся error state; fake/empty source-of-truth больше не создаётся.
+
+### D2-5 — Code Check обнаружил неочевидный контракт API
+После удаления historical /api-compat были потеряны реальные frontend helpers:
+- listSubjectsCatalog
+- listTicketBanks
+- listCommunityPosts
+- listLectures
+- listQuestionSubjects
+- listQuestions
+
+Это было найдено именно через production build trace.
+
+**Исправлено:** helpers возвращены как прямые calls на реальные backend routes.
+
+## DB content coverage — это не code stub
+
+По текущей Supabase audit:
+- histology имеет 350 опубликованных exam_questions;
+- organic_chemistry — 260;
+- histology имеет 9 опубликованных тестов;
+- trainer feed histology использует отдельный банк;
+- отсутствие тестов/материалов у множества других предметов — это **незаполненный контент**, а не незаконченный UI.
+
+Не следует маскировать это fake data.
+
+## Остаточные архитектурные долги
+
+### D2-A — duplicate route registrations
+Раннее появление legacy routes означает shadowed handlers:
+- profile_rest/domain_rest/domain;
+- admin_rest/admin;
+- community_rest/platform.
+
+Они не являются пользовательскими заглушками, но требуют отдельной консолидации после полного route contract audit. Сначала приоритет — не ломать рабочие endpoints.
+
+### D2-B — presence и grading теперь wired
+Оба backend-only следа переведены в рабочие site flows.
+
+### D2-C — Session storage
+learning_sessions API существует, но отдельного пользовательского UI сейчас нет. Текущие preparation/training flows используют собственные session endpoints. Универсальный /sessions слой не является обязательным production dependency и остаётся кандидатом на удаление после проверки исторических consumer'ов.
