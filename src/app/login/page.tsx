@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Mail, Shield } from "lucide-react";
-import { clearTokens, login, setTokens } from "@/lib/api";
+import { clearTokens, login, recoverPassword, setTokens } from "@/lib/api";
 import { startGoogleOAuth, startMagicLink, startVkOAuth, startTelegramOAuth } from "@/lib/supabase";
 
 function mapLoginError(code: string, message: string): string {
@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
   const [othersOpen, setOthersOpen] = useState(true);
+  const [recoverLoading, setRecoverLoading] = useState(false);
 
 
   async function onSubmit(e: FormEvent) {
@@ -53,6 +54,23 @@ export default function LoginPage() {
       setError("Не удалось связаться с API.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onRecover() {
+    const target = email.trim();
+    if (!target) { setError("Сначала укажите email для восстановления."); return; }
+    setRecoverLoading(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const res = await recoverPassword(target);
+      if (!res.ok) { setError(res.error.message); return; }
+      setInfo("Ссылка для восстановления пароля отправлена на почту.");
+    } catch {
+      setError("Не удалось отправить ссылку восстановления.");
+    } finally {
+      setRecoverLoading(false);
     }
   }
 
@@ -221,6 +239,7 @@ export default function LoginPage() {
                   >
                     {loading ? "Вход…" : "Войти с паролем"}
                   </button>
+                  <button type="button" onClick={() => void onRecover()} disabled={recoverLoading} className="text-left text-xs font-semibold text-indigo-600 hover:underline disabled:opacity-50">{recoverLoading ? "Отправляем ссылку…" : "Забыли пароль?"}</button>
                 </form>
               </div>
 
