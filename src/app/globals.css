@@ -245,7 +245,7 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 /* —— Schedule CMS-style calendar —— */
 .schedule-shell{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:var(--card);box-shadow:var(--glass-shadow)}
 .schedule-scroll{overflow-x:auto}
-.schedule-grid{display:grid;grid-template-columns:76px repeat(6,minmax(140px,1fr));grid-template-rows:64px 693px}
+.schedule-grid{display:grid;grid-template-columns:76px repeat(7,minmax(140px,1fr));grid-template-rows:64px 693px}
 .schedule-corner{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);background:color-mix(in srgb,var(--primary-soft) 35%,var(--card))}
 .schedule-day-head{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;text-transform:capitalize;color:var(--muted);background:color-mix(in srgb,var(--background) 75%,var(--card))}
 .schedule-day-head strong{font-size:17px;line-height:1.2;color:var(--text)}
@@ -279,7 +279,7 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
 .schedule-day-pill{display:flex;min-width:76px;flex-direction:column;align-items:center;border:1px solid var(--border);border-radius:13px;padding:8px 10px;background:var(--card);color:var(--muted)}
 .schedule-day-pill b{color:var(--text)}
 .schedule-day-pill-active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
-@media (max-width:767px){.schedule-grid{grid-template-columns:58px repeat(6,minmax(120px,1fr))}.schedule-day-head strong{font-size:14px}.schedule-tab{padding:7px 10px}}
+@media (max-width:767px){.schedule-grid{grid-template-columns:58px repeat(7,minmax(120px,1fr))}.schedule-day-head strong{font-size:14px}.schedule-tab{padding:7px 10px}}
 
 @media (max-width: 767px) {
   html[data-theme="aurora-glass"] body,
