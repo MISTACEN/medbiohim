@@ -1,66 +1,128 @@
-# MEDBIOHIM — реестр незавершённого и лишнего
+# MEDBIOHIM — реестр незавершённого, скрытых недоделок и legacy
 
 Дата: 2026-10-04
 
-| ID | Severity | Объект | Тип | Статус | Следующее действие |
-|---|---|---|---|---|---|
-| P0-1 | P0 | src/components/trainers/HistologyTrainer.tsx:248 | literal \n | 🔴 | убрать |
-| P0-2 | P0 | src/lib/api.ts | /api-compat layer | 🔴 | перейти на реальные API |
-| P0-3 | P0 | tests/bank ↔ preparation | flow mismatch | 🔴 | восстановить sequential |
-| P0-4 | P0 | preparation UI | question/options mismatch | 🔴 | синхронизировать с backend |
-| P0-5 | P0 | homework/page.tsx | production mock fallback | 🔴 | убрать mock runtime |
-| P0-6 | P0 | admin schedule | save через api-compat | 🔴 | direct /admin/schedule |
-| P1-1 | P1 | .github/workflows/main.yml | duplicate legacy deploy | 🟡 | удалить/объединить |
-| P1-2 | P1 | spaceweb_upload/ | divergent duplicate source | 🟡 | удалить/sync |
-| P1-3 | P1 | trainer media | 404/502 | 🟡 | SpaceWeb/B2 smoke |
-| P1-4 | P1 | AI providers | runtime failures | 🔴 | primary + fallback |
-| P1-5 | P1 | progress/page.tsx | misleading degraded zeros | 🟡 | unavailable state |
-| P2-1 | P2 | frontend/ | stale shadow frontend | ⚪ | remove |
-| P2-2 | P2 | Sparkline.tsx | unused component | ⚪ | remove |
-| P2-3 | P2 | chemistry/fixtures.ts | unused fixture | ⚪ | move/remove |
-| P2-4 | P2 | exam_tickets_legacy_2026.json | legacy artifact | ⚪ | archive/remove |
-| P2-5 | P2 | schedule.json | old/demo data | ⚪ | remove after fallback audit |
-| P2-6 | P2 | organic chemistry ID map | placeholder data | 🟡 | regenerate/remove |
-| P2-7 | P2 | EM/HOTFIX docs | stale instructions | 🟡 | archive/update |
-| P2-8 | P2 | old histology SQL folder | duplicate source | 🟡 | archive/remove |
+Этот файл отражает текущее состояние после глубокого повторного аудита. Старые пункты, которые уже исправлены, явно помечены как CLOSED.
 
-## Active /api-compat user flows
+## Закрытые ранее найденные блокеры
 
-- registration
-- community post creation
-- lecture detail
-- lesson plan
-- individual question
-- file retrieval
-- question report
-- admin schedule save
-
-## Variadic compatibility helpers
-
-src/lib/api.ts содержит **66** функций вида (..._args: any[]).
-Не все вызываются runtime, но большая часть относится к историческому compatibility layer и требует пересмотра.
-
-## Legitimate fallbacks
-
-Не считать автоматически мёртвым:
-- Supabase REST fallback;
-- DB connection fallback;
-- trainer image retry;
-- PubChem fallback for RDKit;
-- LLM provider fallback;
-- ServiceNotice/degraded UI.
-
-Fallback считается проблемой, когда он выдаёт пользователю данные как будто это production source of truth.
-
-
-## Deep-pass closures (2026-10-04)
-
-| ID | Object | Problem | Status |
+| ID | Объект | Проблема | Статус |
 |---|---|---|---|
-| D2-1 | presence | backend heartbeat had no frontend caller | ✅ heartbeat + admin online UI |
-| D2-2 | homework grading | UI called missing grade endpoint | ✅ POST /submissions/{id}/grade |
-| D2-3 | material viewer auth | protected file fetch did not refresh token | ✅ refresh + retry |
-| D2-4 | dashboard outage state | API failure became fake empty dashboard data | ✅ explicit degraded state |
-| D2-5 | API helpers | cleanup removed still-used direct helper exports | ✅ restored after production build trace |
-| D2-6 | duplicate routes | shadowed handlers remain in legacy route files | 🟡 audit-only; consolidate after contract review |
-| D2-7 | learning_sessions | backend storage/API without current UI consumer | 🟡 verify historical consumers, then remove if unused |
+| C-01 | HistologyTrainer.tsx | literal \\n ломал predeploy check | ✅ CLOSED |
+| C-02 | frontend API | активные /api-compat/* вызовы | ✅ CLOSED |
+| C-03 | Homework | production mock fallback | ✅ CLOSED |
+| C-04 | Test bank → preparation | sequential flow не совпадал | ✅ CLOSED |
+| C-05 | Preparation | structured options не поддерживались корректно | ✅ CLOSED |
+| C-06 | Admin schedule | save через retired compat layer | ✅ CLOSED |
+| C-07 | frontend shadow tree | frontend/ | ✅ REMOVED |
+| C-08 | SpaceWeb shadow tree | spaceweb_upload/ | ✅ REMOVED |
+| C-09 | dead mock data | src/lib/mock-data.ts | ✅ REMOVED |
+| C-10 | dead UI | Sparkline.tsx | ✅ REMOVED |
+| C-11 | chemistry fixture | chemistry/fixtures.ts | ✅ REMOVED |
+| C-12 | legacy QuestionBank | JSON-backed QuestionBank.php | ✅ REMOVED |
+| C-13 | admin question fallback | local JSON fallback | ✅ REMOVED |
+| C-14 | fake empty admin overview | zero-count success on DB failure | ✅ FIXED |
+| C-15 | progress fake numeric cards | degraded state could look like real zeros | ✅ UI hides numeric cards in degraded state |
+| C-16 | Search → study plans | backend supported plan search but UI did not expose filter | ✅ FIXED |
+| C-17 | subject hub filtering | tests/tickets/lectures could leak other subjects | ✅ FIXED |
+| C-18 | subject progress | progress request was global | ✅ FIXED |
+| C-19 | SRS | service/table/client/UI traces existed without complete storage | ✅ FIXED |
+| C-20 | Search | backend service referenced but absent | ✅ FIXED |
+| C-21 | Calculators | backend service referenced but absent | ✅ FIXED |
+| C-22 | Presence | backend capability without persistent DB source | ✅ FIXED |
+
+## Current remaining work
+
+### R1 — production environment verification
+Severity: P1
+
+Code and CI are now substantially cleaner, but target-environment verification remains:
+- Vercel latest deployment after latest commits;
+- SpaceWeb latest backend deployment after latest backend commits;
+- histology media physically present on SpaceWeb;
+- trainer feed images return 200 rather than 404/502.
+
+### R2 — AI provider availability
+Severity: P1 / external dependency
+
+Code chain exists, but actual provider availability depends on production credentials/network:
+- GigaChat primary/fallback still needs verified runtime;
+- Gemini requires the intended Vercel proxy path for RU-hosted backend;
+- Mistral/OpenRouter/Groq may reject credentials/policy.
+
+Это нельзя честно решить добавлением mock-провайдеров или fake responses.
+
+### R3 — general document viewer
+Severity: P2
+
+Histology has a real in-site DOCX/image materials viewer. The generic /materials page still mainly renders converted content_html and external source links. The generic source metadata page exists but is currently not a primary navigation target.
+
+Next action: route all supported document formats through the material viewer or explicitly mark generic viewer scope. Do not fake full-fidelity Word rendering where the backend has no physical document.
+
+### R4 — admin CMS completeness
+Severity: P2
+
+Core admin editing is present, but full CMS still needs:
+- material metadata editing;
+- trainer card editing;
+- lecture/body media editing beyond existing lecture CRUD;
+- history/rollback UI for content versions;
+- bulk validation operations.
+
+These are feature-completion tasks, not hidden mocks.
+
+### R5 — route consolidation
+Severity: P2
+
+Legacy/shadowed route handlers still coexist in several files:
+- domain.php + domain_rest.php;
+- admin.php + admin_rest.php;
+- platform.php + dedicated REST routes;
+- community_rest.php + platform.php;
+- progress_rest.php + platform.php.
+
+Они не являются заглушками, но duplicate registrations increase maintenance risk.
+
+### R6 — learning_sessions generic layer
+Severity: P2 / DEFERRED
+
+learning_sessions has real DB rows and /sessions API, but current learning UI uses dedicated training/preparation endpoints. No active frontend consumer was found for generic session CRUD.
+
+Keep for now; remove only after confirming no external/legacy deployment depends on it.
+
+### R7 — content coverage is not a UI bug
+Severity: P2 / content
+
+Supabase has many intentionally empty activity/content tables:
+- homework submissions;
+- community posts;
+- favorites/notes;
+- SRS cards until users create them;
+- AI messages until chat is used;
+- Telegram tables;
+- question reports;
+- user subject/topic progress.
+
+These are not to be filled with demo rows. They are expected to be zero for an unused feature.
+
+## Current quality gates
+
+- ✅ no active /api-compat calls in frontend;
+- ✅ homework runtime is API-only;
+- ✅ frontend literal escaped-newline check passes;
+- ✅ Next production build passes;
+- ✅ PHP syntax passes;
+- ✅ smoke workflow passes;
+- ✅ dead shadow trees removed;
+- 🟡 latest code-check after newest UI commit is still running;
+- 🟡 target SpaceWeb media verification remains;
+- 🟡 AI runtime provider verification remains.
+
+## Definition of done for the remaining items
+
+A remaining item can be marked ✅ only after:
+1. implementation exists;
+2. CI passes;
+3. target environment responds correctly;
+4. UI path is reachable from normal navigation;
+5. no mock/demo data is used as production source-of-truth.
