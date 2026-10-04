@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { globalSearch, type SearchHit } from "@/lib/features-api";
 import { Search, Loader2, BookOpen, FileQuestion, GraduationCap, Layers } from "lucide-react";
@@ -29,7 +28,6 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [typeFilter, setTypeFilter] = useState("");
-  const searchParams = useSearchParams();
 
   const run = useCallback(async (query: string, type?: string) => {
     const qq = query.trim();
@@ -48,13 +46,14 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
-    const initial = (searchParams.get("q") || "").trim();
-    const type = (searchParams.get("type") || "").trim();
+    const params = new URLSearchParams(window.location.search);
+    const initial = (params.get("q") || "").trim();
+    const type = (params.get("type") || "").trim();
     if (!initial || searched) return;
     setQ(initial);
     setTypeFilter(type);
     void run(initial, type);
-  }, [searchParams, searched, run]);
+  }, [searched, run]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
