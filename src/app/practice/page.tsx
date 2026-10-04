@@ -180,7 +180,7 @@ export default function PracticePage() {
 
               {selected.type === "mc" && selected.options?.length ? (
                 <div className="space-y-2">
-                  {selected.options.map((opt, idx) => (
+                  {selected.options.map((opt: any, idx: number) => (
                     <button
                       key={idx}
                       type="button"
