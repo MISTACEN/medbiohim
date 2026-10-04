@@ -5,7 +5,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3,
 } from "lucide-react";
 import Link from "next/link";
-import { listSchedule, getScheduleMeta, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
+import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
@@ -26,6 +26,14 @@ const TYPE_CLASS: Record<string, string> = {
 const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
 const GRID_START_MIN = 8 * 60;
 const PX_PER_MIN = 1.05;
+const SUBJECT_PALETTE = ["#2563eb","#7c3aed","#059669","#ea580c","#db2777","#0891b2","#65a30d","#9333ea","#0284c7","#ca8a04","#e11d48","#0f766e"];
+function subjectColor(item:any): string {
+  if (typeof item?.color_hex === "string" && /^#[0-9a-fA-F]{6}$/.test(item.color_hex)) return item.color_hex;
+  const raw=String(item?.subject_slug||item?.subject_name||"subject");
+  let h=0; for(let i=0;i<raw.length;i++) h=((h<<5)-h+raw.charCodeAt(i))|0;
+  return SUBJECT_PALETTE[Math.abs(h)%SUBJECT_PALETTE.length];
+}
+function attendanceLabel(status?:string){return status==="present"?"Был":status==="excused"?"Уважительная":status==="sick"?"Болезнь":status==="unexcused"?"Пропуск":"";}
 
 function nowParts() {
   const dtf = new Intl.DateTimeFormat("en-GB", {
@@ -172,6 +180,8 @@ function ScheduleCard({
   const subject = item.subject_name || "Занятие";
   const location = [item.building, item.room].filter(Boolean).join(", ");
   const typeLabel = TYPE_LABELS[item.type] || "Занятие";
+  const accent = subjectColor(item);
+  const attendance = item.attendance_status as string | undefined;
   const parityLabel =
     item.week_parity === "numerator" ? "числитель" :
     item.week_parity === "denominator" ? "знаменатель" :
@@ -186,8 +196,10 @@ function ScheduleCard({
       tabIndex={0}
       onClick={() => onOpen(item)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(item); }}
-      className={`schedule-card absolute cursor-pointer overflow-hidden rounded-xl border p-2 shadow-sm transition hover:z-20 hover:-translate-y-0.5 hover:shadow-md ${type} ${item.is_cancelled ? "schedule-cancelled" : ""}`}
+      className={`schedule-card absolute cursor-pointer overflow-hidden rounded-xl border p-2 shadow-sm transition hover:z-20 hover:-translate-y-0.5 hover:shadow-md ${type} ${item.is_cancelled ? "schedule-cancelled" : ""} ${item.is_makeup ? "opacity-60" : ""}`}
       style={{
+        borderLeft: `4px ${item.is_makeup ? "dashed" : "solid"} ${accent}`,
+        boxShadow: `inset 0 3px 0 ${accent}66, 0 1px 3px rgba(15,23,42,.08)`,
         top,
         height,
         minHeight: height,
@@ -255,7 +267,8 @@ function ScheduleCard({
               {lessonPart === 1 && (
                 <div className="mt-1 space-y-0.5 text-[9px] font-semibold leading-tight opacity-75">
                   <div className="truncate">
-                    {typeLabel}
+                    {item.is_makeup ? "ОТРАБОТКА" : typeLabel}
+                    {!item.is_makeup ? "" : ` · ${typeLabel}`}
                     {item.academic_hours ? ` · ${item.academic_hours} ак. ч.` : ""}
                     {parityLabel ? ` · ${parityLabel}` : ""}
                   </div>
@@ -277,6 +290,8 @@ function ScheduleCard({
         });
       })()}
 
+      {item.is_makeup && <div className="absolute right-2 top-1 z-20 rounded bg-white/80 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide" style={{color:accent}}>Отработка</div>}
+      {attendance && <div className="absolute bottom-1 right-1 z-20 rounded-full bg-white/85 px-1.5 py-0.5 text-[8px] font-bold">{attendanceLabel(attendance)}</div>}
       {item.is_cancelled && <div className="absolute right-2 top-1 z-20 text-[9px] font-bold">ОТМЕНЕНО</div>}
     </article>
   );
@@ -290,6 +305,9 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   const [selectedDay, setSelectedDay] = useState(() => nowParts().date);
   const [monthStart, setMonthStart] = useState(() => monthStartYmd(nowParts().date));
   const [allItems, setAllItems] = useState<ScheduleItem[]>([]);
+  const [homeworks, setHomeworks] = useState<any[]>([]);
+  const [recovery, setRecovery] = useState<any[]>([]);
+  const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [source, setSource] = useState("db");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string|null>(null);
@@ -313,7 +331,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     setLoading(true); setError(null);
-    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course, user?.semester)]).then(([res, metaRes]) => {
+    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course, user?.semester), getStudentPlanner(SEMESTER_FROM, SEMESTER_TO)]).then(([res, metaRes, plannerRes]) => {
       if (res.ok) {
         setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
         const payload = res.data as { items: ScheduleItem[]; source?: string };
@@ -330,6 +348,13 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
         setError(res.error.message || "Не удалось загрузить расписание");
       }
       if (metaRes.ok) setMeta(metaRes.data);
+      if (plannerRes.ok) {
+        setHomeworks(Array.isArray(plannerRes.data.homeworks) ? plannerRes.data.homeworks : []);
+        setRecovery(Array.isArray(plannerRes.data.recovery) ? plannerRes.data.recovery : []);
+        const byEntry=new Map<string,string>();
+        for(const a of (plannerRes.data.attendance||[])) byEntry.set(String(a.schedule_entry_id),String(a.status));
+        setAllItems(prev=>prev.map(it=>({...it,attendance_status:byEntry.get(String(it.id))||it.attendance_status})));
+      }
       setLoading(false);
     });
   }, []);
@@ -340,6 +365,14 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
     () => allItems.filter((it) => it.date && it.date >= weekStart && it.date <= weekEnd),
     [allItems, weekStart, weekEnd]
   );
+
+  async function setAttendance(item: ScheduleItem, status:"present"|"excused"|"sick"|"unexcused") {
+    setAttendanceBusy(true);
+    const r=await markAttendance(String(item.id),status);
+    setAttendanceBusy(false);
+    if(r.ok) setAllItems(prev=>prev.map(it=>String(it.id)===String(item.id)?{...it,attendance_status:status}:it));
+    else setError(r.error.message);
+  }
 
   async function openLesson(item: ScheduleItem) {
     setSelected(item);
@@ -432,6 +465,18 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
         {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
       </div>
 
+      {recovery.length>0 && (
+        <section className="rounded-2xl border p-4" style={{background:"color-mix(in srgb,var(--primary) 4%,var(--card))"}}>
+          <div className="mb-3 flex items-center justify-between gap-3"><div><b>Что нужно подтянуть</b><p className="text-xs opacity-60">Учитываются пропуски и невыполненные ДЗ по предметам.</p></div><span className="rounded-full px-2 py-1 text-xs font-bold">{recovery.length} предмета</span></div>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {recovery.slice(0,6).map((r:any)=><div key={r.subject_name} className="rounded-xl border bg-white/60 p-3">
+              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{background:subjectColor(r)}}/><b>{r.subject_name}</b></div>
+              <div className="mt-1 text-xs opacity-70">{r.unexcused||0} неуваж. · {(r.excused||0)+(r.sick||0)} уваж. · {r.homeworks_pending||0} ДЗ не закрыто</div>
+            </div>)}
+          </div>
+        </section>
+      )}
+
       {groupMissing && !loading && (
         <div className="schedule-config-warning">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -454,6 +499,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
                       <div>{weekdayShortRu(key)}</div>
                       <strong>{dayDateRu(key)}</strong>
                       {key===today && <span>Сегодня</span>}
+                      <div className="mt-1 space-y-0.5 text-left">{homeworks.filter((h:any)=>h.due_date===key).slice(0,2).map((h:any)=><div key={h.id} className="truncate rounded bg-white/70 px-1.5 py-0.5 text-[8px] font-semibold" title={h.title}>ДЗ: {h.title}{h.my_status==="done"?" ✓":""}</div>)}{homeworks.filter((h:any)=>h.due_date===key).length>2&&<div className="text-[8px] opacity-60">+ ещё {homeworks.filter((h:any)=>h.due_date===key).length-2} ДЗ</div>}</div>
                     </div>
                   ))}
                   <div className="schedule-times" style={{gridColumn:1,gridRow:2}}>{SLOTS.map((t)=><div key={t} className="schedule-time">{t}</div>)}</div>
@@ -503,8 +549,8 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
                   <button key={item.id||item.start_time} type="button" className="flex w-full gap-4 p-4 text-left hover:bg-black/5" onClick={()=>openLesson(item)}>
                     <div className="w-24 shrink-0 text-sm font-semibold" style={{ color: "var(--primary)" }}>{item.start_time.slice(0,5)}–{item.end_time.slice(0,5)}</div>
                     <div>
-                      <div className="font-bold">{item.subject_name||"Занятие"}</div>
-                      <div className="text-xs" style={{ color: "var(--muted)" }}>{TYPE_LABELS[item.type]||item.type} · нажмите для темы</div>
+                      <div className="font-bold" style={{borderLeft:`3px solid ${subjectColor(item)}`,paddingLeft:8}}>{item.subject_name||"Занятие"}</div>
+                      <div className="text-xs" style={{ color: "var(--muted)" }}>{item.is_makeup?"ОТРАБОТКА":TYPE_LABELS[item.type]||item.type} · {attendanceLabel(item.attendance_status) || "отметьте посещение"}</div>
                     </div>
                   </button>
                 ))}
@@ -669,7 +715,8 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
               {selected.academic_hours && <div><b>Академическая нагрузка:</b> {selected.academic_hours} ак. ч.</div>}
               {selected.week_parity && <div><b>Чередование:</b> {selected.week_parity === "numerator" ? "числитель" : selected.week_parity === "denominator" ? "знаменатель" : "все недели"}</div>}
               {selected.source_detail && <div className="sm:col-span-2"><b>Источник/уточнение:</b> {selected.source_detail}</div>}
-              {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Перенос / пересдача</div>}
+              {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Отработка — это не обычное занятие</div>}
+            {attendanceBlock}
             </div>
 
             {(selected.room||selected.notes) && (
