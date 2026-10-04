@@ -454,7 +454,7 @@ export default function SchedulePage() {
                       {key===today && <span>Сегодня</span>}
                     </div>
                   ))}
-                  <div className="schedule-times">{SLOTS.map((t)=><div key={t} className="schedule-time">{t}</div>)}</div>
+                  <div className="schedule-times" style={{gridColumn:1,gridRow:2}}>{SLOTS.map((t)=><div key={t} className="schedule-time">{t}</div>)}</div>
                   {days.map(({ key }) => (
                     <div key={key} className="schedule-day-column relative">
                       {SLOTS.map((t)=><div key={t} className="schedule-hour-line" />)}
