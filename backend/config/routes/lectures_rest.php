@@ -22,6 +22,7 @@ return static function (Router $r): void {
                 'subject' => $row['subject'] ?? '',
                 'subject_slug' => $row['subject_slug'] ?? '',
                 'topic' => $row['topic'] ?? '',
+                'lesson_type' => $row['lesson_type'] ?? 'lecture',
                 'summary' => $row['summary'] ?? '',
                 'published_at' => $row['published_at'] ?? null,
                 'media_count' => is_array($row['media'] ?? null) ? count($row['media']) : 0,
@@ -102,7 +103,7 @@ return static function (Router $r): void {
         if (!RequireRole::handle($q, ['admin', 'moderator', 'teacher'])) return;
         $id = (string) ($p['id'] ?? '');
         $body = is_array($q->jsonBody) ? $q->jsonBody : [];
-        $allowed = ['title', 'topic', 'body_md', 'body_html', 'summary', 'media', 'attachments', 'subject', 'subject_slug', 'status'];
+        $allowed = ['title', 'topic', 'lesson_type', 'body_md', 'body_html', 'summary', 'media', 'attachments', 'subject', 'subject_slug', 'status'];
         $patch = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $body)) {
