@@ -273,12 +273,15 @@ export default function AdminLecturesPage() {
   const [subjects,setSubjects]=useState<Subject[]>([]);
   const [slug,setSlug]=useState("");
   const [topic,setTopic]=useState("");
+  const [lessonType,setLessonType]=useState<LessonType>("lecture");
   const [notes,setNotes]=useState("");
+  const [subjectFilter,setSubjectFilter]=useState("");
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState<string|null>(null);
   const [editId,setEditId]=useState<string|null>(null);
   const [editTitle,setEditTitle]=useState("");
-  const [editTopic,setEditTopic]=useState("");\n  const [editLessonType,setEditLessonType]=useState<LessonType>("lecture");
+  const [editTopic,setEditTopic]=useState("");
+  const [editLessonType,setEditLessonType]=useState<LessonType>("lecture");
   const [editSummary,setEditSummary]=useState("");
   const [editBody,setEditBody]=useState("");
   const [editAttachments,setEditAttachments]=useState<Attachment[]>([]);
