@@ -30,6 +30,8 @@ export default function AdminToolsPage() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"overview" | "learning" | "system">("overview");
+  const [validation, setValidation] = useState<any>(null);
+  const [validating, setValidating] = useState(false);
   const [presence, setPresence] = useState<any[]>([]);
 
   async function load() {
@@ -41,6 +43,14 @@ export default function AdminToolsPage() {
     if (h.ok) setBackendHealth(h.data);
     if (p.ok) setPresence(p.data.items || []);
     setRefreshing(false);
+  }
+
+
+  async function validateContent() {
+    setValidating(true);
+    const r = await adminValidateContent();
+    setValidating(false);
+    if (r.ok) setValidation(r.data); else setError(r.error.message);
   }
 
   useEffect(() => {
@@ -74,13 +84,15 @@ export default function AdminToolsPage() {
             {user?.name ? ` · ${user.name}` : ""}
           </p>
         </div>
-        <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => void load()}>
+        <div className="flex flex-wrap gap-2"><button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => void load()}>
+
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           Обновить
-        </button>
+        </button><button type="button" className="btn-secondary" disabled={validating} onClick={() => void validateContent()}>{validating ? "Проверяю…" : "Проверить контент"}</button></div>
       </header>
 
       {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {validation && <div className={"rounded-xl border px-4 py-3 text-sm " + (validation.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900")}><div className="font-semibold">{validation.ok ? "Целостность контента в норме" : "Найдены проблемы: " + validation.count}</div><div className="mt-1 text-xs opacity-80">Проверено: тесты {validation.checked?.tests ?? "—"}, вопросы {validation.checked?.questions ?? "—"}, связи {validation.checked?.test_questions ?? "—"}, карточки {validation.checked?.trainer_cards ?? "—"}, материалы {validation.checked?.materials ?? "—"}, exam_questions {validation.checked?.exam_questions ?? "—"}.</div>{!validation.ok&&<pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(validation.issues || [],null,2)}</pre>}</div>}
 
       <div className="grid gap-5 lg:grid-cols-[230px_1fr]">
         <aside className="card h-fit space-y-1 p-2 lg:sticky lg:top-4">
