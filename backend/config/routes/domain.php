@@ -13,23 +13,7 @@ use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Services\SpecialtyAccess;
 
 return static function (Router $router): void {
-    $router->get('/api/v1/me', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
-        try {
-            $repo = new UserRepository();
-            $repo->ensureProfile($req->user->id, $req->user->email);
-            Response::success($repo->profileBundle($req->user->id), $req->requestId);
-        } catch (\Throwable $e) {
-            Response::success([
-                'user' => $req->user->toArray(),
-                'roles' => $req->user->role ? [$req->user->role] : [],
-                'groups' => [],
-                'note' => 'Profile DB unavailable — JWT-only',
-            ], $req->requestId);
-        }
-    });
+    
 
     $router->get('/api/v1/groups', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) {
@@ -47,12 +31,7 @@ return static function (Router $router): void {
         }
     });
 
-    $router->get('/api/v1/groups/{id}', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
-        try {
-            $repo = new GroupRepository();
+    
             $group = $repo->findById($params['id']);
             if ($group === null) {
                 Response::error('NOT_FOUND', 'Group not found', $req->requestId, 404);
@@ -101,14 +80,7 @@ return static function (Router $router): void {
         }
     });
 
-    $router->post('/api/v1/groups/{id}/members', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
-        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) {
-            return;
-        }
-        $userId = (string) $req->json('user_id', '');
+    
         if ($userId === '') {
             Response::error('VALIDATION_ERROR', 'user_id is required', $req->requestId, 422);
             return;
@@ -149,12 +121,7 @@ return static function (Router $router): void {
         }
     });
 
-    $router->get('/api/v1/subjects/{id}', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
-        try {
-            $detail = (new SubjectRepository())->detailWithModules($params['id']);
+    
             if ($detail === null) {
                 Response::error('NOT_FOUND', 'Subject not found', $req->requestId, 404);
                 return;
