@@ -11,7 +11,7 @@ import {
 } from "react";
 
 /**
- * Six selectable themes: the original three plus three new reference themes
+ * Reference and classic theme set, including the approved Aero Glass style.
  * based on the supplied MedBioHim mockups.
  */
 export type AppThemeId =
