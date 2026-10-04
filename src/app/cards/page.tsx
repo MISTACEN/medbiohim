@@ -11,6 +11,7 @@ import {
   srsDue,
   srsReview,
   srsEnsure,
+  srsAddCard,
   type SrsCard,
   type SrsSummary,
 } from "@/lib/features-api";
@@ -33,6 +34,7 @@ function CardsPageInner() {
     const id = search.get("subject") || "";
     return resolveSubjectSlug(slug || id);
   }, [search]);
+  const scopeFromUrl = search.get("scope") === "personal" ? "personal" : "shared";
 
   const [summary, setSummary] = useState<SrsSummary | null>(null);
   const [queue, setQueue] = useState<SrsCard[]>([]);
@@ -44,10 +46,10 @@ function CardsPageInner() {
   const [doneToday, setDoneToday] = useState(0);
   const [subjectSlug, setSubjectSlug] = useState("");
 
-  const refresh = useCallback(async (slug?: string) => {
+  const refresh = useCallback(async (slug?: string, selectedScope: "shared" | "personal" = scopeFromUrl) => {
     setLoading(true);
     setError(null);
-    const [sumRes, dueRes] = await Promise.all([srsSummary(), srsDue(25, slug || undefined)]);
+    const [sumRes, dueRes] = await Promise.all([srsSummary(), srsDue(25, slug || undefined, selectedScope)]);
     setLoading(false);
     if (!sumRes.ok) {
       setError(sumRes.error.message);
@@ -65,20 +67,22 @@ function CardsPageInner() {
 
   useEffect(() => {
     if (fromUrl) setSubjectSlug(fromUrl);
-    void refresh(fromUrl || undefined);
-  }, [refresh, fromUrl]);
+    setScope(scopeFromUrl);
+    void refresh(fromUrl || undefined, scopeFromUrl);
+  }, [refresh, fromUrl, scopeFromUrl]);
 
   const card = queue[idx] || null;
 
   async function loadMore() {
     setBusy(true);
+    if (scope === "personal") return;
     const res = await srsEnsure(20, subjectSlug || undefined);
     setBusy(false);
     if (!res.ok) {
       setError(res.error.message);
       return;
     }
-    await refresh(subjectSlug || undefined);
+    await refresh(subjectSlug || undefined, scope);
   }
 
   async function rate(r: Rating) {
@@ -94,7 +98,17 @@ function CardsPageInner() {
     setDoneToday((n) => n + 1);
     setFlipped(false);
     if (idx + 1 < queue.length) setIdx(idx + 1);
-    else await refresh(subjectSlug || undefined);
+    else await refresh(subjectSlug || undefined, scope);
+  }
+
+  async function addPersonal() {
+    if (!front.trim() || adding) return;
+    setAdding(true); setError(null);
+    const res = await srsAddCard({ front: front.trim(), back: back.trim(), subject_slug: subjectSlug || fromUrl || undefined });
+    setAdding(false);
+    if (!res.ok) { setError(res.error.message); return; }
+    setFront(""); setBack("");
+    await refresh(subjectSlug || fromUrl || undefined, "personal");
   }
 
   if (loading) {
@@ -123,7 +137,7 @@ function CardsPageInner() {
             Карточки SRS
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Интервальное повторение (SM-2). Не экзаменационные билеты — они в разделе «Билеты».
+            Интервальное повторение (SM-2). {scope === "personal" ? "Личные карточки" : "Карточки из общего банка"} — отдельно от билетов.
             {subjectSlug ? ` · ${subjectSlug}` : ""}
           </p>
         </div>
@@ -160,6 +174,9 @@ function CardsPageInner() {
             </option>
           ))}
         </select>
+        {scope === "personal" ? (
+          <button type="button" onClick={() => setFront("") } className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm">Новая личная карточка</button>
+        ) : (
         <button
           type="button"
           onClick={() => void loadMore()}
@@ -168,7 +185,19 @@ function CardsPageInner() {
         >
           +20 новых в колоду
         </button>
+        )}
       </div>
+
+      {scope === "personal" && (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="mb-3 text-sm font-semibold">Создать личную карточку</div>
+          <div className="grid gap-2">
+            <textarea value={front} onChange={(e) => setFront(e.target.value)} placeholder="Вопрос / термин" className="min-h-20 rounded-xl border px-3 py-2 text-sm" />
+            <textarea value={back} onChange={(e) => setBack(e.target.value)} placeholder="Ответ / определение" className="min-h-20 rounded-xl border px-3 py-2 text-sm" />
+            <button type="button" disabled={adding || !front.trim()} onClick={() => void addPersonal()} className="btn-primary">{adding ? "Сохраняем…" : "Добавить карточку"}</button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
