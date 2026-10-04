@@ -9,6 +9,7 @@ import {
   startTestAttempt,
   finishAttempt,
   getFile,
+  listMyAttempts,
   hasToken,
   type ApiTest,
 } from "@/lib/api";
@@ -50,6 +51,7 @@ export default function TestsPage() {
   const [result, setResult] = useState<{ score: number; max: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [attempts, setAttempts] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +76,8 @@ export default function TestsPage() {
             }))
           );
         } else setNote(res.error.message);
+        const history = await listMyAttempts();
+        if (!cancelled && history.ok) setAttempts(history.data.items || []);
       } catch {
         if (!cancelled) setNote("Не удалось загрузить тесты");
       } finally {
@@ -159,7 +163,13 @@ export default function TestsPage() {
         if (selected.length === 1 && selected[0] === fallback) score += 1;
       }
     });
-    await finishAttempt(active.attemptId, score, max);
+    const finished = await finishAttempt(active.attemptId, score, max);
+    if (!finished.ok) {
+      setNote(finished.error.message);
+      setBusy(false);
+      return;
+    }
+    setAttempts((prev) => [finished.data.attempt, ...prev.filter((x:any) => x.id !== finished.data.attempt.id)]);
     setResult({ score, max });
     if (max > 0 && score / max >= 0.7) {
       setCelebrate(true);
@@ -269,6 +279,30 @@ export default function TestsPage() {
         <p className="page-subtitle">Проверка знаний по предметам</p>
         {note && <p className="mt-2 text-sm text-amber-700">{note}</p>}
       </div>
+      <section className="card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">История попыток</h2>
+            <p className="mt-1 text-xs text-slate-500">Последние 50 завершённых и незавершённых попыток.</p>
+          </div>
+        </div>
+        {attempts.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">Попыток пока нет.</p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {attempts.slice(0, 12).map((a:any) => (
+              <div key={String(a.id)} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-slate-50 px-3 py-2.5 text-sm">
+                <div>
+                  <div className="font-semibold text-slate-800">{String(a.test_title || "Тест")}</div>
+                  <div className="text-xs text-slate-500">{a.started_at ? String(a.started_at).slice(0,16).replace("T"," ") : "—"} · {String(a.status || "—")}</div>
+                </div>
+                <div className="font-bold text-indigo-700">{a.percent != null ? String(a.percent) + "%" : "—"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {items.length === 0 ? (
         <div className="card p-10 text-center text-slate-500">
           Пока нет опубликованных тестов. Админ может добавить их в панели управления.
