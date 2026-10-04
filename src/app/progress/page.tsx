@@ -34,13 +34,9 @@ export default function ProgressPage() {
         } else {
           setError(res.error.message);
           setData({
-            overall_pct: 0,
-            homework: { total: 0, done: 0, percent: 0, items: [] },
-            tests: { attempts: 0, finished: 0, avg_score: null, items: [] },
             degraded: true,
-            service_notice:
-              "Временный сбой: не удалось загрузить прогресс. Скоро всё починят — обновите страницу позже.",
-            service_notice_title: "Что-то пошло не так",
+            service_notice: "Данные прогресса временно недоступны. Повторите попытку позже.",
+            service_notice_title: "Прогресс недоступен",
           });
         }
       } catch {
@@ -92,27 +88,29 @@ export default function ProgressPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card flex flex-col items-center justify-center py-6">
-          <RadialProgress value={overall} label="общий" />
+      {data && !data.degraded && !data.service_notice && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="card flex flex-col items-center justify-center py-6">
+            <RadialProgress value={overall} label="общий" />
+          </div>
+          <div className="card flex flex-col items-center justify-center py-6">
+            <RadialProgress value={avg} label="балл" color="#10B981" />
+            <p className="mt-2 text-xs text-slate-500">среднее по тестам</p>
+          </div>
+          <div className="card flex flex-col items-center justify-center py-6">
+            <RadialProgress value={testPct} label="тесты" color="#6366F1" />
+            <p className="mt-2 text-xs text-slate-500">
+              {tests.finished ?? 0}/{tests.attempts} завершено
+            </p>
+          </div>
+          <div className="card flex flex-col items-center justify-center py-6">
+            <RadialProgress value={hwPct} label="ДЗ" color="#F59E0B" />
+            <p className="mt-2 text-xs text-slate-500">
+              {hw.done}/{hw.total} сдано
+            </p>
+          </div>
         </div>
-        <div className="card flex flex-col items-center justify-center py-6">
-          <RadialProgress value={avg} label="балл" color="#10B981" />
-          <p className="mt-2 text-xs text-slate-500">среднее по тестам</p>
-        </div>
-        <div className="card flex flex-col items-center justify-center py-6">
-          <RadialProgress value={testPct} label="тесты" color="#6366F1" />
-          <p className="mt-2 text-xs text-slate-500">
-            {tests.finished ?? 0}/{tests.attempts} завершено
-          </p>
-        </div>
-        <div className="card flex flex-col items-center justify-center py-6">
-          <RadialProgress value={hwPct} label="ДЗ" color="#F59E0B" />
-          <p className="mt-2 text-xs text-slate-500">
-            {hw.done}/{hw.total} сдано
-          </p>
-        </div>
-      </div>
+      )}
 
       <div className="card flex items-start gap-3">
         <Award className="mt-0.5 h-5 w-5 text-indigo-600" />
