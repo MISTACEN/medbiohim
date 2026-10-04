@@ -105,3 +105,15 @@ Latest fully completed code-check before the newest documentation-only commit:
 - smoke: ✅
 
 The newest code-check after the Deep Audit documentation commit is running separately.
+## Deep audit 3 override — 2026-10-04
+
+- Source/sync → 🟡 code cleanup substantially complete; deployment convergence still pending.
+- Schedule → 🟡 route duplication removed; CI backend syntax green; production delivery pending.
+- Histology → 🟡 trainer content integrity is clean in Supabase; physical media still requires target-environment smoke.
+- Tests → 🟢 DB integrity check shows no orphan links and no published tests without questions; UI CI is being re-run after cleanup fixes.
+- Admin CMS → 🟡 content validator + audit rollback exist; dedicated editors remain polish work.
+- AI Tutor → 🔴 upstream/provider availability unresolved.
+- Materials → 🟡 histology DOCX viewer exists; generic subject-wide DOCX/PDF viewer is still a product task.
+- Deployment → 🔴 current Vercel production deployment is behind current main.
+
+See docs/DEEP-AUDIT-3-2026-10-04.md.
