@@ -90,6 +90,23 @@ for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].include
 if (compatHits.length) fail("retired /api-compat calls remain in frontend: " + compatHits.join(", "));
 else pass("no retired /api-compat calls in frontend");
 
+const malformedImports = [];
+for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
+  const text = await readFile(file, "utf8");
+  if (/use Medbiohim(?:Http|Database|Services|Middleware|Repositories|Support|Auth)\\\\/.test(text)) malformedImports.push(relative(root, file));
+}
+if (malformedImports.length) fail("malformed Medbiohim namespace imports: " + malformedImports.join(", "));
+else pass("backend namespace imports look valid");
+
+const exposedDebugRoutes = [];
+const platformPath = join(root, "backend/config/routes/platform.php");
+if (existsSync(platformPath)) {
+  const text = await readFile(platformPath, "utf8");
+  if (text.includes("/api/v1/debug/ping") || text.includes("/api/v1/debug/dashboard-probe")) exposedDebugRoutes.push("backend/config/routes/platform.php");
+}
+if (exposedDebugRoutes.length) fail("production debug endpoints remain: " + exposedDebugRoutes.join(", "));
+else pass("no unauthenticated production debug routes");
+
 const homeworkPage = join(root, "src/app/homework/page.tsx");
 if (existsSync(homeworkPage)) {
   const text = await readFile(homeworkPage, "utf8");
