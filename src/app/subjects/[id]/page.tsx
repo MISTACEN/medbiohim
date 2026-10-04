@@ -550,11 +550,11 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Link href={"/cards?" + query + "&scope=shared"} className="rounded-xl border p-4 hover:bg-slate-50">
                 <b>Общие</b>
-                <div className="mt-1 text-xs text-slate-500">Преподаватель</div>
+                <div className="mt-1 text-xs text-slate-500">Карточки из общего банка вопросов</div>
               </Link>
               <Link href={"/cards?" + query + "&scope=personal"} className="rounded-xl border p-4 hover:bg-slate-50">
                 <b>Мои</b>
-                <div className="mt-1 text-xs text-slate-500">Личные термины</div>
+                <div className="mt-1 text-xs text-slate-500">Личные термины и заметки</div>
               </Link>
             </div>
           </section>
