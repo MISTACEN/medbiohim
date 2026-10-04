@@ -2,9 +2,14 @@
 
 Дата: 2026-10-04
 
-## Реальные backend endpoints
+## Current result
 
-Backend уже содержит реальные routes для:
+Frontend больше не использует retired `/api-compat/*` routes. Predeploy audit автоматически проверяет это.
+
+Исторический compatibility слой теперь считается CLOSED для текущего frontend.
+
+## Реальные backend endpoints, на которые переведены активные flows
+
 - /auth/register
 - /community/posts
 - /lectures
@@ -17,31 +22,30 @@ Backend уже содержит реальные routes для:
 - /admin/schedule
 - /groups
 - /subjects
+- /admin/*
+- /trainings/*
+- /tests/preparation/*
+- /srs/*
+- /search
+- /calculators/*
+- /presence/*
 
-## Ошибочная прослойка
+## Что дополнительно проверено
 
-Frontend src/lib/api.ts содержит исторические вызовы /api-compat/*.
-Отдельный backend route /api-compat не найден.
+- homework → API-only;
+- schedule save → real `/admin/schedule`;
+- subject test/lecture/ticket queries are subject-scoped;
+- search exposes plan type;
+- SRS has persistent DB storage;
+- calculators have real backend service;
+- presence has persistent DB storage.
 
-Не нужно создавать новую compatibility-прослойку вместо исправления frontend.
+## Legacy API surfaces that remain intentionally
 
-## Migration rule
+`/sessions` / learning_sessions — real backend storage/API with no current main UI consumer. Keep deferred until historical consumer check.
 
-При переносе функции:
-1. найти реальный backend endpoint;
-2. привести payload/response к его контракту;
-3. удалить старый (..._args: any[]) wrapper;
-4. найти все imports/uses;
-5. typecheck + smoke-test;
-6. обновить ROADMAP и PHASES_STATUS.
+Duplicate route registration in aggregate and dedicated route files remains an architectural cleanup item, not an API compatibility blocker.
 
-## Особо критичные переходы
+## Rule
 
-register → POST /auth/register
-createCommunityPost → POST /community/posts
-getLecture → GET /lectures/{id}
-getLessonPlan → GET /lesson-plan
-getQuestion → GET /questions/{id}
-getFile → GET /files/{id}
-reportQuestion → POST /questions/{id}/report
-adminSaveSchedule → /admin/schedule
+Do not add new compatibility routes. New frontend features must call the canonical backend endpoint directly.
