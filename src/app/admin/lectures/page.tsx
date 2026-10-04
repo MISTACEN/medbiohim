@@ -69,6 +69,20 @@ function sanitizeEditorHtml(raw: string): string {
   walk(doc.body);
   return doc.body.innerHTML;
 }
+function markdownToEditorHtml(md: string): string {
+  let s = String(md || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  s = s.replace(/\`\`\`image\n([\s\S]*?)\n\`\`\`/g, (_m:string, raw:string) => {
+    try { const d=JSON.parse(raw); return `<p><img src="${String(d.url||"")}" alt="${String(d.caption||"")}" /></p>`; } catch { return ""; }
+  });
+  s = s.replace(/^### (.+)$/gm,"<h3>$1</h3>").replace(/^## (.+)$/gm,"<h2>$1</h2>").replace(/^# (.+)$/gm,"<h1>$1</h1>");
+  s = s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\*(.+?)\*/g,"<em>$1</em>");
+  s = s.replace(/^> (.+)$/gm,"<blockquote>$1</blockquote>");
+  s = s.replace(/^- (.+)$/gm,"<li>$1</li>");
+  s = s.replace(/(<li>.*<\/li>\n?)+/g,(b:string)=>`<ul>${b}</ul>`);
+  s = s.replace(/\n{2,}/g,"</p><p>").replace(/\n/g,"<br>");
+  return "<p>"+s+"</p>";
+}
+
 function htmlToPlainMarkdown(html: string): string {
   if (typeof window === "undefined") return html;
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -253,7 +267,7 @@ export default function AdminLecturesPage() {
   async function reload(st=status){const r:any=await adminListLectures(st==="all"?undefined:st);if(r.ok)setItems((r.data.items||[]) as Lecture[]);else setMsg(String(r.error?.message||"Ошибка"));}
   useEffect(()=>{void reload();void listSubjectsCatalog().then((r:any)=>{if(r.ok){const list=((r.data?.items||[]) as any[]).map(x=>({slug:String(x.slug||"").trim(),name:String(x.name||"")})).filter((x:Subject)=>x.slug);setSubjects(list);if(!slug&&list[0])setSlug(list[0].slug);}})},[status]);
   async function onGenerate(e:FormEvent){e.preventDefault();if(!topic.trim())return setMsg("Укажите тему");setBusy(true);setMsg(null);const r:any=await adminGenerateLecture({subject_slug:slug,topic:topic.trim(),notes:notes.trim()||undefined});setBusy(false);if(!r.ok)return setMsg(String(r.error?.message||"Ошибка"));setMsg("Черновик создан и отправлен на проверку");setTopic("");await reload();}
-  function openEdit(lec:any){setEditId(String(lec.id));setEditTitle(String(lec.title||""));setEditTopic(String(lec.topic||""));setEditSummary(String(lec.summary||""));setEditBody(String(lec.body_html||""));setEditAttachments(Array.isArray(lec.attachments)?lec.attachments:[]);}
+  function openEdit(lec:any){setEditId(String(lec.id));setEditTitle(String(lec.title||""));setEditTopic(String(lec.topic||""));setEditSummary(String(lec.summary||""));setEditBody(String(lec.body_html || markdownToEditorHtml(lec.body_md || "")));setEditAttachments(Array.isArray(lec.attachments)?lec.attachments:[]);}
   async function saveEdit(){if(!editId)return;setBusy(true);const r:any=await adminUpdateLecture(editId,{title:editTitle,topic:editTopic,summary:editSummary,body_html:sanitizeEditorHtml(editBody),body_md:htmlToPlainMarkdown(editBody),attachments:editAttachments});setBusy(false);setMsg(r.ok?"Лекция сохранена":"Ошибка сохранения: "+String(r.error?.message||""));if(r.ok){await reload();}}
   const subjectForEdit=subjects.find(s=>s.slug===String((items.find((x:any)=>x.id===editId) as any)?.subject_slug||""))||null;
 
