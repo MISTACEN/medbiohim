@@ -113,9 +113,9 @@ function htmlToPlainMarkdown(html: string): string {
 
 function insertVideoEmbedUrl(url: string): string {
   const raw = url.trim();
-  const yt = raw.match(/(?:youtube\.com\\/(?:watch\\?v=|embed\\/)|youtu\.be\\/)([A-Za-z0-9_-]{6,})/i);
+  const yt = raw.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
   if (yt) return "https://www.youtube-nocookie.com/embed/" + yt[1];
-  const rt = raw.match(/rutube\.ru\\/(?:video\\/|play\\/)([A-Za-z0-9_-]+)/i);
+  const rt = raw.match(/rutube\.ru\/(?:video\/|play\/)([A-Za-z0-9_-]+)/i);
   if (rt) return "https://rutube.ru/play/embed/" + rt[1];
   return "";
 }
