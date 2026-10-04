@@ -249,3 +249,6 @@ export async function listNotes(){return api<any>("/notes")}
 export async function upsertNote(targetType:string,targetId:string,body:string){return api<any>("/notes",{method:"POST",body:JSON.stringify({target_type:targetType,target_id:targetId,body})})}
 export async function listFavorites(){return api<any>("/favorites")}
 export async function toggleFavorite(targetType:string,targetId:string){return api<any>("/favorites/toggle",{method:"POST",body:JSON.stringify({target_type:targetType,target_id:targetId})})}
+
+export async function adminImportScheduleXlsx(file:File,groupId:string,semester?:number){const fd=new FormData();fd.append("file",file);fd.append("group_id",groupId);if(semester!=null)fd.append("semester",String(semester));return api<any>("/admin/schedule/import",{method:"POST",body:fd})}
+export async function adminImportCurriculumXlsx(file:File){const fd=new FormData();fd.append("file",file);return api<any>("/admin/import/curriculum",{method:"POST",body:fd})}
