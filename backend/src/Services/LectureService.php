@@ -151,6 +151,7 @@ final class LectureService
             'subject' => '',
             'subject_slug' => '',
             'topic' => '',
+            'lesson_type' => 'lecture',
             'body_md' => '',
             'summary' => '',
             'media' => [],
