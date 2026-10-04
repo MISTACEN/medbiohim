@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-use MedbiohimDatabaseConnection;
-use MedbiohimHttpRequest;
-use MedbiohimHttpResponse;
-use MedbiohimHttpRouter;
-use MedbiohimMiddlewareRequireAuth;
+use Medbiohim\Database\Connection;
+use Medbiohim\Http\Request;
+use Medbiohim\Http\Response;
+use Medbiohim\Http\Router;
+use Medbiohim\Middleware\RequireAuth;
 
 return static function (Router $router): void {
     $router->get('/api/v1/materials/{id}/file', static function (Request $req, array $params): void {
