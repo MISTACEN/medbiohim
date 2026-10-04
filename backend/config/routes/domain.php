@@ -8,53 +8,38 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Middleware\RequireRole;
 use Medbiohim\Repositories\GroupRepository;
 use Medbiohim\Repositories\SubjectRepository;
-use Medbiohim\Repositories\UserRepository;
 use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Services\SpecialtyAccess;
 
 return static function (Router $router): void {
-    
-
     $router->get('/api/v1/groups', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
+        if (!RequireAuth::handle($req)) return;
         try {
             Response::success(['items' => (new GroupRepository())->listActive()], $req->requestId);
         } catch (\Throwable $e) {
             try {
                 Response::success(['items' => SupabaseRest::listGroups()], $req->requestId);
             } catch (\Throwable $fallback) {
-                \Medbiohim\Support\Logger::error('groups_list_failed', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
+                \Medbiohim\Support\Logger::error('groups_list_failed', [
+                    'requestId' => $req->requestId,
+                    'db' => $e->getMessage(),
+                    'fallback' => $fallback->getMessage(),
+                ]);
                 Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
             }
         }
     });
 
-    
-            $group = $repo->findById($params['id']);
-            if ($group === null) {
-                Response::error('NOT_FOUND', 'Group not found', $req->requestId, 404);
-                return;
-            }
-            Response::success(['group' => $group, 'members' => $repo->members($params['id'])], $req->requestId);
-        } catch (\Throwable $e) {
-            Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
-        }
-    });
-
     $router->post('/api/v1/groups', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
-        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) {
-            return;
-        }
+        if (!RequireAuth::handle($req)) return;
+        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+
         $name = trim((string) $req->json('name', ''));
         if ($name === '') {
             Response::error('VALIDATION_ERROR', 'name is required', $req->requestId, 422);
             return;
         }
+
         try {
             $payload = [
                 'name' => $name,
@@ -80,75 +65,36 @@ return static function (Router $router): void {
         }
     });
 
-    
-        if ($userId === '') {
-            Response::error('VALIDATION_ERROR', 'user_id is required', $req->requestId, 422);
-            return;
-        }
-        try {
-            $row = (new GroupRepository())->addMember(
-                $params['id'],
-                $userId,
-                (string) $req->json('role_in_group', 'student')
-            );
-            Response::success($row, $req->requestId, 201);
-        } catch (\Throwable $e) {
-            Response::error('DB_ERROR', 'Could not add member', $req->requestId, 500);
-        }
-    });
-
     $router->get('/api/v1/subjects', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
+        if (!RequireAuth::handle($req)) return;
+
         $course = isset($req->query['course']) ? (int) $req->query['course'] : null;
         $semester = isset($req->query['semester']) ? (int) $req->query['semester'] : null;
+
         try {
             $items = (new SubjectRepository())->listActive($course, $semester);
             $access = new SpecialtyAccess();
-            $items = array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
-                $slug = trim((string) ($item['specialty_slug'] ?? ''));
-                return $slug === '' || $access->userHasSpecialty($req->user->id, $slug);
-            }));
+            $items = array_values(array_filter(
+                $items,
+                static function (array $item) use ($access, $req): bool {
+                    $slug = trim((string) ($item['specialty_slug'] ?? ''));
+                    return $slug === '' || $access->userHasSpecialty($req->user->id, $slug);
+                }
+            ));
             Response::success(['items' => $items], $req->requestId);
         } catch (\Throwable $e) {
             try {
                 Response::success(['items' => SupabaseRest::listSubjects($course, $semester)], $req->requestId);
             } catch (\Throwable $fallback) {
-                \Medbiohim\Support\Logger::error('subjects_list_soft_empty', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
-                Response::success(['items' => [], 'note' => 'Database unavailable — set DB_URL (Session pooler) on SpaceWeb'], $req->requestId);
-            }
-        }
-    });
-
-    
-            if ($detail === null) {
-                Response::error('NOT_FOUND', 'Subject not found', $req->requestId, 404);
-                return;
-            }
-            $subject = is_array($detail['subject'] ?? null) ? $detail['subject'] : [];
-            $specialty = trim((string) ($subject['specialty_slug'] ?? ''));
-            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
-                Response::error('FORBIDDEN', 'Этот предмет недоступен для вашей специальности', $req->requestId, 403);
-                return;
-            }
-            Response::success($detail, $req->requestId);
-        } catch (\Throwable $e) {
-            try {
-                $detail = \Medbiohim\Services\SupabaseAcademic::subjectDetail($params['id']);
-                if ($detail === null) {
-                    Response::error('NOT_FOUND', 'Subject not found', $req->requestId, 404);
-                    return;
-                }
-                Response::success($detail, $req->requestId);
-            } catch (\Throwable $x) {
-                \Medbiohim\Support\Logger::error('subject_detail_failed', [
+                \Medbiohim\Support\Logger::error('subjects_list_soft_empty', [
                     'requestId' => $req->requestId,
-                    'id' => $params['id'],
                     'db' => $e->getMessage(),
-                    'rest' => $x->getMessage(),
+                    'fallback' => $fallback->getMessage(),
                 ]);
-                Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
+                Response::success([
+                    'items' => [],
+                    'note' => 'Database unavailable — set DB_URL (Session pooler) on SpaceWeb',
+                ], $req->requestId);
             }
         }
     });
@@ -156,24 +102,29 @@ return static function (Router $router): void {
     $router->get('/api/v1/subjects/{id}/gradebook', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
-            Response::success(['items' => SupabaseRest::subjectGradebook((string)$params['id'])], $req->requestId);
+            Response::success([
+                'items' => SupabaseRest::subjectGradebook((string) $params['id']),
+            ], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_UNAVAILABLE', 'Не удалось загрузить данные для зачётки', $req->requestId, 503);
+            Response::error(
+                'DB_UNAVAILABLE',
+                'Не удалось загрузить данные для зачётки',
+                $req->requestId,
+                503
+            );
         }
     });
 
     $router->post('/api/v1/subjects', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) {
-            return;
-        }
-        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) {
-            return;
-        }
+        if (!RequireAuth::handle($req)) return;
+        if (!RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
+
         $name = trim((string) $req->json('name', ''));
         if ($name === '') {
             Response::error('VALIDATION_ERROR', 'name is required', $req->requestId, 422);
             return;
         }
+
         try {
             $payload = [
                 'name' => $name,
@@ -183,15 +134,16 @@ return static function (Router $router): void {
                 'lecture_hours' => $req->json('lecture_hours'),
                 'practice_hours' => $req->json('practice_hours'),
             ];
+
             try {
                 $row = (new SubjectRepository())->create($payload);
             } catch (\Throwable $dbError) {
                 $row = SupabaseRest::createSubject($payload);
             }
+
             Response::success($row, $req->requestId, 201);
         } catch (\Throwable $e) {
             Response::error('DB_ERROR', 'Could not create subject', $req->requestId, 500);
         }
     });
 };
-// synced 2026-09-15 P0 soft-fail + subjectDetail fallback
