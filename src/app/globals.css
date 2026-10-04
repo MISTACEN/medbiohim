@@ -286,3 +286,61 @@ html[data-theme="crystal-glass"] .border-indigo-100 { border-color: var(--border
   html[data-theme="medical-glass"] body,
   html[data-theme="crystal-glass"] body { background-attachment: scroll; }
 }
+
+
+/* Aero Glass · Бета — экспериментальная тема из нового UI-концепта */
+html[data-theme="aero-glass"] {
+  --primary: #087fe8;
+  --primary-dark: #0068c7;
+  --primary-soft: #e9f8ff;
+  --accent: #18c8a8;
+  --success: #11b884;
+  --danger: #ef5875;
+  --warning: #eca83b;
+  --background: #eaf7ff;
+  --card: rgba(255,255,255,.78);
+  --text: #102b4a;
+  --muted: #6f8499;
+  --sidebar: rgba(247,253,255,.84);
+  --sidebar-text: #294966;
+  --sidebar-active: #087fe8;
+  --border: rgba(57,151,214,.17);
+  --hero-from: rgba(94,208,255,.95);
+  --hero-to: rgba(49,205,166,.95);
+  --body-art: radial-gradient(circle at 7% 9%,rgba(122,221,255,.48),transparent 30%),radial-gradient(circle at 92% 17%,rgba(71,231,184,.24),transparent 27%);
+  --glass-shadow: 0 18px 50px rgba(23,126,184,.13);
+}
+html[data-theme="aero-glass"] .card,
+html[data-theme="aero-glass"] .hero-banner {
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+}
+html[data-theme="aero-glass"] .app-sidebar {
+  border-right: 1px solid rgba(255,255,255,.78);
+  box-shadow: 16px 0 44px rgba(42,130,180,.09);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+html[data-theme="aero-glass"] .app-sidebar-active {
+  background: linear-gradient(180deg,#20a6ff 0%,#087fe8 55%,#0068c7 100%);
+  box-shadow: 0 8px 18px rgba(0,119,230,.22), inset 0 1px 1px rgba(255,255,255,.5);
+}
+html[data-theme="aero-glass"] .bg-white {
+  background-color: color-mix(in srgb,var(--card) 92%,transparent) !important;
+}
+html[data-theme="aero-glass"] .bg-slate-50,
+html[data-theme="aero-glass"] .bg-slate-50\/80 {
+  background-color: color-mix(in srgb,var(--card) 72%,var(--primary-soft)) !important;
+}
+html[data-theme="aero-glass"] .text-slate-900,
+html[data-theme="aero-glass"] .text-slate-800 {
+  color: var(--text) !important;
+}
+html[data-theme="aero-glass"] .text-slate-700,
+html[data-theme="aero-glass"] .text-slate-600,
+html[data-theme="aero-glass"] .text-slate-500 {
+  color: var(--muted) !important;
+}
+@media (max-width:767px) {
+  html[data-theme="aero-glass"] body { background-attachment: scroll; }
+}
