@@ -39,7 +39,8 @@ return static function (Router $router): void {
         if ($slug === '') {
             $slug = null;
         }
-        $items = (new SrsService())->dueCards($uid($req), max(1, min(50, $limit)), $slug);
+        $scope = isset($req->query['scope']) ? trim((string) $req->query['scope']) : null;
+        $items = (new SrsService())->dueCards($uid($req), max(1, min(50, $limit)), $slug, $scope);
         Response::success(['items' => $items, 'count' => count($items)], $req->requestId);
     });
 
@@ -52,7 +53,8 @@ return static function (Router $router): void {
         if ($slug === '') {
             $slug = null;
         }
-        $items = (new SrsService())->listCards($uid($req), max(1, min(200, $limit)), $slug);
+        $scope = isset($req->query['scope']) ? trim((string) $req->query['scope']) : null;
+        $items = (new SrsService())->listCards($uid($req), max(1, min(200, $limit)), $slug, $scope);
         Response::success(['items' => $items, 'count' => count($items)], $req->requestId);
     });
 
