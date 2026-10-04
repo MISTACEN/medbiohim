@@ -81,6 +81,31 @@ return static function (Router $router): void {
         }
     });
 
+    $router->get('/api/v1/files/{id}/download', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            $file = (new FileRepository())->findById((string)($params['id'] ?? ''));
+            if ($file === null || ($file['status'] ?? 'active') !== 'active') {
+                Response::error('NOT_FOUND', 'File not found', $req->requestId, 404);
+                return;
+            }
+            $specialty = trim((string)($file['specialty_slug'] ?? ''));
+            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+                Response::error('FORBIDDEN', 'Этот файл недоступен для вашей специальности', $req->requestId, 403);
+                return;
+            }
+            $b2 = new B2Storage();
+            if ($b2->isConfigured() && !empty($file['object_key'])) {
+                $url = $b2->presignedDownloadUrl((string)$file['object_key'], 3600);
+                header('Location: '.$url, true, 302);
+                exit;
+            }
+            Response::error('FILE_UNAVAILABLE', 'Storage is not configured', $req->requestId, 503);
+        } catch (\Throwable $e) {
+            Response::error('FILE_ERROR', 'Could not open file', $req->requestId, 503);
+        }
+    });
+
     $router->get('/api/v1/files/{id}', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
