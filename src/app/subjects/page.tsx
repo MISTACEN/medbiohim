@@ -97,7 +97,7 @@ export default function SubjectsPage() {
         if (r.ok && (r.data.items || []).length > 0) {
           const byName = new Map((catalogMeta?.items || []).map((x) => [x.name.toLowerCase(), x]));
           setItems(
-            (r.data.items || []).map((s) => {
+            (r.data.items || []).map((s: any) => {
               const meta = byName.get((s.name || "").toLowerCase());
               return {
                 ...s,
