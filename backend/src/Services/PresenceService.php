@@ -4,91 +4,71 @@ declare(strict_types=1);
 namespace Medbiohim\Services;
 
 use Medbiohim\Support\GeoRegion;
+use Medbiohim\Support\SupabaseRest;
 
 /**
- * Online presence (file-backed, no extra Supabase table).
- * Heartbeat updates last_seen + country from GeoRegion.
+ * Online presence stored in Supabase.
+ * A row is considered online when last_seen is within the requested TTL.
  */
 final class PresenceService
 {
-    private const TTL_SEC = 180; // 3 minutes = online
+    private const TTL_SEC = 180;
 
-    private function path(): string
-    {
-        $dir = dirname(__DIR__, 2) . '/data';
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0775, true);
-        }
-        return $dir . '/presence_online.json';
-    }
-
-    /** @return array<string,array<string,mixed>> */
-    private function readAll(): array
-    {
-        $path = $this->path();
-        if (!is_file($path)) return [];
-        $raw = json_decode((string) @file_get_contents($path), true);
-        return is_array($raw) ? $raw : [];
-    }
-
-    /** @param array<string,array<string,mixed>> $data */
-    private function writeAll(array $data): void
-    {
-        $path = $this->path();
-        $tmp = $path . '.tmp';
-        @file_put_contents($tmp, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
-        @rename($tmp, $path);
-    }
-
-    /**
-     * @param array<string,mixed> $user fields: id, email?, name?, role?
-     * @return array<string,mixed>
-     */
+    /** @param array<string,mixed> $user */
     public function heartbeat(array $user, ?array $server = null): array
     {
-        $id = (string) ($user['id'] ?? '');
+        $id = trim((string) ($user['id'] ?? ''));
         if ($id === '') {
             throw new \InvalidArgumentException('user id required');
         }
+
         $geo = GeoRegion::detect($server ?? $_SERVER);
-        $now = time();
-        $all = $this->readAll();
-        $all[$id] = [
+        $row = [
             'user_id' => $id,
-            'email' => $user['email'] ?? null,
             'name' => $user['name'] ?? $user['full_name'] ?? null,
             'role' => $user['role'] ?? null,
             'region' => $geo['region'],
             'country' => $geo['country'],
             'geo_source' => $geo['source'],
-            'last_seen' => $now,
-            'last_seen_iso' => gmdate('c', $now),
+            'last_seen' => gmdate('c'),
         ];
-        // prune stale (> 24h)
-        foreach ($all as $uid => $row) {
-            if (!is_array($row)) { unset($all[$uid]); continue; }
-            if (($now - (int) ($row['last_seen'] ?? 0)) > 86400) unset($all[$uid]);
+
+        $existing = SupabaseRest::select(
+            'presence_online?user_id=eq.' . rawurlencode($id) . '&select=user_id&limit=1'
+        );
+        if ($existing) {
+            $updated = SupabaseRest::patch(
+                'presence_online?user_id=eq.' . rawurlencode($id),
+                $row,
+                true
+            );
+            return $updated[0] ?? $row;
         }
-        $this->writeAll($all);
-        return $all[$id];
+
+        $inserted = SupabaseRest::insert('presence_online', $row, true);
+        return $inserted[0] ?? $row;
     }
 
-    /**
-     * @return list<array<string,mixed>>
-     */
+    /** @return list<array<string,mixed>> */
     public function listOnline(int $withinSec = self::TTL_SEC): array
     {
-        $now = time();
+        $withinSec = max(60, min($withinSec, 900));
+        $cutoff = gmdate('c', time() - $withinSec);
+        $rows = SupabaseRest::select(
+            'presence_online?last_seen=gte.' . rawurlencode($cutoff)
+            . '&select=user_id,name,role,region,country,geo_source,last_seen'
+            . '&order=last_seen.desc&limit=500'
+        );
+
         $out = [];
-        foreach ($this->readAll() as $row) {
-            if (!is_array($row)) continue;
-            $seen = (int) ($row['last_seen'] ?? 0);
-            if ($seen <= 0 || ($now - $seen) > $withinSec) continue;
+        $now = time();
+        foreach ($rows as $row) {
+            $seen = strtotime((string) ($row['last_seen'] ?? '')) ?: 0;
+            if ($seen <= 0) continue;
             $row['seconds_ago'] = max(0, $now - $seen);
             $row['online'] = true;
             $out[] = $row;
         }
-        usort($out, static fn ($a, $b) => ((int) ($b['last_seen'] ?? 0)) <=> ((int) ($a['last_seen'] ?? 0)));
         return $out;
     }
 }
