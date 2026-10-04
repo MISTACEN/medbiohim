@@ -69,13 +69,13 @@ export function Sidebar() {
     user?.role === "admin" || user?.role === "moderator" || user?.role === "teacher";
 
   return (
-    <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-screen w-64 flex-col shadow-xl">
+    <aside className="app-sidebar fixed left-3 top-3 z-40 flex h-[calc(100vh-1.5rem)] w-64 flex-col rounded-[26px] shadow-xl">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md"
           style={{ background: "var(--sidebar-active)" }}
         >
-          <Shield className="h-5 w-5" />
+          <Shield className="h-5 w-5" strokeWidth={2.2} />
         </div>
         <div>
           <div className="text-lg font-extrabold tracking-tight">Медбиохим</div>
@@ -139,7 +139,7 @@ export function Sidebar() {
               );
             })}
         </ul>
-        <div className="mt-3 rounded-xl bg-white/5 px-3 py-2.5">
+        <div className="mt-3 rounded-2xl bg-white/10 px-3 py-2.5 shadow-sm">
           <div className="truncate text-sm font-semibold">{displayName}</div>
           <div className="text-[11px] opacity-60">{roleLabel}</div>
         </div>
