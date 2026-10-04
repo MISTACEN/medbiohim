@@ -143,7 +143,7 @@ export async function createSession(payload:Record<string,unknown>){return api<a
 export async function updateSession(id:string,payload:Record<string,unknown>){return api<any>(`/sessions/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(payload)})}
 export async function listSchedule(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/schedule${q.toString()?`?${q}`:""}`)}
 export async function getDashboard(){return api<any>("/dashboard")}
-export async function getProgress(){return api<any>("/progress")}
+export async function getProgress(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/progress${q}`)}
 export async function getCurriculum(){return api<any>("/curriculum")}
 export async function getSubject(id:string){return api<any>(`/subjects/${id}`)}
 export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return api<any>(`/materials${q.toString()?`?${q}`:""}`)}
