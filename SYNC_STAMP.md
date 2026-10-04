@@ -18,13 +18,26 @@
 - Published questions total: 855
 
 ## Current open checks
-- Code Checks currently red because of literal escaped newline in HistologyTrainer.tsx:248
-- Active frontend calls to missing /api-compat routes
-- Vercel production smoke-test after latest frontend corrections
-- SpaceWeb media 404/502 for trainer feed images
-- AI provider runtime health / fallback chain
-- Full histology plan ↔ content mapping
-- Admin quick-edit completion
+- latest code-check after Deep Audit documentation commit: running
+- Vercel target deployment after latest commits
+- SpaceWeb backend target deployment after latest backend commits
+- trainer feed media 404/502 physical verification
+- AI provider runtime/fallback verification
+- final histology plan ↔ content matrix
+- admin CMS material/trainer/version-history completion
+- duplicate route consolidation (after contract audit)
 
-## Rule
-After a significant change, update ROADMAP.md and PHASES_STATUS.md. Do not mark a task ✅ until it is verified in the target environment.
+## Current verified cleanup
+- no frontend /api-compat calls
+- homework is API-only
+- no frontend/ shadow tree
+- no spaceweb_upload/ shadow tree
+- legacy QuestionBank service removed
+- dead mock/fixture UI artifacts removed
+- all public base tables currently have RLS enabled in Supabase
+
+## Deep audit
+- docs/FULL-AUDIT-2026-10-04.md
+- docs/DEEP-AUDIT-2-2026-10-04.md
+- docs/UNFINISHED-REGISTRY.md
+- docs/API-COVERAGE-2026-10-04.md
