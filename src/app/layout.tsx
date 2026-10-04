@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   title: "Медбиохим — образовательная платформа",
   description:
     "Платформа для студентов и преподавателей: расписание, задания, тесты, материалы",
-  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -19,22 +18,7 @@ export default function RootLayout({
   return (
     <html lang="ru" data-theme="classic-light" suppressHydrationWarning>
       <body className="antialiased">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(() => {
-              try {
-                if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then((registrations) => {
-                    registrations.forEach((registration) => registration.unregister());
-                  }).catch(() => {});
-                }
-                if ('caches' in window) {
-                  caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => {});
-                }
-              } catch (_) {}
-            })();`,
-          }}
-        />
+
         <ThemeProvider>
           <AuthProvider>
             <AuthHashCatcher />
