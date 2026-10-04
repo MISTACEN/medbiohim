@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
-import { adminOverview, adminPresence, health, hasToken } from "@/lib/api";
+import { adminOverview, adminPresence, adminValidateContent, health, hasToken } from "@/lib/api";
 
 /** Единый Центр управления CMS. */
 export default function AdminToolsPage() {
