@@ -144,7 +144,7 @@ export default function TestsPage() {
     active.questions.forEach((q, i) => {
       const selected = (picks[i] || []).map((x) => x.trim().toLowerCase()).filter(Boolean).sort();
       const correct = q.options
-        .filter((o) => typeof o !== "string" && o.correct === true)
+        .filter((o: any) => typeof o !== "string" && o.correct === true)
         .map((o) => String(o.label ?? "").trim().toLowerCase())
         .filter(Boolean)
         .sort();
