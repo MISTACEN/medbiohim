@@ -75,27 +75,33 @@ Trainer feed image endpoints всё ещё требуют закрытия 404/5
 4. только после проверки ставить ✅.
 
 
-## 2026-10-04 audit override
+## 2026-10-04 deep audit status
 
-Последний полный аудит выявил P0 defects, поэтому следующие фазы нельзя считать закрытыми только по наличию кода:
+Большинство ранних P0, найденных первым аудитом, уже закрыто.
 
-- Source of truth / sync → 🟡 runtime cleanup required
-- Auth / account → 🟡 registration still uses historical api-compat wrapper
-- Schedule → 🔴 admin save path uses missing api-compat; CI is red
-- Histology → 🔴 trainer CI blocker + media still not verified
-- Tests / Question Bank → 🔴 preparation/sequential/options contract mismatch
-- Materials → 🟡 viewer exists; target-environment file check remains
-- Admin CMS → 🔴 active admin operations still point to api-compat
-- AI Tutor → 🔴 provider availability unresolved
-- UI system → 🟡 Aero Glass remains beta and is not the current priority
-- Documentation → 🟡 audit registry created; stale docs remain to clean
+| Фаза | Текущий статус |
+|---|---|
+| 0. Source of truth / sync | 🟡 | target-environment verification remains |
+| 1. Auth / account | 🟡 | code path stable, final login/logout smoke remains |
+| 2. Schedule | 🟡 | backend/editor stable, final target smoke remains |
+| 3. Subjects architecture | 🟡 | subject filtering/progress/advanced tests path fixed |
+| 4. Histology | 🟡 | content integrated; physical media smoke remains |
+| 5. Tests / Question Bank | 🟡 | sequential/options/typecheck path fixed; full published-test audit remains |
+| 6. Materials | 🟡 | histology DOCX/image viewer works; generic document coverage remains |
+| 7. Admin CMS | 🟡 | false-zero fallbacks reduced; material/trainer/version UI still needs completion |
+| 8. AI Tutor | 🔴 | external provider runtime still unresolved |
+| 9. Chemistry | 🟡 | core implemented, broader data/content still beta |
+| 10. UI system | 🟡 | no current functional blocker; Aero Glass remains beta |
+| 11. SpaceWeb media | 🟡 | physical trainer media verification remains |
+| 12. Documentation | 🟡 | deep audit registry now current |
 
-### Current CI evidence
+## Verification evidence
 
-Latest main Code Checks for commit a3d580b978f30309837f60095e9bd47d4e828b04:
-- frontend: FAIL on literal escaped newline in HistologyTrainer.tsx:248
-- backend PHP syntax: PASS
-- smoke: PASS
-- backend/full archive packaging: PASS
+Latest fully completed code-check before the newest documentation-only commit:
+- TypeScript: ✅
+- Next.js production build: ✅
+- PHP syntax: ✅ (93 files)
+- predeploy audit: ✅ no escaped-newline, no retired /api-compat calls, homework API-only
+- smoke: ✅
 
-See docs/FULL-AUDIT-2026-10-04.md.
+The newest code-check after the Deep Audit documentation commit is running separately.
