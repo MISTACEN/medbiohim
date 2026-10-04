@@ -12,6 +12,7 @@ import {
 import { clearTokens, getDashboard, getAcademicState, hasToken, type AcademicState } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 
 type Dash = {
   announcements: Array<{ id: string; title: string; body: string; created_at?: string }>;
@@ -85,13 +86,13 @@ export default function DashboardPage() {
             setData(null);
           } else {
             setError(msg);
-            setData({ announcements: [], homeworks: [], schedule: [], tests: [] });
+            setData(null);
           }
         }
       } catch {
         if (!cancelled) {
           setError("Не удалось загрузить данные");
-          setData({ announcements: [], homeworks: [], schedule: [], tests: [] });
+          setData(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -180,6 +181,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <ServiceNoticeBanner
+          title="Главная временно работает без данных"
+          message={error + " Никакие тестовые или устаревшие данные не подставляются."}
+        />
+      )}
+
       <section className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm sm:p-8">
         <div className="relative z-10 max-w-xl">
           <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Сегодня</p>
