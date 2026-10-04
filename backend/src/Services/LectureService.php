@@ -4,22 +4,21 @@ declare(strict_types=1);
 namespace Medbiohim\Services;
 
 use Medbiohim\Database\Connection;
+use Medbiohim\Support\SupabaseRest;
 
-/** Lecture pages JSON store. Status: draft | pending_review | published | rejected | archived. */
+/**
+ * Persistent lecture store.
+ *
+ * Supabase site_content(key=lectures) is the source of truth. The old
+ * backend/data/lectures.json file is no longer read or written.
+ */
 final class LectureService
 {
-    private string $path;
+    private const KEY = 'lectures';
 
     public function __construct(?string $dataDir = null)
     {
-        $dir = $dataDir ?: dirname(__DIR__, 2) . '/data';
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0775, true);
-        }
-        $this->path = $dir . '/lectures.json';
-        if (!is_file($this->path)) {
-            $this->write(['items' => [], 'updated_at' => gmdate('c')]);
-        }
+        // $dataDir kept only for compatibility with older callers.
     }
 
     /** @return list<array<string,mixed>> */
@@ -32,9 +31,7 @@ final class LectureService
         if ($subjectSlug !== null && $subjectSlug !== '') {
             $items = array_values(array_filter($items, static fn($x) => ($x['subject_slug'] ?? '') === $subjectSlug));
         }
-        usort($items, static function ($a, $b) {
-            return strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? ''));
-        });
+        usort($items, static fn($a, $b) => strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? '')));
         return $items;
     }
 
@@ -79,7 +76,7 @@ final class LectureService
                 ];
             }
         } catch (\Throwable $e) {
-            // Keep the normal lecture store available if the legacy table is unavailable.
+            // Keep the primary lecture store available when the legacy histology table is unavailable.
         }
 
         return $items;
@@ -166,7 +163,7 @@ final class LectureService
             'updated_at' => $now,
         ], $data, ['id' => $id, 'updated_at' => $now]);
         $items[] = $row;
-        $this->write(['items' => $items, 'updated_at' => $now]);
+        $this->writeItems($items);
         return $row;
     }
 
@@ -175,13 +172,11 @@ final class LectureService
     {
         $items = $this->readItems();
         foreach ($items as $i => $row) {
-            if ((string) ($row['id'] ?? '') !== $id) {
-                continue;
-            }
+            if ((string) ($row['id'] ?? '') !== $id) continue;
             $now = gmdate('c');
             unset($patch['id'], $patch['created_at']);
             $items[$i] = array_merge($row, $patch, ['updated_at' => $now]);
-            $this->write(['items' => $items, 'updated_at' => $now]);
+            $this->writeItems($items);
             return $items[$i];
         }
         return null;
@@ -194,15 +189,9 @@ final class LectureService
             throw new \InvalidArgumentException('Недопустимый статус');
         }
         $patch = ['status' => $status];
-        if ($reviewerId) {
-            $patch['reviewed_by'] = $reviewerId;
-        }
-        if ($status === 'published') {
-            $patch['published_at'] = gmdate('c');
-        }
-        if ($status === 'rejected' || $status === 'archived') {
-            $patch['published_at'] = null;
-        }
+        if ($reviewerId) $patch['reviewed_by'] = $reviewerId;
+        if ($status === 'published') $patch['published_at'] = gmdate('c');
+        if ($status === 'rejected' || $status === 'archived') $patch['published_at'] = null;
         return $this->update($id, $patch);
     }
 
@@ -211,38 +200,37 @@ final class LectureService
         $items = $this->readItems();
         $n = count($items);
         $items = array_values(array_filter($items, static fn($x) => (string) ($x['id'] ?? '') !== $id));
-        if (count($items) === $n) {
-            return false;
-        }
-        $this->write(['items' => $items, 'updated_at' => gmdate('c')]);
+        if (count($items) === $n) return false;
+        $this->writeItems($items);
         return true;
     }
 
     /** @return list<array<string,mixed>> */
     private function readItems(): array
     {
-        if (!is_file($this->path)) {
-            return [];
-        }
-        $raw = file_get_contents($this->path);
-        $j = $raw ? json_decode($raw, true) : null;
-        if (!is_array($j)) {
-            return [];
-        }
-        return isset($j['items']) && is_array($j['items']) ? $j['items'] : [];
+        $rows = SupabaseRest::select('site_content?key=eq.' . rawurlencode(self::KEY) . '&select=payload&limit=1');
+        $payload = $rows[0]['payload'] ?? null;
+        if (!is_array($payload)) return [];
+        return isset($payload['items']) && is_array($payload['items']) ? array_values($payload['items']) : [];
     }
 
-    /** @param array{items:list,updated_at:?string} $payload */
-    private function write(array $payload): void
+    /** @param list<array<string,mixed>> $items */
+    private function writeItems(array $items): void
     {
-        $tmp = $this->path . '.tmp';
-        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-        if ($json === false || file_put_contents($tmp, $json . PHP_EOL, LOCK_EX) === false) {
-            throw new \RuntimeException('Не удалось сохранить лекции');
+        $payload = ['items' => array_values($items)];
+        $existing = SupabaseRest::select('site_content?key=eq.' . rawurlencode(self::KEY) . '&select=key&limit=1');
+        if ($existing) {
+            SupabaseRest::patch(
+                'site_content?key=eq.' . rawurlencode(self::KEY),
+                ['payload' => $payload, 'updated_at' => gmdate('c')],
+                false
+            );
+            return;
         }
-        if (!@rename($tmp, $this->path)) {
-            @unlink($tmp);
-            throw new \RuntimeException('Не удалось заменить файл лекций');
-        }
+        SupabaseRest::insert(
+            'site_content',
+            ['key' => self::KEY, 'payload' => $payload, 'updated_at' => gmdate('c')],
+            false
+        );
     }
 }
