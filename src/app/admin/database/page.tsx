@@ -2,7 +2,6 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Download, History, Plus, RefreshCw, Save, Trash2, Upload, Table2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { adminDbAudit, adminDbDelete, adminDbDeleteByKey, adminDbInsert, adminDbList, adminDbMeta, adminDbUpdate, adminDbUpdateByKey, adminRollbackAudit, AdminDbRow, hasToken } from "@/lib/api";
@@ -21,7 +20,6 @@ export default function AdminDatabasePage(){
  const [loading,setLoading]=useState(false);
  const [message,setMessage]=useState("");
  const [audit,setAudit]=useState<AdminDbRow[]>([]);
- const search=useSearchParams();
  const fileRef=useRef<HTMLInputElement>(null);
  const meta=metas.find((x:Meta)=>x.name===table);const keys=meta?.primary_key??["id"];
  async function loadMeta(){
