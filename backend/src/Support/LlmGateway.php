@@ -402,7 +402,7 @@ final class LlmGateway
     private static function chatGigaChat(array $messages, float $temperature): array
     {
         $base = rtrim((string)(Env::get('GIGACHAT_BASE_URL', 'https://api.giga.chat/v1') ?? 'https://api.giga.chat/v1'), '/');
-        $model = (string)(Env::get('GIGACHAT_MODEL', 'GigaChat') ?? 'GigaChat');
+        $model = (string)(Env::get('GIGACHAT_MODEL', 'GigaChat-2-Max') ?? 'GigaChat');
         // Access tokens are short-lived (about 30 minutes). Prefer a freshly
         // cached token obtained from the authorization key and refresh on 401.
         $token = self::gigaAccessToken();
@@ -419,6 +419,14 @@ final class LlmGateway
             $headers[0] = 'Authorization: Bearer ' . $token;
             $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
         }
+        if (($res['status'] ?? 0) === 404) {
+            $fallback = self::gigaAllowedFallback($token, $model, $base);
+            if ($fallback !== null) {
+                $model = $fallback;
+                $payload['model'] = $model;
+                $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+            }
+        }
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
             throw new \RuntimeException('GigaChat HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''),0,300));
         }
@@ -426,6 +434,25 @@ final class LlmGateway
         $text=(string)($body['choices'][0]['message']['content'] ?? '');
         if (trim($text)==='') throw new \RuntimeException('GigaChat returned empty content');
         return ['text'=>trim($text),'provider'=>'gigachat','model'=>$model,'mode'=>'api'];
+    }
+
+    private static function gigaAllowedFallback(string $token, string $currentModel, string $base): ?string
+    {
+        try {
+            $res=HttpClient::request('GET',rtrim($base,'/').'/models',null,[
+                'Authorization: Bearer '.$token,
+                'Accept: application/json',
+            ],15);
+            if(($res['status']??0)<200||($res['status']??0)>=300)return null;
+            $data=$res['json']??[];
+            $models=$data['data']??$data['models']??[];
+            $ids=[];
+            foreach((array)$models as $m){if(is_array($m)){ $id=$m['id']??$m['model']??$m['name']??null;if($id)$ids[]=(string)$id;}}
+            foreach(['GigaChat-2-Max','GigaChat-Max','GigaChat-2-Pro','GigaChat-Pro','GigaChat-2','GigaChat'] as $preferred){
+                if(in_array($preferred,$ids,true))return $preferred;
+            }
+            return $ids[0]??null;
+        } catch(\Throwable $e){return null;}
     }
 
     private static function gigaAccessToken(bool $forceRefresh = false): string
@@ -535,6 +562,18 @@ final class LlmGateway
         ]);
     }
 
+    private static function mistralAllowedFallback(string $key, string $currentModel, string $base): ?string
+    {
+        try {
+            $res=HttpClient::request('GET',rtrim($base,'/').'/models',null,['Authorization: Bearer '.$key,'Content-Type: application/json'],15);
+            if(($res['status']??0)<200||($res['status']??0)>=300)return null;
+            $data=$res['json']??[];$models=$data['data']??[];
+            $ids=[];foreach((array)$models as $m){if(is_array($m)&&isset($m['id']))$ids[]=(string)$m['id'];}
+            foreach(['mistral-small-latest','mistral-large-latest','ministral-3b-latest'] as $preferred)if(in_array($preferred,$ids,true))return $preferred;
+            return $ids[0]??null;
+        }catch(\Throwable $e){return null;}
+    }
+
     private static function normalizeTextMessages(array $messages): array
     {
         $out=[];
@@ -565,6 +604,14 @@ final class LlmGateway
             'Content-Type: application/json',
         ], $extraHeaders);
         $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+        if (($res['status'] ?? 0) === 422 && $provider === 'mistral') {
+            $fallback = self::mistralAllowedFallback($key, $model, $base);
+            if ($fallback !== null) {
+                $model = $fallback;
+                $payload['model'] = $model;
+                $res = HttpClient::request('POST', $base . '/chat/completions', $payload, $headers, 90);
+            }
+        }
         if (($res['status'] ?? 0) < 200 || ($res['status'] ?? 0) >= 300) {
             throw new \RuntimeException(ucfirst($provider) . ' HTTP ' . (int)($res['status'] ?? 0) . ': ' . Str::sub((string)($res['body'] ?? ''), 0, 300));
         }
