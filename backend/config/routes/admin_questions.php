@@ -7,7 +7,6 @@ use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Middleware\RequireRole;
 use Medbiohim\Services\ExamQuestionStore;
-use Medbiohim\Support\ContentStore;
 use Medbiohim\Database\Connection;
 
 return static function (Router $r): void {
@@ -27,11 +26,8 @@ return static function (Router $r): void {
             $items = ExamQuestionStore::list($filters);
             $source = 'supabase';
         } catch (\Throwable $e) {
-            $items = (new ContentStore())->listQuestionsBank();
-            $source = 'local-fallback';
-            if ($filters['kind'] !== '') {
-                $items = array_values(array_filter($items, static fn($x) => (string) ($x['kind'] ?? '') === $filters['kind']));
-            }
+            Response::error('DB_UNAVAILABLE', 'Банк вопросов временно недоступен', $q->requestId, 503);
+            return;
         }
         $limit = max(1, min(200, (int) ($q->query['limit'] ?? 50)));
         $offset = max(0, (int) ($q->query['offset'] ?? 0));
