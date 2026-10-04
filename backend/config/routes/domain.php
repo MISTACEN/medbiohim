@@ -42,7 +42,7 @@ return static function (Router $router): void {
                 Response::success(['items' => SupabaseRest::listGroups()], $req->requestId);
             } catch (\Throwable $fallback) {
                 \Medbiohim\Support\Logger::error('groups_list_failed', ['requestId'=>$req->requestId, 'db'=>$e->getMessage(), 'fallback'=>$fallback->getMessage()]);
-                Response::success(['items' => [], 'note' => 'Database unavailable — set DB_URL (Session pooler) on SpaceWeb'], $req->requestId);
+                Response::error('DB_UNAVAILABLE', 'Database is not available. Set DB_URL to Supabase Session pooler on SpaceWeb.', $req->requestId, 503);
             }
         }
     });
