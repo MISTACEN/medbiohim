@@ -74,7 +74,17 @@ final class SrsService
 
         $path = 'questions?is_published=eq.true&archived_at=is.null&select=id,text,answer,subject_id,topic&order=created_at.asc&limit=2000';
         if ($subjectSlug !== null && $subjectSlug !== '') {
-            $path .= '&subject_id=in.(' . rawurlencode($this->subjectIdsForSlug($subjectSlug, $subjects)) . ')';
+            $subjectId = null;
+            foreach ($subjects as $subject) {
+                if ((string) ($subject['slug'] ?? '') === $subjectSlug) {
+                    $subjectId = (string) ($subject['id'] ?? '');
+                    break;
+                }
+            }
+            if ($subjectId === null || $subjectId === '') {
+                return ['added' => 0, 'total' => count($cards)];
+            }
+            $path .= '&subject_id=eq.' . rawurlencode($subjectId);
         }
         $questions = SupabaseRest::select($path);
 
@@ -227,25 +237,20 @@ final class SrsService
 
     private function cardsForUser(string $userId, int $limit): array
     {
-        return SupabaseRest::select(
+        $rows = SupabaseRest::select(
             'srs_cards?user_id=eq.' . rawurlencode($userId)
             . '&select=id,user_id,source_type,source_id,front,back,subject_id,subject_slug,topic,ease,interval,reps,due_at,reviewed_at,created_at,updated_at'
             . '&order=due_at.asc&limit=' . (int) $limit
         );
-    }
-
-    private function subjectIdsForSlug(string $slug, array $subjects): string
-    {
-        $ids = [];
-        foreach ($subjects as $subject) {
-            if ((string) ($subject['slug'] ?? '') === $slug) $ids[] = (string) $subject['id'];
+        if (!$rows) return [];
+        $subjects = SupabaseRest::select('subjects?is_active=eq.true&select=id,name,slug&limit=500');
+        $bySlug = [];
+        foreach ($subjects as $subject) $bySlug[(string) ($subject['slug'] ?? '')] = (string) ($subject['name'] ?? '');
+        foreach ($rows as &$row) {
+            $row['subject_name'] = $bySlug[(string) ($row['subject_slug'] ?? '')] ?? (string) ($row['subject_slug'] ?? '');
         }
-        return self::quoteList($ids);
-    }
-
-    private static function quoteList(array $ids): string
-    {
-        return implode(',', array_map(static fn(string $id): string => '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $id) . '"', $ids));
+        unset($row);
+        return $rows;
     }
 
     private function formatCard(array $row, int $now): array
