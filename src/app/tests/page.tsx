@@ -145,7 +145,7 @@ export default function TestsPage() {
       const selected = (picks[i] || []).map((x) => x.trim().toLowerCase()).filter(Boolean).sort();
       const correct = q.options
         .filter((o: any) => typeof o !== "string" && o.correct === true)
-        .map((o) => String(o.label ?? "").trim().toLowerCase())
+        .map((o: any) => String(o.label ?? "").trim().toLowerCase())
         .filter(Boolean)
         .sort();
 
