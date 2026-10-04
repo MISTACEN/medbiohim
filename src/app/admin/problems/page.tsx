@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 import Link from "next/link";
 import {Flag,Save,Plus,CheckCircle2} from "lucide-react";
-import {adminProblemCenter,adminUpdateQuestion,adminUpdateQuestionReport,adminCreateWork,adminUpdateWork,hasToken} from "@/lib/api";
+import {adminProblemCenter,adminUpdateBankQuestion,adminUpdateQuestionReport,adminCreateWork,adminUpdateWork,hasToken} from "@/lib/api";
 
 const labels:any={wrong_answer:"Неверный ответ",wording:"Ошибка формулировки",multiple_correct:"Несколько правильных",no_correct:"Нет правильного",typo:"Опечатка",other:"Другое"};
 
@@ -11,7 +11,7 @@ export default function ProblemCenter(){
  async function load(){const r=await adminProblemCenter();if(r.ok){setProblems(r.data.problems||[]);setWorks(r.data.works||[])}else setMsg(r.error.message)}
  useEffect(()=>{if(hasToken())void load()},[]);
  useEffect(()=>setDraft(selected?.question?{...selected.question}:null),[selected]);
- async function save(){if(!draft?.id)return;const r=await adminUpdateQuestion(draft.id,{text:draft.text,answer:draft.answer,options:draft.options});if(r.ok){setMsg("Вопрос исправлен.");setDraft(r.data.question);await load()}else setMsg(r.error.message)}
+ async function save(){if(!draft?.id)return;const r=await adminUpdateBankQuestion(draft.id,{text:draft.text,answer:draft.answer,options:draft.options});if(r.ok){setMsg("Вопрос исправлен.");setDraft(r.data.question);await load()}else setMsg(r.error.message)}
  async function close(p:any,status:any){for(const r of p.reports||[])await adminUpdateQuestionReport(r.id,status);await load();setMsg(status==="fixed"?"Проблема закрыта.":"Статус обновлён.")}
  async function work(p:any){const r=await adminCreateWork({title:"Исправить вопрос",description:(p.reports||[]).map((x:any)=>x.message).filter(Boolean).join("\n")||labels[p.category],question_id:p.question_id,report_id:p.reports?.[0]?.id,priority:"normal"});if(r.ok){setMsg("Работа создана.");await load()}else setMsg(r.error.message)}
  if(!hasToken())return <div className="card p-8">Войдите как администратор.</div>;
