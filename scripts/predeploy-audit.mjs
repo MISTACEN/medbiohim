@@ -93,7 +93,7 @@ else pass("no retired /api-compat calls in frontend");
 const malformedImports = [];
 for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
   const text = await readFile(file, "utf8");
-  if (/use Medbiohim(?:Http|Database|Services|Middleware|Repositories|Support|Auth)\\\\/.test(text)) malformedImports.push(relative(root, file));
+  if (/use Medbiohim(?:Http|Database|Services|Middleware|Repositories|Support|Auth)(?!\\)/.test(text)) malformedImports.push(relative(root, file));
 }
 if (malformedImports.length) fail("malformed Medbiohim namespace imports: " + malformedImports.join(", "));
 else pass("backend namespace imports look valid");
