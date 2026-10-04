@@ -132,7 +132,7 @@ $router->get('/api/v1/admin/content/validate',static function(Request $req,array
   $materials=SupabaseRest::select('materials?is_published=eq.true&select=id,title,source_key,subject_id&limit=5000');
   foreach($materials as $m)if(trim((string)($m['source_key']??''))==='')$issues[]=['type'=>'material_without_source_key','id'=>$m['id'],'title'=>$m['title']??''];
   $exam=SupabaseRest::select('exam_questions?is_published=eq.true&select=id,text,answer,subject_slug&limit=5000');
-  foreach($exam as $q)if(trim((string)($q['answer']??''))==='')$issues[]=['type'=>'published_exam_question_without_answer','id'=>$q['id'],'subject_slug'=>$q['subject_slug']??null,'text'=>mb_substr((string)($q['text']??''),0,140)];
+  foreach($exam as $q){$type=(string)($q['type']??'open');$answerMissing=trim((string)($q['answer']??''))==='';if($answerMissing&&in_array($type,['mc','mcq','case'],true))$issues[]=['type'=>'published_exam_question_without_answer','id'=>$q['id'],'subject_slug'=>$q['subject_slug']??null,'type'=>$type,'text'=>mb_substr((string)($q['text']??''),0,140)];}
   Response::success(['ok'=>$issues===[],'issues'=>array_slice($issues,0,500),'count'=>count($issues),'checked'=>['tests'=>count($tests),'questions'=>count($questions),'test_questions'=>count($testLinks),'trainer_cards'=>count($cards),'materials'=>count($materials),'exam_questions'=>count($exam)]],$req->requestId);
  }catch(\Throwable $e){Response::error('VALIDATION_FAILED',$e->getMessage(),$req->requestId,503);}
 });
