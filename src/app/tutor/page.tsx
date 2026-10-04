@@ -41,7 +41,7 @@ export default function TutorPage() {
     if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available}); setPsRegionHint(ps.data.region==="ru" && !!ps.data.providers.gemini?.reason); }
     if(ss.ok) {
       const list = (ss.data.items || [])
-        .map((s) => ({ name: s.name, slug: String(s.slug || "").trim() }))
+        .map((s: any) => ({ name: String(s.name || ""), slug: String(s.slug || "").trim() }))
         .filter((s): s is { name: string; slug: string } => Boolean(s.slug));
       setSubjects(list);
     }
