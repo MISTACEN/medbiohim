@@ -19,10 +19,10 @@ return static function (Router $r): void {
             try {
                 Response::success([
                     'items' => (new ContentStore())->listCommunityPosts(),
-                    'note' => 'local_store',
+                    'source' => 'supabase_rest_fallback',
                 ], $q->requestId);
             } catch (\Throwable $x) {
-                Response::success(['items' => [], 'note' => 'community unavailable'], $q->requestId);
+                Response::error('DB_UNAVAILABLE', 'Community is temporarily unavailable.', $q->requestId, 503);
             }
         }
     });
