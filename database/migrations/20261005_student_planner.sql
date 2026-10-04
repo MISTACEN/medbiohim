@@ -43,13 +43,10 @@ DROP POLICY IF EXISTS attendance_records_select_own ON public.attendance_records
 DROP POLICY IF EXISTS attendance_records_insert_own ON public.attendance_records;
 DROP POLICY IF EXISTS attendance_records_update_own ON public.attendance_records;
 DROP POLICY IF EXISTS attendance_records_delete_own ON public.attendance_records;
-CREATE POLICY attendance_records_select_own ON public.attendance_records FOR SELECT TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY attendance_records_insert_own ON public.attendance_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY attendance_records_update_own ON public.attendance_records FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY attendance_records_delete_own ON public.attendance_records FOR DELETE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY attendance_records_select_own ON public.attendance_records FOR SELECT TO authenticated USING ((select auth.uid()) = user_id);
+CREATE POLICY attendance_records_insert_own ON public.attendance_records FOR INSERT TO authenticated WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY attendance_records_update_own ON public.attendance_records FOR UPDATE TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY attendance_records_delete_own ON public.attendance_records FOR DELETE TO authenticated USING ((select auth.uid()) = user_id);
 
-DROP TRIGGER IF EXISTS trg_attendance_records_updated_at ON public.attendance_records;
-CREATE TRIGGER trg_attendance_records_updated_at BEFORE UPDATE ON public.attendance_records
-FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 ALTER TABLE public.subjects ADD COLUMN IF NOT EXISTS color_hex text;
