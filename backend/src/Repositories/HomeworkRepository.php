@@ -23,7 +23,7 @@ final class HomeworkRepository
                     s.name AS subject_name, s.slug AS subject_slug, s.color_hex,
                     sub.id AS submission_id, sub.status AS submission_status,
                     sub.grade, sub.submitted_at,
-                    hp.status AS my_status, hp.completed_at
+                    hp.completed AS my_completed, hp.submitted_at AS completed_at
              FROM public.homeworks h
              LEFT JOIN public.subjects s ON s.id = h.subject_id
              LEFT JOIN public.homework_submissions sub
