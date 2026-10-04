@@ -450,14 +450,14 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
                 <div className="schedule-grid" style={{ minWidth: 1080 }}>
                   <div className="schedule-corner"><Clock className="h-4 w-4" /></div>
                   {days.map(({ key }, dayIndex) => (
-                    <div key={key} style={{gridColumn:dayIndex+2,gridRow:1}} className={`schedule-day-head ${key===today?"schedule-day-today":""}>
+                    <div key={key} style={{gridColumn:dayIndex+2,gridRow:1}} className={`schedule-day-head ${key===today?"schedule-day-today":""}`}>
                       <div>{weekdayShortRu(key)}</div>
                       <strong>{dayDateRu(key)}</strong>
                       {key===today && <span>Сегодня</span>}
                     </div>
                   ))}
                   <div className="schedule-times" style={{gridColumn:1,gridRow:2}}>{SLOTS.map((t)=><div key={t} className="schedule-time">{t}</div>)}</div>
-                  {days.map(({ key }) => (
+                  {days.map(({ key }, dayIndex) => (
                     <div key={key} style={{gridColumn:dayIndex+2,gridRow:2}} className="schedule-day-column relative">
                       {SLOTS.map((t)=><div key={t} className="schedule-hour-line" />)}
                       {layoutDayColumns(grouped.get(key)||[]).map(({ item, col, cols })=>(
