@@ -17,7 +17,6 @@ return static function (Router $router): void {
         'content_integration.php',
         'material_viewer.php',
         'admin_content_package.php',
-        'admin_compat.php',
         'admin_questions.php',
         'sessions_rest.php',
         'trainings.php',
