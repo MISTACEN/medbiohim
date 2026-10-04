@@ -379,3 +379,24 @@
 3. Закрыть media.
 4. Закрыть AI provider runtime.
 5. Потом делать P2 product/architecture cleanup.
+# Deep audit 3 — 2026-10-04
+
+Полный новый отчёт: docs/DEEP-AUDIT-3-2026-10-04.md.
+
+### Исправлено в третьем проходе
+- ✅ shadowed domain routes consolidated;
+- ✅ broken /admin/lectures/assist removed;
+- ✅ legacy schedule writes removed;
+- ✅ duplicate schedule import removed;
+- ✅ generic session frontend helpers removed;
+- ✅ search-param static-render risk removed from admin/settings;
+- ✅ live Supabase integrity checked: no orphan test links, no missing material files, no missing trainer image paths.
+
+### Remaining real work
+- 🔴 delivery lag: Vercel production still points to an older commit;
+- 🟡 SpaceWeb deploy must complete once on the final stable commit;
+- 🟡 histology media requires real SpaceWeb/B2 file smoke;
+- 🔴 AI provider runtime availability requires credentials/upstream access;
+- 🟡 generic DOCX/PDF viewer for non-histology materials;
+- 🟡 mobile schedule agenda;
+- 🟡 polished subject-plan/material/trainer-card editors and visual version history.
