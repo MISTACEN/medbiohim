@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Medbiohim\Services;
 
 use Medbiohim\Database\Connection;
-use Medbiohim\Support\SupabaseRest;
+use Medbiohim\Services\SupabaseRest;
 
 /**
  * Persistent lecture store.
@@ -151,6 +151,7 @@ final class LectureService
             'subject' => '',
             'subject_slug' => '',
             'topic' => '',
+            'lesson_type' => 'lecture',
             'body_md' => '',
             'summary' => '',
             'media' => [],

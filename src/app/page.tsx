@@ -25,7 +25,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
-import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";\nimport SchedulePage from "@/app/schedule/page";
+import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 
 type DashRow = Record<string, unknown>;
 
@@ -333,14 +333,6 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
-      </section>
-
-      <section className="relative overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-indigo-50 px-5 py-4">
-          <div><p className="text-xs font-extrabold uppercase tracking-widest text-sky-600">Учебный календарь</p><h2 className="mt-1 text-lg font-extrabold text-slate-900">Расписание на главной</h2><p className="mt-1 text-xs text-slate-500">День · неделя · месяц · семестр — те же реальные данные Supabase.</p></div>
-          <Link href="/schedule" className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50">Открыть отдельно</Link>
-        </div>
-        <div className="p-3 sm:p-4"><SchedulePage embedded /></div>
       </section>
 
       <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">

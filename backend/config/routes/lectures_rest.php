@@ -22,6 +22,7 @@ return static function (Router $r): void {
                 'subject' => $row['subject'] ?? '',
                 'subject_slug' => $row['subject_slug'] ?? '',
                 'topic' => $row['topic'] ?? '',
+                'lesson_type' => $row['lesson_type'] ?? 'lecture',
                 'summary' => $row['summary'] ?? '',
                 'published_at' => $row['published_at'] ?? null,
                 'media_count' => is_array($row['media'] ?? null) ? count($row['media']) : 0,
@@ -37,36 +38,6 @@ return static function (Router $r): void {
         if ($row === null) {
             Response::error('NOT_FOUND', 'Лекция не найдена или ещё не опубликована', $q->requestId, 404);
             return;
-        }
-        // PDF attachments automatically become published materials; the lecture keeps its attachment list.
-        if (isset($patch['attachments']) && is_array($patch['attachments'])) {
-            try {
-                $db = \Medbiohim\Database\Connection::pdo();
-                $subjectSlug = trim((string)($row['subject_slug'] ?? $patch['subject_slug'] ?? ''));
-                $subjectId = '';
-                if ($subjectSlug !== '') {
-                    $s = $db->prepare('SELECT id FROM public.subjects WHERE slug = :slug ORDER BY semester NULLS LAST, id LIMIT 1');
-                    $s->execute(['slug'=>$subjectSlug]);
-                    $subjectId = (string)($s->fetchColumn() ?: '');
-                }
-                if ($subjectId !== '') {
-                    foreach ($patch['attachments'] as $att) {
-                        if (!is_array($att)) continue;
-                        $type = strtolower(trim((string)($att['type'] ?? '')));
-                        $mime = strtolower(trim((string)($att['mime_type'] ?? '')));
-                        $fileId = trim((string)($att['file_id'] ?? ''));
-                        if ($fileId === '' || ($type !== 'pdf' && $mime !== 'application/pdf')) continue;
-                        $exists = $db->prepare('SELECT id FROM public.materials WHERE file_id = :file_id LIMIT 1');
-                        $exists->execute(['file_id'=>$fileId]);
-                        if ($exists->fetchColumn()) continue;
-                        $title = trim((string)($att['name'] ?? 'PDF лекции'));
-                        $db->prepare('INSERT INTO public.materials (subject_id,type,title,file_id,external_url,content_html,order_index,is_published) VALUES (:subject_id,:type,:title,:file_id,NULL,NULL,0,true)')
-                           ->execute(['subject_id'=>$subjectId,'type'=>'pdf','title'=>$title,'file_id'=>$fileId]);
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Lecture save remains successful; materials sync can be repaired from the attachment list.
-            }
         }
         Response::success(['lecture' => $row], $q->requestId);
     });
@@ -132,7 +103,7 @@ return static function (Router $r): void {
         if (!RequireRole::handle($q, ['admin', 'moderator', 'teacher'])) return;
         $id = (string) ($p['id'] ?? '');
         $body = is_array($q->jsonBody) ? $q->jsonBody : [];
-        $allowed = ['title', 'topic', 'body_md', 'body_html', 'summary', 'media', 'attachments', 'subject', 'subject_slug', 'status'];
+        $allowed = ['title', 'topic', 'lesson_type', 'body_md', 'body_html', 'summary', 'media', 'attachments', 'subject', 'subject_slug', 'status'];
         $patch = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $body)) {
@@ -147,6 +118,36 @@ return static function (Router $r): void {
         if ($row === null) {
             Response::error('NOT_FOUND', 'Лекция не найдена', $q->requestId, 404);
             return;
+        }
+        // PDF attachments automatically become published materials; the lecture keeps its attachment list.
+        if (isset($patch['attachments']) && is_array($patch['attachments'])) {
+            try {
+                $db = \Medbiohim\Database\Connection::pdo();
+                $subjectSlug = trim((string)($row['subject_slug'] ?? $patch['subject_slug'] ?? ''));
+                $subjectId = '';
+                if ($subjectSlug !== '') {
+                    $s = $db->prepare('SELECT id FROM public.subjects WHERE slug = :slug ORDER BY semester NULLS LAST, id LIMIT 1');
+                    $s->execute(['slug'=>$subjectSlug]);
+                    $subjectId = (string)($s->fetchColumn() ?: '');
+                }
+                if ($subjectId !== '') {
+                    foreach ($patch['attachments'] as $att) {
+                        if (!is_array($att)) continue;
+                        $type = strtolower(trim((string)($att['type'] ?? '')));
+                        $mime = strtolower(trim((string)($att['mime_type'] ?? '')));
+                        $fileId = trim((string)($att['file_id'] ?? ''));
+                        if ($fileId === '' || ($type !== 'pdf' && $mime !== 'application/pdf')) continue;
+                        $exists = $db->prepare('SELECT id FROM public.materials WHERE file_id = :file_id LIMIT 1');
+                        $exists->execute(['file_id'=>$fileId]);
+                        if ($exists->fetchColumn()) continue;
+                        $title = trim((string)($att['name'] ?? 'PDF лекции'));
+                        $db->prepare('INSERT INTO public.materials (subject_id,type,title,file_id,external_url,content_html,order_index,is_published) VALUES (:subject_id,:type,:title,:file_id,NULL,NULL,0,true)')
+                           ->execute(['subject_id'=>$subjectId,'type'=>'pdf','title'=>$title,'file_id'=>$fileId]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Lecture save remains successful; materials sync can be repaired from the attachment list.
+            }
         }
         Response::success(['lecture' => $row], $q->requestId);
     });
