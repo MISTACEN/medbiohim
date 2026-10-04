@@ -402,7 +402,7 @@ final class LlmGateway
     private static function chatGigaChat(array $messages, float $temperature): array
     {
         $base = rtrim((string)(Env::get('GIGACHAT_BASE_URL', 'https://api.giga.chat/v1') ?? 'https://api.giga.chat/v1'), '/');
-        $model = (string)(Env::get('GIGACHAT_MODEL', 'GigaChat-2-Max') ?? 'GigaChat');
+        $model = (string)(Env::get('GIGACHAT_MODEL', 'GigaChat-2-Max') ?? 'GigaChat-2-Max');
         // Access tokens are short-lived (about 30 minutes). Prefer a freshly
         // cached token obtained from the authorization key and refresh on 401.
         $token = self::gigaAccessToken();
