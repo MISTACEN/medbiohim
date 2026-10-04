@@ -107,6 +107,7 @@ export async function listGroups(){return api<any>("/groups")}
 export type ApiTest=any;
 export async function listTests(subjectId?:string){return api<any>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
 export async function getTest(id:string){return api<any>(`/tests/${id}`)}
+export async function listMyAttempts(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/my/attempts${q}`)}
 export async function startTestAttempt(id:string){return api<any>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
 export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
 export async function listHomeworks(){return api<any>("/homeworks")}
