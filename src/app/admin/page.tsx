@@ -87,7 +87,7 @@ export default function AdminPage() {
     if (!groupId) return;
     const r = await adminListSchedule(groupId, Number(semester) || 3);
     if (!r.ok) return msg(r.error.message);
-    setRows((r.data.items || []).map((x) => ({ ...x, localId: lid() })));
+    setRows((r.data.items || []).map((x: any) => ({ ...x, localId: lid() })));
   }
 
   useEffect(() => { void loadBase(); }, []);
