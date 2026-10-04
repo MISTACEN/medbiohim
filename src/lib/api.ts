@@ -201,7 +201,7 @@ export async function createSubject(payload:Record<string,unknown>): Promise<any
 export async function deleteGroup(id:string): Promise<any> { return api("/groups/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
 export async function deleteSubject(id:string): Promise<any> { return api("/subjects/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
 export async function finishPreparation(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId) + "/finish", {method:"POST",body:"{}"}) as any; }
-export async function generateTicket(payload:Record<string,unknown>): Promise<any> { return api("/tickets/generate", {method:"POST",body:JSON.stringify(payload)}) as any; }
+export async function generateTicket(bankId:string,count=3,mode="practice"): Promise<any> { return api("/tickets/generate", {method:"POST",body:JSON.stringify({bank_id:bankId,count,mode})}) as any; }
 export async function getFile(id:string): Promise<any> { return api("/files/" + encodeURIComponent(id)) as any; }
 export async function getLecture(id:string): Promise<any> { return api("/lectures/" + encodeURIComponent(id)) as any; }
 export async function getLessonPlan(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/lesson-plan" + (q.toString()?"?"+q:"")) as any; }
