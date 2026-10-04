@@ -107,6 +107,35 @@ $router->delete('/api/v1/admin/db/{table}/row',static function(Request $req,arra
  try{$filters=[];foreach($key as $k=>$v)$filters[]=$k.'=eq.'.rawurlencode((string)$v);$old=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));if(!$old){Response::error('NOT_FOUND','Row not found',$req->requestId,404);return;}SupabaseRest::deleteWhere($table.'?'.implode('&',$filters));SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'delete','table_name'=>$table,'row_key'=>$key,'old_data'=>$old[0],'new_data'=>null,'source'=>'admin_ui'],false);Response::success(['deleted'=>true],$req->requestId);
  }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
+$router->get('/api/v1/admin/content/validate',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ try{
+  $issues=[];
+  $tests=SupabaseRest::select('tests?select=id,title,is_published,archived_at&limit=1000');
+  $questions=SupabaseRest::select('questions?select=id,is_published,archived_at&limit=5000');
+  $testLinks=SupabaseRest::select('test_questions?select=test_id,question_id&limit=10000');
+  $testIds=[];$questionIds=[];$linkCount=[];
+  foreach($tests as $t){$id=(string)($t['id']??'');if($id!==''){$testIds[$id]=true;$linkCount[$id]=0;}}
+  foreach($questions as $q){$id=(string)($q['id']??'');if($id!=='')$questionIds[$id]=true;}
+  foreach($testLinks as $l){
+   $tid=(string)($l['test_id']??'');$qid=(string)($l['question_id']??'');
+   if(isset($linkCount[$tid]))$linkCount[$tid]++;
+   if(!isset($testIds[$tid]))$issues[]=['type'=>'orphan_test_link','test_id'=>$tid,'question_id'=>$qid];
+   if(!isset($questionIds[$qid]))$issues[]=['type'=>'orphan_question_link','test_id'=>$tid,'question_id'=>$qid];
+  }
+  foreach($tests as $t)if(!empty($t['is_published'])&&empty($t['archived_at'])&&(($linkCount[(string)$t['id']]??0)<1))$issues[]=['type'=>'published_test_without_questions','id'=>$t['id'],'title'=>$t['title']??''];
+  $cards=SupabaseRest::select('trainer_feed_cards?is_published=eq.true&select=id,source_key,preparation&limit=2000');
+  foreach($cards as $card){
+   $prep=$card['preparation']??[];if(is_string($prep))$prep=json_decode($prep,true)?:[];
+   if(!is_array($prep)||trim((string)($prep['imagePath']??$prep['imageUrl']??''))==='')$issues[]=['type'=>'trainer_card_without_image','id'=>$card['id'],'source_key'=>$card['source_key']??null];
+  }
+  $materials=SupabaseRest::select('materials?is_published=eq.true&select=id,title,source_key,subject_id&limit=5000');
+  foreach($materials as $m)if(trim((string)($m['source_key']??''))==='')$issues[]=['type'=>'material_without_source_key','id'=>$m['id'],'title'=>$m['title']??''];
+  $exam=SupabaseRest::select('exam_questions?is_published=eq.true&select=id,text,answer,subject_slug&limit=5000');
+  foreach($exam as $q)if(trim((string)($q['answer']??''))==='')$issues[]=['type'=>'published_exam_question_without_answer','id'=>$q['id'],'subject_slug'=>$q['subject_slug']??null,'text'=>mb_substr((string)($q['text']??''),0,140)];
+  Response::success(['ok'=>$issues===[],'issues'=>array_slice($issues,0,500),'count'=>count($issues),'checked'=>['tests'=>count($tests),'questions'=>count($questions),'test_questions'=>count($testLinks),'trainer_cards'=>count($cards),'materials'=>count($materials),'exam_questions'=>count($exam)]],$req->requestId);
+ }catch(\Throwable $e){Response::error('VALIDATION_FAILED',$e->getMessage(),$req->requestId,503);}
+});
 $router->get('/api/v1/admin/db/audit',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;$limit=min(500,max(1,(int)($req->query['limit']??200)));try{Response::success(['items'=>SupabaseRest::select('admin_change_log?select=*&order=created_at.desc&limit='.$limit)],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
 });
