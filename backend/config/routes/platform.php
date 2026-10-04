@@ -35,25 +35,27 @@ return static function (Router $router): void {
         $scheduleSource = 'none';
         $site = ['title' => 'Медбиохим'];
         $announcements = [];
+        $degraded = [];
         try {
             try {
                 $profile = (new UserRepository())->profileBundle($req->user->id);
             } catch (\Throwable $e) {
-                try { $profile = SupabaseRest::profileBundle($req->user->id, $req->bearerToken()); } catch (\Throwable $x) {}
+                try { $profile = SupabaseRest::profileBundle($req->user->id, $req->bearerToken()); }
+                catch (\Throwable $x) { $degraded[] = 'profile'; }
             }
             try {
                 $homeworks = (new HomeworkRepository())->listForUser($req->user->id);
                 if (!is_array($homeworks)) $homeworks = [];
-            } catch (\Throwable $e) { $homeworks = []; }
+            } catch (\Throwable $e) { $homeworks = []; $degraded[] = 'homeworks'; }
             try {
                 $tests = (new TestRepository())->listPublished(null);
                 if (!is_array($tests)) $tests = [];
-            } catch (\Throwable $e) { $tests = []; }
+            } catch (\Throwable $e) { $tests = []; $degraded[] = 'tests'; }
             try {
                 $store = new ContentStore();
                 try { $site = $store->getSite(); } catch (\Throwable $e) {}
-                try { $announcements = array_slice($store->listAnnouncements(), 0, 10); } catch (\Throwable $e) {}
-            } catch (\Throwable $e) {}
+                try { $announcements = array_slice($store->listAnnouncements(), 0, 10); } catch (\Throwable $e) { $degraded[] = 'announcements'; }
+            } catch (\Throwable $e) { $degraded[] = 'site'; }
             // Live dashboard schedule uses the same Supabase source as CMS.
             try {
                 $tz = new \DateTimeZone('Asia/Vladivostok');
@@ -81,6 +83,7 @@ return static function (Router $router): void {
                         }
                     } catch (\Throwable $restError) {
                         $scheduleSource = 'unavailable';
+                        $degraded[] = 'schedule';
                     }
                 } else {
                     $scheduleSource = 'db';
@@ -98,9 +101,11 @@ return static function (Router $router): void {
                 } catch (\Throwable $restError) {
                     $schedule = [];
                     $scheduleSource = 'unavailable';
+                    $degraded[] = 'schedule';
                 }
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { $degraded[] = 'dashboard'; }
+        $degraded = array_values(array_unique($degraded));
         Response::success([
             'profile' => $profile,
             'site' => is_array($site) ? $site : ['title' => 'Медбиохим'],
@@ -109,6 +114,9 @@ return static function (Router $router): void {
             'schedule_source' => $scheduleSource,
             'homeworks' => is_array($homeworks) ? $homeworks : [],
             'tests' => is_array($tests) ? $tests : [],
+            'degraded' => $degraded !== [],
+            'degraded_sources' => $degraded,
+            'service_notice' => $degraded !== [] ? 'Часть данных главной страницы временно недоступна. Показаны только подтверждённые данные.' : null,
         ], $req->requestId);
     });
 
