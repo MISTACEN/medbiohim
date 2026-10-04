@@ -11,14 +11,14 @@ import {
 } from "react";
 
 /**
- * Reference and classic theme set, including the approved Aero Glass style.
+ * Six selectable themes: the original three plus three new reference themes
  * based on the supplied MedBioHim mockups.
  */
 export type AppThemeId =
+  | "aero-glass"
   | "classic-light"
   | "classic-dark"
   | "midnight"
-  | "aero-glass"
   | "aurora-glass"
   | "medical-glass"
   | "crystal-glass";
@@ -35,8 +35,8 @@ export type AppThemeMeta = {
 export const THEMES: AppThemeMeta[] = [
   {
     id: "aero-glass",
-    label: "Aero Glass",
-    description: "Основной современный стиль Медбиохим: стекло, воздух, сине-мятные акценты и мягкая глубина",
+    label: "Aero Glass · Бета",
+    description: "Экспериментальная тема на основе макета Aero Glass / iOS",
     dark: false,
     family: "reference",
     preview: "linear-gradient(135deg,#bfeeff 0%,#ffffff 48%,#d7faed 100%)",
@@ -110,12 +110,12 @@ function applyDom(id: AppThemeId) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<AppThemeId>("aero-glass");
+  const [theme, setThemeState] = useState<AppThemeId>("aurora-glass");
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as AppThemeId | null;
     const legacy = localStorage.getItem("mb_theme");
-    let initial: AppThemeId = "aero-glass";
+    let initial: AppThemeId = "aurora-glass";
     if (saved && THEMES.some((t) => t.id === saved)) {
       initial = saved;
     } else if (legacy === "dark") {
