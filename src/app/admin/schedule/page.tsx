@@ -11,11 +11,12 @@ import {
   adminListSchedule,
   getScheduleMeta,
   adminSaveSchedule,
+  adminImportScheduleXlsx,
   listGroups,
   hasToken,
   type ScheduleItem,
 } from "@/lib/api";
-import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2, Upload } from "lucide-react";
 
 const TZ = "Asia/Vladivostok";
 const TYPE_LABELS: Record<string, string> = {
@@ -97,6 +98,7 @@ export default function AdminSchedulePage() {
   const [source, setSource] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [edit, setEdit] = useState<ScheduleItem | null>(null);
+  const [importing, setImporting] = useState(false);
   const [meta, setMeta] = useState<{periods:Array<{id:string;title:string;start_date:string;end_date?:string|null;notes?:string|null}>}>({periods:[]});
   const currentGroup = groups.find((g) => String(g.id) === String(groupId));
 
@@ -199,6 +201,17 @@ export default function AdminSchedulePage() {
     setEdit(row);
   }
 
+
+  async function importXlsx(file: File) {
+    if (!groupId) { setNote("Сначала выберите группу."); return; }
+    setImporting(true); setNote(null);
+    const res = await adminImportScheduleXlsx(file, groupId, 3);
+    setImporting(false);
+    if (!res.ok) { setNote(res.error.message); return; }
+    setNote("Расписание из XLSX импортировано. Обновляем сетку…");
+    await load();
+  }
+
   async function saveAll() {
     setSaving(true); setNote(null);
     if (!groupId) {
@@ -239,6 +252,7 @@ export default function AdminSchedulePage() {
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-secondary" onClick={addItem}><Plus className="h-4 w-4" /> Занятие</button>
           <button type="button" className="btn-secondary" onClick={() => setItems((p) => dedupeItems(p))}>Убрать дубли</button>
+          <label className={"btn-secondary inline-flex items-center gap-2 cursor-pointer " + (importing ? "opacity-50 pointer-events-none" : "")}><Upload className="h-4 w-4"/> Импорт XLSX<input type="file" hidden accept=".xlsx,.xls" disabled={importing} onChange={(e) => { const file=e.target.files?.[0]; if(file) void importXlsx(file); e.currentTarget.value=""; }}/></label>
           <button type="button" className="btn-primary" disabled={saving} onClick={() => void saveAll()}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Сохранить
           </button>
