@@ -89,6 +89,7 @@ export default function SearchPage() {
           <option value="ticket">Билеты</option>
           <option value="trainer">Тренажёры</option>
           <option value="subject">Предметы</option>
+          <option value="plan">Учебные планы</option>
         </select>
         <button
           type="submit"
