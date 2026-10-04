@@ -5,9 +5,13 @@ import {
   getQuestion,
   listQuestionSubjects,
   listQuestions,
+  listFavorites,
+  toggleFavorite,
+  listNotes,
+  upsertNote,
   type BankQuestion,
 } from "@/lib/api";
-import { Loader2, Search, Eye, EyeOff } from "lucide-react";
+import { Loader2, Search, Eye, EyeOff, Star, Save } from "lucide-react";
 import { QuestionReport } from "@/components/QuestionReport";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
@@ -25,10 +29,20 @@ export default function PracticePage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [draft, setDraft] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [savedNote, setSavedNote] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
 
   useEffect(() => {
     listQuestionSubjects().then((res) => {
       if (res.ok) setSubjects(res.data.items);
+    });
+  }, []);
+
+
+  useEffect(() => {
+    void listFavorites().then((res) => {
+      if (res.ok) setFavoriteIds(new Set((res.data.items || []).filter((x:any) => x.target_type === "question").map((x:any) => String(x.target_id))));
     });
   }, []);
 
@@ -61,8 +75,35 @@ export default function PracticePage() {
     setShowAnswer(false);
     setDraft("");
     const res = await getQuestion(id);
-    if (res.ok) setSelected(res.data.question);
-    else setNote(res.error.message);
+    if (res.ok) {
+      setSelected(res.data.question);
+      const notes = await listNotes();
+      if (notes.ok) {
+        const mine = (notes.data.items || []).find((x:any) => x.target_type === "question" && String(x.target_id) === String(id));
+        setSavedNote(String(mine?.text || ""));
+      } else setSavedNote("");
+    } else setNote(res.error.message);
+  }
+
+
+  async function toggleSelectedFavorite() {
+    if (!selected) return;
+    const res = await toggleFavorite("question", selected.id);
+    if (!res.ok) { setNote(res.error.message); return; }
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (res.data.favorited) next.add(selected.id); else next.delete(selected.id);
+      return next;
+    });
+  }
+
+  async function saveSelectedNote() {
+    if (!selected) return;
+    setNoteSaving(true);
+    const res = await upsertNote("question", selected.id, savedNote);
+    setNoteSaving(false);
+    if (!res.ok) { setNote(res.error.message); return; }
+    setNote("Заметка сохранена");
   }
 
   const kinds = useMemo(
@@ -168,15 +209,26 @@ export default function PracticePage() {
           ) : (
             <>
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-400">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs uppercase tracking-wide text-slate-400">
                   {selected.subject}
-                  {selected.topic ? ` · ${selected.topic}` : ""}
+                      {selected.topic ? ` · ${selected.topic}` : ""}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => void toggleSelectedFavorite()} className={"shrink-0 rounded-xl border px-3 py-2 text-sm " + (favoriteIds.has(selected.id) ? "border-amber-300 bg-amber-50 text-amber-700" : "bg-white text-slate-500")} title="Избранное"><Star className={"h-4 w-4 " + (favoriteIds.has(selected.id) ? "fill-current" : "")}/></button>
                 </div>
                 <h2 className="mt-1 text-lg font-semibold leading-snug">
                   <ChemRichText text={selected.text} />
                 </h2>
               </div>
               <QuestionReport questionId={selected.id} />
+              <div className="space-y-2 rounded-xl border bg-slate-50 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Моя заметка</div>
+                <textarea value={savedNote} onChange={(e) => setSavedNote(e.target.value)} rows={3} className="w-full rounded-lg border bg-white px-3 py-2 text-sm" placeholder="Что нужно запомнить по этому вопросу…"/>
+                <button type="button" disabled={noteSaving} onClick={() => void saveSelectedNote()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"><Save className="h-3.5 w-3.5"/>{noteSaving ? "Сохранение…" : "Сохранить заметку"}</button>
+              </div>
+
 
               {selected.type === "mc" && selected.options?.length ? (
                 <div className="space-y-2">
