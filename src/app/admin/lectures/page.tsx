@@ -14,7 +14,9 @@ import {
   type Lecture,
 } from "@/lib/api";
 
-type Subject = { slug: string; name: string };\ntype LessonType = "lecture" | "practice" | "laboratory" | "seminar";\nconst LESSON_TYPES: Record<LessonType, string> = { lecture: "Лекция", practice: "Практика", laboratory: "Лабораторная", seminar: "Семинар" };
+type Subject = { slug: string; name: string };
+type LessonType = "lecture" | "practice" | "laboratory" | "seminar";
+const LESSON_TYPES: Record<LessonType, string> = { lecture: "Лекция", practice: "Практика", laboratory: "Лабораторная", seminar: "Семинар" };
 type Attachment = {
   id?: string;
   file_id?: string;
