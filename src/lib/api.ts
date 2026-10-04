@@ -149,6 +149,7 @@ export async function getProgress(subjectId?:string){const q=subjectId?`?subject
 export async function getCurriculum(){return api<any>("/curriculum")}
 export async function getSubject(id:string){return api<any>(`/subjects/${id}`)}
 export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return api<any>(`/materials${q.toString()?`?${q}`:""}`)}
+export async function syncAcademicState(){return api<any>("/academic/sync",{method:"POST",body:"{}"})}
 export async function getAcademicState(){return api<AcademicState>("/academic/state")}
 export async function generateAcademicAiPlan(){return api<{plan:any;items:any[];source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
 export type AdminDbRow = any;
