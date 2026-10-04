@@ -81,6 +81,22 @@ if (existsSync(proxyPath)) {
   else fail("SPACEWEB_API_ORIGIN is not referenced by the Vercel API proxy");
 }
 
+const appFiles = await walk(join(root, "src/app"));
+const compatHits = [];
+for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].includes(extname(x)))) {
+  const text = await readFile(file, "utf8");
+  if (text.includes("/api-compat/")) compatHits.push(relative(root, file));
+}
+if (compatHits.length) fail("retired /api-compat calls remain in frontend: " + compatHits.join(", "));
+else pass("no retired /api-compat calls in frontend");
+
+const homeworkPage = join(root, "src/app/homework/page.tsx");
+if (existsSync(homeworkPage)) {
+  const text = await readFile(homeworkPage, "utf8");
+  if (text.includes("@/lib/mock-data")) fail("production homework page still imports mock-data");
+  else pass("homework page uses API-only data");
+}
+
 if (existsSync(join(root, "api/index.php"))) {
   fail("legacy root api/index.php exists; architecture expects Next proxy -> SpaceWeb");
 } else {
