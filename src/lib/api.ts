@@ -100,6 +100,8 @@ export async function login(email:string,password:string){return api<any>("/auth
 export async function me(){return api<any>("/auth/me")}
 export async function refreshSession(){const r=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!r)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:r})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
 export async function health(){return api<any>("/health")}
+export async function presenceHeartbeat(){return api<any>("/presence/heartbeat",{method:"POST",body:"{}"})}
+export async function adminPresence(within=180){return api<any>("/admin/presence?within="+encodeURIComponent(String(within)))} 
 export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return api<any>(`/subjects${q.toString()?`?${q}`:""}`)}
 export async function listGroups(){return api<any>("/groups")}
 export type ApiTest=any;
