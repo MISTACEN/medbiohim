@@ -48,15 +48,11 @@ final class SubjectRepository
             return null;
         }
         $modules = [];
-        try {
-            $stmt = $this->db->prepare(
-                'SELECT id, title, sort_order FROM public.modules WHERE subject_id = :id ORDER BY sort_order NULLS LAST, title'
-            );
-            $stmt->execute(['id' => $id]);
-            $modules = $stmt->fetchAll();
-        } catch (\Throwable $e) {
-            $modules = [];
-        }
+        $stmt = $this->db->prepare(
+            'SELECT id, title, sort_order FROM public.modules WHERE subject_id = :id ORDER BY sort_order NULLS LAST, title'
+        );
+        $stmt->execute(['id' => $id]);
+        $modules = $stmt->fetchAll();
         return ['subject' => $subject, 'modules' => $modules];
     }
 
