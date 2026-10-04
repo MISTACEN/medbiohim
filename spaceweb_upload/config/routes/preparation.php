@@ -9,16 +9,64 @@ use Medbiohim\Database\Connection;
 return static function (Router $router): void {
  $auth=static function(Request $r):bool{return RequireAuth::handle($r);};
 
- $router->post('/api/v1/tests/{id}/preparation/start',static function(Request $r,array $p)use($auth):void{
+ $normalizeAnswerList=static function($value):array{
+  if(is_array($value)){$items=$value;}
+  elseif(is_string($value)){
+   $decoded=json_decode($value,true);
+   $items=is_array($decoded)?$decoded:[$value];
+  }else{$items=[];}
+  $out=[];
+  foreach($items as $item){
+   $s=trim((string)$item);
+   if($s!=='')$out[]=mb_strtolower($s);
+  }
+  $out=array_values(array_unique($out));
+  sort($out);
+  return $out;
+ };
+ $isAnswerCorrect=static function(string $type,$given,$answer,$options)use($normalizeAnswerList):bool{
+  if($type==='mcq'){
+   $opts=is_array($options)?$options:(is_string($options)?(json_decode($options,true)?:[]):[]);
+   $correct=[];
+   foreach($opts as $opt){
+    if(is_array($opt)&&!empty($opt['correct'])){
+     $correct[]=trim((string)($opt['label']??''));
+    }
+   }
+   if($correct){
+    $givenList=$normalizeAnswerList($given);
+    $correctList=$normalizeAnswerList($correct);
+    return $givenList!==[] && $givenList===$correctList;
+   }
+  }
+  return $given!==null && trim(mb_strtolower((string)$given))===trim(mb_strtolower((string)$answer));
+ };
+
+
+ $resolveTestId=static function(\PDO $db,string $value):?string{
+  $value=trim($value);
+  if($value==='')return null;
+  $q=$db->prepare("select id::text from public.tests where id::text=:value or source_key=:value or source_key=:local limit 1");
+  $q->execute(['value'=>$value,'local'=>'local:'.$value]);
+  $id=$q->fetchColumn();
+  return $id===false?null:(string)$id;
+ };
+
+ $router->post('/api/v1/tests/{id}/preparation/start',static function(Request $r,array $p)use($auth,$resolveTestId):void{
   if(!$auth($r))return;
   $testId=(string)$p['id']; $body=is_array($r->jsonBody??null)?$r->jsonBody:[];
-  $mode=($body['mode']??'full')==='count'?'count':'full'; $limit=$mode==='count'?max(1,min(200,(int)($body['question_limit']??10))):null;
+  $requestedMode=(string)($body['mode']??'full');
+  $mode=$requestedMode==='sequential'?'sequential':($requestedMode==='count'?'count':'full');
+  $limit=$mode==='count'?max(1,min(200,(int)($body['question_limit']??10))):null;
   try{
    $db=Connection::pdo();
+   $resolvedTestId=$resolveTestId($db,$testId);
+   if($resolvedTestId===null){Response::error('NOT_FOUND','Test not found',$r->requestId,404);return;}
+   $testId=$resolvedTestId;
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
-   // Каждая новая попытка получает случайный порядок.
-   shuffle($ids);
+   // sequential = весь банк в исходном порядке; count/full остаются существующими режимами.
+   if($mode!=='sequential') shuffle($ids);
    if($limit!==null)$ids=array_slice($ids,0,$limit);
    if(!$ids){Response::error('NO_QUESTIONS','В тесте нет опубликованных вопросов', $r->requestId,422);return;}
 
@@ -27,16 +75,24 @@ return static function (Router $router): void {
    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' order by last_saved_at desc nulls last, started_at desc nulls last limit 1");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
    if($existing){
-    $existingIds=$existing['question_ids']??[];
-    if(is_string($existingIds)){
-      $trim=trim($existingIds);
-      if($trim===''||$trim==='{}'){$existingIds=[];}
-      elseif($trim[0]==='{'&&substr($trim,-1)==='}'){$inner=substr($trim,1,-1);$existingIds=$inner===''?[]:str_getcsv($inner,',','"','\\');}
-      else {$existingIds=array_values(array_filter(array_map('trim',preg_split('/[,;]+/',$trim))));}
+    // Возобновляем только тот же режим. Для «весь банк подряд» старая случайная сессия
+    // не должна перехватывать запуск — она закрывается, и создаётся последовательная.
+    if((string)($existing['mode']??'')!==$mode && $mode==='sequential'){
+      $cancel=$db->prepare("update public.test_preparation_sessions set status='cancelled',last_saved_at=now() where id=:id");
+      $cancel->execute(['id'=>$existing['id']]);
+      $existing=null;
+    } else {
+      $existingIds=$existing['question_ids']??[];
+      if(is_string($existingIds)){
+        $trim=trim($existingIds);
+        if($trim===''||$trim==='{}'){$existingIds=[];}
+        elseif($trim[0]==='{'&&substr($trim,-1)==='}'){$inner=substr($trim,1,-1);$existingIds=$inner===''?[]:str_getcsv($inner,',','"','\\');}
+        else {$existingIds=array_values(array_filter(array_map('trim',preg_split('/[,;]+/',$trim))));}
+      }
+      if(!is_array($existingIds))$existingIds=[];
+      $existing['question_ids']=array_values(array_filter(array_map('strval',$existingIds)));
+      Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;
     }
-    if(!is_array($existingIds))$existingIds=[];
-    $existing['question_ids']=array_values(array_filter(array_map('strval',$existingIds)));
-    Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;
    }
 
    $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids) values(:uid,:tid,:mode,:lim,:ids) returning *");
@@ -55,6 +111,42 @@ return static function (Router $router): void {
    }
    Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);
   }
+ });
+
+ $router->get('/api/v1/tests/{id}/bank-progress',static function(Request $r,array $p)use($auth,$resolveTestId):void{
+  if(!$auth($r))return;
+  try{
+    $db=Connection::pdo();
+    $tid=$resolveTestId($db,(string)$p['id']);
+    if($tid===null){Response::error('NOT_FOUND','Test not found',$r->requestId,404);return;}
+    $totalQ=$db->prepare("select count(*) from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null");
+    $totalQ->execute(['tid'=>$tid]);$total=(int)$totalQ->fetchColumn();
+
+    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and mode='sequential' order by started_at desc limit 1");
+    $s->execute(['uid'=>$r->user->id,'tid'=>$tid]);$session=$s->fetch();
+
+    $answered=0;$correct=0;
+    if($session){
+      $a=$db->prepare("select count(*) total,count(*) filter(where is_correct=true) correct from public.test_preparation_results where session_id=:sid");
+      $a->execute(['sid'=>$session['id']]);$row=$a->fetch()?:[];
+      $answered=(int)($row['total']??0);$correct=(int)($row['correct']??0);
+    }
+    $completed=(bool)($session && $session['status']==='completed' && $total>0 && $answered >= $total);
+    Response::success([
+      'total'=>$total,
+      'answered'=>$answered,
+      'correct'=>$correct,
+      'remaining'=>max(0,$total-$answered),
+      'completed'=>$completed,
+      'session'=>$session ? [
+        'id'=>$session['id'],
+        'status'=>$session['status'],
+        'current_index'=>(int)$session['current_index'],
+        'started_at'=>$session['started_at'],
+        'completed_at'=>$session['completed_at']??null
+      ] : null
+    ],$r->requestId);
+  }catch(\Throwable $e){Response::error('PROGRESS_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
  $router->get('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
@@ -88,9 +180,12 @@ return static function (Router $router): void {
    if(!$s){$db->rollBack();Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
    $idx=array_key_exists('current_index',$b)?max(0,(int)$b['current_index']):(int)$s['current_index'];
    if(isset($b['question_id'])){
-    $ans=$db->prepare("select answer from public.questions where id=:qid");$ans->execute(['qid'=>$b['question_id']]);$correct=$ans->fetchColumn();
+    $ans=$db->prepare("select answer,type,options from public.questions where id=:qid");$ans->execute(['qid'=>$b['question_id']]);$row=$ans->fetch();
+    $correct=$row['answer']??null;
+    $type=(string)($row['type']??'open');
+    $options=$row['options']??[];
     $given=array_key_exists('answer_text',$b)?(string)$b['answer_text']:null;
-    $ok=$correct!==false && $given!==null && trim(mb_strtolower($given))===trim(mb_strtolower((string)$correct));
+    $ok=$row!==false && $given!==null && $isAnswerCorrect($type,$given,$correct,$options);
     $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score) values(:sid,:uid,:tid,:qid,:a,:ok,:score) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answered_at=now()");
     $up->execute(['sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,'ok'=>$ok,'score'=>$ok?1:0]);
    }
