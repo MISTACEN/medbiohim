@@ -219,7 +219,7 @@ function RichEditor({
         <button type="button" title="По правому краю" onClick={()=>command("justifyRight")}><AlignRight className="h-4 w-4"/></button>
         <span className="lecture-editor-divider"/>
         <input value={link} onChange={e=>setLink(e.target.value)} placeholder="https://..." className="lecture-editor-link-input" />
-        <button type="button" title="Вставить ссылку" onClick={insertLink}><Link2 className="h-4 w-4"/></button>
+        <button type="button" title="Вставить ссылку" onClick={insertLink}><Link2 className="h-4 w-4"/></button><button type="button" title="Вставить видео по ссылке" onClick={insertVideoLink}><Video className="h-4 w-4"/></button>
         <label title="Загрузить изображение" className="lecture-editor-tool cursor-pointer"><ImagePlus className="h-4 w-4"/><input type="file" accept="image/*" className="hidden" onChange={e=>{const x=e.target.files?.[0];if(x)void uploadAndInsert(x);e.currentTarget.value=""}}/></label>
         <label title="Загрузить видео" className="lecture-editor-tool cursor-pointer"><Video className="h-4 w-4"/><input type="file" accept="video/*" className="hidden" onChange={e=>{const x=e.target.files?.[0];if(x)void uploadAndInsert(x);e.currentTarget.value=""}}/></label>
         <label title="Загрузить PDF" className="lecture-editor-tool cursor-pointer"><FileText className="h-4 w-4"/><input type="file" accept="application/pdf" className="hidden" onChange={e=>{const x=e.target.files?.[0];if(x)void uploadAndInsert(x);e.currentTarget.value=""}}/></label>
