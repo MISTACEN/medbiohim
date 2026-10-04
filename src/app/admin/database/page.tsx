@@ -4,7 +4,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, History, Plus, RefreshCw, Save, Trash2, Upload, Table2 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { adminDbAudit, adminDbDelete, adminDbDeleteByKey, adminDbInsert, adminDbList, adminDbMeta, adminDbTables, adminDbUpdate, adminDbUpdateByKey, AdminDbRow, hasToken } from "@/lib/api";
+import { adminDbAudit, adminDbDelete, adminDbDeleteByKey, adminDbInsert, adminDbList, adminDbMeta, adminDbUpdate, adminDbUpdateByKey, AdminDbRow, hasToken } from "@/lib/api";
 
 type Meta={name:string;items:number|null;primary_key:string[];columns:string[]};
 
