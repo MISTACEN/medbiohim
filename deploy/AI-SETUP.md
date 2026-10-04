@@ -21,8 +21,9 @@
 ## Код
 - `LlmGateway` — multi-provider + auto fallback
 - `AiChatService` — чаты в Supabase `ai_conversations` / `ai_messages`
-- `TutorService` — RAG по локальным банкам + LLM
+- `AiChatService` + `LlmGateway` — основной AI-тьютор и чаты
 - UI: `/tutor`
+- Старый `TutorService`/`/api/v1/tutor/*` удалены как неиспользуемый legacy API.
 
 ## Env на SpaceWeb
 Скопируй блок LLM/B2 из `backend/.env` (ключи уже есть локально).
