@@ -124,13 +124,13 @@ final class HomeworkRepository
         return $row === false ? null : $row;
     }
 
-    public function create(string $title, ?string $description, ?string $subjectId, ?string $groupId, ?string $dueAt, string $createdBy): array
+    public function create(string $title, ?string $description, ?string $subjectId, ?string $groupId, ?string $dueAt, string $createdBy, string $createdByRole = 'staff'): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO public.homeworks (title, description, subject_id, group_id, due_at, created_by)
-             VALUES (:title, :descr, :sid, :gid, :due, :by) RETURNING *'
+            'INSERT INTO public.homeworks (title, description, subject_id, group_id, due_at, created_by, created_by_role)
+             VALUES (:title, :descr, :sid, :gid, :due, :by, :role) RETURNING *'
         );
-        $stmt->execute(['title' => $title, 'descr' => $description, 'sid' => $subjectId, 'gid' => $groupId, 'due' => $dueAt, 'by' => $createdBy]);
+        $stmt->execute(['title' => $title, 'descr' => $description, 'sid' => $subjectId, 'gid' => $groupId, 'due' => $dueAt, 'by' => $createdBy, 'role' => $createdByRole]);
         $row = $stmt->fetch();
         if ($row === false) {
             throw new \RuntimeException('Create homework failed');
