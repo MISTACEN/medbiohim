@@ -19,18 +19,6 @@ export type TutorAnswer = {
   model?: string | null;
   retrieved: number;
 };
-) {
-  return api<TutorAnswer>("/tutor/ask", {
-    method: "POST",
-    body: JSON.stringify({
-      question,
-      subject_slug: opts?.subject_slug || undefined,
-      history: opts?.history || [],
-      top_k: opts?.top_k ?? 6,
-    }),
-  });
-}
-
 /* —— Calculators —— */
 export type CalcField = {
   key: string;
@@ -139,9 +127,6 @@ export async function srsReview(card_id: string, rating: 1 | 2 | 3 | 4) {
     method: "POST",
     body: JSON.stringify({ card_id, rating }),
   });
-}
-) {
-  return api<{ card: SrsCard }>("/srs/cards", { method: "POST", body: JSON.stringify(payload) });
 }
 /* —— Persistent AI chat —— */
 export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter";
