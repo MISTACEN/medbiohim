@@ -117,11 +117,17 @@ export default function PreparationPage() {
     void begin(flow === "sequential" ? "sequential" : "count", flow === "sequential" ? undefined : n);
   }, [search, mode]);
 
+  async function refreshSequentialProgress() {
+    if (mode !== "sequential") return;
+    const p = await getBankProgress(id);
+    if (p.ok) setBankProgress(p.data);
+  }
+
   async function answer(v: string) {
     if (!q || checked[q.id]) return;
     setAnswers((a) => ({ ...a, [q.id]: v }));
     const r = await savePreparation(session.id, { current_index: idx, question_id: q.id, answer_text: v });
-    if (r.ok) setChecked((a) => ({ ...a, [q.id]: true }));
+    if (r.ok) { setChecked((a) => ({ ...a, [q.id]: true })); await refreshSequentialProgress(); }
     else setError(r.error.message);
   }
 
@@ -144,6 +150,7 @@ export default function PreparationPage() {
     setError("");
     const r = await finishPreparation(session.id);
     if (r.ok) {
+      await refreshSequentialProgress();
       setStats(r.data);
       const a = await preparationAiReview(session.id);
       if (a.ok) setAi(a.data.review);
@@ -332,6 +339,8 @@ export default function PreparationPage() {
           </button>
         </div>
       </div>
+
+      {mode === "sequential" && bankProgress && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800">Банк: {bankProgress.answered ?? 0} / {bankProgress.total ?? questions.length}{bankProgress.completed ? " · пройден полностью" : ""}</div>}
 
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
 
