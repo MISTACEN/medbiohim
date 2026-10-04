@@ -51,3 +51,16 @@ src/lib/api.ts содержит **66** функций вида (..._args: any[])
 - ServiceNotice/degraded UI.
 
 Fallback считается проблемой, когда он выдаёт пользователю данные как будто это production source of truth.
+
+
+## Deep-pass closures (2026-10-04)
+
+| ID | Object | Problem | Status |
+|---|---|---|---|
+| D2-1 | presence | backend heartbeat had no frontend caller | ✅ heartbeat + admin online UI |
+| D2-2 | homework grading | UI called missing grade endpoint | ✅ POST /submissions/{id}/grade |
+| D2-3 | material viewer auth | protected file fetch did not refresh token | ✅ refresh + retry |
+| D2-4 | dashboard outage state | API failure became fake empty dashboard data | ✅ explicit degraded state |
+| D2-5 | API helpers | cleanup removed still-used direct helper exports | ✅ restored after production build trace |
+| D2-6 | duplicate routes | shadowed handlers remain in legacy route files | 🟡 audit-only; consolidate after contract review |
+| D2-7 | learning_sessions | backend storage/API without current UI consumer | 🟡 verify historical consumers, then remove if unused |
