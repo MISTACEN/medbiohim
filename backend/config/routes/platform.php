@@ -549,26 +549,9 @@ return static function (Router $router): void {
         }
     });
 
-    $router->get('/api/v1/materials', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-        try {
-            Response::success(['items' => (new FileRepository())->listActive(null)], $req->requestId);
-        } catch (\Throwable $e) {
-            Response::success(['items' => []], $req->requestId);
-        }
-    });
 
-    $router->get('/api/v1/community/posts', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-        try {
-            Response::success(['items' => (new ContentStore())->listCommunityPosts()], $req->requestId);
-        } catch (\Throwable $e) {
-            Response::success(['items' => []], $req->requestId);
-        }
-    });
 
-    $router->get('/api/v1/progress', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req)) return;
-        Response::error('DB_UNAVAILABLE', 'Прогресс временно недоступен: база данных не отвечает.', $req->requestId, 503);
-    });
+
+
+
 };
