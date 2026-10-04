@@ -16,7 +16,7 @@ $router->post('/api/v1/submissions/{id}/grade',static function(Request $req,arra
    $row=(new HomeworkRepository())->grade((string)$params['id'],$grade,$req->json('comment')!==null?(string)$req->json('comment'):null);
    if($row===null){Response::error('NOT_FOUND','Submission not found',$req->requestId,404);return;}
    Response::success(['submission'=>$row],$req->requestId);
- }catch(\\Throwable $e){
+ }catch(\Throwable $e){
    Response::error('DB_ERROR','Could not grade submission',$req->requestId,503);
  }
 });
