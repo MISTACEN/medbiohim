@@ -480,18 +480,7 @@ return static function (Router $router): void {
     });
 
     // Compatibility write endpoint used by the legacy frontend API client.
-    $router->put('/api/v1/schedule', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
-        try {
-            Response::success((new ScheduleRepository())->replace($req->jsonBody ?? []), $req->requestId);
-        } catch (\Throwable $e) {
-            try {
-                Response::success(SupabaseRest::replaceSchedule($req->jsonBody ?? []), $req->requestId);
-            } catch (\Throwable $x) {
-                Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500);
-            }
-        }
-    });
+    
 
     $router->get('/api/v1/schedule/meta', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
@@ -522,10 +511,7 @@ return static function (Router $router): void {
         Response::success(['items' => is_array($items)?$items:[], 'source' => $source], $req->requestId);
     });
 
-    $router->put('/api/v1/admin/schedule/local', static function (Request $req, array $params): void {
-        if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
-        Response::error('GONE', 'Local JSON schedule storage has been retired. Use /api/v1/admin/schedule.', $req->requestId, 410);
-    });
+    
 
     $router->put('/api/v1/admin/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req) || !RequireRole::handle($req, ['teacher', 'moderator', 'admin'])) return;
