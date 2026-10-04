@@ -122,9 +122,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             listTests(s.id),
             listSubjectMaterials({ subjectId: s.id }),
             listTicketBanks(),
-            getProgress(),
+            getProgress(s.id),
             listMaterials(slug ? { subjectSlug: slug } : {}),
-            listLectures(),
+            listLectures(slug),
           ]);
           if (!cancelled) {
             if (gb.ok) setGradebook(gb.data.items || []);
@@ -167,13 +167,18 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     course: String(course),
     semester: String(sem),
   }).toString();
-  const subjectBanks = banks.filter((b) => /гистол/i.test(b.subject || "") || b.subject_slug === slug);
+  const subjName = (subject?.name || "").toLowerCase().trim();
+  const subjectBanks = banks.filter((b) => {
+    const bankSlug = String(b.subject_slug || "").trim();
+    if (bankSlug) return bankSlug === slug;
+    const bankName = String(b.subject || b.subject_name || "").toLowerCase().trim();
+    return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
+  });
   const subjectTests = tests.filter((t) => {
-    if (!t.subject_id || t.subject_id === subject?.id) return true;
+    if (t.subject_id && t.subject_id === subject?.id) return true;
     if (histology && (t.subject_id === "histology" || /цитолог|эмбриолог|гистолог/i.test(String(t.title || t.name || "")))) return true;
     return false;
   });
-  const subjName = (subject?.name || "").toLowerCase();
   const subjectLectures = lectures.filter((l) => {
     const ls = String(l?.subject || "").toLowerCase().trim();
     if (!ls || !subjName) return false;
