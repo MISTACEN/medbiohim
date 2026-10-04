@@ -282,7 +282,7 @@ function ScheduleCard({
   );
 }
 
-export default function SchedulePage() {
+export default function SchedulePage({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth();
   const [now, setNow] = useState(() => nowParts());
   const [weekStart, setWeekStart] = useState(() => startOfWeekYmd(nowParts().date));
@@ -397,6 +397,7 @@ export default function SchedulePage() {
         .schedule-now-label{position:absolute;left:8px;top:-11px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:#f43f5e;color:#fff}
       `}} />
 
+      {!embedded && (
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -419,6 +420,7 @@ export default function SchedulePage() {
           <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,7); setSelectedDay(next); return next; })} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="schedule-tabs">
