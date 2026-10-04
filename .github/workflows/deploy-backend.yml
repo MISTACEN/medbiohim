@@ -115,9 +115,9 @@ jobs:
             get -O verify/ '${SITE}backend/config/routes/tests.php';
             get -O verify/ '${SITE}backend/config/routes/platform.php';
             bye"
-          grep -q "source_key=:value" verify/TestRepository.php
-          grep -q "resolveTestId" verify/preparation.php
-          grep -q "resolveTestId" verify/tests.php
+          grep -q "LEFT JOIN public.content_sources cs ON cs.id = t.source_key" verify/TestRepository.php
+          grep -q "function resolveTestId" verify/preparation.php
+          grep -q "function resolveTestId" verify/tests.php
           grep -q "trainers/feed/{id}/image" verify/platform.php
           echo "Backend deployment verification passed."
 
@@ -129,4 +129,4 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-# 2026-10-02: deploy the verified backend + histology content tree.
+# 2026-10-04: deployment verifier aligned with current backend contracts.
