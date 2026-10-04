@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, CheckCircle2, Clock3, RefreshCw, Sparkles, TriangleAlert } from "lucide-react";
-import { getAcademicState, generateAcademicAiPlan, type AcademicState } from "@/lib/api";
+import { getAcademicState, generateAcademicAiPlan, syncAcademicState, type AcademicState } from "@/lib/api";
 
 const label: Record<string,string> = {
   retake:"пересдача", makeup:"досдача", exam:"экзамен", credit:"зачёт",
@@ -18,6 +18,7 @@ export default function AcademicPage() {
   const [state,setState]=useState<AcademicState|null>(null);
   const [loading,setLoading]=useState(true);
   const [generating,setGenerating]=useState(false);
+  const [syncing,setSyncing]=useState(false);
   const [error,setError]=useState<string|null>(null);
 
   const load=useCallback(async()=>{
@@ -28,6 +29,13 @@ export default function AcademicPage() {
   },[]);
 
   useEffect(()=>{ void load(); },[load]);
+
+  const syncNow=async()=>{
+    setSyncing(true); setError(null);
+    const r=await syncAcademicState();
+    if(r.ok) await load(); else setError(r.error.message);
+    setSyncing(false);
+  };
 
   const makePlan=async()=>{
     setGenerating(true); setError(null);
@@ -57,6 +65,7 @@ export default function AcademicPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <button onClick={syncNow} disabled={syncing} className="inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"><RefreshCw className="h-4 w-4"/> {syncing ? "Синхронизируем…" : "Синхронизировать"}</button>
             <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-slate-700">
               <RefreshCw className="h-4 w-4"/> Обновить
             </button>
