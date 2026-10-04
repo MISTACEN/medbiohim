@@ -386,3 +386,35 @@ fetchMaterialFile делал единичный fetch без refresh.
 
 ### D2-C — Session storage
 learning_sessions API существует, но отдельного пользовательского UI сейчас нет. Текущие preparation/training flows используют собственные session endpoints. Универсальный /sessions слой не является обязательным production dependency и остаётся кандидатом на удаление после проверки исторических consumer'ов.
+
+
+# Closure update — 2026-10-04
+
+## Code Check blocker resolution
+
+The final failing Code Check on commit `9fea2018822904ec81468975b540690db186b143` reported:
+```
+src/app/admin/tools/page.tsx(51,21): TS2552: Cannot find name 'adminValidateContent'
+```
+
+Root cause: the function existed in `src/lib/api.ts`, but the page did not import it.
+
+Fixed in commit `84d4684a013660e9c6a8e0d624edaae9ab4f7c13`.
+
+Verified for that commit:
+- ✅ literal escaped-newline guard
+- ✅ pre-deploy audit
+- ✅ TypeScript
+- ✅ Next.js production build
+- ✅ PHP syntax
+- ✅ smoke
+- ✅ package/archive workflows
+
+The documentation-only commits that record this status triggered a fresh Code Check run for the current head; while that run is executing, the previously failing blocker itself is resolved and the last completed Code Check is green.
+
+## Current remaining work is not a hidden compile blocker
+
+The deep audits now classify the remaining work as:
+- external delivery: Vercel production verification, SpaceWeb/B2 media verification, AI provider credentials/network;
+- product completion: generic document viewer, specialized subject-plan editor, trainer-card editor, material metadata editor, version-history UI, bulk content validation, broader chemistry ingestion;
+- architecture cleanup: route consolidation where safe.
