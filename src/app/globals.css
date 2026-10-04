@@ -355,9 +355,9 @@ html[data-theme="aero-glass"] .text-slate-500 {
 .schedule-view-title{margin-top:3px;font-size:24px;line-height:1.2;font-weight:800;letter-spacing:-.025em;color:var(--text);}
 .schedule-view-subtitle{margin-top:4px;color:var(--muted);font-size:12px;}
 .schedule-toolbar-actions{display:flex;align-items:center;gap:7px;flex-shrink:0;}
-.schedule-month-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:0;}
-.schedule-month-grid{display:grid;grid-template-columns:repeat(7,minmax(105px,1fr));border-right:1px solid var(--border);}
-.schedule-month-weekday{height:42px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:color-mix(in srgb,var(--primary-soft) 20%,var(--card));}
+.schedule-month-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:0;min-width:0;}
+.schedule-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-right:1px solid var(--border);min-width:0;}
+.schedule-month-weekday{min-width:0;height:42px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:color-mix(in srgb,var(--primary-soft) 20%,var(--card));}
 .schedule-month-cell{min-width:0;min-height:128px;padding:8px;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--card) 88%,transparent);text-align:left;color:var(--text);transition:.18s;cursor:pointer;}
 .schedule-month-cell:nth-child(7n){border-right:0;}
 .schedule-month-cell:hover{background:color-mix(in srgb,var(--primary-soft) 42%,var(--card));}
@@ -429,3 +429,4 @@ html[data-theme="aero-glass"] .text-slate-500 {
   .schedule-semester-metrics{grid-template-columns:1fr 1fr;padding:14px}.schedule-semester-progress{margin:0 14px 14px}.schedule-semester-timeline{padding:0 14px 14px}
   .schedule-semester-week{grid-template-columns:1fr;padding:10px}.schedule-semester-week-track{order:3}.schedule-semester-week-info{grid-column:auto;flex-wrap:wrap}
 }
+\n.schedule-month-layout > *{min-width:0;}\n.schedule-month-cell,.schedule-month-weekday{overflow:hidden;}\n.schedule-month-events{min-width:0;}\n.schedule-mini-event{min-width:0;max-width:100%;}\n@media (min-width:1200px){.schedule-month-cell{min-height:116px;padding:7px}.schedule-mini-event{font-size:8px;padding:3px 5px}.schedule-mini-event b{font-size:7px}.schedule-month-side{padding:18px}}\n
