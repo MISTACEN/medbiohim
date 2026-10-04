@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardList, Calendar, Upload, Check, Loader2 } from "lucide-react";
-import { homeworks as initial } from "@/lib/mock-data";
 import type { HomeworkItem } from "@/types";
 import { listHomeworks, submitHomework, uploadFile, type ApiHomework } from "@/lib/api";
 
@@ -39,10 +38,10 @@ function mapApi(h: ApiHomework): HomeworkItem {
 }
 
 export default function HomeworkPage() {
-  const [items, setItems] = useState<HomeworkItem[]>(initial);
+  const [items, setItems] = useState<HomeworkItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
-  const [source, setSource] = useState<"mock" | "api">("mock");
+  const [source, setSource] = useState<"api" | "unavailable">("api");
   const [note, setNote] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,9 +55,9 @@ export default function HomeworkPage() {
         setNote(null);
         return;
       }
-      if (!res.ok) setNote(`API: ${res.error.message} — mock`);
+      if (!res.ok) { setItems([]); setSource("unavailable"); setNote(`Не удалось загрузить задания: ${res.error.message}`); }
     } catch {
-      setNote("API недоступен — mock");
+      setItems([]); setSource("unavailable"); setNote("Сервис заданий временно недоступен");
     }
   }
 
