@@ -400,3 +400,13 @@
 - 🟡 generic DOCX/PDF viewer for non-histology materials;
 - 🟡 mobile schedule agenda;
 - 🟡 polished subject-plan/material/trainer-card editors and visual version history.
+## P0 blockers confirmed
+
+- ✅ literal escaped newline in HistologyTrainer fixed; latest Code Checks are green.
+- ✅ active frontend /api-compat calls removed.
+- ✅ sequential bank/preparation contract is covered by current preparation flow.
+- ✅ homework production mock fallback removed.
+- ✅ admin schedule save uses real /admin/schedule.
+- 🟡 remaining P0-class work is external/runtime verification (media and AI credentials) rather than failing CI.
+
+## P1/P2 cleanup confirmed
