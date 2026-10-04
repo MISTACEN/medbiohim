@@ -68,7 +68,7 @@ function formatMinutes(minutes: number) {
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
 }
 function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
-
+function breakRange(value: string): { start: number; end: number } | null {\n  const m = String(value || "").match(/(\\d{1,2}:\\d{2})\\s*(?:-|–|—|to)\\s*(\\d{1,2}:\\d{2})/i);\n  if (!m) return null;\n  const start = timeToMinutes(m[1]);\n  const end = timeToMinutes(m[2]);\n  return end > start ? { start, end } : null;\n}\n
 /** Pack overlapping events into side-by-side columns (classic calendar layout). */
 function layoutDayColumns(items: ScheduleItem[]): Array<{ item: ScheduleItem; col: number; cols: number }> {
   const sorted = [...items].sort((a, b) => {
@@ -337,7 +337,7 @@ export default function SchedulePage() {
   const nowTop = (now.minutes - GRID_START_MIN) * PX_PER_MIN;
   const weekCount = items.length;
   const totalCount = allItems.length;
-  const activePeriod = meta.periods.find((p) => p.start_date <= weekEnd && (!p.end_date || p.end_date >= weekStart));
+  const activePeriod = meta.periods.find((p: any) => p.start_date <= weekEnd && (!p.end_date || p.end_date >= weekStart));
 
   return (
     <div className="space-y-5">
@@ -392,7 +392,7 @@ export default function SchedulePage() {
         <>
           {view === "week" && (
             <div className="space-y-3">
-              {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}
+              {meta.periods.length > 0 && <div className="flex flex-wrap gap-2">{meta.periods.map((p: any) => <div key={p.id} className="rounded-xl border px-3 py-2 text-xs" title={p.notes || ""}><b>{p.title}</b> · {p.start_date}{p.end_date ? ` — ${p.end_date}` : ""}</div>)}</div>}
             <div className="schedule-shell">
               <div className="schedule-scroll">
                 <div className="schedule-grid" style={{ minWidth: 920 }}>
@@ -525,7 +525,7 @@ export default function SchedulePage() {
                 {Array.isArray(lesson.study) && lesson.study.length>0 && (
                   <div className="rounded-xl border p-3">
                     <div className="mb-1 font-semibold">Что изучать / детали</div>
-                    <ul className="list-disc space-y-1 pl-4">{lesson.study.map((s,i)=><li key={i}>{s}</li>)}</ul>
+                    <ul className="list-disc space-y-1 pl-4">{lesson.study.map((s: any,i: number)=><li key={i}>{s}</li>)}</ul>
                   </div>
                 )}
               </div>
