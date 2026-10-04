@@ -143,13 +143,6 @@ export async function srsReview(card_id: string, rating: 1 | 2 | 3 | 4) {
 ) {
   return api<{ card: SrsCard }>("/srs/cards", { method: "POST", body: JSON.stringify(payload) });
 }
-export async function srsListCards(limit = 100, subject_slug?: string) {
-  const p = new URLSearchParams();
-  p.set("limit", String(limit));
-  if (subject_slug) p.set("subject_slug", subject_slug);
-  return api<{ items: SrsCard[]; count: number }>(`/srs/cards?${p}`);
-}
-
 /* —— Persistent AI chat —— */
 export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter";
 export type AiConversation = { id:string; title:string; provider:AiProvider; model?:string|null; subject_slug?:string|null; created_at:string; updated_at:string };
