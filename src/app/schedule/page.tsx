@@ -462,7 +462,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
                       {SLOTS.map((t)=><div key={t} className="schedule-hour-line" />)}
                       {layoutDayColumns(grouped.get(key)||[]).map(({ item, col, cols })=>(
                         <ScheduleCard
-                          key={item.id||`${item.date}-${item.start_time}-${item.subject_name}-${col}`}
+                          key={String(item.id ?? `${item.date}-${item.start_time}-${item.subject_name}-${col}`)}
                           item={item}
                           col={col}
                           cols={cols}
