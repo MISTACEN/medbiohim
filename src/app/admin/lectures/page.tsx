@@ -33,7 +33,7 @@ function exec(command: string, value?: string) {
 function sanitizeEditorHtml(raw: string): string {
   if (typeof window === "undefined") return raw;
   const doc = new DOMParser().parseFromString(raw, "text/html");
-  const allowed = new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN"]);
+  const allowed = new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","FONT"]);
   const walk = (root: Node) => {
     [...root.childNodes].forEach((node) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
