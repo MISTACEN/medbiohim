@@ -32,7 +32,6 @@ return static function (Router $router): void {
         '00_admin_import_atomic.php',
         'admin.php',
         'platform.php',
-        'tutor_rest.php',
         'ai_chat.php',
         'presence.php',
         'calculators_rest.php',
