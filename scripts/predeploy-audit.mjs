@@ -97,6 +97,19 @@ if (existsSync(homeworkPage)) {
   else pass("homework page uses API-only data");
 }
 
+const retiredPaths = [
+  "frontend",
+  "spaceweb_upload",
+  "src/lib/mock-data.ts",
+  "src/components/ui/Sparkline.tsx",
+  "src/lib/chemistry/fixtures.ts",
+  "backend/src/Services/QuestionBank.php",
+];
+for (const retired of retiredPaths) {
+  if (existsSync(join(root, retired))) fail("retired artifact remains: " + retired);
+}
+if (!retiredPaths.some((p) => existsSync(join(root, p)))) pass("retired mock/shadow artifacts removed");
+
 if (existsSync(join(root, "api/index.php"))) {
   fail("legacy root api/index.php exists; architecture expects Next proxy -> SpaceWeb");
 } else {
