@@ -264,6 +264,10 @@ export default function SchedulePage() {
   const [meta, setMeta] = useState<ScheduleMeta>({ periods: [], duration_rules: [] });
 
   useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setView("day");
+  }, []);
+
+  useEffect(() => {
     const tick = () => setNow(nowParts());
     tick();
     const id = window.setInterval(tick, 15000);
