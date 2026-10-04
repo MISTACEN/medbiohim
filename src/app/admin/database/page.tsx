@@ -44,7 +44,7 @@ export default function AdminDatabasePage(){
    const r:any=await adminDbAudit(100);
    if(r.ok)setAudit((r.data?.items||[]) as AdminDbRow[]);
  }
- useEffect(()=>{if(hasToken()){void loadMeta();void loadAudit();const requested=search.get("table");if(requested)setTable(requested)}},[search]);
+ useEffect(()=>{if(hasToken()){const requested=new URLSearchParams(window.location.search).get("table");if(requested)setTable(requested);void loadMeta();void loadAudit()}},[]);
  useEffect(()=>{if(hasToken())void load()},[table]);
  const columns=useMemo(()=>meta?.columns?.length?meta.columns:Array.from(new Set(rows.flatMap((r:AdminDbRow)=>Object.keys(r as object)))),[meta,rows]);
  const dirty=(r:AdminDbRow)=>{const o=original.find((x:AdminDbRow)=>keyOf(x,keys)===keyOf(r,keys));return JSON.stringify(r)!==JSON.stringify(o)};
