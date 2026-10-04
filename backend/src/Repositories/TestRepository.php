@@ -120,16 +120,20 @@ final class TestRepository
         return $row === false ? null : $row;
     }
 
-    public function attemptsForUser(string $userId): array
+    public function attemptsForUser(string $userId, ?string $subjectId = null): array
     {
-        $stmt = $this->db->prepare(
-            'SELECT a.*, t.title AS test_title
-               FROM public.test_attempts a
-               JOIN public.tests t ON t.id = a.test_id
-              WHERE a.user_id = :uid
-              ORDER BY a.started_at DESC LIMIT 50'
-        );
-        $stmt->execute(['uid' => $userId]);
+        $sql = 'SELECT a.*, t.title AS test_title, t.subject_id
+                  FROM public.test_attempts a
+                  JOIN public.tests t ON t.id = a.test_id
+                 WHERE a.user_id = :uid';
+        $params = ['uid' => $userId];
+        if ($subjectId !== null && $subjectId !== '') {
+            $sql .= ' AND t.subject_id = :sid';
+            $params['sid'] = $subjectId;
+        }
+        $sql .= ' ORDER BY a.started_at DESC LIMIT 50';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll() ?: [];
     }
 }
