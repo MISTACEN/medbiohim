@@ -158,31 +158,5 @@ return static function (Router $r): void {
         Response::success(['deleted' => true], $q->requestId);
     });
 
-    $r->post('/api/v1/admin/lectures/assist', static function (Request $q, array $p): void {
-        if (!RequireAuth::handle($q)) return;
-        if (!RequireRole::handle($q, ['admin', 'moderator', 'teacher'])) return;
-        $rl = RateLimiter::attempt('lec-assist:' . RateLimiter::clientIp(), 30, 3600);
-        if (empty($rl['allowed'])) {
-            Response::error('RATE_LIMIT', 'Слишком много запросов assist', $q->requestId, 429);
-            return;
-        }
-        $action = trim((string) ($q->json('action') ?? ''));
-        $context = (string) ($q->json('context') ?? $q->json('text') ?? '');
-        $subject = $q->json('subject');
-        $subject = $subject !== null ? trim((string) $subject) : null;
-        $imageUrl = $q->json('image_url');
-        $imageUrl = $imageUrl !== null && trim((string)$imageUrl) !== '' ? trim((string)$imageUrl) : null;
-        if ($action === '') {
-            Response::error('VALIDATION', 'action required', $q->requestId, 422);
-            return;
-        }
-        try {
-            $out = (new LectureGeneratorService())->assist($action, $context, $subject, $imageUrl);
-            Response::success($out, $q->requestId);
-        } catch (\InvalidArgumentException $e) {
-            Response::error('VALIDATION', $e->getMessage(), $q->requestId, 422);
-        } catch (\Throwable $e) {
-            Response::error('ASSIST_FAILED', $e->getMessage(), $q->requestId, 500);
-        }
-    });
+    
 };
