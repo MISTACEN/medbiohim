@@ -177,7 +177,7 @@ export async function adminListCommunity(): Promise<any> { return api("/admin/co
 export async function adminListHomeworks(): Promise<any> { return api("/admin/homeworks") as any; }
 export async function adminListLectures(status?:string,subject?:string): Promise<any> { const q=new URLSearchParams(); if(status)q.set("status",status); if(subject)q.set("subject",subject); return api("/admin/lectures" + (q.toString()?"?"+q:"")) as any; }
 export async function adminListMaterials(): Promise<any> { return api("/admin/materials") as any; }
-export async function adminListQuestions(..._args: any[]): Promise<any> { return api("/admin/questions") as any; }
+export async function adminListQuestions(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/admin/questions" + (q.toString()?"?"+q:"")) as any; }
 export async function adminListSchedule(groupId?:string,semester?:number): Promise<any> { const q=new URLSearchParams(); if(groupId)q.set("group_id",groupId); if(semester!=null)q.set("semester",String(semester)); return api("/admin/schedule" + (q.toString()?"?"+q:"")) as any; }
 export async function adminListUsers(): Promise<any> { return api("/admin/users") as any; }
 export async function adminOverview(): Promise<any> { return api("/admin/overview") as any; }
