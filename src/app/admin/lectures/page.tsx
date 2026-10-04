@@ -141,7 +141,7 @@ function RichEditor({
       const id = String(r.data?.file?.id || "");
       if (!id) throw new Error("Сервер не вернул ID файла");
       const d:any = await getFileDownload(id);
-      const url = d.ok ? String(d.data?.download?.url || "") : "";
+      const url = fileDownloadUrl(id);
       const mime = String(r.data?.file?.mime_type || file.type || "");
       const type:Attachment["type"] = mime === "application/pdf" ? "pdf" : mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : "file";
       const att:Attachment = {file_id:id,type,name:file.name,url,mime_type:mime,page:type==="pdf"?Number(page)||1:undefined};
