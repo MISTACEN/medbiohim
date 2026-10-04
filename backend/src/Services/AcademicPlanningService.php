@@ -29,7 +29,11 @@ final class AcademicPlanningService
 
     public function state(string $userId): array
     {
-        $this->syncFromDatabase($userId);
+        try {
+            $this->syncFromDatabase($userId);
+        } catch (\Throwable $e) {
+            // Live dashboard still works from current tables if the sync function is unavailable.
+        }
         $profile = $this->one("select id, full_name, course_number, semester from public.users where id=:u", [':u'=>$userId]) ?? [
             'id'=>$userId,'full_name'=>'Student','course_number'=>null,'semester'=>null
         ];
@@ -252,7 +256,8 @@ final class AcademicPlanningService
                     'items'=>$deterministic,'source_state'=>$state];
         } catch(\Throwable $e) {
             if($this->db->inTransaction()) $this->db->rollBack();
-            throw $e;
+            return ['plan'=>['id'=>null,'summary'=>$summary,'generated_by'=>$provider,'model'=>$model,'persisted'=>false],
+                    'items'=>$deterministic,'source_state'=>$state];
         }
     }
 
