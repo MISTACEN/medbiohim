@@ -86,7 +86,7 @@ return static function (Router $r): void {
     });
 
     $bankAdmin = static function (Request $q): bool {
-        return RequireAuth::handle($q) && RequireRole::handle($q, ['admin']);
+        return RequireAuth::handle($q) && RequireRole::handle($q, ['admin', 'teacher', 'moderator']);
     };
 
     $r->put('/api/v1/admin/question-bank/{id}', static function (Request $q, array $p) use ($bankAdmin): void {
