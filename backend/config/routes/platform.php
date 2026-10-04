@@ -571,7 +571,7 @@ return static function (Router $router): void {
         try {
             Response::success(['items' => (new ContentStore())->listCurriculum()], $req->requestId);
         } catch (\Throwable $e) {
-            Response::success(['items' => []], $req->requestId);
+            Response::error('DB_UNAVAILABLE', 'Сообщество временно недоступно.', $req->requestId, 503);
         }
     });
 
@@ -595,15 +595,6 @@ return static function (Router $router): void {
 
     $router->get('/api/v1/progress', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
-        Response::success([
-            'overall_pct' => 0,
-            'subjects' => [],
-            'weak_topics' => [],
-            'recent_activity' => [],
-            'ledger' => ['count' => 0],
-            'homework' => ['total' => 0, 'done' => 0, 'percent' => 0, 'items' => []],
-            'tests' => ['attempts' => 0, 'finished' => 0, 'avg_score' => null, 'items' => []],
-            'note' => 'degraded',
-        ], $req->requestId);
+        Response::error('DB_UNAVAILABLE', 'Прогресс временно недоступен: база данных не отвечает.', $req->requestId, 503);
     });
 };
