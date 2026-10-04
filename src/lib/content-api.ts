@@ -95,14 +95,6 @@ export async function listTrainerFeed(
   );
 }
 
-) {
-  return api<{ answer: Record<string, unknown>; correct: boolean | null }>(
-    "/trainers/feed/answer",
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-}
-
-
 export type TrainingLayout = "sidebar" | "list" | "top";
 export type TrainingLabelMode = "with" | "without" | "manual";
 export type TrainingContentType = "all" | "preparation" | "electronogram";
