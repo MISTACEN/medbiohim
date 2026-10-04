@@ -324,34 +324,58 @@
 
 # Audit update — 2026-10-04
 
-Полный отчёт: docs/FULL-AUDIT-2026-10-04.md.
-Реестр: docs/UNFINISHED-REGISTRY.md.
-API audit: docs/API-COVERAGE-2026-10-04.md.
+Актуальные документы:
+- docs/FULL-AUDIT-2026-10-04.md — первый полный аудит;
+- docs/DEEP-AUDIT-2-2026-10-04.md — повторный аудит скрытых следов функций и UI coverage;
+- docs/UNFINISHED-REGISTRY.md — актуальный реестр;
+- docs/API-COVERAGE-2026-10-04.md — API coverage.
 
-## P0 blockers confirmed
-- P0: literal escaped newline in src/components/trainers/HistologyTrainer.tsx:248 breaks Code Checks before typecheck/build.
-- P0: historical /api-compat layer in src/lib/api.ts is used by real user/admin flows.
-- P0: sequential bank flow does not match the preparation page contract.
-- P0: preparation UI does not match structured question/options returned by backend.
-- P0: homework has a production mock fallback.
-- P0: admin schedule save uses the missing /api-compat route.
+## Что из старых P0 уже закрыто
 
-## P1/P2 cleanup confirmed
-- P1: two backend deploy workflows.
-- P1: divergent spaceweb_upload copy.
-- P1: trainer media 404/502.
-- P1: AI provider runtime failures.
-- P2: stale frontend shadow tree.
-- P2: unused Sparkline.tsx.
-- P2: unused chemistry fixtures.
-- P2: stale deploy/hotfix docs.
-- P2: organic chemistry placeholder ID map.
+- ✅ literal escaped newline в HistologyTrainer.tsx;
+- ✅ frontend /api-compat calls удалены;
+- ✅ homework mock-data удалён;
+- ✅ sequential bank flow синхронизирован с preparation;
+- ✅ structured question options поддерживаются preparation/test flows;
+- ✅ admin schedule save идёт через реальный /admin/schedule;
+- ✅ frontend/ и spaceweb_upload/ удалены;
+- ✅ dead mock/fixture/UI artifacts удалены;
+- ✅ legacy QuestionBank service удалён;
+- ✅ false-zero admin question/progress fallbacks закрываются explicit errors/degraded state.
 
-## Revised next order
-1. Clean runtime/API and restore green Code Checks.
-2. Fix preparation and sequential modes.
-3. Remove production mock fallbacks.
-4. Consolidate deploy/source copies.
-5. Close media and AI.
-6. Remove dead/legacy code and stale docs.
-7. Return to product roadmap.
+## Что осталось
+
+### P1 — target environment
+- 🟡 проверить последнюю Vercel сборку;
+- 🟡 проверить последнюю SpaceWeb backend deployment;
+- 🟡 закрыть trainer media 404/502 физическим media smoke-test;
+- 🟡 проверить AI provider chain end-to-end.
+
+### P2 — product/architecture
+- 🟡 общий document viewer для поддерживаемых форматов;
+- 🟡 material metadata editor;
+- 🟡 trainer card editor;
+- 🟡 content version history/rollback UI;
+- 🟡 bulk content validation;
+- 🟡 duplicate route consolidation;
+- ⚪ generic learning_sessions layer — удалить после проверки legacy consumers;
+- 🟡 расширение chemistry data/content.
+
+## Current CI baseline
+
+Последний полностью завершённый code-check перед самым новым documentation-only commit:
+- ✅ TypeScript;
+- ✅ Next.js production build;
+- ✅ PHP syntax (93 files);
+- ✅ predeploy audit: no escaped-newline, no retired /api-compat, homework API-only;
+- ✅ smoke.
+
+Новый code-check после Deep Audit commit запущен отдельно; его итог нужно дождаться перед финальным production verdict.
+
+## Порядок дальше
+
+1. Дождаться зелёного code-check.
+2. Проверить Vercel/SpaceWeb.
+3. Закрыть media.
+4. Закрыть AI provider runtime.
+5. Потом делать P2 product/architecture cleanup.
