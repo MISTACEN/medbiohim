@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
-import { adminOverview, health, hasToken } from "@/lib/api";
+import { adminOverview, adminPresence, health, hasToken } from "@/lib/api";
 
 /** Единый Центр управления CMS. */
 export default function AdminToolsPage() {
@@ -30,14 +30,16 @@ export default function AdminToolsPage() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"overview" | "learning" | "system">("overview");
+  const [presence, setPresence] = useState<any[]>([]);
 
   async function load() {
     setRefreshing(true);
     setError("");
-    const [o, h] = await Promise.all([adminOverview(), health()]);
+    const [o, h, p] = await Promise.all([adminOverview(), health(), adminPresence(180)]);
     if (o.ok) setCounts(o.data.counts || {});
     else setError(o.error.message);
     if (h.ok) setBackendHealth(h.data);
+    if (p.ok) setPresence(p.data.items || []);
     setRefreshing(false);
   }
 
@@ -161,6 +163,25 @@ export default function AdminToolsPage() {
                 {JSON.stringify(backendHealth || { status: "нет ответа" }, null, 2)}
               </pre>
               <button type="button" className="btn-secondary" onClick={() => void load()}>Проверить снова</button>
+              <div className="rounded-2xl border p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">Сейчас онлайн</div>
+                    <div className="text-xs text-slate-500">heartbeat за последние 3 минуты</div>
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-600">{presence.length}</div>
+                </div>
+                {presence.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {presence.slice(0, 12).map((x:any) => (
+                      <div key={String(x.user_id || x.id)} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                        <span className="truncate">{String(x.name || x.email || x.user_id)}</span>
+                        <span className="ml-3 text-xs text-slate-500">{String(x.role || "")}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>
