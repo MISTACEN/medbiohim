@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 import clsx from "clsx";
 import {
@@ -25,8 +24,7 @@ type TrainerLayout = "sidebar" | "list" | "top";
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, refresh } = useAuth();
-  const search = useSearchParams();
-  const recoveryMode = search.get("recovery") === "1";
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   const [account, setAccount] = useState<AccountSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,6 +64,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
+    if (q.get("recovery") === "1") setRecoveryMode(true);
     if (q.get("linked") === "1" || q.get("link") === "ok") {
       setMsg("Провайдер привязан. Данные остаются на том же аккаунте.");
       void load();
