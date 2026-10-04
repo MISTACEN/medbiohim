@@ -73,3 +73,29 @@ Trainer feed image endpoints всё ещё требуют закрытия 404/5
 2. изменить статус в этом файле;
 3. при необходимости обновить `SYNC_STAMP.md`;
 4. только после проверки ставить ✅.
+
+
+## 2026-10-04 audit override
+
+Последний полный аудит выявил P0 defects, поэтому следующие фазы нельзя считать закрытыми только по наличию кода:
+
+- Source of truth / sync → 🟡 runtime cleanup required
+- Auth / account → 🟡 registration still uses historical api-compat wrapper
+- Schedule → 🔴 admin save path uses missing api-compat; CI is red
+- Histology → 🔴 trainer CI blocker + media still not verified
+- Tests / Question Bank → 🔴 preparation/sequential/options contract mismatch
+- Materials → 🟡 viewer exists; target-environment file check remains
+- Admin CMS → 🔴 active admin operations still point to api-compat
+- AI Tutor → 🔴 provider availability unresolved
+- UI system → 🟡 Aero Glass remains beta and is not the current priority
+- Documentation → 🟡 audit registry created; stale docs remain to clean
+
+### Current CI evidence
+
+Latest main Code Checks for commit a3d580b978f30309837f60095e9bd47d4e828b04:
+- frontend: FAIL on literal escaped newline in HistologyTrainer.tsx:248
+- backend PHP syntax: PASS
+- smoke: PASS
+- backend/full archive packaging: PASS
+
+See docs/FULL-AUDIT-2026-10-04.md.
