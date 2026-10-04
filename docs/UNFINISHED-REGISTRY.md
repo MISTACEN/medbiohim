@@ -126,3 +126,26 @@ A remaining item can be marked ✅ only after:
 3. target environment responds correctly;
 4. UI path is reachable from normal navigation;
 5. no mock/demo data is used as production source-of-truth.
+
+## Deep audit 3 closure — 2026-10-04
+
+| ID | Finding | Result |
+|---|---|---|
+| D3-01 | shadowed domain route removal temporarily left malformed closure | ✅ fixed; backend PHP syntax green |
+| D3-02 | legacy /admin/lectures/assist referenced missing service method and had no UI consumer | ✅ removed |
+| D3-03 | legacy schedule PUT/local write routes | ✅ removed |
+| D3-04 | duplicate admin schedule import route | ✅ removed |
+| D3-05 | generic session frontend helpers had no current UI consumer | ✅ removed from frontend API |
+| D3-06 | admin/settings query-param hook risk | ✅ replaced with client effect |
+| D3-07 | admin content validator treated open ticket questions with empty answer as defects | ✅ validator corrected |
+| D3-08 | Supabase published tests/test_questions/materials/trainer cards integrity | ✅ live check found no orphan test links, missing material files, or missing trainer image paths |
+| D3-09 | generic material page showed no inline file preview | ✅ PDF/image inline preview added; other formats keep original-file action |
+| D3-10 | mobile schedule default remained desktop grid | ✅ small screens now default to day/agenda view |
+
+### Remaining external/product items
+
+- Vercel production is behind current main and needs a successful deployment.
+- SpaceWeb needs one final successful deploy run after code stabilizes.
+- Histology media needs real target-environment B2/SpaceWeb smoke test.
+- AI provider availability depends on runtime credentials/network.
+- Dedicated polished editors and full visual version history remain product polish.
