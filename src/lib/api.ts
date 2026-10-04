@@ -140,9 +140,6 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
-export async function listSessions(status?:string){return api<any>(`/sessions${status?`?status=${encodeURIComponent(status)}`:""}`)}
-export async function createSession(payload:Record<string,unknown>){return api<any>("/sessions",{method:"POST",body:JSON.stringify(payload)})}
-export async function updateSession(id:string,payload:Record<string,unknown>){return api<any>(`/sessions/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(payload)})}
 export async function listSchedule(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/schedule${q.toString()?`?${q}`:""}`)}
 export async function getDashboard(){return api<any>("/dashboard")}
 export async function getProgress(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/progress${q}`)}
