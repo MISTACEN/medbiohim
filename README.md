@@ -25,6 +25,11 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 ## Deployment chain
 `Browser → Vercel /api/v1 → SpaceWeb /api/v1 → PHP → Supabase`
 
+## План и документация
+- [ROADMAP.md](ROADMAP.md) — единый план проекта и порядок работ
+- [PHASES_STATUS.md](PHASES_STATUS.md) — текущее состояние фаз
+- [docs/README.md](docs/README.md) — карта документов и источников истины
+
 ## Docs
 - [BRANCHES.md](BRANCHES.md) — main vs beta
 - [docs/ACTIVE-EXPERIMENTS.md](docs/ACTIVE-EXPERIMENTS.md) — что тестируется на beta
