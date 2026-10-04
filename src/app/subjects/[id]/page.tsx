@@ -254,7 +254,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
       </section>
 
-      <nav className="subject-tabs flex flex-wrap gap-2" role="tablist" aria-label="Разделы предмета">
+      <nav className="flex flex-wrap gap-2" role="tablist" aria-label="Разделы предмета">
         {nav.map(({ id, label, Icon }) => {
           const active = tab === id;
           return (
@@ -265,7 +265,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               aria-selected={active}
               onClick={() => selectTab(id)}
               className={
-                "subject-tab inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition " +
+                "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition " +
                 (active
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
