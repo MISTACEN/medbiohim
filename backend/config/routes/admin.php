@@ -37,7 +37,32 @@ $router->put('/api/v1/admin/users/{id}/academic',static function(Request $req,ar
         Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);
     }
 });
-$router->get('/api/v1/admin/overview',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{$store=new ContentStore();$groups=$subjects=0;$anns=$sched=$tests=$curr=0;try{$groups=count((new GroupRepository())->listActive());}catch(\Throwable $e){}try{$subjects=count((new SubjectRepository())->listActive(null,null));}catch(\Throwable $e){}try{$anns=count($store->listAnnouncements());}catch(\Throwable $e){}try{$sched=count($store->listSchedule());}catch(\Throwable $e){}try{$tests=count($store->listTestsLocal());}catch(\Throwable $e){}try{$curr=count($store->listCurriculum());}catch(\Throwable $e){}Response::success(['site'=>$store->getSite(),'counts'=>['announcements'=>$anns,'groups'=>$groups,'subjects'=>$subjects,'schedule'=>$sched,'tests_local'=>$tests,'curriculum'=>$curr]],$req->requestId);}catch(\Throwable $e){Response::error('DB_UNAVAILABLE','Центр управления временно недоступен',$req->requestId,503);}});
+$router->get('/api/v1/admin/overview',static function(Request $req,array $params)use($adminGate):void{
+ if(!$adminGate($req))return;
+ try{
+  $store=new ContentStore();
+  $groups=count((new GroupRepository())->listActive());
+  $subjects=count((new SubjectRepository())->listActive(null,null));
+  $anns=count($store->listAnnouncements());
+  $sched=count($store->listSchedule());
+  $tests=count($store->listTestsLocal());
+  $curr=count($store->listCurriculum());
+  Response::success([
+   'site'=>$store->getSite(),
+   'counts'=>[
+    'announcements'=>$anns,
+    'groups'=>$groups,
+    'subjects'=>$subjects,
+    'schedule'=>$sched,
+    'tests_local'=>$tests,
+    'curriculum'=>$curr
+   ],
+   'source'=>'supabase'
+  ],$req->requestId);
+ }catch(\Throwable $e){
+  Response::error('DB_UNAVAILABLE','Центр управления временно недоступен',$req->requestId,503);
+ }
+});
 $router->put('/api/v1/admin/site',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$store=new ContentStore();Response::success(['site'=>$store->updateSite($req->jsonBody??[])],$req->requestId);});
 $router->get('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;Response::success(['items'=>(new ContentStore())->listAnnouncements()],$req->requestId);});
 $router->post('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$title=trim((string)$req->json('title',''));$body=trim((string)$req->json('body',''));if($title===''||$body===''){Response::error('VALIDATION_ERROR','title and body required',$req->requestId,422);return;}Response::success(['item'=>(new ContentStore())->createAnnouncement(['title'=>$title,'body'=>$body,'pinned'=>(bool)$req->json('pinned',false)])],$req->requestId,201);});
