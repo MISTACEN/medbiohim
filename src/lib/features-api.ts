@@ -116,10 +116,11 @@ export async function srsEnsure(count = 20, subject_slug?: string) {
     body: JSON.stringify({ count, subject_slug }),
   });
 }
-export async function srsDue(limit = 20, subject_slug?: string) {
+export async function srsDue(limit = 20, subject_slug?: string, scope?: "shared" | "personal") {
   const p = new URLSearchParams();
   p.set("limit", String(limit));
   if (subject_slug) p.set("subject_slug", subject_slug);
+  if (scope) p.set("scope", scope);
   return api<{ items: SrsCard[]; count: number }>(`/srs/due?${p}`);
 }
 export async function srsReview(card_id: string, rating: 1 | 2 | 3 | 4) {
@@ -127,6 +128,20 @@ export async function srsReview(card_id: string, rating: 1 | 2 | 3 | 4) {
     method: "POST",
     body: JSON.stringify({ card_id, rating }),
   });
+}
+
+export async function srsListCards(limit = 100, subject_slug?: string, scope?: "shared" | "personal") {
+  const p = new URLSearchParams();
+  p.set("limit", String(limit));
+  if (subject_slug) p.set("subject_slug", subject_slug);
+  if (scope) p.set("scope", scope);
+  return api<{ items: SrsCard[]; count: number }>(`/srs/cards?${p}`);
+}
+export async function srsAddCard(payload: { front: string; back?: string; subject_slug?: string; topic?: string }) {
+  return api<{ card: SrsCard }>("/srs/cards", { method: "POST", body: JSON.stringify(payload) });
+}
+export async function srsDeleteCard(id: string) {
+  return api<{ deleted: boolean }>(`/srs/cards/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 /* —— Persistent AI chat —— */
 export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter";
