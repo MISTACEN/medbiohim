@@ -95,6 +95,7 @@ export default function MaterialsPage() {
               {stripHtml(m.content_html) && <p className="mt-3 line-clamp-3 text-sm text-slate-600">{stripHtml(m.content_html)}</p>}
               <div className="mt-4 flex flex-wrap gap-2">
                 <button type="button" className="btn-primary text-xs" onClick={() => setActive(m)}>Читать</button>
+                {m.source?.id ? <a href={"/materials/source?key=" + encodeURIComponent(String(m.source.id))} className="btn-pill inline-flex items-center gap-1 text-xs"><FileText className="h-3.5 w-3.5" /> Метаданные</a> : null}
                 {m.source?.download_url ? <a href={m.source.download_url} target="_blank" rel="noreferrer" className="btn-pill inline-flex items-center gap-1 text-xs"><ExternalLink className="h-3.5 w-3.5" /> Исходник</a> : null}
               </div>
             </article>
