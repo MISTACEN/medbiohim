@@ -41,3 +41,5 @@
 
 Historical recovery notes are useful only when debugging an old incident.  
 Они не являются текущим планом и не должны дублировать ROADMAP/PHASES_STATUS.
+
+- [DEEP-AUDIT-3-2026-10-04.md](DEEP-AUDIT-3-2026-10-04.md) — третий глубокий проход по скрытым unfinished/legacy следам и live data integrity
