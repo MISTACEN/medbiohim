@@ -97,6 +97,7 @@ export function prefetchTrainerImages(ids:(string|null|undefined)[]):void{
 }
 export function peekTrainerImageUrl(id: string): string | null { if (typeof window === "undefined") return null; return trainerImageCache.get(String(id)) ?? null; }
 export async function login(email:string,password:string){return api<any>("/auth/login",{method:"POST",body:JSON.stringify({email,password})})}
+export async function recoverPassword(email:string){return api<any>("/auth/recover",{method:"POST",body:JSON.stringify({email})})}
 export async function me(){return api<any>("/auth/me")}
 export async function refreshSession(){const r=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!r)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:r})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
 export async function health(){return api<any>("/health")}
