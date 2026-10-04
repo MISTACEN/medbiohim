@@ -249,11 +249,11 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
       }
     });
     void libs.mermaid?.run({ nodes: ref.current.querySelectorAll(".mermaid") });
-  }, [ready, parts]);
+  }, [ready, parts, safeHtml]);
 
   return (
     <div ref={ref} className="lecture-body space-y-1 text-sm leading-relaxed">
-      {parts.map((p, i) => {
+      {safeHtml ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
         if (p.kind === "md") {
           return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
         }
@@ -294,12 +294,13 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
         }
         return null;
       })}
+      }
       <style>{`
         .lec-table-wrap { overflow-x: auto; margin: 1rem 0; }
         .lec-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .lec-table th, .lec-table td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; }
         .lec-table th { background: #f8fafc; font-weight: 600; }
-        .lec-math { margin: 0.75rem 0; overflow-x: auto; }
+        .lec-math { margin: 0.75rem 0; overflow-x: auto; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
       `}</style>
     </div>
   );
