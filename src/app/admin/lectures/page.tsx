@@ -6,11 +6,11 @@ import {
   Bold, Italic, Underline, Strikethrough, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Link2,
   ImagePlus, Video, FileText, UploadCloud, Search, Save, Eye, EyeOff,
-  CheckCircle2, X, ExternalLink, Sparkles, Undo2, Redo2,
+  X, ExternalLink, Sparkles, Undo2, Redo2,
 } from "lucide-react";
 import {
   adminDeleteLecture, adminGenerateLecture, adminListLectures, adminPublishLecture,
-  adminRejectLecture, adminUpdateLecture, listSubjectsCatalog, uploadFile, getFileDownload,
+  adminRejectLecture, adminUpdateLecture, listSubjectsCatalog, uploadFile, fileDownloadUrl,
   type Lecture,
 } from "@/lib/api";
 
