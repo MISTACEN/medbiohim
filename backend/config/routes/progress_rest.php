@@ -88,12 +88,7 @@ return static function (Router $r): void {
                 'requestId' => $q->requestId,
                 'message' => $e->getMessage(),
             ]);
-            Response::success([
-                'overall_pct' => 0,
-                'homework' => ['total' => 0, 'done' => 0, 'percent' => 0, 'items' => []],
-                'tests' => ['attempts' => 0, 'finished' => 0, 'avg_score' => null, 'items' => []],
-                'note' => 'Progress unavailable — check DB_URL / SERVICE_KEY',
-            ], $q->requestId);
+            Response::error('DB_UNAVAILABLE', 'Прогресс временно недоступен: база данных не отвечает.', $q->requestId, 503);
         }
     });
 };
