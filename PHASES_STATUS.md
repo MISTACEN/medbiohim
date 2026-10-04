@@ -117,3 +117,16 @@ The newest code-check after the Deep Audit documentation commit is running separ
 - Deployment → 🔴 current Vercel production deployment is behind current main.
 
 See docs/DEEP-AUDIT-3-2026-10-04.md.
+### Current CI evidence
+
+Latest main Code Checks for commit 84d4684a013660e9c6a8e0d624edaae9ab4f7c13:
+- frontend TypeScript: ✅
+- Next.js production build: ✅
+- escaped-newline guard: ✅
+- backend PHP syntax: ✅
+- smoke: ✅
+- backend/source archives: ✅
+
+The previous failing check was caused by a missing adminValidateContent import in src/app/admin/tools/page.tsx. It is fixed and the final Code Checks run is green.
+
+See docs/FULL-AUDIT-2026-10-04.md.
