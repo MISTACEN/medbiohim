@@ -1,25 +1,13 @@
-# HOTFIX trainings.php PG 42601 (2026-09-30)
+# HOTFIX trainings.php PG 42601 — historical record
 
-## Error
-```
-SQLSTATE[42601]: Syntax error at or near "\"
-LINE 1: UPDATE public.training_answers\n SET user_an...
-```
+Дата инцидента: 2026-09-30.
 
-## Cause
-In PHP **single-quoted** strings, `\n` is **literal** backslash + n, not a newline.
-PostgreSQL received the characters `\\` and rejected the query.
+Причина была связана с literal `\\n` в старом PHP SQL payload. Исправленная реализация уже находится в текущем `backend/config/routes/trainings.php`.
 
-## Fix (done in artifacts)
-All SQL strings in `trainings.php` now use **real newlines**.
+Важно: инструкции про `spaceweb_upload/` и `docs/restore-trainings-gh.sh` устарели и больше не применяются.
 
-Files (upload to SpaceWeb **now**):
-- `spaceweb_upload/config/routes/trainings.php`
+Текущий deployment source:
 - `backend/config/routes/trainings.php`
+- `.github/workflows/deploy-backend.yml`
 
-## GitHub main
-If `backend/config/routes/trainings.php` shows placeholder text, restore:
-```bash
-bash docs/restore-trainings-gh.sh spaceweb_upload/config/routes/trainings.php
-```
-(requires `gh auth login`)
+Этот документ сохраняется только как журнал инцидента.
