@@ -3,11 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Calendar,
   BookOpen,
   ClipboardList,
-  Clock,
-  ChevronRight,
   ArrowRight,
   Sparkles,
   Bot,
@@ -394,5 +391,4 @@ export default function DashboardPage() {
       </section>
     </div>
   );
-}
 }
