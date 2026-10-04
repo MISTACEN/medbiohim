@@ -4,6 +4,9 @@
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
+- Full audit: docs/FULL-AUDIT-2026-10-04.md
+- Unfinished registry: docs/UNFINISHED-REGISTRY.md
+- API coverage audit: docs/API-COVERAGE-2026-10-04.md
 
 ## Current verified data
 - Supabase histology `exam_questions`: 350
@@ -15,6 +18,8 @@
 - Published questions total: 855
 
 ## Current open checks
+- Code Checks currently red because of literal escaped newline in HistologyTrainer.tsx:248
+- Active frontend calls to missing /api-compat routes
 - Vercel production smoke-test after latest frontend corrections
 - SpaceWeb media 404/502 for trainer feed images
 - AI provider runtime health / fallback chain
