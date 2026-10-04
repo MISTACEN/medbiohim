@@ -1,15 +1,35 @@
-# Матрица предметов (2 курс)
+# Матрица предметов — 2 курс
 
-| Предмет | slug | План | Билеты |
-|---------|------|------|--------|
-| Физиология | physiology | yes | yes |
-| Гистология | histology | yes | **нет** |
-| Орг. химия | organic_chemistry | yes | yes (alias chemistry_organic_physical) |
-| Оптика | optics | нет | нет (≠ physics) |
-| Информатика | informatics | нет | нет |
-| ИТ | it_health | нет | нет |
-| ТВ | probability | нет | нет (≠ math) |
-| История медицины | history_medicine | нет | нет (≠ history Russia) |
-| Философия / ПМП / ФК | … | нет | нет |
+> Актуализация: 2026-10-04.  
+> Здесь фиксируется наличие основных типов контента, а не только UI.
 
-Вне 2 курса: biology, inorganic_chemistry, physics, history, math — только ручной выбор.
+| Предмет | slug | План | Билеты | Тесты | Материалы |
+|---|---|---:|---:|---:|---:|
+| Физиология | physiology | ✅ | ✅ | 🟡 | 🟡 |
+| **Гистология, цитология** | **histology** | ✅ | ✅ банк 5, tickets 0 | ✅ | ✅ |
+| Орг. химия | organic_chemistry | ✅ | ✅ | ✅ | 🟡 |
+| Оптика | optics | ⬜ | ⬜ | 🟡 | ⬜ |
+| Информатика | informatics | ⬜ | ⬜ | ⬜ | ⬜ |
+| ИТ | it_health | ⬜ | ⬜ | ⬜ | ⬜ |
+| ТВ | probability | ⬜ | ⬜ | ⬜ | ⬜ |
+| История медицины | history_medicine | ⬜ | ⬜ | ⬜ | ⬜ |
+| Философия / ПМП / ФК | … | ⬜ | ⬜ | ⬜ | ⬜ |
+
+## Гистология — отдельные факты
+
+- 2 курс, 3 семестр — canonical active subject.
+- 14 модулей учебного плана.
+- 350 `exam_questions`.
+- 5 `ticket_banks`.
+- 9 published tests.
+- 27 published materials.
+- 206 published trainer feed cards.
+- 30 карточек используются текущим trainer/atlas flow.
+- tickets table сейчас не заполнен: **0**.
+
+## Важное различие
+
+Наличие `ticket_banks` не означает наличие сгенерированных `tickets`.  
+Поэтому для гистологии сейчас правильно писать **«банк билетов есть, билеты ещё не созданы»**.
+
+Не считать этот файл заменой ROADMAP. Общий план находится в [../ROADMAP.md](../ROADMAP.md).
