@@ -95,7 +95,7 @@ export default function AdminQuestionsPage() {
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="card"><div className="text-xs uppercase tracking-wide text-slate-400">В БД</div><div className="mt-1 text-2xl font-bold">{total}</div><div className="text-xs text-slate-500">в текущем фильтре</div></div>
         <div className="card"><div className="text-xs uppercase tracking-wide text-slate-400">Банки</div><div className="mt-1 text-2xl font-bold">{banks.length}</div><div className="text-xs text-slate-500">по учебным дисциплинам</div></div>
-        <div className="card md:col-span-2"><div className="flex items-center gap-2 text-sm font-semibold"><Database className="h-4 w-4" /> Supabase-first CMS</div><p className="mt-1 text-xs text-slate-500">JSON на SpaceWeb используется только как fallback при отсутствии соединения с БД.</p></div>
+        <div className="card md:col-span-2"><div className="flex items-center gap-2 text-sm font-semibold"><Database className="h-4 w-4" /> Supabase-first CMS</div><p className="mt-1 text-xs text-slate-500">При сбое PostgreSQL используется только Supabase REST; локальный JSON не является источником данных.</p></div>
       </div>
 
       <section className="card space-y-4">
