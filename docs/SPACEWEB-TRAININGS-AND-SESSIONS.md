@@ -28,7 +28,7 @@ $skippedSql = (bool)$isSkipped ? 'true' : 'false';
 - `src/lib/content-api.ts` — `createHistologyTraining({ force?: boolean })`
 
 ## GPT / Supabase import
-См. `docs/GPT-FULL-TASK-HISTOLOGY-IMPORT.md`  
+См. `docs/HISTOLOGY-IMPORT.md`  
 SQL (локально / artifacts, крупные файлы):
 - `docs/20260929_import_histology_exam_questions_uuid.sql`
 - `docs/20260928_import_histology_tests.sql`
