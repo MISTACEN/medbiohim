@@ -1,12 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { FileText, Image as ImageIcon, X, Download, Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, ClipboardList, Download, FileText, Image as ImageIcon, Loader2, Search, X } from "lucide-react";
 import JSZip from "jszip";
 import { fetchMaterialFile, getTrainerImageUrl, hasToken } from "@/lib/api";
 import { listSubjectMaterials, listTrainerFeed, type SubjectMaterial } from "@/lib/content-api";
 
-type Item = SubjectMaterial & { kind: "doc" | "photo"; imageUrl?: string | null };
+type Kind = "doc" | "photo";
+type Tab = "all" | "doc" | "photo" | "scheme" | "method" | "tests" | "exam" | "other";
+type Item = SubjectMaterial & { kind: Kind; category: Exclude<Tab, "all" | "doc" | "photo"> | "photo" };
+
+function categoryOf(m: SubjectMaterial): Item["category"] {
+  const k = String(m.source_key || "");
+  if (k.startsWith("histology-em-")) return "scheme";
+  if (k.includes("-scheme-") || k.includes("-spinal-schemes") || k.includes("-gif-")) return "scheme";
+  if (k.includes("-method-")) return "method";
+  if (k.includes("-test-") || k.includes("-fed-") || k.includes("-control-")) return "tests";
+  if (k.includes("-exam-") || k.includes("-specimen-list")) return "exam";
+  return "other";
+}
+
+function categoryLabel(c: Item["category"]) {
+  return ({ scheme: "Схемы и ЭМ", method: "Методички", tests: "Тесты и контроль", exam: "Экзамен и препараты", other: "Прочее" })[c];
+}
+
+function categoryIcon(c: Item["category"]) {
+  if (c === "method") return <BookOpen className="h-5 w-5" />;
+  if (c === "tests" || c === "exam") return <ClipboardList className="h-5 w-5" />;
+  return <FileText className="h-5 w-5" />;
+}
 
 function DocxView({ blob, title }: { blob: Blob; title: string }) {
   const [text, setText] = useState<string[]>([]);
@@ -18,23 +40,24 @@ function DocxView({ blob, title }: { blob: Blob; title: string }) {
       try {
         const z = await JSZip.loadAsync(blob);
         const xml = await z.file("word/document.xml")?.async("string");
-        if (!xml) throw new Error("DOCX повреждён или пуст.");
+        if (!xml) throw new Error("Документ не содержит читаемого DOCX-текста.");
         const doc = new DOMParser().parseFromString(xml, "application/xml");
-        const ps = Array.from(doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "p"));
-        const rows = ps.map((p) => Array.from(p.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "t")).map((n) => n.textContent || "").join("")).filter(Boolean);
+        const ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        const ps = Array.from(doc.getElementsByTagNameNS(ns, "p"));
+        const rows = ps.map((p) => Array.from(p.getElementsByTagNameNS(ns, "t")).map((n) => n.textContent || "").join("")).filter(Boolean);
         const media = Object.keys(z.files).filter((n) => n.startsWith("word/media/"));
         const data: string[] = [];
         for (const n of media) {
-          const f = z.file(n);
-          if (!f) continue;
+          const f = z.file(n); if (!f) continue;
           const b64 = await f.async("base64");
           const ext = n.split(".").pop()?.toLowerCase() || "png";
           const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : "image/png";
           data.push("data:" + mime + ";base64," + b64);
         }
         if (alive) { setText(rows); setImgs(data); }
-      } catch (e) { if (alive) setText([e instanceof Error ? e.message : "Не удалось прочитать DOCX."]); }
-      finally { if (alive) setBusy(false); }
+      } catch (e) {
+        if (alive) setText([e instanceof Error ? e.message : "Не удалось прочитать документ."]);
+      } finally { if (alive) setBusy(false); }
     })();
     return () => { alive = false; };
   }, [blob]);
@@ -49,24 +72,53 @@ function DocxView({ blob, title }: { blob: Blob; title: string }) {
 
 export default function HistologyMaterials() {
   const [items, setItems] = useState<Item[]>([]);
-  const [tab, setTab] = useState<"all" | "doc" | "photo">("all");
+  const [tab, setTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
   const [active, setActive] = useState<Item | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     Promise.all([listSubjectMaterials({ subjectSlug: "histology" }), listTrainerFeed("histology", "mbh", 500)])
-      .then(async ([m, f]) => {
-        const docs: Item[] = m.ok ? (m.data.items || []).filter((x) => String(x.source_key || "").startsWith("histology-em-")).map((x) => ({ ...x, kind: "doc" as const })) : [];
-        const photos: Item[] = f.ok ? (f.data.items || []).map((x: any) => ({ id: String(x.id), subject_id: x.subject_id || "", subject_name: "Гистология", subject_slug: "histology", type: "image", title: x.preparation?.name || "Микропрепарат", source_key: x.source_key || null, kind: "photo" as const })) : [];
+      .then(([m, f]) => {
+        if (!m.ok) { setError(m.error.message); return; }
+        const docs: Item[] = (m.data.items || []).map((x) => ({ ...x, kind: "doc", category: categoryOf(x) }));
+        const photos: Item[] = (f.ok ? f.data.items || [] : []).map((x: any) => ({
+          id: String(x.id), subject_id: x.subject_id || "", subject_name: "Гистология", subject_slug: "histology",
+          type: "image", title: x.preparation?.name || "Микропрепарат", source_key: x.source_key || null,
+          module_title: x.plan_module_title || null, topic_title: x.plan_topic_title || null,
+          kind: "photo", category: "photo",
+        }));
         setItems([...docs, ...photos]);
-      }).finally(() => setLoading(false));
+      })
+      .catch(() => setError("Не удалось загрузить материалы."))
+      .finally(() => setLoading(false));
   }, []);
 
-  const visible = items.filter((x) => (tab === "all" || x.kind === tab) && (!q.trim() || x.title.toLowerCase().includes(q.trim().toLowerCase())));
+  const visible = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return items.filter((x) => {
+      const tabOk = tab === "all" || tab === x.kind || tab === x.category;
+      const text = [x.title, x.module_title, x.topic_title, x.source_key].filter(Boolean).join(" ").toLowerCase();
+      return tabOk && (!needle || text.includes(needle));
+    }).sort((a, b) => {
+      const at = a.topic_title || a.module_title || "Без темы";
+      const bt = b.topic_title || b.module_title || "Без темы";
+      return at.localeCompare(bt, "ru") || a.category.localeCompare(b.category, "ru") || a.title.localeCompare(b.title, "ru");
+    });
+  }, [items, tab, q]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Item[]>();
+    for (const x of visible) {
+      const key = x.topic_title || x.module_title || "Материалы без привязки к текущему учебному плану";
+      const arr = map.get(key) || []; arr.push(x); map.set(key, arr);
+    }
+    return [...map.entries()];
+  }, [visible]);
 
   async function open(x: Item) {
     setActive(x); setBlob(null); setPhoto(null);
@@ -74,39 +126,58 @@ export default function HistologyMaterials() {
     else setPhoto(await getTrainerImageUrl(x.id));
   }
 
+  const tabs: Array<[Tab, string]> = [
+    ["all", "Все"], ["scheme", "Схемы и ЭМ"], ["method", "Методички"], ["tests", "Тесты"], ["exam", "Экзамен"], ["photo", "Фото препаратов"]
+  ];
+
   if (loading) return <div className="card p-8 text-sm text-slate-500">Загрузка материалов…</div>;
 
   return <div className="space-y-5">
     <section className="card p-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><h2 className="text-lg font-bold">Материалы по гистологии</h2><p className="mt-1 text-sm text-slate-500">Все нужное внутри предмета: документы, микропрепараты и электронограммы.</p></div>
-        <label className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти…" className="w-64 rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm" /></label>
+        <div><h2 className="text-lg font-bold">Материалы по гистологии</h2><p className="mt-1 text-sm text-slate-500">3 семестр · материалы разложены по темам учебного плана. Материалы следующих семестров не смешиваются с текущим.</p></div>
+        <label className="relative w-full sm:w-72"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти материал…" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pl-9 text-sm text-slate-900 placeholder:text-slate-400" /></label>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {([["all","Все"],["doc","Документы"],["photo","Фото препаратов"]] as const).map(([k,l]) => <button key={k} type="button" onClick={() => setTab(k)} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (tab === k ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white text-slate-700")}>{l}</button>)}
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        {tabs.map(([k,l]) => <button key={k} type="button" onClick={() => setTab(k)} className={"shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold " + (tab === k ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white text-slate-700")}>{l}</button>)}
       </div>
+      {error && <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
     </section>
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {visible.map((x) => <button key={x.id} type="button" onClick={() => void open(x)} className="card p-5 text-left transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">{x.kind === "photo" ? <ImageIcon className="h-6 w-6" /> : <FileText className="h-6 w-6" />}</div>
-        <h3 className="mt-4 line-clamp-2 font-semibold text-slate-900">{x.title}</h3>
-        <p className="mt-2 text-xs text-slate-500">{x.kind === "photo" ? "Фото препарата · открыть" : "DOCX · открыть на сайте"}</p>
-      </button>)}
-    </div>
-    {active && <div className="fixed inset-0 z-[70] bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6" onMouseDown={() => setActive(null)}>
+
+    {grouped.length === 0 ? <div className="card p-8 text-center text-sm text-slate-500">По выбранному фильтру материалов нет.</div> :
+      grouped.map(([topic, group]) => (
+        <section key={topic} className="card p-4 sm:p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div><h3 className="font-bold text-slate-900">{topic}</h3><p className="text-xs text-slate-500">{group.length} материалов</p></div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {group.map((x) => <button key={x.id} type="button" onClick={() => void open(x)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">{x.kind === "photo" ? <ImageIcon className="h-5 w-5" /> : categoryIcon(x.category)}</div>
+                <div className="min-w-0"><h4 className="line-clamp-2 font-semibold text-slate-900">{x.title}</h4><p className="mt-1 text-xs text-slate-500">{x.kind === "photo" ? "Фото препарата" : categoryLabel(x.category)}</p></div>
+              </div>
+            </button>)}
+          </div>
+        </section>
+      ))
+    }
+
+    {active && <div className="fixed inset-0 z-[70] bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5" onMouseDown={() => setActive(null)}>
       <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-slate-100 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
-        <header className="flex items-center justify-between border-b bg-white px-5 py-4">
-          <div><div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{active.kind === "photo" ? "Фото препарата" : "Документ"}</div><h2 className="mt-1 font-bold text-slate-900">{active.title}</h2></div>
-          <div className="flex gap-2">
-            {active.kind === "doc" && <button type="button" onClick={() => blob && window.open(URL.createObjectURL(blob), "_blank")} className="rounded-xl border bg-white p-2 text-slate-600" title="Открыть оригинал"><Download className="h-4 w-4" /></button>}
-            <button type="button" onClick={() => setActive(null)} className="rounded-xl p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+        <header className="flex items-start justify-between gap-3 border-b bg-white px-4 py-4 sm:px-5">
+          <div className="min-w-0"><div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{active.kind === "photo" ? "Фото препарата" : categoryLabel(active.category)}</div><h2 className="mt-1 break-words font-bold text-slate-900">{active.title}</h2>{active.topic_title && <div className="mt-1 text-xs text-slate-500">{active.topic_title}</div>}</div>
+          <div className="flex shrink-0 gap-2">
+            {active.kind === "doc" && active.source?.download_url && <a href={active.source.download_url} target="_blank" rel="noreferrer" className="rounded-xl border bg-white p-2 text-slate-600" title="Открыть оригинал"><Download className="h-4 w-4" /></a>}
+            <button type="button" onClick={() => setActive(null)} className="rounded-xl p-2 hover:bg-slate-100" aria-label="Закрыть"><X className="h-5 w-5" /></button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
-          {active.kind === "photo" ? (photo ? <div className="flex min-h-full items-center justify-center"><img src={photo} alt={active.title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" /></div> : <div className="flex justify-center pt-20"><Loader2 className="h-6 w-6 animate-spin" /></div>) :
-            blob ? <DocxView blob={blob} title={active.title} /> : <div className="flex justify-center pt-20 text-sm text-slate-500">Не удалось загрузить документ.</div>}
+        <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-3 sm:p-6">
+          {active.kind === "photo"
+            ? (photo ? <div className="flex min-h-full items-center justify-center"><img src={photo} alt={active.title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" /> </div> : <div className="flex justify-center pt-20"><Loader2 className="h-6 w-6 animate-spin" /></div>)
+            : blob
+              ? <DocxView blob={blob} title={active.title} />
+              : <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500"><p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p><p className="mt-1">Если файл не размещён на SpaceWeb, он появится после загрузки папки <code>content/histology</code>.</p>{active.source?.download_url && <a href={active.source.download_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white">Открыть оригинал</a>}</div>}
         </div>
       </div>
     </div>}
   </div>;
-}
