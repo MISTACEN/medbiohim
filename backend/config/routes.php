@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use MedbiohimHttpRouter;
+use Medbiohim\Http\Router;
 
 return static function (Router $router): void {
     $dir = __DIR__ . '/routes';
