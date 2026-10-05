@@ -15,20 +15,28 @@ final class SupabaseAcademic
         if ($url === '' || $key === '') {
             throw new \RuntimeException('Supabase REST fallback is not configured');
         }
-        $res = HttpClient::request(
-            $method,
-            $url . '/rest/v1/' . ltrim($path, '/'),
-            $body,
-            array_merge(SupabaseKeyHeaders::service($key), $headers),
-            15
-        );
-        if ($res['status'] < 200 || $res['status'] >= 300) {
-            $detail = is_array($res['json'])
-                ? (string) json_encode($res['json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-                : trim((string) $res['body']);
-            throw new \RuntimeException('Supabase REST request failed (' . $res['status'] . '): ' . substr($detail, 0, 700));
-        }
-        return is_array($res['json']) ? $res['json'] : [];
+        $attempts = 0;
+        do {
+            $attempts++;
+            $res = HttpClient::request(
+                $method,
+                $url . '/rest/v1/' . ltrim($path, '/'),
+                $body,
+                array_merge(SupabaseKeyHeaders::service($key), $headers),
+                15
+            );
+            if ($res['status'] >= 200 && $res['status'] < 300) {
+                return is_array($res['json']) ? $res['json'] : [];
+            }
+            $transient = $res['status'] === 0 || in_array($res['status'], [502, 503, 504], true);
+            if (!$transient || $attempts >= 3) break;
+            usleep(180000 * $attempts);
+        } while ($attempts < 3);
+
+        $detail = is_array($res['json'])
+            ? (string) json_encode($res['json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : trim((string) $res['body']);
+        throw new \RuntimeException('Supabase REST request failed (' . $res['status'] . '): ' . substr($detail, 0, 700));
     }
 
     private static function csvQuoted(array $values): string
