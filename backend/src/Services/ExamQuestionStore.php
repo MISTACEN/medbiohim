@@ -48,6 +48,8 @@ final class ExamQuestionStore
     {
         $select = 'id,subject_id,subject_name,subject_slug,topic,text,answer,kind,type,for_exam,for_ticket,source,is_published,created_at,updated_at';
         $path = 'exam_questions?select=' . rawurlencode($select) . '&order=subject_name.asc,id.asc';
+        $publishedOnly = ($filters['published_only'] ?? true) !== false;
+        if ($publishedOnly) $path .= '&is_published=eq.true';
         $rows = self::request('GET', $path);
         $slug = trim((string) ($filters['subject_slug'] ?? ''));
         $subject = mb_strtolower(trim((string) ($filters['subject'] ?? '')));
@@ -68,11 +70,13 @@ final class ExamQuestionStore
         return array_values($rows);
     }
 
-    public static function get(string $id): ?array
+    public static function get(string $id, bool $publishedOnly = true): ?array
     {
         $id = trim($id);
         if ($id === '') return null;
-        $rows = self::request('GET', 'exam_questions?id=eq.' . rawurlencode($id) . '&select=id,subject_id,subject_name,subject_slug,topic,text,answer,kind,type,for_exam,for_ticket,source,is_published,created_at,updated_at');
+        $path = 'exam_questions?id=eq.' . rawurlencode($id) . '&select=id,subject_id,subject_name,subject_slug,topic,text,answer,kind,type,for_exam,for_ticket,source,is_published,created_at,updated_at';
+        if ($publishedOnly) $path .= '&is_published=eq.true';
+        $rows = self::request('GET', $path);
         return $rows[0] ?? null;
     }
 
