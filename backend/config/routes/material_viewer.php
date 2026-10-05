@@ -54,12 +54,29 @@ return static function (Router $router): void {
             }
 
             $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+
+            // Legacy .doc files are kept as originals, but browsers do not render
+            // them inline. The SpaceWeb content bundle also carries a generated
+            // HTML mirror for these files; prefer that mirror for in-site viewing.
+            if ($ext === 'doc') {
+                $htmlCandidate = preg_replace('/\\.doc$/i', '.html', $candidate) ?? ($candidate . '.html');
+                $htmlRootCandidate = rtrim($root, '/\\') . '/legacy-doc-html/' . pathinfo($candidate, PATHINFO_FILENAME) . '.html';
+                foreach ([$htmlCandidate, $htmlRootCandidate] as $mirror) {
+                    if (is_file($mirror)) {
+                        $candidate = $mirror;
+                        $ext = 'html';
+                        break;
+                    }
+                }
+            }
+
             $mimeMap = [
                 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'doc' => 'application/msword',
                 'pdf' => 'application/pdf',
                 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
                 'gif' => 'image/gif', 'webp' => 'image/webp',
+                'html' => 'text/html; charset=utf-8',
             ];
             $mime = $mimeMap[$ext] ?? ((string)($row['mime_type'] ?? '') ?: 'application/octet-stream');
             $name = basename($candidate);
