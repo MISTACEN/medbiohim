@@ -363,3 +363,17 @@ student identity → academic context → content entity → action/result → r
 7. **UI polish** — mobile/performance/themes.
 
 UI не должен опережать исправление semantic context и lifecycle.
+
+
+## Pass 4–5 code-contract additions
+
+- P0: prove SpaceWeb runtime artifact matches current Router source; do not mask the router regression by weakening type hints.
+- P0/P1: make HomeworkRepository and SupabaseRest fallback enforce the same group/membership/identity semantics.
+- P0: distinguish backend unavailable from valid empty data in every fallback chain.
+- P1: expand route CI from duplicate detection to first-match shadowing/order conflicts.
+- P1: remove/contain Next production build suppression of TypeScript and ESLint errors after CI cleanup.
+- P1: replace subject name/slug identity with UUID in planner recovery and SRS.
+- P1: verify runtime build fingerprint against exact deployed commit.
+- P1: apply the student-first rule consistently: self-service first; optional starosta/group confirmation only for shared or disputed state.
+
+See `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md` for the full two-pass audit.
