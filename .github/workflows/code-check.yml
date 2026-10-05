@@ -57,9 +57,9 @@ jobs:
               $file = $root . "/src/" . $relative . ".php";
               if (is_readable($file)) require_once $file;
             });
-            $router = new \\Medbiohim\\Http\\Router();
+            $router = new \Medbiohim\Http\Router();
             $register = require $root . "/config/routes.php";
-            if (!is_callable($register)) throw new \\RuntimeException("config/routes.php must return callable");
+            if (!is_callable($register)) throw new \RuntimeException("config/routes.php must return callable");
             $register($router);
             echo "Route registration OK\\n";
           '
