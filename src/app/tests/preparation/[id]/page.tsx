@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { QuestionReport } from "@/components/QuestionReport";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
@@ -68,6 +68,7 @@ export default function PreparationPage() {
   const [mode, setMode] = useState<"full" | "count" | "sequential" | null>(null);
   const [limit, setLimit] = useState(10);
   const [bankProgress, setBankProgress] = useState<any>(null);
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
     (search.get("mode") as any) === "exam"
       ? "exam"
@@ -125,24 +126,65 @@ export default function PreparationPage() {
     void begin(flow === "sequential" ? "sequential" : "count", flow === "sequential" ? undefined : n);
   }, [search, mode]);
 
-  async function refreshSequentialProgress() {
+  function queueSave(payload: Record<string, unknown>, onError?: (message: string) => void) {
+    const task = saveQueue.current.then(async () => {
+      const r = await savePreparation(session.id, payload);
+      if (!r.ok) {
+        onError?.(r.error.message);
+      }
+      return r;
+    });
+    saveQueue.current = task.catch(() => undefined);
+    return task;
+  }
+
+  function refreshSequentialProgressOptimistic() {
     if (mode !== "sequential") return;
-    const p = await getBankProgress(id);
-    if (p.ok) setBankProgress(p.data);
+    setBankProgress((prev) => {
+      if (!prev) return prev;
+      const answered = Math.min(Number(prev.total ?? questions.length), Number(prev.answered ?? 0) + 1);
+      return {
+        ...prev,
+        answered,
+        remaining: Math.max(0, Number(prev.total ?? questions.length) - answered),
+        completed: answered >= Number(prev.total ?? questions.length),
+      };
+    });
   }
 
-  async function answer(v: string) {
-    if (!q || checked[q.id]) return;
-    setAnswers((a) => ({ ...a, [q.id]: v }));
-    const r = await savePreparation(session.id, { current_index: idx, question_id: q.id, answer_text: v });
-    if (r.ok) { setChecked((a) => ({ ...a, [q.id]: true })); await refreshSequentialProgress(); }
-    else setError(r.error.message);
+  function answer(v: string) {
+    if (!q || !session || checked[q.id]) return;
+    const questionId = q.id;
+
+    // Не заставляем интерфейс ждать SpaceWeb/Vercel round-trip:
+    // ответ и результат проверки отображаются сразу, сохранение идёт в фоне.
+    setAnswers((a) => ({ ...a, [questionId]: v }));
+    setChecked((a) => ({ ...a, [questionId]: true }));
+    setError("");
+
+    void queueSave(
+      { current_index: idx, question_id: questionId, answer_text: v },
+      (message) => {
+        setChecked((a) => {
+          const next = { ...a };
+          delete next[questionId];
+          return next;
+        });
+        setError("Не удалось сохранить ответ: " + message);
+      },
+    ).then((r) => {
+      if (r.ok) refreshSequentialProgressOptimistic();
+    });
   }
 
-  async function next() {
+  function next() {
     const n = Math.min(idx + 1, questions.length - 1);
     setIdx(n);
-    if (session) await savePreparation(session.id, { current_index: n });
+    if (session) {
+      void queueSave({ current_index: n }, (message) => {
+        setError("Не удалось сохранить позицию: " + message);
+      });
+    }
   }
 
   async function finish(early = false) {
@@ -158,7 +200,6 @@ export default function PreparationPage() {
     setError("");
     const r = await finishPreparation(session.id);
     if (r.ok) {
-      await refreshSequentialProgress();
       setStats(r.data);
       const a = await preparationAiReview(session.id);
       if (a.ok) setAi(a.data.review);
@@ -169,11 +210,7 @@ export default function PreparationPage() {
   /** Exit without completing — session stays in_progress until user presses Завершить */
   async function exit() {
     if (session && !stats) {
-      try {
-        await savePreparation(session.id, { current_index: idx });
-      } catch {
-        /* still leave */
-      }
+      void queueSave({ current_index: idx });
     }
     router.push("/tests");
   }
