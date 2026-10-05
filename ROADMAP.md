@@ -439,3 +439,46 @@
 
 
 - 2026-10-05: Histology ZIP cross-audit completed through current 3rd semester; materials UI now includes all source documents, next-semester content is retained but hidden by default, legacy DOC HTML mirrors prepared for SpaceWeb, and published duplicate test/question cleanup continued. SpaceWeb media upload remains a manual infrastructure step.
+
+
+## Audit update — 2026-10-05, current-semester content reconciliation
+
+### Гистология
+Live active subject is **2 курс / 3 семестр**.
+
+Current verified live counts:
+- ✅ 14 modules / 19 plan topics;
+- ✅ 80 published materials;
+- ✅ 261 source rows from `Гистология.zip`;
+- ✅ 178 preparation photo sources;
+- ✅ 28 electronogram trainer cards with source documents/captions;
+- ✅ 206 trainer cards total;
+- ✅ 169 trainer cards explicitly marked current-plan;
+- ✅ 37 future/out-of-current-plan cards retained but hidden by default;
+- ✅ 273 published questions, 194 archived;
+- ✅ 0 published source-less questions;
+- ✅ 76 published exam questions;
+- ✅ 8 published tests + 1 archived duplicate;
+- ✅ 5 ticket banks retained;
+- 🟡 0 generated tickets because source ZIP does not provide canonical ticket grouping.
+
+### Materials
+- ✅ complete source-document layer registered in Supabase;
+- ✅ Materials categories separated into Schemes / EM / Methodicals / Tests / Exam / Photos;
+- ✅ default UI is current 3rd semester;
+- ✅ future content is retained and shown through “Весь курс”;
+- ✅ module/topic-first sorting;
+- ✅ mobile/iPhone form controls normalized to a light scheme;
+- ✅ DOCX/HTML/image/PDF viewer paths covered;
+- 🟡 physical SpaceWeb document payload upload remains external.
+
+### SpaceWeb
+Prepared archive:
+`MEDBIOHIM_histology_spaceweb_3sem_content_patch.zip`
+
+It contains the source DOC/DOCX/GIF layer from `Гистология.zip` plus HTML mirrors for legacy `.doc`. Existing photo/EM deployment media is intentionally not duplicated.
+
+### Next acceptance test
+After the archive is physically placed on SpaceWeb:
+`/subjects → Гистология → Материалы → DOC/DOCX → Фото препаратов → back`
+must be checked on iPhone and desktop. Only then move the Histology Materials item from 🟡 to ✅.
