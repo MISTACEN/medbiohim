@@ -315,3 +315,18 @@ Every new feature must answer:
 6. What happens on error, retry and duplicate click?
 
 If these links are missing, the feature is not considered integrated into MEDBIOHIM.
+
+
+## Pass 4–5 semantic/code-contract audit
+
+Detailed findings: `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md`.
+
+### Mandatory architecture invariants
+
+- Student self-service is the default; admin/teacher approval is never a prerequisite for a normal personal action.
+- Starosta/group moderator confirmation is an additional layer for shared group facts, disputed content or moderation.
+- Attendance self-report remains available to the student; official confirmation is a separate provenance state.
+- Group-scoped entities must use group_id and stable UUIDs; slugs/names are not identity.
+- Primary and fallback backend paths must implement the same semantic contract.
+- Empty result and backend failure must never be indistinguishable.
+- A production build that ignores TypeScript/ESLint errors is not final proof of correctness.
