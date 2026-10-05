@@ -110,12 +110,12 @@ function applyDom(id: AppThemeId) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<AppThemeId>("aurora-glass");
+  const [theme, setThemeState] = useState<AppThemeId>("classic-light");
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as AppThemeId | null;
     const legacy = localStorage.getItem("mb_theme");
-    let initial: AppThemeId = "aurora-glass";
+    let initial: AppThemeId = "classic-light";
     if (saved && THEMES.some((t) => t.id === saved)) {
       initial = saved;
     } else if (legacy === "dark") {
