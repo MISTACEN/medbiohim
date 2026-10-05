@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use Medbiohim\Http\Router;
+use MedbiohimHttpRouter;
 
 return static function (Router $router): void {
     $dir = __DIR__ . '/routes';
@@ -32,6 +32,7 @@ return static function (Router $router): void {
         '00_admin_import_atomic.php',
         'admin.php',
         'platform.php',
+        'histology_sources.php',
         'ai_chat.php',
         'presence.php',
         'calculators_rest.php',
