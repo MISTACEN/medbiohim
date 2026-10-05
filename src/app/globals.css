@@ -698,7 +698,11 @@ button, a, [role="button"] {
 input, select, textarea {
   appearance: none;
   -webkit-appearance: none;
+  background-color: var(--card);
+  color: var(--text);
+  border-color: var(--border);
 }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 button, select {
   -webkit-appearance: none;
 }
