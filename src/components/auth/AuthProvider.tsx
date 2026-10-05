@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearTokens, hasToken, me } from "@/lib/api";
+import { clearTokens, hasToken, me, refreshSession } from "@/lib/api";
 
 export type AppUser = {
   id: string;
@@ -45,9 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!hasToken()) {
-      setUser(null);
-      setLoading(false);
-      return;
+      const refreshed = await refreshSession();
+      if (!refreshed.ok) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
     }
     try {
       const res = await me();
