@@ -107,3 +107,50 @@ Remaining DB advisor findings:
 - No published test has missing/archived question links except explicitly documented malformed legacy rows.
 - No new runtime 404/502 on required media.
 - Supabase RLS init-plan findings remain at 0.
+
+## Pass 4 — user-reported runtime regression and correction (2026-10-05)
+
+### Preparation mode
+- Reproduced from the reported SQLSTATE: test_preparation_sessions_mode_check allowed only full and count while the UI/backend already supported sequential.
+- Fixed live Supabase constraint to allow sequential.
+- Added repository migration database/migrations/20261005_allow_sequential_preparation_mode.sql.
+- Rechecked the live constraint: full | count | sequential.
+
+### Global loading
+- Added a global API request counter and loading bar in AppShell.
+- Every request through the shared API client now reports active network work.
+- The indicator has a short 140 ms delay so fast requests do not cause distracting flashes.
+- Existing test/preparation/report-specific loading remains in place.
+
+### Auth 401 hardening
+- Shared API refresh is now deduplicated: simultaneous 401 responses cannot race the same rotating Supabase refresh token.
+- App bootstrap can recover an expired access token from a valid refresh token before declaring the user logged out.
+- This addresses the observed burst of 401s when the access token expires; an actually revoked/expired refresh token still correctly requires login.
+- Admin lecture 401 for a non-admin remains expected authorization behavior.
+
+### Subject/ticket 503 hardening
+- Supabase REST academic and exam-question calls now retry transient transport/502/503/504 failures up to three times.
+- No retry is performed for validation/auth errors.
+
+### Supplied histology source archive
+The uploaded Гистология.zip was inspected as the source-of-truth archive for histology content:
+- 276 archive entries;
+- 28 electronogram DOCX source files;
+- 27 lesson scheme/table DOCX files;
+- 5 test-source files;
+- 9 methodical/manual source files;
+- 178 preparation photographs.
+The 28 electronogram source titles correspond to the 28 published histology / mbh / electronogram trainer cards in live Supabase, and their captions are present as preparation.captions.
+
+### Malformed histology test link
+- The two remaining malformed bird-blastula links were reconstructed from the supplied Cytology/Embryology source document rather than guessed.
+- Canonical question: В результате дробления зиготы у птиц образуется.
+- Source options restored in original order.
+- The supplied source's answer key records option 2 (Целобластула); that source-derived answer was preserved and explicitly documented rather than silently replaced by external knowledge.
+- Both affected published tests now point to the canonical reconstructed question.
+- The duplicate malformed question remains archived.
+
+### Current verification caveat
+- Vercel deployment dpl_DNR82qnU3wvp9yWZiXsf5Mwpo for commit c36f1d... was independently confirmed READY in production.
+- Subsequent commits are newer than that READY deployment; therefore the newest source tree still requires its own Vercel READY confirmation.
+- Vercel runtime log access from the current connector is permission-denied, so SpaceWeb 401/503 runtime behavior cannot be declared fully closed solely from this environment.
