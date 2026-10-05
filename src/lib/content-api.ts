@@ -1,4 +1,4 @@
-import { api, getTrainerImageUrl } from "@/lib/api";
+import { api, apiCached, getTrainerImageUrl } from "@/lib/api";
 
 export type SubjectMaterial = {
   id: string;
@@ -61,7 +61,7 @@ export async function listSubjectMaterials(
   if (params.subjectSlug) q.set("subject_slug", params.subjectSlug);
   if (params.type) q.set("type", params.type);
   const s = q.toString() ? "?" + q.toString() : "";
-  return api<{ items: SubjectMaterial[]; source: string }>("/subject-materials" + s);
+  return apiCached<{ items: SubjectMaterial[]; source: string }>("/subject-materials" + s);
 }
 
 export async function getContentSource(id: string) {
@@ -90,7 +90,7 @@ export async function listTrainerFeed(
     limit: String(limit),
     offset: String(offset),
   });
-  return api<{ items: TrainerCard[]; limit: number; offset: number; source: string }>(
+  return apiCached<{ items: TrainerCard[]; limit: number; offset: number; source: string }>(
     `/trainers/feed?${q.toString()}`,
   );
 }
