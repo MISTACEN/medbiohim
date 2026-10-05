@@ -13,18 +13,31 @@ jobs:
     env:
       APP_URL: https://medbiohim.vercel.app
     steps:
-      - name: Check Vercel app
+      - name: Check public pages
         run: |
           set -euo pipefail
-          code=$(curl -L -sS -o /tmp/app.html -w "%{http_code}" "$APP_URL/")
-          test "$code" = "200"
-          grep -q "Медбиохим" /tmp/app.html
+          for path in / /tests /schedule /subjects /materials /trainers; do
+            code=$(curl -L --fail --silent --show-error --max-time 20 -o /tmp/page.html -w "%{http_code}" "$APP_URL$path")
+            test "$code" = "200"
+            grep -q "Медбиохим" /tmp/page.html
+          done
 
-      - name: Check API through Vercel
+      - name: Check API health
         run: |
           set -euo pipefail
-          code=$(curl -L -sS -o /tmp/health.json -w "%{http_code}" "$APP_URL/api/v1/health")
+          code=$(curl -L --fail --silent --show-error --max-time 20 -o /tmp/health.json -w "%{http_code}" "$APP_URL/api/v1/health")
           test "$code" = "200"
           grep -q '"status"' /tmp/health.json
           grep -q '"ok"' /tmp/health.json
           cat /tmp/health.json
+
+      - name: Check public API surfaces
+        run: |
+          set -euo pipefail
+          for path in /api/v1/tests /api/v1/subjects; do
+            code=$(curl -L --silent --show-error --max-time 20 -o /tmp/api.json -w "%{http_code}" "$APP_URL$path")
+            case "$code" in
+              200|401|403) ;;
+              *) echo "Unexpected HTTP $code from $path"; cat /tmp/api.json; exit 1 ;;
+            esac
+          done
