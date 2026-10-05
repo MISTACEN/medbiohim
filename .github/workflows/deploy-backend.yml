@@ -80,6 +80,7 @@ jobs:
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
             set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
             mirror --verbose '${SITE}backend/src' backup/src;
+            get -O backup/ '${SITE}backend/config/routes.php';
             bye" || true
 
       - name: Deploy backend source and routes
@@ -89,6 +90,7 @@ jobs:
             set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
             mirror -R --verbose ./backend/src '${SITE}backend/src';
             mirror -R --verbose ./backend/config/routes '${SITE}backend/config/routes';
+            put -O '${SITE}backend/config/' backend/config/routes.php;
             bye"
 
       - name: Deploy histology media when present in repository
@@ -111,10 +113,12 @@ jobs:
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
             set ftp:ssl-allow yes; set ssl:verify-certificate no;
             get -O verify/ '${SITE}backend/src/Repositories/TestRepository.php';
+            get -O verify/ '${SITE}backend/config/routes.php';
             get -O verify/ '${SITE}backend/config/routes/preparation.php';
             get -O verify/ '${SITE}backend/config/routes/tests.php';
             get -O verify/ '${SITE}backend/config/routes/platform.php';
             bye"
+          grep -q "use Medbiohim\\\\Http\\\\Router;" verify/routes.php
           grep -q "LEFT JOIN public.content_sources cs ON cs.id = t.source_key" verify/TestRepository.php
           grep -q "function resolveTestId" verify/preparation.php
           grep -q "function resolveTestId" verify/tests.php
