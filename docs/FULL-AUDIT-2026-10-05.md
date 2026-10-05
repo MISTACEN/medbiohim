@@ -189,3 +189,13 @@ The 28 electronogram source titles correspond to the 28 published histology / mb
 
 ### Verification state
 - Several intermediate Vercel deployments failed on lint/type checks while the frontend changes were being iterated; the newest deployment for commit `8d4ff442...` was BUILDING at the last check. Do not treat production as verified until the newest deployment reaches READY and an authenticated mobile materials smoke test passes.
+
+
+## Pass 6 — повторная проверка после production build (2026-10-05)
+- First implementation attempt failed Vercel type/lint build checks. The materials component was simplified and re-typed conservatively.
+- Final verification commit: `797a8b9db6c79555df6b2e90b24b607edb737337`.
+- Vercel production deployment `dpl_AM6arA4NSN9E9RS7CRr33avwsbza` reached **READY** in `fra1`; aliases include `medbiohim.vercel.app`.
+- GitHub combined Vercel status for the final commit is **success**.
+- Live Supabase audit after cleanup: 80 published current-semester material rows with no missing source key; 273 published questions with no source-less published rows; 76 published exam questions; 5 untouched ticket banks; 8 published tests + 1 archived duplicate; 206 trainer cards total, of which 168 have current-plan topic bindings and 38 are retained as next-semester/unmapped content and hidden by default.
+- Three intentionally ambiguous duplicate question groups remain for source review because the rows are malformed answer-like strings rather than safely reconstructable questions. They are not silently deleted.
+- The 102 MB SpaceWeb document delta archive was generated separately; physical SpaceWeb upload is still outside available connectors.
