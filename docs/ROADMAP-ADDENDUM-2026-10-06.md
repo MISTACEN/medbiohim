@@ -386,3 +386,14 @@ P0: backend service-key routes must independently enforce RLS-equivalent authori
 P1: apiCached cache keys are path-only and stale fallback is global; restrict stale caching to proven public/stale-safe endpoints and include identity/context where needed. File list/download semantics must be aligned. Community global-vs-group visibility should become explicit.
 
 Full evidence: `docs/SECURITY-STATE-AUDIT-2026-10-06-PASS6.md`.
+
+
+## Pass 7 — state-machine / idempotency findings
+
+P0: homework progress lacks homework/group authorization; preparation PATCH accepts question_id outside session; preparation finish lacks strict in_progress→completed transition; student test start/detail lack explicit is_published gate.
+
+P1: test attempts are not retry-safe/idempotent; finish can rewrite terminal attempt; homework optimistic UI updates my_status while status() ignores it; file upload happens before submit and can orphan files; homework progress and submission are independent states; preparation current_index is not bounded to session question count.
+
+P2: test score is client-trusted; state errors need granular codes.
+
+Full evidence: `docs/STATE-MACHINE-AUDIT-2026-10-06-PASS7.md`.
