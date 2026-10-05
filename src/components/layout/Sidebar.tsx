@@ -50,7 +50,7 @@ const bottomItems: Array<{
   { href: "/admin", label: "Админ", icon: LayoutDashboard, adminOnly: true },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const displayName = user?.name || "Гость";
@@ -69,7 +69,7 @@ export function Sidebar() {
     user?.role === "admin" || user?.role === "moderator" || user?.role === "teacher";
 
   return (
-    <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-screen w-64 flex-col shadow-xl">
+    <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-[100dvh] w-64 flex-col overflow-hidden shadow-xl">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md"
@@ -85,7 +85,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
         <ul className="space-y-1">
           {navItems.map((item) => {
             const active =
@@ -95,6 +95,7 @@ export function Sidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={onNavigate}
                   className={clsx(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                     active
@@ -114,7 +115,7 @@ export function Sidebar() {
         </p>
       </nav>
 
-      <div className="border-t border-white/10 px-3 py-3">
+      <div className="shrink-0 border-t border-white/10 px-3 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <ul className="space-y-1">
           {bottomItems
             .filter((item) => !item.adminOnly || showAdmin)
@@ -125,6 +126,7 @@ export function Sidebar() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    onClick={onNavigate}
                     className={clsx(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                       active
