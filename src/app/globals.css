@@ -656,3 +656,96 @@ a:active,
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Cross-platform browser baseline: iOS/iPadOS, Android, Windows and macOS */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none;
+}
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  margin: 0;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+img, video, canvas, svg {
+  max-width: 100%;
+}
+img {
+  -webkit-user-drag: none;
+}
+button, input, select, textarea {
+  font: inherit;
+}
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+input, select, textarea {
+  appearance: none;
+  -webkit-appearance: none;
+}
+button, select {
+  -webkit-appearance: none;
+}
+button {
+  cursor: pointer;
+}
+@media (pointer: coarse) {
+  button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+}
+@supports (height: 100svh) {
+  .min-h-screen, .h-screen { min-height: 100svh; height: auto; }
+}
+@supports (height: 100dvh) {
+  .min-h-screen { min-height: 100dvh; }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .hero-banner,
+  html[data-theme="aurora-glass"] .card,
+  html[data-theme="medical-glass"] .card,
+  html[data-theme="crystal-glass"] .card,
+  html[data-theme="aero-glass"] .card,
+  html[data-theme="aurora-glass"] .hero-banner,
+  html[data-theme="medical-glass"] .hero-banner,
+  html[data-theme="crystal-glass"] .hero-banner,
+  html[data-theme="aero-glass"] .hero-banner {
+    background: var(--card);
+  }
+}
+@supports not (color: color-mix(in srgb, white 50%, black)) {
+  .skeleton { background: rgba(100,116,139,.20); }
+  .badge-success { background: rgba(16,185,129,.15); }
+  .badge-danger { background: rgba(239,68,68,.15); }
+  .badge-warning { background: rgba(245,158,11,.18); }
+}
+@media (max-width: 767px) {
+  body { background-attachment: scroll; }
+  .app-shell, main { padding-bottom: max(88px, calc(76px + env(safe-area-inset-bottom))); }
+}
+@media (min-width: 768px) {
+  body { min-width: 320px; }
+}
+@media (hover: none) and (pointer: coarse) {
+  .card:hover,
+  .test-list-card:hover,
+  .test-question-card:hover,
+  .histology-question-card:hover {
+    transform: none;
+  }
+}
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .app-sidebar, nav, header { display: none !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+}
