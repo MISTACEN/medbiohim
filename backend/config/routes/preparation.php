@@ -78,7 +78,7 @@ return static function (Router $router): void {
     // Возобновляем только тот же режим. Для «весь банк подряд» старая случайная сессия
     // не должна перехватывать запуск — она закрывается, и создаётся последовательная.
     if((string)($existing['mode']??'')!==$mode && $mode==='sequential'){
-      $cancel=$db->prepare("update public.test_preparation_sessions set status='cancelled',last_saved_at=now() where id=:id");
+      $cancel=$db->prepare("update public.test_preparation_sessions set status='abandoned',last_saved_at=now() where id=:id");
       $cancel->execute(['id'=>$existing['id']]);
       $existing=null;
     } else {
