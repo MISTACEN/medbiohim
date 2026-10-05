@@ -43,27 +43,42 @@ export async function apiCached<T>(path: string, options: RequestInit = {}): Pro
   if (!isCacheableGet(path, options)) return api<T>(path, options);
   const key = path;
   const now = Date.now();
+  let stale: ApiResult<T> | null = null;
+
   const memory = apiCache.get(key);
-  if (memory && memory.expires > now) return memory.value as ApiResult<T>;
+  if (memory) {
+    if (memory.expires > now) return memory.value as ApiResult<T>;
+    stale = memory.value as ApiResult<T>;
+  }
 
   const storageKey = "mb_api_cache:" + key;
   try {
     const raw = sessionStorage.getItem(storageKey);
     if (raw) {
       const parsed = JSON.parse(raw) as CacheEntry<T>;
-      if (parsed.expires > now && parsed.value?.ok) {
-        apiCache.set(key, parsed);
-        return parsed.value;
+      if (parsed.value?.ok) {
+        if (parsed.expires > now) {
+          apiCache.set(key, parsed);
+          return parsed.value;
+        }
+        stale = parsed.value;
       }
-      sessionStorage.removeItem(storageKey);
     }
   } catch {}
 
   const result = await api<T>(path, options);
   if (result.ok) {
-    const entry = { value: result, expires: now + API_CACHE_TTL };
+    const entry = { value: result, expires: Date.now() + API_CACHE_TTL };
     apiCache.set(key, entry);
     try { sessionStorage.setItem(storageKey, JSON.stringify(entry)); } catch {}
+    return result;
+  }
+
+  // If SpaceWeb/Supabase is temporarily slow or unavailable, keep the last
+  // successful shared content visible instead of replacing the whole page
+  // with "Database is not available".
+  if (stale && ["NETWORK", "UPSTREAM", "DB_UNAVAILABLE", "BAD_RESPONSE"].includes(result.error.code)) {
+    return stale;
   }
   return result;
 }
