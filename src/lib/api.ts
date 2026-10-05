@@ -22,6 +22,59 @@ export function setTokens(access:string,refresh?:string){localStorage.setItem("m
 export function clearTokens(){localStorage.removeItem("mb_access_token");localStorage.removeItem("mb_refresh_token")}
 export function hasToken(){return !!getToken()}
 async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;if(options.body&&!isForm&&!headers["Content-Type"])headers["Content-Type"]="application/json";const token=tokenOverride??getToken();if(token)headers.Authorization=`Bearer ${token}`;const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store"});return{res,text:await res.text()}}
+type CacheEntry<T> = { value: ApiResult<T>; expires: number };
+const apiCache = new Map<string, CacheEntry<any>>();
+const API_CACHE_TTL = 60_000;
+
+function isCacheableGet(path: string, options: RequestInit) {
+  if ((options.method || "GET").toUpperCase() !== "GET") return false;
+  if (typeof window === "undefined") return false;
+  return /^\/(subjects(?:$|\?)|subjects-catalog|subjects\\/[^?]+|subject-plans\\/[^?]+|tests(?:\\?|$)|materials(?:\\?|$)|lectures(?:\\?|$)|tickets(?:\\?|$))/.test(path);
+}
+
+async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+  if (!isCacheableGet(path, options)) return api<T>(path, options);
+  const key = path;
+  const now = Date.now();
+  const memory = apiCache.get(key);
+  if (memory && memory.expires > now) return memory.value as ApiResult<T>;
+
+  const storageKey = "mb_api_cache:" + key;
+  try {
+    const raw = sessionStorage.getItem(storageKey);
+    if (raw) {
+      const parsed = JSON.parse(raw) as CacheEntry<T>;
+      if (parsed.expires > now && parsed.value?.ok) {
+        apiCache.set(key, parsed);
+        return parsed.value;
+      }
+      sessionStorage.removeItem(storageKey);
+    }
+  } catch {}
+
+  const result = await api<T>(path, options);
+  if (result.ok) {
+    const entry = { value: result, expires: now + API_CACHE_TTL };
+    apiCache.set(key, entry);
+    try { sessionStorage.setItem(storageKey, JSON.stringify(entry)); } catch {}
+  }
+  return result;
+}
+
+export function invalidateApiCache(prefix = "") {
+  for (const key of apiCache.keys()) {
+    if (!prefix || key.startsWith(prefix)) apiCache.delete(key);
+  }
+  if (typeof window !== "undefined") {
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i) || "";
+        if (key.startsWith("mb_api_cache:") && (!prefix || key.slice(13).startsWith(prefix))) sessionStorage.removeItem(key);
+      }
+    } catch {}
+  }
+}
+
 export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{try{let {res,text}=await request<T>(path,options);if(res.status===401&&path!=="/auth/refresh"){const refreshToken=getRefreshToken();if(refreshToken){try{const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});const rt=await rr.text();if(rr.ok){const parsed=JSON.parse(rt) as {ok?:boolean;data?:{access_token?:string;refresh_token?:string}};const access=parsed.data?.access_token;if(access){setTokens(access,parsed.data?.refresh_token);({res,text}=await request<T>(path,options,access));}}}catch{}}}try{return JSON.parse(text) as ApiResult<T>}catch{return{ok:false,error:{code:"BAD_RESPONSE",message:res.ok?"Сервер вернул не JSON":`HTTP ${res.status}`},requestId:res.headers.get("x-request-id")||"client"}}}catch{return{ok:false,error:{code:"NETWORK",message:"Сеть недоступна"},requestId:"client"}}}
 const trainerImageCache=new Map<string,string>();
 const trainerImageInflight=new Map<string,Promise<string|null>>();
@@ -103,10 +156,10 @@ export async function refreshSession(){const r=typeof window!=="undefined"?local
 export async function health(){return api<any>("/health")}
 export async function presenceHeartbeat(){return api<any>("/presence/heartbeat",{method:"POST",body:"{}"})}
 export async function adminPresence(within=180){return api<any>("/admin/presence?within="+encodeURIComponent(String(within)))} 
-export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return api<any>(`/subjects${q.toString()?`?${q}`:""}`)}
+export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return apiCached<any>(`/subjects${q.toString()?`?${q}`:""}`)}
 export async function listGroups(){return api<any>("/groups")}
 export type ApiTest=any;
-export async function listTests(subjectId?:string){return api<any>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
+export async function listTests(subjectId?:string){return apiCached<any>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
 export async function getTest(id:string){return api<any>(`/tests/${id}`)}
 export async function listMyAttempts(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/my/attempts${q}`)}
 export async function startTestAttempt(id:string){return api<any>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
@@ -150,8 +203,8 @@ export async function listSchedule(from?:string,to?:string){const q=new URLSearc
 export async function getDashboard(){return api<any>("/dashboard")}
 export async function getProgress(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/progress${q}`)}
 export async function getCurriculum(){return api<any>("/curriculum")}
-export async function getSubject(id:string){return api<any>(`/subjects/${id}`)}
-export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return api<any>(`/materials${q.toString()?`?${q}`:""}`)}
+export async function getSubject(id:string){return apiCached<any>(`/subjects/${id}`)}
+export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return apiCached<any>(`/materials${q.toString()?`?${q}`:""}`)}
 export async function syncAcademicState(){return api<any>("/academic/sync",{method:"POST",body:"{}"})}
 export async function getAcademicState(){return api<AcademicState>("/academic/state")}
 export async function generateAcademicAiPlan(){return api<{plan:any;items:any[];source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
@@ -235,12 +288,12 @@ export async function getQuestion(id:string): Promise<any> { return api("/questi
 export async function getScheduleMeta(course?:number,semester?:number): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api("/schedule/meta" + (q.toString()?"?"+q:"")) as any; }
 export async function getSubjectGradebook(id:string): Promise<any> { const clean=String(id??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api("/subjects/" + encodeURIComponent(clean) + "/gradebook") as any; }
 export async function listCommunityPosts(..._args: any[]): Promise<any> { return api("/community/posts") as any; }
-export async function listLectures(subject?:string): Promise<any> { const q=subject?"?subject="+encodeURIComponent(subject):""; return api("/lectures"+q) as any; }
+export async function listLectures(subject?:string): Promise<any> { const q=subject?"?subject="+encodeURIComponent(subject):""; return apiCached("/lectures"+q) as any; }
 export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api("/questions/subjects") as any; }
 export async function listQuestions(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/questions"+(q.toString()?"?"+q:"")) as any; }
-export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return api("/subjects-catalog") as any; }
-export async function listTicketBanks(..._args: any[]): Promise<any> { return api("/tickets") as any; }
-export async function getSubjectPlan(slug:string): Promise<any> { const clean=String(slug??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; return api("/subject-plans/" + encodeURIComponent(clean)) as any; }
+export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return apiCached("/subjects-catalog") as any; }
+export async function listTicketBanks(..._args: any[]): Promise<any> { return apiCached("/tickets") as any; }
+export async function getSubjectPlan(slug:string): Promise<any> { const clean=String(slug??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; return apiCached("/subject-plans/" + encodeURIComponent(clean)) as any; }
 export async function preparationAiReview(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId) + "/ai-review", {method:"POST",body:"{}"}) as any; }
 export async function register(email:string,password:string,fullName:string): Promise<any> { return api("/auth/register", { method:"POST", body:JSON.stringify({email,password,full_name:fullName}) }) as any; }
 export async function reportQuestion(questionId:string,category:string,message=""): Promise<any> { return api("/questions/" + encodeURIComponent(questionId) + "/report", { method:"POST", body:JSON.stringify({category,message}) }) as any; }
