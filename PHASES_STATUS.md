@@ -130,3 +130,57 @@ Latest main Code Checks for commit 84d4684a013660e9c6a8e0d624edaae9ab4f7c13:
 The previous failing check was caused by a missing adminValidateContent import in src/app/admin/tools/page.tsx. It is fixed and the final Code Checks run is green.
 
 See docs/FULL-AUDIT-2026-10-04.md.
+
+
+## 13. Student-first / Telegram
+
+| Подфаза | Статус | Фактическое состояние |
+|---|---|---|
+| 13.1 Student identity | 🟡 | Auth exists; Telegram account linking needs end-to-end verification |
+| 13.2 Group membership | 🟡 | groups + memberships + group-aware schedule/homework exist; join flow needs hardening |
+| 13.3 Lesson context | 🟡 | schedule entries exist; dedicated Telegram message → lesson resolver absent |
+| 13.4 Telegram webhook | 🟡 | implemented in PHP; production webhook not proven |
+| 13.5 Telegram chat binding | 🟡 | admin UI + DB schema implemented; live chats = 0 |
+| 13.6 Telegram message ingestion | 🟡 | service + schema implemented; live messages = 0 |
+| 13.7 OCR / vision | 🟡 | code path exists; runtime provider availability must be tested |
+| 13.8 Homework classification | 🟡 | heuristic + LLM second pass exists |
+| 13.9 Homework creation | 🟡 | repository/API path exists; live homeworks = 0 |
+| 13.10 Attachments | 🟡 | attachment schema/import path exists; live attachments = 0 |
+| 13.11 Telegram registration | 🔴 | custom Telegram auth trace exists, but full bot /start → account → group flow is not proven |
+| 13.12 Student-generated content | ⬜ | product direction; moderation/confirmation model not complete |
+
+### Telegram acceptance gate
+
+The feature is not DONE until a real group test proves:
+
+`Telegram → webhook → stored message → group resolution → subject resolution → lesson resolution → homework → attachment → website`
+
+and:
+
+`Telegram /start → identity link → group membership → schedule → homework`
+
+## 14. Student-generated learning ecosystem
+
+| Capability | Status |
+|---|---|
+| Student creates/updates own/group homework | 🟡 |
+| Student submits homework | 🟡 |
+| Student marks homework done | 🟡 |
+| Student contributes notes/materials | ⬜ |
+| Student suggests content correction | ⬜ |
+| Peer confirmation | ⬜ |
+| Starosta moderation | ⬜ |
+| Change history / attribution | 🟡 foundation exists via content/audit structures |
+| Group knowledge feed | ⬜ |
+
+## Updated phase ordering
+
+After current stability blockers:
+
+1. **Student identity + group membership**
+2. **Telegram registration/linking**
+3. **Telegram → lesson resolver**
+4. **Telegram → homework production smoke**
+5. **Student contribution + moderation**
+6. **Progress based on real activity**
+7. **UI polish**
