@@ -221,6 +221,7 @@ export default function PreparationPage() {
   if (!mode)
     return (
       <div className="mx-auto max-w-3xl space-y-5">
+        <LoadingBar active={loading} />
         <div>
           {mode === "sequential" && bankProgress && (
             <div className="mb-2 inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
@@ -257,7 +258,7 @@ export default function PreparationPage() {
     );
 
   if (loading && !session)
-    return <div className="p-8 text-center text-sm text-slate-500">Загрузка…</div>;
+    return <><LoadingBar active={loading} /><div className="p-8 text-center text-sm text-slate-500">Загрузка…</div></>;
 
   if (stats)
     return (
@@ -370,6 +371,7 @@ export default function PreparationPage() {
 
   return (
     <div className="test-preparation-page space-y-4 sm:space-y-5">
+      <LoadingBar active={loading} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title">
