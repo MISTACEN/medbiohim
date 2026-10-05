@@ -418,3 +418,12 @@ provider availability → conversation → message → assistant response → re
 - AI chat E2E;
 - entity version history;
 - bulk validation/analytics.
+
+
+# Pass 4–5 reference
+
+The next independent semantic/code-contract passes are recorded in `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md`.
+
+Important correction: the earlier attendance wording must not be interpreted as “student cannot set own status”. Student self-report is required by the student-first architecture. The remaining gap is provenance/confirmation for treating that self-report as an official group/academic fact.
+
+Additional code-contract findings from Pass 5: production build currently ignores TypeScript/ESLint errors; Router uses first-match semantics and therefore needs shadowing/order detection; homework/community fallback paths can diverge semantically from primary paths; planner/SRS still have subject-name/slug identity risks; runtime build fingerprint must be verified against the deployed artifact.
