@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BookOpenCheck, Check, ListChecks, Pencil, Play, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { adminUpdateBankQuestion, getBankProgress, getTest, hasToken, me, type ApiTest } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { QuestionReport } from "@/components/QuestionReport";
 
 type BankOption = string | { label?: unknown; correct?: boolean };
 type BankQuestion = {
@@ -417,6 +418,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
                     </div>
                   </div>
                 )}
+                <QuestionReport questionId={q.id} />
               </article>
             );
           })}
