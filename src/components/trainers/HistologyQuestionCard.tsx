@@ -96,7 +96,7 @@ export function HistologyQuestionCard({
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <article className="histology-question-card overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="flex justify-between border-b bg-slate-50 px-4 py-3 text-xs text-slate-500">
         <span>Вопрос {i + 1} / {total}</span>
         <span>
