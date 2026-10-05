@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <div className="relative z-10 h-full w-64">
-            <Sidebar />
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       )}
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="min-h-[calc(100vh-4rem)] px-3 pb-24 pt-3 sm:p-6 lg:p-8">
           {children}
         </main>
-        <MobileNav />
+        {!mobileOpen && <MobileNav />}
       </div>
     </div>
   );
