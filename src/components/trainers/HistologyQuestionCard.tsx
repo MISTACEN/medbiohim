@@ -28,6 +28,9 @@ export type HistologyQuestionProps = {
   onAnswer: (value: string | null, skip?: boolean) => void;
 };
 
+const formControlClass =
+  "w-full rounded-xl border border-slate-200 !bg-white px-3 py-2 text-sm !text-slate-900 placeholder:text-slate-400 shadow-none outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-70";
+
 export function HistologyQuestionCard({
   a,
   i,
@@ -156,7 +159,10 @@ export function HistologyQuestionCard({
                       id={`${answerDomId}-slot-${idx}`}
                       disabled={answeredNow}
                       placeholder="подпись…"
-                      className="w-full rounded-xl border px-3 py-2 text-sm"
+                      autoCapitalize="sentences"
+                      autoCorrect="on"
+                      spellCheck
+                      className={formControlClass}
                     />
                   </div>
                 );
@@ -175,7 +181,7 @@ export function HistologyQuestionCard({
                 id={answerDomId}
                 placeholder={isEm ? "Подписи с новой строки" : "Введите ответ"}
                 rows={isEm ? 5 : 1}
-                className="w-full rounded-xl border px-4 py-3"
+                className={formControlClass + " !min-h-[48px]"}
               />
               {!answeredNow && (
                 <button
