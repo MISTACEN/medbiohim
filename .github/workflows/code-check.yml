@@ -45,3 +45,21 @@ jobs:
         run: |
           set -euo pipefail
           find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Bootstrap route registration smoke test
+        run: |
+          set -euo pipefail
+          php -d display_errors=1 -r '
+            $root = getcwd() . "/backend";
+            spl_autoload_register(static function (string $class) use ($root): void {
+              $prefix = "Medbiohim\\\\";
+              if (!str_starts_with($class, $prefix)) return;
+              $relative = str_replace("\\\\", "/", substr($class, strlen($prefix)));
+              $file = $root . "/src/" . $relative . ".php";
+              if (is_readable($file)) require_once $file;
+            });
+            $router = new \\Medbiohim\\Http\\Router();
+            $register = require $root . "/config/routes.php";
+            if (!is_callable($register)) throw new \\RuntimeException("config/routes.php must return callable");
+            $register($router);
+            echo "Route registration OK\\n";
+          '
