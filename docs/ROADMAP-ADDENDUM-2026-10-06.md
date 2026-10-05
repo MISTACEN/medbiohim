@@ -274,3 +274,92 @@ student identity → academic context → content entity → action/result → r
 6. test → report → admin problem center E2E;
 7. materials/media smoke;
 8. отсутствие новых route/redirect conflicts.
+
+
+---
+
+## Дополнительный semantic pass — новые задачи
+
+### P0/P1 — Сообщество должно быть group-scoped
+
+Сейчас create/list community flow не передаёт и не фильтрует `group_id`, хотя схема уже предусматривает group context.
+
+Цель:
+
+`student identity → active group → group feed → author → comments → moderation`.
+
+Нельзя оставлять ленту глобальной, если продукт позиционирует её как обсуждение группы.
+
+Также нужно вернуть автора, потому что текущий API может привести UI к fallback «Студент».
+
+### P1 — Посещаемость: self-report ≠ официальный факт
+
+Студент сейчас может сам создать/изменить `present/excused/sick/unexcused`.
+
+Нужно:
+- self-reported status;
+- confirmed status;
+- подтверждение starosta/teacher/admin по политике;
+- история изменения.
+
+### P1 — ДЗ: единая модель состояний
+
+Разделить:
+- personal completion;
+- submission;
+- grading;
+- return/resubmission.
+
+При нескольких группах создание ДЗ должно работать для выбранной группы, а не автоматически брать первую membership.
+
+### P1 — Прогресс
+
+Зафиксировать единую формулу. Backend сейчас считает overall через subject progress/ledger, тогда как UI объясняет его через ДЗ и тесты.
+
+Дополнительно фильтровать ДЗ по академическому scope пользователя.
+
+### P1 — Practice / Schedule
+
+- Practice: subject UUID вместо slug-only.
+- Schedule: active academic session вместо захардкоженного 2026-09-01 → 2027-01-31.
+- Schedule timezone должен быть частью академического контекста, а не константой компонента.
+
+### P1 — Личные функции
+
+- Notes: добавить удаление/очистку.
+- Favorites: whitelist target types + проверка target existence.
+
+### P1 — Generic sessions
+
+Ввести whitelist status и state transitions, чтобы не повторять класс ошибок вроде недопустимого `cancelled`.
+
+### P1 — AI transparency
+
+Показывать пользователю источник плана:
+- AI;
+- rule engine;
+- cached/stale.
+
+### P2 — Activity E2E
+
+Проверить реальные циклы:
+- SRS;
+- trainer answers;
+- AI chat;
+- progress;
+- attendance;
+- comments.
+
+Пустая таблица не означает broken feature, а непустая таблица не означает complete feature.
+
+## Новый порядок продвижения
+
+1. **Stability** — runtime/auth/deploy.
+2. **Trust** — reports/moderation/attendance confirmation.
+3. **Academic context** — group/semester/subject identity.
+4. **Core learning** — tests/homework/progress.
+5. **Community** — posts/comments/student moderation.
+6. **Automation** — Telegram/AI/SRS.
+7. **UI polish** — mobile/performance/themes.
+
+UI не должен опережать исправление semantic context и lifecycle.
