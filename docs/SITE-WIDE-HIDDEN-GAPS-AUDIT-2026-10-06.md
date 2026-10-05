@@ -160,3 +160,261 @@ Required: UI; correct context; API; persistence; authorization; RLS; lifecycle; 
 - intentionally standalone questions;
 - unused indexes solely because Supabase reports them as unused;
 - empty activity tables as demo data.
+
+# Pass 3 — semantic audit of additional functions / live-state cross-check
+
+Этот проход специально не повторяет предыдущие P0/P1, а ищет функции, которые технически существуют, но нарушают ожидаемую модель продукта.
+
+## P0/P1 — Community: потерян академический контекст
+
+Клиент создаёт пост только с title/body. Backend `SupabaseAcademic::createCommunityPost()` сохраняет post без `group_id`, а чтение `communityPosts()` также не фильтрует по группе.
+
+При этом схема и RLS уже предполагают group-scoped community.
+
+Это создаёт разрыв:
+`student → current group → community` не используется.
+
+Нужно:
+- передавать/определять текущую активную группу;
+- выдавать посты только своей группе + явно глобальные посты;
+- показывать автора;
+- не полагаться на глобальную ленту для учебной группы;
+- отдельным правилом разрешить модераторам/админам глобальные публикации.
+
+## P1 — Community: автор фактически теряется в UI
+
+`SupabaseAcademic::communityPosts()` выбирает только author_id, title/body/date, без профиля автора.
+Frontend ожидает author_name/author и иначе показывает «Студент».
+
+То есть функция публикации работает, но социальная идентичность поста потеряна.
+
+Нужно вернуть стабильный author snapshot/display_name либо безопасно присоединять users.
+
+## P1 — Community: comments существуют только как инфраструктура
+
+В БД есть `comments` и RLS-политики для них, но активный frontend community не показывает комментарии и не имеет comment API в найденном пользовательском потоке.
+
+Следовательно «обсуждения» фактически сейчас означают только список постов, а не обсуждение.
+
+Нужно либо:
+- довести комментарии до UI/API/moderation;
+- либо убрать обещание «обсуждения» до готовности функции.
+
+## P1 — Attendance: студент сам выставляет официальный статус
+
+Frontend вызывает `markAttendance(entryId,status)`, а RLS разрешает authenticated пользователю INSERT/UPDATE/DELETE собственных attendance_records.
+
+Статусы включают `present`, `excused`, `sick`, `unexcused`.
+
+Смысловая проблема: пользователь может самостоятельно выставить себе «уважительная», «болезнь» или «пропуск», а запись выглядит как факт посещаемости.
+
+Нужно разделить:
+- `self_report` — студент сообщил о своём статусе;
+- `confirmed` — статус подтверждён ответственным лицом;
+- при необходимости `teacher/starosta/admin override`.
+
+Иначе посещаемость нельзя считать официальной.
+
+## P1 — Homework: выбор группы для студента не поддерживает несколько групп
+
+В `POST /homeworks` для студента backend выбирает первую активную membership по `ORDER BY created_at LIMIT 1`, игнорируя конкретную группу.
+
+При этом список ДЗ уже поддерживает несколько групп через IN по memberships.
+
+Получается асимметрия:
+- чтение — несколько групп;
+- создание — только первая.
+
+Нужно передавать выбранный group_id и проверять, что студент состоит в этой группе, либо явно показывать selector при нескольких membership.
+
+## P1 — Homework: completion и submission — две независимые сущности без ясной модели
+
+В UI доступны одновременно:
+- «Отметить выполненным»;
+- «Сдать работу».
+
+При этом completed хранится в `homework_progress`, а сдача — в `homework_submissions`.
+
+Это позволяет получить состояния:
+- выполнено, но не сдано;
+- сдано, но не выполнено;
+- выполнено после оценки;
+- новая сдача после предыдущей.
+
+Нужно определить единую матрицу статусов и правила переходов, иначе прогресс и карточка ДЗ будут расходиться.
+
+## P1 — Progress: backend и UI описывают разные формулы
+
+`ProgressService` вычисляет `overall_pct` прежде всего как среднее процентов `user_subject_progress` по предметам (с fallback на progress_ledger).
+
+Frontend подписывает этот показатель как общий прогресс и текстом утверждает:
+«Общий прогресс — среднее по домашним заданиям и тестам».
+
+Это не одна и та же метрика.
+
+Более того, live DB сейчас содержит:
+- progress_ledger = 0;
+- user_question_states = 0;
+- srs_cards = 0;
+- homework_submissions = 0;
+- test_attempts = 1;
+- attendance_records = 0.
+
+Поэтому нужно зафиксировать одну документированную формулу и не показывать пользователю другое объяснение.
+
+## P1 — Progress: расчёт ДЗ не ограничен группами пользователя
+
+`ProgressService` запрашивает все `homeworks` и затем считает submissions пользователя среди них.
+
+В отличие от `HomeworkRepository::listForUser()`, здесь нет фильтра по:
+- group_id IS NULL;
+- группам пользователя.
+
+Следовательно ДЗ другой группы/чужой группы может попасть в denominator прогресса, если оно существует.
+
+Нужно использовать тот же academic-scope resolver, что и основной список ДЗ.
+
+## P1 — Notes: нет удаления/очистки заметки
+
+API называется upsert, но POST /notes требует непустой body.
+
+Пользователь может создать/изменить заметку, но не может штатно очистить её до пустого состояния.
+
+Нужно:
+- DELETE /notes/{id}, или
+- upsert с пустым body как удаление,
+- плюс UI «Удалить заметку».
+
+## P1 — Favorites: target не валидируется
+
+`favorites/toggle` принимает произвольные `target_type` + `target_id` и не проверяет существование объекта.
+
+Можно технически создать favorite на несуществующий/удалённый объект.
+
+Нужно whitelist типов + existence check либо отдельные FK-механизмы для поддерживаемых сущностей.
+
+## P1 — Practice: выбор предмета использует slug
+
+Practice получает subjects как `subject_slug` и отправляет slug в `listQuestions`.
+
+При текущих duplicate active slugs это может показать не тот предмет/семестр, если backend не добавляет достаточный context filter.
+
+Practice должен работать по UUID subject_id, а slug использовать только для URL/display.
+
+## P1 — Schedule: семестр захардкожен во frontend
+
+`src/app/schedule/page.tsx` содержит `SEMESTER_FROM = 2026-09-01` и `SEMESTER_TO = 2027-01-31`.
+
+После окончания этого семестра UI не переключится автоматически на новый учебный период.
+
+Нужно получать active academic year/session/semester from backend и использовать даты только как fallback.
+
+## P1 — Schedule: timezone захардкожен
+
+Schedule использует `Asia/Vladivostok`.
+
+Для текущего пользователя/учебной группы это соответствует Хабаровску, но для платформы это не универсальная настройка. В будущем timezone должен принадлежать academic context/group/institution, а не компоненту.
+
+## P1 — Learning sessions: backend допускает произвольный status
+
+PATCH /sessions/{id} принимает `status` без явного whitelist в route и затем сохраняет его.
+
+Это опасно для lifecycle, особенно учитывая предыдущую ошибку с недопустимым `cancelled` в preparation sessions.
+
+Нужно:
+- enum/whitelist для generic sessions;
+- отдельная state machine;
+- запрет нелогичных переходов после finished.
+
+## P1 — AI study plan: генерация может быть успешной без LLM, но UI должен явно показывать источник
+
+`AcademicPlanningService::generatePlan()` корректно имеет deterministic fallback `rule_engine`, если LLM недоступен.
+
+Но продуктовый контракт должен различать:
+- AI-generated;
+- rule-engine generated;
+- stale cached plan.
+
+Иначе пользователь может считать deterministic plan результатом LLM.
+
+## P2 — SRS / training activity: наличие таблиц не доказывает пользовательский цикл
+
+Live DB:
+- srs_cards = 0;
+- user_question_states = 0;
+- trainer_feed_answers = 23;
+- trainer_feed_cards = 206.
+
+Это не ошибка само по себе. Но acceptance должен доказать:
+open card → answer/skip → state update → next card → due scheduling → progress.
+
+Наличие 23 trainer answers доказывает только сохранение ответов, а не завершённый spaced-repetition цикл.
+
+## P2 — AI chat: данные есть, но нет доказательства пользовательского lifecycle
+
+Live DB содержит 2 ai_conversations и 2 ai_messages.
+
+Нужно E2E:
+provider availability → conversation → message → assistant response → retry/failure → history → provider switch.
+
+Особенно важно, потому что ранее были реальные ошибки Groq/GigaChat/Gemini/Mistral/OpenRouter.
+
+## Live-state correction
+
+Предыдущий текст этого документа говорил о 195 опубликованных unlinked questions. После текущей проверки это уже неактуально.
+
+Сейчас:
+- всего unlinked questions = 195;
+- опубликованных и активных unlinked = 0;
+- все 195 — unpublished;
+- из них 77 archived;
+- broken test_question links = 0.
+
+Следовательно это не текущий release blocker и должно классифицироваться как content inventory, а не production corruption.
+
+## Live-state additional facts
+
+- community_posts = 0;
+- comments = 0;
+- favorites = 0;
+- notes = 0;
+- trainer_feed_cards = 206;
+- trainer_feed_answers = 23;
+- srs_cards = 0;
+- ai_conversations = 2;
+- ai_messages = 2;
+- progress_ledger = 0;
+- student_academic_states = 37;
+- subject_gradebook_entries = 77;
+- question_reports = 0;
+- homework_submissions = 0;
+- test_attempts = 1;
+- attendance_records = 0.
+
+Пустые activity tables не считать автоматически сломанными: они требуют E2E-проверки, а не заполнения демо-данными.
+
+# Updated priority
+
+### P0
+- auth/router/runtime;
+- report context + full lifecycle;
+- production same-commit proof.
+
+### P1
+- community group scoping + author identity + comments lifecycle;
+- attendance self-report vs confirmed status;
+- multi-group homework creation;
+- homework completion/submission state machine;
+- progress formula + group scope;
+- notes deletion;
+- favorite target validation;
+- practice subject UUID;
+- schedule dynamic academic session/timezone;
+- generic session state machine;
+- AI plan source labeling.
+
+### P2
+- SRS full lifecycle;
+- AI chat E2E;
+- entity version history;
+- bulk validation/analytics.
