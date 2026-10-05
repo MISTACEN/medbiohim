@@ -377,3 +377,12 @@ UI не должен опережать исправление semantic context 
 - P1: apply the student-first rule consistently: self-service first; optional starosta/group confirmation only for shared or disputed state.
 
 See `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md` for the full two-pass audit.
+
+
+## Pass 6 — security/state contract findings
+
+P0: backend service-key routes must independently enforce RLS-equivalent authorization. New concrete gaps: homework submit lacks group-membership check; submitted file_id lacks access check; file upload accepts arbitrary group_id/visibility/specialty context; file download presigns B2 URL without group/visibility authorization; student homework creation contradicts live starosta-only RLS semantics.
+
+P1: apiCached cache keys are path-only and stale fallback is global; restrict stale caching to proven public/stale-safe endpoints and include identity/context where needed. File list/download semantics must be aligned. Community global-vs-group visibility should become explicit.
+
+Full evidence: `docs/SECURITY-STATE-AUDIT-2026-10-06-PASS6.md`.
