@@ -14,6 +14,7 @@ import {
   type ApiTest,
 } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { LoadingBar } from "@/components/ui/LoadingBar";
 import { Confetti } from "@/components/ui/Confetti";
 import { QuestionReport } from "@/components/QuestionReport";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
