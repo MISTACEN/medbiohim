@@ -436,3 +436,6 @@
 - ✅ supplied Гистология.zip inspected and used for malformed histology reconstruction;
 - 🟡 newest post-fix Vercel deployment must be confirmed READY;
 - 🟡 actual authenticated production smoke remains required because the connector cannot inspect the user's browser token/session.
+
+
+- 2026-10-05: Histology ZIP cross-audit completed through current 3rd semester; materials UI now includes all source documents, next-semester content is retained but hidden by default, legacy DOC HTML mirrors prepared for SpaceWeb, and published duplicate test/question cleanup continued. SpaceWeb media upload remains a manual infrastructure step.
