@@ -29,7 +29,7 @@ const API_CACHE_TTL = 60_000;
 function isCacheableGet(path: string, options: RequestInit) {
   if ((options.method || "GET").toUpperCase() !== "GET") return false;
   if (typeof window === "undefined") return false;
-  return /^\/(subjects(?:$|\?)|subjects-catalog|subjects\\/[^?]+|subject-plans\\/[^?]+|tests(?:\\?|$)|materials(?:\\?|$)|lectures(?:\\?|$)|tickets(?:\\?|$))/.test(path);
+  return /^\/(subjects(?:$|\?)|subjects-catalog|subjects\\/[^?]+|subject-plans\\/[^?]+|tests(?:\\?|$)|materials(?:\\?|$)|lectures(?:\\?|$)|tickets(?:\\?|$)|subject-materials(?:\\?|$)|trainers\\/feed(?:\\?|$))/.test(path);
 }
 
 export async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
