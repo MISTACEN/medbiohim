@@ -198,6 +198,8 @@ export default function PreparationPage() {
     }
     setLoading(true);
     setError("");
+    // Все фоновые сохранения должны попасть на сервер до финального подсчёта.
+    await saveQueue.current;
     const r = await finishPreparation(session.id);
     if (r.ok) {
       setStats(r.data);
