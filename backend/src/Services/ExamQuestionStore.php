@@ -19,18 +19,28 @@ final class ExamQuestionStore
         if ($base === '' || $key === '') {
             throw new \RuntimeException('Supabase REST is not configured');
         }
-        $res = HttpClient::request(
-            $method,
-            $base . '/rest/v1/' . ltrim($path, '/'),
-            $body,
-            array_merge(SupabaseKeyHeaders::service($key), $headers),
-            20
-        );
-        if ($res['status'] < 200 || $res['status'] >= 300) {
-            $detail = is_array($res['json']) ? (string) json_encode($res['json'], JSON_UNESCAPED_UNICODE) : trim((string) $res['body']);
-            throw new \RuntimeException('Supabase exam_questions request failed (' . $res['status'] . '): ' . substr($detail, 0, 900));
-        }
-        return is_array($res['json']) ? $res['json'] : [];
+        $attempts = 0;
+        do {
+            $attempts++;
+            $res = HttpClient::request(
+                $method,
+                $base . '/rest/v1/' . ltrim($path, '/'),
+                $body,
+                array_merge(SupabaseKeyHeaders::service($key), $headers),
+                20
+            );
+            if ($res['status'] >= 200 && $res['status'] < 300) {
+                return is_array($res['json']) ? $res['json'] : [];
+            }
+            // SpaceWeb ↔ Supabase can briefly return gateway/service errors.
+            // Retry only transient transport/upstream statuses; never retry validation/auth failures.
+            $transient = $res['status'] === 0 || in_array($res['status'], [502, 503, 504], true);
+            if (!$transient || $attempts >= 3) break;
+            usleep(180000 * $attempts);
+        } while ($attempts < 3);
+
+        $detail = is_array($res['json']) ? (string) json_encode($res['json'], JSON_UNESCAPED_UNICODE) : trim((string) $res['body']);
+        throw new \RuntimeException('Supabase exam_questions request failed (' . $res['status'] . '): ' . substr($detail, 0, 900));
     }
 
     /** @return list<array<string,mixed>> */
