@@ -397,3 +397,31 @@ P1: test attempts are not retry-safe/idempotent; finish can rewrite terminal att
 P2: test score is client-trusted; state errors need granular codes.
 
 Full evidence: `docs/STATE-MACHINE-AUDIT-2026-10-06-PASS7.md`.
+
+
+## Pass 8 — Cross-feature consistency findings
+
+### P0
+- Ввести единый `AcademicContextResolver`: user → group → specialty/course/semester → subject UUID → schedule/context version.
+- Убрать `ORDER BY created_at LIMIT 1` при выборе группы для student homework creation.
+- Привести primary и fallback homework create/list/submit/progress к одной semantic policy.
+- Проверять доступ к homework перед записью progress/submit.
+- Не позволять переходу subject_id → slug терять исходный academic context.
+
+### P1
+- Planner recovery агрегировать по subject UUID, не по subject_name.
+- Объединить homework scope resolver для planner и HomeworkRepository.
+- Сделать единый published-test resolver для tests и preparation.
+- Перевести SRS/practice/content identity с slug-only на subject UUID там, где предмет является учебной сущностью.
+- Включить academic context в identity-aware cache keys.
+- Явно определить semester/course scope для progress/gradebook.
+
+### E2E cross-feature acceptance
+
+Обязательный сценарий:
+
+`student login → select group → schedule → select subject → mark attendance → create/see homework → complete/submit → start test → preparation → progress → SRS → group community`.
+
+Проверить reload, retry, duplicate click и смену academic context. Один и тот же subject UUID и group UUID должны сохраняться по всей цепочке.
+
+Full evidence: `docs/CROSS-FEATURE-CONSISTENCY-AUDIT-2026-10-06-PASS8.md`.
