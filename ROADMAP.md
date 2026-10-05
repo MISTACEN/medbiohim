@@ -50,6 +50,7 @@
 
 ### Осталось
 - 🟡 пройти полный smoke-test логин → dashboard → logout;
+- ✅ shared API refresh deduplicated; app bootstrap can recover a valid refresh session;
 - 🟡 проверить production после последнего frontend commit;
 - 🟡 зафиксировать единую схему env/secrets для Vercel + SpaceWeb;
 - 🟡 устранить оставшиеся runtime 404/502 по медиа.
@@ -136,6 +137,7 @@
 - 🟡 проверить соответствие всех 30 карточек плану занятий;
 - 🟡 проверить все 28 электронограмм и captions;
 - 🟡 проверить полноту тестов 96 + 67 без потери существующих тестов;
+- ✅ two malformed bird-blastula links reconstructed from supplied source archive;
 - 🟡 пройти UI smoke-test атлас → материал → документ → назад;
 - 🟡 решить 404/502 локальных медиа на SpaceWeb;
 - ⬜ сделать окончательную матрицу: тема → лекция → препарат → ЭМ → вопросы → тест.
@@ -161,7 +163,7 @@
 - 🟡 довести admin quick-edit вопросов;
 - 🟡 объединить bank / проход / разбор в один UX;
 - ✅ массовая проверка целостности test → questions проведена; после dedup 118 однозначных связей восстановлены;
-- 🟡 две оставшиеся malformed legacy links требуют ручной реконструкции.
+- ✅ malformed bird-blastula links reconstructed from supplied source; source answer retained verbatim and documented for review.
 - ✅ пользовательские отчёты об ошибках вопроса: student UI + preparation + bank + admin problem center.
 
 ---
@@ -423,3 +425,14 @@
 - 🟡 leaked-password protection remains a Supabase Auth setting to enable;
 - ✅ public smoke workflow strengthened for /, /tests, /schedule, /subjects, /materials, /trainers and public API surfaces;
 - 🟡 final production verdict still waits for green CI + Vercel READY + SpaceWeb/media smoke.
+
+
+# Runtime regression update — 2026-10-05
+
+- ✅ live preparation mode constraint now allows sequential;
+- ✅ global loading indicator covers shared API requests across pages, not only tests;
+- ✅ concurrent 401 refresh race hardened;
+- ✅ subject/ticket Supabase REST transient retries added;
+- ✅ supplied Гистология.zip inspected and used for malformed histology reconstruction;
+- 🟡 newest post-fix Vercel deployment must be confirmed READY;
+- 🟡 actual authenticated production smoke remains required because the connector cannot inspect the user's browser token/session.
