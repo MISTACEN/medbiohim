@@ -19,13 +19,14 @@
 
 - 2 курс, 3 семестр — canonical active subject.
 - 14 модулей учебного плана.
-- 350 `exam_questions`.
-- 5 `ticket_banks`.
-- 9 published tests.
-- 27 published materials.
-- 206 published trainer feed cards.
-- 30 карточек используются текущим trainer/atlas flow.
-- tickets table сейчас не заполнен: **0**.
+- 19 тем текущего плана.
+- 116 published `exam_questions` source-backed for the current 3rd semester.
+- 5 `ticket_banks`; tickets table = 0 because no source-backed ticket grouping manifest is present.
+- 8 published tests + 1 archived duplicate.
+- 80 published materials in the active semester subject.
+- 206 published trainer cards: 169 current-plan, 37 retained future/unmapped and hidden by default.
+- 273 published question-bank questions + 194 archived.
+- 76 original exam questions + 40 newly imported current-plan exam questions = 116 published exam questions total.
 
 ## Важное различие
 
