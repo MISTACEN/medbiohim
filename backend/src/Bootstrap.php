@@ -62,12 +62,15 @@ final class Bootstrap
             if (!(error_reporting() & $severity)) {
                 return false;
             }
-            // PHP 8 emits E_WARNING "The use statement with non-compound name 'X'
-            // has no effect" for `use PDO;` and similar in the global namespace.
-            // The warning is always harmless, and the decoded trainings route
-            // payload triggers it on every load — mark it handled instead of
-            // converting it into an ErrorException (which 500s the request).
-            if ($severity === E_WARNING && str_contains($message, 'The use statement with non-compound name')) {
+            // The self-contained compressed trainings route is decoded into a
+            // temporary global-namespace file and may emit PHP's harmless
+            // non-compound `use X;` warning on load. Keep this exception scoped
+            // to that generated payload; do not hide the same warning elsewhere.
+            if (
+                $severity === E_WARNING
+                && str_contains($message, 'The use statement with non-compound name')
+                && str_starts_with(basename($file), 'mbh_tr_')
+            ) {
                 return true;
             }
             throw new \ErrorException($message, 0, $severity, $file, $line);
