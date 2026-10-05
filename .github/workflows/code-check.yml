@@ -31,6 +31,28 @@ jobs:
             echo 'Found a literal \\n embedded in source code.'
             exit 1
           fi
+      - name: Detect duplicate HTTP method+route registrations
+        run: |
+          set -euo pipefail
+          php -r '
+            $files = glob("backend/config/routes/*.php") ?: [];
+            $seen = [];
+            foreach ($files as $file) {
+              $src = file_get_contents($file);
+              if ($src === false) continue;
+              if (preg_match_all("/\\$router->(get|post|put|patch|delete)\\(\\s*['\"]([^'\"]+)['\"]/", $src, $m, PREG_SET_ORDER)) {
+                foreach ($m as $hit) {
+                  $key = strtoupper($hit[1]) . " " . $hit[2];
+                  if (isset($seen[$key])) {
+                    fwrite(STDERR, "Duplicate route: $key in {$seen[$key]} and $file\\n");
+                    exit(1);
+                  }
+                  $seen[$key] = $file;
+                }
+              }
+            }
+          '
+
       - name: Full local-equivalent pre-deploy audit
         run: npm run predeploy:audit
 
