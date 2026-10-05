@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { QuestionReport } from "@/components/QuestionReport";
+import { LoadingBar } from "@/components/ui/LoadingBar";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import {
   startPreparation,
