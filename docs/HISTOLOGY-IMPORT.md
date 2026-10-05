@@ -3,10 +3,10 @@
 ## Current state — 2026-10-04
 
 Supabase:
-- `exam_questions`: **350**
+- `exam_questions`: **366 published** (350 canonical + 16 unique ZIP additions; 100 exact-text ZIP duplicates archived)
 - `ticket_banks`: **5**
 - published tests for histology: **9**
-- published materials for histology: **27**
+- published materials for histology: **80**
 - published trainer feed cards for histology: **206**
 - trainer/atlas flow currently uses the subject's prepared 30-card dataset
 - ticket rows: **0**
