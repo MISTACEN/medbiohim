@@ -147,7 +147,7 @@
 **Статус: 🟡 IN PROGRESS**
 
 ### Уже сделано
-- ✅ 855 опубликованных questions;
+- ✅ 735 опубликованных questions (live Supabase, 2026-10-05);
 - ✅ test/question backend;
 - ✅ режим банка;
 - ✅ нумерация;
@@ -411,3 +411,15 @@
 - 🟡 remaining P0-class work is external/runtime verification (media and AI credentials) rather than failing CI.
 
 ## P1/P2 cleanup confirmed
+
+
+# Audit hardening update — 2026-10-05
+
+- ✅ live Supabase RLS init-plan warnings reduced to 0;
+- ✅ question_reports SELECT policies consolidated to reporter-or-admin;
+- ✅ trainer_feed_answers RLS uses init-plan-safe auth.uid();
+- ✅ admin_change_log and content_versions admin policies use init-plan-safe auth.uid();
+- 🟡 44 unindexed FK advisor findings remain informational/performance work;
+- 🟡 leaked-password protection remains a Supabase Auth setting to enable;
+- ✅ public smoke workflow strengthened for /, /tests, /schedule, /subjects, /materials, /trainers and public API surfaces;
+- 🟡 final production verdict still waits for green CI + Vercel READY + SpaceWeb/media smoke.
