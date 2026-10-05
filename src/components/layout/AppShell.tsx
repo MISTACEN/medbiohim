@@ -6,6 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { MobileNav } from "./MobileNav";
 import { hasToken, presenceHeartbeat } from "@/lib/api";
+import { GlobalLoadingBar } from "@/components/ui/GlobalLoadingBar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <GlobalLoadingBar />
       <div className="hidden lg:block">
         <Sidebar />
       </div>
