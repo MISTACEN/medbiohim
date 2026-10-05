@@ -30,14 +30,19 @@ function categoryIcon(c: Item["category"]) {
   return <FileText className="h-5 w-5" />;
 }
 
-function DocxView({ blob, title }: { blob: Blob; title: string }) {
+function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   const [text, setText] = useState<string[]>([]);
+  const [html, setHtml] = useState<string | null>(null);
   const [imgs, setImgs] = useState<string[]>([]);
   const [busy, setBusy] = useState(true);
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
+        if (blob.type.includes("html")) {
+          setHtml(await blob.text());
+          return;
+        }
         const z = await JSZip.loadAsync(blob);
         const xml = await z.file("word/document.xml")?.async("string");
         if (!xml) throw new Error("Документ не содержит читаемого DOCX-текста.");
@@ -63,6 +68,7 @@ function DocxView({ blob, title }: { blob: Blob; title: string }) {
   }, [blob]);
 
   if (busy) return <div className="flex min-h-[50vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Открываем документ…</div>;
+  if (html) return <iframe title={title} srcDoc={html} className="min-h-[70vh] w-full rounded-2xl border bg-white" sandbox="" />;
   return <article className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-sm sm:p-10">
     <h3 className="mb-7 text-center text-xl font-bold text-slate-900">{title}</h3>
     <div className="space-y-3 text-[15px] leading-7 text-slate-800">{text.map((x, i) => <p key={i}>{x}</p>)}</div>
@@ -175,7 +181,7 @@ export default function HistologyMaterials() {
           {active.kind === "photo"
             ? (photo ? <div className="flex min-h-full items-center justify-center"><img src={photo} alt={active.title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" /> </div> : <div className="flex justify-center pt-20"><Loader2 className="h-6 w-6 animate-spin" /></div>)
             : blob
-              ? <DocxView blob={blob} title={active.title} />
+              ? <DocumentView blob={blob} title={active.title} />
               : <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500"><p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p><p className="mt-1">Если файл не размещён на SpaceWeb, он появится после загрузки папки <code>content/histology</code>.</p>{active.source?.download_url && <a href={active.source.download_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white">Открыть оригинал</a>}</div>}
         </div>
       </div>
