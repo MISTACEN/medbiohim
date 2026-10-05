@@ -459,25 +459,65 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   }
 
   const finishBar = (
-    <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={working} onClick={() => void finish()} className="btn-primary">Завершить</button>
-      <button type="button" onClick={() => setMobileList(!mobileList)} className="rounded-xl border px-3 py-2 md:hidden"><Menu className="h-4 w-4" /></button>
+    <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+      <button type="button" disabled={working} onClick={() => void finish()} className="btn-primary flex-1 sm:flex-none">Завершить</button>
+      {layout === "sidebar" && (
+        <button type="button" onClick={() => setMobileList(!mobileList)} className="rounded-xl border px-3 py-2 md:hidden" aria-label="Список вопросов">
+          <Menu className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 
+  const statusNav = (
+    <div className="mobile-scroll-x overflow-x-auto pb-1">
+      <Dots answers={answers} current={active} onSelect={setActive} />
+    </div>
+  );
+
+  const listMode = layout === "list";
+  const sidebarMode = layout === "sidebar";
+
   return (
     <div className={embedded ? "space-y-4" : "mx-auto max-w-6xl space-y-4"}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-slate-500">Отвечено {answered} / {answers.length}</div>
-        {finishBar}
+      <div className="sticky top-16 z-20 -mx-1 rounded-2xl border bg-white/95 p-3 shadow-sm backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 text-sm text-slate-500">Отвечено {answered} / {answers.length}</div>
+          {finishBar}
+        </div>
+        {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+        {layout === "top" && <div className="mt-2">{statusNav}</div>}
       </div>
-      {error && <p className="text-sm text-rose-600">{error}</p>}
-      <Dots answers={answers} current={active} onSelect={setActive} />
-      {current && question(current, active)}
-      <div className="flex justify-between">
-        <button type="button" disabled={active <= 0} onClick={() => setActive(active - 1)} className="rounded-xl border px-4 py-2"><ChevronLeft className="inline h-4 w-4" />Назад</button>
-        <button type="button" disabled={active >= answers.length - 1} onClick={() => setActive(active + 1)} className="rounded-xl border px-4 py-2">Далее<ChevronRight className="inline h-4 w-4" /></button>
-      </div>
+
+      {sidebarMode ? (
+        <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className={(mobileList ? "fixed inset-x-3 top-20 z-40 max-h-[70vh] overflow-auto shadow-2xl " : "hidden md:block ") + "rounded-2xl border bg-white p-3"}>
+            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Навигация по вопросам</div>
+            <Dots answers={answers} current={active} onSelect={(n) => { setActive(n); setMobileList(false); }} />
+            <div className="mt-3 grid grid-cols-2 gap-1 text-[10px] text-slate-500">
+              <span>● отвечено</span><span>○ не отвечено</span>
+            </div>
+          </aside>
+          {current && question(current, active)}
+        </div>
+      ) : listMode ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border bg-white px-3 py-2 text-xs text-slate-500">Режим «Списком» · {answers.length} вопросов</div>
+          {answers.map((a, i) => question(a, i, true))}
+        </div>
+      ) : (
+        <>
+          {current && question(current, active)}
+          <div className="flex gap-2">
+            <button type="button" disabled={active <= 0} onClick={() => setActive(active - 1)} className="min-h-11 flex-1 rounded-xl border px-4 py-2">
+              <ChevronLeft className="inline h-4 w-4" />Назад
+            </button>
+            <button type="button" disabled={active >= answers.length - 1} onClick={() => setActive(active + 1)} className="min-h-11 flex-1 rounded-xl border px-4 py-2">
+              Далее<ChevronRight className="inline h-4 w-4" />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
