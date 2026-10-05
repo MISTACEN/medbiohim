@@ -53,7 +53,7 @@ jobs:
             spl_autoload_register(static function (string $class) use ($root): void {
               $prefix = "Medbiohim\\\\";
               if (!str_starts_with($class, $prefix)) return;
-              $relative = str_replace("\\\\", "/", substr($class, strlen($prefix)));
+              $relative = str_replace("\\", "/", substr($class, strlen($prefix)));
               $file = $root . "/src/" . $relative . ".php";
               if (is_readable($file)) require_once $file;
             });
