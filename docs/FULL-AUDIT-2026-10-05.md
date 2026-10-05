@@ -154,3 +154,38 @@ The 28 electronogram source titles correspond to the 28 published histology / mb
 - Vercel deployment dpl_DNR82qnU3wvp9yWZiXsf5Mwpo for commit c36f1d... was independently confirmed READY in production.
 - Subsequent commits are newer than that READY deployment; therefore the newest source tree still requires its own Vercel READY confirmation.
 - Vercel runtime log access from the current connector is permission-denied, so SpaceWeb 401/503 runtime behavior cannot be declared fully closed solely from this environment.
+
+
+## Pass 5 — Гистология.zip → текущий 3 семестр → UI/media (2026-10-05)
+
+### Source inventory
+- Supplied `Гистология.zip`: 276 archive entries; 28 EM source documents, 29 scheme/table entries, 7 methodical entries, 5 test-source entries, 178 preparation photographs, plus exam/control/specimen/memo materials.
+- Existing DB for active 2nd-year semester-3 histology subject already contains all **80 non-photo source materials** from the ZIP: 28 EM + 52 other documents. Therefore the main defect was not absence of DB metadata: the old frontend filtered documents to `histology-em-*` and hid the other 52.
+- Existing trainer set contains 206 published cards: 178 preparation photos + 28 EM. 38 cards have no current-plan topic; their names are skin/lung/uterus/bladder/kidney/testis/sperm/mammary/ovary plus urinary/reproductive/respiratory EM. They are next-semester material and are now excluded from the default 3rd-semester UI, not deleted.
+
+### 3rd-semester scope
+- Active semester-3 subject id: `977d78ca-7a58-4b0a-9e93-29d8e03f6946`; semester 4 is a separate subject row and is not mixed into the current UI.
+- Current curriculum has 19 topics from week 1 through week 18.
+- Materials now have plan links for the current scheme set and matching EM cards where a current topic exists. Next-semester scheme sources remain in DB but are hidden by default; an explicit “Весь курс” switch exposes them.
+
+### UI fixes
+- Histology Materials no longer filters documents to EM only.
+- Added categories: Schemes/EM, Methodicals, Tests/Control, Exam, Preparation photos.
+- Default view is 3rd semester; “Весь курс” exposes retained next-semester archive.
+- Materials are grouped by curriculum topic when a plan link exists.
+- Global input styling now prevents the black search field seen on iPhone/other browser themes.
+- Legacy `.doc` sources get an HTML mirror path for in-site viewing; DOCX remains rendered client-side.
+
+### Test/question cleanup
+- Current published question bank: 286 questions after safe canonical deduplication; no published question is source-less.
+- 14 exact duplicates with a canonical ZIP-backed question were rewired in test links and archived; 3 ambiguous malformed duplicate groups remain intentionally untouched for source review (“Полное, неравномерное, асинхронное” and “Амфибластула” groups).
+- Duplicate 67-question embryology test was archived because all 67 linked questions are already present in the canonical mixed set; a separate 20-question embryology test remains.
+- Previously source-less test records were assigned explicit source records pointing to the supplied 2007 cytology/embryology source document.
+- The bird-blastula reconstruction remains source-derived and retains the supplied source answer; it is not silently corrected.
+
+### SpaceWeb payload
+- Generated `histology-spaceweb-docs-delta.zip` containing the document/gif portion of the supplied ZIP plus HTML mirrors for legacy `.doc` files. The archive is ~102 MB and contains 95 files. Existing `content.zip` media is preserved; the new delta does not replace the old 178-photo/EM content.
+- Limitation: no direct SpaceWeb file-upload connector is available in this session, so the archive is prepared but cannot be physically copied into SpaceWeb from ChatGPT. It must be placed under `content/histology/` on SpaceWeb alongside the existing content.
+
+### Verification state
+- Several intermediate Vercel deployments failed on lint/type checks while the frontend changes were being iterated; the newest deployment for commit `8d4ff442...` was BUILDING at the last check. Do not treat production as verified until the newest deployment reaches READY and an authenticated mobile materials smoke test passes.
