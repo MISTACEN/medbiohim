@@ -495,3 +495,164 @@ html[data-theme="aero-glass"] .text-slate-500 {
   .tests-page .test-list-card > div:last-child { grid-template-columns: 1fr; }
   .histology-question-card > div.relative img { min-height: 190px; }
 }
+
+
+/* Motion system — subtle, fast and touch-friendly */
+:root {
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-smooth: cubic-bezier(.22,1,.36,1);
+  --motion-soft: cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes mbh-fade-up {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes mbh-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes mbh-scale-in {
+  from { opacity: 0; transform: scale(.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes mbh-pulse-soft {
+  0%, 100% { opacity: .72; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.035); }
+}
+@keyframes mbh-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes mbh-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+main > * {
+  animation: mbh-fade-up 320ms var(--motion-smooth) both;
+}
+
+.card,
+.test-list-card,
+.test-question-card,
+.histology-question-card {
+  transition:
+    transform var(--motion-base) var(--motion-smooth),
+    box-shadow var(--motion-base) var(--motion-soft),
+    border-color var(--motion-fast) var(--motion-soft);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover,
+  .test-list-card:hover,
+  .test-question-card:hover,
+  .histology-question-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(15,23,42,.08);
+  }
+}
+
+button,
+a,
+[role="button"] {
+  transition:
+    transform var(--motion-fast) var(--motion-smooth),
+    opacity var(--motion-fast) var(--motion-soft),
+    background-color var(--motion-fast) var(--motion-soft),
+    border-color var(--motion-fast) var(--motion-soft),
+    box-shadow var(--motion-fast) var(--motion-soft);
+}
+
+button:active,
+a:active,
+[role="button"]:active {
+  transform: scale(.97);
+}
+
+.btn-primary {
+  transition:
+    transform var(--motion-fast) var(--motion-smooth),
+    box-shadow var(--motion-base) var(--motion-soft),
+    opacity var(--motion-fast) var(--motion-soft);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.btn-primary:active {
+  transform: scale(.97);
+}
+
+.mobile-scroll-x {
+  scroll-behavior: smooth;
+}
+
+.test-preparation-page .test-question-card {
+  animation: mbh-fade-up 280ms var(--motion-smooth) both;
+}
+
+.test-preparation-page .test-question-card label {
+  transition:
+    background-color var(--motion-fast) var(--motion-soft),
+    border-color var(--motion-fast) var(--motion-soft),
+    transform var(--motion-fast) var(--motion-smooth);
+}
+
+.test-preparation-page .test-question-card label:active {
+  transform: scale(.985);
+}
+
+.histology-question-card img {
+  transition:
+    transform 350ms var(--motion-smooth),
+    opacity 250ms var(--motion-soft);
+}
+
+.histology-question-card img:hover {
+  transform: scale(1.012);
+}
+
+.lecture-editor-content img,
+.lecture-editor-content video {
+  transition: transform 250ms var(--motion-smooth), box-shadow 250ms var(--motion-soft);
+}
+
+.lecture-editor-content img:hover,
+.lecture-editor-content video:hover {
+  transform: scale(1.006);
+  box-shadow: 0 12px 28px rgba(15,23,42,.10);
+}
+
+@media (max-width: 640px) {
+  main > * { animation-duration: 260ms; }
+
+  .mobile-scroll-x > * {
+    scroll-snap-align: start;
+  }
+
+  .test-preparation-page .test-question-card,
+  .histology-question-card {
+    animation-duration: 240ms;
+  }
+
+  .test-list-card:nth-child(1),
+  .test-question-card:nth-child(1) { animation-delay: 20ms; }
+  .test-list-card:nth-child(2),
+  .test-question-card:nth-child(2) { animation-delay: 45ms; }
+  .test-list-card:nth-child(3),
+  .test-question-card:nth-child(3) { animation-delay: 70ms; }
+  .test-list-card:nth-child(n+4),
+  .test-question-card:nth-child(n+4) { animation-delay: 90ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
