@@ -199,3 +199,76 @@ The 28 electronogram source titles correspond to the 28 published histology / mb
 - Live Supabase audit after cleanup: 80 published current-semester material rows with no missing source key; 273 published questions with no source-less published rows; 76 published exam questions; 5 untouched ticket banks; 8 published tests + 1 archived duplicate; 206 trainer cards total, of which 168 have current-plan topic bindings and 38 are retained as next-semester/unmapped content and hidden by default.
 - Three intentionally ambiguous duplicate question groups remain for source review because the rows are malformed answer-like strings rather than safely reconstructable questions. They are not silently deleted.
 - The 102 MB SpaceWeb document delta archive was generated separately; physical SpaceWeb upload is still outside available connectors.
+
+
+## Pass 7 — final source/DB/UI reconciliation after current-semester pass (2026-10-05)
+
+### Live DB snapshot
+Active histology subject = 2nd year / semester 3:
+- 14 modules;
+- 19 curriculum topics;
+- 80 published materials;
+- 261 histology source rows;
+- 178 photo sources;
+- 81 DOC/DOCX sources;
+- 2 GIF sources;
+- 206 published trainer cards;
+- 169 trainer cards marked `ПРИВЯЗАНО`;
+- 37 trainer cards marked `ВНЕ ТЕКУЩЕГО ПЛАНА`;
+- 273 published `questions`;
+- 194 archived `questions`;
+- 0 published questions without `source_key`;
+- 76 published `exam_questions`;
+- 8 published tests + 1 archived duplicate;
+- 5 ticket banks;
+- 0 generated `tickets`.
+
+### Source reconciliation
+The 80 material rows correspond to the source-document layer already registered from `Гистология.zip`. The main previous defect was delivery/viewing, not missing material metadata.
+
+The supplied `content.zip` remains the historical/deployed media snapshot with the working trainer image pipeline. It does not replace `Гистология.zip` as source of truth for the course-document layer.
+
+### Mobile/UI correction
+Fixed:
+- manual EM answer fields;
+- Materials search field;
+- Materials document/action controls.
+
+Histology form controls now explicitly use a light native color scheme and white backgrounds, avoiding device/browser dark-mode rendering that produced the black fields shown in the user screenshot.
+
+### Materials correction
+Materials now has separate categories:
+- Схемы;
+- Электронограммы;
+- Методички;
+- Тесты;
+- Экзамен;
+- Фото препаратов.
+
+The default filter is the current 3rd semester. Future material is retained and exposed only through `Весь курс`.
+
+Materials are sorted by curriculum module/topic and then content type/title.
+
+### Document delivery
+The frontend viewer now handles:
+- HTML mirrors;
+- DOCX;
+- image/GIF;
+- PDF;
+- fallback original-file open/download.
+
+A SpaceWeb payload was generated from `Гистология.zip`:
+`MEDBIOHIM_histology_spaceweb_3sem_content_patch.zip`
+
+The payload contains the source DOC/DOCX/GIF layer and HTML mirrors for legacy `.doc` files. It intentionally excludes videos and the already-deployed preparation/EM media layer.
+
+### Important remaining boundary
+The SpaceWeb file upload itself cannot be performed from the available connectors in this session. Therefore the archive is prepared, but physical SpaceWeb availability remains a manual infrastructure step.
+
+### Ticket/exam boundary
+The DB now contains source-backed exam questions, but the supplied ZIP does not provide a canonical ticket grouping manifest. Five existing ticket-bank metadata rows are therefore retained, while `tickets=0` remains honest. No ticket grouping is fabricated from legacy IDs.
+
+### Production
+The latest frontend commit `a5137026b85b990a65263bbdcf7de882cdb557b0` has Vercel production deployment `dpl_DGvJnKryMtrjzEnUQAe4agnHjr5K` in READY state, target production, region `fra1`; the GitHub combined Vercel status is success.
+
+Authenticated mobile Materials → document/photo smoke still must be repeated after the SpaceWeb payload is physically placed.
