@@ -21,7 +21,7 @@ function categoryOf(m: SubjectMaterial): Item["category"] {
 }
 
 function categoryLabel(c: Item["category"]) {
-  return ({ scheme: "Схемы и ЭМ", method: "Методички", tests: "Тесты и контроль", exam: "Экзамен и препараты", other: "Прочее" })[c];
+  return ({ scheme: "Схемы и ЭМ", method: "Методички", tests: "Тесты и контроль", exam: "Экзамен и препараты", other: "Прочее", photo: "Фото препаратов" })[c];
 }
 
 function categoryIcon(c: Item["category"]) {
