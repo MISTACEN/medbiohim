@@ -84,14 +84,15 @@ export default function SubjectsPage() {
     setNote(null);
     (async () => {
       try {
-        const cat = await listSubjectsCatalog();
+        const [cat, r] = await Promise.all([
+          listSubjectsCatalog(),
+          listSubjects(
+            course === "" ? undefined : course,
+            semester === "" ? undefined : semester
+          ),
+        ]);
         const catalogMeta = cat.ok ? (cat.data as { items?: Item[]; tools?: Tool[] }) : null;
         if (catalogMeta?.tools) setTools(catalogMeta.tools);
-
-        const r = await listSubjects(
-          course === "" ? undefined : course,
-          semester === "" ? undefined : semester
-        );
         if (cancelled) return;
 
         if (r.ok && (r.data.items || []).length > 0) {
