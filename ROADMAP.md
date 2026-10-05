@@ -485,9 +485,9 @@ must be checked on iPhone and desktop. Only then move the Histology Materials it
 
 
 ### Гистология — экзаменационный банк, Pass 8
-- ✅ Current 3rd-semester source-backed exam bank expanded to **116 published exam_questions**.
-- ✅ Added 14 private nervous/sensory + 7 cardiovascular + 8 hematopoiesis/immunity + 7 endocrine + 4 oral-cavity questions from `Гистология.zip`.
-- ✅ 40 newly added rows linked to current curriculum modules/topics.
+- ✅ Current 3rd-semester exam bank reconciled to **366 published exam_questions**: 350 canonical rows + 16 unique ZIP additions.
+- ✅ ZIP additions are deduplicated against the canonical bank; 100 exact-text duplicates are archived, while 16 unique additions remain published.
+- ✅ Canonical bank subject links were restored after detecting 350 rows with `subject_id = NULL`; all 366 published rows now point to the active histology subject.
 - ✅ 0 published exam questions without a source.
 - 🟡 Future respiratory/skin/urinary/reproductive/later GI source questions remain retained in source documents but unpublished until the next-semester plan is activated.
 - 🟡 Ticket banks remain metadata-only; `tickets=0` because no canonical ticket grouping manifest exists in the supplied source archive.
