@@ -8,7 +8,7 @@ import { listSubjectMaterials, listTrainerFeed, type SubjectMaterial } from "@/l
 
 type Kind = "doc" | "photo";
 type Tab = "all" | "doc" | "photo" | "scheme" | "method" | "tests" | "exam" | "other";
-type Item = SubjectMaterial & { kind: Kind; category: Exclude<Tab, "all" | "doc" | "photo"> | "photo" };
+type Item = SubjectMaterial & { kind: Kind; category: Exclude<Tab, "all" | "doc" | "photo"> | "photo"; currentSemester?: boolean };
 
 function categoryOf(m: SubjectMaterial): Item["category"] {
   const k = String(m.source_key || "");
@@ -85,20 +85,36 @@ export default function HistologyMaterials() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAllCourse, setShowAllCourse] = useState(false);
 
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     Promise.all([listSubjectMaterials({ subjectSlug: "histology" }), listTrainerFeed("histology", "mbh", 500)])
       .then(([m, f]) => {
         if (!m.ok) { setError(m.error.message); return; }
+        const feedItems: any[] = f.ok ? f.data.items || [] : [];
+        const currentCardNames = new Set(feedItems.filter((x) => x.plan_topic_id).map((x) => String(x.preparation?.name || "").trim()));
         const docs: Item[] = (m.data.items || []).map((x) => ({ ...x, kind: "doc", category: categoryOf(x) }));
-        const photos: Item[] = (f.ok ? f.data.items || [] : []).map((x: any) => ({
+        const photos: Item[] = feedItems.map((x: any) => ({
           id: String(x.id), subject_id: x.subject_id || "", subject_name: "Гистология", subject_slug: "histology",
           type: "image", title: x.preparation?.name || "Микропрепарат", source_key: x.source_key || null,
           module_title: x.plan_module_title || null, topic_title: x.plan_topic_title || null,
           kind: "photo", category: "photo",
         }));
-        setItems([...docs, ...photos]);
+        // Keep the full ZIP in the database, but the default UI is strictly the
+        // current 3rd-semester plan. Next-semester cards stay available via the
+        // explicit "Весь курс" switch.
+        setItems([...docs.map((x) => ({
+          ...x,
+          currentSemester: (() => {
+            const k = String(x.source_key || "");
+            const n = k.match(/histology-zip-(?:scheme|gif)-(\\d+)/)?.[1];
+            if (n && Number(n) > 9) return false;
+            if (k.startsWith("histology-em-")) return currentCardNames.has(String(x.title || "").trim());
+            return true;
+          })(),
+        })), ...photos.map((x: any) => ({ ...x, currentSemester: !!x.plan_topic_id }))] as Item[]);
+
       })
       .catch(() => setError("Не удалось загрузить материалы."))
       .finally(() => setLoading(false));
@@ -108,14 +124,15 @@ export default function HistologyMaterials() {
     const needle = q.trim().toLowerCase();
     return items.filter((x) => {
       const tabOk = tab === "all" || tab === x.kind || tab === x.category;
+      const semesterOk = showAllCourse || x.currentSemester !== false;
       const text = [x.title, x.module_title, x.topic_title, x.source_key].filter(Boolean).join(" ").toLowerCase();
-      return tabOk && (!needle || text.includes(needle));
+      return tabOk && semesterOk && (!needle || text.includes(needle));
     }).sort((a, b) => {
       const at = a.topic_title || a.module_title || "Без темы";
       const bt = b.topic_title || b.module_title || "Без темы";
       return at.localeCompare(bt, "ru") || a.category.localeCompare(b.category, "ru") || a.title.localeCompare(b.title, "ru");
     });
-  }, [items, tab, q]);
+  }, [items, tab, q, showAllCourse]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Item[]>();
@@ -146,6 +163,12 @@ export default function HistologyMaterials() {
       </div>
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
         {tabs.map(([k,l]) => <button key={k} type="button" onClick={() => setTab(k)} className={"shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold " + (tab === k ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white text-slate-700")}>{l}</button>)}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs text-indigo-800">
+        <span>{showAllCourse ? "Показан весь архив курса, включая материалы следующего семестра." : "Показан только текущий 3 семестр."}</span>
+        <button type="button" onClick={() => setShowAllCourse((v) => !v)} className="shrink-0 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 font-semibold text-indigo-700">
+          {showAllCourse ? "Только 3 семестр" : "Весь курс"}
+        </button>
       </div>
       {error && <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
     </section>
