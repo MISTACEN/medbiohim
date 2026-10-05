@@ -760,3 +760,33 @@ button {
   main { padding: 0 !important; max-width: none !important; }
   .card { box-shadow: none !important; break-inside: avoid; }
 }
+
+
+/* Histology light study controls: do not let device dark-mode heuristics turn fields into black blocks. */
+.histology-materials-page input,
+.histology-materials-page textarea,
+.histology-materials-page select,
+.histology-question-card input,
+.histology-question-card textarea,
+.histology-question-card select {
+  color-scheme: light;
+  background-color: #fff !important;
+  color: #102b4a !important;
+  border-color: #d9e3ee !important;
+  caret-color: #087fe8;
+}
+.histology-materials-page input::placeholder,
+.histology-materials-page textarea::placeholder,
+.histology-question-card input::placeholder,
+.histology-question-card textarea::placeholder {
+  color: #7b8ea3 !important;
+  opacity: 1 !important;
+}
+.histology-materials-page input:focus,
+.histology-materials-page textarea:focus,
+.histology-question-card input:focus,
+.histology-question-card textarea:focus {
+  outline: none;
+  border-color: #66a7ea !important;
+  box-shadow: 0 0 0 3px rgba(8,127,232,.12);
+}
