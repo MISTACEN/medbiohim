@@ -467,3 +467,31 @@ html[data-theme="aero-glass"] .text-slate-500 {
   .mobile-scroll-x::-webkit-scrollbar { display: none; }
   input, select, textarea { font-size: 16px; }
 }
+
+
+/* Phone-first study flows: tests, preparation, histology trainer/atlas */
+@media (max-width: 640px) {
+  .card { border-radius: 18px; }
+  .tests-page .test-list-card,
+  .test-preparation-page .test-question-card { padding: 14px; }
+  .tests-page .test-list-card > div:last-child { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tests-page .test-list-card > div:last-child > * { min-width: 0; width: 100%; justify-content: center; text-align: center; }
+  .tests-page .test-question-card label { min-height: 48px; align-items: flex-start; }
+  .tests-page textarea,
+  .test-preparation-page textarea { font-size: 16px; line-height: 1.45; }
+  .test-preparation-page .sticky-progress { position: sticky; top: 64px; z-index: 15; }
+  .test-preparation-page .test-question-card label { min-height: 52px; align-items: flex-start; }
+  .test-preparation-page .test-question-card input[type="radio"],
+  .test-preparation-page .test-question-card input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex: 0 0 auto; }
+  .histology-question-card h2 { font-size: 18px; line-height: 1.3; }
+  .histology-question-card > div.relative img { min-height: 220px; max-height: 52vh; }
+  .histology-question-card button { min-height: 48px; }
+  .histology-question-card input,
+  .histology-question-card textarea { font-size: 16px; }
+  .mobile-atlas-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 380px) {
+  .tests-page .test-list-card > div:last-child { grid-template-columns: 1fr; }
+  .histology-question-card > div.relative img { min-height: 190px; }
+}
