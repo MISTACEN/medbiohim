@@ -32,7 +32,7 @@ function isCacheableGet(path: string, options: RequestInit) {
   return /^\/(subjects(?:$|\?)|subjects-catalog|subjects\\/[^?]+|subject-plans\\/[^?]+|tests(?:\\?|$)|materials(?:\\?|$)|lectures(?:\\?|$)|tickets(?:\\?|$))/.test(path);
 }
 
-async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+export async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   if (!isCacheableGet(path, options)) return api<T>(path, options);
   const key = path;
   const now = Date.now();
