@@ -13,6 +13,18 @@ export type SubjectMaterial = {
   order_index?: number | null;
   module_id?: string | null;
   topic_id?: string | null;
+  module_title?: string | null;
+  topic_title?: string | null;
+  source?: {
+    id?: string | null;
+    key?: string | null;
+    name?: string | null;
+    source_path?: string | null;
+    original_format?: string | null;
+    mime_type?: string | null;
+    size_bytes?: number | null;
+    download_url?: string | null;
+  } | null;
 };
 
 export type TrainerCard = {
