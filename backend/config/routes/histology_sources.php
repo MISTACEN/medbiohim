@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-use MedbiohimHttpRequest;
-use MedbiohimHttpResponse;
-use MedbiohimHttpRouter;
-use MedbiohimMiddlewareRequireAuth;
-use MedbiohimServicesSpecialtyAccess;
-use MedbiohimDatabaseConnection;
+use Medbiohim\Http\Request;
+use Medbiohim\Http\Response;
+use Medbiohim\Http\Router;
+use Medbiohim\Middleware\RequireAuth;
+use Medbiohim\Services\SpecialtyAccess;
+use Medbiohim\Database\Connection;
 
 return static function (Router $router): void {
     $router->get('/api/v1/histology/source/{id}', static function (Request $req, array $params): void {
