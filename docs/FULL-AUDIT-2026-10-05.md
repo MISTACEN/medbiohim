@@ -272,3 +272,32 @@ The DB now contains source-backed exam questions, but the supplied ZIP does not 
 The latest frontend commit `a5137026b85b990a65263bbdcf7de882cdb557b0` has Vercel production deployment `dpl_DGvJnKryMtrjzEnUQAe4agnHjr5K` in READY state, target production, region `fra1`; the GitHub combined Vercel status is success.
 
 Authenticated mobile Materials → document/photo smoke still must be repeated after the SpaceWeb payload is physically placed.
+
+
+## Pass 8 — source-backed 3rd-semester exam-question completion (2026-10-05)
+
+### Exam question layer
+The supplied `Гистология.zip` was re-read from the original Word sources, not from legacy DB traces.
+
+The active 3rd-semester plan was used as the publication boundary:
+- existing canonical `экзаменационные вопросы леч. пед.doc` block: 76 published questions;
+- added 14 current private nervous / sensory questions;
+- added 7 cardiovascular questions;
+- added 8 hematopoiesis / immune-defense questions;
+- added 7 endocrine questions;
+- added 4 oral-cavity / starting digestive-system questions.
+
+Live result:
+- **116 published exam_questions** for active histology;
+- **40 newly added** rows are explicitly mapped to current plan module/topic IDs;
+- **0 published exam_questions with NULL source**;
+- future respiratory / skin / urinary / reproductive / later GI questions from the same source are not published into the current 3rd-semester bank.
+
+No answers were invented for open-ended exam questions. The rows preserve the source wording and are marked `kind/type=ticket`, matching the current exam_questions schema constraint.
+
+### Tickets
+The five existing ticket-bank metadata rows remain intact.
+`tickets=0` remains intentional: no canonical ticket grouping manifest was found in the supplied ZIP, so no ticket composition was fabricated from old IDs.
+
+### Current acceptance state
+The source → plan → materials → photos/EM → tests/questions chain is now source-backed for the current semester at the DB layer. Physical document delivery still depends on the SpaceWeb content patch being uploaded.
