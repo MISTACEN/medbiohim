@@ -491,3 +491,303 @@ must be checked on iPhone and desktop. Only then move the Histology Materials it
 - ✅ 0 published exam questions without a source.
 - 🟡 Future respiratory/skin/urinary/reproductive/later GI source questions remain retained in source documents but unpublished until the next-semester plan is activated.
 - 🟡 Ticket banks remain metadata-only; `tickets=0` because no canonical ticket grouping manifest exists in the supplied source archive.
+
+
+---
+
+# 13. Student-first architecture — «от студентов для студентов»
+
+**Статус: 🟡 IN PROGRESS — новая продуктовая ось**
+
+Главный принцип MEDBIOHIM теперь формулируется так:
+
+> Сайт не должен быть только «электронным деканатом» или CMS. Это рабочее учебное пространство, которое студенты наполняют и используют вместе.
+
+Основной контур:
+
+`Студент → аккаунт → учебная группа → расписание → предмет → занятие → ДЗ → выполнение → прогресс`
+
+Дополнительный контур:
+
+`Telegram группы → бот → сообщение/фото → распознавание → предмет → занятие → ДЗ → сайт`
+
+### 13.1 Студент как основной участник
+
+- 🟡 регистрация/вход;
+- 🟡 привязка к учебной группе;
+- 🟡 просмотр группового расписания;
+- 🟡 создание и уточнение ДЗ студентами;
+- 🟡 отметка «сделано»;
+- 🟡 сдача работы;
+- 🟡 сообщения/сообщество;
+- ⬜ предложения исправлений/дополнений к контенту;
+- ⬜ подтверждение информации другими студентами;
+- ⬜ история изменений учебной информации;
+- ⬜ механика «кто добавил / кто подтвердил / кто исправил».
+
+**Важно:** роль студента не должна превращаться в бесконтрольное редактирование официального расписания или канонического учебного контента. Нужна граница между пользовательским вкладом и официальными данными.
+
+### 13.2 Учебная группа — центральная сущность
+
+Уже есть:
+- ✅ `groups`;
+- ✅ `group_memberships`;
+- ✅ active membership;
+- ✅ group-aware schedule;
+- ✅ group-aware homework;
+- ✅ Telegram chat → group binding.
+
+Нужно довести:
+- ⬜ безопасное присоединение по коду/ссылке;
+- ⬜ подтверждение участника;
+- ⬜ starosta/модератор группы;
+- ⬜ несколько групп у одного пользователя без поломки текущего UI;
+- ⬜ история членства;
+- ⬜ перенос студента между группами;
+- ⬜ привязка Telegram-пользователя к аккаунту сайта.
+
+### 13.3 Занятие как связующий объект
+
+Для будущей автоматизации ДЗ недостаточно знать только предмет.
+
+Нужна логика:
+
+`Telegram message → group → date/time → schedule entry → subject → homework`
+
+При этом:
+- subject определяется из официального каталога;
+- занятие определяется по расписанию и времени/дате сообщения;
+- если совпадений несколько — бот не должен угадывать молча;
+- при низкой уверенности создаётся **кандидат ДЗ**, а не окончательное ДЗ;
+- пользователь/староста может подтвердить или исправить привязку.
+
+Это важнее, чем просто `subject_hint`.
+
+---
+
+# 14. Telegram — регистрация + «Telegram → ДЗ»
+
+**Статус: 🟡 IN PROGRESS — backend foundation есть, production flow не подтверждён**
+
+### Что уже реально есть в коде
+
+- ✅ `TelegramHomeworkService`;
+- ✅ webhook endpoint `/api/v1/telegram/webhook`;
+- ✅ secret-token проверка;
+- ✅ Telegram chat discovery;
+- ✅ admin привязка Telegram-чата к учебной группе;
+- ✅ хранение Telegram messages;
+- ✅ защита от повторной обработки message_id;
+- ✅ reply-thread привязка;
+- ✅ media-group/album привязка;
+- ✅ импорт фото/документов;
+- ✅ OCR/vision metadata;
+- ✅ AI semantic classification;
+- ✅ subject/due hints;
+- ✅ создание `homeworks`;
+- ✅ связь `telegram_messages → telegram_homework_links → homeworks`;
+- ✅ `homework_attachments`;
+- ✅ Admin UI `/admin/telegram`;
+- ✅ webhook setup из admin;
+- ✅ Telegram OAuth/custom provider trace в frontend/auth layer.
+
+### Что показала живая Supabase
+
+На текущей проверке:
+- `telegram_bot_chats = 0`;
+- `telegram_messages = 0`;
+- `telegram_homework_links = 0`;
+- `homework_attachments = 0`;
+- `homeworks = 0`.
+
+Следовательно, **кодовая foundation готова, но реальная эксплуатация Telegram-контура ещё не доказана**.
+
+### 14.1 Регистрация через Telegram
+
+Целевой UX:
+
+1. Студент открывает бота.
+2. Бот объясняет, что MEDBIOHIM использует Telegram для входа/привязки.
+3. `/start` выдаёт безопасную ссылку/flow регистрации.
+4. Студент подтверждает Telegram identity.
+5. Аккаунт MEDBIOHIM создаётся или связывается с существующим.
+6. Студент выбирает/вводит код учебной группы.
+7. Сайт показывает группу и просит подтверждение.
+8. После подтверждения студент получает расписание и ДЗ группы.
+
+**Пока нельзя считать этот сценарий готовым:** в репозитории есть custom Telegram OAuth trace, но отдельного end-to-end bot registration flow с Telegram user ↔ `auth.users.id` ↔ `users` ↔ `group_memberships` не подтверждено.
+
+### 14.2 Распознавание ДЗ из чата
+
+Целевой алгоритм:
+
+1. Получить сообщение.
+2. Сохранить raw message.
+3. Определить группу по Telegram chat.
+4. Определить дату сообщения и автора.
+5. Найти ближайшие занятия этой группы по расписанию.
+6. Из текста/фото извлечь:
+   - предмет;
+   - формулировку задания;
+   - срок;
+   - номер/тему занятия;
+   - вложения.
+7. Сопоставить предмет с официальным `subjects`.
+8. Сопоставить занятие с `schedule_entries`.
+9. Оценить confidence.
+10. Если confidence высокий — создать ДЗ.
+11. Если средний/низкий — создать candidate для подтверждения.
+12. Дать старосте/модератору исправить предмет/занятие/срок.
+13. После подтверждения показать ДЗ всем участникам группы.
+
+### 14.3 Критический gap текущей реализации
+
+Сейчас сервис умеет выбрать **subject**, но основной автоматический контур ещё не является полноценным `message → конкретное занятие` resolver.
+
+Нужно добавить отдельный слой:
+`TelegramHomeworkResolver`
+
+Он не должен смешиваться с OCR/LLM.
+
+Вход:
+- `group_id`;
+- `telegram_date`;
+- `message_text`;
+- `subject_hint`;
+- `due_hint`.
+
+Выход:
+- `subject_id`;
+- `schedule_entry_id`;
+- `lesson_context`;
+- `confidence`;
+- `resolution_status = auto|needs_confirmation|unresolved`.
+
+### 14.4 Защита от ошибок
+
+Бот **не должен**:
+- создавать ДЗ только потому, что в сообщении есть слово «дз»;
+- придумывать дату;
+- подменять официальный предмет похожим названием;
+- привязывать сообщение к чужой группе;
+- публиковать низкоуверенное распознавание как подтверждённый факт;
+- создавать дубликаты при повторной доставке Telegram update.
+
+### 14.5 Telegram production acceptance
+
+Для перевода фазы в ✅ нужен реальный тест:
+
+`Telegram chat → webhook → Supabase message → resolver → homework → attachment → website`
+
+и отдельно:
+
+`Telegram /start → account link → group join → schedule/homework`
+
+На каждом шаге должна быть запись/ответ, а не только HTTP 200.
+
+---
+
+# 15. Student-generated content / community
+
+**Статус: ⬜ TODO / product direction**
+
+Сайт «от студентов для студентов» должен позволять безопасно добавлять:
+
+- ⬜ уточнения к ДЗ;
+- ⬜ полезные материалы;
+- ⬜ конспекты;
+- ⬜ заметки к занятию;
+- ⬜ сообщения группы;
+- ⬜ предложения исправлений;
+- ⬜ вопросы по предмету;
+- ⬜ подтверждение/опровержение информации.
+
+Модель доверия:
+
+`student contribution → moderation/confirmation → shared group knowledge`
+
+Не смешивать это с каноническим импортом учебных материалов.
+
+---
+
+# 16. Updated project dependency map
+
+```
+                         ┌─────────────────────┐
+                         │      STUDENT        │
+                         └──────────┬──────────┘
+                                    │
+                         auth / Telegram link
+                                    │
+                 ┌──────────────────▼──────────────────┐
+                 │          USER + MEMBERSHIP          │
+                 │ users → group_memberships → groups  │
+                 └───────────────┬─────────────────────┘
+                                 │
+                ┌────────────────┼────────────────┐
+                │                │                │
+                ▼                ▼                ▼
+           SCHEDULE           SUBJECT          COMMUNITY
+                │                │
+                └────────┬───────┘
+                         ▼
+                    LESSON CONTEXT
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+       HOMEWORK       MATERIALS       TESTS
+          │
+          ▼
+    SUBMISSIONS / DONE
+          │
+          ▼
+       PROGRESS
+
+Telegram group
+      │
+      ▼
+  Telegram Bot
+      │
+      ▼
+telegram_messages
+      │
+      ▼
+OCR / semantic classifier
+      │
+      ▼
+Homework Resolver
+      │
+      ├──────────────→ subject_id
+      │
+      ├──────────────→ schedule_entry_id
+      │
+      └──────────────→ due_at
+                       │
+                       ▼
+                    HOMEWORK
+                       │
+                       ▼
+                    STUDENT
+```
+
+### Архитектурный приоритет
+
+1. 🔴 **Production stability** — auth/router/media/deployment.
+2. 🔴 **Student identity + group membership**.
+3. 🔴 **Telegram registration/linking**.
+4. 🔴 **Telegram → lesson resolver → homework**.
+5. 🟡 Student-generated content/community.
+6. 🟡 Admin moderation/confirmation.
+7. 🟡 Progress/analytics around real student activity.
+8. 🟢 UI polish / Aero Glass после функциональной стабилизации.
+
+### Новое правило карты
+
+Любая новая функция должна отвечать на три вопроса:
+
+1. **Кто студент?**
+2. **К какой учебной группе и занятию относится действие?**
+3. **Как результат попадает обратно в учебный процесс?**
+
+Если на эти вопросы нет ответа, функция не считается интегрированной в MEDBIOHIM.
