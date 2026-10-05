@@ -21,6 +21,7 @@ return static function (Router $r): void {
             'kind' => ($q->query['kind'] ?? 'ticket'),
             'q' => ($q->query['q'] ?? ''),
             'subject' => ($q->query['subject'] ?? ''),
+            'published_only' => false,
         ];
         try {
             $items = ExamQuestionStore::list($filters);
@@ -63,7 +64,7 @@ return static function (Router $r): void {
         if (!$manager($q)) return;
         $id = (string) ($p['id'] ?? '');
         try {
-            $current = ExamQuestionStore::get($id);
+            $current = ExamQuestionStore::get($id, false);
             if ($current === null) {
                 Response::error('NOT_FOUND', 'Question not found', $q->requestId, 404);
                 return;
