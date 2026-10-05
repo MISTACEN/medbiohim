@@ -97,7 +97,61 @@ export function invalidateApiCache(prefix = "") {
   }
 }
 
-export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{try{let {res,text}=await request<T>(path,options);if(res.status===401&&path!=="/auth/refresh"){const refreshToken=getRefreshToken();if(refreshToken){try{const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});const rt=await rr.text();if(rr.ok){const parsed=JSON.parse(rt) as {ok?:boolean;data?:{access_token?:string;refresh_token?:string}};const access=parsed.data?.access_token;if(access){setTokens(access,parsed.data?.refresh_token);({res,text}=await request<T>(path,options,access));}}}catch{}}}try{return JSON.parse(text) as ApiResult<T>}catch{return{ok:false,error:{code:"BAD_RESPONSE",message:res.ok?"Сервер вернул не JSON":`HTTP ${res.status}`},requestId:res.headers.get("x-request-id")||"client"}}}catch{return{ok:false,error:{code:"NETWORK",message:"Сеть недоступна"},requestId:"client"}}}
+let refreshPromise: Promise<string | null> | null = null;
+
+function notifyApiLoading(type: "start" | "end") {
+  if (typeof window === "undefined") return;
+  try { window.dispatchEvent(new CustomEvent(type === "start" ? "mbh:api-start" : "mbh:api-end")); } catch {}
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const rr = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        headers: {"Accept":"application/json","Content-Type":"application/json"},
+        body: JSON.stringify({refresh_token: refreshToken}),
+        cache: "no-store",
+      });
+      const rt = await rr.text();
+      if (!rr.ok) return null;
+      const parsed = JSON.parse(rt) as {data?:{access_token?:string;refresh_token?:string}};
+      const access = parsed.data?.access_token;
+      if (!access) return null;
+      setTokens(access, parsed.data?.refresh_token);
+      return access;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
+export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{
+  notifyApiLoading("start");
+  try {
+    let {res,text}=await request<T>(path,options);
+    if(res.status===401 && path!=="/auth/refresh"){
+      const access = await refreshAccessToken();
+      if(access) ({res,text}=await request<T>(path,options,access));
+      else if (getRefreshToken()) clearTokens();
+    }
+    try {
+      return JSON.parse(text) as ApiResult<T>;
+    } catch {
+      return {ok:false,error:{code:"BAD_RESPONSE",message:res.ok?"Сервер вернул не JSON":`HTTP ${res.status}`},requestId:res.headers.get("x-request-id")||"client"};
+    }
+  } catch {
+    return {ok:false,error:{code:"NETWORK",message:"Сеть недоступна"},requestId:"client"};
+  } finally {
+    notifyApiLoading("end");
+  }
+}
 const trainerImageCache=new Map<string,string>();
 const trainerImageInflight=new Map<string,Promise<string|null>>();
 export async function getTrainerImageUrl(id:string):Promise<string|null>{
