@@ -183,3 +183,16 @@ viewer использует тот же backend route, без смены source_
 - 🟡 source-backed ticket grouping.
 
 Последовательность остаётся: **план → схемы → методички → фото → ЭМ → тесты → вопросы → экзамен → билеты**, а legacy content не используется как скрытый источник истины.
+
+
+## Pass 8 correction — exam bank
+Current active 3rd-semester exam bank is now **116 published source-backed questions**:
+- 76 existing cytology/embryology/general-histology;
+- +14 private nervous/sensory;
+- +7 cardiovascular;
+- +8 hematopoiesis/immunity;
+- +7 endocrine;
+- +4 oral-cavity/start of digestive system.
+
+40 newly added rows have explicit current-plan module/topic links. No published row has a null source.
+Future respiratory/skin/urinary/reproductive/later GI sections remain unpublished for the current semester.
