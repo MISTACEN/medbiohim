@@ -329,7 +329,7 @@ export default function PreparationPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="test-preparation-page space-y-4 sm:space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title">
@@ -370,11 +370,11 @@ export default function PreparationPage() {
 
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
 
-      <div className="h-2 rounded bg-slate-100">
+      <div className="h-2 rounded bg-slate-100 sticky-progress">
         <div className="h-2 rounded bg-indigo-500" style={{ width: ((idx + 1) / questions.length) * 100 + "%" }} />
       </div>
 
-      <div className="card space-y-5">
+      <div className="test-question-card card space-y-4 sm:space-y-5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-indigo-600 px-2 text-sm font-extrabold text-white">
             {String(idx + 1).padStart(2, "0")}
