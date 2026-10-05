@@ -237,3 +237,40 @@ Mobile, performance, animations, Aero Glass beta.
 **Не наоборот.**
 
 UI-полировка не должна опережать стабильность и доверие к учебным данным.
+
+
+---
+
+## Дополнение после SITE-WIDE hidden-gap pass
+
+### Новые P1, найденные именно сценарным аудитом
+
+- Исправить Admin → «Банк вопросов тестов»: /tests сейчас редиректит на /subjects.
+- Запретить slug-only идентификацию предмета там, где в БД существуют одинаковые slug для разных семестров/курсов.
+- OAuth-провайдеры в Settings отображать только по backend-confirmed availability.
+- Сообщество: добавить student-side report/edit/delete и понятный moderation lifecycle.
+- Homework: явно определить resubmission/replace submission после первой сдачи.
+- Progress: доказать изменение метрик реальными действиями пользователя.
+- Materials: унифицировать открытие DOCX/PDF/image/HTML/original и degraded state физически недоступного файла.
+- Tests: E2E пройти все входные пути, а не только отдельный API.
+
+### Новая проверка каждого раздела
+
+Перед статусом DONE проверять пять связей:
+
+student identity → academic context → content entity → action/result → recovery/moderation
+
+Если одна связь отсутствует, функция считается partial, даже если UI и endpoint существуют.
+
+### Release gate
+
+Следующий production release не продвигать только по успешной сборке. Нужны одновременно:
+
+1. green Code Check;
+2. green smoke;
+3. актуальный Vercel READY;
+4. актуальный SpaceWeb health/auth smoke;
+5. authenticated student smoke;
+6. test → report → admin problem center E2E;
+7. materials/media smoke;
+8. отсутствие новых route/redirect conflicts.
