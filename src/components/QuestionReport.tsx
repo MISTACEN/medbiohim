@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Flag } from "lucide-react";
 import { reportQuestion } from "@/lib/api";
+import { LoadingBar } from "@/components/ui/LoadingBar";
 
 const categories=[
  ["wrong_answer","Неверный ответ"],["wording","Ошибка в формулировке"],["multiple_correct","Несколько правильных ответов"],
@@ -16,7 +17,7 @@ export function QuestionReport({questionId}:{questionId:string}){
   if(r.ok){setDone(true);setTimeout(()=>{setOpen(false);setDone(false)},1400)} else setError(r.error.message);
   setBusy(false);
  }
- return <div className="mt-2">
+ return <div className="mt-2"><LoadingBar active={busy} />
   <button type="button" onClick={()=>setOpen(true)} className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-600"><Flag className="h-3.5 w-3.5"/>Сообщить об ошибке</button>
   {open&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onMouseDown={()=>setOpen(false)}>
    <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onMouseDown={e=>e.stopPropagation()}>
