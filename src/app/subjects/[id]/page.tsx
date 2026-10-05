@@ -96,12 +96,13 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         const p = await params;
         if (cancelled) return;
         setSubjectId(p.id);
-        const cat = await listSubjectsCatalog();
+        // Catalog and subject are independent: start both requests immediately
+        // so Vercel -> SpaceWeb latency does not create a waterfall.
+        const [cat, r] = await Promise.all([listSubjectsCatalog(), getSubject(p.id)]);
         const hit = cat.ok
           ? cat.data.items.find((x: any) => x.id === p.id || x.slug === p.id) ||
             cat.data.items.find((x: any) => x.name.toLowerCase() === decodeURIComponent(p.id).toLowerCase())
           : null;
-        const r = await getSubject(p.id);
         if (cancelled) return;
         if (!r.ok && !hit) {
           setError(r.error.message);
@@ -112,12 +113,10 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         setSubject(s);
         setModules(r.ok && Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
         const slug = slugNames[(s?.name || "").toLowerCase()] || s?.slug || "";
-        if (slug) {
-          const pr = await getSubjectPlan(slug);
-          if (pr.ok && !cancelled) setPlan(pr.data.plan);
-        }
         if (s?.id) {
-          const [gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
+          // Everything below is independent after the subject is known.
+          const [pr, gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
+            slug ? getSubjectPlan(slug) : Promise.resolve({ ok: false } as any),
             getSubjectGradebook(s.id),
             listTests(s.id),
             listSubjectMaterials({ subjectId: s.id }),
@@ -126,6 +125,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             listMaterials(slug ? { subjectSlug: slug } : {}),
             listLectures(slug),
           ]);
+          if (!cancelled && pr.ok) setPlan(pr.data.plan);
           if (!cancelled) {
             if (gb.ok) setGradebook(gb.data.items || []);
             if (tt.ok) setTests(tt.data.items || []);
@@ -218,7 +218,20 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
   ];
 
-  if (loading) return <div className="card p-6 text-sm text-slate-500">Загрузка предмета…</div>;
+  if (loading) return (
+    <div className="mx-auto max-w-6xl space-y-4" aria-label="Загрузка">
+      <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200" />
+      <div className="card space-y-3 p-5">
+        <div className="h-3 w-32 animate-pulse rounded bg-slate-200" />
+        <div className="h-8 w-2/3 animate-pulse rounded bg-slate-200" />
+        <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+      </div>
+      <div className="flex gap-2 overflow-hidden">
+        {[1,2,3,4].map((n) => <div key={n} className="h-11 w-28 shrink-0 animate-pulse rounded-xl bg-slate-200" />)}
+      </div>
+      <div className="card min-h-48 animate-pulse p-5" />
+    </div>
+  );
   if (error && !subject) return <div className="card p-6 text-sm text-rose-600">{error}</div>;
 
   return (
