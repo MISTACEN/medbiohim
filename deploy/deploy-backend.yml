@@ -15,6 +15,7 @@ on:
     paths:
       - "backend/src/**"
       - "backend/config/routes/platform.php"
+      - "backend/config/routes.php"
       - ".github/workflows/deploy-backend.yml"
 
 concurrency:
@@ -98,6 +99,7 @@ jobs:
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
           set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
           get -O backup/ '${SITE}backend/config/routes/platform.php';
+          get -O backup/ '${SITE}backend/config/routes.php';
           bye" || echo "::warning::backup of platform.php failed — continuing"
 
       - name: Deploy backend/src (full overwrite, no deletions)
@@ -114,6 +116,7 @@ jobs:
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
           set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
           put -O '${SITE}backend/config/routes/' backend/config/routes/platform.php;
+          put -O '${SITE}backend/config/' backend/config/routes.php;
           rm -f '${SITE}backend/config/routes/trainings.payload.0.b64';
           rm -f '${SITE}backend/config/routes/trainings.payload.1.b64';
           bye"
@@ -128,9 +131,11 @@ jobs:
           get -O verify/ '${SITE}backend/src/Bootstrap.php';
           get -O verify/ '${SITE}backend/src/Repositories/TestRepository.php';
           get -O verify/ '${SITE}backend/config/routes/platform.php';
+          get -O verify/ '${SITE}backend/config/routes.php';
           get -O verify/ '${SITE}backend/src/Services/AccountSettingsService.php';
           bye"
           grep -q "The use statement with non-compound name" verify/Bootstrap.php
+          grep -q "use Medbiohim\\\\Http\\\\Router;" verify/routes.php
           grep -q "questions_count" verify/TestRepository.php
           grep -q "use Medbiohim\\\\Services\\\\B2Storage;" verify/platform.php
           grep -q "function getPreferences" verify/AccountSettingsService.php
