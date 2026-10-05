@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { MobileNav } from "./MobileNav";
 import { hasToken, presenceHeartbeat } from "@/lib/api";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -55,9 +56,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:pl-64">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
-        <main className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
+        <main className="min-h-[calc(100vh-4rem)] px-3 pb-24 pt-3 sm:p-6 lg:p-8">
           {children}
         </main>
+        <MobileNav />
       </div>
     </div>
   );
