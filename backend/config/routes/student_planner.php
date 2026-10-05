@@ -62,26 +62,6 @@ return static function(Router $router): void {
         } catch(\Throwable $e){ Response::error('PLANNER_ERROR',$e->getMessage(),$req->requestId,503); }
     });
 
-    $router->post('/api/v1/homeworks', static function(Request $req,array $params): void {
-        if(!RequireAuth::handle($req)) return;
-        try {
-            $db=Connection::pdo();$uid=(string)$req->user->id;
-            $title=trim((string)($req->json('title','')));
-            $date=trim((string)($req->json('due_date')??''));
-            $subjectId=trim((string)($req->json('subject_id')??''));
-            if($title===''||$date===''||$subjectId===''){Response::error('VALIDATION_ERROR','title, due_date and subject_id are required',$req->requestId,422);return;}
-            $g=$db->prepare('SELECT group_id FROM public.group_memberships WHERE user_id=:u AND is_active=true ORDER BY created_at LIMIT 1');
-            $g->execute(['u'=>$uid]);$groupId=$g->fetchColumn();
-            if(!$groupId){Response::error('NO_GROUP','Для добавления ДЗ нужна назначенная учебная группа',$req->requestId,422);return;}
-            $s=$db->prepare('SELECT id FROM public.subjects WHERE id=:id AND is_active=true LIMIT 1');$s->execute(['id'=>$subjectId]);
-            if(!$s->fetchColumn()){Response::error('SUBJECT_NOT_FOUND','Предмет не найден',$req->requestId,404);return;}
-            $q=$db->prepare("INSERT INTO public.homeworks(title,description,subject_id,group_id,due_at,due_date,created_by,created_by_role)
-                             VALUES(:t,:d,:s,:g,(:date::date + interval '23 hours 59 minutes'),:date,:u,'student') RETURNING *");
-            $q->execute(['t'=>$title,'d'=>$req->json('description')!==null?(string)$req->json('description'):null,'s'=>$subjectId,'g'=>$groupId,'date'=>$date,'u'=>$uid]);
-            Response::success(['item'=>$q->fetch()],$req->requestId,201);
-        } catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
-    });
-
     $router->post('/api/v1/homeworks/{id}/progress', static function(Request $req,array $params): void {
         if(!RequireAuth::handle($req)) return;
         try {
