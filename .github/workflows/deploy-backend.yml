@@ -80,6 +80,7 @@ jobs:
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
             set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
             mirror --verbose '${SITE}backend/src' backup/src;
+            mirror --verbose '${SITE}backend/config/routes' backup/routes;
             get -O backup/ '${SITE}backend/config/routes.php';
             bye" || true
 
