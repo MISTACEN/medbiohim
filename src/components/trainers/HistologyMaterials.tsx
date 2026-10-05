@@ -7,10 +7,11 @@ import { fetchMaterialFile, getTrainerImageUrl, hasToken } from "@/lib/api";
 import { listSubjectMaterials, listTrainerFeed, type SubjectMaterial } from "@/lib/content-api";
 
 type Kind = "doc" | "photo";
+type Category = "scheme" | "method" | "tests" | "exam" | "other" | "photo";
 type Tab = "all" | "doc" | "photo" | "scheme" | "method" | "tests" | "exam" | "other";
-type Item = SubjectMaterial & { kind: Kind; category: Exclude<Tab, "all" | "doc" | "photo"> | "photo"; currentSemester?: boolean };
+type Item = SubjectMaterial & { kind: Kind; category: Category; currentSemester?: boolean };
 
-function categoryOf(m: SubjectMaterial): Item["category"] {
+function categoryOf(m: SubjectMaterial): Category {
   const k = String(m.source_key || "");
   if (k.startsWith("histology-em-")) return "scheme";
   if (k.includes("-scheme-") || k.includes("-spinal-schemes") || k.includes("-gif-")) return "scheme";
@@ -20,11 +21,18 @@ function categoryOf(m: SubjectMaterial): Item["category"] {
   return "other";
 }
 
-function categoryLabel(c: Item["category"]) {
-  return ({ scheme: "Схемы и ЭМ", method: "Методички", tests: "Тесты и контроль", exam: "Экзамен и препараты", other: "Прочее", photo: "Фото препаратов" })[c];
+function categoryLabel(c: Category): string {
+  switch (c) {
+    case "scheme": return "Схемы и ЭМ";
+    case "method": return "Методички";
+    case "tests": return "Тесты и контроль";
+    case "exam": return "Экзамен и препараты";
+    case "photo": return "Фото препаратов";
+    default: return "Прочее";
+  }
 }
 
-function categoryIcon(c: Item["category"]) {
+function categoryIcon(c: Category) {
   if (c === "method") return <BookOpen className="h-5 w-5" />;
   if (c === "tests" || c === "exam") return <ClipboardList className="h-5 w-5" />;
   return <FileText className="h-5 w-5" />;
@@ -108,7 +116,7 @@ export default function HistologyMaterials() {
           ...x,
           currentSemester: (() => {
             const k = String(x.source_key || "");
-            const n = k.match(/histology-zip-(?:scheme|gif)-(\\d+)/)?.[1];
+            const n = k.match(/histology-zip-(?:scheme|gif)-(\d+)/)?.[1];
             if (n && Number(n) > 9) return false;
             if (k.startsWith("histology-em-")) return currentCardNames.has(String(x.title || "").trim());
             return true;
