@@ -193,7 +193,7 @@ export default function TestsPage() {
 
   if (active) {
     return (
-      <div className="space-y-6">
+      <div className="tests-page space-y-4 sm:space-y-6">
         <Confetti active={celebrate} />
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -205,7 +205,7 @@ export default function TestsPage() {
           </button>
         </div>
         {active.questions.map((q, i) => (
-          <div key={q.id} className="card space-y-3">
+          <div key={q.id} className="test-question-card card space-y-3">
             <div className="font-medium">
               {i + 1}.{" "}
               <ChemRichText text={q.body} className="mt-1 space-y-2 text-sm font-medium" />
@@ -310,7 +310,7 @@ export default function TestsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {items.map((t) => (
-            <div key={t.id} className="card flex flex-col gap-3">
+            <div key={t.id} className="test-list-card card flex flex-col gap-3">
               <div>
                 <div className="text-xs text-slate-500">{t.subject}</div>
                 <div className="text-lg font-semibold">{t.title}</div>
