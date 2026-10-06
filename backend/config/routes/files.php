@@ -52,15 +52,6 @@ return static function (Router $router): void {
             $name = $_POST['original_name'];
         }
 
-        $b2 = new B2Storage();
-        $key = $b2->buildObjectKey($req->user->id, $name !== '' ? $name : 'upload.bin');
-        try {
-            if ($b2->isConfigured()) {
-                $up = $b2->upload($key, $binary, $mime);
-            } else {
-                $up = ['object_key' => $key, 'b2_file_id' => null, 'size' => strlen($binary)];
-                Logger::info('b2_skipped_not_configured', ['object_key' => $key]);
-            }
             $groupId = null;
             if ($req->json('group_id')) $groupId = trim((string) $req->json('group_id'));
             elseif (isset($_POST['group_id']) && is_string($_POST['group_id'])) $groupId = trim($_POST['group_id']);
@@ -76,6 +67,15 @@ return static function (Router $router): void {
                 return;
             }
             $specialty = trim((string) ($req->json('specialty_slug') ?? $_POST['specialty_slug'] ?? ''));
+        $b2 = new B2Storage();
+        $key = $b2->buildObjectKey($req->user->id, $name !== '' ? $name : 'upload.bin');
+        try {
+            if ($b2->isConfigured()) {
+                $up = $b2->upload($key, $binary, $mime);
+            } else {
+                $up = ['object_key' => $key, 'b2_file_id' => null, 'size' => strlen($binary)];
+                Logger::info('b2_skipped_not_configured', ['object_key' => $key]);
+            }
             $meta = (new FileRepository())->create([
                 'original_name' => $name !== '' ? $name : 'upload.bin',
                 'mime_type' => $mime,
