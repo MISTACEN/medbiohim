@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Medbiohim\Repositories;
 
 use Medbiohim\Database\Connection;
+use Medbiohim\Services\AnswerGradingService;
 use PDO;
 
 final class TestRepository
@@ -144,68 +145,61 @@ final class TestRepository
     }
 
 
-    private function normalizeAnswerList(mixed $value): array
-    {
-        if (is_array($value)) $items=$value;
-        elseif (is_string($value)) {
-            $decoded=json_decode($value,true);
-            $items=is_array($decoded)?$decoded:[$value];
-        } else $items=[];
-        $out=[];
-        foreach($items as $item){
-            if(is_array($item)) $item=$item['label']??'';
-            $s=trim(mb_strtolower((string)$item));
-            if($s!=='') $out[]=$s;
-        }
-        $out=array_values(array_unique($out));
-        sort($out);
-        return $out;
-    }
-
-    private function answerIsCorrect(array $question, ?string $given): bool
-    {
-        if($given===null) return false;
-        $type=(string)($question['type']??'');
-        $options=is_array($question['options']??null)?$question['options']:[];
-        if(in_array($type,['mcq','single','multiple'],true)){
-            $correct=[];
-            foreach($options as $opt) if(is_array($opt)&&!empty($opt['correct'])) $correct[]=$opt['label']??'';
-            if($correct!==[]) return $this->normalizeAnswerList($given)===$this->normalizeAnswerList($correct);
-        }
-        return trim(mb_strtolower($given))===trim(mb_strtolower((string)($question['answer']??'')));
-    }
-
     public function saveAnswer(string $attemptId, string $userId, string $questionId, ?string $answerText): array
     {
-        $q=$this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE");
         $this->db->beginTransaction();
-        try{
-            $q->execute(['id'=>$attemptId,'uid'=>$userId]); $attempt=$q->fetch();
-            if($attempt===false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
-            if((string)$attempt['status']!=='in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
-            $snapshot=is_string($attempt['question_snapshot']??null)?json_decode($attempt['question_snapshot'],true):($attempt['question_snapshot']??[]);
-            if(!is_array($snapshot)) $snapshot=[];
-            $question=null;
-            foreach($snapshot as $item) if((string)($item['id']??'')===$questionId){$question=$item;break;}
-            if($question===null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
-            $correct=$this->answerIsCorrect($question,$answerText);
-            $score=$correct?1:0;
-            $up=$this->db->prepare("INSERT INTO public.test_answers(attempt_id,question_id,answer_text,is_correct,score)
-                VALUES(:aid,:qid,:answer,:correct,:score)
-                ON CONFLICT(attempt_id,question_id) DO UPDATE SET answer_text=EXCLUDED.answer_text,is_correct=EXCLUDED.is_correct,score=EXCLUDED.score");
-            $up->execute(['aid'=>$attemptId,'qid'=>$questionId,'answer'=>$answerText,'correct'=>$correct,'score'=>$score]);
+        try {
+            $q = $this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE");
+            $q->execute(['id'=>$attemptId,'uid'=>$userId]);
+            $attempt = $q->fetch();
+            if ($attempt === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
+            if ((string)$attempt['status'] !== 'in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
+
+            $snapshot = is_string($attempt['question_snapshot'] ?? null)
+                ? (json_decode($attempt['question_snapshot'], true) ?: [])
+                : ($attempt['question_snapshot'] ?? []);
+            if (!is_array($snapshot)) $snapshot = [];
+
+            $question = null;
+            foreach ($snapshot as $item) {
+                if ((string)($item['id'] ?? '') === $questionId) { $question = $item; break; }
+            }
+            if ($question === null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
+
+            $grading = AnswerGradingService::grade($question, $answerText);
+            $up = $this->db->prepare(
+                "INSERT INTO public.test_answers
+                    (attempt_id,question_id,answer_text,is_correct,score,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at)
+                 VALUES (:aid,:qid,:answer,:correct,:score,:status,:source,:confidence,:feedback,:model,
+                         CASE WHEN :status IN ('deterministic','ai') THEN now() ELSE NULL END)
+                 ON CONFLICT(attempt_id,question_id) DO UPDATE SET
+                    answer_text=EXCLUDED.answer_text,
+                    is_correct=EXCLUDED.is_correct,
+                    score=EXCLUDED.score,
+                    grading_status=EXCLUDED.grading_status,
+                    grading_source=EXCLUDED.grading_source,
+                    grading_confidence=EXCLUDED.grading_confidence,
+                    grading_feedback=EXCLUDED.grading_feedback,
+                    grading_model=EXCLUDED.grading_model,
+                    graded_at=EXCLUDED.graded_at"
+            );
+            $up->execute([
+                'aid'=>$attemptId,'qid'=>$questionId,'answer'=>$answerText,
+                'correct'=>$grading['is_correct'],'score'=>$grading['score'],
+                'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],
+                'confidence'=>$grading['confidence'],'feedback'=>$grading['feedback'],'model'=>$grading['model']
+            ]);
             $this->db->commit();
-            return ['question_id'=>$questionId,'answer_text'=>$answerText,'is_correct'=>$correct,'score'=>$score];
-        }catch(Throwable $e){
-            if($this->db->inTransaction())$this->db->rollBack();
+            return ['question_id'=>$questionId,'answer_text'=>$answerText] + $grading;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
     }
 
     public function finishAttempt(string $attemptId, string $userId, ?float $score = null, ?float $maxScore = null): ?array
     {
-        // score/max_score from the client are ignored: final result is calculated from persisted answers and the immutable question snapshot.
-                $this->db->beginTransaction();
+        $this->db->beginTransaction();
         try {
             $lock=$this->db->prepare('SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE');
             $lock->execute(['id'=>$attemptId,'uid'=>$userId]);
@@ -215,13 +209,20 @@ final class TestRepository
             $existingStatus=(string)$existing['status'];
             if($existingStatus!=='in_progress'){
                 if($existingStatus==='submitted'){$this->db->commit();return $existing;}
-                throw new \RuntimeException('ATTEMPT_ALREADY_FINISHED');
+                throw new RuntimeException('ATTEMPT_ALREADY_FINISHED');
             }
 
             $snapshot=is_string($existing['question_snapshot']??null)?json_decode($existing['question_snapshot'],true):($existing['question_snapshot']??[]);
-            if(!is_array($snapshot)) $snapshot=[];
+            if(!is_array($snapshot))$snapshot=[];
+            $pending=$this->db->prepare("SELECT COUNT(*) FROM public.test_answers WHERE attempt_id=:aid AND grading_status IN ('pending','error')");
+            $pending->execute(['aid'=>$attemptId]);
+            if((int)$pending->fetchColumn()>0){
+                $this->db->rollBack();
+                throw new RuntimeException('AI_GRADING_PENDING');
+            }
+
             $maxScore=(float)count($snapshot);
-            $answered=$this->db->prepare("SELECT COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END),0) AS score, COUNT(*) AS answered FROM public.test_answers WHERE attempt_id=:aid");
+            $answered=$this->db->prepare("SELECT COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END),0) AS score FROM public.test_answers WHERE attempt_id=:aid");
             $answered->execute(['aid'=>$attemptId]);
             $answerStats=$answered->fetch()?:[];
             $score=(float)($answerStats['score']??0);
@@ -231,10 +232,10 @@ final class TestRepository
                 WHERE id=:id AND user_id=:uid AND status='in_progress' RETURNING *");
             $stmt->execute(['score'=>$score,'max_score'=>$maxScore,'percent'=>$percent,'id'=>$attemptId,'uid'=>$userId]);
             $row=$stmt->fetch();
-            if($row===false) throw new \RuntimeException('Failed to finish attempt');
+            if($row===false)throw new RuntimeException('Failed to finish attempt');
             $this->db->commit();
             return $row;
-        } catch(\Throwable $e){
+        }catch(Throwable $e){
             if($this->db->inTransaction())$this->db->rollBack();
             throw $e;
         }
