@@ -316,7 +316,7 @@ return static function (Router $router): void {
     'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>max(0,$answered-$correct),'unanswered'=>max(0,$total-$answered),'percent'=>$percent,'topics'=>array_values($topic)],
     'errors'=>$rows
    ],$r->requestId);
-  }catch(\\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
+  }catch(\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
  $router->post('/api/v1/tests/preparation/{id}/ai-review',static function(Request $r,array $p)use($auth):void{
@@ -355,7 +355,7 @@ return static function (Router $router): void {
     ['role'=>'system','content'=>'Ты учебный AI-аналитик. Верни только JSON с ключами summary, strengths, weak_topics, error_breakdown, recommendations, next_practice. Не придумывай факты.'],
     ['role'=>'user','content'=>json_encode(['results'=>$payload],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]
    ];
-   $llm=\\Medbiohim\\Support\\LlmGateway::chat($messages,\\Medbiohim\\Support\\LlmGateway::TASK_CHAT,0.2);
+   $llm=\Medbiohim\Support\LlmGateway::chat($messages,\Medbiohim\Support\LlmGateway::TASK_CHAT,0.2);
    $review=json_decode(trim($llm['text']),true);if(!is_array($review))throw new \\RuntimeException('AI returned invalid JSON');
    $ins=$db->prepare("insert into public.test_preparation_ai_reviews(session_id,user_id,summary,topic_breakdown,error_breakdown,recommendations,model) values(:sid,:uid,:summary,:topics,:errors,:rec,:model) returning *");
    $ins->execute([
@@ -366,7 +366,7 @@ return static function (Router $router): void {
     'model'=>$llm['model']??null
    ]);
    Response::success(['review'=>$review,'model'=>$llm['model']??null],$r->requestId);
-  }catch(\\Throwable $e){Response::error('AI_REVIEW_ERROR',$e->getMessage(),$r->requestId,503);}
+  }catch(\Throwable $e){Response::error('AI_REVIEW_ERROR',$e->getMessage(),$r->requestId,503);}
  });
 
 };
