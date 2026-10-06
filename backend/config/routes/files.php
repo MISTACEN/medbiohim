@@ -8,6 +8,8 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\FileRepository;
 use Medbiohim\Services\B2Storage;
 use Medbiohim\Services\SpecialtyAccess;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\AcademicContextException;
 use Medbiohim\Support\Logger;
 use Medbiohim\Support\Multipart;
 
@@ -60,9 +62,20 @@ return static function (Router $router): void {
                 Logger::info('b2_skipped_not_configured', ['object_key' => $key]);
             }
             $groupId = null;
-            if ($req->json('group_id')) $groupId = (string) $req->json('group_id');
-            elseif (isset($_POST['group_id']) && is_string($_POST['group_id'])) $groupId = $_POST['group_id'];
+            if ($req->json('group_id')) $groupId = trim((string) $req->json('group_id'));
+            elseif (isset($_POST['group_id']) && is_string($_POST['group_id'])) $groupId = trim($_POST['group_id']);
 
+            // Client input cannot grant group access. The uploader must already belong
+            // to the selected group; otherwise the file remains explicitly global only.
+            if ($groupId !== null && $groupId !== '') {
+                (new AcademicContextResolver())->assertGroupMember($req->user->id, $groupId);
+            }
+            $visibility = trim((string) ($req->json('visibility') ?? $_POST['visibility'] ?? 'group'));
+            if (!in_array($visibility, ['group','public'], true)) {
+                Response::error('VALIDATION_ERROR','Unsupported file visibility',$req->requestId,422);
+                return;
+            }
+            $specialty = trim((string) ($req->json('specialty_slug') ?? $_POST['specialty_slug'] ?? ''));
             $meta = (new FileRepository())->create([
                 'original_name' => $name !== '' ? $name : 'upload.bin',
                 'mime_type' => $mime,
@@ -71,8 +84,8 @@ return static function (Router $router): void {
                 'b2_file_id' => $up['b2_file_id'] ?? null,
                 'uploaded_by' => $req->user->id,
                 'group_id' => $groupId,
-                'visibility' => (string) ($req->json('visibility') ?? $_POST['visibility'] ?? 'group'),
-                'specialty_slug' => trim((string) ($req->json('specialty_slug') ?? $_POST['specialty_slug'] ?? '')),
+                'visibility' => $visibility,
+                'specialty_slug' => $specialty,
             ]);
             Response::success(['file' => $meta], $req->requestId, 201);
         } catch (\Throwable $e) {
@@ -84,7 +97,7 @@ return static function (Router $router): void {
     $router->get('/api/v1/files/{id}/download', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
-            $file = (new FileRepository())->findById((string)($params['id'] ?? ''));
+            $file = (new FileRepository())->assertAccess((string)($params['id'] ?? ''), $req->user->id);
             if ($file === null || ($file['status'] ?? 'active') !== 'active') {
                 Response::error('NOT_FOUND', 'File not found', $req->requestId, 404);
                 return;
@@ -109,7 +122,7 @@ return static function (Router $router): void {
     $router->get('/api/v1/files/{id}', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
-            $file = (new FileRepository())->findById($params['id']);
+            $file = (new FileRepository())->assertAccess((string)$params['id'], $req->user->id);
             if ($file === null) {
                 Response::error('NOT_FOUND', 'File not found', $req->requestId, 404);
                 return;
