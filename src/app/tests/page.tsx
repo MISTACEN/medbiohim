@@ -150,7 +150,7 @@ export default function TestsPage() {
     setBusy(true);
     try {
       const writes = active.questions.map((q, i) =>
-        saveTestAnswer(active.attemptId, q.id, (picks[i] || []).join("|||"))
+        saveTestAnswer(active.attemptId, q.id, q.allowMultiple ? JSON.stringify(picks[i] || []) : ((picks[i] || [])[0] || ""))
       );
       const saved = await Promise.all(writes);
       const failed = saved.find((x:any) => !x.ok);
