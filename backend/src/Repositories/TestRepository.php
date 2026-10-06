@@ -133,6 +133,9 @@ final class TestRepository
                 'order_index'=>(int)$row['topic_order'],
                 'question_count'=>(int)$row['question_count'],
                 'test_count'=>(int)$row['test_count'],
+                'planned_date'=>$row['planned_date'] ?? null,
+                'curriculum_item_type'=>$row['curriculum_item_type'] ?? null,
+                'is_extra'=>str_contains(mb_strtolower((string)$row['module_title']), 'вне текущего плана') || (($row['curriculum_item_type'] ?? null) === 'other'),
             ];
         }
         return array_values(array_map(static function(array $subject): array {
