@@ -904,3 +904,15 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 - 🟡 runtime/build/browser gate remains unconfirmed.
 
 Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS22.md.
+
+
+## 2026-10-06 — Pass 23: route / legacy cleanup
+
+- 🟢 найден и устранён duplicate GET /api/v1/me: одновременно регистрировались profile_rest.php и domain_rest.php;
+- 🟢 из routes.php удалена регистрация legacy profile_rest.php;
+- 🟢 удалены orphan profile_rest.php и SupabaseRestProfile.php, которые возвращали неполный fallback-профиль;
+- 🟢 canonical /api/v1/me теперь проходит через UserRepository::profileBundle() с существующим REST fallback;
+- 🟡 полный PHP/Next/browser/runtime gate всё ещё требует target-environment проверки;
+- 🟡 продолжается аудит остальных legacy fallback/import traces.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS23.md.
