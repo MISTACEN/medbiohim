@@ -56,6 +56,7 @@ export default function TestsPage() {
   const [busy, setBusy] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [attempts, setAttempts] = useState<any[]>([]);
+  const [grading, setGrading] = useState<Record<number, any>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +106,7 @@ export default function TestsPage() {
     setBusy(true);
     setResult(null);
     setPicks({});
+    setGrading({});
     try {
       const detail = await getTest(id, user?.groupId);
       if (!detail.ok) {
@@ -154,6 +156,7 @@ export default function TestsPage() {
       );
       const saved = await Promise.all(writes);
       const failed = saved.find((x:any) => !x.ok);
+      setGrading(Object.fromEntries(saved.map((x:any, i:number) => [i, x.ok ? x.data?.answer : null])));
       if (failed) {
         setNote(failed.error?.message || "Не удалось сохранить ответы");
         setBusy(false);
@@ -257,6 +260,21 @@ export default function TestsPage() {
                   })}
                 </div>
               </>
+            )}
+            {grading[i] && (
+              <div className={"rounded-xl px-3 py-2 text-xs " + (
+                grading[i].is_correct === true ? "bg-emerald-50 text-emerald-700" :
+                grading[i].is_correct === false ? "bg-rose-50 text-rose-700" :
+                "bg-amber-50 text-amber-700"
+              )}>
+                {grading[i].grading_status === "ai" ? "ИИ-проверка" : "Автопроверка"}: {
+                  grading[i].is_correct === true ? "ответ засчитан" :
+                  grading[i].is_correct === false ? "ответ не засчитан" :
+                  "ответ требует повторной проверки"
+                }
+                {grading[i].grading_confidence != null ? " · уверенность " + Math.round(Number(grading[i].grading_confidence) * 100) + "%" : ""}
+                {grading[i].feedback ? <div className="mt-1">{String(grading[i].feedback)}</div> : null}
+              </div>
             )}
             <QuestionReport questionId={q.id} />
           </div>
