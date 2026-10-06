@@ -110,6 +110,14 @@ return static function (Router $router): void {
             $row = (new TestRepository())->finishAttempt((string) $params['id'], $req->user->id, is_numeric($score) ? (float) $score : null, is_numeric($maxScore) ? (float) $maxScore : null);
             if ($row === null) { Response::error('NOT_FOUND', 'Attempt not found', $req->requestId, 404); return; }
             Response::success(['attempt' => $row], $req->requestId);
+        } catch (\InvalidArgumentException $e) {
+            Response::error('VALIDATION_ERROR', $e->getMessage(), $req->requestId, 422);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'ATTEMPT_ALREADY_FINISHED') {
+                Response::error('ATTEMPT_ALREADY_FINISHED', 'Попытка уже завершена; изменять её результат нельзя', $req->requestId, 409);
+                return;
+            }
+            Response::error('DB_ERROR', $e->getMessage(), $req->requestId, 503);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Не удалось завершить попытку', $req->requestId, 503);
         }
