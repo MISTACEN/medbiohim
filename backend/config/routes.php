@@ -9,7 +9,6 @@ return static function (Router $router): void {
         'health.php',
         'auth.php',
         'admin_rest.php',
-        'profile_rest.php',
         'domain_rest.php',
         'community_rest.php',
         'progress_rest.php',
