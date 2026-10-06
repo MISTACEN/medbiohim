@@ -1,6 +1,6 @@
 # MEDBIOHIM — PHASES STATUS
 
-> Актуально на **2026-10-04**.  
+> Актуально на **2026-10-06**.  
 > Source of truth: `main` + живой Supabase + целевые deployment environments.  
 > Подробный план: [ROADMAP.md](ROADMAP.md).
 
@@ -184,3 +184,24 @@ After current stability blockers:
 5. **Student contribution + moderation**
 6. **Progress based on real activity**
 7. **UI polish**
+
+
+## 2026-10-06 — Master Plan / Pass 14
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| AcademicContext foundation | 🟡 | resolver расширен до group/subject/session/lesson/context version |
+| Group identity | 🟡 | explicit group enforcement есть; core consumers ещё мигрируются |
+| Subject identity | 🟡 | UUID authoritative в resolver; legacy slug consumers ещё остаются |
+| Schedule/session context | 🟡 | session/lesson resolver создан; ScheduleRepository и planner ещё требуют интеграции |
+| Progress context | 🟡 | subject context проверяется; fallback DB semantics усилены, полный academic scope ещё не завершён |
+| SRS identity | 🟡 | UUID path есть; compatibility slug path ещё существует |
+| Core academic flow | ⬜ | Pass 15 — следующий проход |
+
+### Кодовые изменения Pass 14
+- backend/src/Services/AcademicContextResolver.php расширен.
+- backend/config/routes/student_planner.php получил корректные imports.
+- backend/config/routes/srs_rest.php исправлен undeclared subjectId.
+- backend/config/routes/progress_rest.php больше не скрывает двойную ошибку источников за 200 [].
+
+Полный отчёт: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14.md.
