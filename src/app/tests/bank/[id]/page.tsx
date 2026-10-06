@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpenCheck, Check, ListChecks, Pencil, Play, Plus, Rotate
 import { adminUpdateBankQuestion, getBankProgress, getTest, hasToken, me, type ApiTest } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { QuestionReport } from "@/components/QuestionReport";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type BankOption = string | { label?: unknown; correct?: boolean };
 type BankQuestion = {
@@ -48,6 +49,7 @@ function isAdminResponse(payload: any): boolean {
 type EditOption = { label: string; correct: boolean };
 
 export default function TestBankPage({ params }: { params: Promise<{ id: string }> }) {
+  const { user, loading: authLoading } = useAuth();
   const [testId, setTestId] = useState("");
   const [test, setTest] = useState<ApiTest | null>(null);
   const [questions, setQuestions] = useState<BankQuestion[]>([]);
@@ -67,11 +69,16 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
       const p = await params;
       if (cancelled) return;
       setTestId(p.id);
+      if (authLoading) return;
       if (!hasToken()) {
         setLoading(false);
         return;
       }
-      const [detail, bankProgress, meRes] = await Promise.all([getTest(p.id), getBankProgress(p.id), me()]);
+      const [detail, bankProgress, meRes] = await Promise.all([
+        getTest(p.id, user?.groupId),
+        getBankProgress(p.id, user?.groupId),
+        me(),
+      ]);
       setIsAdmin(meRes.ok && isAdminResponse(meRes));
       if (cancelled) return;
       if (detail.ok) {
@@ -92,7 +99,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
     return () => {
       cancelled = true;
     };
-  }, [params]);
+  }, [params, authLoading, user?.groupId]);
 
   const completedCorrect = Number(progress?.correct ?? 0);
   const answered = Number(progress?.answered ?? 0);
