@@ -249,10 +249,10 @@ export async function adminPresence(within=180){return api<any>("/admin/presence
 export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return apiCached<any>(`/subjects${q.toString()?`?${q}`:""}`)}
 export async function listGroups(){return api<any>("/groups")}
 export type ApiTest=any;
-export async function listTests(subjectId?:string){return apiCached<any>(`/tests${subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:""}`)}
-export async function getTest(id:string){return api<any>(`/tests/${id}`)}
-export async function listMyAttempts(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/my/attempts${q}`)}
-export async function startTestAttempt(id:string){return api<any>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
+export async function listTests(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return apiCached<any>(`/tests${q.toString()?`?${q}`:""}`)}
+export async function getTest(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}${q}`)}
+export async function listMyAttempts(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/my/attempts${q.toString()?`?${q}`:""}`)}
+export async function startTestAttempt(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}/start${q}`,{method:"POST",body:"{}"})}
 export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
 export async function listHomeworks(){return api<any>("/homeworks")}
 export async function createHomework(payload:{title:string;description?:string;subject_id:string;due_date:string;group_id?:string}){return api<any>("/homeworks",{method:"POST",body:JSON.stringify(payload)})}
