@@ -70,8 +70,9 @@ return static function (Router $router): void {
    $subjectQ=$db->prepare("select subject_id from public.tests where id=:tid and is_published=true limit 1");
    $subjectQ->execute(['tid'=>$testId]);
    $subjectId=$subjectQ->fetchColumn();
+   $academicContext=null;
    if($subjectId!==false && $subjectId!==null) {
-    (new AcademicContextResolver($db))->resolveForRequest($r->user->id,(string)$context['group_id'],(string)$subjectId);
+    $academicContext=(new AcademicContextResolver($db))->resolveForRequest($r->user->id,(string)$context['group_id'],(string)$subjectId);
    }
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
@@ -85,6 +86,14 @@ return static function (Router $router): void {
    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' order by last_saved_at desc nulls last, started_at desc nulls last limit 1");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
    if($existing){
+    if((string)($existing['group_id']??'')!=='' && (string)$existing['group_id']!==(string)$context['group_id']){
+      Response::error('CONTEXT_CHANGED','Сессия подготовки относится к другой учебной группе',$r->requestId,409);
+      return;
+    }
+    if((string)($existing['context_version']??'')!=='' && $academicContext!==null && (string)$existing['context_version']!==(string)$academicContext['context_version']){
+      Response::error('CONTEXT_CHANGED','Учебный контекст изменился; начните новую подготовку',$r->requestId,409);
+      return;
+    }
     // Возобновляем только тот же режим. Для «весь банк подряд» старая случайная сессия
     // не должна перехватывать запуск — она закрывается, и создаётся последовательная.
     if((string)($existing['mode']??'')!==$mode && $mode==='sequential'){
@@ -105,8 +114,8 @@ return static function (Router $router): void {
     }
    }
 
-   $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids) values(:uid,:tid,:mode,:lim,:ids) returning *");
-   $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
+   $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids,group_id,session_id,context_version) values(:uid,:tid,:mode,:lim,:ids,:gid,:sid,:cv) returning *");
+   $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}','gid'=>$context['group_id'],'sid'=>$academicContext['session_id']??null,'cv'=>$academicContext['context_version']??null]);
    $created=$s->fetch(); if(is_array($created))$created['question_ids']=$ids;
    Response::success(['session'=>$created,'question_ids'=>$ids],$r->requestId,201);
   }catch(AcademicContextException $e){
@@ -131,6 +140,10 @@ return static function (Router $router): void {
     $db=Connection::pdo();
     $tid=$resolveTestId($db,(string)$p['id']);
     if($tid===null){Response::error('NOT_FOUND','Test not found',$r->requestId,404);return;}
+    $groupId=trim((string)($r->query['group_id']??''));
+    $testSubjectQ=$db->prepare("select subject_id from public.tests where id=:tid and is_published=true limit 1");
+    $testSubjectQ->execute(['tid'=>$tid]); $testSubject=$testSubjectQ->fetchColumn();
+    $context=(new AcademicContextResolver($db))->resolveForRequest($r->user->id,$groupId!==''?$groupId:null,$testSubject!==false?(string)$testSubject:null);
     $totalQ=$db->prepare("select count(*) from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null");
     $totalQ->execute(['tid'=>$tid]);$total=(int)$totalQ->fetchColumn();
 
@@ -152,6 +165,9 @@ return static function (Router $router): void {
       'completed'=>$completed,
       'session'=>$session ? [
         'id'=>$session['id'],
+        'group_id'=>$session['group_id']??null,
+        'session_id'=>$session['session_id']??null,
+        'context_version'=>$session['context_version']??null,
         'status'=>$session['status'],
         'current_index'=>(int)$session['current_index'],
         'started_at'=>$session['started_at'],
