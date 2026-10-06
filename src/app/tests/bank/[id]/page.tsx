@@ -297,6 +297,8 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
 
         <div className="mt-5 space-y-3">
           {visibleQuestions.map((q, i) => {
+            const originalIndex = questions.findIndex((item) => item.id === q.id);
+            const displayNumber = originalIndex >= 0 ? originalIndex + 1 : i + 1;
             const correctOptions = q.options.filter(correctOf).map(labelOf);
             const hasStructuredAnswers = correctOptions.length > 0;
             return (
@@ -306,7 +308,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
                     <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl bg-indigo-600 px-2 text-sm font-extrabold text-white">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="text-sm font-semibold text-slate-500">Вопрос {i + 1} из {questions.length}</span>
+                    <span className="text-sm font-semibold text-slate-500">Вопрос {displayNumber} из {questions.length}</span>
                     {q.topicTitle && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{q.topicTitle}</span>}
                   </div>
                   {isAdmin && (
