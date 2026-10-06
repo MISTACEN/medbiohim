@@ -9,6 +9,7 @@ import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type Subject = {
   id: string;
@@ -48,6 +49,7 @@ function stripHtml(html?: string | null) {
 }
 
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { user, loading: authLoading } = useAuth();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
@@ -91,6 +93,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     let cancelled = false;
+    if (authLoading) return () => { cancelled = true; };
     (async () => {
       try {
         const p = await params;
@@ -118,7 +121,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           const [pr, gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
             slug ? getSubjectPlan(slug) : Promise.resolve({ ok: false } as any),
             getSubjectGradebook(s.id),
-            listTests(s.id),
+            listTests(s.id, user?.groupId),
             listSubjectMaterials({ subjectId: s.id }),
             listTicketBanks(),
             getProgress(s.id),
@@ -145,7 +148,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     return () => {
       cancelled = true;
     };
-  }, [params]);
+  }, [params, authLoading, user?.groupId]);
 
   function selectTab(id: TabId) {
     setTab(id);
