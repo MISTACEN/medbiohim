@@ -104,7 +104,7 @@ export default function PreparationPage() {
         : 0;
       setIdx(safeIndex);
       if (m === "sequential") {
-        const p = await getBankProgress(id);
+        const p = await getBankProgress(id, user?.groupId);
         if (p.ok) setBankProgress(p.data);
       }
       const a: Record<string, string> = {};
