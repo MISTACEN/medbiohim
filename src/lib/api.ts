@@ -26,6 +26,20 @@ type CacheEntry<T> = { value: ApiResult<T>; expires: number };
 const apiCache = new Map<string, CacheEntry<any>>();
 const API_CACHE_TTL = 60_000;
 
+function cacheUserScope(): string {
+  if (typeof window === "undefined") return "server";
+  const token = getToken();
+  if (!token) return "anon";
+  try {
+    const part = token.split(".")[1];
+    if (!part) return "auth";
+    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof json?.sub === "string" && json.sub ? json.sub : "auth";
+  } catch {
+    return "auth";
+  }
+}
+
 function isCacheableGet(path: string, options: RequestInit) {
   if ((options.method || "GET").toUpperCase() !== "GET") return false;
   if (typeof window === "undefined") return false;
@@ -41,7 +55,7 @@ function isCacheableGet(path: string, options: RequestInit) {
 
 export async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   if (!isCacheableGet(path, options)) return api<T>(path, options);
-  const key = path;
+  const key = cacheUserScope() + "|" + path;
   const now = Date.now();
   let stale: ApiResult<T> | null = null;
 
@@ -91,7 +105,7 @@ export function invalidateApiCache(prefix = "") {
     try {
       for (let i = sessionStorage.length - 1; i >= 0; i--) {
         const key = sessionStorage.key(i) || "";
-        if (key.startsWith("mb_api_cache:") && (!prefix || key.slice(13).startsWith(prefix))) sessionStorage.removeItem(key);
+        if (key.startsWith("mb_api_cache:") && (!prefix || key.slice(13).endsWith(prefix) || key.slice(13).includes("|" + prefix))) sessionStorage.removeItem(key);
       }
     } catch {}
   }
