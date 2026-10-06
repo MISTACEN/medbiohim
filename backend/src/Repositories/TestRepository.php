@@ -214,9 +214,7 @@ final class TestRepository
 
             $existingStatus=(string)$existing['status'];
             if($existingStatus!=='in_progress'){
-                $sameScore=($score===null && $existing['score']===null) || ($score!==null && $existing['score']!==null && (float)$existing['score']===$score);
-                $sameMax=($maxScore===null && $existing['max_score']===null) || ($maxScore!==null && $existing['max_score']!==null && (float)$existing['max_score']===$maxScore);
-                if($existingStatus==='submitted' && $sameScore && $sameMax){$this->db->commit();return $existing;}
+                if($existingStatus==='submitted'){$this->db->commit();return $existing;}
                 throw new \RuntimeException('ATTEMPT_ALREADY_FINISHED');
             }
 
