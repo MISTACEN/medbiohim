@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Play, Loader2, CheckCircle2 } from "lucide-react";
 import {
   listTests,
+  getTestCurriculumMap,
   getTest,
   startTestAttempt,
   finishAttempt,
@@ -29,6 +30,8 @@ type UiTest = {
   questionCount: number;
   sourceFileId?: string | null;
   sourceFileName?: string | null;
+  moduleTitle?: string | null;
+  topicTitle?: string | null;
 };
 
 type Option = string | { label?: unknown; correct?: boolean };
@@ -43,6 +46,7 @@ type Q = {
 export default function TestsPage() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<UiTest[]>([]);
+  const [curriculumMap, setCurriculumMap] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
   const [active, setActive] = useState<{
@@ -67,7 +71,10 @@ export default function TestsPage() {
         return;
       }
       try {
-        const res = await listTests(undefined, user?.groupId);
+        const [res, mapRes] = await Promise.all([
+          listTests(undefined, user?.groupId),
+          getTestCurriculumMap(undefined, user?.groupId),
+        ]);
         if (cancelled) return;
         if (res.ok) {
           setItems(
@@ -79,9 +86,12 @@ export default function TestsPage() {
               questionCount: Number(t.questions_count || 0),
               sourceFileId: t.source_file_id || null,
               sourceFileName: t.source_file_name || null,
+              moduleTitle: t.module_title || null,
+              topicTitle: t.topic_title || null,
             }))
           );
         } else setNote(res.error.message);
+        if (mapRes.ok) setCurriculumMap(mapRes.data.items || []);
         const history = await listMyAttempts(undefined, user?.groupId);
         if (!cancelled && history.ok) setAttempts(history.data.items || []);
       } catch {
@@ -300,6 +310,61 @@ export default function TestsPage() {
         <p className="page-subtitle">Проверка знаний по предметам</p>
         {note && <p className="mt-2 text-sm text-amber-700">{note}</p>}
       </div>
+
+      {curriculumMap.length > 0 && (
+        <section className="card p-5 space-y-5">
+          <div>
+            <h2 className="font-semibold">Темы занятий → что готовить</h2>
+            <p className="mt-1 text-sm text-slate-500">Вопросы и тесты привязаны к темам. Начинай подготовку с темы ближайшего занятия.</p>
+          </div>
+          <div className="space-y-4">
+            {curriculumMap.map((subject: any) => (
+              <div key={String(subject.subject_id)} className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold text-slate-800">{String(subject.subject_name || "Предмет")}</h3>
+                  {Number(subject.unclassified_questions || 0) > 0 && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                      {Number(subject.unclassified_questions)} вопросов пока без темы
+                    </span>
+                  )}
+                </div>
+                {subject.modules?.map((module: any) => (
+                  <div key={String(module.module_id)} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 sm:p-4">
+                    <div className="mb-2 text-sm font-semibold text-slate-700">{String(module.title || "Раздел")}</div>
+                    <div className="space-y-2">
+                      {(module.topics || []).map((topic: any) => {
+                        const topicTests = items.filter((item) => item.topicTitle === topic.title);
+                        return (
+                          <div key={String(topic.topic_id)} className="rounded-xl border bg-white px-3 py-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="font-medium text-slate-800">{String(topic.title)}</div>
+                                <div className="mt-1 text-xs text-slate-500">
+                                  {Number(topic.question_count || 0)} вопросов · {Number(topic.test_count || 0)} тестов
+                                </div>
+                              </div>
+                              {topicTests.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {topicTests.map((item) => (
+                                    <Link key={item.id} href={"/tests/bank/" + item.id} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800">
+                                      Открыть банк
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="card p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
