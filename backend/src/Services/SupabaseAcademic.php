@@ -122,7 +122,7 @@ final class SupabaseAcademic
         return $items;
     }
 
-    public static function homeworksForUser(string $userId): array
+    public static function homeworksForUser(string $userId, ?string $groupId = null): array
     {
         $memberships = self::request(
             'GET',
@@ -134,9 +134,17 @@ final class SupabaseAcademic
             if (!empty($membership['group_id'])) $groupIds[] = (string) $membership['group_id'];
         }
 
-        $filters = ['group_id=is.null'];
-        if ($groupIds) {
-            $filters[] = 'group_id=in.(' . self::csvQuoted(array_values(array_unique($groupIds))) . ')';
+        $requestedGroup = trim((string)($groupId ?? ''));
+        if ($requestedGroup !== '') {
+            if (!in_array($requestedGroup, $groupIds, true)) {
+                throw new \RuntimeException('Requested homework group is not a user membership');
+            }
+            $filters = ['group_id=is.null','group_id=eq.'.rawurlencode($requestedGroup)];
+        } else {
+            $filters = ['group_id=is.null'];
+            if ($groupIds) {
+                $filters[] = 'group_id=in.(' . self::csvQuoted(array_values(array_unique($groupIds))) . ')';
+            }
         }
         $homeworks = self::request(
             'GET',
