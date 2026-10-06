@@ -110,6 +110,7 @@ return static function (Router $router): void {
       }
       if(!is_array($existingIds))$existingIds=[];
       $existing['question_ids']=array_values(array_filter(array_map('strval',$existingIds)));
+      unset($existing['question_snapshot']);
       Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;
     }
    }
@@ -121,7 +122,7 @@ return static function (Router $router): void {
    unset($snap);
    $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids,group_id,session_id,context_version,question_snapshot) values(:uid,:tid,:mode,:lim,:ids,:gid,:sid,:cv,:snapshot) returning *");
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}','gid'=>$context['group_id'],'sid'=>$academicContext['session_id']??null,'cv'=>$academicContext['context_version']??null,'snapshot'=>json_encode($questionSnapshot,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);
-   $created=$s->fetch(); if(is_array($created))$created['question_ids']=$ids;
+   $created=$s->fetch(); if(is_array($created)){$created['question_ids']=$ids;unset($created['question_snapshot']);}
    Response::success(['session'=>$created,'question_ids'=>$ids],$r->requestId,201);
   }catch(AcademicContextException $e){
    Response::error($e->errorCode,$e->getMessage(),$r->requestId,$e->httpStatus,$e->details);
@@ -132,7 +133,7 @@ return static function (Router $router): void {
       $db=Connection::pdo();
       $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and status='in_progress' limit 1");
       $s->execute(['uid'=>$r->user->id,'tid'=>$testId]); $existing=$s->fetch();
-      if($existing){Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;}
+      if($existing){unset($existing['question_snapshot']);Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;}
     }catch(\Throwable $e2){}
    }
    Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);
@@ -238,6 +239,7 @@ return static function (Router $router): void {
    }
    $a=$db->prepare("select question_id,answer_text".($session['status']==='completed'?",is_correct,score":"")." from public.test_preparation_results where session_id=:sid");
    $a->execute(['sid'=>$session['id']]);$answers=$a->fetchAll()?:[];
+   unset($session['question_snapshot']);
    Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$answers],$r->requestId);
   }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
  });
