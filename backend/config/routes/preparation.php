@@ -246,46 +246,69 @@ return static function (Router $router): void {
  });
 
  $router->patch('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
-  if(!$auth($r))return; $b=is_array($r->jsonBody??null)?$r->jsonBody:[]; try{$db=Connection::pdo();$db->beginTransaction();
-   $check=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress' for update");$check->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$s=$check->fetch();
-   if(!$s){$db->rollBack();Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
+  if(!$auth($r))return;
+  $b=is_array($r->jsonBody??null)?$r->jsonBody:[];
+  try{
+   $db=Connection::pdo();
+   $check=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress'");
+   $check->execute(['id'=>$p['id'],'uid'=>$r->user->id]);
+   $s=$check->fetch();
+   if(!$s){Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
+
    $idx=array_key_exists('current_index',$b)?max(0,(int)$b['current_index']):(int)$s['current_index'];
    $sessionCount=is_array($s['question_ids']??null)?count($s['question_ids']):0;
-   if($sessionCount===0 && is_string($s['question_ids']??null)) $sessionCount=count(array_filter(str_getcsv(trim($s['question_ids'],'{}'),',','\"','\\')));
+   if($sessionCount===0 && is_string($s['question_ids']??null)) $sessionCount=count(array_filter(str_getcsv(trim($s['question_ids'],'{}'),',','"','\\')));
    if($sessionCount>0) $idx=min($idx,$sessionCount-1);
+
+   $grading=null;
    if(isset($b['question_id'])){
     $membership=$db->prepare("select 1 from public.test_preparation_sessions where id=:sid and :qid = any(question_ids)");
     $membership->execute(['sid'=>$s['id'],'qid'=>(string)$b['question_id']]);
-    if(!$membership->fetchColumn()){ $db->rollBack(); Response::error('QUESTION_NOT_IN_SESSION','Вопрос не входит в эту сессию',$r->requestId,422); return; }
+    if(!$membership->fetchColumn()){Response::error('QUESTION_NOT_IN_SESSION','Вопрос не входит в эту сессию',$r->requestId,422);return;}
+
     $snapshot=$s['question_snapshot']??[];
     if(is_string($snapshot))$snapshot=json_decode($snapshot,true)?:[];
     $row=null;
     foreach(is_array($snapshot)?$snapshot:[] as $snap){if((string)($snap['id']??'')===(string)$b['question_id']){$row=$snap;break;}}
-    $correct=$row['answer']??null;
-    $type=(string)($row['type']??'open');
-    $options=$row['options']??[];
+    if($row===null){Response::error('QUESTION_NOT_IN_SESSION','Вопрос не входит в эту сессию',$r->requestId,422);return;}
     $given=array_key_exists('answer_text',$b)?(string)$b['answer_text']:null;
-    if ($row===null) { throw new \RuntimeException('QUESTION_NOT_IN_SESSION'); }
+
+    // AI grading happens outside the DB transaction.
     $grading=AnswerGradingService::grade($row,$given);
+   }
+
+   $db->beginTransaction();
+   $lock=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress' for update");
+   $lock->execute(['id'=>$p['id'],'uid'=>$r->user->id]);
+   $locked=$lock->fetch();
+   if(!$locked){$db->rollBack();Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
+
+   if(isset($b['question_id'])){
     $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at)
       values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot,:status,:source,:confidence,:feedback,:model,:graded_at)
       on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,grading_status=excluded.grading_status,grading_source=excluded.grading_source,grading_confidence=excluded.grading_confidence,grading_feedback=excluded.grading_feedback,grading_model=excluded.grading_model,graded_at=excluded.graded_at,answered_at=now()");
     $up->execute([
-      'sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,
-      'ok'=>$grading['is_correct'],'score'=>$grading['score'],'snapshot'=>json_encode(['type'=>$type,'answer'=>$correct,'options'=>$options],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
+      'sid'=>$locked['id'],'uid'=>$r->user->id,'tid'=>$locked['test_id'],'qid'=>$b['question_id'],'a'=>$given,
+      'ok'=>$grading['is_correct'],'score'=>$grading['score'],
+      'snapshot'=>json_encode(['type'=>$row['type']??'open','answer'=>$row['answer']??null,'options'=>$row['options']??[]],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
       'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],'confidence'=>$grading['confidence'],
       'feedback'=>$grading['feedback'],'model'=>$grading['model'],
       'graded_at'=>in_array($grading['grading_status'],['deterministic','ai'],true)?date('c'):null
     ]);
    }
-   $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");$up->execute(['idx'=>$idx,'id'=>$s['id']]);
+
+   $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");
+   $up->execute(['idx'=>$idx,'id'=>$locked['id']]);
    $savedSession=$up->fetch();
    if(is_array($savedSession))unset($savedSession['question_snapshot']);
    $db->commit();
-   Response::success(['session'=>$savedSession],$r->requestId);
-  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();Response::error('SAVE_ERROR',$e->getMessage(),$r->requestId,422);}
+   Response::success(['session'=>$savedSession,'grading'=>$grading],$r->requestId);
+  }catch(\Throwable $e){
+   if(isset($db)&&$db instanceof \PDO && $db->inTransaction())$db->rollBack();
+   Response::error('SAVE_ERROR',$e->getMessage(),$r->requestId,422);
+  }
  });
-
+ 
  $router->post('/api/v1/tests/preparation/{id}/finish',static function(Request $r,array $p)use($auth):void{
   if(!$auth($r))return;
   try{
