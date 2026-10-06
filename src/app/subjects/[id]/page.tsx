@@ -124,7 +124,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             listTests(s.id, user?.groupId),
             listSubjectMaterials({ subjectId: s.id }),
             listTicketBanks(),
-            getProgress(s.id),
+            getProgress(s.id, user?.groupId),
             listMaterials(slug ? { subjectSlug: slug } : {}),
             listLectures(slug),
           ]);
