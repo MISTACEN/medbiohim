@@ -823,3 +823,27 @@ Homework Resolver
 
 Следующий фактический проход: **Pass 15 — Core academic flow**.
 Подробности: `docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14.md`.
+
+## Audit update — 2026-10-06 — Pass 15
+
+Pass 15: 🟡 IMPLEMENTED / NOT CLOSED — core academic context is now propagated through planner, schedule, attendance, homework and test-attempt state transitions.
+
+Implemented:
+- ✅ planner requires/resolves an explicit academic group;
+- ✅ schedule DB + REST fallback filtered to the selected group;
+- ✅ attendance writes resolve the concrete lesson in the selected group/schedule version;
+- ✅ homework list/submit/progress use canonical group + subject checks;
+- ✅ homework submission retry is idempotent and conflicting overwrite of submitted/graded work is rejected;
+- ✅ one active test attempt per user/test is enforced by a production partial unique index;
+- ✅ test finish validates score bounds and is idempotent for identical retries;
+- ✅ frontend schedule/planner/attendance API calls propagate user.groupId.
+
+Still open:
+- 🟡 legacy progress aggregation is not fully group/session scoped;
+- 🟡 ordinary test score is still client-supplied rather than server-derived from answers;
+- 🟡 test attempts do not yet snapshot group_id/session_id/context_version;
+- 🟡 homework progress + submission remain two state stores without one canonical derived contract;
+- 🟡 schedule session/semester integrity is not yet enforced everywhere;
+- 🟡 final PHP/TypeScript/build/runtime verification after this pass remains required.
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
