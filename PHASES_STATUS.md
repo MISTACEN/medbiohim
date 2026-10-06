@@ -459,3 +459,10 @@ Supabase Free → metadata/source_key/path → SpaceWeb physical file → API en
 ## 2026-10-07 — subject-scoped Question Library
 
 🟢 Из предметной страницы «База вопросов» открывается с фиксированным `subject_slug`. Гистология → только гистология; органическая/физическая химия → только химия. Для гистологии отдельно сохранён тренажёр микропрепаратов. Глобальный вход в базу без subject context допускает ручной выбор предмета.
+
+
+## 2026-10-07 — Source-of-Truth Audit
+
+🟢 Создан единый документ `docs/PROJECT-SOURCE-OF-TRUTH-AUDIT-2026-10-07.md`, который объединяет правила продукта, архитектуры и release-gates.
+
+🟡 Остаточные зоны не закрыты формально до runtime/browser/physical-media проверки: Histology reconciliation, Materials files, schedule session integrity, единый schedule+homework UX, production auth/runtime, latest CI, strict TS/ESLint, timezone centralization и полный mobile/browser acceptance.
