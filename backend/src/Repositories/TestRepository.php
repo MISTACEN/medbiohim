@@ -99,7 +99,16 @@ final class TestRepository
             "INSERT INTO public.test_attempts (test_id, user_id, status)
              VALUES (:tid, :uid, 'in_progress') RETURNING *"
         );
-        $stmt->execute(['tid' => $testId, 'uid' => $userId]);
+        try {
+            $stmt->execute(['tid' => $testId, 'uid' => $userId]);
+        } catch (\PDOException $e) {
+            // A concurrent retry may win the partial unique index; return that active attempt.
+            if ($e->getCode() !== '23505') throw $e;
+            $existing->execute(['tid'=>$testId,'uid'=>$userId]);
+            $active=$existing->fetch();
+            if($active!==false) return $active;
+            throw $e;
+        }
         $row = $stmt->fetch();
         if ($row === false) throw new \RuntimeException('Failed to start attempt');
         return $row;
