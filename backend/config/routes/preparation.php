@@ -229,12 +229,15 @@ return static function (Router $router): void {
     $membership=$db->prepare("select 1 from public.test_preparation_sessions where id=:sid and :qid = any(question_ids)");
     $membership->execute(['sid'=>$s['id'],'qid'=>(string)$b['question_id']]);
     if(!$membership->fetchColumn()){ $db->rollBack(); Response::error('QUESTION_NOT_IN_SESSION','Вопрос не входит в эту сессию',$r->requestId,422); return; }
-    $ans=$db->prepare("select answer,type,options from public.questions where id=:qid");$ans->execute(['qid'=>$b['question_id']]);$row=$ans->fetch();
+    $snapshot=$s['question_snapshot']??[];
+    if(is_string($snapshot))$snapshot=json_decode($snapshot,true)?:[];
+    $row=null;
+    foreach(is_array($snapshot)?$snapshot:[] as $snap){if((string)($snap['id']??'')===(string)$b['question_id']){$row=$snap;break;}}
     $correct=$row['answer']??null;
     $type=(string)($row['type']??'open');
     $options=$row['options']??[];
     $given=array_key_exists('answer_text',$b)?(string)$b['answer_text']:null;
-    $ok=$row!==false && $given!==null && $isAnswerCorrect($type,$given,$correct,$options);
+    $ok=$row!==null && $given!==null && $isAnswerCorrect($type,$given,$correct,$options);
     $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot) values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,answered_at=now()");
     $up->execute(['sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,'ok'=>$ok,'score'=>$ok?1:0,'snapshot'=>json_encode(['type'=>$type,'answer'=>$correct,'options'=>$options],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);
    }
@@ -262,9 +265,9 @@ return static function (Router $router): void {
    $db=Connection::pdo();
    $s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='completed'");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('NOT_FOUND','Completed preparation session not found',$r->requestId,404);return;}
-   $q=$db->prepare("select r.question_id,r.answer_text,r.is_correct,q.text,q.answer,m.title as module_name,top.title as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$q->execute(['sid'=>$session['id']]);$rows=$q->fetchAll()?:[];
+   $q=$db->prepare("select r.question_id,r.answer_text,r.is_correct,r.answer_snapshot,q.text,m.title as module_name,top.title as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$q->execute(['sid'=>$session['id']]);$rows=$q->fetchAll()?:[];
    if(!$rows){Response::error('NO_RESULTS','Нет ответов для AI-разбора',$r->requestId,422);return;}
-   $payload=[];foreach($rows as $x)$payload[]=['question_id'=>$x['question_id'],'question'=>$x['text'],'student_answer'=>$x['answer_text'],'correct_answer'=>$x['answer'],'is_correct'=>(bool)$x['is_correct'],'module'=>$x['module_name'],'topic'=>$x['topic_name']];
+   $payload=[];foreach($rows as $x)$payload[]=['question_id'=>$x['question_id'],'question'=>$x['text'],'student_answer'=>$x['answer_text'],'correct_answer'=>(json_decode((string)($x['answer_snapshot']??''),true)['answer']??null),'is_correct'=>(bool)$x['is_correct'],'module'=>$x['module_name'],'topic'=>$x['topic_name']];
    $messages=[['role'=>'system','content'=>'Ты учебный AI-аналитик. Верни только JSON с ключами summary, strengths, weak_topics, error_breakdown, recommendations, next_practice. Не придумывай факты.'],['role'=>'user','content'=>json_encode(['results'=>$payload],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]];
    $llm=\Medbiohim\Support\LlmGateway::chat($messages,\Medbiohim\Support\LlmGateway::TASK_CHAT,0.2);
    $review=json_decode(trim($llm['text']),true);if(!is_array($review))throw new \RuntimeException('AI returned invalid JSON');
