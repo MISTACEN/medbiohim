@@ -15,6 +15,7 @@ type BankQuestion = {
   answer?: string | null;
   options: BankOption[];
   type?: string;
+  topicTitle?: string | null;
 };
 
 function labelOf(o: BankOption) {
@@ -57,6 +58,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAnswers, setShowAnswers] = useState(true);
+  const [topicFilter, setTopicFilter] = useState("all");
   const [isAdmin, setIsAdmin] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ text: string; answer: string; options: EditOption[] } | null>(null);
@@ -90,6 +92,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
             answer: q.answer == null ? null : String(q.answer),
             options: Array.isArray(q.options) ? (q.options as BankOption[]) : [],
             type: String(q.type || "mcq"),
+            topicTitle: q.topic_title == null ? null : String(q.topic_title),
           }))
         );
       } else setError(detail.error.message);
@@ -105,6 +108,9 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
   const answered = Number(progress?.answered ?? 0);
   const total = Number(progress?.total ?? questions.length);
   const percent = total ? Math.round((answered / total) * 100) : 0;
+
+  const topicOptions = useMemo(() => Array.from(new Set(questions.map((q) => q.topicTitle).filter(Boolean))) as string[], [questions]);
+  const visibleQuestions = useMemo(() => topicFilter === "all" ? questions : questions.filter((q) => q.topicTitle === topicFilter), [questions, topicFilter]);
 
   const modeLinks = useMemo(() => ({
     practice: `/tests/preparation/${encodeURIComponent(testId)}?mode=prepare&count=10`,
@@ -278,8 +284,19 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
           </button>
         </div>
 
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <label className="text-sm font-semibold text-slate-700">
+            Тема занятия
+            <select value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal sm:min-w-[320px]">
+              <option value="all">Все темы</option>
+              {topicOptions.map((topic) => <option key={topic} value={topic}>{topic}</option>)}
+            </select>
+          </label>
+          <div className="text-xs text-slate-500">Показывается {visibleQuestions.length} из {questions.length} вопросов</div>
+        </div>
+
         <div className="mt-5 space-y-3">
-          {questions.map((q, i) => {
+          {visibleQuestions.map((q, i) => {
             const correctOptions = q.options.filter(correctOf).map(labelOf);
             const hasStructuredAnswers = correctOptions.length > 0;
             return (
@@ -290,6 +307,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span className="text-sm font-semibold text-slate-500">Вопрос {i + 1} из {questions.length}</span>
+                    {q.topicTitle && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{q.topicTitle}</span>}
                   </div>
                   {isAdmin && (
                     <button
