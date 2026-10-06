@@ -46,7 +46,12 @@ return static function (Router $router): void {
             $resolver = new AcademicContextResolver();
             $group = $resolver->requireGroup($req->user->id, $groupId);
             if ($subjectId !== null) $resolver->resolveForRequest($req->user->id, (string)$group['group_id'], $subjectId);
-            $map = (new TestRepository())->curriculumMap($subjectId);
+            $map = (new TestRepository())->curriculumMap(
+                $subjectId,
+                isset($group['course']) ? (int)$group['course'] : null,
+                isset($group['semester']) ? (int)$group['semester'] : null,
+                isset($group['specialty_slug']) ? (string)$group['specialty_slug'] : null
+            );
             Response::success(['items'=>$map, 'group'=>$group, 'source'=>'db'], $req->requestId);
         } catch (AcademicContextException $e) {
             Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
