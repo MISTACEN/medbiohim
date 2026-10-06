@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Медбиохим — образовательная платформа",
   description:
-    "Платформа для студентов и преподавателей: расписание, задания, тесты, материалы",
+    "Образовательная платформа от студентов для студентов: расписание, задания, тесты, материалы",
 };
 
 export default function RootLayout({
