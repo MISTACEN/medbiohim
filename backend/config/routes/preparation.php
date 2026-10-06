@@ -268,8 +268,11 @@ return static function (Router $router): void {
     $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot) values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,answered_at=now()");
     $up->execute(['sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,'ok'=>$ok,'score'=>$ok?1:0,'snapshot'=>json_encode(['type'=>$type,'answer'=>$correct,'options'=>$options],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);
    }
-   $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");$up->execute(['idx'=>$idx,'id'=>$s['id']]);$db->commit();
-   Response::success(['session'=>$up->fetch()],$r->requestId);
+   $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");$up->execute(['idx'=>$idx,'id'=>$s['id']]);
+   $savedSession=$up->fetch();
+   if(is_array($savedSession))unset($savedSession['question_snapshot']);
+   $db->commit();
+   Response::success(['session'=>$savedSession],$r->requestId);
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();Response::error('SAVE_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
