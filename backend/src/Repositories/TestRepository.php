@@ -100,7 +100,7 @@ final class TestRepository
             $sql .= ' AND (s.specialty_slug = :specialty OR s.specialty_slug IS NULL)';
             $params['specialty'] = $specialtySlug;
         }
-        $sql .= ' ORDER BY s.name, m.order_index, tp.order_index, tp.title';
+        $sql .= ' ORDER BY s.name, planned_date NULLS LAST, m.order_index, tp.order_index, tp.title';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll() ?: [];
