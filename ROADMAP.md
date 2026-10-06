@@ -2,7 +2,7 @@
 
 > Единый план проекта и источник порядка по задачам.  
 > Обновляется вместе с изменениями в коде/БД.  
-> Дата актуализации: **2026-10-05**.
+> Дата актуализации: **2026-10-06**.
 
 ## Как читать статус
 
@@ -791,3 +791,34 @@ Homework Resolver
 3. **Как результат попадает обратно в учебный процесс?**
 
 Если на эти вопросы нет ответа, функция не считается интегрированной в MEDBIOHIM.
+
+
+## Audit update — 2026-10-06 — Master Plan / Pass 14
+
+Главный архитектурный план: `docs/INTEGRATION-MASTER-PLAN-2026-10-06.md`.
+
+**Pass 14: 🟡 IN PROGRESS** — foundation реализован, но core-домены ещё не все переведены на единый context contract.
+
+Уже реализовано:
+- ✅ `AcademicContextResolver::resolveGroup()`;
+- ✅ `resolveSubject()` по authoritative UUID;
+- ✅ `resolveAcademicSession()`;
+- ✅ `resolveLesson()`;
+- ✅ `resolveForRequest()`;
+- ✅ `semester / academic_year / academic_year_id / session_id / schedule_id / lesson_id`;
+- ✅ `context_version` и расширенный `context_key`;
+- ✅ запрет implicit выбора первой группы;
+- ✅ planner resolver import gap исправлен;
+- ✅ SRS cards route undeclared `subjectId` исправлен;
+- ✅ progress DB failure больше не маскируется пустым успешным ответом.
+
+Остаётся:
+- 🟡 перевести planner/schedule/progress/attendance на единый context object;
+- 🟡 убрать slug-only identity из practice/search/lectures и legacy content paths;
+- 🟡 unified published-test resolver для tests/preparation;
+- 🟡 context-aware cache versioning;
+- 🟡 пройти PHP/TypeScript/build/route audit после изменений;
+- 🟡 доказать exact artifact на SpaceWeb.
+
+Следующий фактический проход: **Pass 15 — Core academic flow**.
+Подробности: `docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14.md`.
