@@ -154,16 +154,34 @@ final class TestRepository
         }
     }
 
-    public function attemptsForUser(string $userId, ?string $subjectId = null): array
+    public function attemptsForUser(string $userId, ?string $subjectId = null, ?string $groupId = null): array
     {
         $sql = 'SELECT a.*, t.title AS test_title, t.subject_id
                   FROM public.test_attempts a
                   JOIN public.tests t ON t.id = a.test_id
+                  LEFT JOIN public.subjects s ON s.id = t.subject_id
                  WHERE a.user_id = :uid';
         $params = ['uid' => $userId];
         if ($subjectId !== null && $subjectId !== '') {
             $sql .= ' AND t.subject_id = :sid';
             $params['sid'] = $subjectId;
+        }
+        if ($groupId !== null && $groupId !== '') {
+            $sql .= ' AND (
+                EXISTS (
+                    SELECT 1 FROM public.schedule_entries se
+                    JOIN public.schedules sch ON sch.id=se.schedule_id
+                    WHERE se.subject_id=t.subject_id AND sch.group_id=:gid AND sch.is_active=true
+                )
+                OR EXISTS (
+                    SELECT 1 FROM public.groups g
+                    WHERE g.id=:gid2
+                      AND (s.course_number IS NULL OR g.course_number IS NULL OR s.course_number=g.course_number)
+                      AND (s.specialty_slug IS NULL OR g.specialty_slug IS NULL OR s.specialty_slug=g.specialty_slug)
+                )
+            )';
+            $params['gid']=$groupId;
+            $params['gid2']=$groupId;
         }
         $sql .= ' ORDER BY a.started_at DESC LIMIT 50';
         $stmt = $this->db->prepare($sql);
