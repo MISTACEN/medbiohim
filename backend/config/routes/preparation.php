@@ -235,7 +235,7 @@ return static function (Router $router): void {
     $options=$row['options']??[];
     $given=array_key_exists('answer_text',$b)?(string)$b['answer_text']:null;
     $ok=$row!==false && $given!==null && $isAnswerCorrect($type,$given,$correct,$options);
-    $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score) values(:sid,:uid,:tid,:qid,:a,:ok,:score) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answered_at=now()");
+    $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot) values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,answered_at=now()");
     $up->execute(['sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,'ok'=>$ok,'score'=>$ok?1:0]);
    }
    $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");$up->execute(['idx'=>$idx,'id'=>$s['id']]);$db->commit();
