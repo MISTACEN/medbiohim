@@ -16,7 +16,7 @@ final class HomeworkRepository
         $this->db = Connection::pdo();
     }
 
-    public function listForUser(string $userId): array
+    public function listForUser(string $userId, ?string $groupId = null): array
     {
         $stmt = $this->db->prepare(
             'SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE 'Asia/Vladivostok')::date) AS due_date, h.subject_id, h.group_id, h.created_by, h.created_by_role,
@@ -30,14 +30,13 @@ final class HomeworkRepository
                ON sub.homework_id = h.id AND sub.user_id = :uid
              LEFT JOIN public.homework_progress hp
                ON hp.homework_id = h.id AND hp.user_id = :uid
-             WHERE h.group_id IS NULL
-                OR h.group_id IN (
-                    SELECT group_id FROM public.group_memberships
-                    WHERE user_id = :uid2 AND is_active = true
-                )
+             WHERE (:gid IS NULL AND (h.group_id IS NULL OR h.group_id IN (
+                    SELECT group_id FROM public.group_memberships WHERE user_id = :uid2 AND is_active = true
+                )))
+                OR (:gid2 IS NOT NULL AND (h.group_id IS NULL OR h.group_id = :gid2))
              ORDER BY h.due_at NULLS LAST, h.created_at DESC'
         );
-        $stmt->execute(['uid' => $userId, 'uid2' => $userId]);
+        $stmt->execute(['uid' => $userId, 'uid2' => $userId, 'gid' => $groupId, 'gid2' => $groupId]);
         $items = $stmt->fetchAll() ?: [];
         if ($items === []) return [];
 
