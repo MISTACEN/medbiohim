@@ -32,6 +32,7 @@ type UiTest = {
   sourceFileName?: string | null;
   moduleTitle?: string | null;
   topicTitle?: string | null;
+  topicId?: string | null;
 };
 
 type Option = string | { label?: unknown; correct?: boolean };
@@ -88,6 +89,7 @@ export default function TestsPage() {
               sourceFileName: t.source_file_name || null,
               moduleTitle: t.module_title || null,
               topicTitle: t.topic_title || null,
+              topicId: t.topic_id || null,
             }))
           );
         } else setNote(res.error.message);
@@ -333,7 +335,7 @@ export default function TestsPage() {
                     <div className="mb-2 text-sm font-semibold text-slate-700">{String(module.title || "Раздел")}</div>
                     <div className="space-y-2">
                       {(module.topics || []).map((topic: any) => {
-                        const topicTests = items.filter((item) => item.topicTitle === topic.title);
+                        const topicTests = items.filter((item) => item.topicId === topic.topic_id);
                         return (
                           <div key={String(topic.topic_id)} className="rounded-xl border bg-white px-3 py-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -342,6 +344,8 @@ export default function TestsPage() {
                                 <div className="mt-1 text-xs text-slate-500">
                                   {Number(topic.question_count || 0)} вопросов · {Number(topic.test_count || 0)} тестов
                                 </div>
+                                {topic.planned_date && <div className="mt-1 text-xs font-medium text-indigo-600">Занятие: {new Date(topic.planned_date + "T00:00:00").toLocaleDateString("ru-RU")}</div>}
+                                {topic.is_extra && <div className="mt-1 text-xs font-medium text-amber-700">Дополнительно / вне текущего календаря</div>}
                               </div>
                               {topicTests.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
