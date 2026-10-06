@@ -254,11 +254,11 @@ export async function getTest(id:string,groupId?:string){const q=groupId?`?group
 export async function listMyAttempts(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/my/attempts${q.toString()?`?${q}`:""}`)}
 export async function startTestAttempt(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}/start${q}`,{method:"POST",body:"{}"})}
 export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
-export async function listHomeworks(){return api<any>("/homeworks")}
+export async function listHomeworks(groupId?:string){const q=groupId?"?group_id="+encodeURIComponent(groupId):"";return api<any>("/homeworks"+q)}
 export async function createHomework(payload:{title:string;description?:string;subject_id:string;due_date:string;group_id?:string}){return api<any>("/homeworks",{method:"POST",body:JSON.stringify(payload)})}
 export async function setHomeworkDone(id:string,done:boolean){return api<any>(`/homeworks/${encodeURIComponent(id)}/progress`,{method:"POST",body:JSON.stringify({done})})}
-export async function getStudentPlanner(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/planner${q.toString()?`?${q}`:""}`)}
-export async function markAttendance(entryId:string,status:"present"|"excused"|"sick"|"unexcused",note?:string){return api<any>(`/attendance/${encodeURIComponent(entryId)}`,{method:"POST",body:JSON.stringify({status,note})})}
+export async function getStudentPlanner(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);return api<any>(`/planner${q.toString()?`?${q}`:""}`)}
+export async function markAttendance(entryId:string,status:"present"|"excused"|"sick"|"unexcused",note?:string,groupId?:string){const q=groupId?"?group_id="+encodeURIComponent(groupId):"";return api<any>(`/attendance/${encodeURIComponent(entryId)}${q}`,{method:"POST",body:JSON.stringify({status,note})})}
 export async function submitHomework(id:string,textAnswer?:string,fileId?:string){return api<any>(`/homeworks/${id}/submit`,{method:"POST",body:JSON.stringify({text_answer:textAnswer,file_id:fileId})})}
 export async function uploadFile(file:File,groupId?:string,specialtySlug?:string){const fd=new FormData();fd.append("file",file);if(groupId)fd.append("group_id",groupId);if(specialtySlug)fd.append("specialty_slug",specialtySlug);return api<any>("/files/upload",{method:"POST",body:fd})}
 export async function getFileDownload(id:string):Promise<any>{return api<any>("/files/"+encodeURIComponent(id))}
@@ -289,9 +289,9 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
-export async function listSchedule(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/schedule${q.toString()?`?${q}`:""}`)}
+export async function listSchedule(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);return api<any>(`/schedule${q.toString()?`?${q}`:""}`)}
 export async function getDashboard(){return api<any>("/dashboard")}
-export async function getProgress(subjectId?:string){const q=subjectId?`?subject_id=${encodeURIComponent(subjectId)}`:"";return api<any>(`/progress${q}`)}
+export async function getProgress(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/progress${q.toString()?`?${q}`:""}`)}
 export async function getCurriculum(){return api<any>("/curriculum")}
 export async function getSubject(id:string){return apiCached<any>(`/subjects/${id}`)}
 export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return apiCached<any>(`/materials${q.toString()?`?${q}`:""}`)}
