@@ -253,3 +253,17 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
 | Progress academic semantics | 🟡 | remaining cross-domain work |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
+
+## 2026-10-06 — Pass 18: Historical preparation integrity
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Preparation scoring source | 🟢 | immutable session snapshot |
+| Preparation answer snapshot | 🟢 | stored per result |
+| Preparation AI historical correctness | 🟢 | uses stored answer snapshot |
+| Active context integrity | 🟢 | live DB gap counts = 0 |
+| CI execution evidence | 🟡 | no workflow run for latest commit |
+| SpaceWeb/PHP runtime | 🟡 | must be verified in actual deployment |
+| Next.js build | 🟡 | must be verified after latest frontend changes |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
