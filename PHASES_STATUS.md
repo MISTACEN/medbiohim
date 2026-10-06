@@ -267,3 +267,18 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
 | Next.js build | 🟡 | must be verified after latest frontend changes |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
+
+
+## 2026-10-06 — Pass 19: Progress / History / Preparation
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Preparation historical reads | 🟢 | GET/finish/AI используют immutable session snapshot |
+| Preparation answer snapshot | 🟢 | live results без answer_snapshot = 0 |
+| Progress terminal statuses | 🟢 | submitted учитывается как завершённая попытка |
+| Progress DB failure handling | 🟢 | silent empty fallback удалён |
+| Test history group scope | 🟢 | history фильтруется по test_attempts.group_id |
+| Bank group propagation | 🟢 | bank + preparation передают group_id |
+| Runtime/build verification | 🟡 | требует реального target environment |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS19.md.
