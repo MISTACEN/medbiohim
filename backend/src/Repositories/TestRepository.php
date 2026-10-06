@@ -170,8 +170,7 @@ final class TestRepository
             $up = $this->db->prepare(
                 "INSERT INTO public.test_answers
                     (attempt_id,question_id,answer_text,is_correct,score,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at)
-                 VALUES (:aid,:qid,:answer,:correct,:score,:status,:source,:confidence,:feedback,:model,
-                         CASE WHEN :status IN ('deterministic','ai') THEN now() ELSE NULL END)
+                 VALUES (:aid,:qid,:answer,:correct,:score,:status,:source,:confidence,:feedback,:model,:graded_at)
                  ON CONFLICT(attempt_id,question_id) DO UPDATE SET
                     answer_text=EXCLUDED.answer_text,
                     is_correct=EXCLUDED.is_correct,
@@ -187,7 +186,8 @@ final class TestRepository
                 'aid'=>$attemptId,'qid'=>$questionId,'answer'=>$answerText,
                 'correct'=>$grading['is_correct'],'score'=>$grading['score'],
                 'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],
-                'confidence'=>$grading['confidence'],'feedback'=>$grading['feedback'],'model'=>$grading['model']
+                'confidence'=>$grading['confidence'],'feedback'=>$grading['feedback'],'model'=>$grading['model'],
+                'graded_at'=>in_array($grading['grading_status'], ['deterministic','ai'], true) ? date('c') : null
             ]);
             $this->db->commit();
             return ['question_id'=>$questionId,'answer_text'=>$answerText] + $grading;
