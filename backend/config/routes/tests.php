@@ -126,7 +126,20 @@ return static function (Router $router): void {
     $router->get('/api/v1/my/attempts', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
-            Response::success(['items' => (new TestRepository())->attemptsForUser($req->user->id), 'source' => 'db'], $req->requestId);
+            $groupId = isset($req->query['group_id']) ? trim((string)$req->query['group_id']) : null;
+            if ($groupId === '') $groupId = null;
+            $subjectId = isset($req->query['subject_id']) ? trim((string)$req->query['subject_id']) : null;
+            if ($subjectId === '') $subjectId = null;
+            $resolver = new AcademicContextResolver();
+            $group = $resolver->requireGroup($req->user->id,$groupId);
+            if ($subjectId !== null) $resolver->resolveForRequest($req->user->id,(string)$group['group_id'],$subjectId);
+            Response::success([
+                'items' => (new TestRepository())->attemptsForUser($req->user->id,$subjectId,(string)$group['group_id']),
+                'source' => 'db',
+                'group' => $group,
+            ], $req->requestId);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode,$e->getMessage(),$req->requestId,$e->httpStatus,$e->details);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'История попыток временно недоступна', $req->requestId, 503);
         }
