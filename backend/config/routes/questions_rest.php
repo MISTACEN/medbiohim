@@ -13,7 +13,7 @@ return static function (Router $r): void {
         $filters = [
             'subject' => ($q->query['subject'] ?? null),
             'subject_slug' => ($q->query['subject_slug'] ?? null),
-            'kind' => ($q->query['kind'] ?? 'ticket'),
+            'kind' => ($q->query['kind'] ?? ''),
             'type' => ($q->query['type'] ?? null),
             'topic' => ($q->query['topic'] ?? null),
             'q' => ($q->query['q'] ?? null),
@@ -23,17 +23,18 @@ return static function (Router $r): void {
             $limit = max(1, min(200, (int) ($q->query['limit'] ?? 50)));
             $offset = max(0, (int) ($q->query['offset'] ?? 0));
             $slice = array_slice($items, $offset, $limit);
-            $list = array_map(static function (array $item): array {
+            $includeAnswer = in_array(strtolower(trim((string) ($q->query['include_answer'] ?? ''))), ['1','true','yes'], true);
+            $list = array_map(static function (array $item) use ($includeAnswer): array {
                 $out = $item;
                 $answer = (string) ($out['answer'] ?? '');
                 $out['has_answer'] = $answer !== '';
-                if (mb_strlen($answer) > 120) {
+                if (!$includeAnswer && mb_strlen($answer) > 120) {
                     $out['answer_preview'] = mb_substr($answer, 0, 120) . '…';
                     unset($out['answer']);
                 }
                 return $out;
             }, $slice);
-            Response::success(['items'=>$list,'total'=>count($items),'limit'=>$limit,'offset'=>$offset,'source'=>'supabase'], $q->requestId);
+            Response::success(['items'=>$list,'total'=>count($items),'limit'=>$limit,'offset'=>$offset,'source'=>'supabase','answers_included'=>$includeAnswer], $q->requestId);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE','Банк вопросов временно недоступен',$q->requestId,503);
         }
