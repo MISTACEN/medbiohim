@@ -8,6 +8,7 @@ import {
   getTest,
   startTestAttempt,
   finishAttempt,
+  saveTestAnswer,
   getFile,
   listMyAttempts,
   hasToken,
@@ -127,8 +128,8 @@ export default function TestsPage() {
           id: String(q.id || i),
           body: String(q.body || q.q || q.text || ""),
           options,
-          answer: q.answer == null ? null : String(q.answer),
           type: String(q.type || "mcq"),
+          allowMultiple: Boolean(q.allow_multiple),
         };
       });
       setActive({
@@ -147,39 +148,37 @@ export default function TestsPage() {
   async function submit() {
     if (!active) return;
     setBusy(true);
-    let score = 0;
-    const max = active.questions.length;
-    active.questions.forEach((q, i) => {
-      const selected = (picks[i] || []).map((x) => x.trim().toLowerCase()).filter(Boolean).sort();
-      const correct = q.options
-        .filter((o: any) => typeof o !== "string" && o.correct === true)
-        .map((o: any) => String(o.label ?? "").trim().toLowerCase())
-        .filter(Boolean)
-        .sort();
-
-      if (q.type === "open" || q.type === "problem" || q.type === "theory" || q.type === "practical") {
-        const expected = String(q.answer || "").trim().toLowerCase();
-        if (selected.length === 1 && selected[0] === expected) score += 1;
-      } else if (correct.length && JSON.stringify(selected) === JSON.stringify(correct)) {
-        score += 1;
-      } else if (!correct.length && q.answer != null) {
-        const fallback = String(q.answer).trim().toLowerCase();
-        if (selected.length === 1 && selected[0] === fallback) score += 1;
+    try {
+      const writes = active.questions.map((q, i) =>
+        saveTestAnswer(active.attemptId, q.id, (picks[i] || []).join("|||"))
+      );
+      const saved = await Promise.all(writes);
+      const failed = saved.find((x:any) => !x.ok);
+      if (failed) {
+        setNote(failed.error?.message || "Не удалось сохранить ответы");
+        setBusy(false);
+        return;
       }
-    });
-    const finished = await finishAttempt(active.attemptId, score, max);
-    if (!finished.ok) {
-      setNote(finished.error.message);
+      const finished = await finishAttempt(active.attemptId);
+      if (!finished.ok) {
+        setNote(finished.error.message);
+        setBusy(false);
+        return;
+      }
+      const attempt=finished.data.attempt;
+      setAttempts((prev) => [attempt, ...prev.filter((x:any) => x.id !== attempt.id)]);
+      const score=Number(attempt.score||0);
+      const max=Number(attempt.max_score||active.questions.length);
+      setResult({ score, max });
+      if (max > 0 && score / max >= 0.7) {
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 2500);
+      }
+    } catch {
+      setNote("Не удалось сохранить ответы");
+    } finally {
       setBusy(false);
-      return;
     }
-    setAttempts((prev) => [finished.data.attempt, ...prev.filter((x:any) => x.id !== finished.data.attempt.id)]);
-    setResult({ score, max });
-    if (max > 0 && score / max >= 0.7) {
-      setCelebrate(true);
-      setTimeout(() => setCelebrate(false), 2500);
-    }
-    setBusy(false);
   }
 
   if (!hasToken()) {
@@ -223,13 +222,13 @@ export default function TestsPage() {
               />
             ) : (
               <>
-                {q.options.filter((o) => typeof o !== "string" && o.correct === true).length > 1 && (
+                {q.allowMultiple && (
                   <div className="text-xs text-slate-500">Можно выбрать несколько вариантов.</div>
                 )}
                 <div className="space-y-2">
                   {q.options.map((opt, oi) => {
                     const label = typeof opt === "string" ? opt : String(opt.label ?? "");
-                    const multi = q.options.filter((o) => typeof o !== "string" && o.correct === true).length > 1;
+                    const multi = Boolean(q.allowMultiple);
                     const selected = (picks[i] || []).includes(label);
                     return (
                       <label
