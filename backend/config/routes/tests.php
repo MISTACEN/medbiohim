@@ -60,6 +60,62 @@ return static function (Router $router): void {
         }
     });
 
+    $router->get('/api/v1/tests/chemistry-master', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            $page = max(1, (int)($req->query['page'] ?? 1));
+            $limit = min(50, max(1, (int)($req->query['limit'] ?? 20)));
+            $kind = trim((string)($req->query['kind'] ?? ''));
+            $formula = trim((string)($req->query['formula'] ?? ''));
+            $search = trim((string)($req->query['q'] ?? ''));
+            $pdo = \Medbiohim\Database\Connection::pdo();
+            $where = ["d.subject_slug = 'chemistry_organic_physical'", "d.version = '2026-10-07-v1'"];
+            $paramsSql = [];
+            if ($kind !== '') { $where[] = "item->>'kind' = :kind"; $paramsSql['kind'] = $kind; }
+            if ($formula !== '') { $where[] = "COALESCE(item->>'formula_preserved','false') = :formula"; $paramsSql['formula'] = $formula === '1' || strtolower($formula) === 'true' ? 'true' : 'false'; }
+            if ($search !== '') {
+                $where[] = "(item->>'question' ILIKE :search OR COALESCE(item->>'topic','') ILIKE :search)";
+                $paramsSql['search'] = '%' . $search . '%';
+            }
+            $whereSql = implode(' AND ', $where);
+            $count = $pdo->prepare("SELECT count(*) FROM public.chemistry_master_documents d CROSS JOIN LATERAL jsonb_array_elements(d.content) item WHERE {$whereSql}");
+            $count->execute($paramsSql);
+            $total = (int)$count->fetchColumn();
+            $offset = ($page - 1) * $limit;
+            $sql = "SELECT
+                        item->>'id' AS item_id,
+                        item->>'kind' AS kind,
+                        item->>'topic' AS topic,
+                        item->>'question' AS question,
+                        item->>'answer' AS answer,
+                        item->>'source' AS source,
+                        item->>'answer_status' AS answer_status,
+                        item->>'source_number' AS source_number,
+                        item->>'formula_preserved' AS formula_preserved,
+                        item->>'plan_topic_id' AS plan_topic_id
+                    FROM public.chemistry_master_documents d
+                    CROSS JOIN LATERAL jsonb_array_elements(d.content) item
+                    WHERE {$whereSql}
+                    ORDER BY (item->>'source_number')::int NULLS LAST, item->>'id'
+                    LIMIT :limit OFFSET :offset";
+            $stmt = $pdo->prepare($sql);
+            foreach ($paramsSql as $key => $value) $stmt->bindValue(':' . $key, $value);
+            $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll() ?: [];
+            foreach ($items as &$item) $item['formula_preserved'] = ($item['formula_preserved'] ?? 'false') === 'true';
+            unset($item);
+            Response::success([
+                'items' => $items,
+                'pagination' => ['page'=>$page,'limit'=>$limit,'total'=>$total,'pages'=>$limit > 0 ? (int)ceil($total/$limit) : 1],
+                'source' => 'chemistry_master_documents'
+            ], $req->requestId);
+        } catch (\Throwable $e) {
+            Response::error('DB_UNAVAILABLE', 'Единый банк химии временно недоступен', $req->requestId, 503);
+        }
+    });
+
     $router->get('/api/v1/tests/{id}', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
