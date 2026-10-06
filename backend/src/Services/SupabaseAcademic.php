@@ -191,21 +191,21 @@ final class SupabaseAcademic
         return $homeworks;
     }
 
-    public static function communityPosts(int $limit = 100): array
+    public static function communityPosts(int $limit = 100, ?string $groupId = null): array
     {
-        return self::request(
-            'GET',
-            'community_posts?is_deleted=eq.false&select=id,author_id,title,body,created_at,updated_at'
-            . '&order=created_at.desc&limit=' . max(1, min($limit, 200))
-        );
+        $filter = $groupId !== null && trim($groupId) !== ''
+            ? '&or=(group_id.eq.'.rawurlencode(trim($groupId)).',group_id.is.null)'
+            : '';
+        return self::request('GET', 'community_posts?is_deleted=eq.false&select=id,author_id,group_id,tag,text,title,body,created_at,updated_at'
+            . $filter . '&order=created_at.desc&limit=' . max(1, min($limit, 200)));
     }
 
-    public static function createCommunityPost(string $authorId, string $title, string $body): array
+    public static function createCommunityPost(string $authorId, string $title, string $body, ?string $groupId = null): array
     {
         $rows = self::request(
             'POST',
             'community_posts',
-            ['author_id' => $authorId, 'title' => $title, 'body' => $body, 'is_deleted' => false],
+            ['author_id' => $authorId, 'group_id' => $groupId, 'title' => $title, 'body' => $body, 'text' => $body, 'is_deleted' => false],
             ['Prefer: return=representation']
         );
         if (!$rows) throw new \RuntimeException('Community post was not created');
