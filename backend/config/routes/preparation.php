@@ -46,7 +46,7 @@ return static function (Router $router): void {
  $resolveTestId=static function(\PDO $db,string $value):?string{
   $value=trim($value);
   if($value==='')return null;
-  $q=$db->prepare("select id::text from public.tests where id::text=:value or source_key=:value or source_key=:local limit 1");
+  $q=$db->prepare("select id::text from public.tests where is_published=true and (id::text=:value or source_key=:value or source_key=:local) limit 1");
   $q->execute(['value'=>$value,'local'=>'local:'.$value]);
   $id=$q->fetchColumn();
   return $id===false?null:(string)$id;
@@ -176,10 +176,16 @@ return static function (Router $router): void {
 
  $router->patch('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
   if(!$auth($r))return; $b=is_array($r->jsonBody??null)?$r->jsonBody:[]; try{$db=Connection::pdo();$db->beginTransaction();
-   $check=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid for update");$check->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$s=$check->fetch();
+   $check=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress' for update");$check->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$s=$check->fetch();
    if(!$s){$db->rollBack();Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
    $idx=array_key_exists('current_index',$b)?max(0,(int)$b['current_index']):(int)$s['current_index'];
+   $sessionCount=is_array($s['question_ids']??null)?count($s['question_ids']):0;
+   if($sessionCount===0 && is_string($s['question_ids']??null)) $sessionCount=count(array_filter(str_getcsv(trim($s['question_ids'],'{}'),',','\"','\\')));
+   if($sessionCount>0) $idx=min($idx,$sessionCount-1);
    if(isset($b['question_id'])){
+    $membership=$db->prepare("select 1 from public.test_preparation_sessions where id=:sid and :qid = any(question_ids)");
+    $membership->execute(['sid'=>$s['id'],'qid'=>(string)$b['question_id']]);
+    if(!$membership->fetchColumn()){ $db->rollBack(); Response::error('QUESTION_NOT_IN_SESSION','Вопрос не входит в эту сессию',$r->requestId,422); return; }
     $ans=$db->prepare("select answer,type,options from public.questions where id=:qid");$ans->execute(['qid'=>$b['question_id']]);$row=$ans->fetch();
     $correct=$row['answer']??null;
     $type=(string)($row['type']??'open');
