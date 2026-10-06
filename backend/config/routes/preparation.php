@@ -192,13 +192,23 @@ return static function (Router $router): void {
    if(!is_array($questionIds))$questionIds=[];
    $questionIds=array_values(array_filter(array_map('strval',$questionIds),static fn($x)=>$x!==''));
    // modules/topics: колонка title (не name) — SQLSTATE 42703
-   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.answer,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
+   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
    $q->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$questionIds)).'}']);$questions=$q->fetchAll()?:[];
    $positions=array_flip($questionIds);
    $session['question_ids']=$questionIds;
    usort($questions,static fn($a,$b)=>(($positions[(string)$a['id']]??PHP_INT_MAX)<=>($positions[(string)$b['id']]??PHP_INT_MAX)));
-   $a=$db->prepare("select question_id,answer_text,is_correct,score from public.test_preparation_results where session_id=:sid");$a->execute(['sid'=>$session['id']]);
-   Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$a->fetchAll()?:[]],$r->requestId);
+   $a=$db->prepare("select question_id,answer_text".($session['status']==='completed'?",is_correct,score":"")." from public.test_preparation_results where session_id=:sid");$a->execute(['sid'=>$session['id']]);   $answers=$a->fetchAll()?:[];
+   foreach($questions as &$question){
+    $opts=is_string($question['options']??null)?(json_decode($question['options'],true)?:[]):($question['options']??[]);
+    $clean=[];$correctCount=0;
+    foreach(is_array($opts)?$opts:[] as $opt){
+     if(is_array($opt)){if(!empty($opt['correct']))$correctCount++;$clean[]=['label'=>(string)($opt['label']??'')];}
+     else $clean[]=['label'=>(string)$opt];
+    }
+    $question['options']=$clean;$question['allow_multiple']=$correctCount>1;
+   }
+   unset($question);
+   Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$answers],$r->requestId);
   }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
