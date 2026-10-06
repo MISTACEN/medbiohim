@@ -413,3 +413,31 @@ Supabase metadata → API → SpaceWeb → HTTP 200.
 public.files/Supabase Storage не являются обязательным местом для всех histology images. Использование их для всего архива не требуется и не должно делаться автоматически из-за ограничения бесплатного Supabase.
 
 Статус: 🟡 DB/content metadata в основном синхронизированы; SpaceWeb physical media verification остаётся отдельным target-environment этапом.
+
+
+## 2026-10-07 — SpaceWeb media root подтверждён
+
+По прямому скриншоту файловой системы SpaceWeb подтверждено физическое наличие Histology media root под /public_html/....
+
+В корне видны:
+- source-materials;
+- electronograms;
+- em;
+- 5_Фотографии препаратов;
+- дополнительный каталог с Unicode/URL-encoded именованием;
+- README.md.
+
+Поэтому физический архив не следует считать отсутствующим только потому, что его нет в GitHub или public.files Supabase.
+
+| Проверка | Статус |
+|---|---|
+| SpaceWeb media root существует | 🟢 подтверждено |
+| Ожидаемая структура каталогов | 🟢 подтверждена |
+| Все файлы из исходного content.zip сопоставлены | 🟡 ещё требуется |
+| Все 206 trainer cards → физические файлы | 🟡 ещё требуется |
+| 28 EM → физические файлы | 🟡 ещё требуется |
+| Materials → физические документы/фото | 🟡 ещё требуется |
+| Production HTTP media smoke | 🟡 ещё требуется |
+
+Каноническая схема:
+Supabase Free → metadata/source_key/path → SpaceWeb physical file → API endpoint.
