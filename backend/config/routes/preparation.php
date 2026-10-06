@@ -114,7 +114,7 @@ return static function (Router $router): void {
     }
    }
 
-   $snapshotQ=$db->prepare("select q.id,q.subject_id,q.module_id,q.topic_id,q.type,q.text,q.answer,q.options from public.questions q where q.id=any(cast(:ids as uuid[])) order by array_position(cast(:ids as uuid[]),q.id)");
+   $snapshotQ=$db->prepare("select q.id,q.subject_id,q.module_id,q.topic_id,q.type,q.text,q.answer,q.options from public.questions q where q.id=any(cast(:ids as uuid[])) order by q.id");
    $snapshotQ->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
    $questionSnapshot=$snapshotQ->fetchAll()?:[];
    foreach($questionSnapshot as &$snap) if(is_string($snap['options']??null)) $snap['options']=json_decode($snap['options'],true)?:[];
