@@ -272,16 +272,51 @@ return static function (Router $router): void {
  });
 
  $router->post('/api/v1/tests/preparation/{id}/finish',static function(Request $r,array $p)use($auth):void{
-  if(!$auth($r))return;try{$db=Connection::pdo();$s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress'");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
+  if(!$auth($r))return;
+  try{
+   $db=Connection::pdo();
+   $s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress'");
+   $s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
    if(!$session){Response::error('INVALID_TRANSITION','Сессию можно завершить только из состояния in_progress',$r->requestId,404);return;}
-   $a=$db->prepare("select r.*,q.text as question_text,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
-   $finishIds=$session['question_ids']??[];if(is_string($finishIds)){ $finishIds=trim($finishIds);$finishIds=($finishIds!==''&&$finishIds!=='{}')?str_getcsv(substr($finishIds,1,-1),',','"','\\'):[]; }if(!is_array($finishIds))$finishIds=[];$session['question_ids']=array_values(array_filter(array_map('strval',$finishIds)));
-   $total=count($session['question_ids']);$correct=count(array_filter($rows,static fn($x)=>(bool)$x['is_correct']));$answered=count($rows);$percent=$total?round($correct/$total*100,2):0;
-   $topic=[];foreach($rows as $x){$k=$x['topic_id']?:'unknown';if(!isset($topic[$k]))$topic[$k]=['topic_id'=>$x['topic_id'],'topic_name'=>$x['topic_name']?:'Без темы','total'=>0,'correct'=>0];$topic[$k]['total']++;if($x['is_correct'])$topic[$k]['correct']++;}
-   foreach($topic as &$v)$v['percent']=round($v['correct']/$v['total']*100,2);unset($v);
-   $u=$db->prepare("update public.test_preparation_sessions set status='completed',completed_at=now(),last_saved_at=now(),current_index=:idx where id=:id returning *");$u->execute(['idx'=>$total,'id'=>$session['id']]);
-   Response::success(['session'=>$u->fetch(),'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>$answered-$correct,'unanswered'=>$total-$answered,'percent'=>$percent,'topics'=>array_values($topic)],'errors'=>$rows],$r->requestId);
-  }catch(\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
+
+   $snapshot=$session['question_snapshot']??[];
+   if(is_string($snapshot))$snapshot=json_decode($snapshot,true)?:[];
+   if(!is_array($snapshot))$snapshot=[];
+   $snapshotById=[];
+   foreach($snapshot as $snap)if(is_array($snap)&&isset($snap['id']))$snapshotById[(string)$snap['id']=$snap;
+   $finishIds=$session['question_ids']??[];
+   if(is_string($finishIds)){
+    $finishIds=trim($finishIds);
+    $finishIds=($finishIds!==''&&$finishIds!=='{}')?str_getcsv(substr($finishIds,1,-1),',','"','\\'):[]; 
+   }
+   if(!is_array($finishIds))$finishIds=[];
+   $finishIds=array_values(array_filter(array_map('strval',$finishIds)));
+   $a=$db->prepare("select * from public.test_preparation_results where session_id=:sid");
+   $a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
+   $rowsById=[];foreach($rows as $row)$rowsById[(string)$row['question_id']]=$row;
+
+   $total=count($finishIds);$answered=count($rows);$correct=0;$topic=[];
+   foreach($finishIds as $qid){
+    $snap=$snapshotById[$qid]??[];
+    $row=$rowsById[$qid]??null;
+    if($row && (bool)$row['is_correct'])$correct++;
+    $topicId=$snap['topic_id']??'unknown';
+    $topicName=$snap['topic_name']??'Без темы';
+    if(!isset($topic[$topicId]))$topic[$topicId]=['topic_id'=>$snap['topic_id']??null,'topic_name'=>$topicName,'total'=>0,'correct'=>0];
+    $topic[$topicId]['total']++;
+    if($row && (bool)$row['is_correct'])$topic[$topicId]['correct']++;
+   }
+   foreach($topic as &$v)$v['percent']=$v['total']?round($v['correct']/$v['total']*100,2):0;
+   unset($v);
+   $percent=$total?round($correct/$total*100,2):0;
+   $u=$db->prepare("update public.test_preparation_sessions set status='completed',completed_at=now(),last_saved_at=now(),current_index=:idx where id=:id returning *");
+   $u->execute(['idx'=>$total,'id'=>$session['id']]);
+   Response::success([
+    'session'=>$u->fetch(),
+    'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>max(0,$answered-$correct),'unanswered'=>max(0,$total-$answered),'percent'=>$percent,'topics'=>array_values($topic)],
+    'errors'=>$rows
+   ],$r->requestId);
+  }catch(\\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
  $router->post('/api/v1/tests/preparation/{id}/ai-review',static function(Request $r,array $p)use($auth):void{
