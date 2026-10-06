@@ -5,6 +5,8 @@ use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Database\Connection;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\AcademicContextException;
 
 return static function (Router $router): void {
  $auth=static function(Request $r):bool{return RequireAuth::handle($r);};
@@ -63,6 +65,14 @@ return static function (Router $router): void {
    $resolvedTestId=$resolveTestId($db,$testId);
    if($resolvedTestId===null){Response::error('NOT_FOUND','Test not found',$r->requestId,404);return;}
    $testId=$resolvedTestId;
+   $groupId=trim((string)($body['group_id']??''));
+   $context=(new AcademicContextResolver($db))->resolveGroup($r->user->id,$groupId!==''?$groupId:null);
+   $subjectQ=$db->prepare("select subject_id from public.tests where id=:tid and is_published=true limit 1");
+   $subjectQ->execute(['tid'=>$testId]);
+   $subjectId=$subjectQ->fetchColumn();
+   if($subjectId!==false && $subjectId!==null) {
+    (new AcademicContextResolver($db))->resolveForRequest($r->user->id,(string)$context['group_id'],(string)$subjectId);
+   }
    $q=$db->prepare("select tq.question_id from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null order by tq.order_index asc,tq.question_id");
    $q->execute(['tid'=>$testId]); $ids=array_column($q->fetchAll()?:[],'question_id');
    // sequential = весь банк в исходном порядке; count/full остаются существующими режимами.
@@ -99,6 +109,8 @@ return static function (Router $router): void {
    $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
    $created=$s->fetch(); if(is_array($created))$created['question_ids']=$ids;
    Response::success(['session'=>$created,'question_ids'=>$ids],$r->requestId,201);
+  }catch(AcademicContextException $e){
+   Response::error($e->errorCode,$e->getMessage(),$r->requestId,$e->httpStatus,$e->details);
   }catch(\Throwable $e){
    // Повторная гонка по unique — вернуть существующую сессию
    if(str_contains($e->getMessage(),'test_preparation_sessions_user_id_test_id_status_key')||str_contains($e->getMessage(),'23505')){
