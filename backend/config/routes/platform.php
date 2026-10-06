@@ -14,7 +14,6 @@ use Medbiohim\Repositories\ScheduleRepository;
 use Medbiohim\Repositories\TestRepository;
 use Medbiohim\Repositories\UserRepository;
 use Medbiohim\Services\B2Storage;
-use Medbiohim\Services\ProgressService;
 use Medbiohim\Services\AcademicContextResolver;
 use Medbiohim\Services\AcademicContextException;
 use Medbiohim\Services\ScheduleRestStore;
