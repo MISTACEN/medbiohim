@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ClipboardCheck, Shuffle } from "lucide-react";
 import { getSubject, listTests, type ApiTest } from "@/lib/api";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function SubjectTestsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { user, loading: authLoading } = useAuth();
   const [subjectId, setSubjectId] = useState("");
   const [subjectName, setSubjectName] = useState("Тесты");
   const [tests, setTests] = useState<ApiTest[]>([]);
@@ -17,11 +19,12 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     let cancelled = false;
+    if (authLoading) return () => { cancelled = true; };
     void (async () => {
       const p = await params;
       if (cancelled) return;
       setSubjectId(p.id);
-      const [subject, rows] = await Promise.all([getSubject(p.id), listTests(p.id)]);
+      const [subject, rows] = await Promise.all([getSubject(p.id), listTests(p.id, user?.groupId)]);
       if (cancelled) return;
       if (subject.ok) setSubjectName(subject.data.subject?.name || "Тесты");
       if (rows.ok) setTests(rows.data.items || []);
@@ -29,7 +32,7 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [params]);
+  }, [params, authLoading, user?.groupId]);
 
   const topics = useMemo(() => tests.map((t) => ({ id: t.id, title: t.title || t.name || "Тест" })), [tests]);
   const sources = useMemo(() => Array.from(new Set(tests.map((t) => t.source_file_name || t.source_key || "база тестов"))), [tests]);
