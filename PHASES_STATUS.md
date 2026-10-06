@@ -205,3 +205,6 @@ After current stability blockers:
 - backend/config/routes/progress_rest.php больше не скрывает двойную ошибку источников за 200 [].
 
 Полный отчёт: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14.md.
+
+
+Numeric live snapshot: docs/LIVE-PROJECT-SNAPSHOT-2026-10-06.md. Do not use historical counts in this status as current DB truth.
