@@ -253,7 +253,8 @@ export async function listTests(subjectId?:string,groupId?:string){const q=new U
 export async function getTest(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}${q}`)}
 export async function listMyAttempts(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/my/attempts${q.toString()?`?${q}`:""}`)}
 export async function startTestAttempt(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}/start${q}`,{method:"POST",body:"{}"})}
-export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
+export async function saveTestAnswer(attemptId:string,questionId:string,answerText:string|null){return api<any>(`/tests/attempts/${encodeURIComponent(attemptId)}/answers`,{method:"POST",body:JSON.stringify({question_id:questionId,answer_text:answerText})})}
+export async function finishAttempt(id:string){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:"{}"})}
 export async function listHomeworks(groupId?:string){const q=groupId?"?group_id="+encodeURIComponent(groupId):"";return api<any>("/homeworks"+q)}
 export async function createHomework(payload:{title:string;description?:string;subject_id:string;due_date:string;group_id?:string}){return api<any>("/homeworks",{method:"POST",body:JSON.stringify(payload)})}
 export async function setHomeworkDone(id:string,done:boolean){return api<any>(`/homeworks/${encodeURIComponent(id)}/progress`,{method:"POST",body:JSON.stringify({done})})}
