@@ -8,7 +8,7 @@ type Homework = ApiHomework & { due_date?: string; my_status?: string; my_comple
 const PALETTE=["#2563eb","#7c3aed","#059669","#ea580c","#db2777","#0891b2","#65a30d","#9333ea","#0284c7","#ca8a04","#e11d48","#0f766e"];
 function colorFor(h:any){if(/^#[0-9a-fA-F]{6}$/.test(String(h?.color_hex||"")))return h.color_hex;let s=String(h?.subject_slug||h?.subject_name||"subject"),n=0;for(let i=0;i<s.length;i++)n=((n<<5)-n+s.charCodeAt(i))|0;return PALETTE[Math.abs(n)%PALETTE.length]}
 function monthDays(month:string){const [y,m]=month.split("-").map(Number);const first=new Date(Date.UTC(y,m-1,1));const start=(first.getUTCDay()+6)%7;const count=new Date(Date.UTC(y,m,0)).getUTCDate();const out:string[]=[];for(let i=0;i<start;i++){const d=new Date(Date.UTC(y,m-1,1-start+i));out.push(d.toISOString().slice(0,10))}for(let d=1;d<=count;d++)out.push(`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`);while(out.length%7)out.push(new Date(Date.UTC(y,m-1,count+(out.length-(start+count))+1)).toISOString().slice(0,10));return out}
-function status(h:Homework){if(h.my_completed===true||h.submission_status==="submitted"||h.submission_status==="graded")return "done";if(h.due_date&&h.due_date<new Date().toISOString().slice(0,10))return "overdue";return "pending"}
+function status(h:Homework){if(h.my_completed===true||h.my_status==="done"||h.my_status==="completed"||h.submission_status==="submitted"||h.submission_status==="graded")return "done";if(h.due_date&&h.due_date<new Date().toISOString().slice(0,10))return "overdue";return "pending"}
 
 export default function HomeworkPage(){
  const [items,setItems]=useState<Homework[]>([]);const [subjects,setSubjects]=useState<any[]>([]);
