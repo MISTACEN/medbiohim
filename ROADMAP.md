@@ -794,93 +794,53 @@ Homework Resolver
 Если на эти вопросы нет ответа, функция не считается интегрированной в MEDBIOHIM.
 
 
-## Audit update — 2026-10-06 — Master Plan / Pass 14
+## Audit update — 2026-10-06 — Pass 14–17 second verification
 
-Главный архитектурный план: `docs/INTEGRATION-MASTER-PLAN-2026-10-06.md`.
+**Статус: 🟢 CLOSED at implementation + live-invariant level.**
 
-**Pass 14: 🟡 IN PROGRESS** — foundation реализован, но core-домены ещё не все переведены на единый context contract.
+Pass 14–17 уже были реализованы в main, а последующие Pass 18–22 закрыли часть оставшихся P1. Второй проход 06.10 проверил именно текущий код и живую Supabase, а не только исторические отчёты.
 
-Уже реализовано:
-- ✅ `AcademicContextResolver::resolveGroup()`;
-- ✅ `resolveSubject()` по authoritative UUID;
-- ✅ `resolveAcademicSession()`;
-- ✅ `resolveLesson()`;
-- ✅ `resolveForRequest()`;
-- ✅ `semester / academic_year / academic_year_id / session_id / schedule_id / lesson_id`;
-- ✅ `context_version` и расширенный `context_key`;
-- ✅ запрет implicit выбора первой группы;
-- ✅ planner resolver import gap исправлен;
-- ✅ SRS cards route undeclared `subjectId` исправлен;
-- ✅ progress DB failure больше не маскируется пустым успешным ответом.
+### Pass 14 — AcademicContext
+- 🟢 canonical group/subject/session/lesson/context_version contract;
+- 🟢 explicit group selection for multi-group users;
+- 🟢 UUID-authoritative subject identity;
+- 🟢 active schedule/lesson resolution;
+- 🟢 no current foreign-context gaps.
 
-Остаётся:
-- 🟡 перевести planner/schedule/progress/attendance на единый context object;
-- 🟡 убрать slug-only identity из practice/search/lectures и legacy content paths;
-- 🟡 unified published-test resolver для tests/preparation;
-- 🟡 context-aware cache versioning;
-- 🟡 пройти PHP/TypeScript/build/route audit после изменений;
-- 🟡 доказать exact artifact на SpaceWeb.
+### Pass 15 — Core academic flow
+- 🟢 planner/schedule/attendance use selected group;
+- 🟢 homework submission retry/state transitions are safe;
+- 🟢 active test attempt uniqueness is enforced;
+- 🟢 progress is group-scoped;
+- 🟢 homework now exposes one canonical derived my_status.
 
-Следующий фактический проход: **Pass 15 — Core academic flow**.
-Подробности: `docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14.md`.
+### Pass 16 — Tests / Preparation
+- 🟢 preparation start validates group + subject context;
+- 🟢 question membership is restricted to the session;
+- 🟢 sequential bank progress is group-scoped;
+- 🟢 terminal state transitions are guarded.
 
-## Audit update — 2026-10-06 — Pass 15
+### Pass 17 — Test integrity / reproducibility
+- 🟢 answers are persisted server-side;
+- 🟢 final score is calculated server-side;
+- 🟢 test attempts store immutable question/answer snapshots;
+- 🟢 test attempts and preparation sessions store group/session/context version;
+- 🟢 preparation result answer snapshots are populated;
+- 🟢 normal test/preparation responses do not leak answer keys.
 
-Pass 15: 🟡 IMPLEMENTED / NOT CLOSED — core academic context is now propagated through planner, schedule, attendance, homework and test-attempt state transitions.
+### Second-pass live invariants
+- active attempt snapshot gaps: **0**;
+- active preparation snapshot gaps: **0**;
+- answers outside immutable snapshots: **0**;
+- preparation answer snapshot gaps: **0**;
+- foreign-group attempts/sessions: **0**;
+- schedule ↔ academic session/year/semester mismatches: **0**.
 
-Implemented:
-- ✅ planner requires/resolves an explicit academic group;
-- ✅ schedule DB + REST fallback filtered to the selected group;
-- ✅ attendance writes resolve the concrete lesson in the selected group/schedule version;
-- ✅ homework list/submit/progress use canonical group + subject checks;
-- ✅ homework submission retry is idempotent and conflicting overwrite of submitted/graded work is rejected;
-- ✅ one active test attempt per user/test is enforced by a production partial unique index;
-- ✅ test finish validates score bounds and is idempotent for identical retries;
-- ✅ frontend schedule/planner/attendance API calls propagate user.groupId.
+There is one historical submitted attempt from 02.10.2026 created before snapshot migration with no saved answers, score or academic context. It is intentionally retained as a legacy historical anomaly; reconstructing its score/context would fabricate history.
 
-Still open:
-- 🟡 legacy progress aggregation is not fully group/session scoped;
-- 🟡 ordinary test score is still client-supplied rather than server-derived from answers;
-- 🟡 test attempts do not yet snapshot group_id/session_id/context_version;
-- 🟡 homework progress + submission remain two state stores without one canonical derived contract;
-- 🟡 schedule session/semester integrity is not yet enforced everywhere;
-- 🟡 final PHP/TypeScript/build/runtime verification after this pass remains required.
+Detailed verification: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14-17-SECOND-VERIFY.md.
 
-Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
-## Audit update — 2026-10-06 — Pass 16
-
-Pass 16: 🟡 PARTIAL — preparation start is now bound to the same academic group/subject context as the core test flow.
-- ✅ preparation start resolves canonical group;
-- ✅ preparation start resolves test subject by UUID inside that group;
-- ✅ frontend passes user.groupId into preparation start;
-- ✅ existing session question-membership and strict finish state machine remain enforced;
-- 🟡 bank-progress context propagation remains;
-- 🟡 preparation context snapshot remains;
-- 🟡 server-authoritative scoring remains.
-
-Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
-
-## Audit update — 2026-10-06 — Pass 17
-
-Pass 17: 🟢 IMPLEMENTATION CLOSED / 🟡 RUNTIME VERIFICATION PENDING.
-
-Closed in the test contour:
-- ✅ ordinary test answers are persisted server-side;
-- ✅ finish score/max score are calculated from persisted answers;
-- ✅ client score is no longer authoritative;
-- ✅ attempt stores immutable question/answer snapshot;
-- ✅ attempt stores group/session/context version;
-- ✅ normal test detail no longer exposes answer keys/correct flags;
-- ✅ preparation stores group/session/context version and question snapshot;
-- ✅ legacy active preparation sessions were backfilled into the current academic context;
-- ✅ bank-progress now resolves the same group/subject context.
-
-Remaining:
-- 🟡 populate preparation result answer_snapshot consistently;
-- 🟡 full PHP/TypeScript/build/runtime verification after the latest changes;
-- 🟡 finish progress/session semantics across the remaining academic domains.
-
-Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
+**Release caveat:** these passes are closed in code + live DB. Final PHP/TypeScript/build/browser/Vercel/SpaceWeb verification remains a separate deployment gate.
 
 ## Audit update — 2026-10-06 — Pass 18
 
