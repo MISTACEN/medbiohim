@@ -149,6 +149,10 @@ return static function (Router $router): void {
                 Response::error('ATTEMPT_ALREADY_FINISHED', 'Попытка уже завершена; изменять её результат нельзя', $req->requestId, 409);
                 return;
             }
+            if ($e->getMessage() === 'AI_GRADING_PENDING') {
+                Response::error('AI_GRADING_PENDING', 'Не все ответы удалось надёжно проверить. Повторите отправку ответа.', $req->requestId, 409);
+                return;
+            }
             Response::error('DB_ERROR', $e->getMessage(), $req->requestId, 503);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Не удалось завершить попытку', $req->requestId, 503);
