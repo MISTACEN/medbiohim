@@ -224,3 +224,16 @@ Numeric live snapshot: docs/LIVE-PROJECT-SNAPSHOT-2026-10-06.md. Do not use hist
 | Final runtime verification | 🟡 | must be rerun after Pass 15 changes |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
+## 2026-10-06 — Pass 16: Tests / Preparation
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Preparation start context | 🟢 | group + subject UUID validated |
+| Session question membership | 🟢 | PATCH cannot write question outside session |
+| Preparation finish | 🟢 | only in_progress → completed |
+| Sequential bank progress | 🟢 | ordered session question set persisted |
+| Preparation context snapshot | 🟡 | group/session version not yet stored on session |
+| Bank-progress context | 🟡 | explicit group propagation still pending |
+| Server-authoritative scoring | 🟡 | ordinary test finish remains client-score based |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
