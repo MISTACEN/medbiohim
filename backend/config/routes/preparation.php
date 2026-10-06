@@ -7,6 +7,7 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Database\Connection;
 use Medbiohim\Services\AcademicContextResolver;
 use Medbiohim\Services\AcademicContextException;
+use Medbiohim\Services\AnswerGradingService;
 
 return static function (Router $router): void {
  $auth=static function(Request $r):bool{return RequireAuth::handle($r);};
@@ -264,9 +265,17 @@ return static function (Router $router): void {
     $type=(string)($row['type']??'open');
     $options=$row['options']??[];
     $given=array_key_exists('answer_text',$b)?(string)$b['answer_text']:null;
-    $ok=$row!==null && $given!==null && $isAnswerCorrect($type,$given,$correct,$options);
-    $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot) values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot) on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,answered_at=now()");
-    $up->execute(['sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,'ok'=>$ok,'score'=>$ok?1:0,'snapshot'=>json_encode(['type'=>$type,'answer'=>$correct,'options'=>$options],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);
+    if ($row===null) { throw new \RuntimeException('QUESTION_NOT_IN_SESSION'); }
+    $grading=AnswerGradingService::grade($row,$given);
+    $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at)
+      values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot,:status,:source,:confidence,:feedback,:model,case when :status in ('deterministic','ai') then now() else null end)
+      on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,grading_status=excluded.grading_status,grading_source=excluded.grading_source,grading_confidence=excluded.grading_confidence,grading_feedback=excluded.grading_feedback,grading_model=excluded.grading_model,graded_at=excluded.graded_at,answered_at=now()");
+    $up->execute([
+      'sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,
+      'ok'=>$grading['is_correct'],'score'=>$grading['score'],'snapshot'=>json_encode(['type'=>$type,'answer'=>$correct,'options'=>$options],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
+      'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],'confidence'=>$grading['confidence'],
+      'feedback'=>$grading['feedback'],'model'=>$grading['model']
+    ]);
    }
    $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");$up->execute(['idx'=>$idx,'id'=>$s['id']]);
    $savedSession=$up->fetch();
@@ -299,6 +308,8 @@ return static function (Router $router): void {
    $a=$db->prepare("select * from public.test_preparation_results where session_id=:sid");
    $a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
    $rowsById=[];foreach($rows as $row)$rowsById[(string)$row['question_id']]=$row;
+   $pending=array_values(array_filter($rows,static fn($row)=>in_array((string)($row['grading_status']??'deterministic'),['pending','error'],true)));
+   if($pending){Response::error('AI_GRADING_PENDING','Не все открытые ответы удалось надёжно проверить. Повторите сохранение этих ответов и завершите попытку ещё раз.',$r->requestId,409,['pending_count'=>count($pending)]);return;}
 
    $total=count($finishIds);$answered=count($rows);$correct=0;$topic=[];
    foreach($finishIds as $qid){
