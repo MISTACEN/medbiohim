@@ -47,11 +47,7 @@ return static function (Router $r): void {
                     throw new \RuntimeException('Homework data source unavailable', 503, $x);
                 }
             }
-            try {
-                $attempts = (new TestRepository())->attemptsForUser($q->user->id, $subjectId !== '' ? $subjectId : null, $groupId);
-            } catch (\Throwable $e) {
-                $attempts = [];
-            }
+            $attempts = (new TestRepository())->attemptsForUser($q->user->id, $subjectId !== '' ? $subjectId : null, $groupId);
 
             $hwTotal = count($homeworks);
             $hwDone = 0;
@@ -72,7 +68,7 @@ return static function (Router $r): void {
             $hwPct = $hwTotal ? (int) round($hwDone / $hwTotal * 100) : 0;
             $testsFinished = 0;
             foreach ($attempts as $a) {
-                if (in_array((string) ($a['status'] ?? ''), ['finished', 'completed'], true)) {
+                if (in_array((string) ($a['status'] ?? ''), ['submitted', 'finished', 'completed'], true)) {
                     $testsFinished++;
                 }
             }
