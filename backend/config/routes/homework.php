@@ -15,10 +15,12 @@ return static function(Router $router): void {
     $router->get('/api/v1/homeworks', static function(Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
-            $groupId = isset($req->query['group_id']) && trim((string)$req->query['group_id']) !== ''
+            $resolver = new AcademicContextResolver();
+            $requestedGroup = isset($req->query['group_id']) && trim((string)$req->query['group_id']) !== ''
                 ? trim((string)$req->query['group_id']) : null;
-            if ($groupId !== null) (new AcademicContextResolver())->assertGroupMember($req->user->id, $groupId);
-            Response::success(['items' => (new HomeworkRepository())->listForUser($req->user->id, $groupId)], $req->requestId);
+            $group = $resolver->requireGroup($req->user->id, $requestedGroup);
+            $groupId = (string)$group['group_id'];
+            Response::success(['items' => (new HomeworkRepository())->listForUser($req->user->id, $groupId), 'group' => $group], $req->requestId);
         } catch (AcademicContextException $e) {
             Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
         } catch (\Throwable $e) {
@@ -94,6 +96,14 @@ return static function(Router $router): void {
             if ($homework === null) {
                 Response::error('HOMEWORK_NOT_ACCESSIBLE','Homework is not accessible in your academic context',$req->requestId,403);
                 return;
+            }
+
+            $resolver = new AcademicContextResolver();
+            $group = !empty($homework['group_id'])
+                ? $resolver->assertGroupMember($uid,(string)$homework['group_id'])
+                : $resolver->requireGroup($uid);
+            if (!empty($homework['subject_id'])) {
+                $resolver->resolveSubject((string)$homework['subject_id'],(string)$group['group_id']);
             }
 
             $fileId = $req->json('file_id') ? trim((string)$req->json('file_id')) : null;
