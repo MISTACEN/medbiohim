@@ -390,7 +390,7 @@ export async function register(email:string,password:string,fullName:string): Pr
 export async function reportQuestion(questionId:string,category:string,message=""): Promise<any> { return api("/questions/" + encodeURIComponent(questionId) + "/report", { method:"POST", body:JSON.stringify({category,message}) }) as any; }
 export async function savePreparation(sessionId:string,payload:Record<string,unknown>): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId), {method:"PATCH",body:JSON.stringify(payload)}) as any; }
 export async function startPreparation(testId:string,mode:"full"|"count"|"sequential"="full",questionLimit?:number,groupId?:string): Promise<any> { return api("/tests/" + encodeURIComponent(testId) + "/preparation/start", {method:"POST",body:JSON.stringify({mode,question_limit:questionLimit,group_id:groupId})}) as any; }
-export async function getBankProgress(testId:string): Promise<any> { return api("/tests/" + encodeURIComponent(testId) + "/bank-progress") as any; }
+export async function getBankProgress(testId:string,groupId?:string): Promise<any> { const q=groupId?"?group_id="+encodeURIComponent(groupId):""; return api("/tests/" + encodeURIComponent(testId) + "/bank-progress"+q) as any; }
 export async function updateGroup(id:string,payload:Record<string,unknown>): Promise<any> { return api("/groups/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
 export async function updateSubject(id:string,payload:Record<string,unknown>): Promise<any> { return api("/subjects/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
 
