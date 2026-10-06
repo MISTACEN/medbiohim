@@ -1015,7 +1015,7 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 
 ### Правило для Histology media
 
-Для гистологии каноническим физическим источником остаётся backend/content/histology на SpaceWeb (или путь из HISTOLOGY_MEDIA_ROOT), а Supabase хранит карточки, captions, metadata и ссылки/source_key.
+Для гистологии каноническим физическим источником остаётся `/public_html/content/histology` на SpaceWeb (или путь из HISTOLOGY_MEDIA_ROOT), а Supabase хранит карточки, captions, metadata и ссылки/source_key.
 
 **Не переносить все изображения из content.zip в public.files только ради формального соответствия.** Это нарушило бы выбранную бесплатную архитектуру и увеличило бы зависимость от лимитов Supabase.
 
