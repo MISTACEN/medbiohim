@@ -196,23 +196,48 @@ return static function (Router $router): void {
    }
    if(!is_array($questionIds))$questionIds=[];
    $questionIds=array_values(array_filter(array_map('strval',$questionIds),static fn($x)=>$x!==''));
-   // modules/topics: колонка title (не name) — SQLSTATE 42703
-   $q=$db->prepare("select q.id,q.text as body,q.options,q.type,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id = any(cast(:ids as uuid[]))");
-   $q->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$questionIds)).'}']);$questions=$q->fetchAll()?:[];
+   // Историческая сессия читается из immutable question_snapshot, а не из текущих questions.
+   $snapshot=$session['question_snapshot']??[];
+   if(is_string($snapshot))$snapshot=json_decode($snapshot,true)?:[];
+   if(!is_array($snapshot))$snapshot=[];
+   $byId=[];
+   foreach($snapshot as $snap){
+    if(is_array($snap)&&isset($snap['id']))$byId[(string)$snap['id']]=$snap;
+   }
    $positions=array_flip($questionIds);
    $session['question_ids']=$questionIds;
-   usort($questions,static fn($a,$b)=>(($positions[(string)$a['id']]??PHP_INT_MAX)<=>($positions[(string)$b['id']]??PHP_INT_MAX)));
-   $a=$db->prepare("select question_id,answer_text".($session['status']==='completed'?",is_correct,score":"")." from public.test_preparation_results where session_id=:sid");$a->execute(['sid'=>$session['id']]);   $answers=$a->fetchAll()?:[];
-   foreach($questions as &$question){
-    $opts=is_string($question['options']??null)?(json_decode($question['options'],true)?:[]):($question['options']??[]);
+   $questions=[];
+   foreach($questionIds as $qid){
+    $snap=$byId[(string)$qid]??null;
+    if(!is_array($snap))continue;
+    $opts=$snap['options']??[];
+    if(is_string($opts))$opts=json_decode($opts,true)?:[];
     $clean=[];$correctCount=0;
     foreach(is_array($opts)?$opts:[] as $opt){
-     if(is_array($opt)){if(!empty($opt['correct']))$correctCount++;$clean[]=['label'=>(string)($opt['label']??'')];}
-     else $clean[]=['label'=>(string)$opt];
+     if(is_array($opt)){
+      if(!empty($opt['correct']))$correctCount++;
+      $clean[]=$session['status']==='completed'
+        ? ['label'=>(string)($opt['label']??''),'correct'=>!empty($opt['correct'])]
+        : ['label'=>(string)($opt['label']??'')];
+     } else $clean[]=['label'=>(string)$opt];
     }
-    $question['options']=$clean;$question['allow_multiple']=$correctCount>1;
+    $questions[]=[
+      'id'=>(string)$snap['id'],
+      'body'=>(string)($snap['text']??$snap['body']??''),
+      'text'=>(string)($snap['text']??$snap['body']??''),
+      'options'=>$clean,
+      'type'=>(string)($snap['type']??'open'),
+      'subject_id'=>$snap['subject_id']??null,
+      'module_id'=>$snap['module_id']??null,
+      'topic_id'=>$snap['topic_id']??null,
+      'module_name'=>$snap['module_name']??null,
+      'topic_name'=>$snap['topic_name']??null,
+      'allow_multiple'=>$correctCount>1,
+    ];
+    if($session['status']==='completed')$questions[array_key_last($questions)]['answer']=$snap['answer']??null;
    }
-   unset($question);
+   $a=$db->prepare("select question_id,answer_text".($session['status']==='completed'?",is_correct,score":"")." from public.test_preparation_results where session_id=:sid");
+   $a->execute(['sid'=>$session['id']]);$answers=$a->fetchAll()?:[];
    Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$answers],$r->requestId);
   }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
  });
