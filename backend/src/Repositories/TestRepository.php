@@ -107,28 +107,42 @@ final class TestRepository
 
     public function finishAttempt(string $attemptId, string $userId, ?float $score, ?float $maxScore): ?array
     {
-        $percent = ($score !== null && $maxScore !== null && $maxScore > 0)
-            ? round(($score / $maxScore) * 100, 2)
-            : null;
-        $stmt = $this->db->prepare(
-            "UPDATE public.test_attempts
-                SET score = :score,
-                    max_score = :max_score,
-                    percent = :percent,
-                    finished_at = now(),
-                    status = 'submitted'
-              WHERE id = :id AND user_id = :uid AND status = 'in_progress'
-              RETURNING *"
-        );
-        $stmt->execute([
-            'score' => $score,
-            'max_score' => $maxScore,
-            'percent' => $percent,
-            'id' => $attemptId,
-            'uid' => $userId,
-        ]);
-        $row = $stmt->fetch();
-        return $row === false ? null : $row;
+        if ($score !== null && $score < 0) throw new \InvalidArgumentException('score must be non-negative');
+        if ($maxScore !== null && $maxScore <= 0) throw new \InvalidArgumentException('max_score must be positive');
+        if ($score !== null && $maxScore !== null && $score > $maxScore) {
+            throw new \InvalidArgumentException('score cannot exceed max_score');
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $lock=$this->db->prepare('SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE');
+            $lock->execute(['id'=>$attemptId,'uid'=>$userId]);
+            $existing=$lock->fetch();
+            if($existing===false){$this->db->commit();return null;}
+
+            $existingStatus=(string)$existing['status'];
+            if($existingStatus!=='in_progress'){
+                $sameScore=($score===null && $existing['score']===null) || ($score!==null && $existing['score']!==null && (float)$existing['score']===$score);
+                $sameMax=($maxScore===null && $existing['max_score']===null) || ($maxScore!==null && $existing['max_score']!==null && (float)$existing['max_score']===$maxScore);
+                if($existingStatus==='submitted' && $sameScore && $sameMax){$this->db->commit();return $existing;}
+                throw new \RuntimeException('ATTEMPT_ALREADY_FINISHED');
+            }
+
+            $percent = ($score !== null && $maxScore !== null)
+                ? round(($score / $maxScore) * 100, 2)
+                : null;
+            $stmt=$this->db->prepare("UPDATE public.test_attempts
+                SET score=:score,max_score=:max_score,percent=:percent,finished_at=now(),status='submitted'
+                WHERE id=:id AND user_id=:uid AND status='in_progress' RETURNING *");
+            $stmt->execute(['score'=>$score,'max_score'=>$maxScore,'percent'=>$percent,'id'=>$attemptId,'uid'=>$userId]);
+            $row=$stmt->fetch();
+            if($row===false) throw new \RuntimeException('Failed to finish attempt');
+            $this->db->commit();
+            return $row;
+        } catch(\Throwable $e){
+            if($this->db->inTransaction())$this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function attemptsForUser(string $userId, ?string $subjectId = null): array
