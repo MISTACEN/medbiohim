@@ -114,7 +114,7 @@ return static function (Router $router): void {
     }
    }
 
-   $snapshotQ=$db->prepare("select q.id,q.subject_id,q.module_id,q.topic_id,q.type,q.text,q.answer,q.options from public.questions q where q.id=any(cast(:ids as uuid[])) order by q.id");
+   $snapshotQ=$db->prepare("select q.id,q.subject_id,q.module_id,q.topic_id,q.type,q.text,q.answer,q.options,m.title as module_name,top.title as topic_name from public.questions q left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where q.id=any(cast(:ids as uuid[])) order by q.id");
    $snapshotQ->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
    $questionSnapshot=$snapshotQ->fetchAll()?:[];
    foreach($questionSnapshot as &$snap) if(is_string($snap['options']??null)) $snap['options']=json_decode($snap['options'],true)?:[];
@@ -356,7 +356,7 @@ return static function (Router $router): void {
     ['role'=>'user','content'=>json_encode(['results'=>$payload],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]
    ];
    $llm=\Medbiohim\Support\LlmGateway::chat($messages,\Medbiohim\Support\LlmGateway::TASK_CHAT,0.2);
-   $review=json_decode(trim($llm['text']),true);if(!is_array($review))throw new \\RuntimeException('AI returned invalid JSON');
+   $review=json_decode(trim($llm['text']),true);if(!is_array($review))throw new \RuntimeException('AI returned invalid JSON');
    $ins=$db->prepare("insert into public.test_preparation_ai_reviews(session_id,user_id,summary,topic_breakdown,error_breakdown,recommendations,model) values(:sid,:uid,:summary,:topics,:errors,:rec,:model) returning *");
    $ins->execute([
     'sid'=>$session['id'],'uid'=>$r->user->id,'summary'=>(string)($review['summary']??''),
