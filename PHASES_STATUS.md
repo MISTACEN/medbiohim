@@ -208,3 +208,19 @@ After current stability blockers:
 
 
 Numeric live snapshot: docs/LIVE-PROJECT-SNAPSHOT-2026-10-06.md. Do not use historical counts in this status as current DB truth.
+
+## 2026-10-06 — Pass 15: Core academic flow
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Planner / group context | 🟢 | explicit group required; no cross-group aggregation |
+| Schedule context | 🟢 | selected group propagated through DB/REST paths |
+| Attendance | 🟢 | lesson resolved against selected group and active schedule |
+| Homework submission | 🟢 | retry-safe; submitted/graded overwrite blocked |
+| Test attempt start | 🟢 | production partial unique active-attempt invariant |
+| Test attempt finish | 🟡 | idempotent and validated, but score remains client-supplied |
+| Progress | 🟡 | legacy aggregation still needs full group/session scope |
+| Academic context snapshot | 🟡 | attempt snapshot migration still pending |
+| Final runtime verification | 🟡 | must be rerun after Pass 15 changes |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
