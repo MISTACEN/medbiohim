@@ -14,9 +14,11 @@ return static function (Router $router): void {
     $router->get('/api/v1/tests', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         $subjectId = isset($req->query['subject_id']) ? (string) $req->query['subject_id'] : null;
+        $groupId = isset($req->query['group_id']) ? trim((string) $req->query['group_id']) : null;
+        if ($groupId === '') $groupId = null;
         try {
             if ($subjectId !== null && $subjectId !== '') {
-                (new AcademicContextResolver())->resolveForRequest($req->user->id, null, $subjectId);
+                (new AcademicContextResolver())->resolveForRequest($req->user->id, $groupId, $subjectId);
             }
             $items = (new TestRepository())->listPublished($subjectId);
             $access = new SpecialtyAccess();
@@ -40,8 +42,10 @@ return static function (Router $router): void {
             $test = (new TestRepository())->findById((string) $params['id']);
             if ($test === null) { Response::error('NOT_FOUND', 'Test not found', $req->requestId, 404); return; }
             $sid = (string) ($test['subject_id'] ?? '');
+            $groupId = isset($req->query['group_id']) ? trim((string) $req->query['group_id']) : null;
+            if ($groupId === '') $groupId = null;
             if ($sid !== '') {
-                (new AcademicContextResolver())->resolveForRequest($req->user->id, null, $sid);
+                (new AcademicContextResolver())->resolveForRequest($req->user->id, $groupId, $sid);
             }
             if ($sid !== '' && !(new SpecialtyAccess())->canAccessSubject($req->user->id, $sid)) {
                 Response::error('FORBIDDEN', 'Этот тест недоступен для вашей специальности', $req->requestId, 403);
@@ -72,6 +76,11 @@ return static function (Router $router): void {
             $test = (new TestRepository())->findById($testId);
             if ($test === null) { Response::error('NOT_FOUND', 'Test not found', $req->requestId, 404); return; }
             $sid = (string) ($test['subject_id'] ?? '');
+            $groupId = isset($req->query['group_id']) ? trim((string) $req->query['group_id']) : null;
+            if ($groupId === '') $groupId = null;
+            if ($sid !== '') {
+                (new AcademicContextResolver())->resolveForRequest($req->user->id, $groupId, $sid);
+            }
             if ($sid !== '' && !(new SpecialtyAccess())->canAccessSubject($req->user->id, $sid)) {
                 Response::error('FORBIDDEN', 'Этот тест недоступен для вашей специальности', $req->requestId, 403);
                 return;
