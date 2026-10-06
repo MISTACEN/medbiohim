@@ -484,15 +484,19 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 ))}
               </div>
             )}
-            {histology ? (
-              <button type="button" onClick={() => selectTab("trainer")} className="btn-primary mt-4 inline-flex">
-                Открыть тренажёр
-              </button>
-            ) : (
-              <Link href={"/practice?" + query} className="btn-primary mt-4 inline-flex">
-                Открыть практику
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={"/practice?" + query}
+                className="btn-primary inline-flex"
+              >
+                Открыть базу вопросов
               </Link>
-            )}
+              {histology && (
+                <button type="button" onClick={() => selectTab("trainer")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+                  Открыть тренажёр
+                </button>
+              )}
+            </div>
           </section>
         )}
 
