@@ -338,7 +338,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   useEffect(() => {
     if (!hasToken()) { setLoading(false); return; }
     setLoading(true); setError(null);
-    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO), getScheduleMeta(user?.course, user?.semester), getStudentPlanner(SEMESTER_FROM, SEMESTER_TO)]).then(([res, metaRes, plannerRes]) => {
+    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO, user?.groupId), getScheduleMeta(user?.course, user?.semester), getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId)]).then(([res, metaRes, plannerRes]) => {
       if (res.ok) {
         setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
         const payload = res.data as { items: ScheduleItem[]; source?: string };
@@ -364,7 +364,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
       }
       setLoading(false);
     });
-  }, []);
+  }, [user?.groupId, user?.course, user?.semester]);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => ({ key: addDaysYmd(weekStart, i) })), [weekStart]);
   const weekEnd = addDaysYmd(weekStart, 6);
@@ -375,7 +375,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
 
   async function setAttendance(item: ScheduleItem, status:"present"|"excused"|"sick"|"unexcused") {
     setAttendanceBusy(true);
-    const r=await markAttendance(String(item.id),status);
+    const r=await markAttendance(String(item.id),status,undefined,user?.groupId);
     setAttendanceBusy(false);
     if(r.ok) setAllItems(prev=>prev.map(it=>String(it.id)===String(item.id)?{...it,attendance_status:status}:it));
     else setError(r.error.message);
