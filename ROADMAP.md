@@ -921,3 +921,15 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 - 🟡 PHP/Next/browser/runtime verification ещё обязательны.
 
 Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS20.md.
+
+
+## 2026-10-06 — Pass 21: Deployment gate / cross-group audit
+
+- 🟢 bank-progress sequential session теперь строго scoped по canonical group;
+- 🟢 live invariants после исправления: active context/snapshot gaps = 0;
+- 🟢 GitHub code-check workflow существует и содержит PHP syntax + route registration + frontend audit;
+- 🟡 GitHub workflow query не показывает runs для latest commits;
+- 🟡 Vercel connected account возвращает 403 на list/create deployment, поэтому production deployment не форсировался;
+- 🟡 SpaceWeb runtime gate ещё не подтверждён.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS21.md.
