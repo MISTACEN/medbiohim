@@ -36,6 +36,13 @@ export default function PracticePage() {
   const [noteSaving, setNoteSaving] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const initialSlug = params.get("subject_slug") || "";
+    if (initialSlug) setSubjectSlug(initialSlug);
+  }, []);
+
+  useEffect(() => {
     listQuestionSubjects().then((res) => {
       if (res.ok) setSubjects(res.data.items);
     });
