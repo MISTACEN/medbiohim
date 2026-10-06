@@ -6,6 +6,8 @@ use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Database\Connection;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\AcademicContextException;
 
 return static function(Router $router): void {
     $router->get('/api/v1/planner', static function(Request $req,array $params): void {
