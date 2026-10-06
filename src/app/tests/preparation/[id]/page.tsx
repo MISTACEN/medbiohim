@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { QuestionReport } from "@/components/QuestionReport";
 import { LoadingBar } from "@/components/ui/LoadingBar";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
@@ -54,6 +55,7 @@ function answerDisplay(q: any, value: string | undefined): string {
 }
 
 export default function PreparationPage() {
+  const { user, loading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const search = useSearchParams();
@@ -82,7 +84,7 @@ export default function PreparationPage() {
     setMode(m);
     setLoading(true);
     setError("");
-    const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined);
+    const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined, user?.groupId);
     if (!s.ok) {
       setError(s.error.message);
       setLoading(false);
@@ -118,6 +120,7 @@ export default function PreparationPage() {
   const q = questions[idx];
 
   useEffect(() => {
+    if (authLoading) return;
     const requested = search.get("mode");
     const flow = search.get("flow");
     if ((!requested && flow !== "sequential") || mode !== null) return;
@@ -125,7 +128,7 @@ export default function PreparationPage() {
     setLimit(n);
     setExperience(requested === "exam" ? "exam" : requested === "solve" ? "solve" : "prepare");
     void begin(flow === "sequential" ? "sequential" : "count", flow === "sequential" ? undefined : n);
-  }, [search, mode]);
+  }, [search, mode, authLoading, user?.groupId]);
 
   function queueSave(payload: Record<string, unknown>, onError?: (message: string) => void) {
     const task = saveQueue.current.then(async () => {
