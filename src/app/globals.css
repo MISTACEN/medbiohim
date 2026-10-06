@@ -139,7 +139,7 @@ html[data-theme="crystal-glass"] {
   --glass-shadow: 0 16px 44px rgba(48, 119, 179, 0.09);
 }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; background-color: var(--background); }\nhtml[data-theme="classic-light"] { color-scheme: light; }\nhtml[data-theme="classic-dark"],\nhtml[data-theme="midnight"] { color-scheme: dark; }
 body {
   font-family: Inter, "Plus Jakarta Sans", system-ui, sans-serif;
   background-color: var(--background);
