@@ -116,7 +116,7 @@ Visually verify every formula-heavy source page and convert the prepared formula
 Уточнена фактическая архитектура хранения проекта с учётом ограничений бесплатного Supabase.
 
 - Supabase используется прежде всего как **БД и слой метаданных**: PostgreSQL, Auth, RLS, связи предметов/тем/вопросов/тестов, trainer cards, captions, source_key и идентификаторы/пути медиа.
-- Физические тяжёлые изображения и фотографии не требуется переносить в Supabase Storage. Для Histology канонический физический слой — **SpaceWeb**, прежде всего `backend/content/histology` / `HISTOLOGY_MEDIA_ROOT`.
+- Физические тяжёлые изображения и фотографии не требуется переносить в Supabase Storage. Для Histology канонический физический слой — **SpaceWeb**, прежде всего `/public_html/content/histology` / `HISTOLOGY_MEDIA_ROOT`.
 - GitHub не должен становиться обязательным хранилищем всего большого media-архива; в репозитории остаются код, миграции, документация и небольшие декларативные контентные файлы.
 - Vercel является frontend/deployment layer, а не постоянным хранилищем изображений.
 
