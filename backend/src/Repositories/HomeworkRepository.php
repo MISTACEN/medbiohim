@@ -165,7 +165,7 @@ final class HomeworkRepository
             'INSERT INTO public.homeworks (title, description, subject_id, group_id, due_at, created_by, created_by_role)
              VALUES (:title, :descr, :sid, :gid, :due, :by, :role) RETURNING *'
         );
-        $stmt->execute(['title' => $title, 'descr' => $description, 'sid' => $subjectId, 'gid' => $groupId, 'due' => $dueAt, 'by' => $createdBy, 'role' => $role]);
+        $stmt->execute(['title' => $title, 'descr' => $description, 'sid' => $subjectId, 'gid' => $groupId, 'due' => $dueAt, 'by' => $createdBy, 'role' => $createdByRole]);
         $row = $stmt->fetch();
         if ($row === false) throw new \RuntimeException('Create homework failed');
         return $row;
