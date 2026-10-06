@@ -53,7 +53,7 @@ return static function (Router $router): void {
             }
             $db = \Medbiohim\Database\Connection::pdo();
             $q = $db->prepare(
-                'SELECT q.id, q.subject_id, q.module_id, q.topic_id, q.type, q.text, q.answer, q.options, q.difficulty
+                'SELECT q.id, q.subject_id, q.module_id, q.topic_id, q.type, q.text, q.options, q.difficulty
                  FROM public.test_questions tq
                  JOIN public.questions q ON q.id = tq.question_id
                  WHERE tq.test_id = :test_id
@@ -62,7 +62,19 @@ return static function (Router $router): void {
                  ORDER BY tq.order_index, q.id'
             );
             $q->execute(['test_id' => (string) $test['id']]);
-            Response::success(['test' => $test, 'questions' => $q->fetchAll() ?: [], 'source' => 'db'], $req->requestId);
+            $questions=$q->fetchAll() ?: [];
+            foreach($questions as &$question){
+                $opts=is_string($question['options']??null)?(json_decode($question['options'],true)?:[]):($question['options']??[]);
+                $clean=[];$correctCount=0;
+                foreach(is_array($opts)?$opts:[] as $opt){
+                    if(is_array($opt)){ if(!empty($opt['correct'])) $correctCount++; $clean[]=['label'=>(string)($opt['label']??'')]; }
+                    else $clean[]=['label'=>(string)$opt];
+                }
+                $question['options']=$clean;
+                $question['allow_multiple']=$correctCount>1;
+            }
+            unset($question);
+            Response::success(['test' => $test, 'questions' => $questions, 'source' => 'db'], $req->requestId);
         } catch (AcademicContextException $e) {
             Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
         } catch (\Throwable $e) {
@@ -85,7 +97,8 @@ return static function (Router $router): void {
                 Response::error('FORBIDDEN', 'Этот тест недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
-            $attempt = (new TestRepository())->startAttempt((string) $test['id'], $req->user->id);
+            $context=(new AcademicContextResolver())->resolveForRequest($req->user->id,$groupId,$sid!==''?$sid:null);
+            $attempt = (new TestRepository())->startAttempt((string) $test['id'], $req->user->id, $context);
             Response::success(['attempt' => array_merge($attempt, ['source' => 'db'])], $req->requestId, 201);
         } catch (AcademicContextException $e) {
             Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
@@ -102,10 +115,27 @@ return static function (Router $router): void {
         $start($req, (string) $params['id']);
     });
 
+    $router->post('/api/v1/tests/attempts/{id}/answers', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            $questionId=trim((string)$req->json('question_id',''));
+            if($questionId===''){ Response::error('VALIDATION_ERROR','question_id обязателен',$req->requestId,422); return; }
+            $raw=$req->json('answer_text');
+            $answer=$raw===null?null:(string)$raw;
+            $row=(new TestRepository())->saveAnswer((string)$params['id'],$req->user->id,$questionId,$answer);
+            Response::success(['answer'=>$row],$req->requestId);
+        } catch(\RuntimeException $e) {
+            $code=$e->getMessage();
+            $status=$code==='ATTEMPT_NOT_FOUND'?404:409;
+            Response::error($code,$code==='QUESTION_NOT_IN_ATTEMPT'?'Вопрос не входит в эту попытку':$code,$req->requestId,$status);
+        } catch(\Throwable $e) {
+            Response::error('ANSWER_SAVE_ERROR','Не удалось сохранить ответ',$req->requestId,503);
+        }
+    });
+
     $router->post('/api/v1/tests/attempts/{id}/finish', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
-        $score = $req->json('score');
-        $maxScore = $req->json('max_score');
+        // Score is calculated server-side from persisted answers and the attempt snapshot.
         try {
             $row = (new TestRepository())->finishAttempt((string) $params['id'], $req->user->id, is_numeric($score) ? (float) $score : null, is_numeric($maxScore) ? (float) $maxScore : null);
             if ($row === null) { Response::error('NOT_FOUND', 'Attempt not found', $req->requestId, 404); return; }
