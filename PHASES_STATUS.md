@@ -186,73 +186,40 @@ After current stability blockers:
 7. **UI polish**
 
 
-## 2026-10-06 — Master Plan / Pass 14
+## 2026-10-06 — Pass 14–17 second verification
 
-| Контур | Статус | Состояние |
+A second pass was performed against current main + live Supabase after the implementation and subsequent Pass 18–22 hardening.
+
+| Pass | Status | Current result |
 |---|---|---|
-| AcademicContext foundation | 🟡 | resolver расширен до group/subject/session/lesson/context version |
-| Group identity | 🟡 | explicit group enforcement есть; core consumers ещё мигрируются |
-| Subject identity | 🟡 | UUID authoritative в resolver; legacy slug consumers ещё остаются |
-| Schedule/session context | 🟡 | session/lesson resolver создан; ScheduleRepository и planner ещё требуют интеграции |
-| Progress context | 🟡 | subject context проверяется; fallback DB semantics усилены, полный academic scope ещё не завершён |
-| SRS identity | 🟡 | UUID path есть; compatibility slug path ещё существует |
-| Core academic flow | ⬜ | Pass 15 — следующий проход |
+| Pass 14 — AcademicContext | 🟢 | group/subject/session/lesson/context_version contract is implemented and live invariants are clean |
+| Pass 15 — Core academic flow | 🟢 | planner/schedule/attendance/homework/test/progress are group-scoped; homework has one canonical derived status |
+| Pass 16 — Preparation | 🟢 | preparation start, membership, sequential bank progress and terminal transitions are context-safe |
+| Pass 17 — Test integrity | 🟢 | server-side answers/scoring and immutable attempt/preparation snapshots are live and verified |
 
-### Кодовые изменения Pass 14
-- backend/src/Services/AcademicContextResolver.php расширен.
-- backend/config/routes/student_planner.php получил корректные imports.
-- backend/config/routes/srs_rest.php исправлен undeclared subjectId.
-- backend/config/routes/progress_rest.php больше не скрывает двойную ошибку источников за 200 [].
+### Live second-pass invariants
 
-Полный отчёт: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14.md.
+- active test attempts missing academic snapshot: **0**;
+- active preparation sessions missing academic snapshot: **0**;
+- test answers outside attempt snapshot: **0**;
+- preparation results without answer snapshot: **0**;
+- foreign-group test attempts: **0**;
+- foreign-group preparation sessions: **0**;
+- schedule ↔ academic session/year/semester mismatches: **0**.
 
+One historical submitted test attempt from before the snapshot migration has no score/context/snapshot. It is retained unchanged because reconstructing an answer or score would fabricate history. It is classified as a **legacy historical anomaly**, not a current-flow defect.
 
-Numeric live snapshot: docs/LIVE-PROJECT-SNAPSHOT-2026-10-06.md. Do not use historical counts in this status as current DB truth.
+### Additional hardening in this pass
 
-## 2026-10-06 — Pass 15: Core academic flow
+- HomeworkRepository::listForUser() now returns canonical my_status and my_status_source.
+- planner uses the same derived status contract.
+- pending / done / submitted / returned / graded is now the shared semantic vocabulary for student homework state.
 
-| Контур | Статус | Состояние |
-|---|---|---|
-| Planner / group context | 🟢 | explicit group required; no cross-group aggregation |
-| Schedule context | 🟢 | selected group propagated through DB/REST paths |
-| Attendance | 🟢 | lesson resolved against selected group and active schedule |
-| Homework submission | 🟢 | retry-safe; submitted/graded overwrite blocked |
-| Test attempt start | 🟢 | production partial unique active-attempt invariant |
-| Test attempt finish | 🟡 | idempotent and validated, but score remains client-supplied |
-| Progress | 🟡 | legacy aggregation still needs full group/session scope |
-| Academic context snapshot | 🟡 | attempt snapshot migration still pending |
-| Final runtime verification | 🟡 | must be rerun after Pass 15 changes |
+Detailed second verification: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14-17-SECOND-VERIFY.md.
 
-Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
-## 2026-10-06 — Pass 16: Tests / Preparation
+### Release gate
 
-| Контур | Статус | Состояние |
-|---|---|---|
-| Preparation start context | 🟢 | group + subject UUID validated |
-| Session question membership | 🟢 | PATCH cannot write question outside session |
-| Preparation finish | 🟢 | only in_progress → completed |
-| Sequential bank progress | 🟢 | ordered session question set persisted |
-| Preparation context snapshot | 🟡 | group/session version not yet stored on session |
-| Bank-progress context | 🟡 | explicit group propagation still pending |
-| Server-authoritative scoring | 🟡 | ordinary test finish remains client-score based |
-
-Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
-
-## 2026-10-06 — Pass 17: Test integrity and reproducibility
-
-| Контур | Статус | Состояние |
-|---|---|---|
-| Test answer persistence | 🟢 | server endpoint + retry-safe upsert |
-| Server-authoritative scoring | 🟢 | finish derives score from persisted answers |
-| Question/answer snapshot | 🟢 | attempt stores immutable question set and answer key |
-| Test academic snapshot | 🟢 | group + academic session + context version |
-| Preparation academic snapshot | 🟢 | group + session + context version |
-| Preparation question snapshot | 🟢 | active legacy sessions backfilled |
-| Bank-progress context | 🟢 | group/subject context enforced |
-| Runtime/build verification | 🟡 | must be rerun after Pass 17 |
-| Progress academic semantics | 🟡 | remaining cross-domain work |
-
-Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
+Passes 14–17 are closed at implementation + live DB invariant level. They are **not** a substitute for the final target-environment gate: PHP/TypeScript/build, authenticated browser smoke, Vercel READY and SpaceWeb artifact/runtime verification remain separate.
 
 ## 2026-10-06 — Pass 18: Historical preparation integrity
 
