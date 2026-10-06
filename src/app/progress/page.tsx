@@ -5,6 +5,7 @@ import { getProgress } from "@/lib/api";
 import { RadialProgress } from "@/components/ui/RadialProgress";
 import { Award, Loader2 } from "lucide-react";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type ProgressPayload = {
   overall_pct?: number;
@@ -17,6 +18,7 @@ type ProgressPayload = {
 };
 
 export default function ProgressPage() {
+  const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<ProgressPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,9 +26,10 @@ export default function ProgressPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (authLoading) return;
       setLoading(true);
       try {
-        const res = await getProgress();
+        const res = await getProgress(undefined, user?.groupId);
         if (cancelled) return;
         if (res.ok) {
           setData(res.data as ProgressPayload);
@@ -48,7 +51,7 @@ export default function ProgressPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, user?.groupId]);
 
   const overall = data?.overall_pct ?? 0;
   const hw = data?.homework ?? { total: 0, done: 0, percent: 0 };
