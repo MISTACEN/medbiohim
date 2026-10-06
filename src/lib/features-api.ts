@@ -110,16 +110,17 @@ export type SrsSummary = {
 export async function srsSummary() {
   return api<SrsSummary>("/srs/summary");
 }
-export async function srsEnsure(count = 20, subject_slug?: string) {
+export async function srsEnsure(count = 20, subject_id?: string, subject_slug?: string) {
   return api<{ added: number; total: number }>("/srs/ensure", {
     method: "POST",
-    body: JSON.stringify({ count, subject_slug }),
+    body: JSON.stringify({ count, subject_id, subject_slug }),
   });
 }
-export async function srsDue(limit = 20, subject_slug?: string, scope?: "shared" | "personal") {
+export async function srsDue(limit = 20, subject_id?: string, subject_slug?: string, scope?: "shared" | "personal") {
   const p = new URLSearchParams();
   p.set("limit", String(limit));
-  if (subject_slug) p.set("subject_slug", subject_slug);
+  if (subject_id) p.set("subject_id", subject_id);
+  else if (subject_slug) p.set("subject_slug", subject_slug);
   if (scope) p.set("scope", scope);
   return api<{ items: SrsCard[]; count: number }>(`/srs/due?${p}`);
 }
@@ -130,14 +131,15 @@ export async function srsReview(card_id: string, rating: 1 | 2 | 3 | 4) {
   });
 }
 
-export async function srsListCards(limit = 100, subject_slug?: string, scope?: "shared" | "personal") {
+export async function srsListCards(limit = 100, subject_id?: string, subject_slug?: string, scope?: "shared" | "personal") {
   const p = new URLSearchParams();
   p.set("limit", String(limit));
-  if (subject_slug) p.set("subject_slug", subject_slug);
+  if (subject_id) p.set("subject_id", subject_id);
+  else if (subject_slug) p.set("subject_slug", subject_slug);
   if (scope) p.set("scope", scope);
   return api<{ items: SrsCard[]; count: number }>(`/srs/cards?${p}`);
 }
-export async function srsAddCard(payload: { front: string; back?: string; subject_slug?: string; topic?: string }) {
+export async function srsAddCard(payload: { front: string; back?: string; subject_id?: string; subject_slug?: string; topic?: string }) {
   return api<{ card: SrsCard }>("/srs/cards", { method: "POST", body: JSON.stringify(payload) });
 }
 export async function srsDeleteCard(id: string) {
