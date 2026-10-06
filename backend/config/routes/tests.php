@@ -137,7 +137,7 @@ return static function (Router $router): void {
         if (!RequireAuth::handle($req)) return;
         // Score is calculated server-side from persisted answers and the attempt snapshot.
         try {
-            $row = (new TestRepository())->finishAttempt((string) $params['id'], $req->user->id, is_numeric($score) ? (float) $score : null, is_numeric($maxScore) ? (float) $maxScore : null);
+            $row = (new TestRepository())->finishAttempt((string) $params['id'], $req->user->id);
             if ($row === null) { Response::error('NOT_FOUND', 'Attempt not found', $req->requestId, 404); return; }
             Response::success(['attempt' => $row], $req->requestId);
         } catch (\InvalidArgumentException $e) {
