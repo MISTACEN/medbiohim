@@ -36,7 +36,12 @@ return static function (Router $r): void {
                         $homeworks = array_values(array_filter($homeworks, static fn($h) => (string) ($h['subject_id'] ?? '') === $subjectId));
                     }
                 } catch (\Throwable $x) {
-                    $homeworks = [];
+                    \Medbiohim\Support\Logger::error('progress_homework_source_failed', [
+                        'requestId' => $q->requestId,
+                        'primary' => $e->getMessage(),
+                        'fallback' => $x->getMessage(),
+                    ]);
+                    throw new \RuntimeException('Homework data source unavailable', 503, $x);
                 }
             }
             try {
