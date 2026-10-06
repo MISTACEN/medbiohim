@@ -114,8 +114,13 @@ return static function (Router $router): void {
     }
    }
 
-   $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids,group_id,session_id,context_version) values(:uid,:tid,:mode,:lim,:ids,:gid,:sid,:cv) returning *");
-   $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}','gid'=>$context['group_id'],'sid'=>$academicContext['session_id']??null,'cv'=>$academicContext['context_version']??null]);
+   $snapshotQ=$db->prepare("select q.id,q.subject_id,q.module_id,q.topic_id,q.type,q.text,q.answer,q.options from public.questions q where q.id=any(cast(:ids as uuid[])) order by array_position(cast(:ids as uuid[]),q.id)");
+   $snapshotQ->execute(['ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}']);
+   $questionSnapshot=$snapshotQ->fetchAll()?:[];
+   foreach($questionSnapshot as &$snap) if(is_string($snap['options']??null)) $snap['options']=json_decode($snap['options'],true)?:[];
+   unset($snap);
+   $s=$db->prepare("insert into public.test_preparation_sessions(user_id,test_id,mode,question_limit,question_ids,group_id,session_id,context_version,question_snapshot) values(:uid,:tid,:mode,:lim,:ids,:gid,:sid,:cv,:snapshot) returning *");
+   $s->execute(['uid'=>$r->user->id,'tid'=>$testId,'mode'=>$mode,'lim'=>$limit,'ids'=>'{'.implode(',',array_map(static fn($x)=>'"'.$x.'"',$ids)).'}','gid'=>$context['group_id'],'sid'=>$academicContext['session_id']??null,'cv'=>$academicContext['context_version']??null,'snapshot'=>json_encode($questionSnapshot,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);
    $created=$s->fetch(); if(is_array($created))$created['question_ids']=$ids;
    Response::success(['session'=>$created,'question_ids'=>$ids],$r->requestId,201);
   }catch(AcademicContextException $e){
