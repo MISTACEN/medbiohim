@@ -480,3 +480,25 @@ MEDBIOHIM — это не набор отдельных страниц.
 - source-of-truth;
 - mobile UX;
 - runtime/deployment.
+
+
+# 24. Zero-cost / full-functionality architecture
+
+Это обязательное продуктовое ограничение: **$0 обязательных расходов при сохранении полного функционала**.
+
+Канонический бесплатный стек:
+- GitHub Free;
+- Vercel Hobby;
+- SpaceWeb Free;
+- Supabase Free;
+- Backblaze B2 Free allowance.
+
+Главный принцип: не урезать функцию из-за free-tier. Сначала оптимизировать хранение, кэширование, batching, lazy loading, streaming, дедупликацию и распределение нагрузки.
+
+AI не является обязательной платной зависимостью. Базовые функции должны работать без него; smart grading использует deterministic путь там, где он достаточен.
+
+Для media разрешено выбирать между SpaceWeb и B2 по размеру, нагрузке и лимитам. Supabase не должен становиться обязательным хранилищем большого бинарного архива.
+
+При достижении free-tier лимита нельзя допускать незаметный расход. Нужны лимиты/защита/graceful degradation.
+
+Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
