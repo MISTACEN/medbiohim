@@ -318,3 +318,19 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS23.md.
 | PHP/Next/browser/runtime | 🟡 | target environment verification required |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS24.md.
+
+
+## 2026-10-06 — Pass 25: full current-semester mapping
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Current-semester question mapping | 🟢 | 655/655 have canonical topics |
+| Current-semester test mapping | 🟢 | 30/30 have canonical topics |
+| Histology lesson mapping | 🟢 | 206 previously untagged mapped; 47 explicitly outside current plan |
+| Chemistry lesson mapping | 🟢 | 1.1–3.13 taxonomy mapped to canonical topics |
+| Lesson dates | 🟢 | verified current calendar dates attached where available |
+| Out-of-calendar safety | 🟢 | marked explicitly, not falsely assigned |
+| Ticket-bank integrity | 🟢 | untouched |
+| Runtime/build/browser | 🟡 | separate verification gate |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS25.md.
