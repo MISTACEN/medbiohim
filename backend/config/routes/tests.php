@@ -7,12 +7,17 @@ use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\TestRepository;
 use Medbiohim\Services\SpecialtyAccess;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\AcademicContextException;
 
 return static function (Router $router): void {
     $router->get('/api/v1/tests', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         $subjectId = isset($req->query['subject_id']) ? (string) $req->query['subject_id'] : null;
         try {
+            if ($subjectId !== null && $subjectId !== '') {
+                (new AcademicContextResolver())->resolveForRequest($req->user->id, null, $subjectId);
+            }
             $items = (new TestRepository())->listPublished($subjectId);
             $access = new SpecialtyAccess();
             $items = array_values(array_filter($items, static function (array $row) use ($access, $req): bool {
@@ -22,6 +27,8 @@ return static function (Router $router): void {
             foreach ($items as &$row) $row['source'] = 'db';
             unset($row);
             Response::success(['items' => $items, 'source' => 'db'], $req->requestId);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Тесты временно недоступны: база данных не отвечает', $req->requestId, 503);
         }
@@ -33,6 +40,9 @@ return static function (Router $router): void {
             $test = (new TestRepository())->findById((string) $params['id']);
             if ($test === null) { Response::error('NOT_FOUND', 'Test not found', $req->requestId, 404); return; }
             $sid = (string) ($test['subject_id'] ?? '');
+            if ($sid !== '') {
+                (new AcademicContextResolver())->resolveForRequest($req->user->id, null, $sid);
+            }
             if ($sid !== '' && !(new SpecialtyAccess())->canAccessSubject($req->user->id, $sid)) {
                 Response::error('FORBIDDEN', 'Этот тест недоступен для вашей специальности', $req->requestId, 403);
                 return;
@@ -49,6 +59,8 @@ return static function (Router $router): void {
             );
             $q->execute(['test_id' => (string) $test['id']]);
             Response::success(['test' => $test, 'questions' => $q->fetchAll() ?: [], 'source' => 'db'], $req->requestId);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Тест временно недоступен', $req->requestId, 503);
         }
@@ -66,6 +78,8 @@ return static function (Router $router): void {
             }
             $attempt = (new TestRepository())->startAttempt((string) $test['id'], $req->user->id);
             Response::success(['attempt' => array_merge($attempt, ['source' => 'db'])], $req->requestId, 201);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Не удалось начать тест', $req->requestId, 503);
         }
