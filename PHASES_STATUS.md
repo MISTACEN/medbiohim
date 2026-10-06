@@ -290,3 +290,15 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS21.md.
 | Runtime/build/browser verification | 🟡 | target environment required |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS22.md.
+
+
+## 2026-10-06 — Pass 23: route / legacy cleanup
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Duplicate /api/v1/me | 🟢 | legacy profile_rest removed from registration and deleted |
+| Canonical profile route | 🟢 | domain_rest.php is the single registered /api/v1/me handler |
+| Orphan SupabaseRestProfile | 🟢 | removed; no runtime consumer |
+| Runtime/build/browser verification | 🟡 | target environment still required |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS23.md.
