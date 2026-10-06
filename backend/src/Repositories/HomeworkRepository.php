@@ -84,12 +84,54 @@ final class HomeworkRepository
         return $items;
     }
 
+    public function findAccessibleById(string $id, string $userId): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT h.* FROM public.homeworks h
+             WHERE h.id = :id AND (
+                 h.group_id IS NULL OR EXISTS (
+                     SELECT 1 FROM public.group_memberships gm
+                     WHERE gm.group_id = h.group_id AND gm.user_id = :uid AND gm.is_active = true
+                 )
+             ) LIMIT 1"
+        );
+        $stmt->execute(['id' => $id, 'uid' => $userId]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
     public function findById(string $id): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM public.homeworks WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
+    }
+
+    public function assertSubmissionFileAccess(string $fileId, string $userId, string $homeworkId): void
+    {
+        $stmt = $this->db->prepare(
+            "SELECT 1 FROM public.files f
+             JOIN public.homeworks h ON h.id = :hid
+             WHERE f.id = :fid AND f.status = 'active'
+               AND (
+                 f.uploaded_by = :uid
+                 OR f.visibility = 'public'
+                 OR (f.group_id IS NOT NULL AND EXISTS (
+                     SELECT 1 FROM public.group_memberships gm
+                     WHERE gm.group_id = f.group_id AND gm.user_id = :uid2 AND gm.is_active = true
+                 ))
+               )
+               AND (h.group_id IS NULL OR EXISTS (
+                   SELECT 1 FROM public.group_memberships gm2
+                   WHERE gm2.group_id = h.group_id AND gm2.user_id = :uid3 AND gm2.is_active = true
+               ))
+             LIMIT 1"
+        );
+        $stmt->execute(['fid'=>$fileId,'hid'=>$homeworkId,'uid'=>$userId,'uid2'=>$userId,'uid3'=>$userId]);
+        if (!$stmt->fetchColumn()) {
+            throw new \RuntimeException('Submission file is not accessible in this homework context');
+        }
     }
 
     public function submit(string $homeworkId, string $userId, ?string $textAnswer, ?string $fileId): array
