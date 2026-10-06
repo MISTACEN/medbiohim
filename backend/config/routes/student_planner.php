@@ -44,8 +44,8 @@ return static function(Router $router): void {
             $recovery=[];
             foreach($attendance as $a){
                 if((string)$a['status']==='present') continue;
-                $key=(string)($a['subject_name']??'Без предмета');
-                if(!isset($recovery[$key]))$recovery[$key]=['subject_name'=>$key,'subject_slug'=>$a['subject_slug']??null,'color_hex'=>$a['color_hex']??null,'missed'=>0,'unexcused'=>0,'excused'=>0,'sick'=>0,'entries'=>[]];
+                $key=(string)($a['subject_id']??$a['subject_name']??'Без предмета');
+                if(!isset($recovery[$key]))$recovery[$key]=['subject_id'=>$a['subject_id']??null,'subject_name'=>$a['subject_name']??'Без предмета','subject_slug'=>$a['subject_slug']??null,'color_hex'=>$a['color_hex']??null,'missed'=>0,'unexcused'=>0,'excused'=>0,'sick'=>0,'entries'=>[]];
                 $recovery[$key]['missed']++;
                 if($a['status']==='unexcused')$recovery[$key]['unexcused']++;
                 elseif($a['status']==='sick')$recovery[$key]['sick']++;
@@ -54,8 +54,8 @@ return static function(Router $router): void {
             }
             foreach($homeworks as $h){
                 if(!empty($h['my_completed'])||($h['submission_status']??'')==='submitted'||($h['submission_status']??'')==='graded')continue;
-                $key=(string)($h['subject_name']??'Без предмета');
-                if(!isset($recovery[$key]))$recovery[$key]=['subject_name'=>$key,'subject_slug'=>$h['subject_slug']??null,'color_hex'=>$h['color_hex']??null,'missed'=>0,'unexcused'=>0,'excused'=>0,'sick'=>0,'entries'=>[]];
+                $key=(string)($h['subject_id']??$h['subject_name']??'Без предмета');
+                if(!isset($recovery[$key]))$recovery[$key]=['subject_id'=>$h['subject_id']??null,'subject_name'=>$h['subject_name']??'Без предмета','subject_slug'=>$h['subject_slug']??null,'color_hex'=>$h['color_hex']??null,'missed'=>0,'unexcused'=>0,'excused'=>0,'sick'=>0,'entries'=>[]];
                 $recovery[$key]['homeworks_pending']=($recovery[$key]['homeworks_pending']??0)+1;
             }
             Response::success(['homeworks'=>$homeworks,'attendance'=>$attendance,'recovery'=>array_values($recovery)],$req->requestId);
@@ -66,13 +66,18 @@ return static function(Router $router): void {
         if(!RequireAuth::handle($req)) return;
         try {
             $db=Connection::pdo();$uid=(string)$req->user->id;$done=(bool)$req->json('done',false);
+            $resolver=new AcademicContextResolver($db);
+            $homework=(new \Medbiohim\Repositories\HomeworkRepository())->findAccessibleById((string)$params['id'],$uid);
+            if($homework===null){Response::error('HOMEWORK_NOT_ACCESSIBLE','Homework is not accessible in your academic context',$req->requestId,403);return;}
+            if(!empty($homework['group_id'])) $resolver->assertGroupMember($uid,(string)$homework['group_id']);
             $q=$db->prepare("INSERT INTO public.homework_progress(homework_id,user_id,completed,submitted_at)
                              VALUES(:h,:u,:done,CASE WHEN :done=true THEN now() ELSE NULL END)
                              ON CONFLICT(homework_id,user_id) DO UPDATE SET completed=EXCLUDED.completed,submitted_at=EXCLUDED.submitted_at
                              RETURNING *");
             $q->execute(['h'=>(string)$params['id'],'u'=>$uid,'done'=>$done]);
             Response::success(['progress'=>$q->fetch()],$req->requestId);
-        } catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+        } catch(AcademicContextException $e){Response::error($e->errorCode,$e->getMessage(),$req->requestId,$e->httpStatus,$e->details);
+        } catch(\Throwable $e){Response::error('DB_ERROR','Не удалось сохранить прогресс задания',$req->requestId,503);}
     });
 
     $router->post('/api/v1/attendance/{entryId}', static function(Request $req,array $params): void {
