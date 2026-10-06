@@ -67,3 +67,19 @@ Next chemistry-content pass:
 No existing ticket-bank UUIDs were modified.
 No existing question text or answer was rewritten in this pass.
 The master catalog is additive and is not the runtime source for scoring until separately verified.
+
+
+## Pass 26A — formula-answer extraction
+
+- Supabase master catalog now has 436 items: 260 open tasks + 176 test questions.
+- 40 items now contain a prepared answer payload in the master catalog.
+- 19 formula-heavy items have a prepared textual structural-formula answer representation.
+- Formula answers are explicitly marked `formula_answer_status=prepared_from_text`, **not** image-verified.
+- This distinction is intentional: OCR/source text can preserve a chemical name while the original scan may contain a graphical structure whose exact stereochemistry or placement must still be checked visually.
+- The production `exam_questions.answer` field remains untouched; the master catalog is additive and is not yet the scoring source.
+- RLS was enabled on `chemistry_master_documents`; authenticated users can read the catalog, while writes remain outside the client policy.
+- GitHub migration added: `database/migrations/20261007_chemistry_master_catalog.sql`.
+
+### Next required pass
+
+Visually verify every formula-heavy source page and convert the prepared formulas into authoritative answers. Then continue answering the remaining 220 open tasks in batches, with reaction equations and names checked against the source and curriculum topic.
