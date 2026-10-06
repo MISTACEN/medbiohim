@@ -363,7 +363,7 @@ export async function adminUpdateBankQuestion(id:string,payload:Record<string,un
 export async function adminUpdateQuestionReport(id:string,status:string): Promise<any> { return api("/admin/question-reports/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify({status}) }) as any; }
 export async function adminUpdateSite(site:Record<string,unknown>): Promise<any> { return api("/admin/site", { method:"PUT", body:JSON.stringify(site) }) as any; }
 export async function adminUpdateWork(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/problem-center/work/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
-export async function createCommunityPost(title:string,body:string): Promise<any> { return api("/community/posts", { method:"POST", body:JSON.stringify({title,body}) }) as any; }
+export async function createCommunityPost(title:string,body:string,groupId?:string): Promise<any> { return api("/community/posts", { method:"POST", body:JSON.stringify({title,body,group_id:groupId}) }) as any; }
 export async function createGroup(payload:Record<string,unknown>): Promise<any> { return api("/groups", { method:"POST", body:JSON.stringify(payload) }) as any; }
 export async function createSubject(payload:Record<string,unknown>): Promise<any> { return api("/subjects", { method:"POST", body:JSON.stringify(payload) }) as any; }
 export async function deleteGroup(id:string): Promise<any> { return api("/groups/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
@@ -377,7 +377,7 @@ export async function getPreparation(sessionId:string): Promise<any> { return ap
 export async function getQuestion(id:string): Promise<any> { return api("/questions/" + encodeURIComponent(id)) as any; }
 export async function getScheduleMeta(course?:number,semester?:number): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api("/schedule/meta" + (q.toString()?"?"+q:"")) as any; }
 export async function getSubjectGradebook(id:string): Promise<any> { const clean=String(id??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api("/subjects/" + encodeURIComponent(clean) + "/gradebook") as any; }
-export async function listCommunityPosts(..._args: any[]): Promise<any> { return api("/community/posts") as any; }
+export async function listCommunityPosts(groupId?:string): Promise<any> { const q=groupId?"?group_id="+encodeURIComponent(groupId):""; return api("/community/posts"+q) as any; }
 export async function listLectures(subject?:string): Promise<any> { const q=subject?"?subject="+encodeURIComponent(subject):""; return apiCached("/lectures"+q) as any; }
 export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api("/questions/subjects") as any; }
 export async function listQuestions(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/questions"+(q.toString()?"?"+q:"")) as any; }
