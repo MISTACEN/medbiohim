@@ -26,11 +26,13 @@ export default function PracticePage() {
   const [kind, setKind] = useState("");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<BankQuestion | null>(null);
-  const [showAnswer, setShowAnswer] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(true);
   const [draft, setDraft] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [savedNote, setSavedNote] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 40;
   const [noteSaving, setNoteSaving] = useState(false);
 
   useEffect(() => {
@@ -54,7 +56,9 @@ export default function PracticePage() {
         subject_slug: subjectSlug || undefined,
         kind: kind || undefined,
         q: q || undefined,
-        limit: 40,
+        limit: pageSize,
+        offset: page * pageSize,
+        include_answer: 1,
       });
       if (cancelled) return;
       if (res.ok) {
@@ -69,7 +73,9 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [subjectSlug, kind, q]);
+  }, [subjectSlug, kind, q, page]);
+
+  useEffect(() => { setPage(0); }, [subjectSlug, kind, q]);
 
   async function openQuestion(id: string) {
     setShowAnswer(false);
@@ -122,9 +128,9 @@ export default function PracticePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">Практика</h1>
+        <h1 className="page-title">База вопросов</h1>
         <p className="page-subtitle">
-          Универсальный банк вопросов · {total} найдено · вопрос → ответ → эталон
+          Полная база опубликованных вопросов · {total} найдено · вопросы и правильные ответы доступны без запуска теста
         </p>
       </div>
 
@@ -191,9 +197,10 @@ export default function PracticePage() {
                     <div className="text-[11px] uppercase tracking-wide text-slate-400">
                       {item.subject}
                       {item.kind ? ` · ${item.kind}` : ""}
-                      {item.has_answer ? " · эталон" : ""}
+                      {item.has_answer ? " · ответ есть" : " · ответ не заполнен"}
                     </div>
                     <div className="line-clamp-2">{item.text}</div>
+                    {item.has_answer && item.answer && <div className="mt-1 line-clamp-2 text-xs text-emerald-700"><span className="font-semibold">Ответ:</span> {item.answer}</div>}
                   </button>
                 </li>
               ))}
@@ -284,6 +291,16 @@ export default function PracticePage() {
               )}
             </>
           )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="text-sm text-slate-500">
+          Страница {Math.floor(page)} · вопросы {total === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} из {total}
+        </div>
+        <div className="flex gap-2">
+          <button type="button" disabled={page === 0 || loading} onClick={() => setPage((v) => Math.max(0, v - 1))} className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-40">Назад</button>
+          <button type="button" disabled={(page + 1) * pageSize >= total || loading} onClick={() => setPage((v) => v + 1)} className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-40">Далее</button>
         </div>
       </div>
     </div>
