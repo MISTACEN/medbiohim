@@ -313,8 +313,10 @@ return static function (Router $router): void {
    $percent=$total?round($correct/$total*100,2):0;
    $u=$db->prepare("update public.test_preparation_sessions set status='completed',completed_at=now(),last_saved_at=now(),current_index=:idx where id=:id returning *");
    $u->execute(['idx'=>$total,'id'=>$session['id']]);
+   $completedSession=$u->fetch();
+   if(is_array($completedSession))unset($completedSession['question_snapshot']);
    Response::success([
-    'session'=>$u->fetch(),
+    'session'=>$completedSession,
     'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>max(0,$answered-$correct),'unanswered'=>max(0,$total-$answered),'percent'=>$percent,'topics'=>array_values($topic)],
     'errors'=>$rows
    ],$r->requestId);
