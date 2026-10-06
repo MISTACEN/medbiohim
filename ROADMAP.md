@@ -916,3 +916,18 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 - 🟡 продолжается аудит остальных legacy fallback/import traces.
 
 Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS23.md.
+
+
+## 2026-10-06 — Pass 24: Tests / questions by lesson topic
+
+- 🟢 added canonical curriculum topic map to the tests API;
+- 🟢 map is scoped by the user's group/course/semester/specialty;
+- 🟢 tests expose module/topic names and ordering metadata;
+- 🟢 tests page now shows “Темы занятий → что готовить” with question/test counts;
+- 🟢 question banks can be filtered by lesson topic;
+- 🟢 untagged questions are explicitly reported instead of being guessed into topics;
+- 🟡 detailed lesson-plan rows are still missing for subjects whose topic hierarchy has not been imported;
+- 🟡 remaining untagged questions require controlled curriculum mapping;
+- 🟡 PHP/Next/browser/SpaceWeb runtime verification remains mandatory.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS24.md.
