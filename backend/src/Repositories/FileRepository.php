@@ -51,6 +51,28 @@ final class FileRepository
     }
 
     /** @return list<array<string,mixed>> */
+    public function assertAccess(string $fileId, string $userId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT f.* FROM public.files f
+             WHERE f.id=:id AND f.status='active'
+               AND (
+                 f.uploaded_by=:uid
+                 OR f.visibility='public'
+                 OR (f.group_id IS NULL)
+                 OR EXISTS (
+                    SELECT 1 FROM public.group_memberships gm
+                    WHERE gm.group_id=f.group_id AND gm.user_id=:uid2 AND gm.is_active=true
+                 )
+               )
+             LIMIT 1"
+        );
+        $stmt->execute(['id'=>$fileId,'uid'=>$userId,'uid2'=>$userId]);
+        $row=$stmt->fetch();
+        if($row===false) throw new \RuntimeException('File is not accessible');
+        return $row;
+    }
+
     public function listForUser(string $userId, int $limit = 50): array
     {
         $stmt = $this->db->prepare(
