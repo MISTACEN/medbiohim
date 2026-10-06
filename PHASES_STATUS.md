@@ -296,3 +296,17 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS19.md.
 | Runtime/build/browser verification | 🟡 | следующий gate |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS20.md.
+
+
+## 2026-10-06 — Pass 21: Deployment / cross-group
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Bank progress group isolation | 🟢 | sequential session выбирается только внутри group_id |
+| Live snapshot/context invariants | 🟢 | все проверенные gaps = 0 |
+| GitHub code-check definition | 🟢 | PHP + route smoke + frontend checks существуют |
+| CI evidence | 🟡 | workflow runs отсутствуют в доступном API |
+| Vercel runtime | 🟡 | 403 permissions prevent deployment verification |
+| SpaceWeb runtime | 🟡 | отдельный target gate |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS21.md.
