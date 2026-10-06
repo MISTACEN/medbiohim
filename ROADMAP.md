@@ -931,3 +931,18 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 - 🟡 PHP/Next/browser/SpaceWeb runtime verification remains mandatory.
 
 Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS24.md.
+
+
+## 2026-10-06 — Pass 25: full current-semester curriculum mapping
+
+- 🟢 all 655 published questions in current 2nd-year/3rd-semester histology + organic/physical chemistry have canonical topics;
+- 🟢 all 30 published tests in those subjects have canonical topics;
+- 🟢 histology 206 previously untagged questions mapped by specimen/content, with 47 explicitly kept outside the current 18-week plan;
+- 🟢 chemistry question taxonomy 1.1–3.13 mapped to canonical curriculum topics using source provenance;
+- 🟢 chemistry 18-lecture calendar linked to topic dates where the current plan confirms them;
+- 🟢 questions/tests outside the current calendar remain visible and explicitly marked rather than being falsely attached to a lesson;
+- 🟢 tests UI shows date, topic, question/test counts and extra/out-of-calendar status;
+- 🟢 no ticket-bank UUIDs or question answers/text were changed;
+- 🟡 runtime/build/browser gate remains to be verified.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS25.md.
