@@ -26,7 +26,17 @@ return static function(Router $router): void {
             $sql="SELECT h.id,h.title,h.description,h.due_at,h.due_date,h.subject_id,h.group_id,h.created_by,h.created_by_role,h.created_at,
                          s.name AS subject_name,s.slug AS subject_slug,s.color_hex,
                          hp.completed AS my_completed,hp.submitted_at AS completed_at,
-                         hs.status AS submission_status,hs.id AS submission_id,hs.grade
+                         hs.status AS submission_status,hs.id AS submission_id,hs.grade,
+                         CASE
+                           WHEN hs.status IN ('graded','returned','submitted') THEN hs.status
+                           WHEN COALESCE(hp.completed,false)=true THEN 'done'
+                           ELSE 'pending'
+                         END AS my_status,
+                         CASE
+                           WHEN hs.status IN ('graded','returned','submitted') THEN 'submission'
+                           WHEN COALESCE(hp.completed,false)=true THEN 'progress'
+                           ELSE 'none'
+                         END AS my_status_source
                     FROM public.homeworks h
                     LEFT JOIN public.subjects s ON s.id=h.subject_id
                     LEFT JOIN public.homework_progress hp ON hp.homework_id=h.id AND hp.user_id=:u
@@ -60,7 +70,7 @@ return static function(Router $router): void {
                 $recovery[$key]['entries'][]=['date'=>$a['date'],'start_time'=>$a['start_time'],'status'=>$a['status'],'is_makeup'=>(bool)$a['is_makeup']];
             }
             foreach($homeworks as $h){
-                if(!empty($h['my_completed'])||in_array(($h['submission_status']??''),['submitted','graded','returned'],true))continue;
+                if(in_array((string)($h['my_status']??'pending'),['submitted','graded','returned','done'],true))continue;
                 $key=(string)($h['subject_id']??$h['subject_name']??'Без предмета');
                 if(!isset($recovery[$key]))$recovery[$key]=['subject_id'=>$h['subject_id']??null,'subject_name'=>$h['subject_name']??'Без предмета','subject_slug'=>$h['subject_slug']??null,'color_hex'=>$h['color_hex']??null,'missed'=>0,'unexcused'=>0,'excused'=>0,'sick'=>0,'entries'=>[]];
                 $recovery[$key]['homeworks_pending']=($recovery[$key]['homeworks_pending']??0)+1;
