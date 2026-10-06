@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createCommunityPost, listCommunityPosts } from "@/lib/api";
+import { createCommunityPost, listCommunityPosts, me } from "@/lib/api";
 import { Loader2, Send } from "lucide-react";
 
 type Post = {
@@ -21,11 +21,13 @@ export default function CommunityPage() {
   const [note, setNote] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [groups, setGroups] = useState<any[]>([]);
+  const [groupId, setGroupId] = useState("");
 
   async function reload() {
     setLoading(true);
     try {
-      const res = await listCommunityPosts();
+      const res = await listCommunityPosts(groupId || undefined);
       if (res.ok) {
         setPosts((res.data.items as Post[]) || []);
         setNote(null);
@@ -40,15 +42,24 @@ export default function CommunityPage() {
   }
 
   useEffect(() => {
-    reload();
+    (async () => {
+      const profile = await me();
+      if (profile.ok) {
+        const gs = Array.isArray(profile.data?.groups) ? profile.data.groups : [];
+        setGroups(gs);
+        if (gs.length === 1) setGroupId(String(gs[0].id ?? gs[0].group_id ?? ""));
+      }
+    })();
   }, []);
+
+  useEffect(() => { if (groupId) reload(); }, [groupId]);
 
   async function submitPost(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
     setBusy(true);
     try {
-      const res = await createCommunityPost(title.trim(), body.trim());
+      const res = await createCommunityPost(title.trim(), body.trim(), groupId || undefined);
       if (!res.ok) {
         setNote(res.error.message);
         return;
@@ -78,6 +89,12 @@ export default function CommunityPage() {
 
       <form onSubmit={submitPost} className="card space-y-3 p-5">
         <h2 className="font-semibold">Новый пост</h2>
+        {groups.length > 1 && (
+          <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <option value="">Выберите группу</option>
+            {groups.map((g) => <option key={g.id ?? g.group_id} value={g.id ?? g.group_id}>{g.name ?? g.group_name}</option>)}
+          </select>
+        )}
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
