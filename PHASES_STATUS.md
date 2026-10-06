@@ -310,3 +310,16 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS20.md.
 | SpaceWeb runtime | 🟡 | отдельный target gate |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS21.md.
+
+
+## 2026-10-06 — Pass 22: Legacy / fake-success cleanup
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Admin partial-success fallback | 🟢 | fail-closed 503 |
+| Legacy ProgressService | 🟢 | removed; no runtime consumer |
+| Stub/placeholder scan | 🟢 | executable fake states distinguished from legitimate UI |
+| Historical docs traces | 🟡 | source-of-truth cleanup remains |
+| Runtime/build/browser verification | 🟡 | target environment required |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS22.md.
