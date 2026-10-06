@@ -859,3 +859,25 @@ Pass 16: 🟡 PARTIAL — preparation start is now bound to the same academic gr
 - 🟡 server-authoritative scoring remains.
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
+
+## Audit update — 2026-10-06 — Pass 17
+
+Pass 17: 🟢 IMPLEMENTATION CLOSED / 🟡 RUNTIME VERIFICATION PENDING.
+
+Closed in the test contour:
+- ✅ ordinary test answers are persisted server-side;
+- ✅ finish score/max score are calculated from persisted answers;
+- ✅ client score is no longer authoritative;
+- ✅ attempt stores immutable question/answer snapshot;
+- ✅ attempt stores group/session/context version;
+- ✅ normal test detail no longer exposes answer keys/correct flags;
+- ✅ preparation stores group/session/context version and question snapshot;
+- ✅ legacy active preparation sessions were backfilled into the current academic context;
+- ✅ bank-progress now resolves the same group/subject context.
+
+Remaining:
+- 🟡 populate preparation result answer_snapshot consistently;
+- 🟡 full PHP/TypeScript/build/runtime verification after the latest changes;
+- 🟡 finish progress/session semantics across the remaining academic domains.
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
