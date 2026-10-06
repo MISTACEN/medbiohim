@@ -55,7 +55,7 @@ final class SrsService
         ];
     }
 
-    public function ensureDeck(string $userId, int $count = 20, ?string $subjectSlug = null): array
+    public function ensureDeck(string $userId, int $count = 20, ?string $subjectId = null, ?string $subjectSlug = null): array
     {
         $count = max(1, min(50, $count));
         $cards = $this->cardsForUser($userId, 5000);
@@ -73,18 +73,18 @@ final class SrsService
         }
 
         $path = 'questions?is_published=eq.true&archived_at=is.null&select=id,text,answer,subject_id,topic&order=created_at.asc&limit=2000';
-        if ($subjectSlug !== null && $subjectSlug !== '') {
-            $subjectId = null;
+        if ($subjectId === null && $subjectSlug !== null && $subjectSlug !== '') {
+            $resolvedSubjectId = null;
             foreach ($subjects as $subject) {
                 if ((string) ($subject['slug'] ?? '') === $subjectSlug) {
-                    $subjectId = (string) ($subject['id'] ?? '');
+                    $resolvedSubjectId = (string) ($subject['id'] ?? '');
                     break;
                 }
             }
-            if ($subjectId === null || $subjectId === '') {
+            if ($resolvedSubjectId === null || $resolvedSubjectId === '') {
                 return ['added' => 0, 'total' => count($cards)];
             }
-            $path .= '&subject_id=eq.' . rawurlencode($subjectId);
+            $path .= '&subject_id=eq.' . rawurlencode($subjectId ?? $resolvedSubjectId);
         }
         $questions = SupabaseRest::select($path);
 
@@ -114,7 +114,7 @@ final class SrsService
         return ['added' => $added, 'total' => count($cards) + $added];
     }
 
-    public function dueCards(string $userId, int $limit = 20, ?string $subjectSlug = null, ?string $scope = null): array
+    public function dueCards(string $userId, int $limit = 20, ?string $subjectId = null, ?string $subjectSlug = null, ?string $scope = null): array
     {
         $rows = $this->cardsForUser($userId, 2000);
         $now = time();
@@ -124,7 +124,8 @@ final class SrsService
                 || ($scope === 'personal' && ($row['source_type'] ?? '') !== 'personal')) {
                 continue;
             }
-            if ($subjectSlug !== null && $subjectSlug !== '' && (string) ($row['subject_slug'] ?? '') !== $subjectSlug) continue;
+            if ($subjectId !== null && $subjectId !== '' && (string) ($row['subject_id'] ?? '') !== $subjectId) continue;
+            if ($subjectId === null && $subjectSlug !== null && $subjectSlug !== '' && (string) ($row['subject_slug'] ?? '') !== $subjectSlug) continue;
             $dueAt = strtotime((string) ($row['due_at'] ?? '')) ?: 0;
             if ($dueAt > $now) continue;
             $out[] = $this->formatCard($row, $now);
@@ -133,7 +134,7 @@ final class SrsService
         return array_slice($out, 0, max(1, min(50, $limit)));
     }
 
-    public function listCards(string $userId, int $limit = 100, ?string $subjectSlug = null, ?string $scope = null): array
+    public function listCards(string $userId, int $limit = 100, ?string $subjectId = null, ?string $subjectSlug = null, ?string $scope = null): array
     {
         $rows = $this->cardsForUser($userId, 2000);
         $out = [];
@@ -141,7 +142,7 @@ final class SrsService
         foreach ($rows as $row) {
             if (($scope === 'shared' && ($row['source_type'] ?? '') !== 'question')
                 || ($scope === 'personal' && ($row['source_type'] ?? '') !== 'personal')) continue;
-            if ($subjectSlug !== null && $subjectSlug !== '' && (string) ($row['subject_slug'] ?? '') !== $subjectSlug) continue;
+            if ($subjectId !== null && $subjectId !== '' && (string) ($row['subject_id'] ?? '') !== $subjectId) continue;
             $out[] = $this->formatCard($row, $now);
         }
         usort($out, static fn(array $a, array $b): int => ((int) $a['due_at'] <=> (int) $b['due_at']));
@@ -153,10 +154,13 @@ final class SrsService
         $front = trim((string) ($payload['front'] ?? ''));
         $back = trim((string) ($payload['back'] ?? ''));
         if ($front === '') throw new InvalidArgumentException('front обязателен');
+        $subjectId = trim((string) ($payload['subject_id'] ?? ''));
         $subjectSlug = trim((string) ($payload['subject_slug'] ?? ''));
-        $subjectId = null;
+        if ($subjectId === '') $subjectId = null;
         $subjectName = '';
-        if ($subjectSlug !== '') {
+        if ($subjectId !== null) {
+            $subjects = SupabaseRest::select('subjects?id=eq.' . rawurlencode($subjectId) . '&is_active=eq.true&select=id,name,slug&limit=1');
+        } elseif ($subjectSlug !== '') {
             $subjects = SupabaseRest::select('subjects?slug=eq.' . rawurlencode($subjectSlug) . '&is_active=eq.true&select=id,name,slug&limit=1');
             if ($subjects) {
                 $subjectId = $subjects[0]['id'] ?? null;
