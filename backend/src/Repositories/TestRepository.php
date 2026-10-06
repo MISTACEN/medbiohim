@@ -70,7 +70,7 @@ final class TestRepository
     }
 
     /** Build the lesson/topic map used by the tests UI. Never guesses a topic for an untagged question. */
-    public function curriculumMap(?string $subjectId = null): array
+    public function curriculumMap(?string $subjectId = null, ?int $course = null, ?int $semester = null, ?string $specialtySlug = null): array
     {
         $sql = "SELECT s.id AS subject_id, s.name AS subject_name,
                        m.id AS module_id, m.title AS module_title, m.order_index AS module_order,
@@ -87,6 +87,18 @@ final class TestRepository
         if ($subjectId !== null && $subjectId !== '') {
             $sql .= ' AND s.id = :sid';
             $params['sid'] = $subjectId;
+        }
+        if ($course !== null) {
+            $sql .= ' AND s.course_number = :course';
+            $params['course'] = $course;
+        }
+        if ($semester !== null) {
+            $sql .= ' AND s.semester = :semester';
+            $params['semester'] = $semester;
+        }
+        if ($specialtySlug !== null && $specialtySlug !== '') {
+            $sql .= ' AND (s.specialty_slug = :specialty OR s.specialty_slug IS NULL)';
+            $params['specialty'] = $specialtySlug;
         }
         $sql .= ' ORDER BY s.name, m.order_index, tp.order_index, tp.title';
         $stmt = $this->db->prepare($sql);
