@@ -19,11 +19,12 @@ return static function (Router $router): void {
         Response::success([
             'name' => 'MEDBIOHIM API',
             'version' => 'v1',
+            'build' => Env::get('MEDBIOHIM_BUILD', 'unknown'),
             'phase' => 'D',
             'endpoints' => ['auth, me, groups, subjects, tests, homeworks, files'],
         ], $req->requestId);
     });
     $router->get('/api/v1/ping', static function (Request $req, array $params): void {
-        Response::success(['pong' => true, 'env' => Env::get('APP_ENV', 'local'), 'time' => date('c')], $req->requestId);
+        Response::success(['pong' => true, 'build' => Env::get('MEDBIOHIM_BUILD', 'unknown'), 'env' => Env::get('APP_ENV', 'local'), 'time' => date('c')], $req->requestId);
     });
 };
