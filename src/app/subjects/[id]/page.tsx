@@ -213,7 +213,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "plan", label: "Учебный план", Icon: GraduationCap },
     { id: "tickets", label: "Билеты", Icon: FileQuestion },
     { id: "tests", label: "Тесты", Icon: FileQuestion },
-    { id: "practice", label: "Практика", Icon: ListChecks },
+    { id: "practice", label: "База вопросов", Icon: ListChecks },
     { id: "lectures", label: "Лекции", Icon: BookOpen },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
     { id: "trainer", label: "Микропрепараты", Icon: Microscope },
