@@ -909,3 +909,15 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 - 🟡 PHP/Next/build/runtime verification после Pass 19 ещё обязательна.
 
 Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS19.md.
+
+
+## 2026-10-06 — Pass 20: Test / Preparation API contract
+
+- 🟢 закрыты API leaks: test_attempts.question_snapshot больше не отдаётся клиенту;
+- 🟢 preparation session.question_snapshot больше не отдаётся через start/get/save/finish;
+- 🟢 эталоны подготовки доступны после завершения через исторический snapshot;
+- 🟢 my attempts теперь SELECT-ит только публичные поля без answer snapshot;
+- 🟢 старый ProgressService найден как неиспользуемый legacy trace, source of truth остаётся progress_rest;
+- 🟡 PHP/Next/browser/runtime verification ещё обязательны.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS20.md.
