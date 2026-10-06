@@ -201,8 +201,8 @@ return static function (Router $router): void {
  });
 
  $router->post('/api/v1/tests/preparation/{id}/finish',static function(Request $r,array $p)use($auth):void{
-  if(!$auth($r))return;try{$db=Connection::pdo();$s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
-   if(!$session){Response::error('NOT_FOUND','Session not found',$r->requestId,404);return;}
+  if(!$auth($r))return;try{$db=Connection::pdo();$s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid and status='in_progress'");$s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
+   if(!$session){Response::error('INVALID_TRANSITION','Сессию можно завершить только из состояния in_progress',$r->requestId,404);return;}
    $a=$db->prepare("select r.*,q.text as question_text,q.subject_id,q.module_id,q.topic_id,m.title as module_name,top.title as topic_name from public.test_preparation_results r join public.questions q on q.id=r.question_id left join public.modules m on m.id=q.module_id left join public.topics top on top.id=q.topic_id where r.session_id=:sid");$a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
    $finishIds=$session['question_ids']??[];if(is_string($finishIds)){ $finishIds=trim($finishIds);$finishIds=($finishIds!==''&&$finishIds!=='{}')?str_getcsv(substr($finishIds,1,-1),',','"','\\'):[]; }if(!is_array($finishIds))$finishIds=[];$session['question_ids']=array_values(array_filter(array_map('strval',$finishIds)));
    $total=count($session['question_ids']);$correct=count(array_filter($rows,static fn($x)=>(bool)$x['is_correct']));$answered=count($rows);$percent=$total?round($correct/$total*100,2):0;
