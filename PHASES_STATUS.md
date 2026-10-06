@@ -365,3 +365,15 @@ Detailed report: `docs/IMPLEMENTATION-AUDIT-2026-10-07-CHEMISTRY-MASTER-CATALOG.
 | Production scoring answers | 🟡 | `exam_questions.answer` намеренно не изменён |
 | Remaining open-task answers | 🟡 | 220 требуют подготовки и проверки |
 | RLS | 🟢 | включён для master catalog |
+
+
+## 2026-10-07 — Pass 26B: две методички химии
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Методическое пособие №1 | 🟢 | Органическая и физическая химия; контрольные вопросы/задания |
+| Методическое пособие №2 | 🟢 | Минаева/Пронкина; задачи, упражнения и тестовые задания по органической химии |
+| Source registry | 🟢 | `chemistry_source_documents` содержит отдельные provenance-записи |
+| Unified catalog | 🟢 | оба источника представлены в общем каталоге |
+| Duplicate handling | 🟢 | одинаковый текст не удаляется без проверки происхождения |
+| Source attribution | 🟡 | неустановленный источник не приписывается догадкой |
