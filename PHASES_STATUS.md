@@ -302,3 +302,19 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS22.md.
 | Runtime/build/browser verification | 🟡 | target environment still required |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS23.md.
+
+
+## 2026-10-06 — Pass 24: Curriculum-linked tests
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Test curriculum map API | 🟢 | module/topic hierarchy with question/test counts |
+| Academic context isolation | 🟢 | group/course/semester/specialty scoped |
+| Test topic metadata | 🟢 | module/topic titles returned |
+| Question bank topic filter | 🟢 | filter by canonical topic UUID/title |
+| Untagged question safety | 🟢 | shown as unclassified; no guessing |
+| Detailed plan coverage | 🟡 | currently complete only where module/topic hierarchy is imported |
+| Remaining question tagging | 🟡 | controlled mapping required |
+| PHP/Next/browser/runtime | 🟡 | target environment verification required |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS24.md.
