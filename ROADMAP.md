@@ -881,3 +881,16 @@ Remaining:
 - 🟡 finish progress/session semantics across the remaining academic domains.
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
+
+## Audit update — 2026-10-06 — Pass 18
+
+Pass 18: 🟢 historical test/preparation integrity / 🟡 runtime verification pending.
+
+- ✅ preparation scoring reads immutable session question snapshots;
+- ✅ preparation result stores answer snapshot;
+- ✅ AI review uses historical answer snapshot;
+- ✅ live DB invariants show no active attempt/preparation context gaps;
+- 🟡 GitHub Actions has no run attached to the latest commits;
+- 🟡 PHP/Next build and SpaceWeb smoke test remain mandatory before final green gate.
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
