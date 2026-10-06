@@ -24,9 +24,11 @@ return static function (Router $router): void {
             return;
         }
         $add = (int) ($req->json('count') ?? 20);
+        $subjectId = $req->json('subject_id');
+        $subjectId = is_string($subjectId) && $subjectId !== '' ? $subjectId : null;
         $slug = $req->json('subject_slug');
         $slug = is_string($slug) && $slug !== '' ? $slug : null;
-        $out = (new SrsService())->ensureDeck($uid($req), max(1, min(50, $add)), $slug);
+        $out = (new SrsService())->ensureDeck($uid($req), max(1, min(50, $add)), $subjectId, $slug);
         Response::success($out, $req->requestId);
     });
 
@@ -35,12 +37,12 @@ return static function (Router $router): void {
             return;
         }
         $limit = (int) ($req->query['limit'] ?? 20);
+        $subjectId = isset($req->query['subject_id']) ? trim((string)$req->query['subject_id']) : null;
+        if ($subjectId === '') $subjectId = null;
         $slug = isset($req->query['subject_slug']) ? (string) $req->query['subject_slug'] : null;
-        if ($slug === '') {
-            $slug = null;
-        }
+        if ($slug === '') $slug = null;
         $scope = isset($req->query['scope']) ? trim((string) $req->query['scope']) : null;
-        $items = (new SrsService())->dueCards($uid($req), max(1, min(50, $limit)), $slug, $scope);
+        $items = (new SrsService())->dueCards($uid($req), max(1, min(50, $limit)), $subjectId, $slug, $scope);
         Response::success(['items' => $items, 'count' => count($items)], $req->requestId);
     });
 
@@ -54,7 +56,7 @@ return static function (Router $router): void {
             $slug = null;
         }
         $scope = isset($req->query['scope']) ? trim((string) $req->query['scope']) : null;
-        $items = (new SrsService())->listCards($uid($req), max(1, min(200, $limit)), $slug, $scope);
+        $items = (new SrsService())->listCards($uid($req), max(1, min(200, $limit)), $subjectId, $slug, $scope);
         Response::success(['items' => $items, 'count' => count($items)], $req->requestId);
     });
 
