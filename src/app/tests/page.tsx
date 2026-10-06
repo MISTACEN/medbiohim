@@ -6,6 +6,7 @@ import { Play, Loader2, CheckCircle2 } from "lucide-react";
 import {
   listTests,
   getTestCurriculumMap,
+  getChemistryMaster,
   getTest,
   startTestAttempt,
   finishAttempt,
@@ -62,6 +63,14 @@ export default function TestsPage() {
   const [celebrate, setCelebrate] = useState(false);
   const [attempts, setAttempts] = useState<any[]>([]);
   const [grading, setGrading] = useState<Record<number, any>>({});
+  const [chemistryItems, setChemistryItems] = useState<any[]>([]);
+  const [chemistryTotal, setChemistryTotal] = useState(0);
+  const [chemistryPage, setChemistryPage] = useState(1);
+  const [chemistryPages, setChemistryPages] = useState(1);
+  const [chemistryQuery, setChemistryQuery] = useState("");
+  const [chemistryKind, setChemistryKind] = useState("");
+  const [chemistryFormula, setChemistryFormula] = useState("");
+  const [chemistryLoading, setChemistryLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +115,20 @@ export default function TestsPage() {
       cancelled = true;
     };
   }, [authLoading, user?.groupId]);
+
+  useEffect(() => {
+    if (authLoading || !hasToken()) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setChemistryLoading(true);
+      void getChemistryMaster({q: chemistryQuery, kind: chemistryKind, formula: chemistryFormula, page: chemistryPage, limit: 12}).then((res:any) => {
+        if (cancelled) return;
+        if (res.ok) { setChemistryItems(res.data.items || []); setChemistryTotal(Number(res.data.pagination?.total || 0)); setChemistryPages(Math.max(1, Number(res.data.pagination?.pages || 1))); }
+        else setNote(res.error.message);
+      }).finally(() => { if (!cancelled) setChemistryLoading(false); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [authLoading, chemistryQuery, chemistryKind, chemistryFormula, chemistryPage]);
 
   async function openSource(test: UiTest) {
     if (!test.sourceFileId) return;
@@ -372,7 +395,14 @@ export default function TestsPage() {
       <section className="card p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">История попыток</h2>
+                  <section className="card p-5 mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="font-semibold">Единый банк заданий по химии</h2><p className="mt-1 text-sm text-slate-500">436 элементов из двух методических источников и текущего банка. Структурные и скелетные формулы не подменяются догадками.</p></div><div className="text-xs text-slate-500">{chemistryTotal} найдено</div></div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><input value={chemistryQuery} onChange={(e)=>{setChemistryQuery(e.target.value);setChemistryPage(1);}} placeholder="Поиск по вопросу или теме…" className="rounded-xl border px-3 py-2 text-sm" /><select value={chemistryKind} onChange={(e)=>{setChemistryKind(e.target.value);setChemistryPage(1);}} className="rounded-xl border px-3 py-2 text-sm"><option value="">Все типы</option><option value="open_task">Открытые задания</option><option value="test_question">Тестовые вопросы</option></select><select value={chemistryFormula} onChange={(e)=>{setChemistryFormula(e.target.value);setChemistryPage(1);}} className="rounded-xl border px-3 py-2 text-sm"><option value="">Формулы: все</option><option value="true">Формулы сохранены</option><option value="false">Без формулы</option></select></div>
+        {chemistryLoading ? <div className="mt-4 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Загружаю задания…</div> : <div className="mt-4 space-y-2">{chemistryItems.map((item:any,index:number)=><details key={String(item.item_id)} className="rounded-xl border bg-white"><summary className="cursor-pointer list-none px-3 py-3"><div className="flex gap-3"><span className="min-w-7 text-xs font-semibold text-slate-400">{(chemistryPage-1)*12+index+1}</span><div className="min-w-0 flex-1"><div className="text-sm font-medium text-slate-800">{String(item.question||"Без текста")}</div><div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500"><span>{item.kind==="test_question"?"Тест":"Задание"}</span>{item.topic&&<span>· {String(item.topic)}</span>}{item.formula_preserved&&<span className="font-medium text-indigo-600">· формула сохранена</span>}{item.answer_status==="prepared_from_text"&&<span className="font-medium text-emerald-600">· ответ подготовлен</span>}</div></div></div></summary><div className="border-t bg-slate-50/60 px-3 py-3 sm:px-5"><div className="text-xs font-medium uppercase tracking-wide text-slate-400">Ответ</div>{item.answer?<ChemRichText text={String(item.answer)} className="mt-2 space-y-2 text-sm text-slate-700"/>:<p className="mt-2 text-sm text-amber-700">Ответ ещё не подготовлен. Исходная формулировка сохранена.</p>}<div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">{item.source&&<span className="rounded-full bg-white px-2 py-1 border">Источник: {String(item.source)}</span>}{item.source_number&&<span className="rounded-full bg-white px-2 py-1 border">№ {String(item.source_number)}</span>}{item.answer_status&&<span className="rounded-full bg-white px-2 py-1 border">{String(item.answer_status)}</span>}</div></div></details>)}{chemistryItems.length===0&&<div className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">По заданным фильтрам ничего не найдено.</div>}</div>}
+        <div className="mt-4 flex items-center justify-between gap-3"><button type="button" disabled={chemistryPage<=1||chemistryLoading} onClick={()=>setChemistryPage(p=>Math.max(1,p-1))} className="rounded-xl border px-3 py-2 text-sm disabled:opacity-40">← Назад</button><span className="text-xs text-slate-500">Страница {chemistryPage} из {chemistryPages}</span><button type="button" disabled={chemistryPage>=chemistryPages||chemistryLoading} onClick={()=>setChemistryPage(p=>Math.min(chemistryPages,p+1))} className="rounded-xl border px-3 py-2 text-sm disabled:opacity-40">Вперёд →</button></div>
+      </section>
+
+<h2 className="font-semibold">История попыток</h2>
             <p className="mt-1 text-xs text-slate-500">Последние 50 завершённых и незавершённых попыток.</p>
           </div>
         </div>
