@@ -8,6 +8,8 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Repositories\HomeworkRepository;
 use Medbiohim\Repositories\TestRepository;
 use Medbiohim\Services\SupabaseAcademic;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\AcademicContextException;
 
 return static function (Router $r): void {
     $r->get('/api/v1/progress', static function (Request $q, array $p): void {
@@ -17,7 +19,11 @@ return static function (Router $r): void {
         $homeworks = [];
         $attempts = [];
         $subjectId = trim((string) ($q->query['subject_id'] ?? ''));
+        $groupId = trim((string) ($q->query['group_id'] ?? ''));
         try {
+            if ($subjectId !== '') {
+                (new AcademicContextResolver())->resolveForUser($q->user->id, $groupId !== '' ? $groupId : null, $subjectId);
+            }
             try {
                 $homeworks = (new HomeworkRepository())->listForUser($q->user->id);
                 if ($subjectId !== '') {
@@ -83,6 +89,8 @@ return static function (Router $r): void {
                     'items' => $attempts,
                 ],
             ], $q->requestId);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode,$e->getMessage(),$q->requestId,$e->httpStatus,$e->details);
         } catch (\Throwable $e) {
             \Medbiohim\Support\Logger::error('progress_failed', [
                 'requestId' => $q->requestId,
