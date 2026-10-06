@@ -425,3 +425,14 @@ Full evidence: `docs/STATE-MACHINE-AUDIT-2026-10-06-PASS7.md`.
 Проверить reload, retry, duplicate click и смену academic context. Один и тот же subject UUID и group UUID должны сохраняться по всей цепочке.
 
 Full evidence: `docs/CROSS-FEATURE-CONSISTENCY-AUDIT-2026-10-06-PASS8.md`.
+
+
+## Pass 9–13 implementation status — 2026-10-06
+
+- P0 AcademicContextResolver implemented and wired into homework/progress/community/file boundaries.
+- P0 test/preparation state gates and active-attempt idempotency implemented.
+- P1 file group authorization, community group scope, user-scoped API cache implemented.
+- P1 SRS subject UUID migration started; slug retained only as compatibility alias.
+- P1 deployed-build fingerprint contract added for Vercel and SpaceWeb health.
+- `/tests` redirect regression removed.
+- Remaining gate: exact deployed SpaceWeb artifact + frontend typecheck/build + real E2E with non-empty student data.
