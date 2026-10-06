@@ -120,9 +120,12 @@ final class ContentStore
         throw new \RuntimeException('Legacy JSON schedule write disabled; use /api/v1/admin/schedule');
     }
 
-    public function listCommunityPosts(): array
+    public function listCommunityPosts(?string $groupId = null): array
     {
-        return SupabaseRest::select('community_posts?is_deleted=eq.false&select=id,author_id,group_id,tag,text,title,body,created_at,updated_at&order=created_at.desc');
+        $filter = $groupId !== null && trim($groupId) !== ''
+            ? '&or=(group_id.eq.'.rawurlencode(trim($groupId)).',group_id.is.null)'
+            : '&group_id=is.null';
+        return SupabaseRest::select('community_posts?is_deleted=eq.false'.$filter.'&select=id,author_id,group_id,tag,text,title,body,created_at,updated_at&order=created_at.desc');
     }
 
     public function createCommunityPost(array $d): array
