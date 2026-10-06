@@ -18,13 +18,14 @@ final class SrsService
             $dueAt = strtotime((string) ($row['due_at'] ?? '')) ?: 0;
             if ($dueAt <= $now) $due++;
             if ((int) ($row['reps'] ?? 0) > 0 && (int) ($row['interval'] ?? 0) < 2) $learning++;
-            $slug = (string) ($row['subject_slug'] ?? '');
-            if ($slug !== '') {
-                $key = $slug;
+            $subjectId = (string) ($row['subject_id'] ?? '');
+            if ($subjectId !== '') {
+                $key = $subjectId;
                 if (!isset($subjects[$key])) {
                     $subjects[$key] = [
+                        'subject_id' => $subjectId,
                         'subject' => (string) ($row['subject_name'] ?? $row['subject_slug']),
-                        'subject_slug' => $slug,
+                        'subject_slug' => (string) ($row['subject_slug'] ?? ''),
                         'count' => 0,
                     ];
                 }
@@ -73,7 +74,7 @@ final class SrsService
         }
 
         $path = 'questions?is_published=eq.true&archived_at=is.null&select=id,text,answer,subject_id,topic&order=created_at.asc&limit=2000';
-        if ($subjectId === null && $subjectSlug !== null && $subjectSlug !== '') {
+        if (($subjectId === null || $subjectId === '') && $subjectSlug !== null && $subjectSlug !== '') {
             $resolvedSubjectId = null;
             foreach ($subjects as $subject) {
                 if ((string) ($subject['slug'] ?? '') === $subjectSlug) {
@@ -84,7 +85,10 @@ final class SrsService
             if ($resolvedSubjectId === null || $resolvedSubjectId === '') {
                 return ['added' => 0, 'total' => count($cards)];
             }
-            $path .= '&subject_id=eq.' . rawurlencode($subjectId ?? $resolvedSubjectId);
+            $subjectId = $resolvedSubjectId;
+        }
+        if ($subjectId !== null && $subjectId !== '') {
+            $path .= '&subject_id=eq.' . rawurlencode($subjectId);
         }
         $questions = SupabaseRest::select($path);
 
@@ -143,6 +147,7 @@ final class SrsService
             if (($scope === 'shared' && ($row['source_type'] ?? '') !== 'question')
                 || ($scope === 'personal' && ($row['source_type'] ?? '') !== 'personal')) continue;
             if ($subjectId !== null && $subjectId !== '' && (string) ($row['subject_id'] ?? '') !== $subjectId) continue;
+            if ($subjectId === null && $subjectSlug !== null && $subjectSlug !== '' && (string) ($row['subject_slug'] ?? '') !== $subjectSlug) continue;
             $out[] = $this->formatCard($row, $now);
         }
         usort($out, static fn(array $a, array $b): int => ((int) $a['due_at'] <=> (int) $b['due_at']));
