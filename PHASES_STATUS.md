@@ -351,3 +351,17 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS25.md.
 | Runtime/build/browser | 🟡 | separate target-environment gate remains |
 
 Detailed report: `docs/IMPLEMENTATION-AUDIT-2026-10-07-CHEMISTRY-MASTER-CATALOG.md`.
+
+
+## 2026-10-07 — Pass 26A: ответы/формулы химии
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Master catalog | 🟢 | 436 элементов |
+| Open tasks | 🟢 | 260 сохранены |
+| Test questions | 🟢 | 176 сохранены с ответами/вариантами |
+| Prepared answers | 🟢 | 40 элементов |
+| Structural-formula answers | 🟡 | 19 подготовлены из текста; визуальная проверка ещё нужна |
+| Production scoring answers | 🟡 | `exam_questions.answer` намеренно не изменён |
+| Remaining open-task answers | 🟡 | 220 требуют подготовки и проверки |
+| RLS | 🟢 | включён для master catalog |
