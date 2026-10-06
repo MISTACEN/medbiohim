@@ -466,3 +466,21 @@ Supabase Free → metadata/source_key/path → SpaceWeb physical file → API en
 🟢 Создан единый документ `docs/PROJECT-SOURCE-OF-TRUTH-AUDIT-2026-10-07.md`, который объединяет правила продукта, архитектуры и release-gates.
 
 🟡 Остаточные зоны не закрыты формально до runtime/browser/physical-media проверки: Histology reconciliation, Materials files, schedule session integrity, единый schedule+homework UX, production auth/runtime, latest CI, strict TS/ESLint, timezone centralization и полный mobile/browser acceptance.
+
+
+## 2026-10-07 — Zero-cost / full-functionality release gate
+
+| Контур | Статус | Правило |
+|---|---|---|
+| GitHub Free | 🟢 | source/docs/migrations/CI в бесплатных лимитах |
+| Vercel Hobby | 🟢 | frontend/deployment без обязательного Pro |
+| SpaceWeb Free | 🟢 | PHP API/runtime и физический контент в бесплатном лимите |
+| Supabase Free | 🟢 | DB/Auth/RLS/metadata без обязательного paid plan |
+| Backblaze B2 Free | 🟢 | дополнительное object storage в бесплатной квоте |
+| Full functionality | 🟡 | функция не должна урезаться ради free-tier; оптимизация обязательна |
+| Unexpected billing protection | 🟡 | для каждого сервиса проверять лимиты и поведение после free quota |
+| Optional AI | 🟢 | базовая функция не зависит от платного AI |
+
+Главное правило: **не терять функциональность из-за бесплатных лимитов**. Сначала оптимизировать storage, egress, caching, batching, lazy loading, streaming, deduplication и распределение нагрузки.
+
+Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
