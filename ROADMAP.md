@@ -1071,3 +1071,14 @@ Supabase Free = metadata/DB → SpaceWeb = physical media → API = controlled d
 ## 2026-10-07 — изоляция банков по предметам
 
 База вопросов и тестовая часть теперь рассматриваются как предметные контексты: переход из конкретного предмета передаёт его `subject_slug`, поэтому банк вопросов загружается только для этого предмета. Для гистологии и химии не смешиваются вопросы, ответы и тесты. Прямой общий `/practice` без контекста сохраняет возможность выбрать предмет вручную.
+
+
+## 2026-10-07 — Project Source-of-Truth Audit
+
+Проведена сверка кода, пользовательской логики и существующих документов. Создан канонический обзор архитектурных правил и остаточных release-gates:
+
+`docs/PROJECT-SOURCE-OF-TRUTH-AUDIT-2026-10-07.md`
+
+Зафиксированы как постоянные правила: независимые банки по предметам, база вопросов ≠ тест, жалоба → question_id → admin correction, optional AI grading, immutable history snapshots, единый academic context, Supabase Free как DB/metadata + SpaceWeb как physical media, расписание + задания как единый целевой UX, content reconciliation, runtime/deployment truth, strict build gate, timezone и mobile/browser acceptance.
+
+Отдельно отмечены остаточные 🟡 проверки, которые нельзя выдавать за полностью закрытые только по наличию кода в GitHub.
