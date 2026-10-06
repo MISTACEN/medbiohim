@@ -173,7 +173,7 @@ final class AcademicContextResolver
             $params['semester'] = $semester;
         }
         if ($date !== null && trim($date) !== '') {
-            $conditions[] = '(:date_value::date BETWEEN start_date AND end_date OR start_date IS NULL OR end_date IS NULL)';
+            $conditions[] = '(CAST(:date_value AS date) BETWEEN start_date AND end_date OR start_date IS NULL OR end_date IS NULL)';
             $params['date_value'] = trim($date);
         }
 
