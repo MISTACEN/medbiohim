@@ -24,7 +24,7 @@ return static function (Router $r): void {
         } catch (\Throwable $e) {
             try {
                 Response::success([
-                    'items' => (new ContentStore())->listCommunityPosts(),
+                    'items' => (new ContentStore())->listCommunityPosts($groupId),
                     'source' => 'supabase_rest_fallback',
                 ], $q->requestId);
             } catch (\Throwable $x) {
