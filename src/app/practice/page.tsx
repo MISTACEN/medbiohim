@@ -78,7 +78,7 @@ export default function PracticePage() {
   useEffect(() => { setPage(0); }, [subjectSlug, kind, q]);
 
   async function openQuestion(id: string) {
-    setShowAnswer(false);
+    setShowAnswer(true);
     setDraft("");
     const res = await getQuestion(id);
     if (res.ok) {
@@ -211,7 +211,7 @@ export default function PracticePage() {
         <div className="card space-y-4 p-5">
           {!selected ? (
             <p className="text-sm text-slate-500">
-              Выберите вопрос слева. Режим: свой ответ → показать эталон.
+              Выберите вопрос слева. Правильный ответ доступен сразу; тест запускать не нужно.
             </p>
           ) : (
             <>
@@ -296,7 +296,7 @@ export default function PracticePage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <div className="text-sm text-slate-500">
-          Страница {Math.floor(page)} · вопросы {total === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} из {total}
+          Страница {page + 1} · вопросы {total === 0 ? 0 : page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} из {total}
         </div>
         <div className="flex gap-2">
           <button type="button" disabled={page === 0 || loading} onClick={() => setPage((v) => Math.max(0, v - 1))} className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-40">Назад</button>
