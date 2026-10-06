@@ -894,3 +894,18 @@ Pass 18: 🟢 historical test/preparation integrity / 🟡 runtime verification 
 - 🟡 PHP/Next build and SpaceWeb smoke test remain mandatory before final green gate.
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
+
+
+## 2026-10-06 — Pass 19: Progress / History / Preparation contract
+
+- 🟢 preparation GET/finish/AI review теперь используют immutable question snapshots;
+- 🟢 preparation results сохраняют answer_snapshot;
+- 🟢 /progress считает submitted attempts завершёнными;
+- 🟢 DB error в test history больше не превращается в ложный пустой progress;
+- 🟢 test history строго scoped по test_attempts.group_id;
+- 🟢 bank/preparation frontend передают group_id в bank-progress;
+- 🟢 live active-context invariants остаются нулевыми;
+- 🟡 один legacy submitted attempt от 2026-10-02 не имеет group_id и намеренно не приписан к группе;
+- 🟡 PHP/Next/build/runtime verification после Pass 19 ещё обязательна.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS19.md.
