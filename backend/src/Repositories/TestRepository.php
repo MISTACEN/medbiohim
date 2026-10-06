@@ -242,7 +242,9 @@ final class TestRepository
 
     public function attemptsForUser(string $userId, ?string $subjectId = null, ?string $groupId = null): array
     {
-        $sql = 'SELECT a.*, t.title AS test_title, t.subject_id
+        $sql = 'SELECT a.id, a.test_id, a.user_id, a.status, a.score, a.max_score,
+                         a.percent, a.started_at, a.finished_at, a.group_id, a.session_id,
+                         a.context_version, t.title AS test_title, t.subject_id
                   FROM public.test_attempts a
                   JOIN public.tests t ON t.id = a.test_id
                   LEFT JOIN public.subjects s ON s.id = t.subject_id
