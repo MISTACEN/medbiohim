@@ -153,8 +153,8 @@ return static function (Router $router): void {
     $totalQ=$db->prepare("select count(*) from public.test_questions tq join public.questions q on q.id=tq.question_id where tq.test_id=:tid and q.is_published=true and q.archived_at is null");
     $totalQ->execute(['tid'=>$tid]);$total=(int)$totalQ->fetchColumn();
 
-    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and mode='sequential' order by started_at desc limit 1");
-    $s->execute(['uid'=>$r->user->id,'tid'=>$tid]);$session=$s->fetch();
+    $s=$db->prepare("select * from public.test_preparation_sessions where user_id=:uid and test_id=:tid and group_id=:gid and mode='sequential' order by started_at desc limit 1");
+    $s->execute(['uid'=>$r->user->id,'tid'=>$tid,'gid'=>$context['group_id']]);$session=$s->fetch();
 
     $answered=0;$correct=0;
     if($session){
