@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Check, CheckCircle2, ClipboardList, Loader2, Plus, Upload, X } from "lucide-react";
-import { listHomeworks, createHomework, setHomeworkDone, submitHomework, uploadFile, listSubjectsCatalog, type ApiHomework } from "@/lib/api";
+import { listHomeworks, createHomework, setHomeworkDone, submitHomework, uploadFile, listSubjectsCatalog, me, type ApiHomework } from "@/lib/api";
 
 type Homework = ApiHomework & { due_date?: string; my_status?: string; my_completed?: boolean; created_by_role?: string; subject_slug?: string; color_hex?: string };
 const PALETTE=["#2563eb","#7c3aed","#059669","#ea580c","#db2777","#0891b2","#65a30d","#9333ea","#0284c7","#ca8a04","#e11d48","#0f766e"];
@@ -14,11 +14,11 @@ export default function HomeworkPage(){
  const [items,setItems]=useState<Homework[]>([]);const [subjects,setSubjects]=useState<any[]>([]);
  const [month,setMonth]=useState(new Date().toISOString().slice(0,7));const [selectedDate,setSelectedDate]=useState(new Date().toISOString().slice(0,10));
  const [filter,setFilter]=useState<"all"|"pending"|"done">("all");const [busy,setBusy]=useState<string|null>(null);const [error,setError]=useState("");
- const [showAdd,setShowAdd]=useState(false);const [form,setForm]=useState({title:"",description:"",subject_id:"",due_date:selectedDate});
- const [openId,setOpenId]=useState<string|null>(null);const [answer,setAnswer]=useState("");
+ const [showAdd,setShowAdd]=useState(false);const [form,setForm]=useState({title:"",description:"",subject_id:"",due_date:selectedDate,group_id:""});
+ const [openId,setOpenId]=useState<string|null>(null);const [answer,setAnswer]=useState("");const [groups,setGroups]=useState<any[]>([]);
 
  async function reload(){const r=await listHomeworks();if(r.ok)setItems((r.data.items||[]) as Homework[]);else setError(r.error.message)}
- useEffect(()=>{void reload();void listSubjectsCatalog().then(r=>{if(r.ok)setSubjects(r.data.items||[])})},[]);
+ useEffect(()=>{void reload();void listSubjectsCatalog().then(r=>{if(r.ok)setSubjects(r.data.items||[])});void me().then(r=>{if(r.ok){const gs=Array.isArray(r.data?.groups)?r.data.groups:[];setGroups(gs);if(gs.length===1)setForm(f=>({...f,group_id:String(gs[0].id??gs[0].group_id??"")}))}})},[]);
  useEffect(()=>setForm(f=>({...f,due_date:selectedDate})),[selectedDate]);
 
  const days=useMemo(()=>monthDays(month),[month]);
@@ -26,7 +26,7 @@ export default function HomeworkPage(){
  const dayItems=visible.filter(h=>(h.due_date||h.due_at?.slice(0,10))===selectedDate).sort((a,b)=>String(a.due_at||"").localeCompare(String(b.due_at||"")));
  const pending=items.filter(h=>status(h)!=="done").length;
  async function toggle(h:Homework){setBusy(h.id);const done=status(h)!=="done";const r=await setHomeworkDone(h.id,done);if(r.ok)setItems(xs=>xs.map(x=>x.id===h.id?{...x,my_status:done?"done":"pending"}:x));else setError(r.error.message);setBusy(null)}
- async function add(){if(!form.title.trim()||!form.subject_id||!form.due_date)return;setBusy("add");const r=await createHomework(form);if(r.ok){setShowAdd(false);setForm({title:"",description:"",subject_id:"",due_date:selectedDate});await reload()}else setError(r.error.message);setBusy(null)}
+ async function add(){if(!form.title.trim()||!form.subject_id||!form.due_date)return;setBusy("add");const r=await createHomework(form);if(r.ok){setShowAdd(false);setForm({title:"",description:"",subject_id:"",due_date:selectedDate,group_id:form.group_id});await reload()}else setError(r.error.message);setBusy(null)}
  async function submit(h:Homework,file?:File){setBusy(h.id);let fid:string|undefined;if(file){const u=await uploadFile(file);if(!u.ok){setError(u.error.message);setBusy(null);return}fid=u.data.file.id}const r=await submitHomework(h.id,answer||undefined,fid);if(r.ok){setItems(xs=>xs.map(x=>x.id===h.id?{...x,my_completed:true,submission_status:"submitted"}:x));setAnswer("");setOpenId(null)}else setError(r.error.message);setBusy(null)}
 
  return <div className="space-y-5">
