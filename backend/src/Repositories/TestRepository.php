@@ -20,12 +20,16 @@ final class TestRepository
     {
         $sql = "SELECT t.id, t.title, t.time_limit_sec, t.is_published,
                        t.subject_id, t.module_id, t.topic_id,
+                       m.title AS module_title, tp.title AS topic_title,
+                       m.order_index AS module_order, tp.order_index AS topic_order,
                        s.name AS subject_name, t.created_at,
                        (SELECT COUNT(*) FROM public.test_questions tq WHERE tq.test_id = t.id) AS questions_count,
                        cs.title AS source_title, cs.file_id AS source_file_id,
                        f.original_name AS source_file_name, f.object_key AS source_object_key
                 FROM public.tests t
                 LEFT JOIN public.subjects s ON s.id = t.subject_id
+                LEFT JOIN public.modules m ON m.id = t.module_id
+                LEFT JOIN public.topics tp ON tp.id = t.topic_id
                 LEFT JOIN public.content_sources cs ON cs.id = t.source_key
                 LEFT JOIN public.files f ON f.id = cs.file_id AND f.status = 'active'
                 WHERE t.is_published = true";
@@ -63,6 +67,66 @@ final class TestRepository
         ]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
+    }
+
+    /** Build the lesson/topic map used by the tests UI. Never guesses a topic for an untagged question. */
+    public function curriculumMap(?string $subjectId = null): array
+    {
+        $sql = "SELECT s.id AS subject_id, s.name AS subject_name,
+                       m.id AS module_id, m.title AS module_title, m.order_index AS module_order,
+                       tp.id AS topic_id, tp.title AS topic_title, tp.order_index AS topic_order,
+                       (SELECT COUNT(*) FROM public.questions q
+                          WHERE q.topic_id = tp.id AND q.is_published = true AND q.archived_at IS NULL) AS question_count,
+                       (SELECT COUNT(DISTINCT t.id) FROM public.tests t
+                          WHERE t.topic_id = tp.id AND t.is_published = true AND t.archived_at IS NULL) AS test_count
+                FROM public.modules m
+                JOIN public.subjects s ON s.id = m.subject_id AND s.is_active = true
+                JOIN public.topics tp ON tp.module_id = m.id AND tp.is_published = true
+                WHERE 1=1";
+        $params = [];
+        if ($subjectId !== null && $subjectId !== '') {
+            $sql .= ' AND s.id = :sid';
+            $params['sid'] = $subjectId;
+        }
+        $sql .= ' ORDER BY s.name, m.order_index, tp.order_index, tp.title';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll() ?: [];
+
+        $subjects = [];
+        foreach ($rows as $row) {
+            $sid = (string)$row['subject_id'];
+            if (!isset($subjects[$sid])) {
+                $unc = $this->db->prepare("SELECT COUNT(*) FROM public.questions q WHERE q.subject_id=:sid AND q.is_published=true AND q.archived_at IS NULL AND q.topic_id IS NULL");
+                $unc->execute(['sid'=>$sid]);
+                $subjects[$sid] = [
+                    'subject_id'=>$sid,
+                    'subject_name'=>(string)$row['subject_name'],
+                    'unclassified_questions'=>(int)$unc->fetchColumn(),
+                    'modules'=>[]
+                ];
+            }
+            $mid=(string)$row['module_id'];
+            if (!isset($subjects[$sid]['modules'][$mid])) {
+                $subjects[$sid]['modules'][$mid]=[
+                    'module_id'=>$mid,
+                    'title'=>(string)$row['module_title'],
+                    'order_index'=>(int)$row['module_order'],
+                    'topics'=>[]
+                ];
+            }
+            $subjects[$sid]['modules'][$mid]['topics'][]=[
+                'topic_id'=>(string)$row['topic_id'],
+                'title'=>(string)$row['topic_title'],
+                'order_index'=>(int)$row['topic_order'],
+                'question_count'=>(int)$row['question_count'],
+                'test_count'=>(int)$row['test_count'],
+            ];
+        }
+        return array_values(array_map(static function(array $subject): array {
+            $subject['modules']=array_values($subject['modules']);
+            return $subject;
+        }, $subjects));
     }
 
     /** Return public question fields using the current questions schema. */
