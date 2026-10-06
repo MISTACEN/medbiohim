@@ -255,7 +255,7 @@ export async function listMyAttempts(subjectId?:string){const q=subjectId?`?subj
 export async function startTestAttempt(id:string){return api<any>(`/tests/${id}/start`,{method:"POST",body:"{}"})}
 export async function finishAttempt(id:string,score?:number,maxScore?:number){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:JSON.stringify({score,max_score:maxScore})})}
 export async function listHomeworks(){return api<any>("/homeworks")}
-export async function createHomework(payload:{title:string;description?:string;subject_id:string;due_date:string}){return api<any>("/homeworks",{method:"POST",body:JSON.stringify(payload)})}
+export async function createHomework(payload:{title:string;description?:string;subject_id:string;due_date:string;group_id?:string}){return api<any>("/homeworks",{method:"POST",body:JSON.stringify(payload)})}
 export async function setHomeworkDone(id:string,done:boolean){return api<any>(`/homeworks/${encodeURIComponent(id)}/progress`,{method:"POST",body:JSON.stringify({done})})}
 export async function getStudentPlanner(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/planner${q.toString()?`?${q}`:""}`)}
 export async function markAttendance(entryId:string,status:"present"|"excused"|"sick"|"unexcused",note?:string){return api<any>(`/attendance/${encodeURIComponent(entryId)}`,{method:"POST",body:JSON.stringify({status,note})})}
