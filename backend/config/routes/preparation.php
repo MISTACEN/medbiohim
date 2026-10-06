@@ -238,7 +238,7 @@ return static function (Router $router): void {
     ];
     if($session['status']==='completed')$questions[array_key_last($questions)]['answer']=$snap['answer']??null;
    }
-   $a=$db->prepare("select question_id,answer_text".($session['status']==='completed'?",is_correct,score":"")." from public.test_preparation_results where session_id=:sid");
+   $a=$db->prepare("select question_id,answer_text,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at".($session['status']==='completed'?",is_correct,score":"")." from public.test_preparation_results where session_id=:sid");
    $a->execute(['sid'=>$session['id']]);$answers=$a->fetchAll()?:[];
    unset($session['question_snapshot']);
    Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$answers],$r->requestId);
@@ -268,13 +268,14 @@ return static function (Router $router): void {
     if ($row===null) { throw new \RuntimeException('QUESTION_NOT_IN_SESSION'); }
     $grading=AnswerGradingService::grade($row,$given);
     $up=$db->prepare("insert into public.test_preparation_results(session_id,user_id,test_id,question_id,answer_text,is_correct,score,answer_snapshot,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at)
-      values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot,:status,:source,:confidence,:feedback,:model,case when :status in ('deterministic','ai') then now() else null end)
+      values(:sid,:uid,:tid,:qid,:a,:ok,:score,:snapshot,:status,:source,:confidence,:feedback,:model,:graded_at)
       on conflict(session_id,question_id) do update set answer_text=excluded.answer_text,is_correct=excluded.is_correct,score=excluded.score,answer_snapshot=excluded.answer_snapshot,grading_status=excluded.grading_status,grading_source=excluded.grading_source,grading_confidence=excluded.grading_confidence,grading_feedback=excluded.grading_feedback,grading_model=excluded.grading_model,graded_at=excluded.graded_at,answered_at=now()");
     $up->execute([
       'sid'=>$s['id'],'uid'=>$r->user->id,'tid'=>$s['test_id'],'qid'=>$b['question_id'],'a'=>$given,
       'ok'=>$grading['is_correct'],'score'=>$grading['score'],'snapshot'=>json_encode(['type'=>$type,'answer'=>$correct,'options'=>$options],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
       'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],'confidence'=>$grading['confidence'],
-      'feedback'=>$grading['feedback'],'model'=>$grading['model']
+      'feedback'=>$grading['feedback'],'model'=>$grading['model'],
+      'graded_at'=>in_array($grading['grading_status'],['deterministic','ai'],true)?date('c'):null
     ]);
    }
    $up=$db->prepare("update public.test_preparation_sessions set current_index=:idx,last_saved_at=now() where id=:id returning *");$up->execute(['idx'=>$idx,'id'=>$s['id']]);
