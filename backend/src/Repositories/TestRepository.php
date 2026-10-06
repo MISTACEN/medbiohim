@@ -39,7 +39,7 @@ final class TestRepository
         return $stmt->fetchAll() ?: [];
     }
 
-    public function findById(string $id): ?array
+    public function findById(string $id, bool $publishedOnly = true): ?array
     {
         $stmt = $this->db->prepare(
             "SELECT t.*, s.name AS subject_name,
@@ -49,14 +49,16 @@ final class TestRepository
              LEFT JOIN public.subjects s ON s.id = t.subject_id
              LEFT JOIN public.content_sources cs ON cs.id = t.source_key
              LEFT JOIN public.files f ON f.id = cs.file_id AND f.status = 'active'
-             WHERE t.id::text = :id
+             WHERE (t.id::text = :id
                OR t.source_key = :id
-               OR t.source_key = :local_source_key
+               OR t.source_key = :local_source_key)
+               AND (:published_only = false OR t.is_published = true)
              LIMIT 1"
         );
         $stmt->execute([
             'id' => $id,
             'local_source_key' => 'local:' . $id,
+            'published_only' => $publishedOnly,
         ]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
@@ -84,6 +86,15 @@ final class TestRepository
 
     public function startAttempt(string $testId, string $userId): array
     {
+        $existing = $this->db->prepare(
+            "SELECT * FROM public.test_attempts
+             WHERE test_id = :tid AND user_id = :uid AND status = 'in_progress'
+             ORDER BY started_at DESC LIMIT 1"
+        );
+        $existing->execute(['tid'=>$testId,'uid'=>$userId]);
+        $active = $existing->fetch();
+        if ($active !== false) return $active;
+
         $stmt = $this->db->prepare(
             "INSERT INTO public.test_attempts (test_id, user_id, status)
              VALUES (:tid, :uid, 'in_progress') RETURNING *"
@@ -106,7 +117,7 @@ final class TestRepository
                     percent = :percent,
                     finished_at = now(),
                     status = 'submitted'
-              WHERE id = :id AND user_id = :uid
+              WHERE id = :id AND user_id = :uid AND status = 'in_progress'
               RETURNING *"
         );
         $stmt->execute([
