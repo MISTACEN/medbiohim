@@ -237,3 +237,19 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
 | Server-authoritative scoring | 🟡 | ordinary test finish remains client-score based |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
+
+## 2026-10-06 — Pass 17: Test integrity and reproducibility
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Test answer persistence | 🟢 | server endpoint + retry-safe upsert |
+| Server-authoritative scoring | 🟢 | finish derives score from persisted answers |
+| Question/answer snapshot | 🟢 | attempt stores immutable question set and answer key |
+| Test academic snapshot | 🟢 | group + academic session + context version |
+| Preparation academic snapshot | 🟢 | group + session + context version |
+| Preparation question snapshot | 🟢 | active legacy sessions backfilled |
+| Bank-progress context | 🟢 | group/subject context enforced |
+| Runtime/build verification | 🟡 | must be rerun after Pass 17 |
+| Progress academic semantics | 🟡 | remaining cross-domain work |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS17.md.
