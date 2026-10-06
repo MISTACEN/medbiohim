@@ -147,26 +147,35 @@ final class TestRepository
 
     public function saveAnswer(string $attemptId, string $userId, string $questionId, ?string $answerText): array
     {
+        $q = $this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid");
+        $q->execute(['id'=>$attemptId,'uid'=>$userId]);
+        $attempt = $q->fetch();
+        if ($attempt === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
+        if ((string)$attempt['status'] !== 'in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
+
+        $snapshot = is_string($attempt['question_snapshot'] ?? null)
+            ? (json_decode($attempt['question_snapshot'], true) ?: [])
+            : ($attempt['question_snapshot'] ?? []);
+        if (!is_array($snapshot)) $snapshot = [];
+
+        $question = null;
+        foreach ($snapshot as $item) {
+            if ((string)($item['id'] ?? '') === $questionId) { $question = $item; break; }
+        }
+        if ($question === null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
+
+        // AI is deliberately called outside the DB transaction: a slow provider
+        // must never hold a row lock while grading an answer.
+        $grading = AnswerGradingService::grade($question, $answerText);
+
         $this->db->beginTransaction();
         try {
-            $q = $this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE");
-            $q->execute(['id'=>$attemptId,'uid'=>$userId]);
-            $attempt = $q->fetch();
-            if ($attempt === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
-            if ((string)$attempt['status'] !== 'in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
+            $lock = $this->db->prepare("SELECT status FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE");
+            $lock->execute(['id'=>$attemptId,'uid'=>$userId]);
+            $locked = $lock->fetch();
+            if ($locked === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
+            if ((string)$locked['status'] !== 'in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
 
-            $snapshot = is_string($attempt['question_snapshot'] ?? null)
-                ? (json_decode($attempt['question_snapshot'], true) ?: [])
-                : ($attempt['question_snapshot'] ?? []);
-            if (!is_array($snapshot)) $snapshot = [];
-
-            $question = null;
-            foreach ($snapshot as $item) {
-                if ((string)($item['id'] ?? '') === $questionId) { $question = $item; break; }
-            }
-            if ($question === null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
-
-            $grading = AnswerGradingService::grade($question, $answerText);
             $up = $this->db->prepare(
                 "INSERT INTO public.test_answers
                     (attempt_id,question_id,answer_text,is_correct,score,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at)
