@@ -334,3 +334,20 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS24.md.
 | Runtime/build/browser | 🟡 | separate verification gate |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS25.md.
+
+
+## 2026-10-07 — Pass 26: Chemistry master catalog
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Source archive audit | 🟢 | 7 scanned PDFs / 142 pages checked; no usable native PDF text layer |
+| Unified chemistry catalog | 🟢 | Supabase `chemistry_master_documents` created |
+| Open tasks | 🟢 | 260 canonical organic-chemistry open tasks included |
+| Current test questions | 🟢 | 176 published chemistry test questions included with options/answers |
+| Formula preservation | 🟢 | textual chemical formulas/reactions retained verbatim where source text contains them |
+| Image-only structural/skeletal formulas | 🟡 | must be confirmed from original page images before generating answer formulas |
+| Full archived test-section import | 🟡 | source contains additional OCR-sensitive questions; controlled expansion remains |
+| Curriculum mapping | 🟢 | canonical topic/plan links retained for imported current questions |
+| Runtime/build/browser | 🟡 | separate target-environment gate remains |
+
+Detailed report: `docs/IMPLEMENTATION-AUDIT-2026-10-07-CHEMISTRY-MASTER-CATALOG.md`.
