@@ -401,6 +401,8 @@ export default function TestsPage() {
                 <div className="text-xs text-slate-500">{t.subject}</div>
                 <div className="text-lg font-semibold">{t.title}</div>
                 <div className="text-sm text-slate-500">{t.questionCount || "—"} вопросов</div>
+                {t.moduleTitle && <div className="mt-2 text-xs font-medium text-slate-500">{t.moduleTitle}</div>}
+                {t.topicTitle && <div className="text-xs text-indigo-600">{t.topicTitle}</div>}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link href={`/tests/bank/${t.id}`} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">Банк вопросов</Link><Link href={`/tests/preparation/${t.id}`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-indigo-700">Подготовка</Link><Link href={`/tests/preparation/${t.id}?mode=exam`} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700">Экзамен</Link>
