@@ -933,3 +933,14 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 - 🟡 SpaceWeb runtime gate ещё не подтверждён.
 
 Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS21.md.
+
+
+## 2026-10-06 — Pass 22: Legacy / stub / fake-success audit
+
+- 🟢 admin users/homeworks no longer silently return partial data after primary-store failure;
+- 🟢 unused legacy `ProgressService` removed together with its unused platform import;
+- 🟢 TODO/placeholder/null/empty scans classified semantically rather than mass-editing legitimate UI/empty states;
+- 🟡 historical documentation traces remain and are scheduled for source-of-truth reconciliation;
+- 🟡 runtime/build/browser gate remains unconfirmed.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS22.md.
