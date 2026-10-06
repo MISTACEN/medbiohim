@@ -282,3 +282,17 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 | Runtime/build verification | 🟡 | требует реального target environment |
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS19.md.
+
+
+## 2026-10-06 — Pass 20: Test / Preparation API contract
+
+| Контур | Статус | Состояние |
+|---|---|---|
+| Test answer-key exposure | 🟢 | detail/start/finish/history не отдают immutable answer snapshot |
+| Preparation snapshot exposure | 🟢 | start/get/save/finish скрывают server snapshot |
+| Historical preparation review | 🟢 | completed flow использует immutable snapshot |
+| Progress/history contract | 🟢 | submitted + group-scoped history |
+| Legacy ProgressService | 🟡 | не используется как runtime source, но файл остаётся cleanup trace |
+| Runtime/build/browser verification | 🟡 | следующий gate |
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS20.md.
