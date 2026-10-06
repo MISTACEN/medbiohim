@@ -253,21 +253,11 @@ final class TestRepository
             $params['sid'] = $subjectId;
         }
         if ($groupId !== null && $groupId !== '') {
-            $sql .= ' AND (
-                EXISTS (
-                    SELECT 1 FROM public.schedule_entries se
-                    JOIN public.schedules sch ON sch.id=se.schedule_id
-                    WHERE se.subject_id=t.subject_id AND sch.group_id=:gid AND sch.is_active=true
-                )
-                OR EXISTS (
-                    SELECT 1 FROM public.groups g
-                    WHERE g.id=:gid2
-                      AND (s.course_number IS NULL OR g.course_number IS NULL OR s.course_number=g.course_number)
-                      AND (s.specialty_slug IS NULL OR g.specialty_slug IS NULL OR s.specialty_slug=g.specialty_slug)
-                )
-            )';
-            $params['gid']=$groupId;
-            $params['gid2']=$groupId;
+            // История попыток принадлежит конкретной учебной группе.
+            // Не восстанавливаем принадлежность по subject/schedule: один subject может
+            // одновременно существовать в нескольких группах.
+            $sql .= ' AND a.group_id = :gid';
+            $params['gid'] = $groupId;
         }
         $sql .= ' ORDER BY a.started_at DESC LIMIT 50';
         $stmt = $this->db->prepare($sql);
