@@ -15,6 +15,8 @@ use Medbiohim\Repositories\TestRepository;
 use Medbiohim\Repositories\UserRepository;
 use Medbiohim\Services\B2Storage;
 use Medbiohim\Services\ProgressService;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\AcademicContextException;
 use Medbiohim\Services\ScheduleRestStore;
 use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Support\ContentStore;
@@ -428,55 +430,32 @@ return static function (Router $router): void {
 // --- schedule ---
     $router->get('/api/v1/schedule', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
-        // Supabase is the single source of truth for the live schedule.
-        $items = [];
-        $source = 'db';
+        $groupId = trim((string)($req->query['group_id'] ?? ''));
+        $from = isset($req->query['from']) ? trim((string)$req->query['from']) : '';
+        $to = isset($req->query['to']) ? trim((string)$req->query['to']) : '';
         try {
-            $items = (new ScheduleRepository())->listForUser($req->user->id);
-            $items = is_array($items) ? $items : [];
+            $context = (new AcademicContextResolver())->resolveGroup($req->user->id, $groupId !== '' ? $groupId : null);
+            $groupId = (string)$context['group_id'];
+            $items = (new ScheduleRepository())->listForUser($req->user->id, $from !== '' ? $from : null, $to !== '' ? $to : null);
+            $items = array_values(array_filter($items, static fn($x) => (string)($x['group_id'] ?? '') === $groupId));
+            $source = 'db';
 
-            // Prefer live Supabase REST data when the direct DB path returns no rows.
             if (count($items) === 0) {
                 try {
-                    $restItems = (new ScheduleRestStore())->listForUser(
-                        $req->user->id,
-                        null,
-                        null,
-                        $req->bearerToken()
-                    );
-                    if (is_array($restItems) && count($restItems) > 0) {
-                        $items = $restItems;
-                        $source = 'supabase_rest';
-                    } else {
-                        $source = 'db_empty';
-                    }
+                    $restItems = (new ScheduleRestStore())->listForUser($req->user->id, $from !== '' ? $from : null, $to !== '' ? $to : null, $req->bearerToken());
+                    $items = array_values(array_filter(is_array($restItems) ? $restItems : [], static fn($x) => (string)($x['group_id'] ?? '') === $groupId));
+                    $source = $items !== [] ? 'supabase_rest' : 'db_empty';
                 } catch (\Throwable $restError) {
                     $source = 'unavailable';
                 }
-            } else {
-                $source = 'db';
             }
+
+            Response::success(['items'=>$items,'source'=>$source,'group'=>$context],$req->requestId);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode,$e->getMessage(),$req->requestId,$e->httpStatus,$e->details);
         } catch (\Throwable $e) {
-            try {
-                $items = (new ScheduleRestStore())->listForUser(
-                    $req->user->id,
-                    null,
-                    null,
-                    $req->bearerToken()
-                );
-                $items = is_array($items) ? $items : [];
-                $source = 'supabase_rest';
-            } catch (\Throwable $restError) {
-                $items = [];
-                $source = 'unavailable';
-            }
+            Response::error('SCHEDULE_ERROR','Расписание временно недоступно',$req->requestId,503);
         }
-        if (!is_array($items)) $items = [];
-        $from = isset($req->query['from']) ? trim((string)$req->query['from']) : '';
-        $to = isset($req->query['to']) ? trim((string)$req->query['to']) : '';
-        if ($from !== '') $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') >= $from));
-        if ($to !== '') $items = array_values(array_filter($items, static fn($x) => (string)($x['date'] ?? '') <= $to));
-        Response::success(['items' => $items, 'source' => $source], $req->requestId);
     });
 
     // Compatibility write endpoint used by the legacy frontend API client.
