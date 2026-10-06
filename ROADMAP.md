@@ -1025,3 +1025,28 @@ Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
 Supabase metadata → API media route → SpaceWeb file → HTTP 200/image.
 
 Статус: 🟡 требуется финальная проверка/синхронизация физического media-layer на SpaceWeb.
+
+
+## 2026-10-07 — подтверждён физический Histology media root на SpaceWeb
+
+Получено прямое подтверждение из файлового менеджера SpaceWeb: каталог Histology media физически присутствует под /public_html/... и содержит ожидаемую структуру:
+
+- source-materials/;
+- electronograms/;
+- em/ — alias/совместимость электронограмм;
+- 5_Фотографии препаратов/;
+- дополнительный каталог с URL/Unicode-encoded именованием;
+- README.md.
+
+Это означает, что ранее сформулированный вывод «физические media отсутствуют» был слишком сильным: отсутствие этих бинарных файлов в GitHub и таблице public.files не означает, что их нет на SpaceWeb.
+
+### Текущий статус media
+
+- 🟢 физический Histology media root на SpaceWeb подтверждён;
+- 🟢 структура каталогов соответствует README/content package;
+- 🟡 требуется инвентаризация фактических файлов внутри каталогов и сопоставление с 206 trainer cards / 28 EM / Materials;
+- 🟡 требуется HTTP smoke-test нескольких реальных image/document paths через production API;
+- 🟡 требуется проверить, что backend HISTOLOGY_MEDIA_ROOT указывает именно на этот физический каталог.
+
+Каноническая модель остаётся:
+Supabase Free = metadata/DB → SpaceWeb = physical media → API = controlled delivery.
