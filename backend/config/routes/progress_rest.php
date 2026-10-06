@@ -21,17 +21,20 @@ return static function (Router $r): void {
         $subjectId = trim((string) ($q->query['subject_id'] ?? ''));
         $groupId = trim((string) ($q->query['group_id'] ?? ''));
         try {
+            $resolver = new AcademicContextResolver();
+            $group = $resolver->requireGroup($q->user->id, $groupId !== '' ? $groupId : null);
+            $groupId = (string)$group['group_id'];
             if ($subjectId !== '') {
-                (new AcademicContextResolver())->resolveForUser($q->user->id, $groupId !== '' ? $groupId : null, $subjectId);
+                $resolver->resolveForRequest($q->user->id, $groupId, $subjectId);
             }
             try {
-                $homeworks = (new HomeworkRepository())->listForUser($q->user->id);
+                $homeworks = (new HomeworkRepository())->listForUser($q->user->id, $groupId);
                 if ($subjectId !== '') {
                     $homeworks = array_values(array_filter($homeworks, static fn($h) => (string) ($h['subject_id'] ?? '') === $subjectId));
                 }
             } catch (\Throwable $e) {
                 try {
-                    $homeworks = SupabaseAcademic::homeworksForUser($q->user->id);
+                    $homeworks = SupabaseAcademic::homeworksForUser($q->user->id, $groupId);
                     if ($subjectId !== '') {
                         $homeworks = array_values(array_filter($homeworks, static fn($h) => (string) ($h['subject_id'] ?? '') === $subjectId));
                     }
@@ -45,7 +48,7 @@ return static function (Router $r): void {
                 }
             }
             try {
-                $attempts = (new TestRepository())->attemptsForUser($q->user->id, $subjectId !== '' ? $subjectId : null);
+                $attempts = (new TestRepository())->attemptsForUser($q->user->id, $subjectId !== '' ? $subjectId : null, $groupId);
             } catch (\Throwable $e) {
                 $attempts = [];
             }
