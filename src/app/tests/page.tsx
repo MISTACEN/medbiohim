@@ -18,6 +18,7 @@ import { LoadingBar } from "@/components/ui/LoadingBar";
 import { Confetti } from "@/components/ui/Confetti";
 import { QuestionReport } from "@/components/QuestionReport";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type UiTest = {
   id: string;
@@ -39,6 +40,7 @@ type Q = {
 };
 
 export default function TestsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<UiTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
@@ -57,12 +59,13 @@ export default function TestsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (authLoading) return;
       if (!hasToken()) {
         setLoading(false);
         return;
       }
       try {
-        const res = await listTests();
+        const res = await listTests(undefined, user?.groupId);
         if (cancelled) return;
         if (res.ok) {
           setItems(
@@ -77,7 +80,7 @@ export default function TestsPage() {
             }))
           );
         } else setNote(res.error.message);
-        const history = await listMyAttempts();
+        const history = await listMyAttempts(undefined, user?.groupId);
         if (!cancelled && history.ok) setAttempts(history.data.items || []);
       } catch {
         if (!cancelled) setNote("Не удалось загрузить тесты");
@@ -88,7 +91,7 @@ export default function TestsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, user?.groupId]);
 
   async function openSource(test: UiTest) {
     if (!test.sourceFileId) return;
@@ -102,12 +105,12 @@ export default function TestsPage() {
     setResult(null);
     setPicks({});
     try {
-      const detail = await getTest(id);
+      const detail = await getTest(id, user?.groupId);
       if (!detail.ok) {
         setNote(detail.error.message);
         return;
       }
-      const attempt = await startTestAttempt(id);
+      const attempt = await startTestAttempt(id, user?.groupId);
       if (!attempt.ok) {
         setNote(attempt.error.message);
         return;
