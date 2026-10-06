@@ -99,6 +99,7 @@ return static function (Router $router): void {
             }
             $context=(new AcademicContextResolver())->resolveForRequest($req->user->id,$groupId,$sid!==''?$sid:null);
             $attempt = (new TestRepository())->startAttempt((string) $test['id'], $req->user->id, $context);
+            unset($attempt['question_snapshot']);
             Response::success(['attempt' => array_merge($attempt, ['source' => 'db'])], $req->requestId, 201);
         } catch (AcademicContextException $e) {
             Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
@@ -139,6 +140,7 @@ return static function (Router $router): void {
         try {
             $row = (new TestRepository())->finishAttempt((string) $params['id'], $req->user->id);
             if ($row === null) { Response::error('NOT_FOUND', 'Attempt not found', $req->requestId, 404); return; }
+            unset($row['question_snapshot']);
             Response::success(['attempt' => $row], $req->requestId);
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION_ERROR', $e->getMessage(), $req->requestId, 422);
