@@ -55,7 +55,7 @@ function isCacheableGet(path: string, options: RequestInit) {
 
 export async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   if (!isCacheableGet(path, options)) return api<T>(path, options);
-  const key = cacheUserScope() + "|" + path;
+  const key = path + "|user:" + cacheUserScope();
   const now = Date.now();
   let stale: ApiResult<T> | null = null;
 
@@ -105,7 +105,7 @@ export function invalidateApiCache(prefix = "") {
     try {
       for (let i = sessionStorage.length - 1; i >= 0; i--) {
         const key = sessionStorage.key(i) || "";
-        if (key.startsWith("mb_api_cache:") && (!prefix || key.slice(13).endsWith(prefix) || key.slice(13).includes("|" + prefix))) sessionStorage.removeItem(key);
+        if (key.startsWith("mb_api_cache:") && (!prefix || key.slice(13).startsWith(prefix))) sessionStorage.removeItem(key);
       }
     } catch {}
   }
