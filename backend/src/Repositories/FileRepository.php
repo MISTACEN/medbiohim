@@ -75,13 +75,30 @@ final class FileRepository
 
     public function listForUser(string $userId, int $limit = 50): array
     {
+        // Keep listing semantics aligned with assertAccess(): a group-visible file
+        // must be visible to active members of that group, not only to its uploader.
         $stmt = $this->db->prepare(
-            "SELECT * FROM public.files
-             WHERE status = 'active' AND (uploaded_by = :uid OR visibility = 'public')
-             ORDER BY created_at DESC
+            "SELECT f.* FROM public.files f
+             WHERE f.status = 'active'
+               AND (
+                 f.uploaded_by = :uid
+                 OR f.visibility = 'public'
+                 OR (
+                   f.group_id IS NOT NULL
+                   AND EXISTS (
+                     SELECT 1
+                     FROM public.group_memberships gm
+                     WHERE gm.group_id = f.group_id
+                       AND gm.user_id = :uid2
+                       AND gm.is_active = true
+                   )
+                 )
+               )
+             ORDER BY f.created_at DESC
              LIMIT :lim"
         );
         $stmt->bindValue('uid', $userId, PDO::PARAM_STR);
+        $stmt->bindValue('uid2', $userId, PDO::PARAM_STR);
         $stmt->bindValue('lim', max(1, min($limit, 100)), PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll() ?: [];
