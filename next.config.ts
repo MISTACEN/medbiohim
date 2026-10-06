@@ -10,7 +10,7 @@ import type { NextConfig } from "next";
  * Do not add a second rewrite for /api/v1 here: keeping one proxy path avoids
  * route ambiguity and makes the Vercel -> SpaceWeb architecture explicit.
  */
-const BUILD_FINGERPRINT = "2026-09-25-working-restore";
+const BUILD_FINGERPRINT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.MEDBIOHIM_BUILD || "local";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -49,7 +49,6 @@ const nextConfig: NextConfig = {
   /** Старые пункты меню → Предметы; учебный план имеет собственную страницу. */
   async redirects() {
     return [
-      { source: "/tests", destination: "/subjects", permanent: false },
       { source: "/trainers", destination: "/subjects", permanent: false },
     ];
   },
