@@ -32,7 +32,7 @@ return static function(Router $router): void {
             $sql.=' ORDER BY h.due_date NULLS LAST,h.due_at NULLS LAST,h.created_at DESC';
             $q=$db->prepare($sql);$q->execute($p);$homeworks=$q->fetchAll()?:[];
 
-            $q=$db->prepare("SELECT ar.id,ar.schedule_entry_id,ar.status,ar.note,ar.marked_at,se.date,se.start_time,se.end_time,
+            $q=$db->prepare("SELECT ar.id,ar.schedule_entry_id,ar.status,ar.note,ar.marked_at,se.date,se.start_time,se.end_time,se.subject_id,
                                     COALESCE(se.subject_name,s.name) AS subject_name,s.slug AS subject_slug,s.color_hex,se.type,se.is_makeup
                                FROM public.attendance_records ar
                                JOIN public.schedule_entries se ON se.id=ar.schedule_entry_id
