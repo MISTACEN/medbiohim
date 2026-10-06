@@ -34,12 +34,13 @@ export default function PracticePage() {
   const [page, setPage] = useState(0);
   const pageSize = 40;
   const [noteSaving, setNoteSaving] = useState(false);
+  const [contextSubjectSlug, setContextSubjectSlug] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const initialSlug = params.get("subject_slug") || "";
-    if (initialSlug) setSubjectSlug(initialSlug);
+    if (initialSlug) { setSubjectSlug(initialSlug); setContextSubjectSlug(initialSlug); }
   }, []);
 
   useEffect(() => {
@@ -135,7 +136,7 @@ export default function PracticePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">База вопросов</h1>
+        <h1 className="page-title">База вопросов{subjectSlug ? ` · ${subjects.find((s) => s.subject_slug === subjectSlug)?.subject || subjectSlug}` : ""}</h1>
         <p className="page-subtitle">
           Полная база опубликованных вопросов · {total} найдено · вопросы и правильные ответы доступны без запуска теста
         </p>
@@ -151,9 +152,10 @@ export default function PracticePage() {
         <select
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
           value={subjectSlug}
-          onChange={(e) => setSubjectSlug(e.target.value)}
+          onChange={(e) => { if (!contextSubjectSlug) setSubjectSlug(e.target.value); }}
+          disabled={!!contextSubjectSlug}
         >
-          <option value="">Все предметы</option>
+          {!contextSubjectSlug && <option value="">Все предметы</option>}
           {subjects.map((s) => (
             <option key={s.subject_slug} value={s.subject_slug}>
               {s.subject} ({s.count})
