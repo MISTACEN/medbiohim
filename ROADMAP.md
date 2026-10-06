@@ -847,3 +847,15 @@ Still open:
 - 🟡 final PHP/TypeScript/build/runtime verification after this pass remains required.
 
 Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS15.md.
+## Audit update — 2026-10-06 — Pass 16
+
+Pass 16: 🟡 PARTIAL — preparation start is now bound to the same academic group/subject context as the core test flow.
+- ✅ preparation start resolves canonical group;
+- ✅ preparation start resolves test subject by UUID inside that group;
+- ✅ frontend passes user.groupId into preparation start;
+- ✅ existing session question-membership and strict finish state machine remain enforced;
+- 🟡 bank-progress context propagation remains;
+- 🟡 preparation context snapshot remains;
+- 🟡 server-authoritative scoring remains.
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS16.md.
