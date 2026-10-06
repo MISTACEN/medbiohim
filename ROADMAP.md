@@ -1082,3 +1082,23 @@ Supabase Free = metadata/DB → SpaceWeb = physical media → API = controlled d
 Зафиксированы как постоянные правила: независимые банки по предметам, база вопросов ≠ тест, жалоба → question_id → admin correction, optional AI grading, immutable history snapshots, единый academic context, Supabase Free как DB/metadata + SpaceWeb как physical media, расписание + задания как единый целевой UX, content reconciliation, runtime/deployment truth, strict build gate, timezone и mobile/browser acceptance.
 
 Отдельно отмечены остаточные 🟡 проверки, которые нельзя выдавать за полностью закрытые только по наличию кода в GitHub.
+
+
+## 2026-10-07 — Zero-cost + full-functionality policy
+
+**Новый обязательный архитектурный принцип:** полный запланированный функционал должен сохраняться при **$0 обязательных расходов**.
+
+Бесплатный стек:
+- GitHub Free;
+- Vercel Hobby;
+- SpaceWeb Free;
+- Supabase Free;
+- Backblaze B2 Free allowance.
+
+Правило оптимизации: при лимитах сначала применять caching, pagination, lazy loading, streaming, batching, deduplication, metadata/binary separation и распределение media между SpaceWeb/B2. Не урезать пользовательский сценарий только ради free-tier.
+
+AI остаётся optional: deterministic/local path должен сохранять базовый функционал без платного AI.
+
+Любой новый сервис проходит проверку permanent free vs trial, квоты, egress, поведение после лимита и риск автоматического расхода.
+
+Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
