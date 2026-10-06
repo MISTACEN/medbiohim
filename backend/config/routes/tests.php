@@ -36,6 +36,25 @@ return static function (Router $router): void {
         }
     });
 
+    $router->get('/api/v1/tests/curriculum-map', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            $subjectId = isset($req->query['subject_id']) ? trim((string)$req->query['subject_id']) : null;
+            if ($subjectId === '') $subjectId = null;
+            $groupId = isset($req->query['group_id']) ? trim((string)$req->query['group_id']) : null;
+            if ($groupId === '') $groupId = null;
+            $resolver = new AcademicContextResolver();
+            $group = $resolver->requireGroup($req->user->id, $groupId);
+            if ($subjectId !== null) $resolver->resolveForRequest($req->user->id, (string)$group['group_id'], $subjectId);
+            $map = (new TestRepository())->curriculumMap($subjectId);
+            Response::success(['items'=>$map, 'group'=>$group, 'source'=>'db'], $req->requestId);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
+        } catch (\\Throwable $e) {
+            Response::error('DB_UNAVAILABLE', 'План тем временно недоступен', $req->requestId, 503);
+        }
+    });
+
     $router->get('/api/v1/tests/{id}', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         try {
@@ -53,9 +72,12 @@ return static function (Router $router): void {
             }
             $db = \Medbiohim\Database\Connection::pdo();
             $q = $db->prepare(
-                'SELECT q.id, q.subject_id, q.module_id, q.topic_id, q.type, q.text, q.options, q.difficulty
+                'SELECT q.id, q.subject_id, q.module_id, q.topic_id, q.type, q.text, q.options, q.difficulty,
+                        m.title AS module_title, tp.title AS topic_title
                  FROM public.test_questions tq
                  JOIN public.questions q ON q.id = tq.question_id
+                 LEFT JOIN public.modules m ON m.id = q.module_id
+                 LEFT JOIN public.topics tp ON tp.id = q.topic_id
                  WHERE tq.test_id = :test_id
                    AND q.is_published = true
                    AND q.archived_at IS NULL
