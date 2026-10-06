@@ -51,6 +51,8 @@ return static function (Router $router): void {
             return;
         }
         $limit = (int) ($req->query['limit'] ?? 100);
+        $subjectId = isset($req->query['subject_id']) ? trim((string) $req->query['subject_id']) : null;
+        if ($subjectId === '') $subjectId = null;
         $slug = isset($req->query['subject_slug']) ? (string) $req->query['subject_slug'] : null;
         if ($slug === '') {
             $slug = null;
