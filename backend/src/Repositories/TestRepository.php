@@ -295,6 +295,70 @@ final class TestRepository
         }
     }
 
+    public function retryAnswerGrading(string $attemptId, string $userId, string $questionId): array
+    {
+        $q = $this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid");
+        $q->execute(['id'=>$attemptId,'uid'=>$userId]);
+        $attempt = $q->fetch();
+        if ($attempt === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
+
+        $answerQ = $this->db->prepare("SELECT * FROM public.test_answers WHERE attempt_id=:aid AND question_id=:qid");
+        $answerQ->execute(['aid'=>$attemptId,'qid'=>$questionId]);
+        $answer = $answerQ->fetch();
+        if ($answer === false) throw new RuntimeException('ANSWER_NOT_FOUND');
+        if (!in_array((string)($answer['grading_status'] ?? ''), ['pending','error'], true)) {
+            return $answer;
+        }
+
+        $snapshot = is_string($attempt['question_snapshot'] ?? null)
+            ? (json_decode($attempt['question_snapshot'], true) ?: [])
+            : ($attempt['question_snapshot'] ?? []);
+        $question = null;
+        foreach (is_array($snapshot) ? $snapshot : [] as $item) {
+            if ((string)($item['id'] ?? '') === $questionId) { $question = $item; break; }
+        }
+        if ($question === null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
+
+        $grading = AnswerGradingService::grade($question, $answer['answer_text'] ?? null);
+
+        $this->db->beginTransaction();
+        try {
+            $up = $this->db->prepare(
+                "UPDATE public.test_answers
+                    SET is_correct=:correct, score=:score, grading_status=:status, grading_source=:source,
+                        grading_confidence=:confidence, grading_feedback=:feedback, grading_model=:model,
+                        graded_at=:graded_at
+                  WHERE attempt_id=:aid AND question_id=:qid
+                  RETURNING *"
+            );
+            $up->execute([
+                'correct'=>$grading['is_correct'],'score'=>$grading['score'],
+                'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],
+                'confidence'=>$grading['confidence'],'feedback'=>$grading['feedback'],'model'=>$grading['model'],
+                'graded_at'=>in_array($grading['grading_status'], ['deterministic','ai'], true) ? date('c') : null,
+                'aid'=>$attemptId,'qid'=>$questionId,
+            ]);
+            $updated = $up->fetch();
+            if ($updated === false) throw new RuntimeException('ANSWER_NOT_FOUND');
+
+            if ((string)$attempt['status'] === 'submitted') {
+                $snapshotCount = is_array($snapshot) ? count($snapshot) : 0;
+                $stats = $this->db->prepare("SELECT COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END),0) AS score FROM public.test_answers WHERE attempt_id=:aid");
+                $stats->execute(['aid'=>$attemptId]);
+                $score = (float)($stats->fetchColumn() ?? 0);
+                $percent = $snapshotCount > 0 ? round(($score / $snapshotCount) * 100, 2) : 0;
+                $recalc = $this->db->prepare("UPDATE public.test_attempts SET score=:score, max_score=:max_score, percent=:percent WHERE id=:id AND user_id=:uid");
+                $recalc->execute(['score'=>$score,'max_score'=>(float)$snapshotCount,'percent'=>$percent,'id'=>$attemptId,'uid'=>$userId]);
+            }
+
+            $this->db->commit();
+            return ['question_id'=>$questionId,'answer_text'=>$answer['answer_text']] + $grading;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function finishAttempt(string $attemptId, string $userId, ?float $score = null, ?float $maxScore = null): ?array
     {
         $this->db->beginTransaction();
@@ -312,13 +376,8 @@ final class TestRepository
 
             $snapshot=is_string($existing['question_snapshot']??null)?json_decode($existing['question_snapshot'],true):($existing['question_snapshot']??[]);
             if(!is_array($snapshot))$snapshot=[];
-            $pending=$this->db->prepare("SELECT COUNT(*) FROM public.test_answers WHERE attempt_id=:aid AND grading_status IN ('pending','error')");
-            $pending->execute(['aid'=>$attemptId]);
-            if((int)$pending->fetchColumn()>0){
-                $this->db->rollBack();
-                throw new RuntimeException('AI_GRADING_PENDING');
-            }
-
+            // AI is optional: pending/error answers do not block completion.
+            // They remain visible as unresolved and can be regraded later.
             $maxScore=(float)count($snapshot);
             $answered=$this->db->prepare("SELECT COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END),0) AS score FROM public.test_answers WHERE attempt_id=:aid");
             $answered->execute(['aid'=>$attemptId]);
