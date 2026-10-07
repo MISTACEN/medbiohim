@@ -49,3 +49,15 @@
 - Admin specialized editors remain a product task; raw DB editor exists.
 - Final Code Checks for 84d4684a013660e9c6a8e0d624edaae9ab4f7c13: ✅ green.
 
+
+
+## 2026-10-08 — Histology Lecture 05 content sync
+- Lecture: lec-histology-blood-20261008 — published.
+- Canonical topic: b1000001-0000-4000-8000-000000000007.
+- Preparation cross-links: 8 published blood-smear trainer cards.
+- Electronogram cross-links: neutrophil phagocytosis + blood capillary.
+- Test: «Гистология — общая: кровь», 20 questions.
+- Exam-question IDs recorded in lecture metadata.
+- Migration: database/migrations/20261008_histology_lecture_05_learning_links.sql
+- Detailed record: docs/HISTOLOGY-LECTURE-05-BLOOD-LINKS-2026-10-08.md
+- Open: production/browser smoke and physical media verification.
