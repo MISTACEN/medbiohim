@@ -55,7 +55,7 @@ return static function (Router $router): void {
             Response::success(['items'=>$map, 'group'=>$group, 'source'=>'db'], $req->requestId);
         } catch (AcademicContextException $e) {
             Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'План тем временно недоступен', $req->requestId, 503);
         }
     });
