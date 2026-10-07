@@ -1470,3 +1470,14 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 fixed the Storage Center navigation tuple type so the new storage tab is TypeScript-valid;
 - 🟡 SpaceWeb physical existence/head reconciliation remains the next runtime-dependent storage task;
 - 🟡 quality-gated image/video derivative generation remains unimplemented.
+
+
+## 2026-10-07 — Pass 35: media derivative metadata foundation
+
+- 🟢 added file_variants as a dedicated metadata layer for optimized image/video derivatives;
+- 🟢 variants retain a strict parent files record and unique variant_key;
+- 🟢 variant metadata supports MIME, dimensions, duration, checksum, physical object key and B2 id;
+- 🟢 processing state is explicit (ready/queued/processing/failed/skipped);
+- 🟢 variant RLS inherits the parent file's owner/public/active-group-member visibility boundary;
+- 🟢 live migration applied; no existing binaries were moved, rewritten or deleted;
+- 🟡 physical derivative generation/quality gating is deliberately not claimed yet and is the next implementation stage after runtime capability verification.
