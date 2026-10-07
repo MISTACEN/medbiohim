@@ -1102,3 +1102,35 @@ AI остаётся optional: deterministic/local path должен сохран
 Любой новый сервис проходит проверку permanent free vs trial, квоты, egress, поведение после лимита и риск автоматического расхода.
 
 Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
+
+
+## 2026-10-07 — Admin Data & Storage Control Center
+
+Supabase остаётся единственным основным источником истины. Админская консоль развивается как единый интерфейс управления данными и физическими объектами, без создания второй canonical БД.
+
+### A — Database Console
+- 🟢 `/admin/database`: whitelisted tables, редактирование, импорт/экспорт, audit/rollback;
+- 🟢 добавлен поиск по значениям и пагинация;
+- 🟡 desktop/PC-style интерфейс: дерево таблиц, сортировка, фильтры, закрепление ключей, инспектор строки, связи;
+- 🟡 bulk-edit с dry-run и валидацией;
+- 🟡 health/reconciliation проверки.
+
+### B — File & Storage Center
+- 🟡 SpaceWeb file tree и проверка существования;
+- 🟡 B2 object browser через бесплатный API;
+- 🟡 Supabase metadata ↔ физический объект reconciliation;
+- 🟡 MIME/размер/checksum, дубликаты и orphan-файлы;
+- 🟡 безопасные move/rename/archive/delete;
+- 🟡 отдельная проверка Histology `content/histology` и Materials.
+
+### C — Unified Operations Dashboard
+- 🟡 состояние Supabase/SpaceWeb/B2/Vercel;
+- 🟡 квоты бесплатных ресурсов;
+- 🟡 ошибки интеграций и проверки;
+- 🟡 export/backup snapshots;
+- 🟡 журнал операций и безопасный rollback.
+
+### D — Free-service extensions
+Другие бесплатные сервисы подключаются только как дополнения: кэш, push, поиск, OCR, мониторинг, аналитика, backup и т.п. Они не создают вторую БД и не становятся обязательными для работы MEDBIOHIM.
+
+Подробная архитектура: `docs/ADMIN-DATA-CONSOLE-ARCHITECTURE.md`.
