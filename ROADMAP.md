@@ -1134,3 +1134,169 @@ Supabase остаётся единственным основным источн
 Другие бесплатные сервисы подключаются только как дополнения: кэш, push, поиск, OCR, мониторинг, аналитика, backup и т.п. Они не создают вторую БД и не становятся обязательными для работы MEDBIOHIM.
 
 Подробная архитектура: `docs/ADMIN-DATA-CONSOLE-ARCHITECTURE.md`.
+
+## 2026-10-07 — Consolidated Remaining Implementation Map
+
+Этот блок фиксирует все ранее найденные, но ещё не закрытые направления. Ничего из уже работающего функционала не считается кандидатом на удаление только ради упрощения или free-tier.
+
+### 1. Release / production verification — P0
+- 🟡 подтвердить последний Vercel deployment как READY;
+- 🟡 выполнить production smoke: login → /me → dashboard → logout;
+- 🟡 authenticated smoke для schedule, subjects, tests, preparation, question bank, materials, trainer/atlas и admin;
+- 🟡 подтвердить актуальный backend на SpaceWeb и отсутствие рассинхрона GitHub → SpaceWeb;
+- 🟡 проверить PHP runtime, роутер, env/secrets и OPcache;
+- 🟡 получить фактический CI result для актуального HEAD.
+
+### 2. Auth / security — P0/P1
+- 🟡 полный auth regression после исправлений /api/v1/me;
+- 🟡 refresh/re-login и concurrent 401 recovery;
+- 🟡 production roles/claims/group membership;
+- 🟡 leaked-password protection в Supabase Auth;
+- 🟡 отсутствие bootstrap/admin secrets в production;
+- 🟡 финальный аудит RLS и 44 оставшихся advisor findings по FK-индексам;
+- 🟡 server-side защита всех admin/data mutations.
+
+### 3. Расписание + Задания — единый learning flow
+Целевой UX: Расписание → дата → предмет → занятие → задания/домашняя работа → выполнение/сдача → статус.
+- 🟡 объединить «Задания» и «Расписание» в единый пользовательский сценарий;
+- 🟡 создание/редактирование homework из контекста даты и subject;
+- 🟡 единый статус submitted/done/returned/graded;
+- 🟡 attendance по паре: присутствовал / уважительная / болезнь / неуважительная;
+- 🟡 knowledge gaps по предмету;
+- 🟡 проверить schedule_entries ↔ academic_sessions/year/semester для исторических данных;
+- 🟡 month/week overlap и чередующиеся/объединённые пары;
+- 🟡 mobile agenda mode.
+
+### 4. Histology — physical content completion
+- 🟡 сопоставить все 444 файлов content.zip с физическими файлами SpaceWeb;
+- 🟡 сопоставить 206 trainer cards с реальными image paths;
+- 🟡 проверить все 28 EM и captions;
+- 🟡 проверить Materials → DOCX/JPG/PNG physical objects → API HTTP 200 + MIME;
+- 🟡 закрыть trainer media 404/502;
+- 🟡 atlas → material → document/image → back smoke;
+- 🟡 итоговая матрица тема → лекция → препарат → ЭМ → вопросы → тест;
+- 🟡 не переносить весь архив в Supabase Storage только ради формальной синхронизации.
+
+### 5. Materials / documents
+- 🟡 единый viewer для DOCX/PDF и поддерживаемых форматов;
+- 🟡 сохранить структуру документа, изображения и навигацию;
+- 🟡 material metadata editor;
+- 🟡 связать материал с canonical curriculum topic;
+- 🟡 physical-file reconciliation и orphan detection;
+- 🟡 streaming/lazy loading больших файлов.
+
+### 6. Tests / preparation / Question Library
+- 🟡 открыть и smoke-test каждый published test;
+- 🟡 объединить банк → прохождение → разбор ошибок в единый UX;
+- 🟡 admin quick-edit question/answer/options;
+- 🟡 быстрый переход из жалобы к вопросу и исправлению;
+- 🟡 строгая subject isolation для histology/chemistry и будущих subjects;
+- 🟡 повторно проверить multiple-correct, free text, sequential и history;
+- 🟡 сохранить immutable snapshot semantics при будущих редакторах;
+- 🟡 историческую старую submitted attempt оставить документированным legacy case без выдумывания истории.
+
+### 7. Smart answer grading
+- 🟢 deterministic exact/normalized path;
+- 🟢 spelling/orthography ignored;
+- 🟢 AI optional;
+- 🟡 end-to-end grading на реальном тесте;
+- 🟡 pending/error/retry semantics;
+- 🟡 multiple-choice без AI;
+- 🟡 AI получает только необходимый question + authoritative answer и не раскрывает answer key клиенту.
+
+### 8. Chemistry — completion
+- 🟢 unified 436-item master catalog;
+- 🟢 provenance for two independent methodicals;
+- 🟡 подготовить/проверить оставшиеся 220 open-task answers;
+- 🟡 визуально подтвердить 19 formula-heavy prepared answers по исходным страницам;
+- 🟡 controlled expansion OCR-sensitive archived test sections;
+- 🟡 не заменять production answers неподтверждёнными OCR/formula guesses;
+- 🟡 стабилизировать chemistry tests and experimental UI;
+- 🟡 проверить chemistry AI/provider-dependent flows.
+
+### 9. Trainers / atlas / preparations
+- 🟡 полный browser cycle: start → answer → resume → finish → result → error review;
+- 🟡 randomization без дублей и с одним authoritative correct answer;
+- 🟡 скрытие captions/answers там, где это требуется режимом экзамена/подготовки;
+- 🟡 retry image loading и устойчивость на мобильной сети;
+- 🟡 topic/type/count modes: 10/20/50/custom/all;
+- 🟡 mobile pagination/list/sidebar.
+
+### 10. Admin / CMS / Content Center
+- 🟡 единый Content Center;
+- 🟡 question quick-edit;
+- 🟡 material editor;
+- 🟡 lesson/lecture editor;
+- 🟡 trainer-card editor;
+- 🟡 content version history + visual rollback;
+- 🟡 bulk validation and dry-run imports;
+- 🟡 relation-aware row inspector;
+- 🟡 DB health/reconciliation;
+- 🟡 безопасные bulk operations.
+
+### 11. File & Storage Operations Center
+- 🟡 SpaceWeb tree/browser;
+- 🟡 B2 object browser;
+- 🟡 Supabase metadata ↔ SpaceWeb/B2 object map;
+- 🟡 MIME/size/checksum, duplicate/orphan scan;
+- 🟡 safe move/rename/archive/delete;
+- 🟡 backup/export snapshots;
+- 🟡 provider capacity/quota panel;
+- 🟡 operation log + safe rollback.
+
+### 12. UI / cross-platform acceptance
+- 🟡 iPhone Safari, Android Chrome, Windows Chrome/Edge, Firefox, Yandex, macOS Safari/Chrome;
+- 🟡 устранить iPhone dark/misaligned area;
+- 🟡 mobile admin pagination and dense data tables;
+- 🟡 mobile tests/preparation/trainers/materials;
+- 🟡 loading/subject-loading performance and perceived latency;
+- 🟡 prevent overlapping theory/visual layers in schedule/content;
+- 🟡 one unified design system; Aero Glass remains beta until separately promoted;
+- ⬜ final visual audit after functionality is stable.
+
+### 13. Performance / free-tier optimization
+- 🟡 measure DB/API/storage/egress before moving workloads;
+- 🟡 cache read-heavy metadata;
+- 🟡 pagination for large datasets;
+- 🟡 lazy-load images/documents/trainers;
+- 🟡 streaming for large files;
+- 🟡 deduplicate media and metadata;
+- 🟡 batch requests and verify indexes;
+- 🟡 hard limits / graceful degradation for optional external providers;
+- 🟡 no mandatory paid dependency.
+
+### 14. AI tutor / provider layer
+- 🟡 provider health endpoint with factual runtime status;
+- 🟡 verified primary free/available provider;
+- 🟡 preserve fallback chain;
+- 🟡 diagnose Mistral/OpenRouter/GigaChat/Groq runtime errors with actual response bodies;
+- 🟡 context-aware tutor: subject → topic → question/material;
+- 🟡 AI remains optional for core learning/testing flows.
+
+### 15. Code quality / architecture cleanup
+- 🟡 fix current TypeScript/ESLint issues before removing build-time bypasses (typescript.ignoreBuildErrors, eslint.ignoreDuringBuilds);
+- 🟡 centralize timezone handling;
+- 🟡 inspect remaining legacy learning_sessions consumers before deletion;
+- 🟡 finish duplicate/dead route and service cleanup audits;
+- 🟡 keep API route ownership canonical and documented;
+- 🟡 regression tests for subject isolation, snapshots, reports and academic context.
+
+### 16. Documentation / release discipline
+- 🟢 stable baseline recorded in docs/STABLE-BASELINE-2026-10-07.md;
+- 🟡 every production-impacting change updates roadmap/status and relevant audit;
+- 🟡 maintain free-tier capacity register;
+- 🟡 maintain runtime deployment checklist;
+- 🟡 distinguish repository state, user-observed working state and independently verified runtime;
+- 🟡 create release snapshots before risky migrations.
+
+### 17. Optional free-service aggregation — additions only
+- 🟡 search permanent-free additions for cache/CDN, push, OCR, monitoring, analytics, search and backup;
+- 🟡 each service must have clear quota, egress, retention, sleep/suspension and billing behavior;
+- 🟡 supplementary services may enrich data through API but never replace Supabase canonical truth;
+- 🟡 failure of an optional service must not break core MEDBIOHIM.
+
+### Execution order
+**P0:** production/auth/runtime gate → media delivery → tests/question bank smoke → schedule/homework core.
+**P1:** Histology/Materials reconciliation → admin Content Center → trainer/preparation completion → mobile acceptance → chemistry answer completion.
+**P2:** AI tutor/provider layer → PC-style storage/operations center → performance/free-tier distribution → optional free-service integrations → visual polish.
+**Rule:** no new feature may silently regress the stable baseline; risky changes require a rollback point.
