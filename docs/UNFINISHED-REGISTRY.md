@@ -179,3 +179,17 @@ Image processor не закрывает 1080p/720p/480p video pipeline. Нуже
 
 ### U-37-09 — regression after merge/deploy
 PR #17 пока draft. Нужны CI green, target SpaceWeb smoke и frontend media smoke после стабилизации.
+
+## Pass 38 — media quality implementation continuation — 2026-10-07
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Pixel quality analyzer | 🟢 source | added deterministic pixel-based contrast/detail/blocking measurements |
+| Multiple candidates | 🟢 source | high + compact WebP/AVIF candidates generated when encoders exist |
+| Placeholder scores | 🟢 removed | processor no longer writes hard-coded 1/1/0 quality scores |
+| Content-aware selection | 🟢 source | candidates are scored before MediaQualityPolicy selection |
+| Original | 🟢 | source binary remains untouched |
+| Runtime encoder check | 🟡 | actual GD WebP/AVIF support still requires target runtime |
+| Perceptual validation sample set | 🟡 | real histology/EM/text-heavy acceptance still requires browser/visual runtime check |
+
+Important: the analyzer is an inexpensive deterministic gate, not a substitute for a human/benchmark visual acceptance test. The latter remains in docs/UNVERIFIED-CHECKS-2026-10-07.md.
