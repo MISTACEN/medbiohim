@@ -69,3 +69,13 @@
 - Frontend `LectureRenderer` now normalizes escaped Mermaid fences before parsing.
 - Migration: `database/migrations/20261008_histology_lecture_05_mermaid_escape_fix.sql`.
 - Open: Vercel deployment + iPhone/Safari/desktop browser smoke for actual Mermaid SVG rendering.
+
+## 2026-10-08 — Lecture 05 iPhone/Safari defect repair
+- Source: main
+- Histology scope only: Lecture 05 «Кровь и лимфа»
+- Fixed: malformed Markdown-link regex in LectureRenderer
+- Fixed: MEDBIOHIM preparation photos now resolve through authenticated trainer image pipeline by canonical trainerId
+- Live Supabase Lecture 05 updated; old direct /content/histology photo URLs removed from the five embedded trainer-photo blocks
+- Added migration: database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql
+- WebPath external images remain direct HTTPS sources
+- Runtime gate: Vercel READY + iPhone/Safari smoke still required
