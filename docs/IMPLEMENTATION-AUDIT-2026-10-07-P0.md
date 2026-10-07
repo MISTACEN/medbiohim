@@ -86,3 +86,23 @@ GitHub Actions для проверенного commit отдельного workf
 - Для `5237e993...` Vercel status сейчас `failure` из-за внешнего `build-rate-limit`; deployment не создан/не стал READY.
 - Поэтому health security fix пока проверен на уровне исходника, но не через production runtime.
 - Никаких проверок/функциональности ради обхода free-tier build limit не отключалось.
+
+
+## Verification cycle — Histology Materials physical-file delivery — 2026-10-07
+
+### Confirmed architecture issue
+
+Supabase `materials` records can point to physical Histology files through `content_sources.source_path`, while the actual binary archive lives on SpaceWeb under `content/histology`. The generic `/api/v1/materials` response previously only produced a `download_url` when the file existed in B2. Therefore a valid SpaceWeb-only Histology source could appear in metadata but have no browser-openable URL.
+
+### Fixed
+
+- Added authenticated frontend loader `getMaterialFileUrl()` for `/api/v1/materials/{id}/file`.
+- It refreshes an expired access token, downloads the physical file as a Blob, and creates an object URL.
+- Generic Materials page now falls back to this loader for Histology materials when no B2 `download_url` exists.
+- Existing B2 path remains preferred; no duplication of physical Histology media into Supabase/B2 is required.
+- Existing dedicated `HistologyMaterials` component already uses the authenticated `fetchMaterialFile()` path.
+- commits: `969c546d83024fe533e364ca1990f2cc1ed3b3d6`, `51ac7792019e8a5e7b724711d51a2080c164d07f`.
+
+### Verification gate
+
+Physical SpaceWeb files still require target-runtime HTTP verification. Vercel's current build-rate limit prevents a new deployment for these latest commits, so this fix is currently source-verified, not production-runtime-verified.
