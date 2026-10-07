@@ -47,14 +47,22 @@ function parseBlocks(md: string) {
 }
 
 function mdToHtml(md: string): string {
-  let s = escapeHtml(md);
-  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_a, body) => `<div class="lec-math">\\[${body.trim()}\\]</div>`);
-  s = s.replace(/(?<!\$)\$(?!\$)([^$\n]+)\$(?!\$)/g, (_a, body) => `<span class="lec-math">\\(${body}\\)</span>`);
+  // Lecture bodies are stored as Markdown. Keep the renderer deterministic and
+  // safe, while also tolerating older imports that contain literal HTML tags.
+  let s = escapeHtml(String(md || "").replace(/\r\n?/g, "\n"));
+
+  // Older lecture imports may contain already-materialized heading/block tags.
+  // Only re-enable the small, known-safe block/inline tag set.
+  s = s.replace(/&lt;\/?(h[1-4]|p|div|br|strong|b|em|i|u|s|blockquote|ul|ol|li|hr)(?:\s+[^&]*?)?&gt;/gi, (tag) =>
+    tag.replace(/^&lt;/i, "<").replace(/&gt;$/i, ">")
+  );
+
+  s = s.replace(/\$\$([\\s\\S]+?)\$\$/g, (_a, body) => `<div class="lec-math">\\\\[${body.trim()}\\\\]</div>`);
+  s = s.replace(/(?<!\$)\$(?!\$)([^$\n]+)\$(?!\$)/g, (_a, body) => `<span class="lec-math">\\\\(${body}\\\\)</span>`);
   s = s.replace(/^### (.+)$/gm, "<h3>$1</h3>");
   s = s.replace(/^## (.+)$/gm, "<h2>$1</h2>");
   s = s.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-  s = s.replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>");
-  // Render safe Markdown links used by lecture cross-links.
+  s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_a, label, href) => {
     const target = String(href || "");
     const safe = target.startsWith("/") || /^https?:\/\//i.test(target);
@@ -62,26 +70,27 @@ function mdToHtml(md: string): string {
       ? "<a href=\"" + target + "\" target=\"" + (target.startsWith("/") ? "_self" : "_blank") + "\" rel=\"noreferrer\">" + label + "</a>"
       : label;
   });
-  s = s.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
-  s = s.replace(/^- (.+)$/gm, "<li>$1</li>");
+  s = s.replace(/^>\s+(.+)$/gm, "<blockquote>$1</blockquote>");
+  s = s.replace(/^-\s+(.+)$/gm, "<li>$1</li>");
   s = s.replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`);
-  s = s.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
+  s = s.replace(/^\d+\.\s+(.+)$/gm, "<li>$1</li>");
   s = s.replace(/(?:^\|.+\|\n?)+/gm, (table) => {
     const rows = table.trim().split("\n").filter(Boolean);
     if (rows.length < 2) return table;
-    const parseRow = (r: string) =>
-      r
-        .split("|")
-        .slice(1, -1)
-        .map((c) => c.trim());
+    const parseRow = (r: string) => r.split("|").slice(1, -1).map((c) => c.trim());
+    if (!/^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$/.test(rows[1])) return table;
     const head = parseRow(rows[0]);
     const bodyRows = rows.slice(2).map(parseRow);
     const thead = `<thead><tr>${head.map((c) => `<th>${c}</th>`).join("")}</tr></thead>`;
     const tbody = `<tbody>${bodyRows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
     return `<div class="lec-table-wrap"><table class="lec-table">${thead}${tbody}</table></div>`;
   });
-  s = s.replace(/\n\n/g, "</p><p>");
-  return `<p>${s}</p>`;
+
+  // Do not wrap the entire result in <p>: headings, tables, lists and blockquotes
+  // are block-level elements and become malformed when nested inside <p>.
+  s = s.replace(/\n{3,}/g, "\n\n");
+  s = s.replace(/\n\n/g, "</div><div>");
+  return `<div>${s}</div>`;
 }
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
