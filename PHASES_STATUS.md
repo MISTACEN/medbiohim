@@ -651,3 +651,7 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Generic Materials | 🟢 | specialty filtering already present |
 | Direct viewer bypass | 🟢 | authenticated user without MBH can no longer use the Histology viewer endpoint |
 | Physical media runtime | 🟡 | final SpaceWeb HTTP/browser smoke remains |
+
+| File & Storage Center foundation | 🟢 source | checksum/provider/processing metadata + non-destructive reference audit UI/API implemented |
+| Physical object reconciliation | 🟡 | B2/SpaceWeb existence/head checks still required |
+| Media optimization pipeline | 🟡 | quality-gated image/video derivatives remain next implementation stage |
