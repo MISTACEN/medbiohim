@@ -93,7 +93,7 @@ final class SearchService
             );
             foreach ($rows as $row) {
                 $slug = trim((string) ($row['subject_slug'] ?? ''));
-                if (!$subjectAllowed($slug)) continue;
+                if (!$subjectAllowed($slug, (string) ($row['subject_id'] ?? ''))) continue;
                 if ($slug === 'histology' && (string) ($row['specialty_slug'] ?? 'mbh') !== 'mbh') continue;
                 $prep = is_array($row['preparation'] ?? null) ? $row['preparation'] : [];
                 $question = is_array($row['question'] ?? null) ? $row['question'] : [];
@@ -122,7 +122,7 @@ final class SearchService
             foreach ($subjects as $subject) {
                 $name = trim((string) ($subject['name'] ?? ''));
                 $slug = trim((string) ($subject['slug'] ?? ''));
-                if (!$subjectAllowed($slug)) continue;
+                if (!$subjectAllowed($slug, (string) ($subject['id'] ?? ''))) continue;
                 $hay = mb_strtolower($name . ' ' . (string) ($subject['description'] ?? ''));
                 if (!str_contains($hay, $needle)) continue;
                 $hits[] = $this->hit(
@@ -146,7 +146,7 @@ final class SearchService
                 foreach ($plans as $row) {
                     $payload = is_array($row['payload'] ?? null) ? $row['payload'] : [];
                     $slug = trim((string) ($payload['subject_slug'] ?? preg_replace('/^subject_plan:/', '', (string) ($row['key'] ?? ''))));
-                    if (!$subjectAllowed($slug)) continue;
+                    if (!$subjectAllowed($slug, (string) ($payload['subject_id'] ?? ''))) continue;
                     $subjectName = trim((string) ($payload['subject'] ?? $slug));
                     $hay = mb_strtolower($subjectName . ' ' . json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                     if (!str_contains($hay, $needle)) continue;
