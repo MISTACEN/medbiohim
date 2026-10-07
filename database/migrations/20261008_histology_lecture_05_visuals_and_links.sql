@@ -77,4 +77,5 @@ $append$),
 ),
 updated_at = now()
 where key='lectures'
-  and payload->'items'->0->>'id'='lec-histology-blood-20261008';
+  and payload->'items'->0->>'id'='lec-histology-blood-20261008'
+  and coalesce(payload->'items'->0->>'body_md','') not like '%## 16. Фотографии для визуального закрепления%';
