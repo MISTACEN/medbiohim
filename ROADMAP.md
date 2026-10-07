@@ -1459,3 +1459,14 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 live DB default corrected to `storage_provider='unknown'` for legacy/unclassified files; B2 is set only when `b2_file_id` is present;
 - 🟡 physical B2/SpaceWeb object reconciliation is still not performed automatically — this is the next storage pass;
 - 🟡 media optimization worker/derivatives are not implemented yet.
+
+## 2026-10-07 — Pass 34: complete B2 reconciliation foundation
+
+- 🟢 B2 reconciliation now builds its metadata keyset independently of the UI item limit;
+- 🟢 B2 listing is paginated through all available object pages instead of stopping at the first 5000 objects;
+- 🟢 audit now distinguishes matched B2 objects, B2 orphan objects, and active DB B2-backed records missing from B2;
+- 🟢 B2 orphan detection is restricted to B2-backed metadata and no longer treats SpaceWeb/unknown files as B2 records;
+- 🟢 admin Storage Center exposes both “нет в B2” and “нет в БД” results;
+- 🟢 fixed the Storage Center navigation tuple type so the new storage tab is TypeScript-valid;
+- 🟡 SpaceWeb physical existence/head reconciliation remains the next runtime-dependent storage task;
+- 🟡 quality-gated image/video derivative generation remains unimplemented.
