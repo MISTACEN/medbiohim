@@ -58,7 +58,7 @@ function mdToHtml(md: string): string {
     const target = String(href || "");
     const safe = target.startsWith("/") || /^https:\\/\\//i.test(target) || /^http:\\/\\//i.test(target);
     return safe
-      ? \`<a href="${target}" target="${target.startsWith("/") ? "_self" : "_blank"}" rel="noreferrer">${label}</a>\`
+      ? "<a href=\"" + target + "\" target=\"" + (target.startsWith("/") ? "_self" : "_blank") + "\" rel=\"noreferrer\">" + label + "</a>"
       : label;
   });
   s = s.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
