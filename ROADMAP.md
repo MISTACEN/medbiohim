@@ -1440,3 +1440,12 @@ Canonical metadata остаётся в Supabase, физические бинар
 - security advisor повторно проверен: этот file-policy gap исчез; остаётся отдельное предупреждение Leaked Password Protection.
 
 🟡 Требуется target-runtime authorization smoke: owner, public file, same-group member, inactive member, unrelated user.
+
+
+## 2026-10-07 — Pass 31: Histology material viewer access
+
+🟢 Закрыт ещё один access-boundary gap: `/api/v1/materials/{id}/file` теперь проверяет не только `subject_slug=histology`, но и специальность пользователя (`mbh`) перед чтением физического файла с SpaceWeb.
+
+Это синхронизирует viewer с generic Materials access policy и не оставляет прямой authenticated URL обходом specialty boundary.
+
+🟡 Финальный target-runtime smoke всё ещё обязателен: разрешённый MBH user → DOC/DOCX/photo; пользователь без MBH → 403.
