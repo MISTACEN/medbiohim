@@ -1317,3 +1317,16 @@ Production gate пока не закрыт: Vercel сообщает `build-rate-
 - 🟢 Histology Materials now have an authenticated SpaceWeb physical-file fallback when no B2 download URL exists; this preserves the canonical architecture `Supabase metadata + SpaceWeb binary`.
 - 🟡 Latest commits after `59e38d9...` are currently blocked from a new Vercel deployment by `build-rate-limit`; they remain source-verified only until a READY deployment is available.
 - 🟡 Production authenticated smoke and SpaceWeb runtime verification remain open.
+
+
+## 2026-10-07 — semantic verification cycle
+
+### Security
+- 🟢 `public.chemistry_source_documents` RLS enabled in live Supabase.
+- 🟢 Authenticated read-only policy added; server-side writes remain protected.
+- 🟡 Supabase Auth Leaked Password Protection remains a separate hardening item.
+
+### Subject/question isolation
+- 🟡 Do not make `subjects.slug` globally unique: current data intentionally contains repeated slugs across academic contexts.
+- 🟡 Next implementation gate: question/search boundaries must prefer authoritative `subject_id` / academic context and use slug only as a human-facing alias.
+- 🟢 Existing histology ticket banks remain untouched by this cycle.
