@@ -2,7 +2,7 @@
 
 > Единый план проекта и источник порядка по задачам.  
 > Обновляется вместе с изменениями в коде/БД.  
-> Дата актуализации: **2026-10-06**.
+> Дата актуализации: **2026-10-07**.
 
 ## Как читать статус
 
@@ -1399,3 +1399,10 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 Live DB подтверждает, что все текущие ticket banks имеют согласованный ticket_banks.subject_id = exam_questions.subject_id; для гистологии 366 опубликованных вопросов относятся к canonical subject UUID 977d78ca-7a58-4b0a-9e93-29d8e03f6946.
 - 🟡 Frontend subject context должен передавать subject_id там, где контекст уже известен; старые slug-only входы сохраняются как backward-compatible fallback.
 - 🟡 Target-runtime smoke остаётся отдельным gate: текущие новые commits ещё не получили READY Vercel deployment из-за build-rate-limit.
+
+
+## 2026-10-07 — Pass 28A: Question Library UUID propagation
+
+🟢 Предметный контекст в Question Library теперь может передавать subject_id; если старый вход содержит только subject_slug, frontend пытается безопасно вывести UUID только когда для этого slug существует ровно один subject_id в каталоге вопросов. При неоднозначности система не угадывает предмет и оставляет выбор пользователю.
+
+🟡 Полный subject-id propagation по всем старым frontend entry points остаётся отдельным compatibility cleanup; новые boundaries уже принимают UUID.
