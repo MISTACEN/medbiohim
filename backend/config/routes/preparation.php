@@ -332,13 +332,12 @@ return static function (Router $router): void {
    $a=$db->prepare("select * from public.test_preparation_results where session_id=:sid");
    $a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
    $rowsById=[];foreach($rows as $row)$rowsById[(string)$row['question_id']]=$row;
-   $pending=array_values(array_filter($rows,static fn($row)=>in_array((string)($row['grading_status']??'deterministic'),['pending','error'],true)));
-   if($pending){Response::error('AI_GRADING_PENDING','Не все открытые ответы удалось надёжно проверить. Повторите сохранение этих ответов и завершите попытку ещё раз.',$r->requestId,409,['pending_count'=>count($pending)]);return;}
-
+   // AI is optional: unresolved grading never blocks finishing. Pending/error rows can be retried later.
    $total=count($finishIds);$answered=count($rows);$correct=0;$topic=[];
    foreach($finishIds as $qid){
     $snap=$snapshotById[$qid]??[];
     $row=$rowsById[$qid]??null;
+    if($row && in_array((string)($row['grading_status']??'deterministic'),['pending','error'],true))$unresolved++;
     if($row && (bool)$row['is_correct'])$correct++;
     $topicId=$snap['topic_id']??'unknown';
     $topicName=$snap['topic_name']??'Без темы';
@@ -355,7 +354,7 @@ return static function (Router $router): void {
    if(is_array($completedSession))unset($completedSession['question_snapshot']);
    Response::success([
     'session'=>$completedSession,
-    'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>max(0,$answered-$correct),'unanswered'=>max(0,$total-$answered),'percent'=>$percent,'topics'=>array_values($topic)],
+    'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>max(0,$answered-$correct-$unresolved),'unresolved'=>min($answered,$unresolved),'unanswered'=>max(0,$total-$answered),'percent'=>$percent,'topics'=>array_values($topic)],
     'errors'=>$rows
    ],$r->requestId);
   }catch(\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
@@ -388,7 +387,7 @@ return static function (Router $router): void {
       'question'=>$snap['text']??$snap['body']??'',
       'student_answer'=>$x['answer_text'],
       'correct_answer'=>$answerSnapshot['answer']??($snap['answer']??null),
-      'is_correct'=>(bool)$x['is_correct'],
+      'is_correct'=>$x['is_correct'] === null ? null : (bool)$x['is_correct'],
       'module'=>$snap['module_name']??null,
       'topic'=>$snap['topic_name']??null
     ];
