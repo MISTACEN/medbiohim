@@ -201,8 +201,8 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
   const normalizedMarkdown = useMemo(() => {
     const source = markdown || "";
     return source
-      .replace(new RegExp("\\\\\\`", "g"), "`")
-      .replace(/\\\\\"/g, '"');
+      .split("\\`").join("`")
+      .split('\\\"').join('"');
   }, [markdown]);
   const parts = useMemo(() => parseBlocks(normalizedMarkdown), [normalizedMarkdown]);
 
