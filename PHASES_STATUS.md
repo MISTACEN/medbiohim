@@ -670,3 +670,13 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 Лекция теперь строит не только теоретический текст, а маршрут занятия: **теория → препарат → признак → ЭМ → тест → экзаменационный вопрос**.
 
 Важно: существующие trainer-карточки не были переназначены на другой plan_topic только ради этой связи. Cross-link не меняет canonical учебную принадлежность контента.
+
+
+## 2026-10-08 — Histology Lecture 05 / Mermaid rendering repair
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Mermaid source | 🟢 | 11 Mermaid-блоков в `body_md` проверены; лишнее экранирование обратных кавычек и кавычек удалено |
+| LectureRenderer | 🟢 | добавлена нормализация импортированного Markdown перед разбором блоков |
+| Live Supabase content | 🟢 | `escaped_backticks=0`, `escaped_quotes=0`, `mermaid_blocks=11` |
+| Production/browser smoke | 🟡 | требуется после публикации нового frontend commit |
