@@ -149,3 +149,33 @@ A remaining item can be marked ✅ only after:
 - Histology media needs real target-environment B2/SpaceWeb smoke test.
 - AI provider availability depends on runtime credentials/network.
 - Dedicated polished editors and full visual version history remain product polish.
+
+
+## 2026-10-07 — отдельный реестр непроверенного после Pass 37
+
+### U-37-01 — target-runtime media capabilities
+Проверить на фактическом SpaceWeb runtime PHP/GD/Imagick/WebP/AVIF через admin capabilities. Наличие кода не считать production-подтверждением.
+
+### U-37-02 — реальный derivative E2E
+На реальном B2/Histology изображении проверить processing endpoint, HTTP 200, MIME, размеры, checksum, `file_variants`, физический B2 object и неизменность original.
+
+### U-37-03 — perceptual quality scoring
+Текущий quality gate использует безопасные placeholder scores для generated candidates. Реальные text/detail/artifact measurements ещё не реализованы.
+
+### U-37-04 — automatic worker/queue
+Сейчас processing ручной. Очередь/worker ещё не подключены; нужен реальный runtime-механизм без fake async.
+
+### U-37-05 — derivative consumption
+Проверить Materials, Atlas, Trainer и Homework attachments: derivative при наличии, original fallback, mobile/desktop и основные браузеры.
+
+### U-37-06 — video derivatives
+Image processor не закрывает 1080p/720p/480p video pipeline. Нужен отдельный ffmpeg/ffprobe worker и compatibility validation.
+
+### U-37-07 — EXIF/GPS stripping
+Требование есть в media policy, но отдельная runtime-проверка результата ещё не выполнена.
+
+### U-37-08 — physical media reconciliation
+Полная сверка archive → SpaceWeb/B2 → DB files → file_variants → API → HTTP 200 ещё не завершена. Metadata-only наличие не считать доказательством.
+
+### U-37-09 — regression after merge/deploy
+PR #17 пока draft. Нужны CI green, target SpaceWeb smoke и frontend media smoke после стабилизации.
