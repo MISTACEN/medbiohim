@@ -17,12 +17,13 @@ import { ChemRichText } from "@/components/chemistry/ChemRichText";
 
 export default function PracticePage() {
   const [subjects, setSubjects] = useState<
-    Array<{ subject: string; subject_slug: string; count: number }>
+    Array<{ subject: string; subject_slug: string; subject_id?: string | null; count: number }>
   >([]);
   const [items, setItems] = useState<BankQuestion[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [subjectSlug, setSubjectSlug] = useState("");
+  const [subjectId, setSubjectId] = useState("");
   const [kind, setKind] = useState("");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<BankQuestion | null>(null);
@@ -40,14 +41,22 @@ export default function PracticePage() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const initialSlug = params.get("subject_slug") || "";
+    const initialId = params.get("subject_id") || "";
+    if (initialId) setSubjectId(initialId);
     if (initialSlug) { setSubjectSlug(initialSlug); setContextSubjectSlug(initialSlug); }
   }, []);
 
   useEffect(() => {
     listQuestionSubjects().then((res) => {
-      if (res.ok) setSubjects(res.data.items);
+      if (!res.ok) return;
+      const next = res.data.items || [];
+      setSubjects(next);
+      if (!subjectId && contextSubjectSlug) {
+        const matches = next.filter((s: any) => String(s.subject_slug || "") === contextSubjectSlug && s.subject_id);
+        if (matches.length === 1) setSubjectId(String(matches[0].subject_id));
+      }
     });
-  }, []);
+  }, [contextSubjectSlug, subjectId]);
 
 
   useEffect(() => {
@@ -61,7 +70,8 @@ export default function PracticePage() {
     (async () => {
       setLoading(true);
       const res = await listQuestions({
-        subject_slug: subjectSlug || undefined,
+        subject_id: subjectId || undefined,
+        subject_slug: subjectId ? undefined : (subjectSlug || undefined),
         kind: kind || undefined,
         q: q || undefined,
         limit: pageSize,
@@ -81,9 +91,9 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [subjectSlug, kind, q, page]);
+  }, [subjectId, subjectSlug, kind, q, page]);
 
-  useEffect(() => { setPage(0); }, [subjectSlug, kind, q]);
+  useEffect(() => { setPage(0); }, [subjectId, subjectSlug, kind, q]);
 
   async function openQuestion(id: string) {
     setShowAnswer(true);
@@ -136,7 +146,7 @@ export default function PracticePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">База вопросов{subjectSlug ? ` · ${subjects.find((s) => s.subject_slug === subjectSlug)?.subject || subjectSlug}` : ""}</h1>
+        <h1 className="page-title">База вопросов{subjectSlug ? ` · ${subjects.find((s) => String(s.subject_id || "") === subjectId || s.subject_slug === subjectSlug)?.subject || subjectSlug}` : ""}</h1>
         <p className="page-subtitle">
           Полная база опубликованных вопросов · {total} найдено · вопросы и правильные ответы доступны без запуска теста
         </p>
@@ -151,13 +161,13 @@ export default function PracticePage() {
       <div className="grid gap-3 md:grid-cols-3">
         <select
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-          value={subjectSlug}
-          onChange={(e) => { if (!contextSubjectSlug) setSubjectSlug(e.target.value); }}
+          value={subjectId || subjectSlug}
+          onChange={(e) => { if (!contextSubjectSlug) (() => { const value = e.target.value; const item = subjects.find((s) => String(s.subject_id || s.subject_slug) === value); setSubjectId(String(item?.subject_id || "")); setSubjectSlug(String(item?.subject_slug || value)); })(); }}
           disabled={!!contextSubjectSlug}
         >
           {!contextSubjectSlug && <option value="">Все предметы</option>}
           {subjects.map((s) => (
-            <option key={s.subject_slug} value={s.subject_slug}>
+            <option key={String(s.subject_id || s.subject_slug)} value={String(s.subject_id || s.subject_slug)}>
               {s.subject} ({s.count})
             </option>
           ))}
