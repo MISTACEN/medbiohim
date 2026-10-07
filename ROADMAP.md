@@ -1367,3 +1367,21 @@ Canonical metadata остаётся в Supabase, физические бинар
 5. Document/PDF optimization.
 6. Дедупликация и storage/egress metrics.
 7. Финальный visual/quality regression на iPhone/Android/desktop.
+
+
+## 2026-10-07 — Media quality safety rule
+
+Для Media Optimization Pipeline зафиксировано обязательное правило **content-aware multi-candidate compression**:
+
+- 🟢 качество нельзя выбирать одной глобальной настройкой;
+- 🟢 изображения классифицируются по назначению/содержимому: фото, микропрепарат/ЭМ, атлас, схема, скан, text-heavy, mixed;
+- 🟢 для значимых изображений создаются несколько quality/compression candidates;
+- 🟢 quality gate отдельно проверяет мелкий текст, подписи, формулы, границы и учебные детали;
+- 🟢 выбирается минимальный по размеру кандидат, который проходит quality/readability threshold;
+- 🟢 если кандидат не проходит — автоматически выбирается более качественный;
+- 🟢 если ни один derivative не проходит — используется оригинал;
+- 🟢 при невозможности надёжно подтвердить качество нельзя рисковать читаемостью: fallback идёт на более качественную версию/original;
+- 🟢 original не удаляется ради экономии веса, если он нужен для zoom, восстановления или архива;
+- 🟡 реализация этого quality gate ещё не считается DONE до runtime/visual проверки на реальных MEDBIOHIM материалах.
+
+Полная политика: `docs/MEDIA-QUALITY-DELIVERY-POLICY.md`.
