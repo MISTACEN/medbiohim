@@ -1406,3 +1406,23 @@ Canonical metadata остаётся в Supabase, физические бинар
 🟢 Предметный контекст в Question Library теперь может передавать subject_id; если старый вход содержит только subject_slug, frontend пытается безопасно вывести UUID только когда для этого slug существует ровно один subject_id в каталоге вопросов. При неоднозначности система не угадывает предмет и оставляет выбор пользователю.
 
 🟡 Полный subject-id propagation по всем старым frontend entry points остаётся отдельным compatibility cleanup; новые boundaries уже принимают UUID.
+
+
+## 2026-10-07 — Pass 29: Smart grading optionality/state machine
+
+🟢 Исправлена семантика smart grading по всей цепочке обычного теста и preparation:
+
+- deterministic MCQ/open normalized match остаётся первым и не вызывает AI без необходимости;
+- орфография/опечатки не являются критерием correctness;
+- AI остаётся optional fallback для смысловой проверки;
+- pending/error от AI больше не блокируют завершение теста или preparation;
+- unresolved answers сохраняются с grading_status и могут быть повторно проверены после завершения;
+- обычные тесты получили retry endpoint для pending/error answer;
+- preparation получила retry endpoint для одного или всех unresolved answers;
+- Test/Preparation UI теперь использует server-authoritative grading, а не локальное сравнение как источник результата;
+- для unresolved ответа UI показывает состояние и кнопку повторной проверки;
+- после regrade результат обычной попытки пересчитывается;
+- preparation сохраняет unresolved count отдельно от wrong count;
+- AI review после завершения preparation остаётся отдельной необязательной аналитикой и не влияет на факт завершения.
+
+🟡 Runtime gate остаётся: требуется реальный authenticated smoke на SpaceWeb/Vercel с детерминированным, semantic-AI, AI-error и retry сценариями.
