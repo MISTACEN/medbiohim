@@ -59,7 +59,6 @@ final class FileRepository
                AND (
                  f.uploaded_by=:uid
                  OR f.visibility='public'
-                 OR (f.group_id IS NULL)
                  OR EXISTS (
                     SELECT 1 FROM public.group_memberships gm
                     WHERE gm.group_id=f.group_id AND gm.user_id=:uid2 AND gm.is_active=true
