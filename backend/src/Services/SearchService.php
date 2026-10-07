@@ -7,7 +7,7 @@ use Medbiohim\Support\SupabaseRest;
 
 final class SearchService
 {
-    public function search(string $query, int $limit = 30, ?string $subjectSlug = null, ?string $type = null): array
+    public function search(string $query, int $limit = 30, ?string $subjectSlug = null, ?string $type = null, ?string $subjectId = null): array
     {
         $query = trim($query);
         $limit = max(1, min(100, $limit));
@@ -18,6 +18,7 @@ final class SearchService
         $needle = mb_strtolower($query);
         $subjectSlug = $subjectSlug !== null && trim($subjectSlug) !== '' ? trim($subjectSlug) : null;
         $type = $type !== null && trim($type) !== '' ? trim($type) : null;
+        $subjectId = $subjectId !== null && trim($subjectId) !== '' ? trim($subjectId) : null;
 
         $subjects = SupabaseRest::select(
             'subjects?is_active=eq.true&select=id,name,slug,description&order=name.asc&limit=500'
@@ -26,7 +27,8 @@ final class SearchService
         foreach ($subjects as $subject) {
             $subjectById[(string) ($subject['id'] ?? '')] = $subject;
         }
-        $subjectAllowed = function (?string $slug) use ($subjectSlug): bool {
+        $subjectAllowed = function (?string $slug, ?string $rowSubjectId = null) use ($subjectSlug, $subjectId): bool {
+            if ($subjectId !== null) return (string) $rowSubjectId === $subjectId;
             return $subjectSlug === null || (string) $slug === $subjectSlug;
         };
 
@@ -39,7 +41,7 @@ final class SearchService
             foreach ($rows as $row) {
                 $subject = $subjectById[(string) ($row['subject_id'] ?? '')] ?? [];
                 $slug = isset($subject['slug']) ? (string) $subject['slug'] : '';
-                if (!$subjectAllowed($slug)) continue;
+                if (!$subjectAllowed($slug, (string) ($row['subject_id'] ?? ''))) continue;
                 $title = trim((string) ($row['text'] ?? ''));
                 $topic = trim((string) ($row['topic'] ?? ''));
                 $hay = mb_strtolower($title . ' ' . $topic);
@@ -65,7 +67,7 @@ final class SearchService
             );
             foreach ($rows as $row) {
                 $slug = trim((string) ($row['subject_slug'] ?? ''));
-                if (!$subjectAllowed($slug)) continue;
+                if (!$subjectAllowed($slug, (string) ($subject['id'] ?? ''))) continue;
                 $title = trim((string) ($row['text'] ?? ''));
                 $topic = trim((string) ($row['topic'] ?? ''));
                 $hay = mb_strtolower($title . ' ' . $topic . ' ' . (string) ($row['subject_name'] ?? ''));
