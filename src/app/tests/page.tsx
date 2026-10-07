@@ -10,6 +10,7 @@ import {
   getTest,
   startTestAttempt,
   finishAttempt,
+  retryTestAnswerGrading,
   saveTestAnswer,
   getFile,
   listMyAttempts,
@@ -182,6 +183,22 @@ export default function TestsPage() {
     }
   }
 
+  async function retryGrading(questionId: string, index: number) {
+    if (!active) return;
+    setBusy(true);
+    try {
+      const res = await retryTestAnswerGrading(active.attemptId, questionId);
+      if (!res.ok) {
+        setNote(res.error.message);
+        return;
+      }
+      setGrading((prev) => ({ ...prev, [index]: res.data?.answer || prev[index] }));
+      setNote("Ответ повторно проверен.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit() {
     if (!active) return;
     setBusy(true);
@@ -309,6 +326,11 @@ export default function TestsPage() {
                 }
                 {grading[i].grading_confidence != null ? " · уверенность " + Math.round(Number(grading[i].grading_confidence) * 100) + "%" : ""}
                 {grading[i].feedback ? <div className="mt-1">{String(grading[i].feedback)}</div> : null}
+                {grading[i].is_correct == null && (grading[i].grading_status === "pending" || grading[i].grading_status === "error") ? (
+                  <button type="button" disabled={busy} onClick={() => void retryGrading(q.id, i)} className="mt-2 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 font-semibold text-amber-800 disabled:opacity-50">
+                    Повторить проверку
+                  </button>
+                ) : null}
               </div>
             )}
             <QuestionReport questionId={q.id} />
