@@ -1475,3 +1475,16 @@ Canonical metadata остаётся в Supabase, физические бинар
 🟡 Production/browser smoke для лекции и физического media остаётся открытым до подтверждения целевого окружения.
 
 Документация: docs/HISTOLOGY-LECTURE-05-BLOOD-LINKS-2026-10-08.md.
+
+
+## 2026-10-08 — Histology Lecture 05: Mermaid rendering repair
+
+🟢 Исправлена проблема, из-за которой Mermaid-схемы Lecture 05 отображались как текстовый блок кода. Причина найдена в импортированном `body_md`: Markdown был сохранён с лишним уровнем escaping для обратных кавычек и кавычек внутри Mermaid.
+
+- live Supabase content нормализован;
+- проверено: 11 Mermaid-блоков распознаются как реальные ```mermaid fences;
+- проверено: лишних escaped backticks/quotes больше нет;
+- `LectureRenderer` теперь нормализует такой legacy/imported Markdown до `parseBlocks`, не меняя обычные backslashes;
+- добавлена воспроизводимая миграция `database/migrations/20261008_histology_lecture_05_mermaid_escape_fix.sql`.
+
+🟡 Осталось: target-runtime/browser smoke после доставки frontend commit — проверить iPhone/Safari и desktop, что все 11 схем реально превращаются в SVG Mermaid, а таблицы и обычный Markdown остаются корректными.
