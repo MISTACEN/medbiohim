@@ -109,9 +109,10 @@ $router->get('/api/v1/admin/files/capabilities',static function(Request $req,arr
 $router->post('/api/v1/admin/files/{id}/process-image',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;
  try{
-  $file=(new FileRepository())->assertAccess((string)($params['id']??''),$req->user->id);
+  $file=(new FileRepository())->findById((string)($params['id']??''));
+  if($file===null){Response::error('NOT_FOUND','File not found',$req->requestId,404);return;}
   if(($file['storage_provider']??'')!=='b2'||empty($file['object_key'])){Response::error('UNSUPPORTED','File is not B2-backed',$req->requestId,422);return;}
-  $binary=(new \\Medbiohim\\Services\\B2Storage())->downloadBinary((string)$file['object_key']);
+  $binary=(new B2Storage())->downloadBinary((string)$file['object_key']);
   $result=(new MediaDerivativeProcessor())->processImage((string)$params['id'],$binary);
   Response::success($result,$req->requestId);
  }catch(\\InvalidArgumentException $e){Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);}
