@@ -78,7 +78,7 @@ export default function AdminToolsPage() {
     );
   }
 
-  const nav: Array<["overview" | "learning" | "system", string, typeof LayoutDashboard]> = [
+  const nav: Array<["overview" | "learning" | "storage" | "system", string, typeof LayoutDashboard]> = [
     ["overview", "Обзор", LayoutDashboard],
     ["learning", "ДЗ и сообщество", ShieldCheck],
     ["storage", "Файлы / Storage", HardDrive],
@@ -251,10 +251,11 @@ export default function AdminToolsPage() {
                     </span>
                   </div>
                   {fileAudit.b2.configured ? (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <Mini label="Просканировано" value={fileAudit.b2.scanned} />
                       <Mini label="Совпало" value={fileAudit.b2.matched_metadata} />
-                      <Mini label="Сиротские объекты" value={fileAudit.b2.orphan_objects} />
+                      <Mini label="Нет в БД" value={fileAudit.b2.orphan_objects} />
+                      <Mini label="Нет в B2" value={fileAudit.b2.missing_db_objects} />
                       <Mini label="Ограничен список" value={fileAudit.b2.scan_truncated ? "да" : "нет"} />
                     </div>
                   ) : null}
