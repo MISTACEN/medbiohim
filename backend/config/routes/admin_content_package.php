@@ -25,9 +25,15 @@ return static function (Router $router): void {
             $db = Connection::pdo();
             $subjectId = trim((string) ($payload['subject_id'] ?? ''));
             if ($subjectId === '' && $subjectSlug !== '') {
-                $s = $db->prepare('SELECT id FROM public.subjects WHERE slug = :slug ORDER BY semester NULLS LAST, id LIMIT 1');
+                $s = $db->prepare('SELECT id FROM public.subjects WHERE slug = :slug ORDER BY semester NULLS LAST, id LIMIT 2');
                 $s->execute(['slug' => $subjectSlug]);
-                $subjectId = (string) ($s->fetchColumn() ?: '');
+                $matches = array_values(array_filter(array_map('strval', $s->fetchAll(PDO::FETCH_COLUMN))));
+                if (count($matches) === 1) {
+                    $subjectId = $matches[0];
+                } elseif (count($matches) > 1) {
+                    Response::error('AMBIGUOUS_SUBJECT', 'subject_id is required when subject_slug matches multiple subjects.', $req->requestId, 422);
+                    return;
+                }
             }
 
             $stats = ['sources'=>0,'materials'=>0,'trainer_cards'=>0,'tests'=>0,'questions'=>0,'test_links'=>0];
