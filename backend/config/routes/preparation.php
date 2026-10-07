@@ -333,7 +333,7 @@ return static function (Router $router): void {
    $a->execute(['sid'=>$session['id']]);$rows=$a->fetchAll()?:[];
    $rowsById=[];foreach($rows as $row)$rowsById[(string)$row['question_id']]=$row;
    // AI is optional: unresolved grading never blocks finishing. Pending/error rows can be retried later.
-   $total=count($finishIds);$answered=count($rows);$correct=0;$topic=[];
+   $total=count($finishIds);$answered=count($rows);$correct=0;$unresolved=0;$topic=[];
    foreach($finishIds as $qid){
     $snap=$snapshotById[$qid]??[];
     $row=$rowsById[$qid]??null;
