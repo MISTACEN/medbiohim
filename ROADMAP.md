@@ -1330,3 +1330,40 @@ Production gate пока не закрыт: Vercel сообщает `build-rate-
 - 🟡 Do not make `subjects.slug` globally unique: current data intentionally contains repeated slugs across academic contexts.
 - 🟡 Next implementation gate: question/search boundaries must prefer authoritative `subject_id` / academic context and use slug only as a human-facing alias.
 - 🟢 Existing histology ticket banks remain untouched by this cycle.
+
+### 18. Media Optimization Pipeline — P1/P2
+Цель: уменьшать размер загружаемых изображений и других медиа без заметной потери качества и без нарушения исходных файлов.
+
+- 🟡 единый upload pipeline для Materials, лекций, trainer/atlas, профиля и админского Content Center;
+- 🟡 определять реальный MIME/type по содержимому, а не доверять расширению;
+- 🟡 изображения: автоматический resize по максимальному разумному разрешению;
+- 🟡 выбирать оптимальный web-формат: **WebP** как основной безопасный fallback и **AVIF** для ещё меньшего веса там, где поддержка/качество оправданы;
+- 🟡 не использовать WebM для обычных фотографий: WebM — контейнер прежде всего для видео/анимации. Если в конкретном сценарии WebM для image/animation действительно даёт выигрыш, поддержать его экспериментально, но не делать canonical photo format;
+- 🟡 видео/анимации: отдельная транскодировка в WebM/AV1/VP9 только при доказанном выигрыше размера и совместимости;
+- 🟡 сохранять оригинал только для типов, где он нужен для обучения/архива/редактирования; для обычных preview-фото хранить оптимизированный master + при необходимости thumbnail;
+- 🟡 генерировать thumbnail/preview и несколько responsive sizes вместо загрузки огромного оригинала на телефон;
+- 🟡 EXIF: удалять GPS и ненужные метаданные из пользовательских фото;
+- 🟡 дедупликация по checksum/content hash до повторной загрузки;
+- 🟡 лимиты размера/разрешения с понятной ошибкой до тяжёлого upload;
+- 🟡 прогресс загрузки + состояние processing + retry;
+- 🟡 оптимизация должна выполняться server-side/worker, чтобы слабый телефон не тратил батарею/память на тяжёлую конвертацию;
+- 🟡 оригинал и производные файлы связывать через source_file_id/asset family;
+- 🟡 MIME/size/checksum/width/height/duration хранить в metadata;
+- 🟡 CDN/cache headers для immutable derivatives;
+- 🟡 fallback: если конвертация недоступна, исходный поддерживаемый файл всё равно должен корректно сохраниться;
+- 🟡 для документов не делать «сжатие любой ценой»: PDF/DOCX оптимизировать отдельно;
+- 🟡 сравнить качество/размер на реальных фото препаратов, ЭМ, атласа и лекционных изображениях;
+- 🟡 измерять storage + egress до/после оптимизации.
+
+#### Архитектурное правило
+**Original → optimized master → thumbnails/responsive derivatives → client.**
+Canonical metadata остаётся в Supabase, физические бинарники — в согласованном storage (SpaceWeb/B2). Оптимизация не должна ломать Atlas/content или Materials.
+
+#### Очередность
+1. MIME/размер/checksum + безопасный upload.
+2. Image optimizer WebP/AVIF + resize + thumbnails.
+3. Responsive delivery/cache.
+4. Video WebM pipeline.
+5. Document/PDF optimization.
+6. Дедупликация и storage/egress metrics.
+7. Финальный visual/quality regression на iPhone/Android/desktop.
