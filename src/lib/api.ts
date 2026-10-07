@@ -351,6 +351,7 @@ export type TrainerFeedCard = any;
 
 export async function adminDbAudit(limit = 200): Promise<any> { return api("/admin/db/audit?limit=" + encodeURIComponent(String(limit))) as any; }
 export async function adminFileAudit(limit = 200): Promise<any> { return api("/admin/files/audit?limit=" + encodeURIComponent(String(limit))) as any; }
+export async function adminMediaCapabilities(): Promise<any> { return api("/admin/files/capabilities") as any; }
 export async function adminRollbackAudit(id:string): Promise<any> { return api(`/admin/db/audit/${encodeURIComponent(id)}/rollback`, {method:"POST",body:"{}"}) as any; }
 export async function adminDbDelete(table:string,id:string): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
 export async function adminDbDeleteByKey(table:string,key:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/row", { method:"DELETE", body:JSON.stringify({key}) }) as any; }
