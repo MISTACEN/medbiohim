@@ -239,8 +239,8 @@ final class TestRepository
         $q = $this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid");
         $q->execute(['id'=>$attemptId,'uid'=>$userId]);
         $attempt = $q->fetch();
-        if ($attempt === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
-        if ((string)$attempt['status'] !== 'in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
+        if ($attempt === false) throw new \RuntimeException('ATTEMPT_NOT_FOUND');
+        if ((string)$attempt['status'] !== 'in_progress') throw new \RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
 
         $snapshot = is_string($attempt['question_snapshot'] ?? null)
             ? (json_decode($attempt['question_snapshot'], true) ?: [])
@@ -251,7 +251,7 @@ final class TestRepository
         foreach ($snapshot as $item) {
             if ((string)($item['id'] ?? '') === $questionId) { $question = $item; break; }
         }
-        if ($question === null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
+        if ($question === null) throw new \RuntimeException('QUESTION_NOT_IN_ATTEMPT');
 
         // AI is deliberately called outside the DB transaction: a slow provider
         // must never hold a row lock while grading an answer.
@@ -262,8 +262,8 @@ final class TestRepository
             $lock = $this->db->prepare("SELECT status FROM public.test_attempts WHERE id=:id AND user_id=:uid FOR UPDATE");
             $lock->execute(['id'=>$attemptId,'uid'=>$userId]);
             $locked = $lock->fetch();
-            if ($locked === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
-            if ((string)$locked['status'] !== 'in_progress') throw new RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
+            if ($locked === false) throw new \RuntimeException('ATTEMPT_NOT_FOUND');
+            if ((string)$locked['status'] !== 'in_progress') throw new \RuntimeException('ATTEMPT_NOT_IN_PROGRESS');
 
             $up = $this->db->prepare(
                 "INSERT INTO public.test_answers
@@ -289,7 +289,7 @@ final class TestRepository
             ]);
             $this->db->commit();
             return ['question_id'=>$questionId,'answer_text'=>$answerText] + $grading;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
@@ -300,12 +300,12 @@ final class TestRepository
         $q = $this->db->prepare("SELECT * FROM public.test_attempts WHERE id=:id AND user_id=:uid");
         $q->execute(['id'=>$attemptId,'uid'=>$userId]);
         $attempt = $q->fetch();
-        if ($attempt === false) throw new RuntimeException('ATTEMPT_NOT_FOUND');
+        if ($attempt === false) throw new \RuntimeException('ATTEMPT_NOT_FOUND');
 
         $answerQ = $this->db->prepare("SELECT * FROM public.test_answers WHERE attempt_id=:aid AND question_id=:qid");
         $answerQ->execute(['aid'=>$attemptId,'qid'=>$questionId]);
         $answer = $answerQ->fetch();
-        if ($answer === false) throw new RuntimeException('ANSWER_NOT_FOUND');
+        if ($answer === false) throw new \RuntimeException('ANSWER_NOT_FOUND');
         if (!in_array((string)($answer['grading_status'] ?? ''), ['pending','error'], true)) {
             return $answer;
         }
@@ -317,7 +317,7 @@ final class TestRepository
         foreach (is_array($snapshot) ? $snapshot : [] as $item) {
             if ((string)($item['id'] ?? '') === $questionId) { $question = $item; break; }
         }
-        if ($question === null) throw new RuntimeException('QUESTION_NOT_IN_ATTEMPT');
+        if ($question === null) throw new \RuntimeException('QUESTION_NOT_IN_ATTEMPT');
 
         $grading = AnswerGradingService::grade($question, $answer['answer_text'] ?? null);
 
@@ -339,7 +339,7 @@ final class TestRepository
                 'aid'=>$attemptId,'qid'=>$questionId,
             ]);
             $updated = $up->fetch();
-            if ($updated === false) throw new RuntimeException('ANSWER_NOT_FOUND');
+            if ($updated === false) throw new \RuntimeException('ANSWER_NOT_FOUND');
 
             if ((string)$attempt['status'] === 'submitted') {
                 $snapshotCount = is_array($snapshot) ? count($snapshot) : 0;
@@ -353,7 +353,7 @@ final class TestRepository
 
             $this->db->commit();
             return ['question_id'=>$questionId,'answer_text'=>$answer['answer_text']] + $grading;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
@@ -371,7 +371,7 @@ final class TestRepository
             $existingStatus=(string)$existing['status'];
             if($existingStatus!=='in_progress'){
                 if($existingStatus==='submitted'){$this->db->commit();return $existing;}
-                throw new RuntimeException('ATTEMPT_ALREADY_FINISHED');
+                throw new \RuntimeException('ATTEMPT_ALREADY_FINISHED');
             }
 
             $snapshot=is_string($existing['question_snapshot']??null)?json_decode($existing['question_snapshot'],true):($existing['question_snapshot']??[]);
@@ -389,7 +389,7 @@ final class TestRepository
                 WHERE id=:id AND user_id=:uid AND status='in_progress' RETURNING *");
             $stmt->execute(['score'=>$score,'max_score'=>$maxScore,'percent'=>$percent,'id'=>$attemptId,'uid'=>$userId]);
             $row=$stmt->fetch();
-            if($row===false)throw new RuntimeException('Failed to finish attempt');
+            if($row===false)throw new \RuntimeException('Failed to finish attempt');
             $this->db->commit();
             return $row;
         }catch(Throwable $e){
