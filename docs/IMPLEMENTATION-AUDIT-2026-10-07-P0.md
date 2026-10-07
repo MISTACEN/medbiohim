@@ -106,3 +106,20 @@ Supabase `materials` records can point to physical Histology files through `cont
 ### Verification gate
 
 Physical SpaceWeb files still require target-runtime HTTP verification. Vercel's current build-rate limit prevents a new deployment for these latest commits, so this fix is currently source-verified, not production-runtime-verified.
+
+
+## Verification cycle — question-bank isolation + Supabase security — 2026-10-07
+
+### Findings
+
+1. Question-bank filtering is subject-slug based at the public library boundary. The database currently contains duplicate subject slugs for some subjects: histology has 2 rows and chemistry_organic_physical has 3 rows. The question bank endpoint therefore relies on exam_questions.subject_slug rather than a unique subject UUID in this UI path. This is safe only while the denormalized question subject_slug remains canonical; it is a P1 hardening item to make subject UUID/context authoritative and prevent accidental cross-semester mixing.
+2. Critical Supabase advisory: public.chemistry_source_documents currently has RLS disabled. This table is not the canonical runtime question bank, but it contains source/provenance metadata and is nevertheless exposed to Supabase client roles. Supabase marks this as rls_disabled / critical. Per safety policy, RLS is not being enabled automatically because enabling it without explicit policies can block legitimate access. Proposed safe policy is authenticated read-only access (or server-only access if the table is not consumed by the client).
+3. The homework API already exposes one derived my_status / my_status_source, so the previously identified dual-state issue is not currently a source-code regression in these read paths.
+4. Trainer Histology image delivery already validates the real path against the configured root and supports both canonical and legacy 5_Фотографии препаратов layouts; no additional source defect was found in this cycle.
+
+### Verification result
+
+- Repository HEAD is 218bd3550cae4cb1f5a4cfa65ec33d2632a4e9f5.
+- Latest production READY deployment remains 59e38d9664645556bd2fca64ea6d97f998a5f200; later security/material fixes are not yet production-runtime verified.
+- Vercel runtime-errors API is currently inaccessible with the connected project credentials (403), so no claim of a clean production runtime is made.
+- No destructive DB change was made for the RLS finding.
