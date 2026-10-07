@@ -6,6 +6,7 @@ use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
+use Medbiohim\Services\SpecialtyAccess;
 
 return static function (Router $router): void {
     $router->get('/api/v1/materials/{id}/file', static function (Request $req, array $params): void {
@@ -30,6 +31,10 @@ return static function (Router $router): void {
 
             if (($row['subject_slug'] ?? '') !== 'histology') {
                 Response::error('FORBIDDEN', 'This material viewer is restricted to histology', $req->requestId, 403);
+                return;
+            }
+            if (!(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
+                Response::error('FORBIDDEN', 'Этот материал доступен только специальности МБХ', $req->requestId, 403);
                 return;
             }
 
