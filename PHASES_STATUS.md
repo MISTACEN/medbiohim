@@ -655,3 +655,17 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | File & Storage Center foundation | 🟢 source | checksum/provider/processing metadata + non-destructive reference audit UI/API implemented |
 | Physical object reconciliation | 🟡 | B2/SpaceWeb existence/head checks still required |
 | Media optimization pipeline | 🟡 | quality-gated image/video derivatives remain next implementation stage |
+
+## 2026-10-07 — Pass 34: complete B2 reconciliation foundation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| B2 metadata keyset | 🟢 | строится по всем active B2-backed files, независимо от UI limit |
+| B2 pagination | 🟢 | audit проходит страницы B2 до завершения |
+| Missing physical objects | 🟢 source | DB B2-backed records отсутствующие в B2 считаются отдельно |
+| B2 orphan objects | 🟢 source | объекты без соответствующего B2 metadata key считаются отдельно |
+| Provider isolation | 🟢 | SpaceWeb/unknown не ошибочно считаются B2 |
+| Storage Center UI | 🟢 source | показывает «нет в B2» и «нет в БД» |
+| SpaceWeb reconciliation | 🟡 | нужен target-runtime/host доступ к физическому дереву |
+| Media optimizer | 🟡 | следующий implementation pass |
+| Target runtime | 🟡 | GitHub source changed; production verification blocked by deployment/runtime gates |
