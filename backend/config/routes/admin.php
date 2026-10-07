@@ -92,7 +92,7 @@ $adminGridGate = static function(Request $req)use($strictAdmin):bool{return $str
 $adminKeyMap=['test_questions'=>['test_id','question_id'],'favorites'=>['user_id','target_type','target_id'],'site_content'=>['key'],'group_memberships'=>['group_id','user_id'],'user_roles'=>['user_id','role_id'],'test_answers'=>['attempt_id','question_id'],'homework_progress'=>['homework_id','user_id']];
 $router->get('/api/v1/admin/db/meta',static function(Request $req,array $params)use($adminGridGate,$adminGridTables,$adminKeyMap):void{
  if(!$adminGridGate($req))return;$items=[];
- foreach($adminGridTables as $t){try{$cols=SupabaseRest::select('information_schema_columns_not_exposed');$rows=SupabaseRest::select($t.'?select=*&limit=1');$columns=$rows?array_keys($rows[0]):[];$items[]=['name'=>$t,'items'=>count(SupabaseRest::select($t.'?select=*&limit=10000')),'primary_key'=>$adminKeyMap[$t]??['id'],'columns'=>$columns];}catch(\Throwable $e){$items[]=['name'=>$t,'items'=>null,'primary_key'=>$adminKeyMap[$t]??['id'],'columns'=>[],'error'=>$e->getMessage()];}}
+ foreach($adminGridTables as $t){try{$rows=SupabaseRest::select($t.'?select=*&limit=1');$columns=$rows?array_keys($rows[0]):[];$items[]=['name'=>$t,'items'=>count(SupabaseRest::select($t.'?select=*&limit=10000')),'primary_key'=>$adminKeyMap[$t]??['id'],'columns'=>$columns];}catch(\Throwable $e){$items[]=['name'=>$t,'items'=>null,'primary_key'=>$adminKeyMap[$t]??['id'],'columns'=>[],'error'=>$e->getMessage()];}}
  Response::success(['items'=>$items],$req->requestId);
 });
 $router->patch('/api/v1/admin/db/{table}/row',static function(Request $req,array $params)use($adminGridGate,$adminGridTables,$adminKeyMap):void{
@@ -131,7 +131,7 @@ $router->get('/api/v1/admin/content/validate',static function(Request $req,array
   }
   $materials=SupabaseRest::select('materials?is_published=eq.true&select=id,title,source_key,subject_id&limit=5000');
   foreach($materials as $m)if(trim((string)($m['source_key']??''))==='')$issues[]=['type'=>'material_without_source_key','id'=>$m['id'],'title'=>$m['title']??''];
-  $exam=SupabaseRest::select('exam_questions?is_published=eq.true&select=id,text,answer,subject_slug&limit=5000');
+  $exam=SupabaseRest::select('exam_questions?is_published=eq.true&select=id,text,answer,subject_slug,type&limit=5000');
   foreach($exam as $q){$type=(string)($q['type']??'open');$answerMissing=trim((string)($q['answer']??''))==='';if($answerMissing&&in_array($type,['mc','mcq','case'],true))$issues[]=['type'=>'published_exam_question_without_answer','id'=>$q['id'],'subject_slug'=>$q['subject_slug']??null,'type'=>$type,'text'=>mb_substr((string)($q['text']??''),0,140)];}
   Response::success(['ok'=>$issues===[],'issues'=>array_slice($issues,0,500),'count'=>count($issues),'checked'=>['tests'=>count($tests),'questions'=>count($questions),'test_questions'=>count($testLinks),'trainer_cards'=>count($cards),'materials'=>count($materials),'exam_questions'=>count($exam)]],$req->requestId);
  }catch(\Throwable $e){Response::error('VALIDATION_FAILED',$e->getMessage(),$req->requestId,503);}
