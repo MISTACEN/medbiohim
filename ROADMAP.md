@@ -1449,3 +1449,13 @@ Canonical metadata остаётся в Supabase, физические бинар
 Это синхронизирует viewer с generic Materials access policy и не оставляет прямой authenticated URL обходом specialty boundary.
 
 🟡 Финальный target-runtime smoke всё ещё обязателен: разрешённый MBH user → DOC/DOCX/photo; пользователь без MBH → 403.
+
+## 2026-10-07 — Pass 33: File & Storage Center foundation
+
+- 🟢 added canonical file checksum metadata (`sha256`) for new uploads;
+- 🟢 added explicit `storage_provider` and `processing_status` metadata;
+- 🟢 added non-destructive admin Storage Audit API and UI;
+- 🟢 audit reports file references from Materials, trainer cards, homework attachments and homework submissions;
+- 🟢 live DB default corrected to `storage_provider='unknown'` for legacy/unclassified files; B2 is set only when `b2_file_id` is present;
+- 🟡 physical B2/SpaceWeb object reconciliation is still not performed automatically — this is the next storage pass;
+- 🟡 media optimization worker/derivatives are not implemented yet.
