@@ -371,7 +371,7 @@ return static function (Router $router): void {
    $requested=trim((string)($body['question_id']??''));
    $snapshot=$session['question_snapshot']??[];
    if(is_string($snapshot))$snapshot=json_decode($snapshot,true)?:[];
-   $snapshotById=[];foreach(is_array($snapshot)?$snapshot:[] as $snap)if(is_array($snap)&&isset($snap['id']))$snapshotById[(string)$snap['id']=$snap;
+   $snapshotById=[];foreach(is_array($snapshot)?$snapshot:[] as $snap)if(is_array($snap)&&isset($snap['id']))$snapshotById[(string)$snap['id']]=$snap;
    $sql="select * from public.test_preparation_results where session_id=:sid and grading_status in ('pending','error')";
    $params=['sid'=>$session['id']];
    if($requested!==''){$sql.=" and question_id=:qid";$params['qid']=$requested;}
