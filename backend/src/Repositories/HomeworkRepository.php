@@ -19,7 +19,7 @@ final class HomeworkRepository
     public function listForUser(string $userId, ?string $groupId = null): array
     {
         $stmt = $this->db->prepare(
-            'SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE 'Asia/Vladivostok')::date) AS due_date, h.subject_id, h.group_id, h.created_by, h.created_by_role,
+            'SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE 'Asia/Vladivostok')::date) AS due_date, h.subject_id, h.group_id, h.schedule_entry_id, h.created_by, h.created_by_role,
                     s.name AS subject_name, s.slug AS subject_slug, s.color_hex,
                     sub.id AS submission_id, sub.status AS submission_status,
                     sub.grade, sub.submitted_at,
@@ -169,15 +169,92 @@ final class HomeworkRepository
         return $row === false ? null : $row;
     }
 
-    public function create(string $title, ?string $description, ?string $subjectId, ?string $groupId, ?string $dueAt, string $createdBy, string $createdByRole = 'staff'): array
-    {
-        $stmt = $this->db->prepare(
-            'INSERT INTO public.homeworks (title, description, subject_id, group_id, due_at, created_by, created_by_role)
-             VALUES (:title, :descr, :sid, :gid, :due, :by, :role) RETURNING *'
-        );
-        $stmt->execute(['title' => $title, 'descr' => $description, 'sid' => $subjectId, 'gid' => $groupId, 'due' => $dueAt, 'by' => $createdBy, 'role' => $createdByRole]);
-        $row = $stmt->fetch();
-        if ($row === false) throw new \RuntimeException('Create homework failed');
-        return $row;
+    public function create(
+        string $title,
+        ?string $description,
+        ?string $subjectId,
+        ?string $groupId,
+        ?string $dueAt,
+        string $createdBy,
+        string $createdByRole = 'staff',
+        ?string $scheduleEntryId = null,
+        ?string $dueDate = null,
+        array $attachmentFileIds = []
+    ): array {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO public.homeworks
+                    (title, description, subject_id, group_id, schedule_entry_id, due_at, due_date, created_by, created_by_role)
+                 VALUES
+                    (:title, :descr, :sid, :gid, :lesson, :due, :due_date, :by, :role)
+                 RETURNING *'
+            );
+            $stmt->execute([
+                'title' => $title,
+                'descr' => $description,
+                'sid' => $subjectId,
+                'gid' => $groupId,
+                'lesson' => $scheduleEntryId,
+                'due' => $dueAt,
+                'due_date' => $dueDate !== null && trim($dueDate) !== '' ? trim($dueDate) : null,
+                'by' => $createdBy,
+                'role' => $createdByRole,
+            ]);
+            $row = $stmt->fetch();
+            if ($row === false) throw new \RuntimeException('Create homework failed');
+
+            $ids = array_values(array_unique(array_filter(array_map(
+                static fn($id): string => trim((string)$id),
+                $attachmentFileIds
+            ))));
+            if (count($ids) > 12) {
+                throw new \InvalidArgumentException('Можно прикрепить не более 12 файлов');
+            }
+
+            $attachmentStmt = $this->db->prepare(
+                'SELECT id, original_name, mime_type
+                   FROM public.files
+                  WHERE id = :fid
+                    AND status = 'active'
+                    AND uploaded_by = :uid
+                    AND (:gid IS NULL OR group_id = :gid OR group_id IS NULL)
+                  LIMIT 1'
+            );
+            $insertAttachment = $this->db->prepare(
+                'INSERT INTO public.homework_attachments
+                    (homework_id, file_id, attachment_type, caption, sort_order, inline_view)
+                 VALUES (:hid, :fid, :type, NULL, :sort, true)
+                 ON CONFLICT (homework_id, file_id) DO NOTHING'
+            );
+
+            foreach ($ids as $index => $fileId) {
+                $attachmentStmt->execute([
+                    'fid' => $fileId,
+                    'uid' => $createdBy,
+                    'gid' => $groupId,
+                ]);
+                $file = $attachmentStmt->fetch();
+                if ($file === false) {
+                    throw new \RuntimeException('Прикрепляемый файл недоступен в контексте этого ДЗ');
+                }
+                $mime = strtolower(trim((string)($file['mime_type'] ?? '')));
+                $type = str_starts_with($mime, 'image/') ? 'image' : 'file';
+                $insertAttachment->execute([
+                    'hid' => $row['id'],
+                    'fid' => $fileId,
+                    'type' => $type,
+                    'sort' => $index,
+                ]);
+            }
+
+            $this->db->commit();
+            return $row;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
     }
 }
