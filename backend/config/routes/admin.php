@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 use Medbiohim\Http\Request;use Medbiohim\Http\Response;use Medbiohim\Http\Router;use Medbiohim\Middleware\RequireAuth;use Medbiohim\Middleware\RequireRole;use Medbiohim\Repositories\GroupRepository;use Medbiohim\Repositories\FileRepository;use Medbiohim\Repositories\HomeworkRepository;use Medbiohim\Repositories\SubjectRepository;use Medbiohim\Repositories\TestRepository;use Medbiohim\Repositories\UserRepository;use Medbiohim\Support\ContentStore;use Medbiohim\Support\Env;use Medbiohim\Services\SupabaseAuth;use Medbiohim\Services\SupabaseRest;
+use Medbiohim\Services\B2Storage;use Medbiohim\Services\MediaDerivativeProcessor;
 return static function(Router $router):void{
 $adminGate=static function(Request $req):bool{if(!RequireAuth::handle($req))return false;return RequireRole::handle($req,['admin','moderator','teacher']);};$strictAdmin=static function(Request $req):bool{if(!RequireAuth::handle($req))return false;return RequireRole::handle($req,['admin']);};
 $router->get('/api/v1/site', static function (Request $req, array $params): void {
