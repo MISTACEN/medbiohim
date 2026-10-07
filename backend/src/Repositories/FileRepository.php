@@ -127,7 +127,7 @@ final class FileRepository
         return $stmt->fetchAll() ?: [];
     }
 
-    /** Non-destructive metadata reconciliation. Does not inspect/delete physical objects. */
+    /** Non-destructive metadata reconciliation with complete read-only B2 reconciliation. */
     public function storageAudit(int $limit = 200): array
     {
         $limit = max(1, min($limit, 1000));
@@ -190,12 +190,13 @@ final class FileRepository
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue('lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
-
         $items = $stmt->fetchAll() ?: [];
+
         $b2Audit = [
             'configured' => false,
             'scanned' => 0,
             'matched_metadata' => 0,
+            'missing_db_objects' => 0,
             'orphan_objects' => 0,
             'scan_truncated' => false,
             'error' => null,
@@ -205,23 +206,50 @@ final class FileRepository
         if ($storage->isConfigured()) {
             $b2Audit['configured'] = true;
             try {
+                // Build the complete set of B2-backed metadata keys independently
+                // from the UI item limit. This prevents false "orphan" results.
                 $dbKeys = [];
-                foreach ($items as $item) {
-                    $key = trim((string)($item['object_key'] ?? ''));
-                    if ($key !== '') $dbKeys[$key] = true;
+                $dbStmt = $this->db->query(
+                    "SELECT object_key
+                       FROM public.files
+                      WHERE status = 'active'
+                        AND object_key IS NOT NULL
+                        AND object_key <> ''
+                        AND (storage_provider = 'b2' OR NULLIF(b2_file_id,'') IS NOT NULL)"
+                );
+                while ($row = $dbStmt->fetch()) {
+                    $key = trim((string)($row['object_key'] ?? ''));
+                    if ($key !== '') $dbKeys[$key] = false;
                 }
-                $page = $storage->listObjects(null, 5000);
-                $b2Objects = $page['files'] ?? [];
-                $b2Audit['scanned'] = count($b2Objects);
-                foreach ($b2Objects as $object) {
-                    $name = trim((string)($object['file_name'] ?? ''));
-                    if ($name !== '' && isset($dbKeys[$name])) {
-                        $b2Audit['matched_metadata']++;
-                    } else {
-                        $b2Audit['orphan_objects']++;
+
+                // Walk all B2 pages, not just the first 5000 objects.
+                $startFileName = null;
+                do {
+                    $page = $storage->listObjects(null, 5000, $startFileName);
+                    $b2Objects = $page['files'] ?? [];
+                    $b2Audit['scanned'] += count($b2Objects);
+
+                    foreach ($b2Objects as $object) {
+                        $name = trim((string)($object['file_name'] ?? ''));
+                        if ($name !== '' && array_key_exists($name, $dbKeys)) {
+                            $dbKeys[$name] = true;
+                            $b2Audit['matched_metadata']++;
+                        } else {
+                            $b2Audit['orphan_objects']++;
+                        }
                     }
-                }
-                $b2Audit['scan_truncated'] = !empty($page['nextFileName']);
+
+                    $next = isset($page['nextFileName']) ? trim((string)$page['nextFileName']) : '';
+                    $startFileName = $next !== '' ? $next : null;
+                    $b2Audit['scan_truncated'] = $startFileName !== null;
+                } while ($startFileName !== null);
+
+                $b2Audit['missing_db_objects'] = count(array_filter(
+                    $dbKeys,
+                    static fn(bool $matched): bool => !$matched
+                ));
+                // A completed pagination loop means the scan itself was not truncated.
+                $b2Audit['scan_truncated'] = false;
             } catch (\Throwable $e) {
                 $b2Audit['error'] = 'B2 scan failed';
             }
@@ -234,7 +262,7 @@ final class FileRepository
             ),
             'items' => $items,
             'b2' => $b2Audit,
-            'physical_check' => $b2Audit['configured'] ? 'b2_read_only_scan' : 'not_run',
+            'physical_check' => $b2Audit['configured'] ? 'b2_read_only_full_scan' : 'not_run',
             'destructive_actions' => false,
         ];
     }
