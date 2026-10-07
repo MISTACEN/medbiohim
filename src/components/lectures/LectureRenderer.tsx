@@ -195,7 +195,16 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const safeHtml = useMemo(() => html ? sanitizeLectureHtml(html) : "", [html]);
-  const parts = useMemo(() => parseBlocks(markdown || ""), [markdown]);
+  // Some content-import paths stored Markdown with one extra escaping layer
+  // (for example, escaped Mermaid fences/quotes). Normalize only the syntax
+  // characters needed for block parsing; ordinary backslashes remain intact.
+  const normalizedMarkdown = useMemo(() => {
+    const source = markdown || "";
+    return source
+      .replace(new RegExp("\\\\\\`", "g"), "`")
+      .replace(/\\\\\"/g, '"');
+  }, [markdown]);
+  const parts = useMemo(() => parseBlocks(normalizedMarkdown), [normalizedMarkdown]);
 
   useEffect(() => {
     let cancelled = false;
