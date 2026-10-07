@@ -360,6 +360,35 @@ return static function (Router $router): void {
   }catch(\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
  });
 
+ $router->post('/api/v1/tests/preparation/{id}/retry-grading',static function(Request $r,array $p)use($auth):void{
+  if(!$auth($r))return;
+  try{
+   $db=Connection::pdo();
+   $s=$db->prepare("select * from public.test_preparation_sessions where id=:id and user_id=:uid");
+   $s->execute(['id'=>$p['id'],'uid'=>$r->user->id]);$session=$s->fetch();
+   if(!$session){Response::error('NOT_FOUND','Preparation session not found',$r->requestId,404);return;}
+   $body=is_array($r->jsonBody??null)?$r->jsonBody:[];
+   $requested=trim((string)($body['question_id']??''));
+   $snapshot=$session['question_snapshot']??[];
+   if(is_string($snapshot))$snapshot=json_decode($snapshot,true)?:[];
+   $snapshotById=[];foreach(is_array($snapshot)?$snapshot:[] as $snap)if(is_array($snap)&&isset($snap['id']))$snapshotById[(string)$snap['id']=$snap;
+   $sql="select * from public.test_preparation_results where session_id=:sid and grading_status in ('pending','error')";
+   $params=['sid'=>$session['id']];
+   if($requested!==''){$sql.=" and question_id=:qid";$params['qid']=$requested;}
+   $q=$db->prepare($sql);$q->execute($params);$rows=$q->fetchAll()?:[];
+   if(!$rows){Response::success(['items'=>[],'retried'=>0],$r->requestId);return;}
+   $updated=[];
+   foreach($rows as $row){
+    $snap=$snapshotById[(string)$row['question_id']]??null;
+    if(!is_array($snap))continue;
+    $grading=AnswerGradingService::grade($snap,$row['answer_text']??null);
+    $up=$db->prepare("update public.test_preparation_results set is_correct=:ok,score=:score,grading_status=:status,grading_source=:source,grading_confidence=:confidence,grading_feedback=:feedback,grading_model=:model,graded_at=:graded_at where session_id=:sid and question_id=:qid returning question_id,is_correct,score,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at");
+    $up->execute(['ok'=>$grading['is_correct'],'score'=>$grading['score'],'status'=>$grading['grading_status'],'source'=>$grading['grading_source'],'confidence'=>$grading['confidence'],'feedback'=>$grading['feedback'],'model'=>$grading['model'],'graded_at'=>in_array($grading['grading_status'],['deterministic','ai'],true)?date('c'):null,'sid'=>$session['id'],'qid'=>$row['question_id']]);
+    $updated[]=$up->fetch()?:['question_id'=>$row['question_id']]+$grading;
+   }
+   Response::success(['items'=>$updated,'retried'=>count($updated)],$r->requestId);
+  }catch(\Throwable $e){Response::error('GRADING_RETRY_ERROR','Не удалось повторно проверить ответы',$r->requestId,503);}
+ });
  $router->post('/api/v1/tests/preparation/{id}/ai-review',static function(Request $r,array $p)use($auth):void{
   if(!$auth($r))return;
   try{
