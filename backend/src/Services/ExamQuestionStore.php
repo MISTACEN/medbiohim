@@ -52,11 +52,13 @@ final class ExamQuestionStore
         if ($publishedOnly) $path .= '&is_published=eq.true';
         $rows = self::request('GET', $path);
         $slug = trim((string) ($filters['subject_slug'] ?? ''));
+        $subjectId = trim((string) ($filters['subject_id'] ?? ''));
         $subject = mb_strtolower(trim((string) ($filters['subject'] ?? '')));
         $kind = trim((string) ($filters['kind'] ?? 'ticket'));
         $q = mb_strtolower(trim((string) ($filters['q'] ?? '')));
-        if ($slug !== '' || $subject !== '' || $kind !== '' || $q !== '') {
-            $rows = array_values(array_filter($rows, static function (array $row) use ($slug, $subject, $kind, $q): bool {
+        if ($subjectId !== '' || $slug !== '' || $subject !== '' || $kind !== '' || $q !== '') {
+            $rows = array_values(array_filter($rows, static function (array $row) use ($subjectId, $slug, $subject, $kind, $q): bool {
+                if ($subjectId !== '' && (string) ($row['subject_id'] ?? '') !== $subjectId) return false;
                 if ($slug !== '' && (string) ($row['subject_slug'] ?? '') !== $slug) return false;
                 if ($kind !== '' && (string) ($row['kind'] ?? '') !== $kind) return false;
                 if ($subject !== '' && !str_contains(mb_strtolower((string) ($row['subject_name'] ?? '')), $subject)) return false;
@@ -149,10 +151,14 @@ final class ExamQuestionStore
 
     public static function generate(string $bankId, int $count = 3, string $mode = 'practice'): array
     {
-        $banks = self::request('GET', 'ticket_banks?id=eq.' . rawurlencode($bankId) . '&select=id,subject_name,subject_slug,title,mode');
+        $banks = self::request('GET', 'ticket_banks?id=eq.' . rawurlencode($bankId) . '&select=id,subject_id,subject_name,subject_slug,title,mode');
         $bank = $banks[0] ?? null;
         if (!$bank) throw new \RuntimeException('Ticket bank not found');
-        $pool = self::list(['subject_slug' => (string) ($bank['subject_slug'] ?? ''), 'kind' => 'ticket']);
+        $pool = self::list([
+            'subject_id' => (string) ($bank['subject_id'] ?? ''),
+            'subject_slug' => (string) ($bank['subject_slug'] ?? ''),
+            'kind' => 'ticket',
+        ]);
         if (!$pool) throw new \RuntimeException('Ticket bank is empty');
         shuffle($pool);
         $picked = array_slice($pool, 0, max(1, min($count, count($pool))));
