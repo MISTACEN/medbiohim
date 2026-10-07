@@ -12,6 +12,7 @@ import {
   savePreparation,
   finishPreparation,
   preparationAiReview,
+  retryPreparationGrading,
   type PreparationQuestion,
 } from "@/lib/api";
 
@@ -64,6 +65,7 @@ export default function PreparationPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [idx, setIdx] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [grading, setGrading] = useState<Record<string, any>>({});
   const [stats, setStats] = useState<any>(null);
   const [ai, setAi] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -111,8 +113,13 @@ export default function PreparationPage() {
       for (const x of d.data.answers || []) a[x.question_id] = x.answer_text || "";
       setAnswers(a);
       const c: Record<string, boolean> = {};
-      for (const x of d.data.answers || []) c[x.question_id] = x.is_correct !== null && x.is_correct !== undefined;
+      const g: Record<string, any> = {};
+      for (const x of d.data.answers || []) {
+        c[x.question_id] = true;
+        g[x.question_id] = x;
+      }
       setChecked(c);
+      setGrading(g);
     } else setError(d.error.message);
     setLoading(false);
   }
@@ -177,7 +184,10 @@ export default function PreparationPage() {
         setError("Не удалось сохранить ответ: " + message);
       },
     ).then((r) => {
-      if (r.ok) refreshSequentialProgressOptimistic();
+      if (r.ok) {
+        if (r.data?.grading) setGrading((g) => ({ ...g, [questionId]: r.data.grading }));
+        refreshSequentialProgressOptimistic();
+      }
     });
   }
 
@@ -355,7 +365,9 @@ export default function PreparationPage() {
   const correctOptionLabels = correctLabels(q);
   const isMulti = !isOpen && correctOptionLabels.length > 1;
   const selectedOptions = parseSelection(answers[q.id]);
-  const correct = checked[q.id] && answerCorrect(q, answers[q.id]);
+  const serverGrading = grading[q.id];
+  const correct = serverGrading?.is_correct === true;
+  const unresolved = serverGrading && serverGrading.is_correct == null;
   const answeredCount = Object.keys(checked).length;
   const isLast = idx === questions.length - 1;
 
@@ -500,12 +512,22 @@ export default function PreparationPage() {
         <QuestionReport questionId={q.id} />
 
         {checked[q.id] && experience === "prepare" && (
-          <div className={correct ? "rounded-xl bg-emerald-50 p-4 text-emerald-700" : "rounded-xl bg-rose-50 p-4 text-rose-700"}>
-            {correct ? "✓ Ответ совпал с эталоном" : "✗ Ответ требует разбора"}
+          <div className={unresolved ? "rounded-xl bg-amber-50 p-4 text-amber-800" : correct ? "rounded-xl bg-emerald-50 p-4 text-emerald-700" : "rounded-xl bg-rose-50 p-4 text-rose-700"}>
+            {unresolved ? "↻ Ответ сохранён, но автоматическая проверка ещё не завершена" : correct ? "✓ Ответ засчитан" : "✗ Ответ не засчитан"}
+            {serverGrading?.grading_source === "ai" ? <div className="mt-1 text-xs">Проверка смысла через ИИ</div> : null}
+            {serverGrading?.grading_feedback ? <div className="mt-1 text-sm">{String(serverGrading.grading_feedback)}</div> : null}
             <div className="mt-1 text-sm">Эталон: <ChemRichText text={String(q.answer || "—")} className="mt-1 whitespace-pre-wrap" /></div>
+            {unresolved ? (
+              <button type="button" disabled={loading} onClick={() => void retryPreparationGrading(session.id, q.id).then((r) => {
+                if (r.ok && r.data?.items?.[0]) setGrading((g) => ({ ...g, [q.id]: r.data.items[0] }));
+                else if (!r.ok) setError(r.error.message);
+              })} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50">
+                Повторить проверку
+              </button>
+            ) : null}
             {isOpen && (
               <div className="mt-2 text-xs opacity-70">
-                Для развёрнутых задач точное совпадение не заменяет смысловую проверку; используйте эталон для самопроверки.
+                Для развёрнутых задач учитывается смысл ответа; орфографические ошибки не должны снижать результат.
               </div>
             )}
           </div>
