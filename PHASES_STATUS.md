@@ -641,3 +641,13 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | B2 presign boundary | 🟢 | presign follows server access check |
 | Security advisor | 🟢/🟡 | file-policy issue cleared; leaked-password warning remains |
 | Runtime authorization smoke | 🟡 | owner/public/group/inactive/unrelated cases still require target environment |
+
+
+## 2026-10-07 — Pass 31: Histology material viewer access
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Histology material viewer | 🟢 | MBH specialty check added before physical-file delivery |
+| Generic Materials | 🟢 | specialty filtering already present |
+| Direct viewer bypass | 🟢 | authenticated user without MBH can no longer use the Histology viewer endpoint |
+| Physical media runtime | 🟡 | final SpaceWeb HTTP/browser smoke remains |
