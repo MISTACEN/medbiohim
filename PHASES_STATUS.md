@@ -570,3 +570,10 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 - 🟢 Security advisor повторно проверен: критический `rls_disabled` для этой таблицы устранён.
 - 🟡 Supabase Auth: остаётся отдельное предупреждение Leaked Password Protection; это следующий security hardening gate.
 - 🟡 Subject isolation: обнаружены повторяющиеся `subjects.slug` (в том числе histology=2, chemistry_organic_physical=3); нельзя делать глобальную уникальность slug без миграции контекста. Следующий шаг — authoritative subject UUID/context в search/question-bank boundary.
+
+## 2026-10-07 — media optimization requirement
+- 🟡 Added Media Optimization Pipeline to roadmap.
+- 🟡 Target architecture: original → optimized master → thumbnails/responsive derivatives → client.
+- 🟡 WebP/AVIF for images; WebM/AV1/VP9 reserved for video/animation, not ordinary photos.
+- 🟡 Server-side processing, checksum deduplication, EXIF stripping, responsive sizes, cache headers and storage/egress metrics are required.
+- 🟡 Existing Atlas/content and Materials physical-file architecture must remain compatible.
