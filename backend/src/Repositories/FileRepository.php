@@ -191,13 +191,50 @@ final class FileRepository
         $stmt->bindValue('lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
 
+        $items = $stmt->fetchAll() ?: [];
+        $b2Audit = [
+            'configured' => false,
+            'scanned' => 0,
+            'matched_metadata' => 0,
+            'orphan_objects' => 0,
+            'scan_truncated' => false,
+            'error' => null,
+        ];
+
+        $storage = new B2Storage();
+        if ($storage->isConfigured()) {
+            $b2Audit['configured'] = true;
+            try {
+                $dbKeys = [];
+                foreach ($items as $item) {
+                    $key = trim((string)($item['object_key'] ?? ''));
+                    if ($key !== '') $dbKeys[$key] = true;
+                }
+                $page = $storage->listObjects(null, 5000);
+                $b2Objects = $page['files'] ?? [];
+                $b2Audit['scanned'] = count($b2Objects);
+                foreach ($b2Objects as $object) {
+                    $name = trim((string)($object['file_name'] ?? ''));
+                    if ($name !== '' && isset($dbKeys[$name])) {
+                        $b2Audit['matched_metadata']++;
+                    } else {
+                        $b2Audit['orphan_objects']++;
+                    }
+                }
+                $b2Audit['scan_truncated'] = !empty($page['nextFileName']);
+            } catch (\Throwable $e) {
+                $b2Audit['error'] = 'B2 scan failed';
+            }
+        }
+
         return [
             'summary' => array_map(
                 static fn($v) => is_numeric($v) ? (int)$v : $v,
                 $summary
             ),
-            'items' => $stmt->fetchAll() ?: [],
-            'physical_check' => 'not_run',
+            'items' => $items,
+            'b2' => $b2Audit,
+            'physical_check' => $b2Audit['configured'] ? 'b2_read_only_scan' : 'not_run',
             'destructive_actions' => false,
         ];
     }
