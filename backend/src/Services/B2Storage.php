@@ -126,6 +126,17 @@ final class B2Storage
     }
 
     /** @return array<string,mixed> */
+    public function downloadBinary(string $objectKey): string
+    {
+        $url=$this->presignedDownloadUrl($objectKey,600);
+        if(!extension_loaded('curl')) throw new \RuntimeException('curl required for B2 download');
+        $ch=curl_init($url);
+        curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_TIMEOUT=>120]);
+        $body=curl_exec($ch); $status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE); curl_close($ch);
+        if($body===false||$status<200||$status>=300) throw new \RuntimeException('B2 download failed');
+        return (string)$body;
+    }
+
     public function getFileInfo(string $fileId): array
     {
         if (!$this->isConfigured()) {
