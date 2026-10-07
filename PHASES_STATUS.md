@@ -495,3 +495,50 @@ Supabase Free → metadata/source_key/path → SpaceWeb physical file → API en
 - 🟢 Архитектурное правило: Supabase — canonical DB; SpaceWeb/B2 — physical object layers; дополнительные бесплатные сервисы — только специализированные дополнения.
 
 Архитектура: `docs/ADMIN-DATA-CONSOLE-ARCHITECTURE.md`.
+
+## 2026-10-07 — Consolidated Remaining Implementation Map
+
+Все ранее обнаруженные незакрытые направления сведены в единый backlog. Статус 🟡 означает «частично реализовано / требуется target-environment verification или finishing», а не «сломано».
+
+| Направление | Приоритет | Статус | Следующий gate |
+|---|---:|---|---|
+| Production Vercel/SpaceWeb/CI | P0 | 🟡 | READY + green CI + authenticated smoke |
+| Auth / roles / RLS / security | P0 | 🟡 | login/refresh/roles/RLS runtime audit |
+| Histology physical media | P0 | 🟡 | 444-file + 206-card + 28-EM reconciliation + HTTP 200 |
+| Tests / Question Library | P0 | 🟡 | all published tests smoke + subject isolation |
+| Schedule + Homework unified UX | P0 | 🟡 | date → subject → lesson → homework → submission/status |
+| Materials viewer/files | P1 | 🟡 | DOCX/PDF/media end-to-end |
+| Trainers / preparations | P1 | 🟡 | start/resume/finish/result/error-review |
+| Admin Content Center | P1 | 🟡 | question/material/lesson/trainer editing + history |
+| Admin DB/File/Storage Center | P1 | 🟡 | relations, bulk dry-run, reconciliation, B2/SpaceWeb |
+| Mobile/browser acceptance | P1 | 🟡 | iPhone/Android/Windows/macOS matrix |
+| Chemistry master completion | P1 | 🟡 | 220 answers + formula visual verification + OCR expansion |
+| Smart grading E2E | P1 | 🟡 | deterministic + optional AI + pending/error retry |
+| Code quality | P1 | 🟡 | strict TS/ESLint, timezone, legacy cleanup |
+| AI tutor/providers | P2 | 🟡 | verified primary + fallback + context-aware tutor |
+| Performance/free-tier optimization | P2 | 🟡 | measurements + cache/lazy/batch/dedup |
+| Optional free-service aggregation | P2 | 🟡 | permanent-free service audit before integration |
+| Release/documentation discipline | P1 | 🟢/🟡 | baseline + roadmap/status on every risky change |
+
+### Required product flows to preserve
+- Auth → dashboard → schedule → subject → tests → preparation → result/history.
+- Subject → curriculum → question bank → answer/report → admin correction.
+- Histology → atlas/trainer → materials/documents/images.
+- Schedule → date → subject → homework → submission → derived status.
+- Chemistry → curriculum → unified 436-item master bank → provenance/formulas.
+- Admin → DB console → content/storage center → audit/rollback.
+
+### Non-regression rule
+Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback reference. No backlog item may replace a canonical data source or remove working functionality for the sake of free-tier limits.
+
+### Release order
+1. P0 target-runtime and authenticated verification.
+2. Physical media/material delivery.
+3. Tests/question bank/smart grading smoke.
+4. Unified schedule + homework flow.
+5. Admin/content/storage workspace.
+6. Mobile/browser acceptance.
+7. Chemistry completion and trainers/preparation finishing.
+8. Strict code-quality cleanup.
+9. AI tutor and optional free-service aggregation.
+10. Final UI polish and release snapshot.
