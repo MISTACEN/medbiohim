@@ -651,3 +651,12 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Generic Materials | 🟢 | specialty filtering already present |
 | Direct viewer bypass | 🟢 | authenticated user without MBH can no longer use the Histology viewer endpoint |
 | Physical media runtime | 🟡 | final SpaceWeb HTTP/browser smoke remains |
+
+
+## 2026-10-07 — Pass 32: Schedule → exact lesson → homework → photos
+| Exact lesson homework binding | 🟢 | `homeworks.schedule_entry_id` implemented in API/repository/UI; live column + index verified |
+| Homework photo attachments | 🟢 source | Multi-photo creation UI + `homework_attachments` + B2 delivery implemented; authenticated runtime E2E still pending |
+| Starosta homework creation | 🟢 source | UI and backend now recognize group `starosta`; ordinary student cannot publish shared homework |
+| Homework due_date persistence | 🟢 | Primary repository now writes `due_date` |
+| Private test env inventory | 🟢 | Variable families documented; secret values remain outside GitHub |
+| Target runtime deployment smoke | 🟡 P0 | Latest branch still needs READY Vercel/SpaceWeb authenticated smoke |
