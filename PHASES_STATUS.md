@@ -630,3 +630,14 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Frontend authority | 🟢 | Test/Preparation UI reads server grading result |
 | AI review after preparation | 🟢 | separate optional analytics, not a completion dependency |
 | Real test E2E | 🟡 | requires target-runtime authenticated smoke |
+
+
+## 2026-10-07 — Pass 30: file visibility security alignment
+
+| Контур | Статус | Результат |
+|---|---|---|
+| FileRepository server authorization | 🟢 | group-null no longer means global access |
+| Supabase files RLS | 🟢 | owner/public/active-member semantics aligned |
+| B2 presign boundary | 🟢 | presign follows server access check |
+| Security advisor | 🟢/🟡 | file-policy issue cleared; leaked-password warning remains |
+| Runtime authorization smoke | 🟡 | owner/public/group/inactive/unrelated cases still require target environment |
