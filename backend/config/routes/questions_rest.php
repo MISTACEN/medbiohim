@@ -13,6 +13,7 @@ return static function (Router $r): void {
         $filters = [
             'subject' => ($q->query['subject'] ?? null),
             'subject_slug' => ($q->query['subject_slug'] ?? null),
+            'subject_id' => ($q->query['subject_id'] ?? null),
             'kind' => ($q->query['kind'] ?? ''),
             'type' => ($q->query['type'] ?? null),
             'topic' => ($q->query['topic'] ?? null),
