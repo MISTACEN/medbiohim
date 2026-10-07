@@ -67,6 +67,15 @@ $router->put('/api/v1/admin/site',static function(Request $req,array $params)use
 $router->get('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;Response::success(['items'=>(new ContentStore())->listAnnouncements()],$req->requestId);});
 $router->post('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$title=trim((string)$req->json('title',''));$body=trim((string)$req->json('body',''));if($title===''||$body===''){Response::error('VALIDATION_ERROR','title and body required',$req->requestId,422);return;}Response::success(['item'=>(new ContentStore())->createAnnouncement(['title'=>$title,'body'=>$body,'pinned'=>(bool)$req->json('pinned',false)])],$req->requestId,201);});
 $router->delete('/api/v1/admin/announcements/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$ok=(new ContentStore())->deleteAnnouncement($params['id']);Response::success(['deleted'=>$ok],$req->requestId);});
+$router->get('/api/v1/admin/files/audit',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ $limit=max(1,min(1000,(int)($req->query['limit']??200)));
+ try{
+  Response::success((new FileRepository())->storageAudit($limit),$req->requestId);
+ }catch(\Throwable $e){
+  Response::error('FILE_AUDIT_ERROR','Storage audit is temporarily unavailable',$req->requestId,503);
+ }
+});
 $router->get('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['items'=>(new HomeworkRepository())->listAllAdmin()],$req->requestId);}catch(\Throwable $e){Response::error('DB_UNAVAILABLE','Домашние задания временно недоступны',$req->requestId,503);}});
 $router->post('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['item'=>(new HomeworkRepository())->create($req->jsonBody??[])],$req->requestId,201);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
 $router->delete('/api/v1/admin/homeworks/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{(new HomeworkRepository())->delete($params['id']);Response::success(['deleted'=>true],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
