@@ -1488,3 +1488,11 @@ Canonical metadata остаётся в Supabase, физические бинар
 - добавлена воспроизводимая миграция `database/migrations/20261008_histology_lecture_05_mermaid_escape_fix.sql`.
 
 🟡 Осталось: target-runtime/browser smoke после доставки frontend commit — проверить iPhone/Safari и desktop, что все 11 схем реально превращаются в SVG Mermaid, а таблицы и обычный Markdown остаются корректными.
+
+
+### 2026-10-08 — Lecture 05: links + visual references
+- 🟢 Fixed Markdown link rendering in `LectureRenderer`: internal lecture links such as «Микропрепараты» and the 20-question test now become actual clickable anchors.
+- 🟢 Added 9 visual blocks to Lecture 05: 5 existing MEDBIOHIM blood-smear preparation images + 4 independent University of Utah WebPath images.
+- 🟢 External images are used only as a visual cross-check; canonical MEDBIOHIM trainer cards remain the primary practical material.
+- 🟢 Live Supabase lecture updated and verified; only Lecture 05 was touched.
+- 🟡 Runtime/browser smoke on deployed Vercel build remains to be confirmed.
