@@ -420,7 +420,8 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
     setHomeworkBusy(String(h.id));
     let fileId:string|undefined;
     if (file) {
-      const uploaded = await uploadFile(file, user?.groupId);
+      const targetGroupId = user?.groupId || (selected as any)?.group_id || undefined;
+      const uploaded = await uploadFile(file, targetGroupId);
       if (!uploaded.ok) { setError(uploaded.error.message); setHomeworkBusy(null); return; }
       fileId = uploaded.data.file?.id;
     }
@@ -470,7 +471,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
       description:addHomeworkDescription.trim() || undefined,
       subject_id:String(selected.subject_id),
       due_date:String(selected.date),
-      group_id:user?.groupId,
+      group_id:(user?.groupId || (selected as any)?.group_id || undefined),
       schedule_entry_id:String(selected.id),
       attachment_file_ids:attachmentFileIds,
     });
