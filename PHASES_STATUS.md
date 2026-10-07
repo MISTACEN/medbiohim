@@ -651,3 +651,5 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Generic Materials | 🟢 | specialty filtering already present |
 | Direct viewer bypass | 🟢 | authenticated user without MBH can no longer use the Histology viewer endpoint |
 | Physical media runtime | 🟡 | final SpaceWeb HTTP/browser smoke remains |
+
+| Materials physical delivery semantics | 🟢 source | live audit explains 80 Histology source_path-only rows; unified viewer fix is in draft PR #16; runtime HTTP smoke still pending |
