@@ -193,3 +193,41 @@ PR #17 пока draft. Нужны CI green, target SpaceWeb smoke и frontend me
 | Perceptual validation sample set | 🟡 | real histology/EM/text-heavy acceptance still requires browser/visual runtime check |
 
 Important: the analyzer is an inexpensive deterministic gate, not a substitute for a human/benchmark visual acceptance test. The latter remains in docs/UNVERIFIED-CHECKS-2026-10-07.md.
+
+## Pass 39 — runtime/integrity continuation — 2026-10-08
+
+### Storage/media source correction
+- 🟢 fixed double-escaped exception namespaces in `backend/config/routes/admin.php` for the new image-processing endpoint;
+- 🟡 target-runtime PHP syntax/capability smoke is still required because GitHub Actions has no workflow run attached to the current branch head;
+- 🟡 real B2 derivative E2E remains unverified.
+
+### Live question/test integrity snapshot
+Verified directly against Supabase:
+- `questions`: 855 total;
+- published, non-archived questions: 660;
+- `tests`: 33 total;
+- published, non-archived tests: 32;
+- `test_questions`: 854 links;
+- duplicate `test_id + question_id` pairs: 0;
+- orphan test/question links: 0;
+- published tests without questions: 0;
+- published questions without tests: 0.
+
+Subject breakdown:
+- Histology: 673 published questions, 479 linked into tests, 9 published tests;
+- Organic/physical chemistry: 176 published questions, 176 linked, 21 published tests;
+- unscoped questions: 5 published, all linked, 2 published tests.
+
+Histology test inventory currently includes:
+- 206 questions — preparations/electronograms;
+- 163 questions — cytology + embryology;
+- 96 questions — cytology closed tests;
+- 67 questions — embryology closed tests (**currently unpublished**);
+- 41 questions — general embryology;
+- 20 questions — blood;
+- 20 questions — muscle tissues;
+- 20 questions — epithelial tissues;
+- 20 questions — cytology closed;
+- 20 questions — embryology closed.
+
+Important: no cleanup or deletion was performed from this audit. The 67-question unpublished test must be treated as an activation/product decision, not as an orphan or corruption finding.
