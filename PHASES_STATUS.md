@@ -577,3 +577,18 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 - 🟡 WebP/AVIF for images; WebM/AV1/VP9 reserved for video/animation, not ordinary photos.
 - 🟡 Server-side processing, checksum deduplication, EXIF stripping, responsive sizes, cache headers and storage/egress metrics are required.
 - 🟡 Existing Atlas/content and Materials physical-file architecture must remain compatible.
+
+
+## 2026-10-07 — Media quality/readability gate
+
+🟡 Media Optimization остаётся IN PROGRESS. Дополнительно зафиксировано:
+
+- content-aware classification вместо единого quality profile;
+- несколько compression/quality candidates для значимых изображений;
+- отдельная проверка мелкого текста, подписей, формул и учебных деталей;
+- выбор самого лёгкого кандидата, прошедшего quality/readability threshold;
+- автоматический переход на менее сжатый вариант при провале проверки;
+- fallback на original, если ни один derivative не проходит quality gate;
+- при неопределённости quality-check запрещено рисковать читаемостью;
+- original не удаляется ради экономии размера, если нужен zoom/восстановление/архив;
+- DONE только после проверки реальных фото препаратов, ЭМ, атласа, лекционных материалов и 1080p-видео на mobile/desktop.
