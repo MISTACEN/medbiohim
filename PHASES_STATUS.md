@@ -592,3 +592,17 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 - при неопределённости quality-check запрещено рисковать читаемостью;
 - original не удаляется ради экономии размера, если нужен zoom/восстановление/архив;
 - DONE только после проверки реальных фото препаратов, ЭМ, атласа, лекционных материалов и 1080p-видео на mobile/desktop.
+
+
+## 2026-10-07 — Pass 28: subject isolation hardening
+
+| Контур | Статус | Результат |
+|---|---|---|
+| exam_questions | 🟢 | subject_id authoritative filter added; slug remains fallback |
+| Ticket generation | 🟢 | bank subject UUID preferred |
+| Question Library catalog | 🟢 | preserves distinct subject UUIDs even with duplicate slugs |
+| Global Search | 🟢 | supports authoritative subject_id boundary |
+| Admin content package | 🟢 | ambiguous duplicate slug is rejected without explicit UUID |
+| Live ticket-bank integrity | 🟢 | current banks have matching subject UUIDs with their question pools |
+| Frontend subject propagation | 🟡 | slug-only legacy entry points still need migration to UUID context where available |
+| Vercel/SpaceWeb runtime | 🟡 | latest commits remain source-verified until READY deployment/runtime smoke |
