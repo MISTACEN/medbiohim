@@ -217,6 +217,24 @@ return static function (Router $router): void {
         }
     });
 
+    $router->post('/api/v1/tests/attempts/{id}/answers/{questionId}/regrade', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+        try {
+            $row = (new TestRepository())->retryAnswerGrading(
+                (string) $params['id'],
+                $req->user->id,
+                (string) $params['questionId']
+            );
+            Response::success(['answer'=>$row], $req->requestId);
+        } catch (RuntimeException $e) {
+            $code = $e->getMessage();
+            $status = in_array($code, ['ATTEMPT_NOT_FOUND','ANSWER_NOT_FOUND'], true) ? 404 : 409;
+            Response::error($code, $code === 'QUESTION_NOT_IN_ATTEMPT' ? 'Вопрос не входит в эту попытку' : $code, $req->requestId, $status);
+        } catch (Throwable $e) {
+            Response::error('GRADING_RETRY_ERROR', 'Не удалось повторно проверить ответ', $req->requestId, 503);
+        }
+    });
+
     $router->post('/api/v1/tests/attempts/{id}/finish', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         // Score is calculated server-side from persisted answers and the attempt snapshot.
@@ -230,10 +248,6 @@ return static function (Router $router): void {
         } catch (\RuntimeException $e) {
             if ($e->getMessage() === 'ATTEMPT_ALREADY_FINISHED') {
                 Response::error('ATTEMPT_ALREADY_FINISHED', 'Попытка уже завершена; изменять её результат нельзя', $req->requestId, 409);
-                return;
-            }
-            if ($e->getMessage() === 'AI_GRADING_PENDING') {
-                Response::error('AI_GRADING_PENDING', 'Не все ответы удалось надёжно проверить. Повторите отправку ответа.', $req->requestId, 409);
                 return;
             }
             Response::error('DB_ERROR', $e->getMessage(), $req->requestId, 503);
