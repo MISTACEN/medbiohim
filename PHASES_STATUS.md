@@ -669,3 +669,15 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | SpaceWeb reconciliation | 🟡 | нужен target-runtime/host доступ к физическому дереву |
 | Media optimizer | 🟡 | следующий implementation pass |
 | Target runtime | 🟡 | GitHub source changed; production verification blocked by deployment/runtime gates |
+
+
+## 2026-10-07 — Pass 35: media derivative metadata foundation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| file_variants schema | 🟢 | dedicated parent/variant metadata table added |
+| Variant uniqueness | 🟢 | one variant key per parent file |
+| Processing state | 🟢 | ready/queued/processing/failed/skipped |
+| Variant visibility | 🟢 | RLS follows parent file access boundary |
+| Physical derivative generation | 🟡 | not yet implemented; requires runtime capability/worker verification |
+| Existing binaries | 🟢 | untouched by this pass |
