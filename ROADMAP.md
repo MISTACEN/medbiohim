@@ -1307,3 +1307,13 @@ Supabase остаётся единственным основным источн
 Исправлены две найденные регрессии в curriculum-map: повреждённый PHP Throwable handler и потерянная связь topic → curriculum_items для planned_date/item_type. Подробный audit: `docs/IMPLEMENTATION-AUDIT-2026-10-07-P0.md`.
 
 Production gate пока не закрыт: Vercel сообщает `build-rate-limit`; CI/runtime READY не считаются подтверждёнными до фактического успешного запуска.
+
+
+## 2026-10-07 — P0 verification/fix cycles continued
+
+- 🟢 Vercel production deployment for `59e38d9664645556bd2fca64ea6d97f998a5f200` reached **READY**; GitHub combined status for that commit reports Vercel success.
+- 🟢 Repeated source verification found and fixed a real JSX regression in the Chemistry master-bank section and two admin validation defects.
+- 🟢 Public health diagnostics were hardened: DB host/port/user and raw connection diagnostics are no longer returned by `HealthChecker`.
+- 🟢 Histology Materials now have an authenticated SpaceWeb physical-file fallback when no B2 download URL exists; this preserves the canonical architecture `Supabase metadata + SpaceWeb binary`.
+- 🟡 Latest commits after `59e38d9...` are currently blocked from a new Vercel deployment by `build-rate-limit`; they remain source-verified only until a READY deployment is available.
+- 🟡 Production authenticated smoke and SpaceWeb runtime verification remain open.
