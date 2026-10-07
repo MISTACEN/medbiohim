@@ -15,15 +15,19 @@ return static function (Router $router): void {
         $q = trim((string) ($req->query['q'] ?? $req->query['query'] ?? ''));
         $limit = (int) ($req->query['limit'] ?? 30);
         $subject = isset($req->query['subject_slug']) ? (string) $req->query['subject_slug'] : null;
+        $subjectId = isset($req->query['subject_id']) ? (string) $req->query['subject_id'] : null;
         $type = isset($req->query['type']) ? (string) $req->query['type'] : null;
         if ($subject === '') {
             $subject = null;
+        }
+        if ($subjectId === '') {
+            $subjectId = null;
         }
         if ($type === '') {
             $type = null;
         }
         try {
-            $out = (new SearchService())->search($q, $limit, $subject, $type);
+            $out = (new SearchService())->search($q, $limit, $subject, $type, $subjectId);
             Response::success($out, $req->requestId);
         } catch (\Throwable $e) {
             Response::error('SEARCH_ERROR', $e->getMessage(), $req->requestId, 500);
