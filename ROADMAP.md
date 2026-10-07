@@ -1449,3 +1449,29 @@ Canonical metadata остаётся в Supabase, физические бинар
 Это синхронизирует viewer с generic Materials access policy и не оставляет прямой authenticated URL обходом specialty boundary.
 
 🟡 Финальный target-runtime smoke всё ещё обязателен: разрешённый MBH user → DOC/DOCX/photo; пользователь без MBH → 403.
+
+
+## 2026-10-08 — Histology Lecture 05: blood practical integration
+
+🟢 Создана и проверена в Supabase полноценная Lecture 05: «Кровь и лимфа».
+
+Связь закреплена с canonical curriculum:
+- module: «Кровь и лимфа»;
+- topic: «Неделя 5–6 · Лекция 5/практика · Кровь и лимфа»;
+- topic UUID: b1000001-0000-4000-8000-000000000007.
+
+🟢 Усилена сквозная учебная цепочка внутри лекции:
+**теория → конкретный микропрепарат → морфологический признак → ЭМ → тест → экзаменационный вопрос**.
+
+Подтверждены и связаны без изменения их canonical plan mapping:
+- 8 опубликованных preparation-карточек «Кровь мазок»;
+- 2 релевантных электронограммы;
+- 2 source-backed материала;
+- тест «Гистология — общая: кровь» — 20 вопросов;
+- 9 опубликованных exam-question IDs по теме.
+
+🟡 Не считать весь лекционный слой завершённым: это первый полноценно заполненный lecture body; остальные lecture bodies требуют отдельного source-backed прохода.
+
+🟡 Production/browser smoke для лекции и физического media остаётся открытым до подтверждения целевого окружения.
+
+Документация: docs/HISTOLOGY-LECTURE-05-BLOOD-LINKS-2026-10-08.md.
