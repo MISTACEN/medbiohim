@@ -226,6 +226,37 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
   trainerImageInflight.set(key,promise);
   return promise;
 }
+const materialFileCache=new Map<string,string>();
+
+export async function getMaterialFileUrl(id:string):Promise<string|null>{
+  if(typeof window==="undefined")return null;
+  const key=String(id);
+  const cached=materialFileCache.get(key);
+  if(cached)return cached;
+  try{
+    let token=getToken();
+    let res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
+      headers:token?{Authorization:`Bearer ${token}`}:{},
+      cache:"no-store"
+    });
+    if(res.status===401){
+      const access=await refreshAccessToken();
+      if(access){
+        res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
+          headers:{Authorization:`Bearer ${access}`},
+          cache:"no-store"
+        });
+      }
+    }
+    if(!res.ok)return null;
+    const blob=await res.blob();
+    if(blob.size===0)return null;
+    const url=URL.createObjectURL(blob);
+    materialFileCache.set(key,url);
+    return url;
+  }catch{return null;}
+}
+
 export async function retryTrainerImage(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
   const key=String(id);
