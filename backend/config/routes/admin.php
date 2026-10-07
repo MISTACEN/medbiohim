@@ -67,6 +67,45 @@ $router->put('/api/v1/admin/site',static function(Request $req,array $params)use
 $router->get('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;Response::success(['items'=>(new ContentStore())->listAnnouncements()],$req->requestId);});
 $router->post('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$title=trim((string)$req->json('title',''));$body=trim((string)$req->json('body',''));if($title===''||$body===''){Response::error('VALIDATION_ERROR','title and body required',$req->requestId,422);return;}Response::success(['item'=>(new ContentStore())->createAnnouncement(['title'=>$title,'body'=>$body,'pinned'=>(bool)$req->json('pinned',false)])],$req->requestId,201);});
 $router->delete('/api/v1/admin/announcements/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$ok=(new ContentStore())->deleteAnnouncement($params['id']);Response::success(['deleted'=>$ok],$req->requestId);});
+$router->get('/api/v1/admin/files/capabilities',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ $commandAvailable=static function(string $command):bool{
+  if(!function_exists('shell_exec'))return false;
+  $out=@shell_exec('command -v '.escapeshellarg($command).' 2>/dev/null');
+  return is_string($out)&&trim($out)!=='';
+ };
+ try{
+  Response::success([
+   'runtime'=>PHP_VERSION,
+   'extensions'=>[
+    'gd'=>extension_loaded('gd'),
+    'imagick'=>class_exists('Imagick'),
+    'exif'=>extension_loaded('exif'),
+    'fileinfo'=>extension_loaded('fileinfo'),
+    'mbstring'=>extension_loaded('mbstring'),
+   ],
+   'image'=>[
+    'webp_gd'=>function_exists('imagewebp'),
+    'avif_gd'=>function_exists('imageavif'),
+    'webp_imagick'=>class_exists('Imagick') && in_array('WEBP',\Imagick::queryFormats('WEBP'),true),
+    'avif_imagick'=>class_exists('Imagick') && in_array('AVIF',\Imagick::queryFormats('AVIF'),true),
+   ],
+   'commands'=>[
+    'ffmpeg'=>$commandAvailable('ffmpeg'),
+    'ffprobe'=>$commandAvailable('ffprobe'),
+    'cwebp'=>$commandAvailable('cwebp'),
+    'avifenc'=>$commandAvailable('avifenc'),
+   ],
+   'policy'=>[
+    'optimizer_mode'=>'capability_detect_then_quality_gate',
+    'original_deleted'=>false,
+    'video_full_hd_required'=>true,
+   ],
+  ],$req->requestId);
+ }catch(\Throwable $e){
+  Response::error('MEDIA_CAPABILITY_ERROR','Media capability check failed',$req->requestId,503);
+ }
+});
 $router->get('/api/v1/admin/files/audit',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;
  $limit=max(1,min(1000,(int)($req->query['limit']??200)));
