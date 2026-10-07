@@ -61,3 +61,11 @@
 - Migration: database/migrations/20261008_histology_lecture_05_learning_links.sql
 - Detailed record: docs/HISTOLOGY-LECTURE-05-BLOOD-LINKS-2026-10-08.md
 - Open: production/browser smoke and physical media verification.
+
+
+## 2026-10-08 — Histology Lecture 05 Mermaid repair
+- Fixed imported `body_md` escaping for Lecture 05.
+- Live verification: 11 Mermaid blocks, 0 escaped backticks, 0 escaped quotes.
+- Frontend `LectureRenderer` now normalizes escaped Mermaid fences before parsing.
+- Migration: `database/migrations/20261008_histology_lecture_05_mermaid_escape_fix.sql`.
+- Open: Vercel deployment + iPhone/Safari/desktop browser smoke for actual Mermaid SVG rendering.
