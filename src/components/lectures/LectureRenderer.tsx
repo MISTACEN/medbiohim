@@ -30,7 +30,7 @@ function escapeHtml(s: string) {
 
 function parseBlocks(md: string) {
   const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem"; content: string }> = [];
-  const re = /```(chart|video|image|mermaid|chem)\n([\s\S]*?)```/g;
+  const re = /```(chart|video|image|mermaid|chem)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
