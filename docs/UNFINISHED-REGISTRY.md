@@ -149,3 +149,25 @@ A remaining item can be marked ✅ only after:
 - Histology media needs real target-environment B2/SpaceWeb smoke test.
 - AI provider availability depends on runtime credentials/network.
 - Dedicated polished editors and full visual version history remain product polish.
+
+
+## Pass 38 — parallel cross-layer audit 2026-10-07
+
+### U-38-01 — question-bank reconciliation
+Severity: P1 / data integrity
+
+Live schema currently reports 855 questions and 854 test_questions rows. Existing audit evidence indicates roughly 195 published/active question rows may be intentionally standalone or not linked to tests. This must be reconciled by category before any cleanup: standalone practice, archived/unpublished, ticket-bank content, intentionally unlinked, or accidental orphan. Do not auto-delete or relink.
+
+### U-38-02 — exam_questions reconciliation
+Severity: P1 / content integrity
+
+Live schema reports 876 exam_questions. The count alone does not prove correct subject/topic/ticket coverage. Full reconciliation against Histology curriculum and the protected ticket banks remains unverified.
+
+### U-38-03 — route shadow cleanup
+Severity: P2
+
+Source search confirms canonical REST files still coexist with legacy aggregate route files. No immediate functional regression was proven from source search; consolidation remains a maintenance-risk item.
+
+### U-38-04 — unverified checks separated
+
+Created docs/UNVERIFIED-CHECKS-2026-10-07.md. All checks requiring target runtime, browser/device, physical storage, provider credentials, or blocked aggregate SQL verification are kept there and must not be marked DONE from source inspection alone.
