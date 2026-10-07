@@ -42,7 +42,7 @@ return static function(Router $router): void {
 
             if ($isStaff) {
                 $group = $requestedGroup !== null && $requestedGroup !== ''
-                    ? $resolver->assertGroupMember($req->user->id, $requestedGroup)
+                    ? $resolver->assertActiveGroup($requestedGroup)
                     : null;
             } else {
                 // Student-created shared homework must explicitly identify the group
