@@ -103,9 +103,6 @@ final class HealthChecker
             return [
                 'status' => 'ok',
                 'message' => 'Connected',
-                'host' => $cfg['host'],
-                'port' => $cfg['port'],
-                'user' => $cfg['user'],
             ];
         } catch (\Throwable $e) {
             $raw = Connection::lastError() ?: $e->getMessage();
@@ -127,9 +124,6 @@ final class HealthChecker
                 'status' => 'fail',
                 'message' => $hint,
                 'detail' => substr($safe, 0, 300),
-                'host' => $cfg['host'],
-                'port' => $cfg['port'],
-                'user' => $cfg['user'],
             ];
         }
     }
