@@ -1,6 +1,6 @@
 # MEDBIOHIM — PHASES STATUS
 
-> Актуально на **2026-10-06**.  
+> Актуально на **2026-10-07**.  
 > Source of truth: `main` + живой Supabase + целевые deployment environments.  
 > Подробный план: [ROADMAP.md](ROADMAP.md).
 
@@ -561,3 +561,12 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 - 🟢 Schedule + Homework: source/UI audit confirms current schedule page already selects a concrete date + subject and creates homework with that subject/date/group context; planner returns homework, attendance and recovery in one response.
 - 🟡 Latest post-READY commits currently cannot receive a new Vercel deployment because of external `build-rate-limit`; therefore those latest fixes remain source-verified until a READY deployment exists.
 - 🟡 SpaceWeb physical-file HTTP verification and authenticated production smoke remain open gates.
+
+
+## 2026-10-07 — verification cycle
+
+- 🟢 Supabase: `public.chemistry_source_documents` теперь защищена RLS.
+- 🟢 Supabase policy: только `authenticated SELECT`; записи остаются server-side.
+- 🟢 Security advisor повторно проверен: критический `rls_disabled` для этой таблицы устранён.
+- 🟡 Supabase Auth: остаётся отдельное предупреждение Leaked Password Protection; это следующий security hardening gate.
+- 🟡 Subject isolation: обнаружены повторяющиеся `subjects.slug` (в том числе histology=2, chemistry_organic_physical=3); нельзя делать глобальную уникальность slug без миграции контекста. Следующий шаг — authoritative subject UUID/context в search/question-bank boundary.
