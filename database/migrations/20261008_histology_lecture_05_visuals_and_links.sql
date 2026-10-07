@@ -58,7 +58,7 @@ set payload = jsonb_set(
 {"url":"https://webpath.med.utah.edu/jpeg5/HEME100.jpg","caption":"University of Utah WebPath — поле нормальной периферической крови с несколькими типами лейкоцитов. Используй для тренировки дифференциального распознавания."}
 ```
 
-Источник и описание серии: [University of Utah WebPath — Normal Histology](/HISTHTML/NORMAL/NORMAL.html) — для внешнего источника открой оригинальную страницу WebPath.
+Источник и описание серии: [University of Utah WebPath — Normal Histology](https://webpath.med.utah.edu/HISTHTML/NORMAL/NORMAL.html) — для внешнего источника открой оригинальную страницу WebPath.
 
 > **Важно:** внешние фотографии не заменяют канонические препараты MEDBIOHIM. Сначала распознавай клетку по вашим изображениям, затем используй WebPath как независимую проверку.
 
