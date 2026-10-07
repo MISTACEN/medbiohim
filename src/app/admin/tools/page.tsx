@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
-import { adminOverview, adminPresence, adminValidateContent, health, hasToken } from "@/lib/api";
+import { adminOverview, adminPresence, adminValidateContent, adminFileAudit, health, hasToken } from "@/lib/api";
 
 /** Единый Центр управления CMS. */
 export default function AdminToolsPage() {
@@ -29,7 +29,9 @@ export default function AdminToolsPage() {
   const [backendHealth, setBackendHealth] = useState<unknown>(null);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<"overview" | "learning" | "system">("overview");
+  const [tab, setTab] = useState<"overview" | "learning" | "storage" | "system">("overview");
+  const [fileAudit, setFileAudit] = useState<any>(null);
+  const [fileAuditing, setFileAuditing] = useState(false);
   const [validation, setValidation] = useState<any>(null);
   const [validating, setValidating] = useState(false);
   const [presence, setPresence] = useState<any[]>([]);
@@ -53,6 +55,13 @@ export default function AdminToolsPage() {
     if (r.ok) setValidation(r.data); else setError(r.error.message);
   }
 
+  async function validateFiles() {
+    setFileAuditing(true);
+    const r = await adminFileAudit(300);
+    setFileAuditing(false);
+    if (r.ok) setFileAudit(r.data); else setError(r.error.message);
+  }
+
   useEffect(() => {
     if (hasToken()) void load();
   }, []);
@@ -70,6 +79,7 @@ export default function AdminToolsPage() {
   const nav: Array<["overview" | "learning" | "system", string, typeof LayoutDashboard]> = [
     ["overview", "Обзор", LayoutDashboard],
     ["learning", "ДЗ и сообщество", ShieldCheck],
+    ["storage", "Файлы / Storage", HardDrive],
     ["system", "Система", Settings2],
   ];
 
@@ -168,6 +178,68 @@ export default function AdminToolsPage() {
             </>
           )}
           {tab === "learning" && <AdminMissingTools onMessage={(m, err) => setError(err ? m : "")} />}
+
+          {tab === "storage" && (
+            <div className="space-y-5">
+              <div className="card flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold">File & Storage Center</h2>
+                  <p className="mt-1 text-sm text-slate-500">Неразрушающий аудит metadata → материалы → тренажёр → ДЗ → сдачи. Физические объекты не удаляются и не перемещаются.</p>
+                </div>
+                <button type="button" className="btn-primary" disabled={fileAuditing} onClick={() => void validateFiles()}>
+                  {fileAuditing ? "Проверяю…" : "Запустить аудит"}
+                </button>
+              </div>
+
+              {fileAudit?.summary && (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["Активных файлов", fileAudit.summary.active_files],
+                    ["B2", fileAudit.summary.b2_files],
+                    ["SpaceWeb", fileAudit.summary.spaceweb_files],
+                    ["Без checksum", fileAudit.summary.missing_sha256],
+                    ["Без object_key", fileAudit.summary.missing_object_key],
+                    ["Неопределённое хранилище", fileAudit.summary.unknown_files],
+                    ["В обработке", fileAudit.summary.processing_files],
+                    ["Ошибка обработки", fileAudit.summary.failed_processing],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} className="card">
+                      <div className="text-xs uppercase tracking-wide text-slate-400">{String(label)}</div>
+                      <div className="mt-1 text-2xl font-bold text-indigo-600">{String(value ?? 0)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {fileAudit?.items && (
+                <div className="card overflow-hidden">
+                  <div className="border-b bg-slate-50 px-4 py-3 text-xs text-slate-500">Показаны файлы с наименьшим количеством ссылок. Это кандидаты для ручной reconciliation, а не команда на удаление.</div>
+                  <div className="overflow-auto">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          {["Файл","MIME","Storage","Status","Refs","SHA-256","Object key"].map((h) => <th key={h} className="whitespace-nowrap px-3 py-2 text-left">{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fileAudit.items.map((row:any) => (
+                          <tr key={String(row.id)} className="border-t">
+                            <td className="max-w-[260px] px-3 py-2"><div className="truncate font-semibold">{String(row.original_name || row.id)}</div><div className="text-[10px] text-slate-400">{String(row.id)}</div></td>
+                            <td className="px-3 py-2">{String(row.mime_type || "—")}</td>
+                            <td className="px-3 py-2">{String(row.storage_provider || "unknown")}</td>
+                            <td className="px-3 py-2">{String(row.processing_status || "—")}</td>
+                            <td className="px-3 py-2 font-semibold">{String(row.total_refs ?? 0)}</td>
+                            <td className="max-w-[180px] px-3 py-2"><span className="truncate">{row.sha256 ? String(row.sha256) : "нет"}</span></td>
+                            <td className="max-w-[240px] px-3 py-2"><span className="truncate">{String(row.object_key || "нет")}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {tab === "system" && (
             <div className="card space-y-4">
               <h2 className="text-lg font-bold">Состояние backend</h2>
