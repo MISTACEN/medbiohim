@@ -82,3 +82,17 @@
 - [x] exam question IDs recorded;
 - [ ] production/browser smoke;
 - [ ] automatic related-content UI;
+
+## 2026-10-08 — Mermaid rendering repair
+
+Во время проверки Lecture 05 обнаружено, что Mermaid-блоки показывались пользователю как текст вида ` ```mermaid ... ``` `.
+
+**Причина:** в `body_md` импортированного lecture record был сохранён дополнительный escape-слой (`\\`` и `\\"`). Из-за этого существующий `parseBlocks()` не видел настоящие Mermaid fences.
+
+**Исправлено:**
+- live `body_md` нормализован в Supabase;
+- проверено: 11 Mermaid-блоков, `escaped_backticks=0`, `escaped_quotes=0`;
+- `LectureRenderer` нормализует legacy/imported Markdown перед `parseBlocks()`;
+- добавлена миграция `20261008_histology_lecture_05_mermaid_escape_fix.sql`.
+
+**Открытая проверка:** production/browser smoke после frontend deployment: Mermaid должен отрисоваться как диаграмма, а не как `<pre>`/текст; отдельно проверить таблицы и мобильный горизонтальный скролл.
