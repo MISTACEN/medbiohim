@@ -38,3 +38,78 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 - [docs/platform-concept-medbiohim.md](docs/platform-concept-medbiohim.md)
 
 Synced: 2026-10-07
+
+
+## Текущее состояние проекта — 2026-10-07
+
+MEDBIOHIM — единая образовательная платформа. Полный запланированный функционал сохраняется при $0 обязательных расходов.
+
+### Каноническая архитектура
+
+- GitHub — код, миграции, документация, roadmap/status и небольшие декларативные контентные артефакты.
+- Vercel Hobby — Next.js frontend и deployment.
+- SpaceWeb Free — PHP API/runtime и тяжёлые физические media-файлы.
+- Supabase Free — PostgreSQL, Auth, RLS, metadata и canonical data.
+- Backblaze B2 Free — дополнительное object storage/backup при необходимости.
+- Дополнительные бесплатные сервисы — только специализированные дополнения: cache/CDN, push, OCR, search, monitoring, analytics, backup.
+
+Supabase остаётся единственным canonical source of truth для данных. Дополнительные сервисы не создают вторую конкурирующую БД и не должны быть обязательными для базовой работы сайта.
+
+### Уже реализовано
+
+- авторизация, /api/v1/me, роли и academic context;
+- группы, предметы, учебный план и расписание;
+- homework/planner и group-scoped academic flows;
+- тесты, подготовки, история и server-authoritative scoring;
+- immutable snapshots для воспроизводимости результатов;
+- Question Library с ответами без запуска теста;
+- subject-scoped банки вопросов и жалобы на вопросы;
+- admin problem center;
+- optional AI grading с deterministic-проверкой до вызова AI;
+- игнорирование орфографических ошибок при свободном ответе;
+- curriculum → topic → question/test mapping;
+- Histology atlas/trainer/materials architecture;
+- 28 electronograms и captions metadata;
+- Chemistry unified master catalog на 436 элементов с provenance;
+- chemistry bank на сайте;
+- admin database console с редактированием, импортом/экспортом и audit/rollback;
+- поиск и пагинация в admin database console;
+- zero-cost/full-functionality policy;
+- стабильная baseline-точка для безопасного отката.
+
+### Гистология
+
+Физические материалы хранятся отдельно от Supabase metadata. Канонический runtime-путь на SpaceWeb: /public_html/content/histology/.
+
+Модель: Supabase metadata/source_key/path → SpaceWeb physical file → PHP API → frontend.
+Наличие записи в Supabase не считается доказательством существования физического файла; финальная проверка — HTTP 200 + корректный MIME.
+
+### Тесты и ответы
+
+Server-authoritative модель: клиент не является источником правильного ответа; question/authoritative answer фиксируются snapshot; score вычисляется сервером; free-text сначала проверяется детерминированно и только затем при необходимости AI; AI необязателен; spelling/orthography не должны влиять на смысловую оценку; multiple-choice проверяется без AI.
+
+### Химия
+
+Единый master catalog: 436 элементов, 260 open tasks, 176 test questions. Сохраняется provenance двух независимых методических источников. Текстовые формулы сохраняются; image-only structural formulas не восстанавливаются догадкой; неподтверждённый OCR не заменяет production answers.
+
+### Администрирование
+
+Планируется единый PC-style Operations Center: Database Console → Content Center → File & Storage Center для SpaceWeb/B2 → reconciliation metadata/objects → health/quota dashboard → audit/history/rollback. Изменения должны проходить whitelist, server-side role checks, validation и audit.
+
+### Объединённый flow расписания и заданий
+
+Целевой сценарий: Расписание → дата → предмет → занятие → задание → выполнение/сдача → единый статус.
+
+### Основной незакрытый backlog
+
+Production/runtime Vercel + SpaceWeb + CI; auth/security final gate; физическая сверка Histology media; Materials/DOCX/PDF/media delivery; smoke всех published tests; единый Schedule + Homework UX; Smart grading E2E; admin Content Center; DB/File/Storage Operations Center; mobile/browser acceptance; завершение Chemistry answers/formula verification; strict TypeScript/ESLint и architecture cleanup; AI tutor/provider runtime; performance/free-tier optimization; дополнительные бесплатные сервисы только как optional additions.
+
+Подробности и порядок работ находятся в ROADMAP.md и PHASES_STATUS.md.
+
+### Zero-cost правило
+
+Функциональность не удаляется и не урезается только из-за бесплатной инфраструктуры. Сначала применяются cache, pagination, lazy loading, streaming, batching, deduplication, metadata/binary separation и распределение нагрузки между бесплатными слоями.
+
+### Stable baseline
+
+Rollback reference: 8e8fef5c2f661e7e1d625964909307c00c343884. Это технический baseline, а не независимая production-проверка.
