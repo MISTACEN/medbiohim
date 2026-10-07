@@ -88,17 +88,20 @@ final class ExamQuestionStore
         $map = [];
         foreach (self::list(['kind' => '']) as $row) {
             $slug = (string) ($row['subject_slug'] ?? 'other');
-            if (!isset($map[$slug])) {
-                $map[$slug] = [
+            $subjectId = trim((string) ($row['subject_id'] ?? ''));
+            $key = $subjectId !== '' ? $subjectId : 'slug:' . $slug;
+            if (!isset($map[$key])) {
+                $map[$key] = [
+                    'subject_id' => $subjectId !== '' ? $subjectId : null,
                     'subject' => (string) ($row['subject_name'] ?? $slug),
                     'subject_slug' => $slug,
                     'count' => 0,
                     'kinds' => [],
                 ];
             }
-            $map[$slug]['count']++;
+            $map[$key]['count']++;
             $rowKind = trim((string) ($row['kind'] ?? 'other')) ?: 'other';
-            $map[$slug]['kinds'][$rowKind] = ($map[$slug]['kinds'][$rowKind] ?? 0) + 1;
+            $map[$key]['kinds'][$rowKind] = ($map[$key]['kinds'][$rowKind] ?? 0) + 1;
         }
         return array_values($map);
     }
