@@ -22,7 +22,8 @@ export type AppUser = {
   semester?: number;
   groupId?: string;
   groupCode?: string;
-  groups: Array<{ id: string; name: string; code?: string; course_number?: number }>;
+  groupRole?: "student" | "starosta";
+  groups: Array<{ id: string; name: string; code?: string; course_number?: number; role_in_group?: "student" | "starosta" }>;
 };
 
 type AuthCtx = {
@@ -62,10 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = res.data as {
         user?: { id?: string; full_name?: string; email?: string; name?: string };
         roles?: string[];
-        groups?: Array<{ id: string; name: string; code?: string; course_number?: number }>;
+        groups?: Array<{ id: string; name: string; code?: string; course_number?: number; role_in_group?: "student" | "starosta" }>;
         course?: number | null;
         semester?: number | null;
-        current_group?: { id: string; name: string; code?: string; course_number?: number } | null;
+        current_group?: { id: string; name: string; code?: string; course_number?: number; role_in_group?: "student" | "starosta" } | null;
       };
       const u = data.user || {};
       const roles = data.roles || [];
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         groupId: primary?.id,
         groupName: primary?.name || primary?.code,
         groupCode: primary?.code,
+        groupRole: primary?.role_in_group,
         course: data.course ?? primary?.course_number ?? undefined,
         semester: data.semester ?? undefined,
         groups,
