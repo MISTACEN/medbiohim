@@ -49,7 +49,7 @@ return static function(Router $router): void {
             $q=$db->prepare($sql);$q->execute($p);$homeworks=$q->fetchAll()?:[];
 
             $attachmentsByHomework=[];
-            $homeworkIds=array_values(array_filter(array_map(static fn($row):(string)=>trim((string)($row['id']??'')),$homeworks)));
+            $homeworkIds=array_values(array_filter(array_map(static fn($row): string =>trim((string)($row['id']??'')),$homeworks)));
             if($homeworkIds){
                 $ph=implode(',',array_fill(0,count($homeworkIds),'?'));
                 $a=$db->prepare(
