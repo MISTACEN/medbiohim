@@ -69,3 +69,20 @@ GitHub Actions для проверенного commit отдельного workf
 ### Правило продолжения
 
 Переход к следующему этапу выполняется только после повторной проверки текущего исправления. Если build/runtime снова выявляет дефект — сначала исправление и повторный цикл, затем следующий пункт.
+
+
+## Verification cycle — health/security — 2026-10-07
+
+### Исправлено
+
+- `backend/src/Health/HealthChecker.php` больше не возвращает через health API DB host/port/user.
+- При ошибке подключения health API также не возвращает сырые диагностические строки, которые могли раскрывать инфраструктурные сведения.
+- Health сохраняет полезный статус `healthy/degraded/unhealthy` и безопасные сообщения для диагностики без публикации topology/connection details.
+- commit: `5237e9938866d8a35c6e045381114cc8b0c461ea`.
+
+### Verification result
+
+- Последний подтверждённый READY production deployment остаётся commit `59e38d9664645556bd2fca64ea6d97f998a5f200`.
+- Для `5237e993...` Vercel status сейчас `failure` из-за внешнего `build-rate-limit`; deployment не создан/не стал READY.
+- Поэтому health security fix пока проверен на уровне исходника, но не через production runtime.
+- Никаких проверок/функциональности ради обхода free-tier build limit не отключалось.
