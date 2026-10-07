@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
-import { adminOverview, adminPresence, adminValidateContent, adminFileAudit, health, hasToken } from "@/lib/api";
+import { adminOverview, adminPresence, adminValidateContent, adminFileAudit, adminMediaCapabilities, health, hasToken } from "@/lib/api";
 
 /** Единый Центр управления CMS. */
 export default function AdminToolsPage() {
@@ -32,6 +32,7 @@ export default function AdminToolsPage() {
   const [tab, setTab] = useState<"overview" | "learning" | "storage" | "system">("overview");
   const [fileAudit, setFileAudit] = useState<any>(null);
   const [fileAuditing, setFileAuditing] = useState(false);
+  const [mediaCapabilities, setMediaCapabilities] = useState<any>(null);
   const [validation, setValidation] = useState<any>(null);
   const [validating, setValidating] = useState(false);
   const [presence, setPresence] = useState<any[]>([]);
@@ -57,9 +58,10 @@ export default function AdminToolsPage() {
 
   async function validateFiles() {
     setFileAuditing(true);
-    const r = await adminFileAudit(300);
+    const [r, caps] = await Promise.all([adminFileAudit(300), adminMediaCapabilities()]);
     setFileAuditing(false);
     if (r.ok) setFileAudit(r.data); else setError(r.error.message);
+    if (caps.ok) setMediaCapabilities(caps.data); else setError((prev) => prev || caps.error.message);
   }
 
   useEffect(() => {
@@ -208,6 +210,32 @@ export default function AdminToolsPage() {
                       <div className="mt-1 text-2xl font-bold text-indigo-600">{String(value ?? 0)}</div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {mediaCapabilities && (
+                <div className="card">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold">Media runtime capabilities</h3>
+                      <p className="mt-1 text-xs text-slate-500">Фактические возможности PHP/SpaceWeb для следующего этапа оптимизации.</p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{String(mediaCapabilities.runtime || "PHP")}</span>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      ["GD", mediaCapabilities.extensions?.gd],
+                      ["Imagick", mediaCapabilities.extensions?.imagick],
+                      ["WebP GD", mediaCapabilities.image?.webp_gd],
+                      ["AVIF GD", mediaCapabilities.image?.avif_gd],
+                      ["WebP Imagick", mediaCapabilities.image?.webp_imagick],
+                      ["AVIF Imagick", mediaCapabilities.image?.avif_imagick],
+                      ["ffmpeg", mediaCapabilities.commands?.ffmpeg],
+                      ["ffprobe", mediaCapabilities.commands?.ffprobe],
+                      ["cwebp", mediaCapabilities.commands?.cwebp],
+                      ["avifenc", mediaCapabilities.commands?.avifenc],
+                    ].map(([label, ok]) => <div key={String(label)} className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs"><span>{String(label)}</span><b className={ok ? "text-emerald-600" : "text-slate-400"}>{ok ? "есть" : "нет"}</b></div>)}
+                  </div>
                 </div>
               )}
 
