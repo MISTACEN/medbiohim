@@ -7,6 +7,8 @@ use Medbiohim\Http\Response;
 use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Services\SpecialtyAccess;
+use Medbiohim\Services\AcademicContextResolver;
+use Medbiohim\Services\B2Storage;
 
 return static function (Router $router): void {
     $router->get('/api/v1/materials/{id}/file', static function (Request $req, array $params): void {
@@ -18,10 +20,15 @@ return static function (Router $router): void {
         try {
             $stmt = Connection::pdo()->prepare(
                 'SELECT m.id, m.title, m.file_id, m.source_key, s.slug AS subject_slug,
+                        s.specialty_slug,
+                        f.original_name AS file_original_name, f.mime_type AS file_mime_type,
+                        f.size_bytes AS file_size_bytes, f.object_key AS file_object_key,
+                        f.group_id AS file_group_id,
                         cs.source_path, cs.original_format, cs.mime_type
                  FROM public.materials m
                  JOIN public.subjects s ON s.id = m.subject_id
-                 LEFT JOIN public.content_sources cs ON cs.id = m.source_key
+                 LEFT JOIN public.files f ON f.id = m.file_id AND f.status = 'active'
+                 LEFT JOIN public.content_sources cs ON cs.id::text = m.source_key
                  WHERE m.id = :id AND m.is_published = true
                  LIMIT 1'
             );
@@ -29,12 +36,36 @@ return static function (Router $router): void {
             $row = $stmt->fetch();
             if ($row === false) { Response::error('NOT_FOUND', 'Material not found', $req->requestId, 404); return; }
 
-            if (($row['subject_slug'] ?? '') !== 'histology') {
-                Response::error('FORBIDDEN', 'This material viewer is restricted to histology', $req->requestId, 403);
+            $specialty = trim((string)($row['specialty_slug'] ?? ''));
+            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+                Response::error('FORBIDDEN', 'Этот материал недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
-            if (!(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
-                Response::error('FORBIDDEN', 'Этот материал доступен только специальности МБХ', $req->requestId, 403);
+
+            $fileGroupId = trim((string)($row['file_group_id'] ?? ''));
+            if ($fileGroupId !== '') {
+                (new AcademicContextResolver())->assertGroupMember($req->user->id, $fileGroupId);
+            }
+
+            // Prefer the canonical file metadata / B2 object when the material has one.
+            // This makes the viewer work for all subjects, not only Histology.
+            if (!empty($row['file_object_key'])) {
+                $storage = new B2Storage();
+                if ($storage->isConfigured()) {
+                    try {
+                        $url = $storage->presignedDownloadUrl((string)$row['file_object_key'], 3600);
+                        header('Location: '.$url, true, 302);
+                        exit;
+                    } catch (Throwable $e) {
+                        // Fall through to the physical SpaceWeb path for Histology.
+                    }
+                }
+            }
+
+            // Histology packages may intentionally use Supabase metadata + SpaceWeb binary
+            // without a public.files row. Preserve that canonical fallback.
+            if (($row['subject_slug'] ?? '') !== 'histology') {
+                Response::error('FILE_UNAVAILABLE', 'Физический файл этого материала недоступен', $req->requestId, 503);
                 return;
             }
 
