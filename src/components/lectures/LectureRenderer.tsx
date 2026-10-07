@@ -52,7 +52,15 @@ function mdToHtml(md: string): string {
   s = s.replace(/^### (.+)$/gm, "<h3>$1</h3>");
   s = s.replace(/^## (.+)$/gm, "<h2>$1</h2>");
   s = s.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-  s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>");
+  // Render safe Markdown links used by lecture cross-links.
+  s = s.replace(/\\[([^\\]]+)\\]\\(([^)\\s]+)(?:\\s+"[^"]*")?\\)/g, (_a, label, href) => {
+    const target = String(href || "");
+    const safe = target.startsWith("/") || /^https:\\/\\//i.test(target) || /^http:\\/\\//i.test(target);
+    return safe
+      ? \`<a href="${target}" target="${target.startsWith("/") ? "_self" : "_blank"}" rel="noreferrer">${label}</a>\`
+      : label;
+  });
   s = s.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
   s = s.replace(/^- (.+)$/gm, "<li>$1</li>");
   s = s.replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`);
