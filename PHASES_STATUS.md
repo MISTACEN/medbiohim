@@ -551,3 +551,13 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 🟡 Production gate: Vercel build-rate-limit; GitHub Actions/runtime smoke пока без подтверждённого зелёного результата.
 
 Следующий gate: CI → Vercel READY → SpaceWeb runtime → authenticated smoke → следующий P0 контент/расписание.
+
+
+## 2026-10-07 — P0 verification/fix cycle continuation
+
+- 🟢 Vercel commit `59e38d9664645556bd2fca64ea6d97f998a5f200` достиг READY; combined GitHub status для него — Vercel success.
+- 🟢 HealthChecker hardened: public health no longer exposes DB host/port/user or raw connection diagnostics.
+- 🟢 Histology Materials: authenticated SpaceWeb physical-file fallback added to generic Materials page; dedicated HistologyMaterials already uses authenticated file loading.
+- 🟢 Schedule + Homework: source/UI audit confirms current schedule page already selects a concrete date + subject and creates homework with that subject/date/group context; planner returns homework, attendance and recovery in one response.
+- 🟡 Latest post-READY commits currently cannot receive a new Vercel deployment because of external `build-rate-limit`; therefore those latest fixes remain source-verified until a READY deployment exists.
+- 🟡 SpaceWeb physical-file HTTP verification and authenticated production smoke remain open gates.
