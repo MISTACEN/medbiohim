@@ -1385,3 +1385,17 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟡 реализация этого quality gate ещё не считается DONE до runtime/visual проверки на реальных MEDBIOHIM материалах.
 
 Полная политика: `docs/MEDIA-QUALITY-DELIVERY-POLICY.md`.
+
+
+## 2026-10-07 — Pass 28: authoritative subject identity
+
+🟢 Проведён semantic/code audit границы предметов.
+
+- 🟢 exam_questions filtering теперь принимает subject_id и при его наличии считает UUID authoritative; subject_slug остаётся совместимым fallback.
+- 🟢 Генерация билетов предпочитает ticket_banks.subject_id, а не выбирает весь банк только по slug.
+- 🟢 Question Library catalog сохраняет subject_id, поэтому одинаковые slug больше не должны схлопывать разные subject rows в один logical item.
+- 🟢 Global Search получил subject_id boundary и передаёт authoritative identity во все поддерживаемые источники.
+- 🟢 Admin content package import больше не выбирает первый subject при duplicate slug: если slug неоднозначен, импорт требует явный subject_id.
+- 🟢 Live DB подтверждает, что все текущие ticket banks имеют согласованный ticket_banks.subject_id = exam_questions.subject_id; для гистологии 366 опубликованных вопросов относятся к canonical subject UUID 977d78ca-7a58-4b0a-9e93-29d8e03f6946.
+- 🟡 Frontend subject context должен передавать subject_id там, где контекст уже известен; старые slug-only входы сохраняются как backward-compatible fallback.
+- 🟡 Target-runtime smoke остаётся отдельным gate: текущие новые commits ещё не получили READY Vercel deployment из-за build-rate-limit.
