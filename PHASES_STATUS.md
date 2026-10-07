@@ -680,3 +680,11 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | LectureRenderer | 🟢 | добавлена нормализация импортированного Markdown перед разбором блоков |
 | Live Supabase content | 🟢 | `escaped_backticks=0`, `escaped_quotes=0`, `mermaid_blocks=11` |
 | Production/browser smoke | 🟡 | требуется после публикации нового frontend commit |
+
+
+### 2026-10-08 — Lecture 05: links + visual references
+- 🟢 Fixed Markdown link rendering in `LectureRenderer`: internal lecture links such as «Микропрепараты» and the 20-question test now become actual clickable anchors.
+- 🟢 Added 9 visual blocks to Lecture 05: 5 existing MEDBIOHIM blood-smear preparation images + 4 independent University of Utah WebPath images.
+- 🟢 External images are used only as a visual cross-check; canonical MEDBIOHIM trainer cards remain the primary practical material.
+- 🟢 Live Supabase lecture updated and verified; only Lecture 05 was touched.
+- 🟡 Runtime/browser smoke on deployed Vercel build remains to be confirmed.
