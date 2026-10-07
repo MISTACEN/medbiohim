@@ -75,6 +75,8 @@ final class TestRepository
         $sql = "SELECT s.id AS subject_id, s.name AS subject_name,
                        m.id AS module_id, m.title AS module_title, m.order_index AS module_order,
                        tp.id AS topic_id, tp.title AS topic_title, tp.order_index AS topic_order,
+                       ci.planned_date AS planned_date,
+                       ci.item_type AS curriculum_item_type,
                        (SELECT COUNT(*) FROM public.questions q
                           WHERE q.topic_id = tp.id AND q.is_published = true AND q.archived_at IS NULL) AS question_count,
                        (SELECT COUNT(DISTINCT t.id) FROM public.tests t
@@ -82,6 +84,14 @@ final class TestRepository
                 FROM public.modules m
                 JOIN public.subjects s ON s.id = m.subject_id AND s.is_active = true
                 JOIN public.topics tp ON tp.module_id = m.id AND tp.is_published = true
+                LEFT JOIN LATERAL (
+                    SELECT cix.planned_date, cix.item_type
+                    FROM public.curriculum_items cix
+                    WHERE cix.topic_id = tp.id
+                      AND cix.is_active = true
+                    ORDER BY cix.planned_date NULLS LAST, cix.order_index, cix.updated_at DESC
+                    LIMIT 1
+                ) ci ON true
                 WHERE 1=1";
         $params = [];
         if ($subjectId !== null && $subjectId !== '') {
