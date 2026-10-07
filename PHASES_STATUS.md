@@ -616,3 +616,17 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Legacy slug-only context | 🟢 | безопасный auto-resolve только при единственном matching subject_id |
 | Ambiguous subject slug | 🟢 | не угадывается; пользовательский выбор остаётся доступен |
 | Full legacy entry-point migration | 🟡 | требуется отдельный cleanup по старым ссылкам |
+
+
+## 2026-10-07 — Pass 29: Smart grading state machine
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Deterministic grading | 🟢 | exact/normalized path before AI |
+| Optional AI fallback | 🟢 | AI does not define whether a test can be completed |
+| Pending/error semantics | 🟢 | completion is allowed; unresolved answer remains stored |
+| Normal test retry | 🟢 | dedicated regrade endpoint + score recalculation |
+| Preparation retry | 🟢 | dedicated retry endpoint for one/all unresolved answers |
+| Frontend authority | 🟢 | Test/Preparation UI reads server grading result |
+| AI review after preparation | 🟢 | separate optional analytics, not a completion dependency |
+| Real test E2E | 🟡 | requires target-runtime authenticated smoke |
