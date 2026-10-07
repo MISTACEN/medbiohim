@@ -1449,3 +1449,15 @@ Canonical metadata остаётся в Supabase, физические бинар
 Это синхронизирует viewer с generic Materials access policy и не оставляет прямой authenticated URL обходом specialty boundary.
 
 🟡 Финальный target-runtime smoke всё ещё обязателен: разрешённый MBH user → DOC/DOCX/photo; пользователь без MBH → 403.
+
+
+## 2026-10-07 — Pass 32: Schedule → exact lesson → homework → photos
+- Schedule homework creation now uses the exact schedule entry UUID when launched from a lesson.
+- Shared homework creation is aligned with the product security model: staff or the group's starosta; an ordinary student cannot publish shared group homework.
+- Homework now stores `schedule_entry_id`; legacy homework without this field remains visible through the date+subject compatibility fallback.
+- Homework creation supports up to 12 image attachments. Files reuse the existing authenticated `/files/upload` → B2/metadata pipeline; attachment rows live in `homework_attachments`.
+- Primary DB and Supabase REST fallback both persist lesson context, due_date and attachments.
+- Planner returns homework attachments with B2 download URLs for lesson view.
+- Primary repository now persists `due_date`; this removes the existing create→planner visibility mismatch.
+- Live Supabase schema was migrated and verified: `homeworks.schedule_entry_id` + index exist; no existing homework rows were modified.
+- Private test environment was inventoried by variable family. Repository templates contain placeholders only; real test credentials are not published to GitHub.
