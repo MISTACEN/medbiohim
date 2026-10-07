@@ -1491,3 +1491,17 @@ Canonical metadata остаётся в Supabase, физические бинар
 - video policy preserves a 1080p source tier and provides 720p/480p fallback candidates;
 - policy never deletes or rewrites the original file;
 - actual encoding and perceptual measurements remain runtime-dependent and will be wired after capability/worker verification.
+
+
+## 2026-10-07 — Pass 37: safe derivative processor foundation
+
+- 🟢 добавлен FileVariantRepository для upsert/list/status;
+- 🟢 добавлен MediaDerivativeProcessor для реального image→WebP/AVIF процесса при наличии соответствующего GD encoder;
+- 🟢 MIME определяется по фактическому содержимому через finfo, а не доверяется клиентскому MIME;
+- 🟢 оригинал никогда не перезаписывается и не удаляется;
+- 🟢 derivative candidate проходит существующий MediaQualityPolicy перед физической загрузкой выбранного варианта;
+- 🟢 выбранный derivative получает checksum, MIME, размер, размеры изображения и B2 object id;
+- 🟢 добавлен strict-admin endpoint ручной обработки существующего B2-backed изображения;
+- 🟢 при отсутствии подходящего encoder файл не ломается: derivative остаётся failed/skipped, original сохраняется;
+- 🟡 автоматический queue/worker ещё не объявлен готовым — текущий запуск намеренно ручной до проверки target runtime;
+- 🟡 perceptual text/detail/artifact scoring пока не измеряется реально: текущий pass подготавливает pipeline, но не выдаёт ложный quality-pass.
