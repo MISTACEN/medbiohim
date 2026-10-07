@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, ExternalLink, File, FileText, Search, X, Presentation } from "lucide-react";
-import { listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
+import { getMaterialFileUrl, listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
 function FileIcon({ type }: { type?: string | null }) {
@@ -24,8 +24,27 @@ function stripHtml(html?: string | null) {
 }
 
 function MaterialBody({ material }: { material: ApiMaterial }) {
-  const url = material.source?.download_url ? String(material.source.download_url) : "";
+  const directUrl = material.source?.download_url ? String(material.source.download_url) : "";
   const mime = String(material.source?.mime_type || "").toLowerCase();
+  const [physicalUrl, setPhysicalUrl] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (directUrl || material.content_html || material.external_url || String(material.subject_slug || "") !== "histology") {
+      setPhysicalUrl(null);
+      return;
+    }
+    setFileLoading(true);
+    void getMaterialFileUrl(String(material.id)).then((url) => {
+      if (!cancelled) setPhysicalUrl(url);
+    }).finally(() => {
+      if (!cancelled) setFileLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [material.id, material.content_html, material.external_url, material.subject_slug, directUrl]);
+
+  const url = directUrl || physicalUrl || "";
 
   if (material.content_html) {
     return <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: material.content_html }} />;
@@ -56,7 +75,7 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
           Открыть файл
         </a>
       ) : (
-        <div className="mt-2 text-slate-500">Ссылка на файл пока недоступна.</div>
+        <div className="mt-2 text-slate-500">{fileLoading ? "Загружаем файл…" : "Ссылка на файл пока недоступна."}</div>
       )}
     </div>
   );
