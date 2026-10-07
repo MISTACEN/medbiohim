@@ -116,8 +116,8 @@ $router->post('/api/v1/admin/files/{id}/process-image',static function(Request $
   $binary=(new B2Storage())->downloadBinary((string)$file['object_key']);
   $result=(new MediaDerivativeProcessor())->processImage((string)$params['id'],$binary);
   Response::success($result,$req->requestId);
- }catch(\\InvalidArgumentException $e){Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);}
- catch(\\Throwable $e){Response::error('MEDIA_PROCESSING_FAILED','Media processing failed',$req->requestId,503);}
+ }catch(\InvalidArgumentException $e){Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);}
+ catch(\Throwable $e){Response::error('MEDIA_PROCESSING_FAILED','Media processing failed',$req->requestId,503);}
 });
 $router->get('/api/v1/admin/files/audit',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;
