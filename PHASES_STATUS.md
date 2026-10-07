@@ -695,3 +695,18 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Video ladder policy | green | 1080p preserved, 720p/480p fallbacks available |
 | Actual encoder | yellow | requires runtime capability/worker integration |
 | Perceptual metrics | yellow | requires real generated candidates and validation samples |
+
+
+## 2026-10-07 — Pass 37: safe derivative processor foundation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| FileVariantRepository | 🟢 source | upsert/list/status для производных |
+| MIME detection | 🟢 source | фактический MIME через finfo |
+| WebP/AVIF generation | 🟡 | выполняется только если GD encoder реально доступен на runtime |
+| Quality policy integration | 🟢 source | generated candidates проходят MediaQualityPolicy |
+| Original preservation | 🟢 | оригинал не удаляется и не переписывается |
+| Admin processing endpoint | 🟢 source | strict-admin ручной запуск для B2-backed image |
+| Automatic queue/worker | 🟡 | намеренно не заявлен до target-runtime verification |
+| Perceptual quality metrics | 🟡 | пока отсутствуют реальные text/detail/artifact measurements |
+| Target runtime smoke | 🟡 | требуется реальный SpaceWeb/B2 image processing test |
