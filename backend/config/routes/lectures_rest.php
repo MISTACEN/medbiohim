@@ -103,7 +103,7 @@ return static function (Router $r): void {
         if (!RequireRole::handle($q, ['admin', 'moderator', 'teacher'])) return;
         $id = (string) ($p['id'] ?? '');
         $body = is_array($q->jsonBody) ? $q->jsonBody : [];
-        $allowed = ['title', 'topic', 'lesson_type', 'body_md', 'body_html', 'summary', 'media', 'attachments', 'subject', 'subject_slug', 'status'];
+        $allowed = ['title', 'topic', 'lesson_type', 'body_md', 'body_html', 'summary', 'media', 'attachments', 'subject', 'subject_id', 'subject_slug', 'status'];
         $patch = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $body)) {
@@ -123,12 +123,19 @@ return static function (Router $r): void {
         if (isset($patch['attachments']) && is_array($patch['attachments'])) {
             try {
                 $db = \Medbiohim\Database\Connection::pdo();
-                $subjectSlug = trim((string)($row['subject_slug'] ?? $patch['subject_slug'] ?? ''));
-                $subjectId = '';
-                if ($subjectSlug !== '') {
-                    $s = $db->prepare('SELECT id FROM public.subjects WHERE slug = :slug ORDER BY semester NULLS LAST, id LIMIT 1');
-                    $s->execute(['slug'=>$subjectSlug]);
-                    $subjectId = (string)($s->fetchColumn() ?: '');
+                // Never guess a subject when the slug is shared by multiple academic contexts.
+                // Prefer an explicit subject_id; slug is only a safe fallback when it resolves uniquely.
+                $subjectId = trim((string)($row['subject_id'] ?? $patch['subject_id'] ?? ''));
+                if ($subjectId === '') {
+                    $subjectSlug = trim((string)($row['subject_slug'] ?? $patch['subject_slug'] ?? ''));
+                    if ($subjectSlug !== '') {
+                        $s = $db->prepare('SELECT id FROM public.subjects WHERE slug = :slug');
+                        $s->execute(['slug'=>$subjectSlug]);
+                        $ids = array_values(array_filter(array_map('strval', $s->fetchAll(\PDO::FETCH_COLUMN) ?: [])));
+                        if (count($ids) === 1) {
+                            $subjectId = $ids[0];
+                        }
+                    }
                 }
                 if ($subjectId !== '') {
                     foreach ($patch['attachments'] as $att) {
