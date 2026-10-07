@@ -106,6 +106,17 @@ $router->get('/api/v1/admin/files/capabilities',static function(Request $req,arr
   Response::error('MEDIA_CAPABILITY_ERROR','Media capability check failed',$req->requestId,503);
  }
 });
+$router->post('/api/v1/admin/files/{id}/process-image',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ try{
+  $file=(new FileRepository())->assertAccess((string)($params['id']??''),$req->user->id);
+  if(($file['storage_provider']??'')!=='b2'||empty($file['object_key'])){Response::error('UNSUPPORTED','File is not B2-backed',$req->requestId,422);return;}
+  $binary=(new \\Medbiohim\\Services\\B2Storage())->downloadBinary((string)$file['object_key']);
+  $result=(new MediaDerivativeProcessor())->processImage((string)$params['id'],$binary);
+  Response::success($result,$req->requestId);
+ }catch(\\InvalidArgumentException $e){Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);}
+ catch(\\Throwable $e){Response::error('MEDIA_PROCESSING_FAILED','Media processing failed',$req->requestId,503);}
+});
 $router->get('/api/v1/admin/files/audit',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;
  $limit=max(1,min(1000,(int)($req->query['limit']??200)));
