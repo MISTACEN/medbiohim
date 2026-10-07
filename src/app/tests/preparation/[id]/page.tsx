@@ -42,13 +42,6 @@ function sameSet(a: string[], b: string[]): boolean {
   return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
 }
 
-function answerCorrect(q: any, value: string | undefined): boolean {
-  const selected = parseSelection(value);
-  const correct = correctLabels(q);
-  if (correct.length) return selected.length > 0 && sameSet(selected, correct);
-  return selected.length > 0 && selected[0].trim().toLowerCase() === String(q?.answer ?? "").trim().toLowerCase();
-}
-
 function answerDisplay(q: any, value: string | undefined): string {
   const selected = parseSelection(value);
   if (!selected.length) return "";
