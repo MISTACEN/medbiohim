@@ -375,7 +375,7 @@ $router->get('/api/v1/admin/content/question-integrity',static function(Request 
   'published_tests_without_questions'=>array_slice($publishedTestsWithoutQuestions,0,500),
   'published_questions_without_test'=>array_slice($publishedUnlinkedQuestions,0,500),
   'note'=>'Unlinked published questions are reported only; they are not treated as defects because standalone question-bank content is valid.'],$req->requestId);
- }catch(\\Throwable $e){Response::error('INTEGRITY_AUDIT_FAILED',$e->getMessage(),$req->requestId,503);}
+ }catch(\Throwable $e){Response::error('INTEGRITY_AUDIT_FAILED',$e->getMessage(),$req->requestId,503);}
 });
 
 };
