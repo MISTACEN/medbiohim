@@ -1461,3 +1461,5 @@ Canonical metadata остаётся в Supabase, физические бинар
 - Primary repository now persists `due_date`; this removes the existing create→planner visibility mismatch.
 - Live Supabase schema was migrated and verified: `homeworks.schedule_entry_id` + index exist; no existing homework rows were modified.
 - Private test environment was inventoried by variable family. Repository templates contain placeholders only; real test credentials are not published to GitHub.
+
+- ⚠️ В live DB на 2026-10-07 нет ни одной активной membership с `role_in_group='starosta'`; сценарий ДЗ готов в коде, но для реального student-side создания общего ДЗ староста должен быть назначен администратором.
