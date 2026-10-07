@@ -681,3 +681,17 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Variant visibility | 🟢 | RLS follows parent file access boundary |
 | Physical derivative generation | 🟡 | not yet implemented; requires runtime capability/worker verification |
 | Existing binaries | 🟢 | untouched by this pass |
+
+
+## 2026-10-07 — Pass 36: content-aware media quality gate
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Content classification roles | green | policy has distinct gates for text/diagram/scan and specimen/EM/atlas |
+| Downscale protection | green | rejects overly aggressive derivative dimensions |
+| Text readability gate | green | rejects candidates below readability threshold for text-heavy media |
+| Detail/edge gate | green | protects EM/micropreparation/atlas/diagram detail |
+| Artifact gate | green | rejects candidates with excessive compression artifact score |
+| Video ladder policy | green | 1080p preserved, 720p/480p fallbacks available |
+| Actual encoder | yellow | requires runtime capability/worker integration |
+| Perceptual metrics | yellow | requires real generated candidates and validation samples |
