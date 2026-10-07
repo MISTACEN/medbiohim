@@ -484,3 +484,14 @@ Supabase Free → metadata/source_key/path → SpaceWeb physical file → API en
 Главное правило: **не терять функциональность из-за бесплатных лимитов**. Сначала оптимизировать storage, egress, caching, batching, lazy loading, streaming, deduplication и распределение нагрузки.
 
 Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
+
+
+## 2026-10-07 — Admin Data & Storage Control Center
+
+- 🟢 Database Console уже существует и усилен поиском/пагинацией.
+- 🟡 Следующий этап: PC-style управление таблицами, relation inspector, bulk dry-run и health checks.
+- 🟡 Затем: единый File & Storage Center для SpaceWeb/B2 и сверки с Supabase metadata.
+- 🟡 Затем: агрегированный Operations Dashboard с квотами, проверками, экспортами и безопасным rollback.
+- 🟢 Архитектурное правило: Supabase — canonical DB; SpaceWeb/B2 — physical object layers; дополнительные бесплатные сервисы — только специализированные дополнения.
+
+Архитектура: `docs/ADMIN-DATA-CONSOLE-ARCHITECTURE.md`.
