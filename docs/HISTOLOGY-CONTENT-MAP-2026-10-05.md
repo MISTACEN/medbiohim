@@ -196,3 +196,38 @@ Current active 3rd-semester exam bank is now **116 published source-backed quest
 
 40 newly added rows have explicit current-plan module/topic links. No published row has a null source.
 Future respiratory/skin/urinary/reproductive/later GI sections remain unpublished for the current semester.
+
+
+## 2026-10-08 — Lecture 05 ↔ preparations / EM / tests
+
+Lecture 05 «Кровь и лимфа» теперь имеет explicit source-backed learning links.
+
+### Current chain
+**Лекция → микропрепарат → морфологический признак → ЭМ → тест → экзаменационный вопрос**
+
+### Preparation cards
+8 published cards already exist for the blood smear and are linked from the lecture as cross-links:
+- feed-prep-9f7dc534b5 — neutrophil + eosinophil;
+- feed-prep-867b72a4b6 — neutrophil;
+- feed-prep-a47e9dc83a — eosinophil + neutrophil;
+- feed-prep-a2feb3ec86 — lymphocyte + monocyte;
+- feed-prep-5a224c48f5 — lymphocyte;
+- feed-prep-29f73833e0 — lymphocytes;
+- feed-prep-bca30caf3b — monocyte;
+- feed-prep-60e72c3e7e — platelets.
+
+### Electronograms
+- feed-em-d69cfa101f / histology-em-19b1cd0070eccd — phagocytosis by a blood neutrophil;
+- histology-em-capillary-20261005 — transverse section of a blood capillary.
+
+### Test
+- 29564479-ebb7-4c81-9d0d-4e5ca640d053 — «Гистология — общая: кровь» — 20 questions.
+
+### Important boundary
+These links do not change the canonical plan-topic ownership of existing trainer cards. They are educational cross-links from the lecture. No new preparation or unsupported lymph content was invented.
+
+### Remaining
+- production/browser smoke;
+- final physical media reconciliation;
+- automatic related-content block in the lecture UI;
+- continue filling remaining lecture bodies from source-backed materials.
