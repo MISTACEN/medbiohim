@@ -1481,3 +1481,13 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 variant RLS inherits the parent file's owner/public/active-group-member visibility boundary;
 - 🟢 live migration applied; no existing binaries were moved, rewritten or deleted;
 - 🟡 physical derivative generation/quality gating is deliberately not claimed yet and is the next implementation stage after runtime capability verification.
+
+
+## 2026-10-07 — Pass 36: content-aware media quality gate
+
+- added a pure MediaQualityPolicy service for selecting the smallest derivative that passes content-aware gates;
+- separate thresholds cover text-heavy/diagram/scan versus electronogram/micropreparation/atlas content;
+- policy rejects excessive downscaling, text readability loss, edge/detail loss and compression artifacts;
+- video policy preserves a 1080p source tier and provides 720p/480p fallback candidates;
+- policy never deletes or rewrites the original file;
+- actual encoding and perceptual measurements remain runtime-dependent and will be wired after capability/worker verification.
