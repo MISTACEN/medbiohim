@@ -542,3 +542,12 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 8. Strict code-quality cleanup.
 9. AI tutor and optional free-service aggregation.
 10. Final UI polish and release snapshot.
+
+
+## 2026-10-07 — P0 implementation pass
+
+🟢 Кодовые исправления: curriculum-map exception handler и связь учебного плана с topic metadata восстановлены.
+
+🟡 Production gate: Vercel build-rate-limit; GitHub Actions/runtime smoke пока без подтверждённого зелёного результата.
+
+Следующий gate: CI → Vercel READY → SpaceWeb runtime → authenticated smoke → следующий P0 контент/расписание.
