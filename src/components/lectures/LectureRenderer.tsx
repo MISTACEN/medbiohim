@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
+import { getTrainerImageUrl } from "@/lib/api";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
@@ -54,9 +55,9 @@ function mdToHtml(md: string): string {
   s = s.replace(/^# (.+)$/gm, "<h1>$1</h1>");
   s = s.replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>");
   // Render safe Markdown links used by lecture cross-links.
-  s = s.replace(/\\[([^\\]]+)\\]\\(([^)\\s]+)(?:\\s+"[^"]*")?\\)/g, (_a, label, href) => {
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_a, label, href) => {
     const target = String(href || "");
-    const safe = target.startsWith("/") || /^https:\\/\\//i.test(target) || /^http:\\/\\//i.test(target);
+    const safe = target.startsWith("/") || /^https?:\/\//i.test(target);
     return safe
       ? "<a href=\"" + target + "\" target=\"" + (target.startsWith("/") ? "_self" : "_blank") + "\" rel=\"noreferrer\">" + label + "</a>"
       : label;
@@ -151,17 +152,42 @@ function VideoBlock({ raw }: { raw: string }) {
 }
 
 function ImageBlock({ raw }: { raw: string }) {
-  let data: { url?: string; caption?: string } = {};
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  let data: { url?: string; trainerId?: string; caption?: string } = {};
   try {
     data = JSON.parse(raw);
   } catch {
     data = { url: raw };
   }
-  if (!data.url) return null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!data.trainerId) {
+      setResolvedUrl(data.url || null);
+      return () => { cancelled = true; };
+    }
+    setResolvedUrl(null);
+    setFailed(false);
+    void getTrainerImageUrl(data.trainerId).then((url) => {
+      if (!cancelled) {
+        setResolvedUrl(url);
+        if (!url) setFailed(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [data.trainerId, data.url]);
+
   return (
     <figure className="my-4">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={data.url} alt={data.caption || ""} className="max-h-[480px] w-full rounded-xl border border-[var(--border)] object-contain" />
+      {resolvedUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={resolvedUrl} alt={data.caption || ""} className="max-h-[480px] w-full rounded-xl border border-[var(--border)] object-contain" />
+      ) : (
+        <div className="flex min-h-48 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-slate-50 px-4 text-center text-sm text-[var(--muted)]">
+          {failed ? "Изображение временно недоступно" : "Загрузка изображения…"}
+        </div>
+      )}
       {data.caption && <figcaption className="mt-2 text-center text-xs text-[var(--muted)]">{data.caption}</figcaption>}
     </figure>
   );
