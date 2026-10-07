@@ -1300,3 +1300,10 @@ Supabase остаётся единственным основным источн
 **P1:** Histology/Materials reconciliation → admin Content Center → trainer/preparation completion → mobile acceptance → chemistry answer completion.
 **P2:** AI tutor/provider layer → PC-style storage/operations center → performance/free-tier distribution → optional free-service integrations → visual polish.
 **Rule:** no new feature may silently regress the stable baseline; risky changes require a rollback point.
+
+
+## 2026-10-07 — P0 implementation pass
+
+Исправлены две найденные регрессии в curriculum-map: повреждённый PHP Throwable handler и потерянная связь topic → curriculum_items для planned_date/item_type. Подробный audit: `docs/IMPLEMENTATION-AUDIT-2026-10-07-P0.md`.
+
+Production gate пока не закрыт: Vercel сообщает `build-rate-limit`; CI/runtime READY не считаются подтверждёнными до фактического успешного запуска.
