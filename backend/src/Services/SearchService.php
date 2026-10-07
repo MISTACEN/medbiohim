@@ -63,11 +63,11 @@ final class SearchService
 
         if ($type === null || $type === 'ticket') {
             $rows = SupabaseRest::select(
-                'exam_questions?is_published=eq.true&select=id,subject_name,subject_slug,topic,text,answer&order=created_at.desc&limit=1000'
+                'exam_questions?is_published=eq.true&select=id,subject_id,subject_name,subject_slug,topic,text,answer&order=created_at.desc&limit=1000'
             );
             foreach ($rows as $row) {
                 $slug = trim((string) ($row['subject_slug'] ?? ''));
-                if (!$subjectAllowed($slug, (string) ($subject['id'] ?? ''))) continue;
+                if (!$subjectAllowed($slug, (string) ($row['subject_id'] ?? ''))) continue;
                 $title = trim((string) ($row['text'] ?? ''));
                 $topic = trim((string) ($row['topic'] ?? ''));
                 $hay = mb_strtolower($title . ' ' . $topic . ' ' . (string) ($row['subject_name'] ?? ''));
@@ -89,7 +89,7 @@ final class SearchService
 
         if ($type === null || $type === 'trainer') {
             $rows = SupabaseRest::select(
-                'trainer_feed_cards?is_published=eq.true&select=id,subject_slug,specialty_slug,preparation,question,tags&order=created_at.desc&limit=1000'
+                'trainer_feed_cards?is_published=eq.true&select=id,subject_id,subject_slug,specialty_slug,preparation,question,tags&order=created_at.desc&limit=1000'
             );
             foreach ($rows as $row) {
                 $slug = trim((string) ($row['subject_slug'] ?? ''));
