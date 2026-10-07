@@ -231,3 +231,11 @@ Histology test inventory currently includes:
 - 20 questions — embryology closed.
 
 Important: no cleanup or deletion was performed from this audit. The 67-question unpublished test must be treated as an activation/product decision, not as an orphan or corruption finding.
+
+
+### Pass 40 — smart grading exception-path audit — 2026-10-08
+- 🟢 audited the shared `AnswerGradingService` integration in normal tests and preparation;
+- 🟢 fixed namespace-qualified PHP exceptions in `TestRepository` (`RuntimeException` / `Throwable`) so error/retry/finish paths resolve global PHP classes correctly;
+- 🟢 rechecked `preparation.php`: exception classes in the grading/retry paths are already globally qualified;
+- 🟡 authenticated target-runtime E2E remains required: save answer → deterministic result, AI fallback, provider failure → stored unresolved state, regrade, finish;
+- 🟡 browser verification remains required for the frontend's handling of unresolved/pending answers.
