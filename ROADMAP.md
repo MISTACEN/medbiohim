@@ -1426,3 +1426,17 @@ Canonical metadata остаётся в Supabase, физические бинар
 - AI review после завершения preparation остаётся отдельной необязательной аналитикой и не влияет на факт завершения.
 
 🟡 Runtime gate остаётся: требуется реальный authenticated smoke на SpaceWeb/Vercel с детерминированным, semantic-AI, AI-error и retry сценариями.
+
+
+## 2026-10-07 — Pass 30: file visibility security alignment
+
+🟢 Закрыт выявленный P0 mismatch между Supabase RLS и server-side B2 presign:
+
+- backend FileRepository больше не считает `group_id IS NULL` автоматически доступным для всех authenticated users;
+- group-scoped file требует active membership;
+- group-less file доступен authenticated пользователю только при `visibility='public'` либо uploader ownership;
+- Supabase `files_read_allowed` приведена к той же политике;
+- B2 presigned URL выдаётся после server-side `assertAccess`, поэтому service-role backend не должен расширять доступ относительно продуктовой модели.
+- security advisor повторно проверен: этот file-policy gap исчез; остаётся отдельное предупреждение Leaked Password Protection.
+
+🟡 Требуется target-runtime authorization smoke: owner, public file, same-group member, inactive member, unrelated user.
