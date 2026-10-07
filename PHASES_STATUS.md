@@ -606,3 +606,13 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Live ticket-bank integrity | 🟢 | current banks have matching subject UUIDs with their question pools |
 | Frontend subject propagation | 🟡 | slug-only legacy entry points still need migration to UUID context where available |
 | Vercel/SpaceWeb runtime | 🟡 | latest commits remain source-verified until READY deployment/runtime smoke |
+
+
+## 2026-10-07 — Pass 28A: Question Library UUID propagation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Question Library frontend | 🟢 | передаёт subject_id, если UUID известен |
+| Legacy slug-only context | 🟢 | безопасный auto-resolve только при единственном matching subject_id |
+| Ambiguous subject slug | 🟢 | не угадывается; пользовательский выбор остаётся доступен |
+| Full legacy entry-point migration | 🟡 | требуется отдельный cleanup по старым ссылкам |
