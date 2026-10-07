@@ -651,3 +651,22 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Generic Materials | 🟢 | specialty filtering already present |
 | Direct viewer bypass | 🟢 | authenticated user without MBH can no longer use the Histology viewer endpoint |
 | Physical media runtime | 🟡 | final SpaceWeb HTTP/browser smoke remains |
+
+
+## 2026-10-08 — Histology Lecture 05 / practical cross-links
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Lecture 05 body | 🟢 | «Кровь и лимфа» опубликована в site_content |
+| Curriculum link | 🟢 | module/topic UUID привязан к canonical теме Недели 5–6 |
+| Preparation links | 🟢 | 8 существующих карточек «Кровь мазок» связаны как учебные cross-links |
+| Electronograms | 🟢 | нейтрофильный фагоцитоз + капилляр записаны как релевантные ЭМ |
+| Materials | 🟢 | «4.Кровь» + source-backed методический материал связаны |
+| Test | 🟢 | «Гистология — общая: кровь», 20 вопросов |
+| Exam questions | 🟢 | подтверждённые IDs записаны в lecture metadata |
+| Production/browser smoke | 🟡 | требуется target-runtime проверка |
+| Automatic related-content UI | ⬜ | следующий product step; пока есть явные ссылки внутри лекции |
+
+Лекция теперь строит не только теоретический текст, а маршрут занятия: **теория → препарат → признак → ЭМ → тест → экзаменационный вопрос**.
+
+Важно: существующие trainer-карточки не были переназначены на другой plan_topic только ради этой связи. Cross-link не меняет canonical учебную принадлежность контента.
