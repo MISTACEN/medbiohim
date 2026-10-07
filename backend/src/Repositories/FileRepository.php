@@ -20,8 +20,10 @@ final class FileRepository
         $stmt = $this->db->prepare(
             "INSERT INTO public.files
                 (original_name, mime_type, size_bytes, object_key, b2_file_id,
-                 uploaded_by, group_id, visibility, status, specialty_slug)
-             VALUES (:name, :mime, :size, :key, :b2id, :by, :gid, :vis, 'active', :specialty)
+                 uploaded_by, group_id, visibility, status, specialty_slug,
+                 sha256, storage_provider, processing_status)
+             VALUES (:name, :mime, :size, :key, :b2id, :by, :gid, :vis, 'active', :specialty,
+                     :sha256, :provider, :processing)
              RETURNING *"
         );
         $stmt->execute([
@@ -34,6 +36,11 @@ final class FileRepository
             'gid' => $data['group_id'] ?? null,
             'vis' => $data['visibility'] ?? 'group',
             'specialty' => ($data['specialty_slug'] ?? '') !== '' ? $data['specialty_slug'] : null,
+            'sha256' => ($data['sha256'] ?? '') !== '' ? $data['sha256'] : null,
+            'provider' => in_array(($data['storage_provider'] ?? 'unknown'), ['b2','spaceweb','external','unknown'], true)
+                ? (string)($data['storage_provider'] ?? 'unknown') : 'unknown',
+            'processing' => in_array(($data['processing_status'] ?? 'ready'), ['ready','queued','processing','failed','skipped'], true)
+                ? (string)($data['processing_status'] ?? 'ready') : 'ready',
         ]);
         $row = $stmt->fetch();
         if ($row === false) {
