@@ -211,6 +211,29 @@ export default function AdminToolsPage() {
                 </div>
               )}
 
+              {fileAudit?.b2 && (
+                <div className="card">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold">B2 physical scan</h3>
+                      <p className="mt-1 text-xs text-slate-500">Только чтение: сравниваются object_key из metadata и имена объектов в B2.</p>
+                    </div>
+                    <span className={fileAudit.b2.configured ? "badge-primary" : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"}>
+                      {fileAudit.b2.configured ? "B2 подключён" : "B2 не настроен"}
+                    </span>
+                  </div>
+                  {fileAudit.b2.configured ? (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                      <Mini label="Просканировано" value={fileAudit.b2.scanned} />
+                      <Mini label="Совпало" value={fileAudit.b2.matched_metadata} />
+                      <Mini label="Сиротские объекты" value={fileAudit.b2.orphan_objects} />
+                      <Mini label="Ограничен список" value={fileAudit.b2.scan_truncated ? "да" : "нет"} />
+                    </div>
+                  ) : null}
+                  {fileAudit.b2.error ? <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{fileAudit.b2.error}</div> : null}
+                </div>
+              )}
+
               {fileAudit?.items && (
                 <div className="card overflow-hidden">
                   <div className="border-b bg-slate-50 px-4 py-3 text-xs text-slate-500">Показаны файлы с наименьшим количеством ссылок. Это кандидаты для ручной reconciliation, а не команда на удаление.</div>
@@ -272,6 +295,10 @@ export default function AdminToolsPage() {
       </div>
     </main>
   );
+}
+
+function Mini({ label, value }: { label: string; value: unknown }) {
+  return <div className="rounded-xl border bg-slate-50 px-3 py-2"><div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div><div className="mt-1 font-bold">{String(value ?? 0)}</div></div>;
 }
 
 function Feature({ icon: Icon, title, text }: { icon: typeof Users; title: string; text: string }) {
