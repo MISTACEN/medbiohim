@@ -119,11 +119,9 @@ final class HealthChecker
             } elseif (str_contains($message, 'tenant') || str_contains($message, 'user')) {
                 $hint = 'Pooler user must be postgres.<project_ref>';
             }
-            $safe = preg_replace('/:[^:@\/\s]{4,}@/', ':***@', $raw) ?? $raw;
             return [
                 'status' => 'fail',
                 'message' => $hint,
-                'detail' => substr($safe, 0, 300),
             ];
         }
     }
