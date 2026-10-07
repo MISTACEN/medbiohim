@@ -162,8 +162,8 @@ export default function PracticePage() {
         <select
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
           value={subjectId || subjectSlug}
-          onChange={(e) => { if (!contextSubjectSlug) (() => { const value = e.target.value; const item = subjects.find((s) => String(s.subject_id || s.subject_slug) === value); setSubjectId(String(item?.subject_id || "")); setSubjectSlug(String(item?.subject_slug || value)); })(); }}
-          disabled={!!contextSubjectSlug}
+          onChange={(e) => { if (contextSubjectSlug && subjectId) return; const value = e.target.value; const item = subjects.find((s) => String(s.subject_id || s.subject_slug) === value); setSubjectId(String(item?.subject_id || "")); setSubjectSlug(String(item?.subject_slug || value)); }}
+          disabled={!!contextSubjectSlug && !!subjectId}
         >
           {!contextSubjectSlug && <option value="">Все предметы</option>}
           {subjects.map((s) => (
