@@ -1449,3 +1449,5 @@ Canonical metadata остаётся в Supabase, физические бинар
 Это синхронизирует viewer с generic Materials access policy и не оставляет прямой authenticated URL обходом specialty boundary.
 
 🟡 Финальный target-runtime smoke всё ещё обязателен: разрешённый MBH user → DOC/DOCX/photo; пользователь без MBH → 403.
+
+- 🟡 Materials physical delivery audit: live Histology has 80 published materials, all source_path-only (materials.file_id/content_sources.file_id are null); unified viewer fix now prefers canonical B2 file objects and keeps authenticated SpaceWeb fallback.
