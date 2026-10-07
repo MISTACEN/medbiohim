@@ -37,4 +37,4 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 - [docs/dev-notes.md](docs/dev-notes.md)
 - [docs/platform-concept-medbiohim.md](docs/platform-concept-medbiohim.md)
 
-Synced: 2026-09-30
+Synced: 2026-10-07
