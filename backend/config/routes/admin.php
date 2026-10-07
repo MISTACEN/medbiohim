@@ -346,4 +346,36 @@ $router->post('/api/v1/admin/content/move',static function(Request $req,array $p
  try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');if(!$old){Response::error('NOT_FOUND','Content not found',$req->requestId,404);return;} $new=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$patch,true);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'move','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0],'new_data'=>$new[0]??null,'source'=>'admin_ui'],false);Response::success(['item'=>$new[0]??null],$req->requestId);
  }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
+
+$router->get('/api/v1/admin/content/question-integrity',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ try{
+  $questions=SupabaseRest::select('questions?select=id,is_published,archived_at,subject_id,module_id,topic_id&limit=10000');
+  $tests=SupabaseRest::select('tests?select=id,is_published,archived_at,subject_id,module_id,topic_id&limit=5000');
+  $links=SupabaseRest::select('test_questions?select=test_id,question_id,order_index&limit=20000');
+  $q=[];$t=[];$qLinks=[];$tLinks=[];$duplicates=[];$seen=[];
+  foreach($questions as $row){$id=(string)($row['id']??'');if($id!=='')$q[$id]=$row;}
+  foreach($tests as $row){$id=(string)($row['id']??'');if($id!=='')$t[$id]=$row;}
+  foreach($links as $row){
+   $tid=(string)($row['test_id']??'');$qid=(string)($row['question_id']??'');if($tid!==''&&$qid!==''){
+    $qLinks[$qid]=($qLinks[$qid]??0)+1;$tLinks[$tid]=($tLinks[$tid]??0)+1;
+    $key=$tid.'|'.$qid;if(isset($seen[$key]))$duplicates[]=['test_id'=>$tid,'question_id'=>$qid];else$seen[$key]=true;
+   }
+  }
+  $orphanLinks=[];foreach($links as $row){$tid=(string)($row['test_id']??'');$qid=(string)($row['question_id']??'');if(!isset($t[$tid])||!isset($q[$qid]))$orphanLinks[]=['test_id'=>$tid,'question_id'=>$qid,'missing_test'=>!isset($t[$tid]),'missing_question'=>!isset($q[$qid])];}
+  $publishedTestsWithoutQuestions=[];foreach($tests as $row){$id=(string)$row['id'];if(!empty($row['is_published'])&&empty($row['archived_at'])&&($tLinks[$id]??0)===0)$publishedTestsWithoutQuestions[]=$id;}
+  $publishedUnlinkedQuestions=[];foreach($questions as $row){$id=(string)$row['id'];if(!empty($row['is_published'])&&empty($row['archived_at'])&&($qLinks[$id]??0)===0)$publishedUnlinkedQuestions[]=$id;}
+  Response::success(['summary'=>[
+   'questions'=>count($questions),'tests'=>count($tests),'links'=>count($links),
+   'distinct_linked_questions'=>count($qLinks),'distinct_linked_tests'=>count($tLinks),
+   'duplicate_links'=>count($duplicates),'orphan_links'=>count($orphanLinks),
+   'published_tests_without_questions'=>count($publishedTestsWithoutQuestions),
+   'published_questions_without_test'=>count($publishedUnlinkedQuestions)
+  ],'duplicates'=>array_slice($duplicates,0,500),'orphan_links'=>array_slice($orphanLinks,0,500),
+  'published_tests_without_questions'=>array_slice($publishedTestsWithoutQuestions,0,500),
+  'published_questions_without_test'=>array_slice($publishedUnlinkedQuestions,0,500),
+  'note'=>'Unlinked published questions are reported only; they are not treated as defects because standalone question-bank content is valid.'],$req->requestId);
+ }catch(\\Throwable $e){Response::error('INTEGRITY_AUDIT_FAILED',$e->getMessage(),$req->requestId,503);}
+});
+
 };
