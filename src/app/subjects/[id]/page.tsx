@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, Brain, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
-import HistologyTrainer from "@/components/trainers/HistologyTrainer";
+import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -23,9 +23,14 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "cards" | "progress";
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainers" | "progress";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "cards", "progress"];
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainers", "progress"];
+
+function normalizeTab(v: string) {
+  if (v === "trainer" || v === "cards") return "trainers" as TabId;
+  return v as TabId;
+}
 
 const slugNames: Record<string, string> = {
   "гистология, цитология": "histology",
@@ -81,11 +86,13 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     const fromHash = window.location.hash.replace(/^#/, "");
     const fromQuery = new URLSearchParams(window.location.search).get("tab");
     const initial = fromQuery || fromHash;
-    if (initial && isTabId(initial)) setTab(initial);
+    const normalized = initial ? normalizeTab(initial) : "";
+    if (normalized && isTabId(normalized)) setTab(normalized);
 
     const onHash = () => {
       const h = window.location.hash.replace(/^#/, "");
-      if (h && isTabId(h)) setTab(h);
+      const normalized = h ? normalizeTab(h) : "";
+      if (normalized && isTabId(normalized)) setTab(normalized);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -216,8 +223,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "practice", label: "База вопросов", Icon: ListChecks },
     { id: "lectures", label: "Лекции", Icon: BookOpen },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
-    { id: "trainer", label: "Микропрепараты", Icon: Microscope },
-    { id: "cards", label: "Карточки SRS", Icon: Brain },
+    { id: "trainers", label: "Тренажёры", Icon: ListChecks },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
   ];
 
@@ -492,7 +498,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 Открыть базу вопросов
               </Link>
               {histology && (
-                <button type="button" onClick={() => selectTab("trainer")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+                <button type="button" onClick={() => selectTab("trainers")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
                   Открыть тренажёр
                 </button>
               )}
@@ -564,32 +570,15 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           )
         )}
 
-        {tab === "trainer" && (
+        {tab === "trainers" && (
           histology ? (
-            <HistologyTrainer embedded />
+            <SubjectTrainersHub />
           ) : (
             <section className="card p-5">
-              <h2 className="text-lg font-bold">Микропрепараты</h2>
-              <p className="mt-1 text-sm text-slate-500">Для этого предмета тренажёр не подключён.</p>
+              <h2 className="text-lg font-bold">Тренажёры</h2>
+              <p className="mt-1 text-sm text-slate-500">Для этого предмета тренажёры пока не подключены.</p>
             </section>
           )
-        )}
-
-        {tab === "cards" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Карточки SRS</h2>
-            <p className="mt-1 text-sm text-slate-500">Общие и личные карточки — отдельно от билетов.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Link href={"/cards?" + query + "&scope=shared"} className="rounded-xl border p-4 hover:bg-slate-50">
-                <b>Общие</b>
-                <div className="mt-1 text-xs text-slate-500">Карточки из общего банка вопросов</div>
-              </Link>
-              <Link href={"/cards?" + query + "&scope=personal"} className="rounded-xl border p-4 hover:bg-slate-50">
-                <b>Мои</b>
-                <div className="mt-1 text-xs text-slate-500">Личные термины и заметки</div>
-              </Link>
-            </div>
-          </section>
         )}
 
         {tab === "progress" && (
