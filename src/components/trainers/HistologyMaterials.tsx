@@ -502,18 +502,7 @@ export default function HistologyMaterials() {
             </header>
 
             <div className="min-h-0 flex-1 overflow-auto !bg-slate-100 p-3 sm:p-6">
-              {active.kind === "photo" ? (
-                photo ? (
-                  <div className="flex min-h-full items-center justify-center">
-                    <img src={photo} alt={active.title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" />
-                  </div>
-                ) : (
-                  <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                    <p className="mt-3">Загружаем фотографию препарата…</p>
-                  </div>
-                )
-              ) : blob ? (
+              {blob ? (
                 <DocumentView blob={blob} title={active.title} />
               ) : (
                 <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
