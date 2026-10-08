@@ -278,10 +278,7 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       visual: "drawing",
       drawingVariant: Math.random() < 0.5 ? 0 : 1,
       identificationScope: "single_cell",
-      identificationHint:
-        cell.key === "neutrophils"
-          ? "На рисунке показан нейтрофил как общий тип; п/я и с/я здесь не различаются."
-          : "Определите показанный тип лейкоцита.",
+      identificationHint: "Определите клетку самостоятельно по её морфологии. Название клетки заранее не подсказывается.",
     };
   }
 
@@ -306,10 +303,7 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       visual: "photo",
       imageId: localIds[Math.floor(Math.random() * localIds.length)],
       identificationScope: "single_cell",
-      identificationHint:
-        cell.key === "neutrophils"
-          ? "Определите именно показанную клетку по форме ядра и характеру зернистости."
-          : "Определите именно показанную клетку по морфологическим признакам.",
+      identificationHint: "Определите именно показанную клетку по размеру, ядру, цитоплазме и зернистости. Название заранее не подсказывается.",
     };
   }
 
@@ -442,7 +436,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
     const info = cellByKey(currentCase.cell);
     const cellAnswer = normalizeText(answers.cell);
-      const cellCorrect = Boolean(
+        const cellCorrect = Boolean(
       cellAnswer.includes(normalizeText(info.name)),
     );
 
