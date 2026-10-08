@@ -323,8 +323,20 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 }
 
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
+const trainerCardCache=new Map<string, any>();
+const trainerCardInflight=new Map<string, Promise<ApiResult<any>>>();
 export async function getTrainerFeedCard(id:string){
-  return api<any>("/trainers/feed/" + encodeURIComponent(id));
+  const key=String(id);
+  const cached=trainerCardCache.get(key);
+  if(cached) return {ok:true as const,data:{item:cached},requestId:"cache"};
+  const pending=trainerCardInflight.get(key);
+  if(pending) return pending;
+  const promise=api<any>("/trainers/feed/" + encodeURIComponent(key)).then((result)=>{
+    if(result.ok && result.data?.item) trainerCardCache.set(key,result.data.item);
+    return result;
+  }).finally(()=>trainerCardInflight.delete(key));
+  trainerCardInflight.set(key,promise);
+  return promise;
 }
 export async function getLectureMiniQuizQuestions(questionIds:string[],subjectId:string){
   const ids=questionIds.filter(Boolean).join(",");
