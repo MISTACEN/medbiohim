@@ -231,3 +231,21 @@ These links do not change the canonical plan-topic ownership of existing trainer
 - final physical media reconciliation;
 - automatic related-content block in the lecture UI;
 - continue filling remaining lecture bodies from source-backed materials.
+
+
+## 2026-10-08 — Full lecture set from supplied archives
+
+Лекционный слой заполнен source-backed контентом непосредственно из уже импортированных `materials` Supabase, которые соответствуют `Гистология.zip`.
+
+- **20 опубликованных lecture records** для `histology` в `site_content`;
+- **19 новых заполненных тел** + ранее существовавшая расширенная Lecture 05 «Кровь и лимфа»;
+- добавлены: цитология, эмбриология, эпителий, соединительные/хрящевые ткани, костно-мышечная ткань, нервная ткань, ЦНС/ВНС, сенсорные системы, сердечно-сосудистая, кроветворение/иммунитет, эндокринная, ЖКТ, большие железы ЖКТ, дыхательная, кожа, мочевая, половая системы, стоматологическая область;
+- отдельно добавлена **дополнительная лекция по гистотехнике**;
+- каждое новое тело хранит `sources` с исходными `histology-zip-scheme-*` keys;
+- curriculum metadata привязывается к соответствующему модулю текущего 3 семестра, где такая привязка однозначна;
+- `body_html` используется как canonical rendered body, а `body_md` сохранён как текстовый fallback;
+- пустые legacy rows `public.histology_lectures` переведены в `is_published=false`, чтобы старый слой не дублировал canonical `site_content`.
+
+Репродуцируемая миграция: `database/migrations/20261008_histology_full_lectures.sql`.
+
+**Граница источника:** текст лекций не дополнялся неподтверждёнными сведениями. `content.zip` используется как физический media/trainer-контур; текстовая часть берётся из source-backed материалов Supabase, связанных с `Гистология.zip`.
