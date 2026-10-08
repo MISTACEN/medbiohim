@@ -65,6 +65,7 @@ export function ImageLightbox({
         className={"group relative block w-full cursor-zoom-in text-left " + className}
         aria-label={caption ? `Открыть изображение: ${caption}` : "Открыть изображение на весь экран"}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
@@ -97,13 +98,14 @@ export function ImageLightbox({
                 <span className="min-w-12 text-center text-xs font-semibold">{Math.round(zoom * 100)}%</span>
                 <button type="button" onClick={() => setZoom((value) => Math.min(3, Number((value + 0.25).toFixed(2))))} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Увеличить"><Plus className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setZoom(1)} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Сбросить масштаб"><RotateCcw className="h-4 w-4" /></button>
-                <button type="button" onClick={() => void enterFullscreen()} className="hidden rounded-xl bg-white/10 p-2 hover:bg-white/20 sm:inline-flex" aria-label="Во весь экран"><Maximize2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => void enterFullscreen()} className="inline-flex rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Во весь экран"><Maximize2 className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setOpen(false)} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Закрыть"><X className="h-5 w-5" /></button>
               </div>
             </div>
 
             <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-2xl bg-black/30 p-1 sm:p-2">
               <div className="flex min-h-full min-w-full items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
                   alt={alt}
