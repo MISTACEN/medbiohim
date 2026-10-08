@@ -26,6 +26,7 @@ type CellInfo = {
   highHypotheses: string[];
   lowHypotheses: string[];
 };
+type IdentificationScope = "single_cell" | "population";
 type Case = {
   id: string;
   age: AgeProfile;
@@ -40,6 +41,8 @@ type Case = {
   imageFocus?: { x: number; y: number; scale?: number };
   visual: "photo" | "drawing";
   drawingVariant?: 0 | 1;
+  identificationScope: IdentificationScope;
+  identificationHint: string;
 };
 type Answers = { cell: string; norm: string; result: string; conclusion: string; diagnosis: string };
 type Evaluation = { cell: boolean; norm: boolean; result: boolean; conclusion: boolean; diagnosis: boolean; grade: 2 | 4 | 5 };
@@ -274,6 +277,11 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       source: "local",
       visual: "drawing",
       drawingVariant: Math.random() < 0.5 ? 0 : 1,
+      identificationScope: "single_cell",
+      identificationHint:
+        cell.key === "neutrophils"
+          ? "На рисунке показан нейтрофил как общий тип; п/я и с/я здесь не различаются."
+          : "Определите показанный тип лейкоцита.",
     };
   }
 
@@ -297,6 +305,14 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       source,
       visual: "photo",
       imageId: localIds[Math.floor(Math.random() * localIds.length)],
+      identificationScope:
+        cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
+          ? "population"
+          : "single_cell",
+      identificationHint:
+        cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
+          ? "Это общий мазок: здесь оцениваются Нейтрофилы всего — палочкоядерные и сегментоядерные вместе. Отдельно различать п/я и с/я для этой карточки не нужно."
+          : "На рабочем кадре оценивается одна целевая клетка.",
     };
   }
 
@@ -417,7 +433,18 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
     const info = cellByKey(currentCase.cell);
     const cellAnswer = normalizeText(answers.cell);
-    const cellCorrect = cellAnswer.includes(normalizeText(info.name)) || ["нейтрофил", "лимфоцит", "моноцит", "эозинофил", "базофил"].some((x) => cellAnswer.includes(x) && normalizeText(info.name).includes(x));
+    const isNeutrophilTotal =
+      currentCase.cell === "neutrophils" &&
+      currentCase.identificationScope === "population";
+    const subtypeSpecified =
+      cellAnswer.includes("палочкоядер") ||
+      cellAnswer.includes("сегментоядер") ||
+      cellAnswer.includes("п я") ||
+      cellAnswer.includes("с я");
+    const cellCorrect = Boolean(
+      cellAnswer.includes(normalizeText(info.name)) &&
+      (!isNeutrophilTotal || !subtypeSpecified),
+    );
 
     const normCorrect = normMatches(answers.norm, currentCase.norm);
     const resultCorrect = resultMatches(answers.result, currentCase.result);
@@ -523,7 +550,14 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="p-3 text-sm font-extrabold text-slate-900">1. Опознать клетку</div>
+              <div className="p-3 text-sm font-extrabold text-slate-900">
+                1. Опознать клетку
+                <div className="mt-1 text-[10px] font-medium text-slate-500">
+                  {currentCase.identificationScope === "population"
+                    ? "Уровень ответа: общий тип / популяция"
+                    : "Уровень ответа: конкретная клетка"}
+                </div>
+              </div>
               <div className="bg-slate-950">
                 {currentCase.visual === "drawing" ? (
                   <ImageLightbox
@@ -551,6 +585,13 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 )}
               </div>
               <div className="border-t border-slate-200 px-3 py-2 text-[10px] text-slate-500">
+                {currentCase.identificationScope === "population" ? (
+                  <div className="mb-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 font-semibold text-amber-800">
+                    {currentCase.cell === "neutrophils"
+                      ? "Уточнение: на поле могут быть и палочкоядерные, и сегментоядерные нейтрофилы. Здесь нужен ответ «нейтрофилы всего», а не «п/я» или «с/я»."
+                      : currentCase.identificationHint}
+                  </div>
+                ) : null}
                 {currentCase.visual === "drawing"
                   ? "Учебный рисунок · однозначная морфология"
                   : currentCase.source === "local"
