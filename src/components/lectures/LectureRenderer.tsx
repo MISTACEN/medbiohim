@@ -416,7 +416,8 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
           }
         }
         if (p.kind === "video") return <VideoBlock key={i} raw={p.content} />;
-        if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;\n        if (p.kind === "quiz") return <MiniQuizBlock key={i} raw={p.content} />;
+        if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;
+        if (p.kind === "quiz") return <MiniQuizBlock key={i} raw={p.content} />;
         if (p.kind === "chem") {
           const spec = parseChemSpec(p.content);
           if (!spec) {
