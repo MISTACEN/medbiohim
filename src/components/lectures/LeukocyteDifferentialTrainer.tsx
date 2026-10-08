@@ -114,14 +114,14 @@ const PERCENT_QUESTIONS: Array<{ cell: CellKey; prompt: string; options: string[
 ];
 
 const CHANGE_QUESTIONS = [
-  { prompt: "В анализе взрослого: нейтрофилы 80%. Что происходит?", options: ["Нейтрофилия", "Нейтропения", "Лимфопения", "Эозинофилия"], answer: "Нейтрофилия", cell: "neutrophils" as CellKey },
-  { prompt: "В анализе взрослого: нейтрофилы 35%. Что происходит?", options: ["Нейтропения", "Нейтрофилия", "Моноцитоз", "Базофилия"], answer: "Нейтропения", cell: "neutrophils" as CellKey },
-  { prompt: "В анализе взрослого: лимфоциты 52%. Какой термин по проценту?", options: ["Лимфоцитоз", "Лимфопения", "Нейтрофилия", "Моноцитопения"], answer: "Лимфоцитоз", cell: "lymphocytes" as CellKey },
-  { prompt: "В анализе взрослого: лимфоциты 14%. Какой термин?", options: ["Лимфопения", "Лимфоцитоз", "Эозинофилия", "Норма"], answer: "Лимфопения", cell: "lymphocytes" as CellKey },
-  { prompt: "Эозинофилы 9% у взрослого. Что запомнить?", options: ["Эозинофилия", "Эозинопения", "Норма", "Лимфопения"], answer: "Эозинофилия", cell: "eosinophils" as CellKey },
-  { prompt: "Базофилы 1,4% у взрослого. Что запомнить по учебному порогу?", options: ["Базофилия", "Базопения", "Норма", "Нейтрофилия"], answer: "Базофилия", cell: "basophils" as CellKey },
-  { prompt: "Моноциты 1% у взрослого. Что это?", options: ["Моноцитопения", "Моноцитоз", "Норма", "Лимфоцитоз"], answer: "Моноцитопения", cell: "monocytes" as CellKey },
-  { prompt: "Палочкоядерные нейтрофилы 12%. Какой термин для карточки?", options: ["Сдвиг влево", "Лимфопения", "Эозинофилия", "Базофилия"], answer: "Сдвиг влево", cell: "neutrophils" as CellKey },
+  { prompt: "В анализе взрослого: нейтрофилы 80%. Что происходит?", options: ["Нейтрофилия", "Нейтропения", "Лимфопения", "Эозинофилия"], answer: "Нейтрофилия", cell: "neutrophils" as CellKey, explanation: "80% выше учебной верхней границы 72% — нейтрофилия." },
+  { prompt: "В анализе взрослого: нейтрофилы 35%. Что происходит?", options: ["Нейтропения", "Нейтрофилия", "Моноцитоз", "Базофилия"], answer: "Нейтропения", cell: "neutrophils" as CellKey, explanation: "35% ниже учебной нижней границы 47% — нейтропения." },
+  { prompt: "В анализе взрослого: лимфоциты 52%. Какой термин по проценту?", options: ["Лимфоцитоз", "Лимфопения", "Нейтрофилия", "Моноцитопения"], answer: "Лимфоцитоз", cell: "lymphocytes" as CellKey, explanation: "52% выше учебной верхней границы 37% — лимфоцитоз." },
+  { prompt: "В анализе взрослого: лимфоциты 14%. Какой термин?", options: ["Лимфопения", "Лимфоцитоз", "Эозинофилия", "Норма"], answer: "Лимфопения", cell: "lymphocytes" as CellKey, explanation: "14% ниже учебной нижней границы 19% — лимфопения." },
+  { prompt: "Эозинофилы 9% у взрослого. Что запомнить?", options: ["Эозинофилия", "Эозинопения", "Норма", "Лимфопения"], answer: "Эозинофилия", cell: "eosinophils" as CellKey, explanation: "9% выше учебной верхней границы 6% — эозинофилия." },
+  { prompt: "Базофилы 1,4% у взрослого. Что запомнить по учебному порогу?", options: ["Базофилия", "Базопения", "Норма", "Нейтрофилия"], answer: "Базофилия", cell: "basophils" as CellKey, explanation: "1,4% выше учебной верхней границы 1% — базофилия." },
+  { prompt: "Моноциты 1% у взрослого. Что это?", options: ["Моноцитопения", "Моноцитоз", "Норма", "Лимфоцитоз"], answer: "Моноцитопения", cell: "monocytes" as CellKey, explanation: "1% ниже учебной нижней границы 3% — моноцитопения." },
+  { prompt: "Палочкоядерные нейтрофилы 12%. Какой термин для карточки?", options: ["Сдвиг влево", "Лимфопения", "Эозинофилия", "Базофилия"], answer: "Сдвиг влево", cell: "neutrophils" as CellKey, explanation: "12% палочкоядерных выше учебного диапазона 3–5% — сдвиг влево." },
 ];
 
 function cellByKey(key: CellKey) {
@@ -172,8 +172,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
     }
     if (modeForRound === "changes") {
       const item = CHANGE_QUESTIONS[deterministicIndex(round, CHANGE_QUESTIONS.length)];
-      const info = cellByKey(item.cell);
-      return { kind: "changes" as const, ...item, explanation: info.high + " / " + info.low };
+      return { kind: "changes" as const, ...item };
     }
     const localCandidates = CELLS.flatMap((item) => item.localIds.map((id) => ({ source: "local" as const, cell: item.key, id })));
     const externalCandidates = EXTERNAL_IMAGES.map((item) => ({ source: "external" as const, cell: item.cell, url: item.url, sourceUrl: item.sourceUrl, caption: item.caption }));
@@ -339,7 +338,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 <b>{cell.name}:</b> {cell.morphology}
               </div>
               {question.kind === "percent" && <div className="mt-2 text-sm text-slate-700">{question.explanation}</div>}
-              {question.kind === "changes" && <div className="mt-2 text-sm text-slate-700">{selected === question.answer ? cell.high : question.answer + " · " + cell.morphology}</div>}
+              {question.kind === "changes" && <div className="mt-2 text-sm text-slate-700">{question.explanation}</div>}
               {question.kind === "morphology" && <div className="mt-2 text-sm text-slate-700">{cell.morphology}</div>}
             </div>
           )}
