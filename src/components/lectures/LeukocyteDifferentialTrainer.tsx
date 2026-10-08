@@ -45,9 +45,20 @@ const COURSE_NORM_SOURCE = "Методичка «Кровь» / 4.Кровь.doc
 const AGE_PROFILES: AgeProfile[] = [
   {
     id: "adult",
-    label: "14–15 лет и взрослые",
+    label: "Взрослый",
     norms: {
-      neutrophils: { text: "47–72%", min: 47, max: 72 },
+      neutrophils: { text: "48–78%", min: 48, max: 78 },
+      lymphocytes: { text: "19–37%", min: 19, max: 37 },
+      monocytes: { text: "3–11%", min: 3, max: 11 },
+      eosinophils: { text: "0,5–5%", min: 0.5, max: 5 },
+      basophils: { text: "0–1%", min: 0, max: 1 },
+    },
+  },
+  {
+    id: "teen12_14",
+    label: "12–14 лет",
+    norms: {
+      neutrophils: { text: "48–78%", min: 48, max: 78 },
       lymphocytes: { text: "19–37%", min: 19, max: 37 },
       monocytes: { text: "3–11%", min: 3, max: 11 },
       eosinophils: { text: "0,5–5%", min: 0.5, max: 5 },
