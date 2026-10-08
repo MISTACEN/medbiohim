@@ -195,7 +195,7 @@ function sanitizeEditorHtml(raw: string): string {
       }
       [...el.attributes].forEach((attribute) => {
         const keep = [
-          "href", "src", "alt", "title", "target", "rel", "width", "height", "style",
+          "href", "src", "alt", "title", "target", "rel", "width", "height", "style", "class",
           "contenteditable", "data-mbh-block", "data-mbh-content", "data-mbh-id",
           "data-mbh-label", "data-mbh-edit", "data-mbh-remove",
         ].includes(attribute.name);
