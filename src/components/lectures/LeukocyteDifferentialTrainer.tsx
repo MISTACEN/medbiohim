@@ -616,7 +616,18 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                       : "Реальный препарат WebPath · сфокусирована одна клетка"}
                 {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
               </div>
-              <input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Какой это лейкоцит?" />
+              <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-600">
+  {currentCase.identificationScope === "population" && currentCase.cell === "neutrophils" ? (
+    <>
+      <b>Уточнение для этой карточки:</b> ответ — <b>нейтрофилы всего</b>.
+      Палочкоядерные и сегментоядерные формы входят в одну общую популяцию.
+      <div className="mt-1">П/я: ядро цельное, изогнутое (палочка, подкова, S) без перетяжек. С/я: ядро разделено на 3–5 сегментов, соединённых тонкими перемычками.</div>
+    </>
+  ) : (
+    currentCase.identificationHint
+  )}
+</div>
+<input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder={currentCase.identificationScope === "population" ? "Например: нейтрофилы / нейтрофилы всего" : "Какой это лейкоцит?"} />
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -685,7 +696,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-sm font-extrabold text-slate-900">Эталон разбора</div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">1. Клетка</div><div className="mt-1 font-bold">{cell.name}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">1. Клетка</div><div className="mt-1 font-bold">{currentCase.identificationScope === "population" && currentCase.cell === "neutrophils" ? "Нейтрофилы (всего)" : cell.name}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">2. Норма</div><div className="mt-1 font-bold">{currentCase.norm.text}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">3. Результат</div><div className="mt-1 font-bold">{resultLabel(currentCase.result)}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">4. Вывод</div><div className="mt-1 font-bold">{currentCase.deviation === "normal" ? "Норма" : currentCase.deviation === "high" ? cell.highTerm : cell.lowTerm || "отклонение"}</div></div>
@@ -719,6 +730,17 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <div className="rounded-xl bg-rose-50 p-3"><b>2</b> — ошибка хотя бы в одном из первых 4 столбиков.</div>
               <div className="rounded-xl bg-indigo-50 p-3"><b>4</b> — все 4 основных столбика верны.</div>
               <div className="rounded-xl bg-emerald-50 p-3"><b>5</b> — все 4 верны + предварительная гипотеза связана с функцией клетки.</div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+            <div className="text-sm font-extrabold text-amber-950">Уточнение по нейтрофилам</div>
+            <div className="mt-2 text-[11px] leading-5 text-amber-900">
+              На общем мазке могут одновременно встречаться палочкоядерные и сегментоядерные формы. Поэтому сначала смотрим, <b>что именно требует карточка</b>: «нейтрофилы всего» или конкретная форма.
+            </div>
+            <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-amber-900">
+              <div><b>П/я:</b> цельное изогнутое ядро — палочка, подкова или S, без сегментации.</div>
+              <div><b>С/я:</b> ядро состоит из 3–5 сегментов, соединённых тонкими перемычками.</div>
             </div>
           </div>
 
