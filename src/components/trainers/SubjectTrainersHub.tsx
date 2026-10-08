@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Brain, Droplets, RotateCcw, Check, Flame, Loader2, Sparkles, Table2 } from "lucide-react";
+import { Brain, Droplets, RotateCcw, Check, Flame, Loader2, Microscope, Sparkles, Table2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
+import BloodPreparationTrainer from "@/components/trainers/BloodPreparationTrainer";
 import {
   srsSummary, srsDue, srsReview, srsEnsure, srsAddCard,
   type SrsCard, type SrsSummary,
 } from "@/lib/features-api";
 
-type HubMode = "leukocytes" | "norms" | "meaning" | "srs";
+type HubMode = "leukocytes" | "norms" | "meaning" | "preparations" | "srs";
 type Rating = 1 | 2 | 3 | 4;
 
 const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
@@ -195,6 +196,7 @@ export function SubjectTrainersHub() {
     { id: "leukocytes" as const, label: "Лейкоциты", Icon: Droplets },
     { id: "norms" as const, label: "Нормы крови", Icon: Table2 },
     { id: "meaning" as const, label: "Ответ по смыслу", Icon: Sparkles },
+    { id: "preparations" as const, label: "Препараты крови", Icon: Microscope },
     { id: "srs" as const, label: "Карточки SRS", Icon: Brain },
   ], []);
 
@@ -222,6 +224,7 @@ export function SubjectTrainersHub() {
       {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} /> : null}
       {mode === "norms" ? <BloodNormTableTrainer /> : null}
       {mode === "meaning" ? <BloodMeaningTrainer /> : null}
+      {mode === "preparations" ? <BloodPreparationTrainer /> : null}
       {mode === "srs" ? <SrsPanel /> : null}
     </section>
   );
