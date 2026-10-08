@@ -102,6 +102,7 @@ final class AdminDatabaseManager
         $password=(string)($input['password']??'');
         $sslmode=trim((string)($input['sslmode']??'require'));
         $charset=trim((string)($input['charset']??'utf8mb4'));
+        $enabled=array_key_exists('enabled',$input)?(bool)$input['enabled']:true;
 
         if($slug===''||!preg_match('/^[a-z0-9][a-z0-9_-]{1,63}$/',$slug))throw new RuntimeException('Некорректный идентификатор подключения');
         if($label==='')throw new RuntimeException('Название подключения обязательно');
@@ -124,20 +125,20 @@ final class AdminDatabaseManager
                 'UPDATE public.admin_db_connections
                  SET label=:label,driver=:driver,host=:host,port=:port,database_name=:database_name,
                      username=:username,password_ciphertext=:password_ciphertext,sslmode=:sslmode,
-                     charset=:charset,updated_at=now(),last_tested_at=NULL,last_test_ok=NULL,last_error=NULL
+                     charset=:charset,enabled=:enabled,updated_at=now(),last_tested_at=NULL,last_test_ok=NULL,last_error=NULL
                  WHERE id=:id'
             );
             $stmt->execute([
                 'label'=>$label,'driver'=>$driver,'host'=>$host,'port'=>$port,'database_name'=>$database,
                 'username'=>$username,'password_ciphertext'=>$ciphertext,'sslmode'=>$sslmode?:null,
-                'charset'=>$charset?:null,'id'=>$old['id'],
+                'charset'=>$charset?:null,'enabled'=>$enabled,'id'=>$old['id'],
             ]);
             $rowId=(string)$old['id'];
         }else{
             $stmt=$pdo->prepare(
                 'INSERT INTO public.admin_db_connections
-                 (slug,label,driver,host,port,database_name,username,password_ciphertext,sslmode,charset,created_by)
-                 VALUES (:slug,:label,:driver,:host,:port,:database_name,:username,:password_ciphertext,:sslmode,:charset,:created_by)
+                 (slug,label,driver,host,port,database_name,username,password_ciphertext,sslmode,charset,enabled,created_by)
+                 VALUES (:slug,:label,:driver,:host,:port,:database_name,:username,:password_ciphertext,:sslmode,:charset,:enabled,:created_by)
                  RETURNING id'
             );
             $stmt->execute([
@@ -147,7 +148,15 @@ final class AdminDatabaseManager
             ]);
             $rowId=(string)$stmt->fetchColumn();
         }
-        return $this->connectionById($rowId);
+        return $this->publicConnection($this->connectionById($rowId));
+    }
+
+    private function publicConnection(array $row): array
+    {
+        unset($row['password_ciphertext']);
+        $row['password_configured']=!empty($row['password_ciphertext']);
+        $row['builtin']=false;
+        return $row;
     }
 
     public function test(string $id): array
@@ -309,7 +318,8 @@ final class AdminDatabaseManager
         if($sql==='')throw new RuntimeException('SQL пустой');
         if(strlen($sql)>self::MAX_SQL)throw new RuntimeException('SQL слишком большой');
         $this->assertSqlAllowed($sql);
-        $dangerous=(bool)preg_match('/^\s*(insert|update|delete|alter|create|drop|truncate|grant|revoke|comment|vacuum|reindex|refresh|replace|set)\b/i',$sql);
+        $readOnly=(bool)preg_match('/^\s*(select|explain|show|describe|desc)\b/i',$sql);
+        $dangerous=!$readOnly;
         if($dangerous&&!$confirmed)throw new RuntimeException('Операция изменяет БД. Повторите с подтверждением.');
         if($this->hasMultipleStatements($sql))throw new RuntimeException('За один запрос разрешён только один SQL-оператор');
 
