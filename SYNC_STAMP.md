@@ -148,3 +148,6 @@
 
 
 - **2026-10-08 visual-trainer sync:** leukocyte case cards now use only unambiguous single-cell visuals; shared multi-leukocyte smears are excluded from the identification step. Focused-image support was added to ImageLightbox, while existing zoom/pan/pinch/fullscreen behavior is retained.
+
+
+- **2026-10-08 visual variety sync:** leukocyte case cards now randomize between validated real specimens and source-based SVG teaching drawings. Each cell has two drawing variants; photo mode can use a confirmed local single-cell card or a focused WebPath specimen where available. The same image viewer controls work for both raster specimens and vector teaching drawings.
