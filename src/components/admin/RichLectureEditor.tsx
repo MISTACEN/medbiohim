@@ -21,7 +21,7 @@ type Attachment = {
   caption?: string;
 };
 type SearchResult = { title: string; url: string; thumb?: string; mime?: string; isVideo?: boolean };
-type BlockKind = "mermaid" | "quiz" | "chart" | "chem" | "video" | "formula" | "image" | "table";
+type BlockKind = "mermaid" | "quiz" | "chart" | "chem" | "video" | "formula" | "image" | "table" | "leukocyte";
 
 type Props = {
   value: string;
@@ -41,6 +41,7 @@ const BLOCK_LABELS: Record<BlockKind, string> = {
   formula: "Формула",
   image: "Препарат / изображение",
   table: "Таблица",
+  leukocyte: "Лейкоцитарный тренажёр",
 };
 
 const FENCE = String.fromCharCode(96).repeat(3);
@@ -74,7 +75,7 @@ function makeBlockPlaceholder(kind: BlockKind, raw: string, title?: string): str
     '" data-mbh-id="' + id +
     '" class="mbh-block">' +
       '<div class="mbh-block-head">' +
-        '<span class="mbh-block-label">' + esc(label) + '</span>' +
+        '<span class="mbh-block-label" data-mbh-label="1">' + esc(label) + '</span>' +
         '<span class="mbh-block-actions">' +
           '<button type="button" data-mbh-edit="1">Изменить</button>' +
           '<button type="button" data-mbh-remove="1">Удалить</button>' +
@@ -89,7 +90,7 @@ function extractSpecialBlocks(markdown: string): { body: string; blocks: string[
   const blocks: string[] = [];
   let body = String(markdown || "");
   const re = new RegExp(
-    FENCE + '(chart|video|image|mermaid|chem|quiz)\\s*\\r?\\n([\\s\\S]*?)\\r?\\n?' + FENCE,
+    FENCE + '(chart|video|image|mermaid|chem|quiz|leukocyte)\\s*\\r?\\n([\\s\\S]*?)\\r?\\n?' + FENCE,
     "gi",
   );
   body = body.replace(re, (_all: string, kind: string, raw: string) => {
@@ -368,6 +369,9 @@ export function RichLectureEditor({
   const [formula, setFormula] = useState("\\frac{a}{b}");
   const [tableText, setTableText] = useState("Показатель\tЗначение\nЭритроциты\t4,0–5,5 × 10¹²/л\nHb\t130–160 г/л");
   const [tableHeader, setTableHeader] = useState(true);
+  const [leukocyteMode, setLeukocyteMode] = useState("mixed");
+  const [leukocyteSourceMode, setLeukocyteSourceMode] = useState("mixed");
+  const [leukocyteRounds, setLeukocyteRounds] = useState("12");
 
   const filteredTrainer = useMemo(() => {
     const needle = trainerQuery.trim().toLowerCase();
@@ -495,6 +499,16 @@ export function RichLectureEditor({
       type: "bar", title: chartTitle.trim() || undefined, labels, values,
       unit: chartUnit.trim() || undefined,
     }, null, 2), chartTitle.trim() || "Диаграмма");
+  }
+
+  function insertLeukocyteTrainer() {
+    const rounds = Math.min(30, Math.max(5, Number(leukocyteRounds) || 12));
+    insertBlock("leukocyte", JSON.stringify({
+      title: "Лейкоцитарная формула — тренажёр",
+      mode: leukocyteMode,
+      sourceMode: leukocyteSourceMode,
+      rounds,
+    }, null, 2), "Лейкоцитарный тренажёр");
   }
 
   function insertFormula() {
@@ -687,6 +701,7 @@ export function RichLectureEditor({
         {toolbarButton("Таблица","Создать таблицу",()=>openBlock("table"),<Table2 className="h-4 w-4"/>)}
         {toolbarButton("Схема","Создать Mermaid-схему",()=>{rememberSelection();setBlock("mermaid");setBlockTab("builder")},<Wand2 className="h-4 w-4"/>)}
         {toolbarButton("Мини-тест","Создать мини-тест",()=>openBlock("quiz"),<Braces className="h-4 w-4"/>)}
+        {toolbarButton("Лейкоциты","Тренажёр лейкоцитарной формулы",()=>openBlock("leukocyte"),<span className="font-bold">WBC</span>)}
         {toolbarButton("Диаграмма","Создать диаграмму",()=>openBlock("chart"),<BarChart3 className="h-4 w-4"/>)}
         {toolbarButton("Формула","Создать формулу",()=>openBlock("formula"),<span className="font-bold">∑</span>)}
         {toolbarButton("Химия","Создать химическую фигуру",()=>openBlock("chem"),<span className="font-bold">⚗</span>)}
@@ -777,6 +792,38 @@ export function RichLectureEditor({
           </div>}
 
           {block==="table"&&<div className="mt-5 space-y-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={tableHeader} onChange={(event)=>setTableHeader(event.target.checked)}/> Первая строка — заголовок</label><label className="block text-sm font-semibold">Данные<textarea value={tableText} onChange={(event)=>setTableText(event.target.value)} rows={10} className="mt-1 w-full rounded-xl border p-3 font-mono text-xs" placeholder={"Колонка 1\tКолонка 2\nЗначение\tЗначение"}/></label><div className="flex justify-end gap-2"><button type="button" onClick={()=>setBlock(null)} className="rounded-xl border px-4 py-2">Отмена</button><button type="button" onClick={insertTable} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Вставить таблицу</button></div></div>}
+
+          {block==="leukocyte"&&<div className="mt-5 space-y-4">
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
+              <div className="text-sm font-extrabold text-indigo-900">Тренажёр лейкоцитарной формулы</div>
+              <p className="mt-1 text-xs leading-5 text-indigo-800">Проценты нормы → увеличение/снижение → распознавание клеток по мазку. Для морфологии можно использовать локальные препараты MEDBIOHIM и независимую внешнюю сверку.</p>
+            </div>
+            <label className="block text-sm font-semibold">Режим
+              <select value={leukocyteMode} onChange={(event)=>setLeukocyteMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
+                <option value="mixed">Смешанный: проценты + ↑/↓ + мазок</option>
+                <option value="percent">Только проценты</option>
+                <option value="changes">Только ↑ / ↓</option>
+                <option value="morphology">Только распознавание мазка</option>
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">Источник изображений
+              <select value={leukocyteSourceMode} onChange={(event)=>setLeukocyteSourceMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
+                <option value="mixed">Локальные + проверенный внешний источник</option>
+                <option value="local">Только локальные препараты MEDBIOHIM</option>
+                <option value="external">Только внешний источник</option>
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">Количество раундов
+              <input type="number" min={5} max={30} value={leukocyteRounds} onChange={(event)=>setLeukocyteRounds(event.target.value)} className="mt-1 w-full rounded-xl border p-3" />
+            </label>
+            <div className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+              Внутри тренажёра нормы курса остаются отдельными от внешнего лабораторного референса. Это важно, потому что референсные интервалы могут различаться между лабораториями.
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={()=>setBlock(null)} className="rounded-xl border px-4 py-2">Отмена</button>
+              <button type="button" onClick={insertLeukocyteTrainer} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Вставить тренажёр</button>
+            </div>
+          </div>}
 
           {block==="quiz"&&<div className="mt-5 space-y-3"><input value={quizTitle} onChange={(event)=>setQuizTitle(event.target.value)} className="w-full rounded-xl border p-3 text-sm" placeholder="Название мини-теста"/><input value={quizSubjectId} onChange={(event)=>setQuizSubjectId(event.target.value)} className="w-full rounded-xl border p-3 text-sm" placeholder="UUID предмета"/><textarea value={quizIds} onChange={(event)=>setQuizIds(event.target.value)} rows={7} className="w-full rounded-xl border p-3 font-mono text-xs" placeholder={"ID вопроса 1\nID вопроса 2\nID вопроса 3"}/><p className="text-xs text-slate-500">Используй ID существующих опубликованных вопросов. Ответы в браузер не передаются.</p><div className="flex justify-end gap-2"><button type="button" onClick={()=>setBlock(null)} className="rounded-xl border px-4 py-2">Отмена</button><button type="button" disabled={!quizSubjectId.trim()||!quizIds.trim()} onClick={insertQuiz} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Вставить мини-тест</button></div></div>}
 
