@@ -90,6 +90,20 @@ export async function getContentSource(id: string) {
   }>(`/content-sources/${encodeURIComponent(id)}`);
 }
 
+export type HistologySourceFile = {
+  name: string;
+  path: string;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+  updated_at?: string | null;
+};
+
+export async function listHistologySourceFiles(folder = "Учебники") {
+  return api<{ items: HistologySourceFile[]; folder: string; source: string; status?: string }>(
+    `/histology/source-materials?folder=${encodeURIComponent(folder)}`,
+  );
+}
+
 export async function listTrainerFeed(
   subject = "histology",
   specialty = "mbh",
