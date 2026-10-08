@@ -105,3 +105,12 @@
 - В lightbox добавлены кнопки «Уменьшить / Увеличить / Сбросить / Полный экран / Закрыть».
 - Mobile-friendly controls сохранены; native Fullscreen API — дополнительный режим, fixed modal — fallback.
 - Production/iPhone Safari smoke остаётся открытым до фактической проверки.
+
+
+## 2026-10-08 — Unified Media Viewer correction
+- Branch: fix/unified-media-viewer-desktop-mobile
+- Fixed Atlas nested modal architecture: card → legacy modal → ImageBox → ImageLightbox replaced by direct TrainerImageViewer → ImageLightbox.
+- Viewer contract: 100dvh, safe-area, visible controls, zoom/reset, drag/pan, desktop wheel/double-click, touch Pointer Events, optional native Fullscreen.
+- New component: src/components/trainers/TrainerImageViewer.tsx.
+- Runtime gate: Windows desktop + macOS + iPhone Safari + Android Chrome + Lecture/Trainer/Materials regression.
+- Production status remains not verified until deployment/browser evidence exists.
