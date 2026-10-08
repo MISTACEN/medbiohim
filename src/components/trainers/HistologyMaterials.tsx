@@ -15,6 +15,7 @@ import {
 import JSZip from "jszip";
 import { fetchMaterialFile, getTrainerImageUrl, hasToken } from "@/lib/api";
 import { listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
+import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 type Item = any;
 
@@ -447,13 +448,29 @@ export default function HistologyMaterials() {
         })
       )}
 
-      {active ? (
+      {active?.kind === "photo" ? (
+        photo ? (
+          <ImageLightbox
+            src={photo}
+            alt={String(active.title || "Фото препарата")}
+            title={String(active.title || "Фото препарата")}
+            caption={active.topic_title ? String(active.topic_title) : "Материалы · фотографии препаратов"}
+            openOnMount
+            showTrigger={false}
+            onClose={() => setActive(null)}
+          />
+        ) : (
+          <div className="fixed inset-0 z-[120] flex h-[100dvh] items-center justify-center bg-black/95 text-sm text-white">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Загружаем фотографию препарата…
+          </div>
+        )
+      ) : active ? (
         <div className="fixed inset-0 z-[70] bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5" onMouseDown={() => setActive(null)}>
           <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-3xl !bg-slate-100 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
             <header className="flex items-start justify-between gap-3 border-b !bg-white px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
-                  {active.kind === "photo" ? "Фото препарата" : categoryLabel[active.category] || "Документ"}
+                  {categoryLabel[active.category] || "Документ"}
                 </div>
                 <h2 className="mt-1 break-words font-bold text-slate-900">{active.title}</h2>
                 {active.topic_title ? <div className="mt-1 text-xs text-slate-500">{active.topic_title}</div> : null}
@@ -478,6 +495,27 @@ export default function HistologyMaterials() {
                     <FileDown className="h-5 w-5" />
                   </button>
                 ) : null}
+                <button type="button" onClick={() => setActive(null)} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" aria-label="Закрыть">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-auto !bg-slate-100 p-3 sm:p-6">
+              {blob ? (
+                <DocumentView blob={blob} title={active.title} />
+              ) : (
+                <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
+                  <p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p>
+                  <p className="mt-1">
+                    Проверь размещение <code>content/histology</code> на SpaceWeb. После загрузки source-пакета документы и .doc HTML-зеркала открываются тем же viewer без изменения БД.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
                 <button type="button" onClick={() => setActive(null)} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" aria-label="Закрыть">
                   <X className="h-5 w-5" />
                 </button>
