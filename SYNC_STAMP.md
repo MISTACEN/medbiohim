@@ -96,3 +96,12 @@
 - Количество quiz blocks в live Lecture 05: **8**.
 - Новый migration: `database/migrations/20261008_histology_lecture_05_age_norms.sql`.
 - Scope остаётся только `histology` / Lecture 05.
+
+
+## 2026-10-08 — ImageLightbox explicit controls
+
+- Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+- ImageLightbox теперь имеет явную кнопку «Открыть на весь экран» на изображении.
+- В lightbox добавлены кнопки «Уменьшить / Увеличить / Сбросить / Полный экран / Закрыть».
+- Mobile-friendly controls сохранены; native Fullscreen API — дополнительный режим, fixed modal — fallback.
+- Production/iPhone Safari smoke остаётся открытым до фактической проверки.
