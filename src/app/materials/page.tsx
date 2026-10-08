@@ -32,7 +32,13 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (directUrl || material.content_html || material.external_url || String(material.subject_slug || "") !== "histology") {
+    const hasPhysicalSource = Boolean(
+      directUrl ||
+      material.source?.file_id ||
+      material.source?.source_path ||
+      material.file_id
+    );
+    if (directUrl || !hasPhysicalSource || material.external_url) {
       setPhysicalUrl(null);
       return;
     }
@@ -46,14 +52,6 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
   }, [material.id, material.content_html, material.external_url, material.subject_slug, directUrl]);
 
   const url = directUrl || physicalUrl || "";
-
-  if (material.content_html) {
-    return <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: material.content_html }} />;
-  }
-
-  if (material.external_url) {
-    return <iframe src={material.external_url} title={material.title} className="h-full min-h-[60vh] w-full rounded-xl border" />;
-  }
 
   if (url && mime.startsWith("image/")) {
     return (
@@ -72,6 +70,14 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
 
   if (url && mime.includes("pdf")) {
     return <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-xl border" />;
+  }
+
+  if (material.content_html) {
+    return <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: material.content_html }} />;
+  }
+
+  if (material.external_url) {
+    return <iframe src={material.external_url} title={material.title} className="h-full min-h-[60vh] w-full rounded-xl border" />;
   }
 
   return (
