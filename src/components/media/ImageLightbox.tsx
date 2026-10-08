@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Maximize2, Minus, Plus, RotateCcw, X, Minimize2 } from "lucide-react";
 
 type Props = {
@@ -33,10 +34,17 @@ export function ImageLightbox({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [fullscreen, setFullscreen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
   const viewerRef = useRef<HTMLDivElement>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const close = () => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
@@ -84,8 +92,8 @@ export function ImageLightbox({
         close();
         return;
       }
-      if (event.key === "+" || event.key === "=") changeZoom(zoom + 0.25);
-      if (event.key === "-") changeZoom(zoom - 0.25);
+      if (event.key === "+" || event.key === "=") changeZoom(zoomRef.current + 0.25);
+      if (event.key === "-") changeZoom(zoomRef.current - 0.25);
       if (event.key === "0") {
         setZoom(1);
         setPan({ x: 0, y: 0 });
@@ -103,7 +111,7 @@ export function ImageLightbox({
       window.visualViewport?.removeEventListener("scroll", updateViewport);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, zoom]);
+  }, [open]);
 
   useEffect(() => {
     if (openOnMount) setOpen(true);
@@ -189,11 +197,16 @@ export function ImageLightbox({
         </button>
       )}
 
-      {open ? (
+      {open && mounted ? createPortal(
         <div
           ref={viewerRef}
-          className="fixed inset-0 z-[120] flex w-full items-center justify-center overflow-hidden bg-black/55 p-2 backdrop-blur-md sm:p-4"
+          className="fixed inset-0 z-[120] flex w-screen items-center justify-center overflow-hidden p-2 backdrop-blur-md sm:p-4"
           style={{
+            zIndex: 2147483000,
+            width: "100vw",
+            maxWidth: "100vw",
+            maxHeight: "100dvh",
+            background: "rgba(15,23,42,0.58)",
             height: viewportHeight ? `${viewportHeight}px` : "100dvh",
             minHeight: "100svh",
             paddingTop: "calc(0.5rem + env(safe-area-inset-top))",
@@ -209,10 +222,10 @@ export function ImageLightbox({
           }}
         >
           <div
-            className="relative mx-auto flex h-[calc(100%-0.5rem)] max-h-[920px] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/90 shadow-2xl backdrop-blur-2xl sm:h-[calc(100%-1rem)]"
+            className="relative mx-auto flex h-[calc(100%-0.5rem)] max-h-[920px] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/70 shadow-2xl backdrop-blur-2xl sm:h-[calc(100%-1rem)]" style={{ background: "rgba(255,255,255,0.92)", color: "#0f172a" }}
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <header className="flex shrink-0 items-start gap-3 border-b border-slate-200/80 bg-white/75 px-3 py-3 sm:px-5 sm:py-4">
+            <header className="flex shrink-0 items-start gap-3 border-b border-slate-200/80 px-3 py-3 sm:px-5 sm:py-4" style={{ background: "rgba(255,255,255,0.78)" }}>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold text-slate-900 sm:text-base">
                   {title || caption || alt || "Просмотр изображения"}
@@ -235,7 +248,7 @@ export function ImageLightbox({
             </header>
 
             <div
-              className="relative min-h-0 flex-1 overflow-hidden overscroll-none bg-slate-100/75 touch-none"
+              className="relative min-h-0 flex-1 overflow-hidden overscroll-none touch-none" style={{ background: "rgba(241,245,249,0.78)" }}
               onPointerDown={pointerDown}
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
@@ -265,16 +278,17 @@ export function ImageLightbox({
             </div>
 
             {details ? (
-              <div className="max-h-[22dvh] shrink-0 overflow-auto border-t border-slate-200/80 bg-white/75 px-3 py-3 text-xs text-slate-700 sm:px-5">
+              <div className="max-h-[22dvh] shrink-0 overflow-auto border-t border-slate-200/80 px-3 py-3 text-xs text-slate-700 sm:px-5" style={{ background: "rgba(255,255,255,0.78)" }}>
                 {details}
               </div>
             ) : null}
 
-            <div className="shrink-0 border-t border-slate-200/70 bg-white/60 px-3 py-1.5 text-center text-[10px] text-slate-500 sm:text-[11px]">
+            <div className="shrink-0 border-t border-slate-200/70 px-3 py-1.5 text-center text-[10px] text-slate-500 sm:text-[11px]" style={{ background: "rgba(255,255,255,0.60)" }}>
               Увеличение · перетаскивание · двойное нажатие · Esc для закрытия
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </>
   );
