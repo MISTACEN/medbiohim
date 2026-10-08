@@ -166,3 +166,6 @@
 
 
 - **2026-10-08 morphology-hint sync:** the leukocyte practical trainer now includes a collapsible detailed morphology guide covering neutrophils (including maturation forms), eosinophils, basophils, lymphocytes, monocytes, platelets, and an express recognition algorithm.
+
+
+- **2026-10-08 grading sync:** text answers are now spelling-tolerant while numerical answers remain content-strict. Cell names accept ordinary singular/plural forms and minor typos; decimal comma and dot are interchangeable for numeric input.
