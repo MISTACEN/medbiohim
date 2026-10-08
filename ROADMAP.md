@@ -1745,3 +1745,16 @@ No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mob
 🟢 Reproducible migration: database/migrations/20261008_histology_lecture_template_blocks.sql.
 
 🟡 Следующий content pass — углубить каждую оставшуюся лекцию до уровня Lecture 05 по количеству source-backed таблиц/схем/практических блоков, не добавляя неподтверждённых фактов.
+
+
+## 2026-10-08 — Single canonical admin lecture editor
+
+🟢 Удалён встроенный legacy RichEditor из src/app/admin/lectures/page.tsx: админка использует только RichLectureEditor.
+
+🟢 RichLectureEditor поддерживает lossless editing для форматов, используемых эталонной Lecture 05: Mermaid, таблицы, mini-quiz, формулы, trainer/EM images, charts, chemistry figures, videos, PDF/Word uploads, ссылки и базовое Word-подобное форматирование.
+
+🟢 Специальные блоки можно заново открыть через «Изменить» и удалить без ручного редактирования Markdown.
+
+🟢 LectureLearningEditor подключён к форме той же лекции и управляет methodic pages/sections, scheme/file materials, preparations и electronograms.
+
+🟢 Current Histology lecture titles остаются canonical curriculum titles even after admin save.
