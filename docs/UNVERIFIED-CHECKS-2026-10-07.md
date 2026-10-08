@@ -60,7 +60,7 @@
 - [ ] Materials photo viewer audited separately; document modal remains a different product surface.
 - [ ] target Vercel deployment contains the exact viewer branch commit before any production DONE status.
 ## 7. Verified database-side checks added during pre-launch audit
-- [x] Histology published question links: 673/673 published active Histology questions have at least one test_questions link; archived/unpublished rows remain intentionally unlinked.
+- [x] Histology published question links: 479/479 published active Histology questions have at least one test_questions link; archived/unpublished rows remain intentionally unlinked.
 - [x] Histology published Materials metadata: 80/80 have a matching content_sources row and non-empty source_path.
 - [x] Histology trainer inventory: 206 published cards; 28 electronograms; all 206 have preparation.imagePath/imageUrl; none currently use source_file_id, so physical HTTP verification remains open.
 - [x] Histology ticket banks: exactly 5 rows in ticket_banks; no mutation performed.
