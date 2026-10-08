@@ -323,6 +323,20 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 }
 
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
+export async function getTrainerFeedCard(id:string){
+  return api<any>("/trainers/feed/" + encodeURIComponent(id));
+}
+export async function getLectureMiniQuizQuestions(questionIds:string[],subjectId:string){
+  const ids=questionIds.filter(Boolean).join(",");
+  if(!ids) return {ok:true as const,data:{items:[]},requestId:"client"};
+  return api<any>("/questions/mini-quiz?subject_id="+encodeURIComponent(subjectId)+"&ids="+encodeURIComponent(ids));
+}
+export async function checkLectureMiniQuizAnswer(questionId:string,selectedIndexes:number[],subjectId:string){
+  return api<any>("/questions/mini-quiz/check",{
+    method:"POST",
+    body:JSON.stringify({question_id:questionId,selected_indexes:selectedIndexes,subject_id:subjectId})
+  });
+}
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
 export async function listSchedule(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);return api<any>(`/schedule${q.toString()?`?${q}`:""}`)}
 export async function getDashboard(){return api<any>("/dashboard")}
