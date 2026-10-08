@@ -1699,3 +1699,10 @@ No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mob
 - 🟢 при отсутствии подходящего encoder файл не ломается: derivative остаётся failed/skipped, original сохраняется;
 - 🟡 автоматический queue/worker ещё не объявлен готовым — текущий запуск намеренно ручной до проверки target runtime;
 - 🟡 perceptual text/detail/artifact scoring пока не измеряется реально: текущий pass подготавливает pipeline, но не выдаёт ложный quality-pass.
+
+
+## 2026-10-08 — Histology lecture bodies
+
+🟢 Заполнен canonical lecture layer для гистологии из source-backed материалов `Гистология.zip`: 20 published lecture records в `site_content`, включая 19 новых тематических/дополнительных лекций и существующую расширенную Lecture 05 «Кровь и лимфа». Legacy `histology_lectures` stubs отключены из published выдачи. Reproducible migration: `database/migrations/20261008_histology_full_lectures.sql`.
+
+🟡 Остались отдельные задачи: runtime/browser smoke deployed build, физическая сверка media на SpaceWeb и дальнейшее связывание каждой лекции с конкретными trainer/EM/test cards там, где source-backed IDs однозначны.
