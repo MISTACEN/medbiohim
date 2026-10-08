@@ -69,7 +69,7 @@ function normalize(value: string) {
     .trim()
     .toLowerCase()
     .replace(/,/g, ".")
-    .replace(/−|–|—/g, "-")
+    .replace(/[−–—‑‒]/g, "-")
     .replace(/\s+/g, "")
     .replace(/%/g, "")
     .replace(/^≈|^~/, "");
@@ -121,7 +121,8 @@ export function BloodNormTableTrainer() {
         </h2>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--muted)]">
           Перенеси из памяти нормы лейкоцитарной формулы в пустую таблицу по возрастам, затем нажми «Проверить себя».
-          Проверяются значения, а не оформление: запятая и точка в десятичной дроби, запись с `%`, разные типы тире и символ `≈` не влияют на оценку.
+          Проверяются значения, а не оформление: запятая и точка в десятичной дроби, запись с %, дефис или тире в диапазоне и символ ≈ не влияют на оценку.
+          На телефоне можно вводить диапазоны обычным дефисом, например 48-78.
         </p>
       </div>
 
@@ -157,12 +158,16 @@ export function BloodNormTableTrainer() {
                     return (
                       <td key={column.id} className="min-w-[125px] border-l border-slate-100 px-2 py-2 align-top">
                         <input
+                          type="text"
                           value={value}
                           onChange={(e) => setAnswer(row.id, column.id, e.target.value)}
                           aria-label={row.label + ", " + column.label}
-                          inputMode="decimal"
+                          inputMode="text"
                           autoComplete="off"
-                          placeholder="введите норму"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                          enterKeyHint="next"
+                          placeholder="например, 48-78"
                           className={
                             "w-full rounded-xl border px-3 py-2.5 text-center text-sm outline-none transition " +
                             (correct
