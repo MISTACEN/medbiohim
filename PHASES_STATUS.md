@@ -973,3 +973,16 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - тренажёр является отдельным переиспользуемым блоком leukocyte в RichLectureEditor / LectureRenderer.
 
 Важно: Lecture 05 уже редактируется через единый RichLectureEditor; новый тренажёр теперь также доступен как вставляемый блок редактора.
+
+
+## 2026-10-08 — Unified Media Viewer refinement + branch audit
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Cursor/touch anchored zoom | 🟢 | масштабирование сохраняет точку под курсором или в центре pinch-жеста |
+| Pinch/pan | 🟢 source | Pointer Events + двухпальцевый zoom + bounded drag/pan |
+| Responsive controls | 🟢 source | компактные touch controls, safe-area, viewport через portal |
+| Shared viewer | 🟢 | Atlas, Lecture, Materials и Trainer используют один `ImageLightbox` |
+| Viewer branch reconciliation | 🟢 | `fix/unified-media-viewer-desktop-mobile` содержит 0 уникальных коммитов относительно `main` |
+| Stale divergent branches | 🟡 | `beta`, `fix/chem-rendering-tests-rdkit`, `fix/lecture-service-schedule-home` требуют selective port/review, не wholesale merge |
+| Target-runtime smoke | 🟡 P0 | exact `main` deployment + iPhone/Android + Windows/macOS + cross-page regression |
