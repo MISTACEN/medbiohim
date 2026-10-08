@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Brain, Microscope, Droplets, RotateCcw, Check, Flame, Loader2 } from "lucide-react";
-import HistologyTrainer from "@/components/trainers/HistologyTrainer";
+import { Brain, Droplets, RotateCcw, Check, Flame, Loader2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import {
   srsSummary, srsDue, srsReview, srsEnsure, srsAddCard,
   type SrsCard, type SrsSummary,
 } from "@/lib/features-api";
 
-type HubMode = "microscopy" | "leukocytes" | "srs";
+type HubMode = "leukocytes" | "srs";
 type Rating = 1 | 2 | 3 | 4;
 
 const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
@@ -189,9 +188,8 @@ function SrsPanel() {
 }
 
 export function SubjectTrainersHub() {
-  const [mode, setMode] = useState<HubMode>("microscopy");
+  const [mode, setMode] = useState<HubMode>("leukocytes");
   const modes = useMemo(() => [
-    { id: "microscopy" as const, label: "Микропрепараты", Icon: Microscope },
     { id: "leukocytes" as const, label: "Лейкоциты", Icon: Droplets },
     { id: "srs" as const, label: "Карточки SRS", Icon: Brain },
   ], []);
@@ -217,7 +215,6 @@ export function SubjectTrainersHub() {
         ))}
       </div>
 
-      {mode === "microscopy" ? <HistologyTrainer embedded /> : null}
       {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "mixed", sourceMode: "mixed", rounds: 12 })} /> : null}
       {mode === "srs" ? <SrsPanel /> : null}
     </section>
