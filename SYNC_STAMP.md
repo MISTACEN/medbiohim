@@ -123,3 +123,10 @@
 - Materials blob URL lifecycle cleaned up for image/PDF/document preview.
 - Latest PR #18 head: `16b168126df8529441b0424e8b6b5b07874802d6`.
 - Runtime remains unverified: Vercel build-rate-limit; GitHub code-check jobs fail before steps/logs.
+
+## 2026-10-08 — pre-launch stability audit
+- Current working branch remains `fix/unified-media-viewer-desktop-mobile`; no new branch created.
+- Fixed live schedule session linkage: 309/309 schedule entries now have academic session context.
+- Fixed PHP namespace exception hazards in TestRepository, CalculatorsService and SrsService.
+- Viewer loading/error states now use the same top-level portal boundary as the main media viewer.
+- Runtime/deployment verification remains open until Vercel/SpaceWeb/browser evidence exists.
