@@ -166,7 +166,7 @@ export function ImageLightbox({
   const trigger = showTrigger ? (
     <button type="button" onClick={() => setOpen(true)}
       className={"group relative block w-full cursor-zoom-in text-left " + className}
-      aria-label={caption ? \`Открыть изображение: \${caption}\` : "Открыть изображение на весь экран"}>
+      aria-label={caption ? `Открыть изображение: ${caption}` : "Открыть изображение на весь экран"}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className={"block max-w-full " + imageClassName} draggable={false} />
       <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-semibold text-white opacity-80 backdrop-blur transition group-hover:opacity-100">
@@ -218,7 +218,7 @@ export function ImageLightbox({
             <img src={src} alt={alt}
               className="max-h-[calc(100dvh-7.25rem)] max-w-[calc(100vw-1.5rem)] select-none object-contain sm:max-h-[calc(100dvh-8rem)] sm:max-w-[calc(100vw-3rem)]"
               style={{
-                transform: \`translate3d(\${pan.x}px, \${pan.y}px, 0) scale(\${zoom})\`,
+                transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
                 transformOrigin: "center center", willChange: "transform",
                 transition: dragRef.current || pinchRef.current ? "none" : "transform 120ms ease-out",
               }}
