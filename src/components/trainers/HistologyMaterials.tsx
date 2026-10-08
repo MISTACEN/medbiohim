@@ -502,27 +502,6 @@ export default function HistologyMaterials() {
             </header>
 
             <div className="min-h-0 flex-1 overflow-auto !bg-slate-100 p-3 sm:p-6">
-              {blob ? (
-                <DocumentView blob={blob} title={active.title} />
-              ) : (
-                <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
-                  <p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p>
-                  <p className="mt-1">
-                    Проверь размещение <code>content/histology</code> на SpaceWeb. После загрузки source-пакета документы и .doc HTML-зеркала открываются тем же viewer без изменения БД.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-                <button type="button" onClick={() => setActive(null)} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" aria-label="Закрыть">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </header>
-
-            <div className="min-h-0 flex-1 overflow-auto !bg-slate-100 p-3 sm:p-6">
               {active.kind === "photo" ? (
                 photo ? (
                   <div className="flex min-h-full items-center justify-center">
