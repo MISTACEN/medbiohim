@@ -947,3 +947,16 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Remaining lectures rich layer | 🟢 | 15 лекций получили source-backed scheme + preparations + mini-test |
 | Full parity with Lecture 05 depth | 🟡 | ещё нужен отдельный source-backed content expansion pass |
 | Vercel production verification | 🟡 | текущий Vercel gate — build-rate-limit, не ошибка TS/build |
+
+
+## 2026-10-08 — Canonical lecture editor cleanup
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Single admin editor | 🟢 | legacy embedded RichEditor удалён; используется RichLectureEditor |
+| Lossless special blocks | 🟢 | Mermaid / image / quiz / chart / chem / video / formula сохраняются через block serialization |
+| Tables | 🟢 | Markdown table round-trip + direct cell editing |
+| Scheme creation | 🟢 | визуальный конструктор узлов/связей + raw Mermaid |
+| Learning links | 🟢 | methodics/pages/files/preparations/EM редактируются из admin form |
+| Curriculum title invariant | 🟢 | current Histology save принудительно оставляет plan title |
+| Vercel gate | 🟡 | build-rate-limit остаётся внешним ограничением Vercel; source-side check продолжен independently |
