@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 
 type Props = {
-  src: string;
+  src?: string;
   alt?: string;
   caption?: string;
   className?: string;
@@ -22,6 +22,8 @@ type Props = {
   onClose?: () => void;
   title?: string;
   details?: ReactNode;
+  /** Optional custom visual shown instead of a raster image. */
+  children?: ReactNode;
   /** Optional focus point for teaching images that contain several elements.
    * x/y are percentages (0–100); scale enlarges the focused area while
    * keeping the rest of the viewer's zoom/pan controls intact.
@@ -60,6 +62,7 @@ export function ImageLightbox({
   onClose,
   title,
   details,
+  children,
   focus,
 }: Props) {
   const [open, setOpen] = useState(openOnMount);
@@ -91,6 +94,14 @@ export function ImageLightbox({
     if (!stage || !image) return value;
 
     const stageRect = stage.getBoundingClientRect();
+    if (!image) {
+      const maxX = Math.max(0, (stageRect.width * targetZoom - stageRect.width) / 2 + 24);
+      const maxY = Math.max(0, (stageRect.height * targetZoom - stageRect.height) / 2 + 24);
+      return {
+        x: Math.min(maxX, Math.max(-maxX, value.x)),
+        y: Math.min(maxY, Math.max(-maxY, value.y)),
+      };
+    }
     const imageRect = image.getBoundingClientRect();
     const effectiveZoom = Math.max(0.01, (focus?.scale ?? 1) * zoom);
     const baseWidth = imageRect.width / effectiveZoom;
@@ -393,19 +404,25 @@ export function ImageLightbox({
           : "Открыть изображение на весь экран"
       }
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        className={"block max-w-full " + imageClassName}
-        style={focus ? {
-          objectFit: "cover",
-          objectPosition: String(focus.x) + "% " + String(focus.y) + "%",
-          transform: "scale(" + String(focus.scale ?? 1) + ")",
-          transformOrigin: "center center",
-        } : undefined}
-        draggable={false}
-      />
+      {children ? (
+        <div className={"block max-w-full " + imageClassName} aria-hidden="true">
+          {children}
+        </div>
+      ) : src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={alt}
+          className={"block max-w-full " + imageClassName}
+          style={focus ? {
+            objectFit: "cover",
+            objectPosition: String(focus.x) + "% " + String(focus.y) + "%",
+            transform: "scale(" + String(focus.scale ?? 1) + ")",
+            transformOrigin: "center center",
+          } : undefined}
+          draggable={false}
+        />
+      ) : null}
       <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-85 shadow-lg backdrop-blur transition group-hover:opacity-100">
         <Maximize2 className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">Открыть</span>
@@ -546,29 +563,48 @@ export function ImageLightbox({
                 aria-label="Область просмотра изображения"
               >
                 <div className="absolute inset-0 flex items-center justify-center p-1 sm:p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    ref={imageRef}
-                    src={src}
-                    alt={alt}
-                    className={focus
-                      ? "select-none h-full w-full max-h-none max-w-none object-cover"
-                      : "select-none object-contain max-h-[calc(100dvh-6.6rem)] max-w-[calc(100vw-1rem)] sm:max-h-[calc(100dvh-7.1rem)] sm:max-w-[calc(100vw-1.5rem)]"}
-                    style={{
-                      objectPosition: focus ? String(focus.x) + "% " + String(focus.y) + "%" : undefined,
-                      transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${(focus?.scale ?? 1) * zoom})`,
-                      transformOrigin: "center center",
-                      willChange: "transform",
-                      transition:
-                        dragging || pinchRef.current
-                          ? "none"
-                          : "transform 130ms cubic-bezier(.22,1,.36,1)",
-                      cursor: zoom > 1 ? "inherit" : "zoom-in",
-                    }}
-                    draggable={false}
-                    onDragStart={(event) => event.preventDefault()}
-                    onClick={(event) => event.stopPropagation()}
-                  />
+                  {children ? (
+                    <div
+                      className="flex h-full w-full items-center justify-center"
+                      style={{
+                        transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+                        transformOrigin: "center center",
+                        willChange: "transform",
+                        transition:
+                          dragging || pinchRef.current
+                            ? "none"
+                            : "transform 130ms cubic-bezier(.22,1,.36,1)",
+                      }}
+                    >
+                      <div className="h-full w-full max-h-[calc(100dvh-6.6rem)] max-w-[calc(100vw-1rem)] sm:max-h-[calc(100dvh-7.1rem)] sm:max-w-[calc(100vw-1.5rem)]">
+                        {children}
+                      </div>
+                    </div>
+                  ) : src ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      ref={imageRef}
+                      src={src}
+                      alt={alt}
+                      className={focus
+                        ? "select-none h-full w-full max-h-none max-w-none object-cover"
+                        : "select-none object-contain max-h-[calc(100dvh-6.6rem)] max-w-[calc(100vw-1rem)] sm:max-h-[calc(100dvh-7.1rem)] sm:max-w-[calc(100vw-1.5rem)]"}
+                      style={{
+                        objectPosition: focus ? String(focus.x) + "% " + String(focus.y) + "%" : undefined,
+                        transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${(focus?.scale ?? 1) * zoom})`,
+                        transformOrigin: "center center",
+                        willChange: "transform",
+                        transition:
+                          dragging || pinchRef.current
+                            ? "none"
+                            : "transform 130ms cubic-bezier(.22,1,.36,1)",
+                        cursor: zoom > 1 ? "inherit" : "zoom-in",
+                      }}
+                      draggable={false}
+                      onDragStart={(event) => event.preventDefault()}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  ) : null}
                 </div>
 
                 <div
