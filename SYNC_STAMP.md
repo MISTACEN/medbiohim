@@ -114,3 +114,12 @@
 - New component: src/components/trainers/TrainerImageViewer.tsx.
 - Runtime gate: Windows desktop + macOS + iPhone Safari + Android Chrome + Lecture/Trainer/Materials regression.
 - Production status remains not verified until deployment/browser evidence exists.
+
+
+## 2026-10-08 — viewer regression cleanup
+- Removed literal escaped-newline TSX artifact in `HistologyTrainerParts.tsx`.
+- Removed unreachable legacy photo branch from Materials after unified viewer migration.
+- Materials image-file preview now uses `ImageLightbox`; trainer photo gets retry.
+- Materials blob URL lifecycle cleaned up for image/PDF/document preview.
+- Latest PR #18 head: `16b168126df8529441b0424e8b6b5b07874802d6`.
+- Runtime remains unverified: Vercel build-rate-limit; GitHub code-check jobs fail before steps/logs.
