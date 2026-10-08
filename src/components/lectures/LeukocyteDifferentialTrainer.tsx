@@ -158,6 +158,7 @@ const CELLS: CellInfo[] = [
 
 const EXTERNAL_IMAGES = [
   { cell: "neutrophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html" },
+  { cell: "lymphocytes" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html" },
   { cell: "monocytes" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME003.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM021.html" },
   { cell: "eosinophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME004.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM022.html" },
   { cell: "basophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME005.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM023.html" },
