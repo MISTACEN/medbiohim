@@ -194,14 +194,14 @@ final class AdminDatabaseManager
         if($this->driver($id)==='pgsql'){
             $sql='SELECT n.nspname AS schema_name,c.relname AS table_name,
                          CASE WHEN c.reltuples<0 THEN NULL ELSE c.reltuples::bigint END AS estimated_rows,
-                         obj_description(c.oid,\\'pg_class\\') AS comment
+                         obj_description(c.oid,\'pg_class\') AS comment
                   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-                  WHERE c.relkind IN (\\'r\\',\\'p\\') AND n.nspname=\\'public\\' ORDER BY c.relname';
+                  WHERE c.relkind IN (\'r\',\'p\') AND n.nspname=\'public\' ORDER BY c.relname';
         }else{
             $sql='SELECT TABLE_SCHEMA AS schema_name,TABLE_NAME AS table_name,
                          TABLE_ROWS AS estimated_rows,TABLE_COMMENT AS comment
                   FROM information_schema.tables
-                  WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE=\\'BASE TABLE\\' ORDER BY TABLE_NAME';
+                  WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE=\'BASE TABLE\' ORDER BY TABLE_NAME';
         }
         return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC)?:[];
     }
@@ -216,11 +216,11 @@ final class AdminDatabaseManager
                         EXISTS(
                           SELECT 1 FROM information_schema.key_column_usage k
                           JOIN information_schema.table_constraints tc ON tc.constraint_name=k.constraint_name AND tc.table_schema=k.table_schema
-                          WHERE tc.table_schema=\\'public\\' AND tc.table_name=c.table_name
-                            AND tc.constraint_type=\\'PRIMARY KEY\\' AND k.column_name=c.column_name
+                          WHERE tc.table_schema=\'public\' AND tc.table_name=c.table_name
+                            AND tc.constraint_type=\'PRIMARY KEY\' AND k.column_name=c.column_name
                         ) AS is_primary_key
                  FROM information_schema.columns c
-                 WHERE c.table_schema=\\'public\\' AND c.table_name=:table ORDER BY c.ordinal_position'
+                 WHERE c.table_schema=\'public\' AND c.table_name=:table ORDER BY c.ordinal_position'
             );
             $stmt->execute(['table'=>$table]);
             return ['columns'=>$stmt->fetchAll(PDO::FETCH_ASSOC)?:[]];
@@ -228,7 +228,7 @@ final class AdminDatabaseManager
         $stmt=$pdo->prepare(
             'SELECT c.COLUMN_NAME AS column_name,c.DATA_TYPE AS data_type,c.COLUMN_TYPE AS udt_name,
                     c.IS_NULLABLE AS is_nullable,c.COLUMN_DEFAULT AS column_default,c.ORDINAL_POSITION AS ordinal_position,
-                    CASE WHEN c.COLUMN_KEY=\\'PRI\\' THEN true ELSE false END AS is_primary_key
+                    CASE WHEN c.COLUMN_KEY=\'PRI\' THEN true ELSE false END AS is_primary_key
              FROM information_schema.columns c
              WHERE c.TABLE_SCHEMA=DATABASE() AND c.TABLE_NAME=:table ORDER BY c.ORDINAL_POSITION'
         );
@@ -407,7 +407,7 @@ final class AdminDatabaseManager
         for($i=0;$i<$len;$i++){
             $ch=$sql[$i];
             if($quote!==null){
-                if($ch==='\\'){$i++;continue;}
+                if($ch==='\'){$i++;continue;}
                 if($ch===$quote){if($i+1<$len&&$sql[$i+1]===$quote){$i++;continue;}$quote=null;}
                 continue;
             }
