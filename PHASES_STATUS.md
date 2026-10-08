@@ -986,3 +986,18 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Viewer branch reconciliation | 🟢 | `fix/unified-media-viewer-desktop-mobile` содержит 0 уникальных коммитов относительно `main` |
 | Stale divergent branches | 🟡 | `beta`, `fix/chem-rendering-tests-rdkit`, `fix/lecture-service-schedule-home` требуют selective port/review, не wholesale merge |
 | Target-runtime smoke | 🟡 P0 | exact `main` deployment + iPhone/Android + Windows/macOS + cross-page regression |
+
+
+## 2026-10-08 — Leukocyte practical case-card trainer
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Source norms | 🟢 | возрастные колонки взяты из `4.Кровь.docx` |
+| Cell recognition | 🟢 | карточка показывает учебный мазок, ответ вводится вручную |
+| Age norm | 🟢 | ответ вводится вручную по возрастной колонке |
+| Result transcription | 🟢 | процент показывается на карточке, студент переписывает его в 3-е поле |
+| Conclusion | 🟢 | сравнение результата с нормой + термин из методички |
+| Grade 2 | 🟢 | любая ошибка в одном из первых 4 полей |
+| Grade 4 | 🟢 | первые 4 поля полностью верны |
+| Grade 5 | 🟢 | первые 4 поля верны + функция клетки связана с учебной диагностической гипотезой |
+| Mobile / desktop | 🟢 source | адаптивная карточная сетка + общий ImageLightbox |
