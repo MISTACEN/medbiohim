@@ -242,3 +242,15 @@ Severity: P1 / cross-platform UX
 - Materials photo/document modal architecture audit.
 
 Не переводить в CLOSED/DONE до полного release gate.
+
+
+## U-2026-10-08-04 — Viewer regression cleanup
+
+В рамках Unified Media Viewer дополнительно найдено и исправлено:
+- literal escaped `\\n` в `HistologyTrainerParts.tsx`, который мог ломать TSX parsing;
+- unreachable legacy photo rendering внутри нового Materials document modal;
+- отдельный `<img>` для image-file preview в Materials заменён на `ImageLightbox`;
+- photo loading в Materials получил retry;
+- blob/object URLs для document/PDF/image preview переведены на управляемый lifecycle.
+
+Статус: исправлено в ветке `fix/unified-media-viewer-desktop-mobile`; runtime/build gate остаётся открытым.
