@@ -144,7 +144,7 @@ final class AdminDatabaseManager
             $stmt->execute([
                 'slug'=>$slug,'label'=>$label,'driver'=>$driver,'host'=>$host,'port'=>$port,'database_name'=>$database,
                 'username'=>$username,'password_ciphertext'=>$ciphertext,'sslmode'=>$sslmode?:null,
-                'charset'=>$charset?:null,'created_by'=>$actorId,
+                'charset'=>$charset?:null,'enabled'=>$enabled,'created_by'=>$actorId,
             ]);
             $rowId=(string)$stmt->fetchColumn();
         }
