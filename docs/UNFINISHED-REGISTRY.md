@@ -288,3 +288,16 @@ Do not mark this item DONE from source inspection alone.
 
 2026-10-08 — additional launch blocker audit: found and fixed a literal `\\nuse` syntax artifact in `backend/config/routes/questions_rest.php` on the active viewer branch. This was a real PHP syntax blocker that could prevent the backend route set from loading. Commit: `b374a49fd03574806595064746d09c046a19778e`. The companion `HistologyTrainerParts.tsx` literal-newline issue is already clean on this branch. GitHub Actions currently fails before any job step/log is produced, so target syntax/build verification remains external/infrastructure-blocked.
 
+## U-2026-10-08-06 — Schedule session reconciliation
+
+Severity: P1 / academic-context integrity
+
+Live audit found all 309 current `schedule_entries` had `session_id = NULL`, despite an unambiguous current academic session for the active group's course/date range.
+
+Fixed:
+- idempotent migration `20261008_reconcile_schedule_entries_current_session`;
+- source-controlled migration in `database/migrations/20261008_reconcile_schedule_entries_current_session.sql`;
+- live result: 309/309 entries have `session_id`, 0 remain without session;
+- migration does not hardcode generated UUIDs and only fills entries when the current session/course/date match is unambiguous.
+
+Still required: production API/browser smoke for schedule loading and create/edit homework flow.
