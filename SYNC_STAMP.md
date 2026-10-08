@@ -154,3 +154,6 @@
 
 
 - **2026-10-08 test-builder sync:** admin tests page now supports creating one test or several randomized variants from a selected question pool, with a full reset button for a fresh test, subject/module/topic binding, publication toggle, and in-UI guidance on the difference between a test container and a question.
+
+
+- **2026-10-08 neutrophil-scope sync:** smear cards now distinguish population-level identification from single-cell identification. For total neutrophils, the UI explicitly explains that band and segmented neutrophils belong to the same assessed population and shows the source-based visual rule for telling p/y from s/y apart.
