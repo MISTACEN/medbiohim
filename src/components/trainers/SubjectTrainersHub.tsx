@@ -215,7 +215,7 @@ export function SubjectTrainersHub() {
         ))}
       </div>
 
-      {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "mixed", sourceMode: "mixed", rounds: 12 })} /> : null}
+      {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} /> : null}
       {mode === "srs" ? <SrsPanel /> : null}
     </section>
   );
