@@ -26,7 +26,7 @@ type CellInfo = {
   highHypotheses: string[];
   lowHypotheses: string[];
 };
-type IdentificationScope = "single_cell" | "population";
+type IdentificationScope = "single_cell";
 type Case = {
   id: string;
   age: AgeProfile;
@@ -305,14 +305,11 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       source,
       visual: "photo",
       imageId: localIds[Math.floor(Math.random() * localIds.length)],
-      identificationScope:
-        cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
-          ? "population"
-          : "single_cell",
+      identificationScope: "single_cell",
       identificationHint:
-        cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
-          ? "Это общий мазок: здесь оцениваются Нейтрофилы всего — палочкоядерные и сегментоядерные вместе. Отдельно различать п/я и с/я для этой карточки не нужно."
-          : "На рабочем кадре оценивается одна целевая клетка.",
+        cell.key === "neutrophils"
+          ? "Определите именно показанную клетку по форме ядра и характеру зернистости."
+          : "Определите именно показанную клетку по морфологическим признакам.",
     };
   }
 
@@ -331,14 +328,11 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
         source: "local",
         visual: "photo",
         imageId: localIds[Math.floor(Math.random() * localIds.length)],
-        identificationScope:
-          cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
-            ? "population"
-            : "single_cell",
+        identificationScope: "single_cell",
         identificationHint:
-          cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
-            ? "Это общий мазок: оцениваются Нейтрофилы всего — палочкоядерные и сегментоядерные вместе."
-            : "На рабочем кадре оценивается одна целевая клетка.",
+          cell.key === "neutrophils"
+            ? "Определите именно показанную клетку по форме ядра и характеру зернистости."
+            : "Определите именно показанную клетку по морфологическим признакам.",
       };
     }
     // В такой конфигурации эта клетка появится рисунком.
@@ -355,8 +349,8 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       identificationScope: "single_cell",
       identificationHint:
         cell.key === "neutrophils"
-          ? "Учебный рисунок показывает общий тип нейтрофила; п/я и с/я здесь не различаются."
-          : "Определите показанный тип лейкоцита.",
+          ? "Определите именно показанную клетку по форме ядра и характеру зернистости."
+          : "Определите именно показанную клетку по морфологическим признакам.",
     };
   }
 
@@ -373,7 +367,7 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
     imageSourceUrl: image.sourceUrl,
     imageFocus: image.imageFocus,
     identificationScope: "single_cell",
-    identificationHint: "На сфокусированном кадре оценивается одна целевая клетка.",
+    identificationHint: "На сфокусированном кадре оценивается одна конкретная клетка.",
   };
 }
 
@@ -448,17 +442,8 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
     const info = cellByKey(currentCase.cell);
     const cellAnswer = normalizeText(answers.cell);
-    const isNeutrophilTotal =
-      currentCase.cell === "neutrophils" &&
-      currentCase.identificationScope === "population";
-    const subtypeSpecified =
-      cellAnswer.includes("палочкоядер") ||
-      cellAnswer.includes("сегментоядер") ||
-      cellAnswer.includes("п я") ||
-      cellAnswer.includes("с я");
-    const cellCorrect = Boolean(
-      cellAnswer.includes(normalizeText(info.name)) &&
-      (!isNeutrophilTotal || !subtypeSpecified),
+      const cellCorrect = Boolean(
+      cellAnswer.includes(normalizeText(info.name)),
     );
 
     const normCorrect = normMatches(answers.norm, currentCase.norm);
@@ -568,9 +553,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <div className="p-3 text-sm font-extrabold text-slate-900">
                 1. Опознать клетку
                 <div className="mt-1 text-[10px] font-medium text-slate-500">
-                  {currentCase.identificationScope === "population"
-                    ? "Уровень ответа: общий тип / популяция"
-                    : "Уровень ответа: конкретная клетка"}
+                  Уровень ответа: конкретная клетка
                 </div>
               </div>
               <div className="bg-slate-950">
@@ -617,15 +600,12 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
               </div>
               <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-600">
-  {currentCase.identificationScope === "population" && currentCase.cell === "neutrophils" ? (
-    <>
-      <b>Уточнение для этой карточки:</b> ответ — <b>нейтрофилы всего</b>.
-      Палочкоядерные и сегментоядерные формы входят в одну общую популяцию.
-      <div className="mt-1">П/я: ядро цельное, изогнутое (палочка, подкова, S) без перетяжек. С/я: ядро разделено на 3–5 сегментов, соединённых тонкими перемычками.</div>
-    </>
-  ) : (
-    currentCase.identificationHint
-  )}
+  <b>Что искать:</b> размер клетки, форма и структура ядра, соотношение ядра и цитоплазмы, характер и цвет специфической зернистости.
+  {currentCase.cell === "neutrophils" ? (
+    <div className="mt-1">
+      У нейтрофила отдельно смотри на ядро: сегментоядерная форма имеет 3–5 сегментов, палочкоядерная — цельное изогнутое ядро без перетяжек.
+    </div>
+  ) : null}
 </div>
 <input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder={currentCase.identificationScope === "population" ? "Например: нейтрофилы / нейтрофилы всего" : "Какой это лейкоцит?"} />
             </div>
@@ -733,14 +713,17 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
-            <div className="text-sm font-extrabold text-amber-950">Уточнение по нейтрофилам</div>
-            <div className="mt-2 text-[11px] leading-5 text-amber-900">
-              На общем мазке могут одновременно встречаться палочкоядерные и сегментоядерные формы. Поэтому сначала смотрим, <b>что именно требует карточка</b>: «нейтрофилы всего» или конкретная форма.
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+            <div className="text-sm font-extrabold text-emerald-950">Как отличать клетку</div>
+            <div className="mt-2 text-[11px] leading-5 text-emerald-900">
+              В каждом раунде показывается именно <b>одна конкретная клетка</b>. Не нужно угадывать популяцию по всему полю мазка.
             </div>
-            <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-amber-900">
-              <div><b>П/я:</b> цельное изогнутое ядро — палочка, подкова или S, без сегментации.</div>
-              <div><b>С/я:</b> ядро состоит из 3–5 сегментов, соединённых тонкими перемычками.</div>
+            <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-emerald-900">
+              <div><b>Нейтрофил:</b> 3–5 сегментов ядра у зрелой формы, мелкая нейтрофильная зернистость.</div>
+              <div><b>Лимфоцит:</b> крупное плотное округлое ядро, узкий ободок цитоплазмы.</div>
+              <div><b>Моноцит:</b> крупная клетка, светлое рыхлое бобовидное/подковообразное ядро.</div>
+              <div><b>Эозинофил:</b> 2 сегмента ядра, крупные оксифильные гранулы.</div>
+              <div><b>Базофил:</b> крупная тёмная базофильная зернистость частично скрывает ядро.</div>
             </div>
           </div>
 
