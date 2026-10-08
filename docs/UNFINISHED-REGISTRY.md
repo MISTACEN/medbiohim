@@ -301,3 +301,11 @@ Fixed:
 - migration does not hardcode generated UUIDs and only fills entries when the current session/course/date match is unambiguous.
 
 Still required: production API/browser smoke for schedule loading and create/edit homework flow.
+
+## 2026-10-08 — launch-blocker sweep #2
+
+Found and fixed another real frontend syntax blocker in `src/components/trainers/HistologyMaterials.tsx`: `createPortal(...)` had been incorrectly wrapped in `{...}` inside a JavaScript conditional expression. Commit: `aa4fcd4975da79f187969f6685caf891572b80bb`.
+
+Additional source scan of all 12 files changed against `main` found no remaining literal-newline artifacts or malformed `{createPortal(...)}` patterns. The active branch remains `fix/unified-media-viewer-desktop-mobile`; no new branch created.
+
+GitHub Actions continues to terminate both frontend/backend jobs before any step/log is produced (GitHub log artifact returns `BlobNotFound`), and Vercel continues to report the external build-rate-limit blocker. These are release-verification blockers, not a reason to invent a code workaround.
