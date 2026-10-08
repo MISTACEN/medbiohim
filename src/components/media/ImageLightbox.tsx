@@ -38,6 +38,7 @@ export function ImageLightbox({
   const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
 
   const close = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
     setOpen(false);
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -56,17 +57,31 @@ export function ImageLightbox({
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-      if (event.key === "+" || event.key === "=") changeZoom(zoom + 0.25);
-      if (event.key === "-") changeZoom(zoom - 0.25);
-      if (event.key === "0") { setZoom(1); setPan({ x: 0, y: 0 }); }
+      if (event.key === "Escape") {
+        if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+        setOpen(false);
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        setFullscreen(false);
+        onClose?.();
+      }
+      if (event.key === "+" || event.key === "=") {
+        setZoom((value) => Math.min(5, Number((value + 0.25).toFixed(2))));
+      }
+      if (event.key === "-") {
+        setZoom((value) => Math.max(1, Number((value - 0.25).toFixed(2))));
+      }
+      if (event.key === "0") {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, zoom]);
+  }, [open, onClose]);
 
   useEffect(() => {
     if (openOnMount) setOpen(true);
