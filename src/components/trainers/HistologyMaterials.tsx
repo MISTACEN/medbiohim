@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import JSZip from "jszip";
-import { fetchMaterialFile, getTrainerImageUrl, hasToken } from "@/lib/api";
+import { fetchMaterialFile, getTrainerImageUrl, retryTrainerImage, hasToken } from "@/lib/api";
 import { listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 
@@ -193,7 +193,14 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
     const url = URL.createObjectURL(blob);
     return (
       <div className="flex min-h-full items-center justify-center">
-        <img src={url} alt={title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" />
+        <ImageLightbox
+          src={url}
+          alt={title}
+          title={title}
+          caption="Изображение из материала"
+          className="w-full"
+          imageClassName="mx-auto max-h-[78vh] w-full rounded-2xl object-contain"
+        />
       </div>
     );
   }
@@ -345,6 +352,12 @@ export default function HistologyMaterials() {
     setPhoto(await getTrainerImageUrl(item.id));
   }
 
+  async function retryPhoto() {
+    if (!active?.id || active.kind !== "photo") return;
+    setPhoto(null);
+    setPhoto(await retryTrainerImage(String(active.id)));
+  }
+
   const tabs = [
     ["all", "Все"],
     ["scheme", "Схемы"],
@@ -460,8 +473,14 @@ export default function HistologyMaterials() {
             onClose={() => setActive(null)}
           />
         ) : (
-          <div className="fixed inset-0 z-[120] flex h-[100dvh] items-center justify-center bg-black/95 text-sm text-white">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Загружаем фотографию препарата…
+          <div className="fixed inset-0 z-[120] flex h-[100dvh] items-center justify-center bg-black/95 p-6 text-sm text-white">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+              <div className="mt-3">Загружаем фотографию препарата…</div>
+              <button type="button" onClick={() => void retryPhoto()} className="mt-4 rounded-xl bg-white/10 px-4 py-2 font-semibold hover:bg-white/20">
+                Повторить
+              </button>
+            </div>
           </div>
         )
       ) : active ? (
