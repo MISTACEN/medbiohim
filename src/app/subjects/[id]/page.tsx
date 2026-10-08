@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
+import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -23,9 +24,9 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainers" | "progress";
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "progress";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainers", "progress"];
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress"];
 
 function normalizeTab(v: string) {
   if (v === "trainer" || v === "cards") return "trainers" as TabId;
@@ -223,6 +224,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "practice", label: "База вопросов", Icon: ListChecks },
     { id: "lectures", label: "Лекции", Icon: BookOpen },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
+    { id: "trainer", label: "Микропрепараты", Icon: Microscope },
     { id: "trainers", label: "Тренажёры", Icon: ListChecks },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
   ];
@@ -566,6 +568,17 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                   ))}
                 </div>
               )}
+            </section>
+          )
+        )}
+
+        {tab === "trainer" && (
+          histology ? (
+            <HistologyTrainer embedded />
+          ) : (
+            <section className="card p-5">
+              <h2 className="text-lg font-bold">Микропрепараты</h2>
+              <p className="mt-1 text-sm text-slate-500">Для этого предмета микропрепараты пока не подключены.</p>
             </section>
           )
         )}
