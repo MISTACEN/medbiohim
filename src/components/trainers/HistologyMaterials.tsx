@@ -14,8 +14,14 @@ import {
   X,
 } from "lucide-react";
 import JSZip from "jszip";
-import { fetchMaterialFile, getTrainerImageUrl, retryTrainerImage, hasToken } from "@/lib/api";
-import { listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
+import {
+  fetchHistologySourceFile,
+  fetchMaterialFile,
+  getTrainerImageUrl,
+  retryTrainerImage,
+  hasToken,
+} from "@/lib/api";
+import { listHistologySourceFiles, listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 type Item = any;
@@ -35,6 +41,7 @@ const MODULE_ORDER: Record<string, number> = {
   "Эндокринная система": 12,
   "Кроветворение и иммунная защита": 13,
   "Пищеварительный канал (начало)": 14,
+  "Учебники": 15,
 };
 
 const CURRENT_SCHEME_MAX = 19;
@@ -56,6 +63,7 @@ const categoryLabel: Record<string, string> = {
   tests: "Тесты и контрольные",
   exam: "Экзамен и списки препаратов",
   photo: "Фотографии препаратов",
+  textbook: "Учебники · PDF",
   other: "Прочее",
 };
 
@@ -66,12 +74,13 @@ const categoryOrder: Record<string, number> = {
   tests: 4,
   exam: 5,
   photo: 6,
-  other: 7,
+  textbook: 7,
+  other: 8,
 };
 
 function categoryIcon(category: string) {
   if (category === "em") return <Layers3 className="h-5 w-5" />;
-  if (category === "method") return <BookOpen className="h-5 w-5" />;
+  if (category === "method" || category === "textbook") return <BookOpen className="h-5 w-5" />;
   if (category === "tests" || category === "exam") return <ClipboardList className="h-5 w-5" />;
   if (category === "photo") return <ImageIcon className="h-5 w-5" />;
   return <FileText className="h-5 w-5" />;
@@ -251,6 +260,8 @@ export default function HistologyMaterials() {
   const [active, setActive] = useState<Item | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [textbookError, setTextbookError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -263,8 +274,9 @@ export default function HistologyMaterials() {
     Promise.all([
       listSubjectMaterials({ subjectSlug: "histology" }),
       listTrainerFeed("histology", "mbh", 500),
+      listHistologySourceFiles("Учебники"),
     ])
-      .then(([materialsResult, feedResult]) => {
+      .then(([materialsResult, feedResult, textbooksResult]) => {
         if (!materialsResult.ok) {
           setError(materialsResult.error.message);
           return;
@@ -302,7 +314,32 @@ export default function HistologyMaterials() {
           currentSemester: card.plan_status === "ПРИВЯЗАНО",
         }));
 
-        setItems([...docs, ...photos]);
+        const textbooks = textbooksResult.ok
+          ? (textbooksResult.data.items || []).map((file: any) => ({
+              id: "histology-source:" + String(file.path),
+              subject_id: "",
+              subject_name: "Гистология",
+              subject_slug: "histology",
+              type: "pdf",
+              title: String(file.name),
+              source_key: String(file.path),
+              source_path: String(file.path),
+              mime_type: "application/pdf",
+              size_bytes: file.size_bytes ?? null,
+              updated_at: file.updated_at ?? null,
+              module_title: "Учебники",
+              topic_title: "Учебная литература",
+              kind: "source-file",
+              category: "textbook",
+              currentSemester: true,
+            }))
+          : [];
+
+        if (!textbooksResult.ok) {
+          setTextbookError(textbooksResult.error.message);
+        }
+
+        setItems([...docs, ...photos, ...textbooks]);
       })
       .catch(() => setError("Не удалось загрузить материалы."))
       .finally(() => setLoading(false));
@@ -349,13 +386,23 @@ export default function HistologyMaterials() {
     setActive(item);
     setBlob(null);
     setPhoto(null);
+    setFileLoading(true);
+    setTextbookError(null);
 
     if (item.kind === "doc") {
       setBlob(await fetchMaterialFile(item.id));
+      setFileLoading(false);
+      return;
+    }
+
+    if (item.kind === "source-file") {
+      setBlob(await fetchHistologySourceFile(String(item.source_path || item.source_key || "")));
+      setFileLoading(false);
       return;
     }
 
     setPhoto(await getTrainerImageUrl(item.id));
+    setFileLoading(false);
   }
 
   async function retryPhoto() {
@@ -372,6 +419,7 @@ export default function HistologyMaterials() {
     ["tests", "Тесты"],
     ["exam", "Экзамен"],
     ["photo", "Фото препаратов"],
+    ["textbook", "Учебники"],
   ];
 
   if (loading) return <div className="card p-8 text-sm text-slate-500">Загрузка материалов…</div>;
@@ -423,6 +471,11 @@ export default function HistologyMaterials() {
         </div>
 
         {error ? <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div> : null}
+        {textbookError ? (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Не удалось прочитать каталог «Учебники» на SpaceWeb: {textbookError}
+          </div>
+        ) : null}
       </section>
 
       {groups.length === 0 ? (
@@ -511,7 +564,7 @@ export default function HistologyMaterials() {
               </div>
 
               <div className="flex items-center gap-1">
-                {active.kind === "doc" && blob ? (
+                {(active.kind === "doc" || active.kind === "source-file") && blob ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -538,11 +591,16 @@ export default function HistologyMaterials() {
             <div className="min-h-0 flex-1 overflow-auto !bg-slate-100 p-3 sm:p-6">
               {blob ? (
                 <DocumentView blob={blob} title={active.title} />
+              ) : fileLoading ? (
+                <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Открываем {active.kind === "source-file" ? "учебник" : "документ"}…
+                </div>
               ) : (
                 <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
                   <p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p>
                   <p className="mt-1">
-                    Проверь размещение <code>content/histology</code> на SpaceWeb. После загрузки source-пакета документы и .doc HTML-зеркала открываются тем же viewer без изменения БД.
+                    Проверь размещение <code>content/histology</code> на SpaceWeb. Учебники открываются напрямую из <code>source-materials/Учебники</code>; для них запись в Supabase не требуется.
                   </p>
                 </div>
               )}
