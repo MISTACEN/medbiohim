@@ -151,3 +151,6 @@
 
 
 - **2026-10-08 visual variety sync:** leukocyte case cards now randomize between validated real specimens and source-based SVG teaching drawings. Each cell has two drawing variants; photo mode can use a confirmed local single-cell card or a focused WebPath specimen where available. The same image viewer controls work for both raster specimens and vector teaching drawings.
+
+
+- **2026-10-08 test-builder sync:** admin tests page now supports creating one test or several randomized variants from a selected question pool, with a full reset button for a fresh test, subject/module/topic binding, publication toggle, and in-UI guidance on the difference between a test container and a question.
