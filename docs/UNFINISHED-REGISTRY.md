@@ -211,3 +211,34 @@ Still unverified:
 - проверка всех atlas/trainer image entry points после deployment.
 
 Не закрывать этот пункт только по состоянию GitHub: требуется target-runtime проверка.
+
+
+## U-2026-10-08-03 — Atlas / Unified Media Viewer desktop + mobile correction
+
+Severity: P1 / cross-platform UX
+
+### Найдено
+- Atlas использовал архитектуру card → legacy modal → ImageBox → ImageLightbox.
+- Legacy modal ограничивал контент max-h-[90vh] и overflow-auto, поэтому изображение требовало прокрутки и не занимало viewport.
+- Controls ImageLightbox находились только во втором уровне и фактически были недоступны пользователю в первом Atlas сценарии.
+- Это не iPhone-only defect: та же архитектура воспроизводима на Windows/desktop.
+
+### Исправлено в ветке fix/unified-media-viewer-desktop-mobile
+- unified ImageLightbox: 100dvh, safe-area, явные controls, zoom до 500%, reset, close;
+- desktop wheel + double-click + drag/pan;
+- Pointer Events для touch/pinch;
+- native Fullscreen API только как enhancement/fallback;
+- Atlas direct entry через TrainerImageViewer, без внешнего scroll-modal;
+- metadata/captions/material link перенесены внутрь unified viewer.
+
+### Ещё не закрыто
+- Vercel READY для этой ветки;
+- SpaceWeb/API runtime media delivery;
+- реальный Windows Chrome/Edge/Firefox/Yandex smoke;
+- macOS Safari/Chrome smoke;
+- iPhone Safari smoke;
+- Android Chrome touch smoke;
+- Lecture/Trainer/Materials cross-page regression;
+- Materials photo/document modal architecture audit.
+
+Не переводить в CLOSED/DONE до полного release gate.
