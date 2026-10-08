@@ -1626,7 +1626,7 @@ Rule unchanged: no production DONE from source-only inspection.
 - 🟢 Predeploy audit extended to media viewer/materials redirect regressions.
 - 🟡 Exact current branch deployment is still blocked by Vercel build-rate-limit; target SpaceWeb/browser runtime remains the final acceptance gate.
 
-No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mobile`.
+No new branch created; the unified viewer correction is already integrated into `main`, and the latest zoom/pan refinement is committed directly to `main`.
 
 
 ## 2026-10-07 — Pass 32: Schedule → exact lesson → homework → photos
@@ -1771,3 +1771,12 @@ No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mob
 - тренажёр является отдельным переиспользуемым блоком leukocyte в RichLectureEditor / LectureRenderer.
 
 Важно: Lecture 05 уже редактируется через единый RichLectureEditor; новый тренажёр теперь также доступен как вставляемый блок редактора.
+
+
+## 2026-10-08 — Unified Media Viewer refinement + branch reconciliation
+
+- 🟢 `src/components/media/ImageLightbox.tsx` refined on canonical `main`: zoom keeps the exact cursor/touch focal point, pinch zoom preserves the pinch focal area, drag/pan is bounded by the visible image area, resize re-clamps the viewport, and controls remain touch-sized.
+- 🟢 The same viewer continues to serve Atlas/micropreparations, lecture images, Materials images and trainer media; no second viewer implementation was introduced.
+- 🟢 Repository branch audit completed against `main`: `fix/unified-media-viewer-desktop-mobile` has 0 unique commits and is already contained by `main`.
+- 🟡 `beta`, `fix/chem-rendering-tests-rdkit` and `fix/lecture-service-schedule-home` are old divergent branches with unique commits, but their files are based on substantially older `main` history and would reintroduce retired/stale code if merged wholesale. They were intentionally not merged blindly; only useful work should be ported selectively after a current-target review.
+- 🟡 Runtime acceptance remains open: exact current `main` deployment, iPhone Safari/Android Chrome touch smoke, Windows/macOS browser smoke and Lecture → Atlas → Trainer → Materials regression.
