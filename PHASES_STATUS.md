@@ -929,3 +929,21 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 **План → точное название лекции → методичка → страницы/раздел → схемы/файлы → микропрепараты → ЭМ → тесты/вопросы.**
 
 Репродуцируемые миграции: database/migrations/20261008_histology_lecture_plan_learning_links.sql и database/migrations/20261008_histology_lecture_01_preparations.sql.
+
+
+## 2026-10-08 — Rich lecture editor / Lecture 05 standard
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Lecture 05 canonical format | 🟢 | сохранены исходные 11 Mermaid + 7 image + 8 quiz blocks и source-backed tables |
+| Lossless editor round-trip | 🟢 source | body_md special blocks открываются как редактируемые placeholders и сериализуются обратно |
+| Mermaid builder | 🟢 | конструктор узлов/связей + raw Mermaid режим |
+| Table builder | 🟢 | табличный ввод с Markdown round-trip |
+| Mini-quiz builder | 🟢 | выбирает существующие question IDs без переноса эталонных ответов в лекцию |
+| Formula / chemistry / chart / video | 🟢 | отдельные вставляемые block types |
+| Trainer / EM picker | 🟢 | выбор канонических карточек из атласа/ЭМ |
+| Lecture learning-link editor | 🟢 | methodics + pages/section + files + preparations + EM |
+| Admin API | 🟢 | related_learning разрешён в lecture PATCH |
+| Remaining lectures rich layer | 🟢 | 15 лекций получили source-backed scheme + preparations + mini-test |
+| Full parity with Lecture 05 depth | 🟡 | ещё нужен отдельный source-backed content expansion pass |
+| Vercel production verification | 🟡 | текущий Vercel gate — build-rate-limit, не ошибка TS/build |
