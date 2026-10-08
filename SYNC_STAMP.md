@@ -163,3 +163,6 @@
 
 
 - **2026-10-08 trainer-history sync:** leukocyte practical cards now preserve per-round case state, entered answers, and evaluation. Users can return with a Previous button or direct round-number navigation; restarting clears the current in-session history.
+
+
+- **2026-10-08 morphology-hint sync:** the leukocyte practical trainer now includes a collapsible detailed morphology guide covering neutrophils (including maturation forms), eosinophils, basophils, lymphocytes, monocytes, platelets, and an express recognition algorithm.
