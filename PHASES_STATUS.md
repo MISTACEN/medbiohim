@@ -816,3 +816,11 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 
 Правило неизменно: production DONE только после exact-deployment + authenticated runtime evidence.
 
+## 2026-10-08 — Pre-launch security/deployment gate
+
+- 🟢 Removed the hardcoded Supabase anon key from src/lib/supabase.ts.
+- 🟢 Removed the same hardcoded key fallback from the Vercel API proxy; deployment now requires the configured environment variable.
+- 🟢 Vercel successfully built the preceding branch commit 87c13f01eb5fb983dd063cf90d0c0e5744f27ef0 (READY).
+- 🟡 The next source commit is not yet represented by a new Vercel deployment; Vercel API access available in this session cannot create a fresh deployment for the project.
+- 🟡 GitHub Actions MEDBIOHIM code checks currently fails both backend/frontend jobs immediately with zero steps executed; this is an Actions runner/infrastructure gate, not a reported PHP/TypeScript test failure.
+
