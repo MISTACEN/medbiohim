@@ -79,6 +79,16 @@ final class LectureService
             // Keep the primary lecture store available when the legacy histology table is unavailable.
         }
 
+        usort($items, static function (array $a, array $b): int {
+            $rank = static function (array $row): int {
+                $value = $row['curriculum']['order_index'] ?? null;
+                return is_numeric($value) ? (int) $value : PHP_INT_MAX;
+            };
+            $cmp = $rank($a) <=> $rank($b);
+            if ($cmp !== 0) return $cmp;
+            return strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''));
+        });
+
         return $items;
     }
 
