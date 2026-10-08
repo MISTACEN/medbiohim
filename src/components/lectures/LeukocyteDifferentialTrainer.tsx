@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { CheckCircle2, ClipboardCheck, RotateCcw, Sparkles, XCircle } from "lucide-react";
 import { getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
@@ -378,6 +378,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
   const [round, setRound] = useState(0);
   const [history, setHistory] = useState<RoundSnapshot[]>([]);
+  const historyRef = useRef<RoundSnapshot[]>([]);
   const [startCellOffset, setStartCellOffset] = useState(() => Math.floor(Math.random() * GUARANTEED_LEUKOCYTE_ORDER.length));
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
@@ -392,7 +393,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
   useEffect(() => {
     if (actualMode !== "case") return;
 
-    const saved = history[round];
+    const saved = historyRef.current[round];
     if (saved) {
       setCurrentCase(saved.caseData);
       setAnswers(saved.answers);
@@ -409,22 +410,20 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
       spec.coverageMode || "all",
       startCellOffset,
     );
+    const next = [...historyRef.current];
+    next[round] = {
+      caseData: nextCase,
+      answers: EMPTY,
+      evaluation: null,
+    };
+    historyRef.current = next;
+    setHistory(next);
     setCurrentCase(nextCase);
     setAnswers(EMPTY);
     setEvaluation(null);
     setImageUrl(null);
     setImageFailed(false);
-    setHistory((prev) => {
-      if (prev[round]) return prev;
-      const next = [...prev];
-      next[round] = {
-        caseData: nextCase,
-        answers: EMPTY,
-        evaluation: null,
-      };
-      return next;
-    });
-  }, [actualMode, round, spec.sourceMode, spec.visualMode, spec.coverageMode, startCellOffset, history]);
+  }, [actualMode, round, spec.sourceMode, spec.visualMode, spec.coverageMode, startCellOffset]);
 
   useEffect(() => {
     let cancelled = false;
@@ -481,15 +480,14 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
   function saveCurrentSnapshot() {
     if (!currentCase) return;
-    setHistory((prev) => {
-      const next = [...prev];
-      next[round] = {
-        caseData: currentCase,
-        answers,
-        evaluation,
-      };
-      return next;
-    });
+    const next = [...historyRef.current];
+    next[round] = {
+      caseData: currentCase,
+      answers,
+      evaluation,
+    };
+    historyRef.current = next;
+    setHistory(next);
   }
 
   function goToRound(target: number) {
@@ -512,6 +510,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
   function restart() {
     setRound(0);
+    historyRef.current = [];
     setHistory([]);
     setStartCellOffset(Math.floor(Math.random() * GUARANTEED_LEUKOCYTE_ORDER.length));
     setGrades([]);
