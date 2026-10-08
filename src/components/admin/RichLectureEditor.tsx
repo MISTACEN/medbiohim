@@ -371,6 +371,8 @@ export function RichLectureEditor({
   const [tableHeader, setTableHeader] = useState(true);
   const [leukocyteMode, setLeukocyteMode] = useState("case");
   const [leukocyteSourceMode, setLeukocyteSourceMode] = useState("mixed");
+  const [leukocyteVisualMode, setLeukocyteVisualMode] = useState("mixed");
+  const [leukocyteCoverageMode, setLeukocyteCoverageMode] = useState("all");
   const [leukocyteRounds, setLeukocyteRounds] = useState("12");
 
   const filteredTrainer = useMemo(() => {
@@ -507,6 +509,8 @@ export function RichLectureEditor({
       title: "Лейкоцитарная формула — тренажёр",
       mode: leukocyteMode,
       sourceMode: leukocyteSourceMode,
+      visualMode: leukocyteVisualMode,
+      coverageMode: leukocyteCoverageMode,
       rounds,
     }, null, 2), "Лейкоцитарный тренажёр");
   }
@@ -807,14 +811,27 @@ export function RichLectureEditor({
               <select value={leukocyteSourceMode} onChange={(event)=>setLeukocyteSourceMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
                 <option value="mixed">Локальные + проверенный внешний источник</option>
                 <option value="local">Только локальные препараты MEDBIOHIM</option>
-                <option value="external">Только внешний источник</option>
+                <option value="external">Только проверенный внешний источник</option>
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">Визуальный вариант
+              <select value={leukocyteVisualMode} onChange={(event)=>setLeukocyteVisualMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
+                <option value="mixed">Фото + правильный учебный рисунок</option>
+                <option value="photo">Только фото</option>
+                <option value="drawing">Только учебные рисунки</option>
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">Покрытие видов
+              <select value={leukocyteCoverageMode} onChange={(event)=>setLeukocyteCoverageMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
+                <option value="all">Гарантировать все 5 видов по циклу</option>
+                <option value="random">Случайный вид</option>
               </select>
             </label>
             <label className="block text-sm font-semibold">Количество раундов
               <input type="number" min={5} max={30} value={leukocyteRounds} onChange={(event)=>setLeukocyteRounds(event.target.value)} className="mt-1 w-full rounded-xl border p-3" />
             </label>
             <div className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">
-              Внутри тренажёра нормы курса остаются отдельными от внешнего лабораторного референса. Это важно, потому что референсные интервалы могут различаться между лабораториями.
+              Фото для распознавания берутся только из подтверждённого банка: локальные одиночные препараты с точным именем файла или проверенные WebPath-источники с точным названием страницы. Общие кадры с несколькими лейкоцитами исключены из локального банка распознавания. В режиме «все 5 видов» за цикл из пяти карточек обязательно встречаются нейтрофил, лимфоцит, моноцит, эозинофил и базофил.
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={()=>setBlock(null)} className="rounded-xl border px-4 py-2">Отмена</button>
