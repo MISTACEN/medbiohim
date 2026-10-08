@@ -102,6 +102,11 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   const [kind, setKind] = useState<"doc" | "image" | "pdf" | "download">("doc");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const blobUrl = useMemo(() => URL.createObjectURL(blob), [blob]);
+
+  useEffect(() => {
+    return () => URL.revokeObjectURL(blobUrl);
+  }, [blobUrl]);
 
   useEffect(() => {
     let alive = true;
@@ -172,7 +177,7 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   }, [blob]);
 
   const openBinary = () => {
-    const url = URL.createObjectURL(blob);
+    const url = blobUrl;
     window.open(url, "_blank", "noopener,noreferrer");
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
@@ -190,7 +195,7 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   }
 
   if (kind === "image") {
-    const url = URL.createObjectURL(blob);
+    const url = blobUrl;
     return (
       <div className="flex min-h-full items-center justify-center">
         <ImageLightbox
