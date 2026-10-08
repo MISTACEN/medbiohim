@@ -1,6 +1,6 @@
 # MEDBIOHIM — реестр незавершённого, скрытых недоделок и legacy
 
-Дата: 2026-10-04
+Дата: 2026-10-08
 
 Этот файл отражает текущее состояние после глубокого повторного аудита. Старые пункты, которые уже исправлены, явно помечены как CLOSED.
 
@@ -309,3 +309,27 @@ Found and fixed another real frontend syntax blocker in `src/components/trainers
 Additional source scan of all 12 files changed against `main` found no remaining literal-newline artifacts or malformed `{createPortal(...)}` patterns. The active branch remains `fix/unified-media-viewer-desktop-mobile`; no new branch created.
 
 GitHub Actions continues to terminate both frontend/backend jobs before any step/log is produced (GitHub log artifact returns `BlobNotFound`), and Vercel continues to report the external build-rate-limit blocker. These are release-verification blockers, not a reason to invent a code workaround.
+
+
+## Launch sweep — 2026-10-08
+
+| ID | Проверка | Результат |
+|---|---|---|
+| LS-01 | Atlas/ImageLightbox constrained by parent stacking context | ✅ fixed: viewer portaled to `document.body`, explicit viewport sizing/z-index/safe-area |
+| LS-02 | Generic Materials did not request physical file for non-Histology/file-backed records | ✅ fixed in `src/app/materials/page.tsx` |
+| LS-03 | Material backend only served Histology source_path | ✅ fixed: canonical `public.files`/B2 path + Histology legacy fallback |
+| LS-04 | Vercel proxy dropped backend media `Location` redirects | ✅ fixed; `location`/media headers are forwarded |
+| LS-05 | Material client could not safely consume B2 302 as a URL | ✅ fixed: manual redirect handling returns presigned URL |
+| LS-06 | Live duplicate `schedule_entries(session_id)` index | ✅ removed; single `idx_schedule_entries_session` remains |
+| LS-07 | Live `file_variants` RLS called `auth.uid()` per row | ✅ migrated to `(select auth.uid())` form |
+| LS-08 | All published Materials have a content source | ✅ live check: 80/80 have `content_sources.source_path`; 0 missing source |
+| LS-09 | Published schedule entries without session | ✅ live check: 0/309 |
+| LS-10 | Question/test integrity | ✅ live audit: no duplicate/orphan test-question links; no published tests without questions |
+
+### Current hard launch blockers
+
+1. Vercel target deployment of the exact current head is not available yet because of the platform build-rate limit.
+2. SpaceWeb physical Histology files still require HTTP-level verification on the deployed backend.
+3. Auth → schedule → tests/preparation → Materials/Atlas runtime smoke still requires the target environment.
+4. AI provider health remains external and must be verified with production-safe credentials.
+5. Generic full-fidelity document rendering for DOCX/PPTX remains a P2 feature gap; the fallback is an original-file link, not a fake in-browser Word renderer.
