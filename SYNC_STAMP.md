@@ -186,3 +186,11 @@
 - Scope: histology / blood preparation content from `4.Кровь.docx` only.
 - Free-text answers are checked by semantic concept groups rather than exact string equality; spelling/case are ignored.
 - Current set: 12 source-grounded questions with reference answers and missing-concept feedback.
+
+
+## 2026-10-08 — blood preparation photo trainer
+- Added `src/components/trainers/BloodPreparationTrainer.tsx`.
+- Added **«Препараты крови»** as a new `SubjectTrainersHub` mode.
+- Uses existing local blood preparation images only; no invented photo sources.
+- Includes morphology → function → differential clues for neutrophil, eosinophil, lymphocyte, monocyte and platelets, plus comparison cards.
+- Comparative multi-cell photos are explicitly treated as teaching comparisons, not single-cell identification cases.
