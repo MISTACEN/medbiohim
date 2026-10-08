@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Brain, Droplets, RotateCcw, Check, Flame, Loader2 } from "lucide-react";
+import { Brain, Droplets, RotateCcw, Check, Flame, Loader2, Table2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
+import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import {
   srsSummary, srsDue, srsReview, srsEnsure, srsAddCard,
   type SrsCard, type SrsSummary,
 } from "@/lib/features-api";
 
-type HubMode = "leukocytes" | "srs";
+type HubMode = "leukocytes" | "norms" | "srs";
 type Rating = 1 | 2 | 3 | 4;
 
 const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
@@ -191,6 +192,7 @@ export function SubjectTrainersHub() {
   const [mode, setMode] = useState<HubMode>("leukocytes");
   const modes = useMemo(() => [
     { id: "leukocytes" as const, label: "Лейкоциты", Icon: Droplets },
+    { id: "norms" as const, label: "Нормы крови", Icon: Table2 },
     { id: "srs" as const, label: "Карточки SRS", Icon: Brain },
   ], []);
 
@@ -216,6 +218,7 @@ export function SubjectTrainersHub() {
       </div>
 
       {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} /> : null}
+      {mode === "norms" ? <BloodNormTableTrainer /> : null}
       {mode === "srs" ? <SrsPanel /> : null}
     </section>
   );
