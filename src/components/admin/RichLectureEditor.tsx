@@ -41,7 +41,7 @@ const BLOCK_LABELS: Record<BlockKind, string> = {
   formula: "Формула",
   image: "Препарат / изображение",
   table: "Таблица",
-  leukocyte: "Лейкоцитарный тренажёр",
+  leukocyte: "Практическая карточка лейкоцитов",
 };
 
 const FENCE = String.fromCharCode(96).repeat(3);
