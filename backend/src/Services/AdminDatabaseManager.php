@@ -6,6 +6,7 @@ namespace Medbiohim\Services;
 use Medbiohim\Database\Connection;
 use Medbiohim\Support\Env;
 use PDO;
+use PDOStatement;
 use RuntimeException;
 
 final class AdminDatabaseManager
