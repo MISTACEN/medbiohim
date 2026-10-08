@@ -138,3 +138,10 @@
 - `fix/unified-media-viewer-desktop-mobile` audit: 0 commits ahead of `main`; its viewer work is already integrated.
 - Other divergent branches were audited; no stale wholesale merge was performed.
 - Production/browser acceptance is still open because deployment/runtime evidence for the exact current `main` commit is not yet available.
+
+
+## 2026-10-08 — Leukocyte practical case-card trainer
+- Source basis: `4.Кровь.docx` (возрастные нормы лейкоцитарной формулы, терминология отклонений, морфология и функции клеток).
+- Main trainer mode: `case` — image recognition → age norm → result transcription → conclusion → preliminary hypothesis for grade 5.
+- Grading is explicit: any error in first 4 fields = 2; all four = 4; all four + justified functional hypothesis = 5.
+- Subject hub and RichLectureEditor use the practical case mode.
