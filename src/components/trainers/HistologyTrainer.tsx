@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Menu } from "lucide-react";
 import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
@@ -281,7 +281,12 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {items.map((card: any) => (
                     <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
-                      <div className="aspect-square bg-slate-100"><AtlasThumb id={String(card.id)} /></div>
+                      <div className="relative aspect-square bg-slate-100">
+                        <AtlasThumb id={String(card.id)} />
+                        <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
+                          <Maximize2 className="h-3 w-3" /> Открыть
+                        </span>
+                      </div>
                       <div className="p-2 text-xs font-medium text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
                       <div className="px-2 pb-2 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
                     </button>
