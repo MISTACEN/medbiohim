@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   CheckCircle2,
   Database,
@@ -703,7 +703,7 @@ function ConnectionPanel({
   onCancel,
 }: {
   draft: Record<string, string>;
-  setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setDraft: Dispatch<SetStateAction<Record<string, string>>>;
   isNew: boolean;
   busy: boolean;
   onSave: () => void;
