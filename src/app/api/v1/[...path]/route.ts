@@ -283,6 +283,10 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const out = new NextResponse(buf, { status: upstream.status });
   const ct = upstream.headers.get("content-type");
   if (ct) out.headers.set("content-type", ct);
+  for (const h of ["location", "content-disposition", "cache-control", "etag", "last-modified"]) {
+    const value = upstream.headers.get(h);
+    if (value) out.headers.set(h, value);
+  }
   const rid = upstream.headers.get("x-request-id");
   if (rid) out.headers.set("x-request-id", rid);
   out.headers.set("x-medbiohim-proxy", "direct");
