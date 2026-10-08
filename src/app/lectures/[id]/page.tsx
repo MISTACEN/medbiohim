@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
+import { LectureLearningLinks } from "@/components/lectures/LectureLearningLinks";
 
 export default function LectureViewPage() {
   const params = useParams();
@@ -62,6 +63,8 @@ export default function LectureViewPage() {
       <article className="card p-6">
         <LectureRenderer markdown={lec.body_md || ""} html={lec.body_html || ""} />
       </article>
+
+      <LectureLearningLinks relatedLearning={lec.related_learning} />
 
       {media.length > 0 && (
         <section className="card space-y-3 p-5">
