@@ -294,6 +294,43 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
   }catch{return null;}
 }
 
+const histologySourceFileCache=new Map<string,string>();
+
+export async function fetchHistologySourceFile(path:string):Promise<Blob|null>{
+  if(typeof window==="undefined")return null;
+  const key=String(path);
+  const cached=histologySourceFileCache.get(key);
+  if(cached){
+    try{
+      const res=await fetch(cached,{cache:"no-store"});
+      if(res.ok)return await res.blob();
+    }catch{}
+    histologySourceFileCache.delete(key);
+  }
+
+  const requestFile=async(token:string|null)=>{
+    return fetch(
+      API_URL + "/histology/source-file?path=" + encodeURIComponent(key),
+      {headers:token?{Authorization:"Bearer "+token}:{},cache:"no-store"}
+    );
+  };
+
+  let token=getToken();
+  try{
+    let res=await requestFile(token);
+    if(res.status===401){
+      const access=await refreshAccessToken();
+      if(access){
+        token=access;
+        res=await requestFile(access);
+      }
+    }
+    if(!res.ok)return null;
+    const blob=await res.blob();
+    return blob.size?blob:null;
+  }catch{return null;}
+}
+
 export async function retryTrainerImage(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
   const key=String(id);
