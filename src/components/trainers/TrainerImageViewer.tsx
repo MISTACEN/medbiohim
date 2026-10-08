@@ -86,13 +86,22 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
               {captions.map((caption, index) => <li key={index}>{caption}</li>)}
             </ul>
           ) : null}
-          <Link
-            href="/subjects/histology?tab=materials"
-            onClick={onClose}
-            className="inline-flex w-fit rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/20"
-          >
-            Подробный материал и файлы
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/subjects/histology?tab=materials"
+              onClick={onClose}
+              className="inline-flex w-fit rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              Подробный материал и файлы
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex w-fit rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Закрыть атлас
+            </button>
+          </div>
         </div>
       }
     />
