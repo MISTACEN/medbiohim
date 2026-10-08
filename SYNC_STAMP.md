@@ -178,3 +178,11 @@
 - Numeric formatting is tolerant (`0,5`/`0.5`, dash variants, optional `≈`), while the source values themselves are unchanged.
 - Added as a third mode in `src/components/trainers/SubjectTrainersHub.tsx`: **«Нормы крови»**.
 - Scope: histology only; no external norms added.
+
+
+## 2026-10-08 — meaning-answer trainer
+- Added `src/components/trainers/BloodMeaningTrainer.tsx`.
+- Added **«Ответ по смыслу»** as a fourth mode in `SubjectTrainersHub`.
+- Scope: histology / blood preparation content from `4.Кровь.docx` only.
+- Free-text answers are checked by semantic concept groups rather than exact string equality; spelling/case are ignored.
+- Current set: 12 source-grounded questions with reference answers and missing-concept feedback.
