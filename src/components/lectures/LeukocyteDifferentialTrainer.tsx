@@ -314,6 +314,7 @@ function createCase(
       source: "local",
       visual: "photo",
       imageId: visual.trainerId,
+      sourceLabel: visual.archiveFileName,
       identificationScope: "single_cell",
       identificationHint: "Определите именно показанную клетку по размеру, ядру, цитоплазме и зернистости. Название заранее не подсказывается.",
     };
@@ -333,6 +334,7 @@ function createCase(
       imageUrl: visual.imageUrl,
       imageSourceUrl: visual.sourceUrl,
       imageFocus: visual.workingFocus,
+      sourceLabel: visual.exactSourceTitle,
       identificationScope: "single_cell",
       identificationHint: "На рабочем кадре сфокусирована одна конкретная клетка. Название заранее не подсказывается.",
     };
