@@ -79,3 +79,10 @@
 - Added migration: database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql
 - WebPath external images remain direct HTTPS sources
 - Runtime gate: Vercel READY + iPhone/Safari smoke still required
+ 
+## 2026-10-08 — Deployment verification constraint
+
+- Latest manually inspected Vercel production deployments for the new learning-UX commits include build failures on commits `9c4b03b`, `9ed99d2`, and `cd0765e`.
+- A new Vercel deployment could not be triggered from the connected deployment API because the Free daily deployment quota is exhausted (>100/day; retry window reported as 24h).
+- Therefore the current frontend learning-UX code is **not** declared production-verified.
+- Supabase Lecture 05 content changes are live and verified separately.
