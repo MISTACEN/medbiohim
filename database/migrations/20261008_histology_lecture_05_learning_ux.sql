@@ -34,7 +34,8 @@ BEGIN
 
   v_new_body := v_body;
 
-  v_new_body := replace(
+  IF position('"title":"Кровь как ткань"' in v_body) = 0 THEN
+    v_new_body := replace(
     v_new_body,
     $needle$## 2. Эритроциты — Erythrocyti$needle$,
     $quiz$
@@ -187,6 +188,8 @@ $section$,
 $section$,
     'n'
   );
+
+  END IF;
 
   v_payload := jsonb_set(
     v_payload,
