@@ -157,3 +157,6 @@
 
 
 - **2026-10-08 neutrophil-scope sync:** smear cards now distinguish population-level identification from single-cell identification. For total neutrophils, the UI explicitly explains that band and segmented neutrophils belong to the same assessed population and shows the source-based visual rule for telling p/y from s/y apart.
+
+
+- **2026-10-08 single-cell-only sync:** leukocyte practical cards now require identification of one concrete cell in every round. Population-level/general-smear cases are excluded from the active trainer, and the target cell name is not exposed before submission.
