@@ -249,3 +249,18 @@ These links do not change the canonical plan-topic ownership of existing trainer
 Репродуцируемая миграция: `database/migrations/20261008_histology_full_lectures.sql`.
 
 **Граница источника:** текст лекций не дополнялся неподтверждёнными сведениями. `content.zip` используется как физический media/trainer-контур; текстовая часть берётся из source-backed материалов Supabase, связанных с `Гистология.zip`.
+
+
+## 2026-10-08 — Lecture-to-curriculum attachment map
+
+Текущий 3-й семестр теперь имеет отдельную учебную связку для каждого лекционного пункта:
+
+**точное название из curriculum → methodic source → verified section/page range → scheme/file source → preparation cards → electronograms (если есть).**
+
+Проверка live Supabase: **16 текущих лекций; 16/16 exact title matches; 16/16 с methodics; 16/16 с файлами; 16/16 с препаратами после добавления трёх клеточных карточек в Lecture 01.**
+
+Важно: для двух старых .doc-методичек автоматическое восстановление оригинальных страниц не считается надёжным, поэтому система хранит и показывает точное название раздела, а не придумывает страницу. Файлы остаются исходными, без замены на сгенерированные документы.
+
+Три тематически ошибочные trainer-привязки были исправлены до формирования lecture links: кровь → «Кровь и лимфа», кора мозжечка → «Кора, мозжечок и ВНС», неоральные ЖКТ-препараты/ЭМ → вне текущего пункта «ротовая полость».
+
+Репродуцируемые миграции: database/migrations/20261008_histology_lecture_plan_learning_links.sql, database/migrations/20261008_histology_lecture_01_preparations.sql.
