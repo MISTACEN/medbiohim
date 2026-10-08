@@ -960,3 +960,16 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Learning links | 🟢 | methodics/pages/files/preparations/EM редактируются из admin form |
 | Curriculum title invariant | 🟢 | current Histology save принудительно оставляет plan title |
 | Vercel gate | 🟡 | build-rate-limit остаётся внешним ограничением Vercel; source-side check продолжен independently |
+
+
+## 2026-10-08 — Lecture 05 leukocyte differential trainer
+
+🟢 В Лекцию 05 lec-histology-blood-20261008 встроен интерактивный тренажёр лейкоцитарной формулы.
+- проценты: запоминание учебной нормы взрослого;
+- ↑/↓: распознавание нейтрофилии/нейтропении, лимфоцитоза/лимфопении, эозинофилии, базофилии, моноцитопении и сдвига влево;
+- мазок: распознавание клетки по изображению;
+- два визуальных источника: локальные canonical MEDBIOHIM trainer cards и независимая внешняя сверка WebPath;
+- внешний лабораторный reference-check отделён от учебной нормы Lecture 05 и помечен как вариант, зависящий от лаборатории;
+- тренажёр является отдельным переиспользуемым блоком leukocyte в RichLectureEditor / LectureRenderer.
+
+Важно: Lecture 05 уже редактируется через единый RichLectureEditor; новый тренажёр теперь также доступен как вставляемый блок редактора.
