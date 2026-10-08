@@ -191,3 +191,23 @@ Still unverified:
 - exact production media availability through SpaceWeb.
 
 Do not mark this registry item closed from GitHub/Supabase code state alone.
+
+
+## U-2026-10-08-02 — Явные кнопки ImageLightbox
+
+Severity: P1 / runtime verification
+
+Implemented:
+- явная кнопка «Открыть на весь экран» на превью изображения;
+- отдельные controls «Уменьшить / Увеличить / Сбросить / Полный экран / Закрыть»;
+- fixed viewport modal и fallback для Safari без гарантии нативного Fullscreen API;
+- масштаб до 300%.
+
+Code commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+
+Still unverified:
+- Vercel READY после этого commit;
+- реальный iPhone Safari smoke;
+- проверка всех atlas/trainer image entry points после deployment.
+
+Не закрывать этот пункт только по состоянию GitHub: требуется target-runtime проверка.
