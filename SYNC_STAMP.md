@@ -169,3 +169,12 @@
 
 
 - **2026-10-08 grading sync:** text answers are now spelling-tolerant while numerical answers remain content-strict. Cell names accept ordinary singular/plural forms and minor typos; decimal comma and dot are interchangeable for numeric input.
+
+
+## 2026-10-08 — blood norm table trainer
+- Added `src/components/trainers/BloodNormTableTrainer.tsx`.
+- The trainer reproduces the age-based leukocyte differential table from `4.Кровь.docx` with 35 fillable cells.
+- Student fills the table from memory, then checks themselves; each cell is graded and an overall percentage is shown.
+- Numeric formatting is tolerant (`0,5`/`0.5`, dash variants, optional `≈`), while the source values themselves are unchanged.
+- Added as a third mode in `src/components/trainers/SubjectTrainersHub.tsx`: **«Нормы крови»**.
+- Scope: histology only; no external norms added.
