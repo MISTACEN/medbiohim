@@ -48,3 +48,14 @@
 
 ## Правило
 Ни один пункт выше не переводить в DONE только по наличию кода. Нужен runtime evidence: HTTP response, browser flow, server log, DB result или deployment result.
+
+## 6. Unified Media Viewer — новый device/browser gate 2026-10-08
+- [ ] Windows Chrome: Atlas viewer opens directly as viewport viewer; no nested scroll modal.
+- [ ] Windows Edge: controls, zoom, drag/pan, close.
+- [ ] Windows Firefox/Yandex: same.
+- [ ] macOS Safari/Chrome: same.
+- [ ] iPhone Safari: 100dvh, safe-area, controls visible, no page scroll required to reach image.
+- [ ] Android Chrome: pinch/drag/double-tap behavior.
+- [ ] Lecture → Atlas → Trainer → Materials: no nested image lightbox regression.
+- [ ] Materials photo viewer audited separately; document modal remains a different product surface.
+- [ ] target Vercel deployment contains the exact viewer branch commit before any production DONE status.
