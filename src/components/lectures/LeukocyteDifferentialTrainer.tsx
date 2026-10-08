@@ -46,6 +46,11 @@ type Case = {
 };
 type Answers = { cell: string; norm: string; result: string; conclusion: string; diagnosis: string };
 type Evaluation = { cell: boolean; norm: boolean; result: boolean; conclusion: boolean; diagnosis: boolean; grade: 2 | 4 | 5 };
+type RoundSnapshot = {
+  caseData: Case;
+  answers: Answers;
+  evaluation: Evaluation | null;
+};
 
 const COURSE_NORM_SOURCE = "Методичка «Кровь» / 4.Кровь.docx";
 
@@ -385,6 +390,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
   }, [raw]);
 
   const [round, setRound] = useState(0);
+  const [history, setHistory] = useState<RoundSnapshot[]>([]);
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -397,12 +403,38 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
   useEffect(() => {
     if (actualMode !== "case") return;
-    setCurrentCase(createCase(round, spec.sourceMode || "mixed", spec.visualMode || "mixed"));
+
+    const saved = history[round];
+    if (saved) {
+      setCurrentCase(saved.caseData);
+      setAnswers(saved.answers);
+      setEvaluation(saved.evaluation);
+      setImageUrl(null);
+      setImageFailed(false);
+      return;
+    }
+
+    const nextCase = createCase(
+      round,
+      spec.sourceMode || "mixed",
+      spec.visualMode || "mixed",
+    );
+    setCurrentCase(nextCase);
     setAnswers(EMPTY);
     setEvaluation(null);
     setImageUrl(null);
     setImageFailed(false);
-  }, [actualMode, round, spec.sourceMode, spec.visualMode]);
+    setHistory((prev) => {
+      if (prev[round]) return prev;
+      const next = [...prev];
+      next[round] = {
+        caseData: nextCase,
+        answers: EMPTY,
+        evaluation: null,
+      };
+      return next;
+    });
+  }, [actualMode, round, spec.sourceMode, spec.visualMode, history]);
 
   useEffect(() => {
     let cancelled = false;
@@ -457,13 +489,40 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
     setGrades((prev) => [...prev, grade]);
   }
 
+  function saveCurrentSnapshot() {
+    if (!currentCase) return;
+    setHistory((prev) => {
+      const next = [...prev];
+      next[round] = {
+        caseData: currentCase,
+        answers,
+        evaluation,
+      };
+      return next;
+    });
+  }
+
+  function goToRound(target: number) {
+    if (target < 0 || target >= spec.rounds || target === round) return;
+    saveCurrentSnapshot();
+    setRound(target);
+  }
+
   function nextCase() {
     if (round + 1 >= spec.rounds) return;
+    saveCurrentSnapshot();
     setRound((value) => value + 1);
+  }
+
+  function previousCase() {
+    if (round <= 0) return;
+    saveCurrentSnapshot();
+    setRound((value) => value - 1);
   }
 
   function restart() {
     setRound(0);
+    setHistory([]);
     setGrades([]);
     setAnswers(EMPTY);
     setEvaluation(null);
@@ -515,6 +574,47 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
           <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: String(((round + 1) / spec.rounds) * 100) + "%" }} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={previousCase}
+            disabled={round === 0}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            ← Предыдущая
+          </button>
+          <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+            {Array.from({ length: round + 1 }, (_, index) => {
+              const saved = history[index]?.evaluation;
+              const active = index === round;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => goToRound(index)}
+                  className={
+                    "min-w-8 rounded-lg border px-2 py-1.5 text-[10px] font-extrabold transition " +
+                    (active
+                      ? "border-indigo-400 bg-indigo-100 text-indigo-800"
+                      : saved
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
+                  }
+                  title={
+                    saved
+                      ? "Вернуться к карточке " + (index + 1) + " · ответ уже проверен"
+                      : "Вернуться к карточке " + (index + 1) + " · ответ сохранён"
+                  }
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
+          </div>
+          <span className="text-[10px] font-semibold text-slate-500">
+            Можно вернуться к своим ответам
+          </span>
         </div>
       </div>
 
@@ -677,11 +777,23 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 </div>
               </div>
 
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={previousCase}
+                  disabled={round === 0}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  ← Предыдущая карточка
+                </button>
                 {overallDone ? (
-                  <button type="button" onClick={restart} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700"><RotateCcw className="h-4 w-4" /> Пройти заново</button>
+                  <button type="button" onClick={restart} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">
+                    <RotateCcw className="h-4 w-4" /> Пройти заново
+                  </button>
                 ) : (
-                  <button type="button" onClick={nextCase} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white"><Sparkles className="h-4 w-4" /> Следующая карточка</button>
+                  <button type="button" onClick={nextCase} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white">
+                    <Sparkles className="h-4 w-4" /> Следующая карточка
+                  </button>
                 )}
               </div>
             </div>
