@@ -449,7 +449,7 @@ Mobile responsive код существует, но автоматическое
 ## 🟡 Зафиксировано, но требует дальнейшей проверки/доведения
 
 - полное физическое reconciliation Histology archive;
-- Materials documents/photos → physical files → API;
+- Materials documents/photos → physical files → API; metadata/source-path слой проверен 80/80, HTTP physical verification остаётся открытой.
 - schedule session/semester consistency for all historical data;
 - единый конечный UX расписание + задания;
 - production auth after exact deployment;
