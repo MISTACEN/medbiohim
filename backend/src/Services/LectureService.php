@@ -31,7 +31,23 @@ final class LectureService
         if ($subjectSlug !== null && $subjectSlug !== '') {
             $items = array_values(array_filter($items, static fn($x) => ($x['subject_slug'] ?? '') === $subjectSlug));
         }
-        usort($items, static fn($a, $b) => strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? '')));
+        usort($items, static function (array $a, array $b): int {
+            $aCurrentHistology = ($a['subject_slug'] ?? '') === 'histology'
+                && (($a['curriculum']['scope'] ?? null) === 'current');
+            $bCurrentHistology = ($b['subject_slug'] ?? '') === 'histology'
+                && (($b['curriculum']['scope'] ?? null) === 'current');
+
+            if ($aCurrentHistology || $bCurrentHistology) {
+                $rank = static function (array $row): int {
+                    $value = $row['curriculum']['order_index'] ?? null;
+                    return is_numeric($value) ? (int) $value : PHP_INT_MAX;
+                };
+                $cmp = $rank($a) <=> $rank($b);
+                if ($cmp !== 0) return $cmp;
+            }
+
+            return strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? ''));
+        });
         return $items;
     }
 
@@ -186,6 +202,15 @@ final class LectureService
             if ((string) ($row['id'] ?? '') !== $id) continue;
             $now = gmdate('c');
             unset($patch['id'], $patch['created_at']);
+
+            if (($row['subject_slug'] ?? '') === 'histology'
+                && (($row['curriculum']['scope'] ?? null) === 'current')
+                && is_array($row['curriculum'] ?? null)
+                && trim((string) ($row['curriculum']['topic_title'] ?? '')) !== '') {
+                $patch['title'] = (string) $row['curriculum']['topic_title'];
+                $patch['topic'] = (string) $row['curriculum']['topic_title'];
+            }
+
             $items[$i] = array_merge($row, $patch, ['updated_at' => $now]);
             $this->writeItems($items);
             return $items[$i];
