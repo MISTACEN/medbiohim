@@ -194,3 +194,13 @@
 - Uses existing local blood preparation images only; no invented photo sources.
 - Includes morphology → function → differential clues for neutrophil, eosinophil, lymphocyte, monocyte and platelets, plus comparison cards.
 - Comparative multi-cell photos are explicitly treated as teaching comparisons, not single-cell identification cases.
+
+
+## 2026-10-08 — blood sources + SpaceWeb textbooks integration
+- BloodPreparationTrainer.tsx теперь использует реальные trainer-фото через защищённый API/ImageLightbox, а не прямые frontend-пути к изображениям.
+- В карточках препаратов добавлены источник, ориентир «куда смотреть», пошаговый алгоритм определения, морфология, функция и признаки для дифференциации.
+- Карточки опираются на 4.Кровь.docx и дополнительную учебную памятку; сравнительные фото остаются именно сравнительными.
+- Для SpaceWeb добавлен защищённый каталог PDF: content/histology/source-materials/Учебники/.
+- Frontend раздела «Материалы» автоматически показывает PDF из «Учебники» с сохранением исходных имён файлов; запись в Supabase для самого PDF не требуется.
+- Доступ к книгам ограничен авторизацией и специальностью МБХ; путь к файлу проверяется на traversal и выдаётся inline как PDF.
+- Точная проверка конкретных atlas-файлов не подменена догадкой: в предоставленных архивах отдельные atlas-картинки с таким именем не обнаружены, поэтому в тренажёр не добавлены выдуманные «atlas» источники.
