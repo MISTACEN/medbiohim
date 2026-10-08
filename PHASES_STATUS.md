@@ -758,3 +758,12 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 | Runtime Safari / production smoke | 🟡 |
 
 Lecture 05 теперь содержит **8 database-backed mini-test blocks** после логичных учебных разделов.
+
+
+## 2026-10-08 — Image viewer controls
+
+- 🟢 В src/components/media/ImageLightbox.tsx добавлены явные пользовательские кнопки: «Открыть на весь экран», «Уменьшить», «Увеличить», «Сбросить», «Полный экран», «Закрыть».
+- 🟢 Кнопка открытия вынесена непосредственно на карточку изображения, чтобы действие было очевидно на мобильном устройстве.
+- 🟢 Нативный Fullscreen API используется как дополнительный режим; fixed viewport-lightbox остаётся fallback для Safari.
+- 🟡 Не считать production/runtime DONE до Vercel READY и реального iPhone Safari smoke.
+- Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
