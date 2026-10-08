@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3, Flag, Pencil, Save, X } from "lucide-react";
+import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3, Flag, Pencil, Save, X, Database } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
 import { adminOverview, adminUpdateSite, adminListAnnouncements, adminCreateAnnouncement, adminDeleteAnnouncement, adminListUsers, adminSetUserRole, listGroups, listSubjects, adminListSchedule, adminSaveSchedule, createGroup, createSubject, updateGroup, deleteGroup, updateSubject, deleteSubject, hasToken, api, type ScheduleItem } from "@/lib/api";
@@ -158,6 +158,7 @@ export default function AdminPage() {
           <Link href="/admin/questions" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Ticket className="h-4 w-4" />Экзаменационные билеты</Link>
           <Link href="/tests" className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-left text-sm font-semibold text-emerald-800"><span className="h-2 w-2 rounded-full bg-emerald-500" />Банк вопросов тестов</Link>
           <Link href="/admin/lectures" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><BookOpen className="h-4 w-4" />AI-лекции</Link>
+          <Link href="/admin/database" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Database className="h-4 w-4" />База данных / SQL</Link>
           <Link href="/admin/tools" className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700"><Settings2 className="h-4 w-4" />Импорт / tools</Link>
           <Link href="/admin/problems" className="flex w-full items-center gap-3 rounded-xl bg-rose-50 px-3 py-2.5 text-left text-sm font-semibold text-rose-700"><Flag className="h-4 w-4" />Проблемы и работы</Link>
           <div className="my-2 border-t border-slate-100" />
@@ -187,6 +188,7 @@ export default function AdminPage() {
                   <Link href="/admin/schedule" className="rounded-xl border p-4 text-left hover:bg-slate-50"><b>Сетка</b><p className="text-xs text-slate-500">Drag-and-drop</p></Link>
                   <Link href="/admin/questions" className="rounded-xl border p-4 text-left hover:bg-slate-50"><b>Билеты</b><p className="text-xs text-slate-500">Supabase</p></Link>
                   <Link href="/admin/lectures" className="rounded-xl border p-4 text-left hover:bg-slate-50"><b>AI-лекции</b><p className="text-xs text-slate-500">Редактор</p></Link>
+                  <Link href="/admin/database" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-left hover:bg-indigo-100"><b>База данных / SQL</b><p className="text-xs text-indigo-700">Подключения, схема, строки</p></Link>
                 </div>
               </div>
             </>
