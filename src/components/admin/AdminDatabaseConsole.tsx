@@ -220,6 +220,7 @@ export default function AdminDatabaseConsole() {
         database_name: connection.database_name || "",
         username: connection.username || "",
         password: "",
+        password_configured: String(connection.password_configured === true),
         sslmode: connection.sslmode || "require",
         charset: connection.charset || "utf8mb4",
         enabled: String(connection.enabled !== false),
