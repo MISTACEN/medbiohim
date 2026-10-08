@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
@@ -478,15 +479,24 @@ export default function HistologyMaterials() {
             onClose={() => setActive(null)}
           />
         ) : (
-          <div className="fixed inset-0 z-[120] flex h-[100dvh] items-center justify-center bg-black/95 p-6 text-sm text-white">
-            <div className="text-center">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-              <div className="mt-3">Загружаем фотографию препарата…</div>
-              <button type="button" onClick={() => void retryPhoto()} className="mt-4 rounded-xl bg-white/10 px-4 py-2 font-semibold hover:bg-white/20">
-                Повторить
-              </button>
-            </div>
-          </div>
+          {createPortal(
+            <div
+              className="fixed inset-0 flex items-center justify-center p-6 text-sm text-white"
+              style={{ zIndex: 2147483000, width: "100vw", height: "100dvh", background: "rgba(15,23,42,0.92)" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Загрузка фотографии препарата"
+            >
+              <div className="text-center">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                <div className="mt-3">Загружаем фотографию препарата…</div>
+                <button type="button" onClick={() => void retryPhoto()} className="mt-4 rounded-xl bg-white/10 px-4 py-2 font-semibold hover:bg-white/20">
+                  Повторить
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )}
         )
       ) : active ? (
         <div className="fixed inset-0 z-[70] bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5" onMouseDown={() => setActive(null)}>
