@@ -83,3 +83,7 @@ AI remains optional for core testing where deterministic logic exists. Provider/
 ## Current test-config inventory
 
 The private test .env supplied for this work contains the Supabase, PostgreSQL, B2, legacy Firebase, Gemini, GigaChat, Groq, Mistral, and OpenRouter configuration families described above. Its values are intentionally not mirrored into GitHub.
+
+### Admin database console
+
+DB_CREDENTIALS_KEY — server-side key used to encrypt external PostgreSQL/MySQL passwords stored in public.admin_db_connections. It must never be exposed through NEXT_PUBLIC_*. The preferred deployment is a dedicated strong random DB_CREDENTIALS_KEY on SpaceWeb. Compatibility fallback to an existing server-side admin/encryption key is kept for migration safety.
