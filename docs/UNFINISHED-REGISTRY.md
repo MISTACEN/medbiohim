@@ -171,3 +171,23 @@ Source search confirms canonical REST files still coexist with legacy aggregate 
 ### U-38-04 — unverified checks separated
 
 Created docs/UNVERIFIED-CHECKS-2026-10-07.md. All checks requiring target runtime, browser/device, physical storage, provider credentials, or blocked aggregate SQL verification are kept there and must not be marked DONE from source inspection alone.
+
+ 
+## U-2026-10-08 — Histology Lecture 05 learning UX release gate
+
+Severity: P1 / runtime verification
+
+Implemented:
+- 6 database-backed inline mini-tests;
+- canonical trainer photo ↔ text cards without manual caption duplication;
+- contextual visual checkpoints instead of end-of-lecture photo wall;
+- Atlas viewport-centered image lightbox with zoom/fullscreen fallback.
+
+Still unverified:
+- Vercel READY build after latest frontend commits;
+- SpaceWeb deployment of `/questions/mini-quiz` and `/questions/mini-quiz/check`;
+- authenticated iPhone Safari smoke;
+- cross-page regression for other lectures/subjects;
+- exact production media availability through SpaceWeb.
+
+Do not mark this registry item closed from GitHub/Supabase code state alone.
