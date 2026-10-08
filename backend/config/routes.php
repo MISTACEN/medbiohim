@@ -30,6 +30,7 @@ return static function (Router $router): void {
         'files.php',
         '00_admin_import_atomic.php',
         'admin.php',
+        'admin_database.php',
         'platform.php',
         'histology_sources.php',
         'ai_chat.php',
