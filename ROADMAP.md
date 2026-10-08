@@ -1758,3 +1758,16 @@ No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mob
 🟢 LectureLearningEditor подключён к форме той же лекции и управляет methodic pages/sections, scheme/file materials, preparations и electronograms.
 
 🟢 Current Histology lecture titles остаются canonical curriculum titles even after admin save.
+
+
+## 2026-10-08 — Lecture 05 leukocyte differential trainer
+
+🟢 В Лекцию 05 lec-histology-blood-20261008 встроен интерактивный тренажёр лейкоцитарной формулы.
+- проценты: запоминание учебной нормы взрослого;
+- ↑/↓: распознавание нейтрофилии/нейтропении, лимфоцитоза/лимфопении, эозинофилии, базофилии, моноцитопении и сдвига влево;
+- мазок: распознавание клетки по изображению;
+- два визуальных источника: локальные canonical MEDBIOHIM trainer cards и независимая внешняя сверка WebPath;
+- внешний лабораторный reference-check отделён от учебной нормы Lecture 05 и помечен как вариант, зависящий от лаборатории;
+- тренажёр является отдельным переиспользуемым блоком leukocyte в RichLectureEditor / LectureRenderer.
+
+Важно: Lecture 05 уже редактируется через единый RichLectureEditor; новый тренажёр теперь также доступен как вставляемый блок редактора.
