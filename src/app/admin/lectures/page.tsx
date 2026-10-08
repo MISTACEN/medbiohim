@@ -24,8 +24,6 @@ type Attachment = {
   page?: number;
   caption?: string;
 };
-type SearchResult = { title: string; url: string; thumb?: string; mime?: string; isVideo?: boolean };
-
 function htmlToPlainMarkdown(html: string): string {
   if (typeof window === "undefined") return html;
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -50,15 +48,6 @@ function htmlToPlainMarkdown(html: string): string {
     }
   };
   return [...doc.body.childNodes].map(render).join("").replace(/\n{3,}/g,"\n\n").trim();
-}
-
-function insertVideoEmbedUrl(url: string): string {
-  const raw = url.trim();
-  const yt = raw.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
-  if (yt) return "https://www.youtube-nocookie.com/embed/" + yt[1];
-  const rt = raw.match(/rutube\.ru\/(?:video\/|play\/)([A-Za-z0-9_-]+)/i);
-  if (rt) return "https://rutube.ru/play/embed/" + rt[1];
-  return "";
 }
 
 export default function AdminLecturesPage() {
