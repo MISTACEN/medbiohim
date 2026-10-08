@@ -909,3 +909,23 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 🟢 **Reproducibility:** добавлена `database/migrations/20261008_histology_full_lectures.sql`.
 
 🟡 **Не считать финальным production gate:** browser/Vercel smoke и физическая media reconciliation остаются отдельными проверками.
+
+## 2026-10-08 — Histology lecture-plan learning links
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Exact lecture titles | 🟢 | 16/16 текущих лекций совпадают с названиями curriculum 1:1 |
+| Plan ordering | 🟢 | LectureService::listPublished() сортирует по curriculum.order_index |
+| Word methodics | 🟢 | 16/16 имеют конкретный source-backed methodic/section |
+| Page ranges | 🟢 source / 🟡 legacy .doc | Надёжные страницы указаны; для старых .doc показывается проверенный section title без выдуманной пагинации |
+| Scheme/file attachments | 🟢 | 16/16 имеют связанные схемы/файлы |
+| Micropreparations | 🟢 | 16/16 имеют связанные препараты; для Lecture 01 добавлены 3 клеточных препарата как явные визуальные cross-links |
+| Electronograms | 🟢 source-backed | Подключены только там, где есть канонические cards текущей темы |
+| Topic ownership | 🟢 | Исправлены выявленные cross-topic trainer mappings |
+| Lecture UI | 🟢 source | На странице лекции показываются methodics/files/preparations/EM с открытием |
+| Runtime Word delivery | 🟡 | Физическое наличие legacy .doc на SpaceWeb и authenticated browser smoke ещё требуется подтвердить |
+
+### Canonical sequence
+**План → точное название лекции → методичка → страницы/раздел → схемы/файлы → микропрепараты → ЭМ → тесты/вопросы.**
+
+Репродуцируемые миграции: database/migrations/20261008_histology_lecture_plan_learning_links.sql и database/migrations/20261008_histology_lecture_01_preparations.sql.
