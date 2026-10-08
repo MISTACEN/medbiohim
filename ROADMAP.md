@@ -1614,3 +1614,17 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟡 SpaceWeb/auth/media/browser runtime gates remain open.
 
 Rule unchanged: no production DONE from source-only inspection.
+
+## 2026-10-08 — Final pre-launch sweep
+
+- 🟢 Materials: canonical `public.files`/B2 delivery + legacy Histology SpaceWeb fallback unified.
+- 🟢 Vercel API proxy preserves media redirect/cache/disposition headers.
+- 🟢 B2 materials now negotiate a presigned URL through a JSON `file-url` endpoint; legacy authenticated binaries remain blob-fetched with Bearer.
+- 🟢 Live DB integrity cleanup applied: duplicate schedule session index removed; `file_variants` RLS initplan fixed.
+- 🟢 Live checks: 309/309 schedule entries have `session_id`; 80/80 published Materials have source metadata; 479/479 published active Histology questions have test links; duplicate/orphan test-question links = 0.
+- 🟢 Found and fixed a real PHP SQL-string quoting bug in `HomeworkRepository.php` that could break backend parsing.
+- 🟢 Predeploy audit extended to media viewer/materials redirect regressions.
+- 🟡 Exact current branch deployment is still blocked by Vercel build-rate-limit; target SpaceWeb/browser runtime remains the final acceptance gate.
+
+No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mobile`.
+
