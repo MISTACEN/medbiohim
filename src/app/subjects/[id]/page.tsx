@@ -29,7 +29,8 @@ type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials
 const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress"];
 
 function normalizeTab(v: string) {
-  if (v === "trainer" || v === "cards") return "trainers" as TabId;
+  if (v === "cards") return "trainers" as TabId;
+  if (v === "trainer") return "trainer" as TabId;
   return v as TabId;
 }
 
