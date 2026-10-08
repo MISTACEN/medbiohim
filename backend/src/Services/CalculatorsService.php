@@ -108,15 +108,15 @@ final class CalculatorsService
     public function compute(string $id, array $input): array
     {
         $calculator = $this->get($id);
-        if ($calculator === null) throw new InvalidArgumentException('Калькулятор не найден');
+        if ($calculator === null) throw new \InvalidArgumentException('Калькулятор не найден');
 
         $v = static function (string $key, array $input, bool $required = true): float {
             $raw = $input[$key] ?? null;
             if ($raw === null || $raw === '') {
-                if ($required) throw new InvalidArgumentException('Поле '.$key.' обязательно');
+                if ($required) throw new \InvalidArgumentException('Поле '.$key.' обязательно');
                 return 0.0;
             }
-            if (!is_numeric($raw)) throw new InvalidArgumentException('Поле '.$key.' должно быть числом');
+            if (!is_numeric($raw)) throw new \InvalidArgumentException('Поле '.$key.' должно быть числом');
             return (float) $raw;
         };
 
@@ -129,7 +129,7 @@ final class CalculatorsService
             case 'bmi':
                 $weight = $v('weight_kg', $input);
                 $height = $v('height_cm', $input);
-                if ($height <= 0) throw new InvalidArgumentException('Рост должен быть больше нуля');
+                if ($height <= 0) throw new \InvalidArgumentException('Рост должен быть больше нуля');
                 $bmi = $weight / (($height / 100) ** 2);
                 $result = ['ИМТ' => $round($bmi)];
                 $interpretation = $bmi < 18.5 ? 'Ниже обычного диапазона взрослого ИМТ.' : ($bmi < 25 ? 'Диапазон 18.5–24.9.' : ($bmi < 30 ? 'Диапазон избыточной массы тела.' : 'Диапазон ожирения по ИМТ.'));
@@ -147,7 +147,7 @@ final class CalculatorsService
                 $age = $v('age', $input);
                 $scr = $v('creatinine_mg_dl', $input);
                 $sex = (string) ($input['sex'] ?? '');
-                if ($age < 18 || $scr <= 0 || !in_array($sex, ['female', 'male'], true)) throw new InvalidArgumentException('Проверьте возраст, креатинин и пол');
+                if ($age < 18 || $scr <= 0 || !in_array($sex, ['female', 'male'], true)) throw new \InvalidArgumentException('Проверьте возраст, креатинин и пол');
                 $k = $sex === 'female' ? 0.7 : 0.9;
                 $alpha = $sex === 'female' ? -0.241 : -0.302;
                 $egfr = 142 * (min($scr / $k, 1) ** $alpha) * (max($scr / $k, 1) ** -1.200) * (0.9938 ** $age);
@@ -161,7 +161,7 @@ final class CalculatorsService
                 $weight = $v('weight_kg', $input);
                 $scr = $v('creatinine_mg_dl', $input);
                 $sex = (string) ($input['sex'] ?? '');
-                if ($age <= 0 || $weight <= 0 || $scr <= 0 || !in_array($sex, ['female', 'male'], true)) throw new InvalidArgumentException('Проверьте входные данные');
+                if ($age <= 0 || $weight <= 0 || $scr <= 0 || !in_array($sex, ['female', 'male'], true)) throw new \InvalidArgumentException('Проверьте входные данные');
                 $crcl = ((140 - $age) * $weight) / (72 * $scr);
                 if ($sex === 'female') $crcl *= 0.85;
                 $result = ['CrCl, мл/мин' => $round($crcl)];
@@ -201,7 +201,7 @@ final class CalculatorsService
                 $volume = $v('volume_ml', $input);
                 $hours = $v('time_hours', $input);
                 $drop = $v('drop_factor', $input);
-                if ($hours <= 0 || $drop <= 0) throw new InvalidArgumentException('Время и капельный фактор должны быть больше нуля');
+                if ($hours <= 0 || $drop <= 0) throw new \InvalidArgumentException('Время и капельный фактор должны быть больше нуля');
                 $mlh = $volume / $hours;
                 $gtt = ($volume * $drop) / ($hours * 60);
                 $result = ['мл/ч' => $round($mlh), 'капель/мин' => round($gtt)];
@@ -209,7 +209,7 @@ final class CalculatorsService
                 break;
 
             default:
-                throw new InvalidArgumentException('Неизвестный калькулятор');
+                throw new \InvalidArgumentException('Неизвестный калькулятор');
         }
 
         return [
