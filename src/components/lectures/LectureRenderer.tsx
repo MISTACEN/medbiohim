@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
-import { getTrainerImageUrl } from "@/lib/api";
+import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";\nimport { ImageLightbox } from "@/components/media/ImageLightbox";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
@@ -30,14 +30,14 @@ function escapeHtml(s: string) {
 }
 
 function parseBlocks(md: string) {
-  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem"; content: string }> = [];
-  const re = /```(chart|video|image|mermaid|chem)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
+  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz"; content: string }> = [];
+  const re = /```(chart|video|image|mermaid|chem|quiz)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
     if (m.index > last) parts.push({ kind: "md", content: md.slice(last, m.index) });
     parts.push({
-      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem",
+      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz",
       content: m[2].trim(),
     });
     last = m.index + m[0].length;
@@ -163,42 +163,136 @@ function VideoBlock({ raw }: { raw: string }) {
 function ImageBlock({ raw }: { raw: string }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [card, setCard] = useState<any | null>(null);
   let data: { url?: string; trainerId?: string; caption?: string } = {};
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    data = { url: raw };
-  }
+  try { data = JSON.parse(raw); } catch { data = { url: raw }; }
 
   useEffect(() => {
     let cancelled = false;
-    if (!data.trainerId) {
-      setResolvedUrl(data.url || null);
-      return () => { cancelled = true; };
-    }
-    setResolvedUrl(null);
+    setCard(null);
     setFailed(false);
-    void getTrainerImageUrl(data.trainerId).then((url) => {
-      if (!cancelled) {
-        setResolvedUrl(url);
-        if (!url) setFailed(true);
-      }
-    });
+    if (data.trainerId) {
+      void Promise.all([getTrainerImageUrl(data.trainerId), getTrainerFeedCard(data.trainerId)]).then(([urlResult, cardResult]) => {
+        if (cancelled) return;
+        setResolvedUrl(urlResult);
+        if (!urlResult) setFailed(true);
+        if (cardResult.ok) setCard(cardResult.data?.item || null);
+      });
+    } else {
+      setResolvedUrl(data.url || null);
+      if (!data.url) setFailed(true);
+    }
     return () => { cancelled = true; };
   }, [data.trainerId, data.url]);
 
+  const preparation = card?.preparation || {};
+  const canonicalTitle = String(preparation?.name || "").trim();
+  const stain = String(preparation?.stain || "").trim();
+  const prompt = String(card?.question?.prompt || "").trim();
+  const caption = canonicalTitle || data.caption || "Учебное изображение";
+  const detail = [stain, prompt].filter(Boolean).join(" · ");
+
   return (
-    <figure className="my-4">
+    <figure className="my-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {resolvedUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={resolvedUrl} alt={data.caption || ""} className="max-h-[480px] w-full rounded-xl border border-[var(--border)] object-contain" />
+        <ImageLightbox src={resolvedUrl} alt={caption} caption={caption} className="bg-slate-50" imageClassName="mx-auto max-h-[440px] w-full object-contain p-2 sm:max-h-[520px]" />
       ) : (
-        <div className="flex min-h-48 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-slate-50 px-4 text-center text-sm text-[var(--muted)]">
+        <div className="flex min-h-56 w-full items-center justify-center bg-slate-50 px-4 text-center text-sm text-slate-500">
           {failed ? "Изображение временно недоступно" : "Загрузка изображения…"}
         </div>
       )}
-      {data.caption && <figcaption className="mt-2 text-center text-xs text-[var(--muted)]">{data.caption}</figcaption>}
+      <figcaption className="border-t border-slate-100 px-4 py-3">
+        <div className="font-semibold text-slate-900">{caption}</div>
+        {detail ? <div className="mt-1 text-xs leading-5 text-slate-500">{detail}</div> : null}
+        {data.trainerId ? <a href="/subjects/histology?tab=trainer" className="mt-2 inline-flex text-xs font-semibold text-indigo-600 underline">Открыть этот раздел в атласе/тренажёре</a> : null}
+      </figcaption>
     </figure>
+  );
+}
+
+type MiniQuizSpec = { subjectId?: string; title?: string; questionIds?: string[] };
+type MiniQuizQuestion = { id: string; text: string; type?: string; options?: Array<{ index: number; label: string }> };
+
+function MiniQuizBlock({ raw }: { raw: string }) {
+  const [spec, setSpec] = useState<MiniQuizSpec>({});
+  const [questions, setQuestions] = useState<MiniQuizQuestion[]>([]);
+  const [index, setIndex] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [checked, setChecked] = useState<boolean | null>(null);
+  const [score, setScore] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const parsed = JSON.parse(raw) as MiniQuizSpec;
+      setSpec(parsed);
+      const ids = Array.isArray(parsed.questionIds) ? parsed.questionIds.filter(Boolean) : [];
+      if (!parsed.subjectId || ids.length === 0) { setQuestions([]); setLoading(false); return () => { cancelled = true; }; }
+      setLoading(true);
+      void getLectureMiniQuizQuestions(ids, parsed.subjectId).then((r) => {
+        if (cancelled) return;
+        if (r.ok) {
+          const byId = new Map((r.data?.items || []).map((item: MiniQuizQuestion) => [String(item.id), item]));
+          setQuestions(ids.map((id) => byId.get(id)).filter(Boolean) as MiniQuizQuestion[]);
+          setError(null);
+        } else setError(r.error.message);
+        setLoading(false);
+      });
+    } catch { setError("Мини-тест настроен некорректно."); setLoading(false); }
+    return () => { cancelled = true; };
+  }, [raw]);
+
+  const question = questions[index];
+
+  async function check() {
+    if (!question || selected === null || !spec.subjectId || busy) return;
+    setBusy(true);
+    const r = await checkLectureMiniQuizAnswer(question.id, [selected], spec.subjectId);
+    if (r.ok) {
+      setChecked(Boolean(r.data?.correct));
+      if (r.data?.correct) setScore((value) => value + 1);
+    } else setError(r.error.message);
+    setBusy(false);
+  }
+
+  function next() {
+    if (index + 1 >= questions.length) { setIndex(questions.length); return; }
+    setIndex((value) => value + 1);
+    setSelected(null);
+    setChecked(null);
+  }
+
+  if (loading) return <section className="my-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-800">Загружаем вопросы этого блока из банка…</section>;
+  if (questions.length === 0) return <section className="my-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Для этого блока в базе пока нет подходящих опубликованных вопросов.</section>;
+  if (index >= questions.length) return (
+    <section className="my-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+      <div className="text-xs font-bold uppercase tracking-wide text-emerald-700">Блок проверен</div>
+      <div className="mt-1 text-lg font-extrabold text-emerald-900">{spec.title || "Мини-тест"} · {score}/{questions.length}</div>
+      <p className="mt-1 text-sm text-emerald-800">Вопросы взяты из опубликованного банка MEDBIOHIM; эталонный ответ не передаётся в браузер.</p>
+    </section>
+  );
+
+  return (
+    <section className="my-7 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Мини-тест после блока</div><h3 className="mt-1 text-base font-extrabold text-slate-900">{spec.title || "Проверь себя"}</h3></div>
+        <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">{index + 1}/{questions.length}</div>
+      </div>
+      <p className="mt-4 text-sm font-semibold leading-6 text-slate-900">{question.text}</p>
+      <div className="mt-3 grid gap-2">
+        {(question.options || []).map((option) => (
+          <button key={option.index} type="button" disabled={checked !== null || busy} onClick={() => setSelected(option.index)} className={"rounded-xl border px-3 py-2.5 text-left text-sm transition " + (selected === option.index ? "border-indigo-500 bg-indigo-100 text-indigo-900" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50")}>{option.label}</button>
+        ))}
+      </div>
+      {checked !== null ? <div className={"mt-4 rounded-xl px-3 py-2.5 text-sm font-semibold " + (checked ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")}>{checked ? "✓ Правильно" : "✕ Пока неверно — перечитай блок и попробуй ещё раз."}</div> : null}
+      <div className="mt-4 flex justify-end gap-2">
+        {checked === false ? <button type="button" onClick={() => { setSelected(null); setChecked(null); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Повторить</button> : checked === true ? <button type="button" onClick={next} className="btn-primary px-4 py-2 text-sm">Следующий вопрос</button> : <button type="button" disabled={selected === null || busy} onClick={() => void check()} className="btn-primary px-4 py-2 text-sm disabled:opacity-40">Проверить</button>}
+      </div>
+      {error ? <div className="mt-3 text-xs text-rose-600">{error}</div> : null}
+    </section>
   );
 }
 
@@ -321,7 +415,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
           }
         }
         if (p.kind === "video") return <VideoBlock key={i} raw={p.content} />;
-        if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;
+        if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;\n        if (p.kind === "quiz") return <MiniQuizBlock key={i} raw={p.content} />;
         if (p.kind === "chem") {
           const spec = parseChemSpec(p.content);
           if (!spec) {
