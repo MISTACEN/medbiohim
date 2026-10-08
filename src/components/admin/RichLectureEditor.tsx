@@ -107,7 +107,7 @@ function markdownToHtml(md:string){
 function sanitizeHtml(raw:string){
   if(typeof window==="undefined")return raw;
   const doc=new DOMParser().parseFromString(raw,"text/html");
-  const allowed=new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","TABLE","THEAD","TBODY","TR","TH","TD","FONT","BUTTON"]);
+  const allowed=new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","SUP","SUB","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","TABLE","THEAD","TBODY","TR","TH","TD","FONT","BUTTON"]);
   const walk=(root:Node)=>{
     [...root.childNodes].forEach((node)=>{
       if(node.nodeType!==Node.ELEMENT_NODE){if(node.parentNode)walk(node);return;}
@@ -118,7 +118,7 @@ function sanitizeHtml(raw:string){
         return;
       }
       [...el.attributes].forEach((a)=>{
-        const keep=["href","src","alt","title","target","rel","width","height","style","contenteditable","data-mbh-block","data-mbh-content","data-mbh-id","data-mbh-label","data-mbh-remove","data-mbh-edit"].includes(a.name);
+        const keep=["href","src","alt","title","target","rel","width","height","style","class","contenteditable","data-mbh-block","data-mbh-content","data-mbh-id","data-mbh-label","data-mbh-remove","data-mbh-edit"].includes(a.name);
         if(!keep)el.removeAttribute(a.name);
         if(a.name==="style"){
           const safe=a.value.split(";").map((v)=>v.trim()).filter((v)=>
@@ -171,6 +171,8 @@ function htmlToMarkdown(html:string){
       case "H3":return "### "+inner.trim()+"\\n\\n";
       case "STRONG":case "B":return "**"+inner+"**";
       case "EM":case "I":return "*"+inner+"*";
+      case "SUP":return "^"+inner+"^";
+      case "SUB":return "_"+inner+"_";
       case "U":return "_"+inner+"_";
       case "S":case "STRIKE":return "~~"+inner+"~~";
       case "BLOCKQUOTE":return "> "+inner.trim()+"\\n\\n";
