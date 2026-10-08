@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Maximize2, Minus, Plus, RotateCcw, X, Minimize2 } from "lucide-react";
 
 type Props = {
@@ -96,7 +96,7 @@ export function ImageLightbox({
     }
   }
 
-  function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
+  function pointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture?.(event.pointerId);
     if (pointersRef.current.size === 1 && zoom > 1) {
@@ -111,7 +111,7 @@ export function ImageLightbox({
     }
   }
 
-  function pointerMove(event: React.PointerEvent<HTMLDivElement>) {
+  function pointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!pointersRef.current.has(event.pointerId)) return;
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
@@ -132,7 +132,7 @@ export function ImageLightbox({
     }
   }
 
-  function pointerUp(event: React.PointerEvent<HTMLDivElement>) {
+  function pointerUp(event: ReactPointerEvent<HTMLDivElement>) {
     pointersRef.current.delete(event.pointerId);
     if (pointersRef.current.size < 2) pinchStartRef.current = null;
     if (pointersRef.current.size === 0) dragRef.current = null;
