@@ -12,6 +12,7 @@ import {
 import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
 import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
+import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
 
 type AnswerRow = {
   id: string;
@@ -415,28 +416,13 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
         )}
 
         {lightbox && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setLightbox(null)}>
-            <div className="max-h-[90vh] max-w-3xl overflow-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
-              <ImageBox id={String(lightbox.id)} />
-              <h3 className="mt-3 text-lg font-bold">{lightbox.preparation?.name}</h3>
-              <div className="mt-1 text-xs font-medium text-indigo-500">Занятие: {topicLabel(lessonKeyOf(lightbox))}</div>
-              {Array.isArray(lightbox.preparation?.captions) && lightbox.preparation.captions.length > 0 && (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                  {lightbox.preparation.captions.map((c: string, i: number) => <li key={i}>{c}</li>)}
-                </ul>
-              )}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href="/subjects/histology?tab=materials"
-                  className="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
-                  onClick={() => setLightbox(null)}
-                >
-                  Подробный материал и файлы
-                </Link>
-                <button type="button" onClick={() => setLightbox(null)} className="btn-primary">Закрыть атлас</button>
-              </div>
-            </div>
-          </div>
+          <TrainerImageViewer
+            id={String(lightbox.id)}
+            title={String(lightbox.preparation?.name || "Гистологический препарат")}
+            lesson={topicLabel(lessonKeyOf(lightbox))}
+            captions={Array.isArray(lightbox.preparation?.captions) ? lightbox.preparation.captions : []}
+            onClose={() => setLightbox(null)}
+          />
         )}
       </div>
     );
