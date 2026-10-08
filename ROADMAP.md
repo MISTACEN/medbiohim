@@ -1780,3 +1780,14 @@ No new branch created; the unified viewer correction is already integrated into 
 - 🟢 Repository branch audit completed against `main`: `fix/unified-media-viewer-desktop-mobile` has 0 unique commits and is already contained by `main`.
 - 🟡 `beta`, `fix/chem-rendering-tests-rdkit` and `fix/lecture-service-schedule-home` are old divergent branches with unique commits, but their files are based on substantially older `main` history and would reintroduce retired/stale code if merged wholesale. They were intentionally not merged blindly; only useful work should be ported selectively after a current-target review.
 - 🟡 Runtime acceptance remains open: exact current `main` deployment, iPhone Safari/Android Chrome touch smoke, Windows/macOS browser smoke and Lecture → Atlas → Trainer → Materials regression.
+
+
+## 2026-10-08 — Leukocyte practical case cards
+
+- 🟢 `LeukocyteDifferentialTrainer` переведён в практический режим карточки по методичке `4.Кровь.docx`.
+- 🟢 Карточка генерирует возраст из учебных колонок методички и случайный процентный результат для конкретного вида лейкоцита.
+- 🟢 Формат карточки: 1) опознать клетку на мазке; 2) написать возрастную норму; 3) переписать результат исследования; 4) назвать термин отклонения/норму; 5) сформулировать предварительную гипотезу для «5» через функцию клетки.
+- 🟢 Оценка: ошибка в любом из первых 4 полей → 2; все 4 верны → 4; все 4 + обоснованная гипотеза → 5.
+- 🟢 Проверка текста терпит варианты регистра, `ё/е`, дефисы и разделители диапазона; числовая проверка нормы и результата не требует идеальной записи символов.
+- 🟢 Для эозинофилов и базофилов карточки не требуют отдельного термина снижения, потому что в исходной курсовой таблице он не приведён.
+- 🟡 Гипотеза на «5» является учебной, не окончательным диагнозом; связи с бактериальной/вирусной инфекцией, аллергией/паразитозом и другими состояниями показываются как возможные направления, а не как диагноз по одному проценту.
