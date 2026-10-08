@@ -900,3 +900,12 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Automatic queue/worker | 🟡 | намеренно не заявлен до target-runtime verification |
 | Perceptual quality metrics | 🟡 | пока отсутствуют реальные text/detail/artifact measurements |
 | Target runtime smoke | 🟡 | требуется реальный SpaceWeb/B2 image processing test |
+
+
+## 2026-10-08 — Histology lectures
+
+🟢 **Lecture bodies:** выполнено. 20 опубликованных canonical records в `site_content`; 19 тел собраны из source-backed `materials` (`Гистология.zip`) + ранее существовавшая полноценная Lecture 05. Добавлена отдельная supplementary лекция по гистотехнике. Legacy пустые stubs переведены в `is_published=false`.
+
+🟢 **Reproducibility:** добавлена `database/migrations/20261008_histology_full_lectures.sql`.
+
+🟡 **Не считать финальным production gate:** browser/Vercel smoke и физическая media reconciliation остаются отдельными проверками.
