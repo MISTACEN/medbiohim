@@ -207,6 +207,69 @@ function normalizeText(value: string) {
     .trim();
 }
 
+function compactText(value: string) {
+  return normalizeText(value).replace(/\s+/g, "");
+}
+
+function levenshtein(a: string, b: string) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    let diagonal = previous[0];
+    previous[0] = i;
+
+    for (let j = 1; j <= b.length; j += 1) {
+      const saved = previous[j];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      previous[j] = Math.min(
+        previous[j] + 1,
+        previous[j - 1] + 1,
+        diagonal + cost,
+      );
+      diagonal = saved;
+    }
+  }
+  return previous[b.length];
+}
+
+/**
+ * Учебная проверка текста:
+ * - не учитывает регистр, ё/е, й/и, пробелы и дефисы;
+ * - принимает обычные грамматические окончания («базофил» / «базофилы»);
+ * - допускает небольшую опечатку в длинном термине.
+ *
+ * Смысл ответа не подменяется: числовые значения проверяются отдельно.
+ */
+function textMatchesTerm(input: string, terms: string[]) {
+  const value = compactText(input);
+  if (!value) return false;
+
+  return terms.some((term) => {
+    const target = compactText(term);
+    if (!target) return false;
+    if (value.includes(target) || target.includes(value)) return true;
+
+    const distance = levenshtein(value, target);
+    const limit = target.length >= 9 ? 2 : 1;
+    return distance <= limit;
+  });
+}
+
+function cellMatches(input: string, cell: CellInfo) {
+  const aliases: Record<CellKey, string[]> = {
+    neutrophils: ["нейтрофил", "нейтрофилы"],
+    lymphocytes: ["лимфоцит", "лимфоциты"],
+    monocytes: ["моноцит", "моноциты"],
+    eosinophils: ["эозинофил", "эозинофилы"],
+    basophils: ["базофил", "базофилы"],
+  };
+
+  return textMatchesTerm(input, [cell.name, ...(aliases[cell.key] || [])]);
+}
+
 function numbers(value: string): number[] {
   return (value.match(/\d+(?:[.,]\d+)?/g) || []).map((x) => Number(x.replace(",", ".")));
 }
@@ -458,20 +521,18 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
     if (!currentCase || evaluation) return;
 
     const info = cellByKey(currentCase.cell);
-    const cellAnswer = normalizeText(answers.cell);
-        const cellCorrect = Boolean(
-      cellAnswer.includes(normalizeText(info.name)),
-    );
+    const cellCorrect = cellMatches(answers.cell, info);
 
     const normCorrect = normMatches(answers.norm, currentCase.norm);
     const resultCorrect = resultMatches(answers.result, currentCase.result);
     const conclusionTerms = CONCLUSION_TERMS[currentCase.cell][currentCase.deviation];
-    const conclusionCorrect = conclusionTerms.some((term) => normalizeText(answers.conclusion).includes(term));
+    const conclusionCorrect = textMatchesTerm(answers.conclusion, conclusionTerms);
 
-    const diagnosisText = normalizeText(answers.diagnosis);
-    const diagnosisCorrect = currentCase.deviation === "normal"
-      ? diagnosisText.includes("норм") || diagnosisText.includes("нет") || diagnosisText.includes("без отклон")
-      : info[currentCase.deviation === "high" ? "highHypotheses" : "lowHypotheses"].some((term) => diagnosisText.includes(term));
+    const diagnosisTerms =
+      currentCase.deviation === "normal"
+        ? ["норма", "норм", "нет отклонений", "без отклонений"]
+        : info[currentCase.deviation === "high" ? "highHypotheses" : "lowHypotheses"];
+    const diagnosisCorrect = textMatchesTerm(answers.diagnosis, diagnosisTerms);
 
     const baseCorrect = [cellCorrect, normCorrect, resultCorrect, conclusionCorrect].every(Boolean);
     const grade: 2 | 4 | 5 = !baseCorrect ? 2 : diagnosisCorrect ? 5 : 4;
@@ -809,6 +870,12 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <div className="rounded-xl bg-rose-50 p-3"><b>2</b> — ошибка хотя бы в одном из первых 4 столбиков.</div>
               <div className="rounded-xl bg-indigo-50 p-3"><b>4</b> — все 4 основных столбика верны.</div>
               <div className="rounded-xl bg-emerald-50 p-3"><b>5</b> — все 4 верны + предварительная гипотеза связана с функцией клетки.</div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <b>Орфография не оценивается.</b> Регистр, «ё/е», «й/и», пробелы, дефисы и обычные окончания слов не влияют на оценку.
+                Допускаются небольшие опечатки в длинных терминах. Например, «базофил» и «базофилы» считаются одним правильным ответом.
+                <br />
+                <b>Числа оцениваются по содержанию:</b> запятая и точка в десятичной дроби взаимозаменяемы, но само числовое значение должно совпадать с эталоном; для нормы проверяется соответствующий диапазон.
+              </div>
             </div>
           </div>
 
