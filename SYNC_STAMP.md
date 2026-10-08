@@ -130,3 +130,11 @@
 - Fixed PHP namespace exception hazards in TestRepository, CalculatorsService and SrsService.
 - Viewer loading/error states now use the same top-level portal boundary as the main media viewer.
 - Runtime/deployment verification remains open until Vercel/SpaceWeb/browser evidence exists.
+
+
+## 2026-10-08 — canonical main sync / unified viewer refinement
+- Canonical branch: `main`.
+- `ImageLightbox` refined for cursor/touch anchored zoom, bounded pan, pinch focal preservation and responsive controls.
+- `fix/unified-media-viewer-desktop-mobile` audit: 0 commits ahead of `main`; its viewer work is already integrated.
+- Other divergent branches were audited; no stale wholesale merge was performed.
+- Production/browser acceptance is still open because deployment/runtime evidence for the exact current `main` commit is not yet available.
