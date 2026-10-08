@@ -251,7 +251,7 @@ function createCase(round: number, sourceMode: SourceMode): Case {
   // Проверка распознавания использует только одиночные, заранее подтверждённые
   // изображения. Общие мазки с несколькими лейкоцитами не подмешиваются.
   if (sourceMode === "local" && localIds.length) source = "local";
-  else if (sourceMode === "external") source = "external";
+  else if (sourceMode === "external" && external.length) source = "external";
   else if (localIds.length) source = "local";
   else source = "external";
 
