@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   AlignCenter, AlignLeft, AlignRight, BarChart3, Bold, Braces, FileText,
   ImagePlus, Italic, Link2, List, ListOrdered, Loader2, Quote, Redo2,
@@ -190,7 +190,7 @@ function htmlToMarkdown(html:string){
   return [...doc.body.childNodes].map(render).join("").replace(/\\n{3,}/g,"\\n\\n").trim();
 }
 
-function insertAtSelection(ref:React.RefObject<HTMLDivElement|null>,html:string){
+function insertAtSelection(ref:RefObject<HTMLDivElement|null>,html:string){
   ref.current?.focus();document.execCommand("insertHTML",false,html);
 }
 
