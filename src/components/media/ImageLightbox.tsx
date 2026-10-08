@@ -154,11 +154,18 @@ export function ImageLightbox({
     const html = document.documentElement;
     const previousBodyOverflow = body.style.overflow;
     const previousBodyOverscroll = body.style.overscrollBehavior;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
     const previousHtmlOverflow = html.style.overflow;
     const previousHtmlOverscroll = html.style.overscrollBehavior;
+    const lockedScrollY = window.scrollY;
 
     body.style.overflow = "hidden";
     body.style.overscrollBehavior = "none";
+    body.style.position = "fixed";
+    body.style.top = `-${lockedScrollY}px`;
+    body.style.width = "100%";
     html.style.overflow = "hidden";
     html.style.overscrollBehavior = "none";
 
@@ -194,8 +201,12 @@ export function ImageLightbox({
     return () => {
       body.style.overflow = previousBodyOverflow;
       body.style.overscrollBehavior = previousBodyOverscroll;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
       html.style.overflow = previousHtmlOverflow;
       html.style.overscrollBehavior = previousHtmlOverscroll;
+      window.scrollTo(0, lockedScrollY);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
