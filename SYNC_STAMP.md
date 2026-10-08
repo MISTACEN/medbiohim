@@ -160,3 +160,6 @@
 
 
 - **2026-10-08 single-cell-only sync:** leukocyte practical cards now require identification of one concrete cell in every round. Population-level/general-smear cases are excluded from the active trainer, and the target cell name is not exposed before submission.
+
+
+- **2026-10-08 trainer-history sync:** leukocyte practical cards now preserve per-round case state, entered answers, and evaluation. Users can return with a Previous button or direct round-number navigation; restarting clears the current in-session history.
