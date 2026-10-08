@@ -67,7 +67,7 @@ const codeFiles = [...sourceFiles, ...backendFiles].filter((x) =>
 const escaped = [];
 for (const file of codeFiles) {
   const text = await readFile(file, "utf8");
-  if (/\\\\n\\s*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)/.test(text)) {
+  if (/\\n\\s*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)/.test(text)) {
     escaped.push(relative(root, file));
   }
 }
