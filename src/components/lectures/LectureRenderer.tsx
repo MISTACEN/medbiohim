@@ -5,6 +5,7 @@ import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
+import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
@@ -31,14 +32,14 @@ function escapeHtml(s: string) {
 }
 
 function parseBlocks(md: string) {
-  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz"; content: string }> = [];
-  const re = /```(chart|video|image|mermaid|chem|quiz)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
+  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte"; content: string }> = [];
+  const re = /```(chart|video|image|mermaid|chem|quiz|leukocyte)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
     if (m.index > last) parts.push({ kind: "md", content: md.slice(last, m.index) });
     parts.push({
-      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz",
+      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte",
       content: m[2].trim(),
     });
     last = m.index + m[0].length;
@@ -342,7 +343,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
       .split("\\`").join("`")
       .split('\\\"').join('"');
   }, [markdown]);
-  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz)\\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
+  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz|leukocyte)\\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
   const parts = useMemo(() => parseBlocks(normalizedMarkdown), [normalizedMarkdown]);
 
   useEffect(() => {
@@ -419,6 +420,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
         if (p.kind === "video") return <VideoBlock key={i} raw={p.content} />;
         if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;
         if (p.kind === "quiz") return <MiniQuizBlock key={i} raw={p.content} />;
+        if (p.kind === "leukocyte") return <LeukocyteDifferentialTrainer key={i} raw={p.content} />;
         if (p.kind === "chem") {
           const spec = parseChemSpec(p.content);
           if (!spec) {
