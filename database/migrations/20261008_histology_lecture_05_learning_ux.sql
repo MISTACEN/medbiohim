@@ -64,7 +64,7 @@ BEGIN
 ## 3. Тромбоциты — Thrombocyti$visual$
   );
 
-  IF position($quiz$ in v_new_body) = 0 THEN
+  IF position('"title":"Эритроциты: морфология"' in v_new_body) = 0 THEN
     v_new_body := replace(
       v_new_body,
       $needle$## 3. Тромбоциты — Thrombocyti$needle$,
