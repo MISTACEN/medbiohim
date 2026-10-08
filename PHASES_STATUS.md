@@ -797,3 +797,22 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 \n## 2026-10-08 — Unified Media Viewer: viewport/stacking correction\n\n| Viewer portal / viewport | 🟢 CODE PATCHED | `ImageLightbox` moved to `document.body` portal; explicit 100vw/visualViewport sizing and top-level z-index; glass colors made explicit |\n| iPhone Safari smoke | 🟡 | must confirm viewer covers MobileNav, fills visible viewport, centers image and prevents page scroll |\n| Cross-platform viewer smoke | 🟡 | Windows/macOS/iPhone/Android + Lecture → Atlas → Trainer → Materials |\n| Production DONE | 🔴 | blocked until target-runtime proof for exact commit |\n
 2026-10-08 — launch-blocker sweep: fixed a real PHP source artifact (`Router;\\nuse`) in `backend/config/routes/questions_rest.php` on the existing `fix/unified-media-viewer-desktop-mobile` branch. No new branch. GitHub Actions still terminates before steps/logs, while Vercel reports the external build-rate-limit blocker; source/runtime acceptance remains pending.
 
+
+## 2026-10-08 — Final pre-launch sweep
+
+| Контур | Статус | Фактическое состояние |
+|---|---|---|
+| Materials physical delivery | 🟢 CODE | canonical B2 presigned URL + authenticated legacy Histology fallback |
+| Vercel media proxy | 🟢 CODE | media redirect/cache/disposition headers preserved |
+| Materials URL negotiation | 🟢 CODE | dedicated `file-url` JSON endpoint avoids browser opaque redirects |
+| Schedule DB integrity | 🟢 LIVE | 309/309 entries have `session_id`; duplicate index removed |
+| Question/test integrity | 🟢 LIVE | 479/479 published active Histology questions linked; duplicate/orphan links 0 |
+| Homework backend syntax | 🟢 CODE | confirmed/fixed PHP SQL string quoting defect |
+| Atlas unified viewer | 🟢 CODE | portal + viewport + zoom/pan/fullscreen/close; runtime pending |
+| Vercel deployment | 🔴 BLOCKED | external build-rate-limit on current period |
+| SpaceWeb runtime | 🟡 | exact backend commit + media HTTP smoke required |
+| Browser acceptance | 🟡 | iPhone/Android/desktop required after deployment |
+| AI providers | 🟡 | external credentials/network; optional for base grading path |
+
+Правило неизменно: production DONE только после exact-deployment + authenticated runtime evidence.
+
