@@ -22,6 +22,11 @@ type Props = {
   onClose?: () => void;
   title?: string;
   details?: ReactNode;
+  /** Optional focus point for teaching images that contain several elements.
+   * x/y are percentages (0–100); scale enlarges the focused area while
+   * keeping the rest of the viewer's zoom/pan controls intact.
+   */
+  focus?: { x: number; y: number; scale?: number };
 };
 
 type Point = { x: number; y: number };
@@ -55,6 +60,7 @@ export function ImageLightbox({
   onClose,
   title,
   details,
+  focus,
 }: Props) {
   const [open, setOpen] = useState(openOnMount);
   const [zoom, setZoom] = useState(1);
@@ -86,10 +92,11 @@ export function ImageLightbox({
 
     const stageRect = stage.getBoundingClientRect();
     const imageRect = image.getBoundingClientRect();
-    const baseWidth = imageRect.width / Math.max(zoom, 0.01);
-    const baseHeight = imageRect.height / Math.max(zoom, 0.01);
-    const scaledWidth = baseWidth * targetZoom;
-    const scaledHeight = baseHeight * targetZoom;
+    const effectiveZoom = Math.max(0.01, (focus?.scale ?? 1) * zoom);
+    const baseWidth = imageRect.width / effectiveZoom;
+    const baseHeight = imageRect.height / effectiveZoom;
+    const scaledWidth = baseWidth * Math.max(0.01, (focus?.scale ?? 1) * targetZoom);
+    const scaledHeight = baseHeight * Math.max(0.01, (focus?.scale ?? 1) * targetZoom);
 
     const maxX = Math.max(0, (scaledWidth - stageRect.width) / 2 + 12);
     const maxY = Math.max(0, (scaledHeight - stageRect.height) / 2 + 12);
@@ -378,7 +385,7 @@ export function ImageLightbox({
       type="button"
       onClick={() => setOpen(true)}
       className={
-        "group relative block w-full cursor-zoom-in text-left " + className
+        "group relative block w-full cursor-zoom-in overflow-hidden text-left " + className
       }
       aria-label={
         caption
@@ -391,6 +398,12 @@ export function ImageLightbox({
         src={src}
         alt={alt}
         className={"block max-w-full " + imageClassName}
+        style={focus ? {
+          objectFit: "cover",
+          objectPosition: String(focus.x) + "% " + String(focus.y) + "%",
+          transform: "scale(" + String(focus.scale ?? 1) + ")",
+          transformOrigin: "center center",
+        } : undefined}
         draggable={false}
       />
       <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-85 shadow-lg backdrop-blur transition group-hover:opacity-100">
@@ -538,9 +551,12 @@ export function ImageLightbox({
                     ref={imageRef}
                     src={src}
                     alt={alt}
-                    className="select-none object-contain max-h-[calc(100dvh-6.6rem)] max-w-[calc(100vw-1rem)] sm:max-h-[calc(100dvh-7.1rem)] sm:max-w-[calc(100vw-1.5rem)]"
+                    className={focus
+                      ? "select-none h-full w-full max-h-none max-w-none object-cover"
+                      : "select-none object-contain max-h-[calc(100dvh-6.6rem)] max-w-[calc(100vw-1rem)] sm:max-h-[calc(100dvh-7.1rem)] sm:max-w-[calc(100vw-1.5rem)]"}
                     style={{
-                      transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+                      objectPosition: focus ? String(focus.x) + "% " + String(focus.y) + "%" : undefined,
+                      transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${(focus?.scale ?? 1) * zoom})`,
                       transformOrigin: "center center",
                       willChange: "transform",
                       transition:
