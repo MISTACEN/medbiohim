@@ -294,19 +294,9 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
   }catch{return null;}
 }
 
-const histologySourceFileCache=new Map<string,string>();
-
 export async function fetchHistologySourceFile(path:string):Promise<Blob|null>{
   if(typeof window==="undefined")return null;
   const key=String(path);
-  const cached=histologySourceFileCache.get(key);
-  if(cached){
-    try{
-      const res=await fetch(cached,{cache:"no-store"});
-      if(res.ok)return await res.blob();
-    }catch{}
-    histologySourceFileCache.delete(key);
-  }
 
   const requestFile=async(token:string|null)=>{
     return fetch(
