@@ -767,3 +767,21 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟢 Нативный Fullscreen API используется как дополнительный режим; fixed viewport-lightbox остаётся fallback для Safari.
 - 🟡 Не считать production/runtime DONE до Vercel READY и реального iPhone Safari smoke.
 - Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+
+
+## 2026-10-08 — Unified Media Viewer audit / correction
+
+| Контур | Статус | Фактическое состояние |
+|---|---|---|
+| Atlas outer modal | 🟢 FIXED IN BRANCH | удалён вложенный 90vh + overflow-auto слой |
+| Unified viewer | 🟢 CODE | 100dvh, safe-area, controls, zoom/pan, desktop wheel/double-click, touch Pointer Events |
+| Native fullscreen | 🟡 ENHANCEMENT | используется только если браузер разрешает; viewer без него остаётся полноценным |
+| Lecture viewer | 🟡 | использует общий ImageLightbox, нужен regression smoke |
+| Trainer viewer | 🟡 | общий компонент используется, нужен regression smoke |
+| Materials viewer | 🟡 | отдельный document/photo modal ещё требует отдельного UX-аудита |
+| Windows desktop | 🟡 | обязательный реальный browser smoke |
+| iPhone Safari | 🟡 | обязательный реальный authenticated smoke |
+| Android Chrome | 🟡 | обязательный touch/pinch smoke |
+| Cross-page regression | 🟡 | lecture → atlas → trainer → materials |
+
+Правило: наличие кода не переводит эти пункты в DONE; нужен target-runtime/browser evidence.
