@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
-import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";\nimport { ImageLightbox } from "@/components/media/ImageLightbox";
+import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
+import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
