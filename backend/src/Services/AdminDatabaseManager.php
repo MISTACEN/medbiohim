@@ -153,8 +153,8 @@ final class AdminDatabaseManager
 
     private function publicConnection(array $row): array
     {
-        unset($row['password_ciphertext']);
         $row['password_configured']=!empty($row['password_ciphertext']);
+        unset($row['password_ciphertext']);
         $row['builtin']=false;
         return $row;
     }
