@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
@@ -18,6 +19,11 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const load = async (retry = false) => {
     setLoading(true);
@@ -39,21 +45,36 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
     return () => { alive = false; };
   }, [id]);
 
+  if (!mounted) return null;
+
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-[120] flex h-[100dvh] items-center justify-center bg-black/95 text-sm text-white">
+    return createPortal(
+      <div
+        className="fixed inset-0 flex items-center justify-center p-6 text-sm text-white"
+        style={{ zIndex: 2147483000, width: "100vw", height: "100dvh", background: "rgba(15,23,42,0.92)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Загрузка изображения"
+      >
         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
         Загрузка изображения…
-      </div>
+      </div>,
+      document.body,
     );
   }
 
   if (!src) {
-    return (
-      <div className="fixed inset-0 z-[120] flex h-[100dvh] items-center justify-center bg-black/95 p-6 text-center text-white">
+    return createPortal(
+      <div
+        className="fixed inset-0 flex items-center justify-center p-6 text-center text-white"
+        style={{ zIndex: 2147483000, width: "100vw", height: "100dvh", background: "rgba(15,23,42,0.92)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Изображение временно недоступно"
+      >
         <div>
           <div className="text-lg font-bold">Изображение временно недоступно</div>
-          <p className="mt-2 text-sm text-white/60">Не закрываем просмотр страницы — можно повторить загрузку.</p>
+          <p className="mt-2 text-sm text-white/60">Можно повторить загрузку, не закрывая страницу.</p>
           <button
             type="button"
             disabled={retrying}
@@ -66,7 +87,8 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
             Закрыть
           </button>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
