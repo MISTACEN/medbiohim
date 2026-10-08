@@ -794,3 +794,4 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟢 retry для недоступного trainer photo добавлен;
 - 🟢 blob URL lifecycle для Materials document/PDF/image preview приведён к управляемому состоянию;
 - 🟡 CI/Vercel остаются инфраструктурными release blockers: GitHub jobs создаются, но завершаются без steps/logs; Vercel отвечает `build-rate-limit`.
+\n## 2026-10-08 — Unified Media Viewer: viewport/stacking correction\n\n| Viewer portal / viewport | 🟢 CODE PATCHED | `ImageLightbox` moved to `document.body` portal; explicit 100vw/visualViewport sizing and top-level z-index; glass colors made explicit |\n| iPhone Safari smoke | 🟡 | must confirm viewer covers MobileNav, fills visible viewport, centers image and prevents page scroll |\n| Cross-platform viewer smoke | 🟡 | Windows/macOS/iPhone/Android + Lecture → Atlas → Trainer → Materials |\n| Production DONE | 🔴 | blocked until target-runtime proof for exact commit |\n
