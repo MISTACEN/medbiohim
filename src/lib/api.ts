@@ -499,3 +499,6 @@ export async function toggleFavorite(targetType:string,targetId:string){return a
 
 export async function adminImportScheduleXlsx(file:File,groupId:string,semester?:number){const fd=new FormData();fd.append("file",file);fd.append("group_id",groupId);if(semester!=null)fd.append("semester",String(semester));return api<any>("/admin/schedule/import",{method:"POST",body:fd})}
 export async function adminImportCurriculumXlsx(file:File){const fd=new FormData();fd.append("file",file);return api<any>("/admin/import/curriculum",{method:"POST",body:fd})}
+
+export async function adminFileAudit(limit = 200): Promise<any> { return api("/admin/files/audit?limit=" + encodeURIComponent(String(limit))) as any; }
+export async function adminMediaCapabilities(): Promise<any> { return api("/admin/files/capabilities") as any; }

@@ -841,3 +841,62 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Target runtime deployment smoke | 🟡 P0 | Latest branch still needs READY Vercel/SpaceWeb authenticated smoke |
 
 | Materials physical delivery semantics | 🟢 source | live audit explains 80 Histology source_path-only rows; unified viewer fix is in draft PR #16; runtime HTTP smoke still pending |
+
+| File & Storage Center foundation | 🟢 source | checksum/provider/processing metadata + non-destructive reference audit UI/API implemented |
+| Physical object reconciliation | 🟡 | B2/SpaceWeb existence/head checks still required |
+| Media optimization pipeline | 🟡 | quality-gated image/video derivatives remain next implementation stage |
+
+## 2026-10-07 — Pass 34: complete B2 reconciliation foundation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| B2 metadata keyset | 🟢 | строится по всем active B2-backed files, независимо от UI limit |
+| B2 pagination | 🟢 | audit проходит страницы B2 до завершения |
+| Missing physical objects | 🟢 source | DB B2-backed records отсутствующие в B2 считаются отдельно |
+| B2 orphan objects | 🟢 source | объекты без соответствующего B2 metadata key считаются отдельно |
+| Provider isolation | 🟢 | SpaceWeb/unknown не ошибочно считаются B2 |
+| Storage Center UI | 🟢 source | показывает «нет в B2» и «нет в БД» |
+| SpaceWeb reconciliation | 🟡 | нужен target-runtime/host доступ к физическому дереву |
+| Media optimizer | 🟡 | следующий implementation pass |
+| Target runtime | 🟡 | GitHub source changed; production verification blocked by deployment/runtime gates |
+
+
+## 2026-10-07 — Pass 35: media derivative metadata foundation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| file_variants schema | 🟢 | dedicated parent/variant metadata table added |
+| Variant uniqueness | 🟢 | one variant key per parent file |
+| Processing state | 🟢 | ready/queued/processing/failed/skipped |
+| Variant visibility | 🟢 | RLS follows parent file access boundary |
+| Physical derivative generation | 🟡 | not yet implemented; requires runtime capability/worker verification |
+| Existing binaries | 🟢 | untouched by this pass |
+
+
+## 2026-10-07 — Pass 36: content-aware media quality gate
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Content classification roles | green | policy has distinct gates for text/diagram/scan and specimen/EM/atlas |
+| Downscale protection | green | rejects overly aggressive derivative dimensions |
+| Text readability gate | green | rejects candidates below readability threshold for text-heavy media |
+| Detail/edge gate | green | protects EM/micropreparation/atlas/diagram detail |
+| Artifact gate | green | rejects candidates with excessive compression artifact score |
+| Video ladder policy | green | 1080p preserved, 720p/480p fallbacks available |
+| Actual encoder | yellow | requires runtime capability/worker integration |
+| Perceptual metrics | yellow | requires real generated candidates and validation samples |
+
+
+## 2026-10-07 — Pass 37: safe derivative processor foundation
+
+| Контур | Статус | Результат |
+|---|---|---|
+| FileVariantRepository | 🟢 source | upsert/list/status для производных |
+| MIME detection | 🟢 source | фактический MIME через finfo |
+| WebP/AVIF generation | 🟡 | выполняется только если GD encoder реально доступен на runtime |
+| Quality policy integration | 🟢 source | generated candidates проходят MediaQualityPolicy |
+| Original preservation | 🟢 | оригинал не удаляется и не переписывается |
+| Admin processing endpoint | 🟢 source | strict-admin ручной запуск для B2-backed image |
+| Automatic queue/worker | 🟡 | намеренно не заявлен до target-runtime verification |
+| Perceptual quality metrics | 🟡 | пока отсутствуют реальные text/detail/artifact measurements |
+| Target runtime smoke | 🟡 | требуется реальный SpaceWeb/B2 image processing test |

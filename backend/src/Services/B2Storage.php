@@ -82,6 +82,79 @@ final class B2Storage
         );
     }
 
+    /** @return array{files:list<array<string,mixed>>,nextFileName:?string} */
+    public function listObjects(?string $prefix = null, int $max = 1000, ?string $startFileName = null): array
+    {
+        if (!$this->isConfigured()) {
+            throw new \RuntimeException('B2 is not configured');
+        }
+        $auth = $this->authorize();
+        $body = [
+            'bucketId' => $this->resolveBucketId($auth),
+            'maxFileCount' => max(1, min($max, 10000)),
+        ];
+        if ($prefix !== null && $prefix !== '') $body['prefix'] = $prefix;
+        if ($startFileName !== null && $startFileName !== '') $body['startFileName'] = $startFileName;
+
+        $res = HttpClient::request(
+            'POST',
+            rtrim($auth['apiUrl'], '/') . '/b2api/v2/b2_list_file_names',
+            $body,
+            ['Authorization: ' . $auth['authorizationToken']]
+        );
+        if ($res['status'] < 200 || $res['status'] >= 300 || !is_array($res['json'])) {
+            throw new \RuntimeException('B2 list_file_names failed');
+        }
+
+        $files = [];
+        foreach (($res['json']['files'] ?? []) as $file) {
+            if (!is_array($file)) continue;
+            $files[] = [
+                'file_id' => isset($file['fileId']) ? (string)$file['fileId'] : null,
+                'file_name' => isset($file['fileName']) ? (string)$file['fileName'] : null,
+                'content_type' => isset($file['contentType']) ? (string)$file['contentType'] : null,
+                'size' => isset($file['contentLength']) ? (int)$file['contentLength'] : null,
+                'sha1' => isset($file['contentSha1']) ? (string)$file['contentSha1'] : null,
+                'uploaded_at' => isset($file['uploadTimestamp']) ? (int)$file['uploadTimestamp'] : null,
+            ];
+        }
+
+        return [
+            'files' => $files,
+            'nextFileName' => isset($res['json']['nextFileName']) ? (string)$res['json']['nextFileName'] : null,
+        ];
+    }
+
+    /** @return array<string,mixed> */
+    public function downloadBinary(string $objectKey): string
+    {
+        $url=$this->presignedDownloadUrl($objectKey,600);
+        if(!extension_loaded('curl')) throw new \RuntimeException('curl required for B2 download');
+        $ch=curl_init($url);
+        curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_TIMEOUT=>120]);
+        $body=curl_exec($ch); $status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE); curl_close($ch);
+        if($body===false||$status<200||$status>=300) throw new \RuntimeException('B2 download failed');
+        return (string)$body;
+    }
+
+    public function getFileInfo(string $fileId): array
+    {
+        if (!$this->isConfigured()) {
+            throw new \RuntimeException('B2 is not configured');
+        }
+        $auth = $this->authorize();
+        $res = HttpClient::request(
+            'POST',
+            rtrim($auth['apiUrl'], '/') . '/b2api/v2/b2_get_file_info',
+            ['fileId' => trim($fileId)],
+            ['Authorization: ' . $auth['authorizationToken']]
+        );
+        if ($res['status'] < 200 || $res['status'] >= 300 || !is_array($res['json'])) {
+            throw new \RuntimeException('B2 get_file_info failed');
+        }
+        return $res['json'];
+    }
+
     public function buildObjectKey(string $userId, string $originalName): string
     {
         $safe = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $originalName) ?: 'file';

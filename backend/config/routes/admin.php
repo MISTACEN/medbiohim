@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 use Medbiohim\Http\Request;use Medbiohim\Http\Response;use Medbiohim\Http\Router;use Medbiohim\Middleware\RequireAuth;use Medbiohim\Middleware\RequireRole;use Medbiohim\Repositories\GroupRepository;use Medbiohim\Repositories\FileRepository;use Medbiohim\Repositories\HomeworkRepository;use Medbiohim\Repositories\SubjectRepository;use Medbiohim\Repositories\TestRepository;use Medbiohim\Repositories\UserRepository;use Medbiohim\Support\ContentStore;use Medbiohim\Support\Env;use Medbiohim\Services\SupabaseAuth;use Medbiohim\Services\SupabaseRest;
+use Medbiohim\Services\B2Storage;use Medbiohim\Services\MediaDerivativeProcessor;
 return static function(Router $router):void{
 $adminGate=static function(Request $req):bool{if(!RequireAuth::handle($req))return false;return RequireRole::handle($req,['admin','moderator','teacher']);};$strictAdmin=static function(Request $req):bool{if(!RequireAuth::handle($req))return false;return RequireRole::handle($req,['admin']);};
 $router->get('/api/v1/site', static function (Request $req, array $params): void {
@@ -67,6 +68,66 @@ $router->put('/api/v1/admin/site',static function(Request $req,array $params)use
 $router->get('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;Response::success(['items'=>(new ContentStore())->listAnnouncements()],$req->requestId);});
 $router->post('/api/v1/admin/announcements',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$title=trim((string)$req->json('title',''));$body=trim((string)$req->json('body',''));if($title===''||$body===''){Response::error('VALIDATION_ERROR','title and body required',$req->requestId,422);return;}Response::success(['item'=>(new ContentStore())->createAnnouncement(['title'=>$title,'body'=>$body,'pinned'=>(bool)$req->json('pinned',false)])],$req->requestId,201);});
 $router->delete('/api/v1/admin/announcements/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;$ok=(new ContentStore())->deleteAnnouncement($params['id']);Response::success(['deleted'=>$ok],$req->requestId);});
+$router->get('/api/v1/admin/files/capabilities',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ $commandAvailable=static function(string $command):bool{
+  if(!function_exists('shell_exec'))return false;
+  $out=@shell_exec('command -v '.escapeshellarg($command).' 2>/dev/null');
+  return is_string($out)&&trim($out)!=='';
+ };
+ try{
+  Response::success([
+   'runtime'=>PHP_VERSION,
+   'extensions'=>[
+    'gd'=>extension_loaded('gd'),
+    'imagick'=>class_exists('Imagick'),
+    'exif'=>extension_loaded('exif'),
+    'fileinfo'=>extension_loaded('fileinfo'),
+    'mbstring'=>extension_loaded('mbstring'),
+   ],
+   'image'=>[
+    'webp_gd'=>function_exists('imagewebp'),
+    'avif_gd'=>function_exists('imageavif'),
+    'webp_imagick'=>class_exists('Imagick') && in_array('WEBP',\Imagick::queryFormats('WEBP'),true),
+    'avif_imagick'=>class_exists('Imagick') && in_array('AVIF',\Imagick::queryFormats('AVIF'),true),
+   ],
+   'commands'=>[
+    'ffmpeg'=>$commandAvailable('ffmpeg'),
+    'ffprobe'=>$commandAvailable('ffprobe'),
+    'cwebp'=>$commandAvailable('cwebp'),
+    'avifenc'=>$commandAvailable('avifenc'),
+   ],
+   'policy'=>[
+    'optimizer_mode'=>'capability_detect_then_quality_gate',
+    'original_deleted'=>false,
+    'video_full_hd_required'=>true,
+   ],
+  ],$req->requestId);
+ }catch(\Throwable $e){
+  Response::error('MEDIA_CAPABILITY_ERROR','Media capability check failed',$req->requestId,503);
+ }
+});
+$router->post('/api/v1/admin/files/{id}/process-image',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ try{
+  $file=(new FileRepository())->findById((string)($params['id']??''));
+  if($file===null){Response::error('NOT_FOUND','File not found',$req->requestId,404);return;}
+  if(($file['storage_provider']??'')!=='b2'||empty($file['object_key'])){Response::error('UNSUPPORTED','File is not B2-backed',$req->requestId,422);return;}
+  $binary=(new B2Storage())->downloadBinary((string)$file['object_key']);
+  $result=(new MediaDerivativeProcessor())->processImage((string)$params['id'],$binary);
+  Response::success($result,$req->requestId);
+ }catch(\InvalidArgumentException $e){Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);}
+ catch(\Throwable $e){Response::error('MEDIA_PROCESSING_FAILED','Media processing failed',$req->requestId,503);}
+});
+$router->get('/api/v1/admin/files/audit',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ $limit=max(1,min(1000,(int)($req->query['limit']??200)));
+ try{
+  Response::success((new FileRepository())->storageAudit($limit),$req->requestId);
+ }catch(\Throwable $e){
+  Response::error('FILE_AUDIT_ERROR','Storage audit is temporarily unavailable',$req->requestId,503);
+ }
+});
 $router->get('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['items'=>(new HomeworkRepository())->listAllAdmin()],$req->requestId);}catch(\Throwable $e){Response::error('DB_UNAVAILABLE','Домашние задания временно недоступны',$req->requestId,503);}});
 $router->post('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['item'=>(new HomeworkRepository())->create($req->jsonBody??[])],$req->requestId,201);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
 $router->delete('/api/v1/admin/homeworks/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{(new HomeworkRepository())->delete($params['id']);Response::success(['deleted'=>true],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
@@ -285,4 +346,36 @@ $router->post('/api/v1/admin/content/move',static function(Request $req,array $p
  try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');if(!$old){Response::error('NOT_FOUND','Content not found',$req->requestId,404);return;} $new=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$patch,true);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'move','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0],'new_data'=>$new[0]??null,'source'=>'admin_ui'],false);Response::success(['item'=>$new[0]??null],$req->requestId);
  }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
 });
+
+$router->get('/api/v1/admin/content/question-integrity',static function(Request $req,array $params)use($strictAdmin):void{
+ if(!$strictAdmin($req))return;
+ try{
+  $questions=SupabaseRest::select('questions?select=id,is_published,archived_at,subject_id,module_id,topic_id&limit=10000');
+  $tests=SupabaseRest::select('tests?select=id,is_published,archived_at,subject_id,module_id,topic_id&limit=5000');
+  $links=SupabaseRest::select('test_questions?select=test_id,question_id,order_index&limit=20000');
+  $q=[];$t=[];$qLinks=[];$tLinks=[];$duplicates=[];$seen=[];
+  foreach($questions as $row){$id=(string)($row['id']??'');if($id!=='')$q[$id]=$row;}
+  foreach($tests as $row){$id=(string)($row['id']??'');if($id!=='')$t[$id]=$row;}
+  foreach($links as $row){
+   $tid=(string)($row['test_id']??'');$qid=(string)($row['question_id']??'');if($tid!==''&&$qid!==''){
+    $qLinks[$qid]=($qLinks[$qid]??0)+1;$tLinks[$tid]=($tLinks[$tid]??0)+1;
+    $key=$tid.'|'.$qid;if(isset($seen[$key]))$duplicates[]=['test_id'=>$tid,'question_id'=>$qid];else$seen[$key]=true;
+   }
+  }
+  $orphanLinks=[];foreach($links as $row){$tid=(string)($row['test_id']??'');$qid=(string)($row['question_id']??'');if(!isset($t[$tid])||!isset($q[$qid]))$orphanLinks[]=['test_id'=>$tid,'question_id'=>$qid,'missing_test'=>!isset($t[$tid]),'missing_question'=>!isset($q[$qid])];}
+  $publishedTestsWithoutQuestions=[];foreach($tests as $row){$id=(string)$row['id'];if(!empty($row['is_published'])&&empty($row['archived_at'])&&($tLinks[$id]??0)===0)$publishedTestsWithoutQuestions[]=$id;}
+  $publishedUnlinkedQuestions=[];foreach($questions as $row){$id=(string)$row['id'];if(!empty($row['is_published'])&&empty($row['archived_at'])&&($qLinks[$id]??0)===0)$publishedUnlinkedQuestions[]=$id;}
+  Response::success(['summary'=>[
+   'questions'=>count($questions),'tests'=>count($tests),'links'=>count($links),
+   'distinct_linked_questions'=>count($qLinks),'distinct_linked_tests'=>count($tLinks),
+   'duplicate_links'=>count($duplicates),'orphan_links'=>count($orphanLinks),
+   'published_tests_without_questions'=>count($publishedTestsWithoutQuestions),
+   'published_questions_without_test'=>count($publishedUnlinkedQuestions)
+  ],'duplicates'=>array_slice($duplicates,0,500),'orphan_links'=>array_slice($orphanLinks,0,500),
+  'published_tests_without_questions'=>array_slice($publishedTestsWithoutQuestions,0,500),
+  'published_questions_without_test'=>array_slice($publishedUnlinkedQuestions,0,500),
+  'note'=>'Unlinked published questions are reported only; they are not treated as defects because standalone question-bank content is valid.'],$req->requestId);
+ }catch(\Throwable $e){Response::error('INTEGRITY_AUDIT_FAILED',$e->getMessage(),$req->requestId,503);}
+});
+
 };

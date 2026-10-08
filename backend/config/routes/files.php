@@ -91,6 +91,9 @@ return static function (Router $router): void {
                 'group_id' => $groupId,
                 'visibility' => $visibility,
                 'specialty_slug' => $specialty,
+                'sha256' => hash('sha256', $binary),
+                'storage_provider' => !empty($up['b2_file_id']) ? 'b2' : 'unknown',
+                'processing_status' => 'ready',
             ]);
             Response::success(['file' => $meta], $req->requestId, 201);
         } catch (\Throwable $e) {

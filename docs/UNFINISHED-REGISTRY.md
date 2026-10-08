@@ -333,3 +333,92 @@ GitHub Actions continues to terminate both frontend/backend jobs before any step
 3. Auth → schedule → tests/preparation → Materials/Atlas runtime smoke still requires the target environment.
 4. AI provider health remains external and must be verified with production-safe credentials.
 5. Generic full-fidelity document rendering for DOCX/PPTX remains a P2 feature gap; the fallback is an original-file link, not a fake in-browser Word renderer.
+
+## 2026-10-07 — отдельный реестр непроверенного после Pass 37
+
+### U-37-01 — target-runtime media capabilities
+Проверить на фактическом SpaceWeb runtime PHP/GD/Imagick/WebP/AVIF через admin capabilities. Наличие кода не считать production-подтверждением.
+
+### U-37-02 — реальный derivative E2E
+На реальном B2/Histology изображении проверить processing endpoint, HTTP 200, MIME, размеры, checksum, `file_variants`, физический B2 object и неизменность original.
+
+### U-37-03 — perceptual quality scoring
+Текущий quality gate использует безопасные placeholder scores для generated candidates. Реальные text/detail/artifact measurements ещё не реализованы.
+
+### U-37-04 — automatic worker/queue
+Сейчас processing ручной. Очередь/worker ещё не подключены; нужен реальный runtime-механизм без fake async.
+
+### U-37-05 — derivative consumption
+Проверить Materials, Atlas, Trainer и Homework attachments: derivative при наличии, original fallback, mobile/desktop и основные браузеры.
+
+### U-37-06 — video derivatives
+Image processor не закрывает 1080p/720p/480p video pipeline. Нужен отдельный ffmpeg/ffprobe worker и compatibility validation.
+
+### U-37-07 — EXIF/GPS stripping
+Требование есть в media policy, но отдельная runtime-проверка результата ещё не выполнена.
+
+### U-37-08 — physical media reconciliation
+Полная сверка archive → SpaceWeb/B2 → DB files → file_variants → API → HTTP 200 ещё не завершена. Metadata-only наличие не считать доказательством.
+
+### U-37-09 — regression after merge/deploy
+PR #17 пока draft. Нужны CI green, target SpaceWeb smoke и frontend media smoke после стабилизации.
+
+## Pass 38 — media quality implementation continuation — 2026-10-07
+
+| Контур | Статус | Результат |
+|---|---|---|
+| Pixel quality analyzer | 🟢 source | added deterministic pixel-based contrast/detail/blocking measurements |
+| Multiple candidates | 🟢 source | high + compact WebP/AVIF candidates generated when encoders exist |
+| Placeholder scores | 🟢 removed | processor no longer writes hard-coded 1/1/0 quality scores |
+| Content-aware selection | 🟢 source | candidates are scored before MediaQualityPolicy selection |
+| Original | 🟢 | source binary remains untouched |
+| Runtime encoder check | 🟡 | actual GD WebP/AVIF support still requires target runtime |
+| Perceptual validation sample set | 🟡 | real histology/EM/text-heavy acceptance still requires browser/visual runtime check |
+
+Important: the analyzer is an inexpensive deterministic gate, not a substitute for a human/benchmark visual acceptance test. The latter remains in docs/UNVERIFIED-CHECKS-2026-10-07.md.
+
+## Pass 39 — runtime/integrity continuation — 2026-10-08
+
+### Storage/media source correction
+- 🟢 fixed double-escaped exception namespaces in `backend/config/routes/admin.php` for the new image-processing endpoint;
+- 🟡 target-runtime PHP syntax/capability smoke is still required because GitHub Actions has no workflow run attached to the current branch head;
+- 🟡 real B2 derivative E2E remains unverified.
+
+### Live question/test integrity snapshot
+Verified directly against Supabase:
+- `questions`: 855 total;
+- published, non-archived questions: 660;
+- `tests`: 33 total;
+- published, non-archived tests: 32;
+- `test_questions`: 854 links;
+- duplicate `test_id + question_id` pairs: 0;
+- orphan test/question links: 0;
+- published tests without questions: 0;
+- published questions without tests: 0.
+
+Subject breakdown:
+- Histology: 673 published questions, 479 linked into tests, 9 published tests;
+- Organic/physical chemistry: 176 published questions, 176 linked, 21 published tests;
+- unscoped questions: 5 published, all linked, 2 published tests.
+
+Histology test inventory currently includes:
+- 206 questions — preparations/electronograms;
+- 163 questions — cytology + embryology;
+- 96 questions — cytology closed tests;
+- 67 questions — embryology closed tests (**currently unpublished**);
+- 41 questions — general embryology;
+- 20 questions — blood;
+- 20 questions — muscle tissues;
+- 20 questions — epithelial tissues;
+- 20 questions — cytology closed;
+- 20 questions — embryology closed.
+
+Important: no cleanup or deletion was performed from this audit. The 67-question unpublished test must be treated as an activation/product decision, not as an orphan or corruption finding.
+
+
+### Pass 40 — smart grading exception-path audit — 2026-10-08
+- 🟢 audited the shared `AnswerGradingService` integration in normal tests and preparation;
+- 🟢 fixed namespace-qualified PHP exceptions in `TestRepository` (`RuntimeException` / `Throwable`) so error/retry/finish paths resolve global PHP classes correctly;
+- 🟢 rechecked `preparation.php`: exception classes in the grading/retry paths are already globally qualified;
+- 🟡 authenticated target-runtime E2E remains required: save answer → deterministic result, AI fallback, provider failure → stored unresolved state, regrade, finish;
+- 🟡 browser verification remains required for the frontend's handling of unresolved/pending answers.

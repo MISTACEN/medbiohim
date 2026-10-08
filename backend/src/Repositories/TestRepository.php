@@ -392,7 +392,7 @@ final class TestRepository
             if($row===false)throw new \RuntimeException('Failed to finish attempt');
             $this->db->commit();
             return $row;
-        }catch (\Throwable $e){
+        }catch(\Throwable $e){
             if($this->db->inTransaction())$this->db->rollBack();
             throw $e;
         }

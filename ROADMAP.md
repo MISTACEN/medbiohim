@@ -1643,3 +1643,59 @@ No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mob
 - ⚠️ В live DB на 2026-10-07 нет ни одной активной membership с `role_in_group='starosta'`; сценарий ДЗ готов в коде, но для реального student-side создания общего ДЗ староста должен быть назначен администратором.
 
 - 🟡 Materials physical delivery audit: live Histology has 80 published materials, all source_path-only (materials.file_id/content_sources.file_id are null); unified viewer fix now prefers canonical B2 file objects and keeps authenticated SpaceWeb fallback.
+
+## 2026-10-07 — Pass 33: File & Storage Center foundation
+
+- 🟢 added canonical file checksum metadata (`sha256`) for new uploads;
+- 🟢 added explicit `storage_provider` and `processing_status` metadata;
+- 🟢 added non-destructive admin Storage Audit API and UI;
+- 🟢 audit reports file references from Materials, trainer cards, homework attachments and homework submissions;
+- 🟢 live DB default corrected to `storage_provider='unknown'` for legacy/unclassified files; B2 is set only when `b2_file_id` is present;
+- 🟡 physical B2/SpaceWeb object reconciliation is still not performed automatically — this is the next storage pass;
+- 🟡 media optimization worker/derivatives are not implemented yet.
+
+## 2026-10-07 — Pass 34: complete B2 reconciliation foundation
+
+- 🟢 B2 reconciliation now builds its metadata keyset independently of the UI item limit;
+- 🟢 B2 listing is paginated through all available object pages instead of stopping at the first 5000 objects;
+- 🟢 audit now distinguishes matched B2 objects, B2 orphan objects, and active DB B2-backed records missing from B2;
+- 🟢 B2 orphan detection is restricted to B2-backed metadata and no longer treats SpaceWeb/unknown files as B2 records;
+- 🟢 admin Storage Center exposes both “нет в B2” and “нет в БД” results;
+- 🟢 fixed the Storage Center navigation tuple type so the new storage tab is TypeScript-valid;
+- 🟡 SpaceWeb physical existence/head reconciliation remains the next runtime-dependent storage task;
+- 🟡 quality-gated image/video derivative generation remains unimplemented.
+
+
+## 2026-10-07 — Pass 35: media derivative metadata foundation
+
+- 🟢 added file_variants as a dedicated metadata layer for optimized image/video derivatives;
+- 🟢 variants retain a strict parent files record and unique variant_key;
+- 🟢 variant metadata supports MIME, dimensions, duration, checksum, physical object key and B2 id;
+- 🟢 processing state is explicit (ready/queued/processing/failed/skipped);
+- 🟢 variant RLS inherits the parent file's owner/public/active-group-member visibility boundary;
+- 🟢 live migration applied; no existing binaries were moved, rewritten or deleted;
+- 🟡 physical derivative generation/quality gating is deliberately not claimed yet and is the next implementation stage after runtime capability verification.
+
+
+## 2026-10-07 — Pass 36: content-aware media quality gate
+
+- added a pure MediaQualityPolicy service for selecting the smallest derivative that passes content-aware gates;
+- separate thresholds cover text-heavy/diagram/scan versus electronogram/micropreparation/atlas content;
+- policy rejects excessive downscaling, text readability loss, edge/detail loss and compression artifacts;
+- video policy preserves a 1080p source tier and provides 720p/480p fallback candidates;
+- policy never deletes or rewrites the original file;
+- actual encoding and perceptual measurements remain runtime-dependent and will be wired after capability/worker verification.
+
+
+## 2026-10-07 — Pass 37: safe derivative processor foundation
+
+- 🟢 добавлен FileVariantRepository для upsert/list/status;
+- 🟢 добавлен MediaDerivativeProcessor для реального image→WebP/AVIF процесса при наличии соответствующего GD encoder;
+- 🟢 MIME определяется по фактическому содержимому через finfo, а не доверяется клиентскому MIME;
+- 🟢 оригинал никогда не перезаписывается и не удаляется;
+- 🟢 derivative candidate проходит существующий MediaQualityPolicy перед физической загрузкой выбранного варианта;
+- 🟢 выбранный derivative получает checksum, MIME, размер, размеры изображения и B2 object id;
+- 🟢 добавлен strict-admin endpoint ручной обработки существующего B2-backed изображения;
+- 🟢 при отсутствии подходящего encoder файл не ломается: derivative остаётся failed/skipped, original сохраняется;
+- 🟡 автоматический queue/worker ещё не объявлен готовым — текущий запуск намеренно ручной до проверки target runtime;
+- 🟡 perceptual text/detail/artifact scoring пока не измеряется реально: текущий pass подготавливает pipeline, но не выдаёт ложный quality-pass.
