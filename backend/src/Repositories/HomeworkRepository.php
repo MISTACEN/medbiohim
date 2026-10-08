@@ -19,7 +19,7 @@ final class HomeworkRepository
     public function listForUser(string $userId, ?string $groupId = null): array
     {
         $stmt = $this->db->prepare(
-            'SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE 'Asia/Vladivostok')::date) AS due_date, h.subject_id, h.group_id, h.created_by, h.created_by_role,
+            "SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE 'Asia/Vladivostok')::date) AS due_date, h.subject_id, h.group_id, h.created_by, h.created_by_role,
                     s.name AS subject_name, s.slug AS subject_slug, s.color_hex,
                     sub.id AS submission_id, sub.status AS submission_status,
                     sub.grade, sub.submitted_at,
