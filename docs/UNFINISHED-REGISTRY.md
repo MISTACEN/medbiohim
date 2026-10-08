@@ -254,3 +254,34 @@ Severity: P1 / cross-platform UX
 - blob/object URLs для document/PDF/image preview переведены на управляемый lifecycle.
 
 Статус: исправлено в ветке `fix/unified-media-viewer-desktop-mobile`; runtime/build gate остаётся открытым.
+
+## U-2026-10-08-05 — iPhone viewport / stacking regression found from runtime screenshot
+
+Severity: P1 / mobile viewport
+
+### Подтверждено по iPhone Safari screenshot
+- viewer controls are present, but the viewer is physically constrained to the app content area;
+- the fixed overlay does not cover the full device viewport;
+- the mobile bottom navigation remains above the viewer;
+- the image therefore appears too high/inside a shortened viewer instead of being centered in the full visible viewport;
+- this proves that `fixed + z-index` inside the existing React tree is not sufficient for this app/runtime combination.
+
+### Исправлено в ветке fix/unified-media-viewer-desktop-mobile
+- `ImageLightbox` now renders the open viewer through `createPortal(..., document.body)`;
+- viewer gets an explicit viewport-level z-index and `100vw` / visualViewport height;
+- glass overlay/card colors are explicit inline RGBA values so the existing theme overrides cannot turn the viewer into an unintended dark surface;
+- page scroll lock no longer re-runs on every zoom change;
+- keyboard zoom uses a ref to avoid recreating the scroll-lock effect during zoom.
+
+Code commit: `6655e65c94072fa91bc3b96c65745865698cd95f`.
+
+### Release gate
+Still required:
+- deploy this exact commit;
+- iPhone Safari: full-width/full-height viewer, image centered between header/footer, bottom navigation fully covered, no page scroll;
+- pinch/pan/zoom/reset/fullscreen/close;
+- desktop and Android regression;
+- Lecture → Atlas → Trainer → Materials regression.
+
+Do not mark this item DONE from source inspection alone.
+
