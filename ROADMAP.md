@@ -2,7 +2,7 @@
 
 > Единый план проекта и источник порядка по задачам.  
 > Обновляется вместе с изменениями в коде/БД.  
-> Дата актуализации: **2026-10-07**.
+> Дата актуализации: **2026-10-08**.
 
 ## Как читать статус
 
@@ -1551,3 +1551,29 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 Для iPhone/iPad Safari сохранён fallback: если нативный Fullscreen API недоступен, используется полноэкранный fixed-lightbox.
 - 🟡 Runtime на iPhone Safari и production deployment остаются непроверенными до фактического smoke-test.
 - Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+
+
+## 2026-10-08 — Unified Media Viewer / Atlas release gate
+
+**Статус: 🟡 IN PROGRESS — P1**
+
+Проблема подтверждена не только на iPhone: на Windows/desktop тот же архитектурный дефект проявляется как вложенное окно с ограничением 90vh, внутренним overflow-auto и отсутствующими на первом уровне controls.
+
+### Исправление в работе
+- 🟢 ImageLightbox переведён на единый viewport viewer: 100dvh, safe-area, явные controls, zoom до 500%, reset, close, desktop wheel, double-click, drag/pan и Pointer Events для pinch.
+- 🟢 native Fullscreen API оставлен только как enhancement; CSS viewport остаётся рабочим fallback для Safari/iOS.
+- 🟢 Atlas больше не использует внешний max-h-[90vh] overflow-auto modal вокруг изображения.
+- 🟢 Atlas открывает тот же unified viewer напрямую, с названием, занятием, captions и переходом к материалам.
+- 🟡 Lecture / Trainer / Materials должны пройти cross-page regression на том же viewer contract.
+- 🟡 target runtime пока не подтверждён: Vercel/SpaceWeb deployment и реальный браузерный smoke обязательны.
+
+### Release gate
+1. Windows Chrome/Edge/Firefox/Yandex: Atlas open → controls → zoom → pan → close.
+2. macOS Safari/Chrome: тот же сценарий.
+3. iPhone Safari: viewer сразу занимает viewport, нет page-scroll для изображения, controls видимы.
+4. Android Chrome: touch/pinch/drag/close.
+5. Lecture → Atlas → Trainer → Materials: нет вложенных image modals и regressions.
+6. Light/dark и safe-area не создают чёрных/пустых полос.
+7. Production commit совпадает с проверяемой веткой до перевода в DONE.
+
+До выполнения release gate пункт остаётся 🟡.
