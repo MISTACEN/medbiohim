@@ -237,15 +237,31 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
     let token=getToken();
     let res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
       headers:token?{Authorization:`Bearer ${token}`}:{},
-      cache:"no-store"
+      cache:"no-store",
+      redirect:"manual"
     });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (location) {
+        materialFileCache.set(key, location);
+        return location;
+      }
+    }
     if(res.status===401){
       const access=await refreshAccessToken();
       if(access){
         res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
           headers:{Authorization:`Bearer ${access}`},
-          cache:"no-store"
+          cache:"no-store",
+          redirect:"manual"
         });
+        if (res.status >= 300 && res.status < 400) {
+          const location = res.headers.get("location");
+          if (location) {
+            materialFileCache.set(key, location);
+            return location;
+          }
+        }
       }
     }
     if(!res.ok)return null;
