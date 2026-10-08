@@ -145,3 +145,6 @@
 - Main trainer mode: `case` — image recognition → age norm → result transcription → conclusion → preliminary hypothesis for grade 5.
 - Grading is explicit: any error in first 4 fields = 2; all four = 4; all four + justified functional hypothesis = 5.
 - Subject hub and RichLectureEditor use the practical case mode.
+
+
+- **2026-10-08 visual-trainer sync:** leukocyte case cards now use only unambiguous single-cell visuals; shared multi-leukocyte smears are excluded from the identification step. Focused-image support was added to ImageLightbox, while existing zoom/pan/pinch/fullscreen behavior is retained.
