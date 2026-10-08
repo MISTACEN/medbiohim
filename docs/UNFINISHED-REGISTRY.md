@@ -285,3 +285,6 @@ Still required:
 
 Do not mark this item DONE from source inspection alone.
 
+
+2026-10-08 — additional launch blocker audit: found and fixed a literal `\\nuse` syntax artifact in `backend/config/routes/questions_rest.php` on the active viewer branch. This was a real PHP syntax blocker that could prevent the backend route set from loading. Commit: `b374a49fd03574806595064746d09c046a19778e`. The companion `HistologyTrainerParts.tsx` literal-newline issue is already clean on this branch. GitHub Actions currently fails before any job step/log is produced, so target syntax/build verification remains external/infrastructure-blocked.
+
