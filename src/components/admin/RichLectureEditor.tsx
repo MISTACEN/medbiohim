@@ -447,7 +447,7 @@ export function RichLectureEditor({
     nodes.forEach((parts) => {
       const id = parts[0].replace(/[^A-Za-z0-9_]/g, "_");
       const label = (parts.slice(1).join("|") || parts[0]).replace(/"/g, "'");
-      lines.push(id + '[ "' .replace(" ", "") + label + '"]');
+      lines.push(id + '["' + label + '"]');
     });
 
     schemeEdges
