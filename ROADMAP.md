@@ -16,6 +16,31 @@
 
 ---
 
+## CURRENT EXECUTION CYCLE — 2026-10-08
+
+**Текущий поток: Stability → Media → Histology → Runtime verification.**
+
+### Active P1 — Unified Media Viewer
+- 🟢 code architecture: unified viewer implemented;
+- 🟢 Atlas nested modal removed;
+- 🟢 Lecture/Trainer/Materials image entry points aligned;
+- 🟢 desktop + mobile interaction contract implemented;
+- 🟢 malformed TSX escaped-newline artifact found during regression and removed;
+- 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
+- 🟡 Vercel READY / production commit verification;
+- 🟡 SpaceWeb authenticated media smoke.
+
+### Immediate next after viewer source gate
+1. 🟡 Vercel/CI runtime unblock and exact-commit deployment verification.
+2. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation.
+3. 🟡 Histology 28 EM + captions + plan↔content matrix.
+4. 🟡 Histology tests/question bank final runtime smoke.
+5. 🟡 Schedule/auth/dashboard production smoke.
+6. 🟡 Admin Content Center / quick editors.
+7. 🟡 AI provider runtime health and verified primary provider.
+
+**Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
+
 ## 0. Source of truth и порядок работы
 
 **Статус: 🟡 IN PROGRESS**
