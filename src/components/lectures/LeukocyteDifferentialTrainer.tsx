@@ -1,397 +1,560 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { CheckCircle2, ClipboardCheck, RotateCcw, Sparkles, XCircle } from "lucide-react";
 import { getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 type CellKey = "neutrophils" | "lymphocytes" | "monocytes" | "eosinophils" | "basophils";
-type Mode = "percent" | "changes" | "morphology" | "mixed";
+type Mode = "percent" | "changes" | "morphology" | "mixed" | "case";
 type SourceMode = "local" | "external" | "mixed";
+type Deviation = "normal" | "high" | "low";
 
-type Spec = {
-  title?: string;
-  mode?: Mode;
-  sourceMode?: SourceMode;
-  rounds?: number;
-};
-
-type Range = { min: number; max: number; label: string };
+type Spec = { title?: string; mode?: Mode; sourceMode?: SourceMode; rounds?: number };
+type Norm = { text: string; min: number; max: number; approximate?: boolean };
+type AgeProfile = { id: string; label: string; norms: Record<CellKey, Norm> };
 type CellInfo = {
   key: CellKey;
   name: string;
-  short: string;
-  courseAdult: Range;
-  external: Range;
   morphology: string;
-  high: string;
-  low: string;
+  function: string;
+  highTerm: string;
+  lowTerm?: string;
   localIds: string[];
+  highHypotheses: string[];
+  lowHypotheses: string[];
 };
+type Case = {
+  id: string;
+  age: AgeProfile;
+  cell: CellKey;
+  norm: Norm;
+  result: number;
+  deviation: Deviation;
+  source: "local" | "external";
+  imageId?: string;
+  imageUrl?: string;
+  imageSourceUrl?: string;
+};
+type Answers = { cell: string; norm: string; result: string; conclusion: string; diagnosis: string };
+type Evaluation = { cell: boolean; norm: boolean; result: boolean; conclusion: boolean; diagnosis: boolean; grade: 2 | 4 | 5 };
+
+const COURSE_NORM_SOURCE = "Методичка «Кровь» / 4.Кровь.docx";
+
+/* Таблица строго из учебной методички «Кровь»: взрослый + возрастные колонки. */
+const AGE_PROFILES: AgeProfile[] = [
+  {
+    id: "adult",
+    label: "14–15 лет и взрослые",
+    norms: {
+      neutrophils: { text: "47–72%", min: 47, max: 72 },
+      lymphocytes: { text: "19–37%", min: 19, max: 37 },
+      monocytes: { text: "3–11%", min: 3, max: 11 },
+      eosinophils: { text: "0,5–5%", min: 0.5, max: 5 },
+      basophils: { text: "0–1%", min: 0, max: 1 },
+    },
+  },
+  {
+    id: "day4",
+    label: "4–5 дней",
+    norms: {
+      neutrophils: { text: "≈45%", min: 45, max: 45, approximate: true },
+      lymphocytes: { text: "45%", min: 45, max: 45, approximate: true },
+      monocytes: { text: "3–11%", min: 3, max: 11 },
+      eosinophils: { text: "0,5–5%", min: 0.5, max: 5 },
+      basophils: { text: "0–1%", min: 0, max: 1 },
+    },
+  },
+  {
+    id: "year1_2",
+    label: "1–2 года",
+    norms: {
+      neutrophils: { text: "≈25%", min: 25, max: 25, approximate: true },
+      lymphocytes: { text: "65%", min: 65, max: 65, approximate: true },
+      monocytes: { text: "3–11%", min: 3, max: 11 },
+      eosinophils: { text: "0,5–5%", min: 0.5, max: 5 },
+      basophils: { text: "0–1%", min: 0, max: 1 },
+    },
+  },
+  {
+    id: "year4_5",
+    label: "4–5 лет",
+    norms: {
+      neutrophils: { text: "≈45%", min: 45, max: 45, approximate: true },
+      lymphocytes: { text: "45%", min: 45, max: 45, approximate: true },
+      monocytes: { text: "3–11%", min: 3, max: 11 },
+      eosinophils: { text: "0,5–5%", min: 0.5, max: 5 },
+      basophils: { text: "0–1%", min: 0, max: 1 },
+    },
+  },
+];
 
 const CELLS: CellInfo[] = [
   {
     key: "neutrophils",
     name: "Нейтрофилы",
-    short: "Нейтрофилы",
-    courseAdult: { min: 47, max: 72, label: "47–72%" },
-    external: { min: 50, max: 60, label: "50–60%" },
-    morphology: "10–12 мкм; ядро обычно 3–5 сегментов; мелкая бледная зернистость.",
-    high: "Нейтрофилия. В учебных карточках часто связывается с острым бактериальным/воспалительным ответом; возможна и при стрессовых состояниях.",
-    low: "Нейтропения. Частые причины включают лекарственное/химиотерапевтическое угнетение, инфекции и снижение продукции в костном мозге.",
+    morphology: "10–11 мкм; сегментированное ядро (обычно ≥3 сегментов); мелкая нейтрофильная зернистость.",
+    function: "Фагоцитоз микроорганизмов; участие в антигистаминных реакциях и гнойном воспалении.",
+    highTerm: "нейтрофилия (нейтрофилёз)",
+    lowTerm: "нейтрофилопения",
     localIds: ["feed-prep-9f7dc534b5", "feed-prep-867b72a4b6", "feed-prep-a47e9dc83a"],
+    highHypotheses: ["бактериаль", "инфекц", "воспал"],
+    lowHypotheses: ["угнет", "костного мозга", "лекарств", "нейтропени"],
   },
   {
     key: "lymphocytes",
     name: "Лимфоциты",
-    short: "Лимфоциты",
-    courseAdult: { min: 19, max: 37, label: "19–37%" },
-    external: { min: 20, max: 40, label: "20–40%" },
-    morphology: "Обычно 7–10 мкм; крупное округлое тёмное ядро занимает почти всю клетку; узкий ободок базофильной цитоплазмы.",
-    high: "Лимфоцитоз. У детей раннего возраста относительное повышение может быть физиологическим; патологически часто встречается при вирусных инфекциях.",
-    low: "Лимфопения. Может наблюдаться при терапии кортикостероидами, иммунодефицитах и ряде состояний с угнетением иммунной системы.",
+    morphology: "Обычно 4,5–10 мкм и более; округлое плотное тёмное ядро занимает большую часть клетки; базофильная цитоплазма.",
+    function: "Участие в иммунных реакциях; Т- и В-лимфоциты участвуют в клеточном и гуморальном иммунитете.",
+    highTerm: "лимфоцитоз",
+    lowTerm: "лимфоцитопения",
     localIds: ["feed-prep-a2feb3ec86", "feed-prep-5a224c48f5", "feed-prep-29f73833e0"],
+    highHypotheses: ["вирус", "инфекц"],
+    lowHypotheses: ["иммунодефицит", "иммунн", "угнет", "кортикост"],
   },
   {
     key: "monocytes",
     name: "Моноциты",
-    short: "Моноциты",
-    courseAdult: { min: 3, max: 11, label: "3–11%" },
-    external: { min: 2, max: 9, label: "2–9%" },
-    morphology: "Крупнейший лейкоцит периферической крови; около 18–20 мкм; бобовидное/подковообразное ядро, широкая серо-голубая цитоплазма.",
-    high: "Моноцитоз. Может сопровождать хронические инфекции и воспалительные процессы.",
-    low: "Моноцитопения. Низкий процент обычно менее специфичен и оценивается вместе с общей формулой и абсолютным числом.",
+    morphology: "18–20 мкм; крупная клетка; бобовидное/подковообразное светлое рыхлое ядро; широкая светло-базофильная цитоплазма.",
+    function: "Дифференцируются в макрофаги и формируют макрофагическую систему организма.",
+    highTerm: "моноцитоз",
+    lowTerm: "моноцитопения",
     localIds: ["feed-prep-bca30caf3b", "feed-prep-a2feb3ec86"],
+    highHypotheses: ["хроническ", "инфекц", "воспал", "аутоиммун"],
+    lowHypotheses: ["угнет", "лекарств", "иммунодефицит", "инфекц"],
   },
   {
     key: "eosinophils",
     name: "Эозинофилы",
-    short: "Эозинофилы",
-    courseAdult: { min: 1, max: 6, label: "1–6%" },
-    external: { min: 1, max: 4, label: "1–4%" },
-    morphology: "12–14 мкм; обычно 2 сегмента ядра; крупные яркие оксифильные/красноватые гранулы.",
-    high: "Эозинофилия. Классические учебные ассоциации — аллергические реакции и паразитарные инвазии.",
-    low: "Эозинопения. Может встречаться при терапии кортикостероидами, стрессовых состояниях и тяжёлых инфекциях; обычно сама по себе малоинформативна.",
+    morphology: "12–14 мкм; ядро обычно из 2 сегментов; крупные оксифильные гранулы.",
+    function: "Уничтожение микроорганизмов, гельминтов и простейших; разрушение гистамина и участие в аллергических реакциях.",
+    highTerm: "эозинофилия",
     localIds: ["feed-prep-9f7dc534b5", "feed-prep-a47e9dc83a"],
+    highHypotheses: ["аллерг", "паразит", "инваз"],
+    lowHypotheses: ["кортикост", "стресс", "тяжёл"],
   },
   {
     key: "basophils",
     name: "Базофилы",
-    short: "Базофилы",
-    courseAdult: { min: 0.5, max: 1, label: "0,5–1%" },
-    external: { min: 0.5, max: 2, label: "0,5–2%" },
-    morphology: "Около 11–12 мкм; ядро слабодольчатое/S-образное и часто скрыто крупными тёмно-фиолетовыми гранулами.",
-    high: "Базофилия. Особенно важна как учебный признак при миелопролиферативных заболеваниях; также возможна при некоторых реакциях гиперчувствительности.",
-    low: "Базопения. Обычно не является самостоятельным диагностическим признаком и оценивается только в контексте всей формулы.",
+    morphology: "11–12 мкм; ядро слабо разделено на сегменты и часто скрыто крупными базофильными гранулами.",
+    function: "Гепарин действует как антикоагулянт; гистамин увеличивает проницаемость сосудов и соединительной ткани.",
+    highTerm: "базофилия",
     localIds: [],
+    highHypotheses: ["миелопролифера", "гиперчувств", "аллерг"],
+    lowHypotheses: ["самостоятельн", "не имеет специфическ"],
   },
 ];
 
-const AGE_CROSSINGS = [
-  { age: "1-е сутки", neut: "60–70%", lymph: "20–30%", note: "преобладают нейтрофилы" },
-  { age: "4-е сутки", neut: "≈45%", lymph: "≈45%", note: "1-й перекрёст" },
-  { age: "1–2 года", neut: "25–30%", lymph: "60–65% (до 70%)", note: "преобладают лимфоциты" },
-  { age: "4 года", neut: "≈45%", lymph: "≈45%", note: "2-й перекрёст" },
-  { age: "14–15 лет и взрослые", neut: "47–72%", lymph: "19–37%", note: "формула взрослого" },
-];
-
 const EXTERNAL_IMAGES = [
-  { cell: "neutrophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg", source: "University of Utah WebPath", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html", caption: "Сегментоядерный нейтрофил и лимфоцит" },
-  { cell: "monocytes" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME003.jpg", source: "University of Utah WebPath", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM021.html", caption: "Моноцит в периферической крови" },
-  { cell: "eosinophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME004.jpg", source: "University of Utah WebPath", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM022.html", caption: "Эозинофил и лимфоцит" },
-  { cell: "basophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME005.jpg", source: "University of Utah WebPath", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM023.html", caption: "Базофил, палочкоядерный нейтрофил и лимфоцит" },
+  { cell: "neutrophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html" },
+  { cell: "monocytes" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME003.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM021.html" },
+  { cell: "eosinophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME004.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM022.html" },
+  { cell: "basophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME005.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM023.html" },
 ];
 
-const PERCENT_QUESTIONS: Array<{ cell: CellKey; prompt: string; options: string[]; answer: string; explanation: string }> = [
-  { cell: "neutrophils", prompt: "Какой учебный диапазон нормы нейтрофилов у взрослого?", options: ["19–37%", "47–72%", "1–6%", "3–11%"], answer: "47–72%", explanation: "В Lecture 05 для взрослой формулы: нейтрофилы 47–72%." },
-  { cell: "lymphocytes", prompt: "Какой учебный диапазон нормы лимфоцитов у взрослого?", options: ["47–72%", "0,5–1%", "19–37%", "3–11%"], answer: "19–37%", explanation: "В Lecture 05 для взрослой формулы: лимфоциты 19–37%." },
-  { cell: "monocytes", prompt: "Какой учебный диапазон нормы моноцитов у взрослого?", options: ["3–11%", "1–6%", "19–37%", "47–72%"], answer: "3–11%", explanation: "В Lecture 05: моноциты 3–11%." },
-  { cell: "eosinophils", prompt: "Какой учебный диапазон нормы эозинофилов у взрослого?", options: ["0,5–1%", "1–6%", "3–11%", "19–37%"], answer: "1–6%", explanation: "В Lecture 05: эозинофилы 1–6%." },
-  { cell: "basophils", prompt: "Какой учебный диапазон нормы базофилов у взрослого?", options: ["0,5–1%", "1–6%", "3–11%", "19–37%"], answer: "0,5–1%", explanation: "В Lecture 05: базофилы 0,5–1%." },
-  { cell: "neutrophils", prompt: "У взрослого нейтрофилы 68%. Как оценить показатель по учебной норме Lecture 05?", options: ["Норма", "Нейтрофилия", "Нейтропения", "Эозинофилия"], answer: "Норма", explanation: "68% попадает в диапазон 47–72%." },
-  { cell: "lymphocytes", prompt: "У взрослого лимфоциты 34%. Как оценить показатель по учебной норме Lecture 05?", options: ["Норма", "Лимфоцитоз", "Лимфопения", "Моноцитоз"], answer: "Норма", explanation: "34% попадает в диапазон 19–37%." },
-  { cell: "eosinophils", prompt: "У взрослого эозинофилы 0,6%. Что это по учебному порогу Lecture 05?", options: ["Эозинофилия", "Норма", "Эозинопения", "Базофилия"], answer: "Эозинопения", explanation: "0,6% ниже учебной нижней границы 1%." },
-  { cell: "monocytes", prompt: "У взрослого моноциты 8%. Как оценить показатель?", options: ["Моноцитоз", "Норма", "Моноцитопения", "Лимфоцитоз"], answer: "Норма", explanation: "8% находится в диапазоне 3–11%." },
-];
-
-const CHANGE_QUESTIONS = [
-  { prompt: "В анализе взрослого: нейтрофилы 80%. Что происходит?", options: ["Нейтрофилия", "Нейтропения", "Лимфопения", "Эозинофилия"], answer: "Нейтрофилия", cell: "neutrophils" as CellKey, explanation: "80% выше учебной верхней границы 72% — нейтрофилия." },
-  { prompt: "В анализе взрослого: нейтрофилы 35%. Что происходит?", options: ["Нейтропения", "Нейтрофилия", "Моноцитоз", "Базофилия"], answer: "Нейтропения", cell: "neutrophils" as CellKey, explanation: "35% ниже учебной нижней границы 47% — нейтропения." },
-  { prompt: "В анализе взрослого: лимфоциты 52%. Какой термин по проценту?", options: ["Лимфоцитоз", "Лимфопения", "Нейтрофилия", "Моноцитопения"], answer: "Лимфоцитоз", cell: "lymphocytes" as CellKey, explanation: "52% выше учебной верхней границы 37% — лимфоцитоз." },
-  { prompt: "В анализе взрослого: лимфоциты 14%. Какой термин?", options: ["Лимфопения", "Лимфоцитоз", "Эозинофилия", "Норма"], answer: "Лимфопения", cell: "lymphocytes" as CellKey, explanation: "14% ниже учебной нижней границы 19% — лимфопения." },
-  { prompt: "Эозинофилы 9% у взрослого. Что запомнить?", options: ["Эозинофилия", "Эозинопения", "Норма", "Лимфопения"], answer: "Эозинофилия", cell: "eosinophils" as CellKey, explanation: "9% выше учебной верхней границы 6% — эозинофилия." },
-  { prompt: "Базофилы 1,4% у взрослого. Что запомнить по учебному порогу?", options: ["Базофилия", "Базопения", "Норма", "Нейтрофилия"], answer: "Базофилия", cell: "basophils" as CellKey, explanation: "1,4% выше учебной верхней границы 1% — базофилия." },
-  { prompt: "Моноциты 1% у взрослого. Что это?", options: ["Моноцитопения", "Моноцитоз", "Норма", "Лимфоцитоз"], answer: "Моноцитопения", cell: "monocytes" as CellKey, explanation: "1% ниже учебной нижней границы 3% — моноцитопения." },
-  { prompt: "Палочкоядерные нейтрофилы 12%. Какой термин для карточки?", options: ["Сдвиг влево", "Лимфопения", "Эозинофилия", "Базофилия"], answer: "Сдвиг влево", cell: "neutrophils" as CellKey, explanation: "12% палочкоядерных выше учебного диапазона 3–5% — сдвиг влево." },
-];
+const CONCLUSION_TERMS: Record<CellKey, { normal: string[]; high: string[]; low: string[] }> = {
+  neutrophils: { normal: ["норма", "норм"], high: ["нейтрофилия", "нейтрофилез"], low: ["нейтрофилопения"] },
+  lymphocytes: { normal: ["норма", "норм"], high: ["лимфоцитоз"], low: ["лимфоцитопения"] },
+  monocytes: { normal: ["норма", "норм"], high: ["моноцитоз"], low: ["моноцитопения"] },
+  eosinophils: { normal: ["норма", "норм"], high: ["эозинофилия"], low: [] },
+  basophils: { normal: ["норма", "норм"], high: ["базофилия"], low: [] },
+};
 
 function cellByKey(key: CellKey) {
   return CELLS.find((item) => item.key === key) || CELLS[0];
 }
 
-function externalImageFor(key: CellKey) {
-  return EXTERNAL_IMAGES.find((item) => item.cell === key) || EXTERNAL_IMAGES[0];
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/й/g, "и")
+    .replace(/[^p{L}p{N}]+/gu, " ")
+    .replace(/s+/g, " ")
+    .trim();
 }
 
-function deterministicIndex(seed: number, length: number) {
-  if (!length) return 0;
-  return Math.abs(seed * 17 + 7) % length;
+function numbers(value: string): number[] {
+  return (value.match(/d+(?:[.,]d+)?/g) || []).map((x) => Number(x.replace(",", ".")));
 }
+
+function closeNumber(a: number, b: number, tolerance = 0.15) {
+  return Math.abs(a - b) <= tolerance;
+}
+
+function normMatches(input: string, norm: Norm) {
+  const nums = numbers(input);
+  if (norm.approximate) return nums.length >= 1 && closeNumber(nums[0], norm.min, 1);
+  return nums.length >= 2 && closeNumber(nums[0], norm.min, 0.2) && closeNumber(nums[1], norm.max, 0.2);
+}
+
+function resultMatches(input: string, expected: number) {
+  const nums = numbers(input);
+  return nums.length >= 1 && closeNumber(nums[0], expected, 0.15);
+}
+
+function resultLabel(value: number) {
+  return String(value).replace(".", ",") + "%";
+}
+
+function randomBetween(min: number, max: number) {
+  return min + Math.random() * (max - min);
+}
+
+function createCase(round: number, sourceMode: SourceMode): Case {
+  const age = AGE_PROFILES[Math.floor(Math.random() * AGE_PROFILES.length)];
+  const cell = CELLS[Math.floor(Math.random() * CELLS.length)];
+  const norm = age.norms[cell.key];
+  const supportsLow = Boolean(CONCLUSION_TERMS[cell.key].low.length);
+  const statusPool: Deviation[] = supportsLow ? ["normal", "high", "low"] : ["normal", "high"];
+  const deviation = statusPool[Math.floor(Math.random() * statusPool.length)];
+
+  let result: number;
+  if (norm.approximate) {
+    if (deviation === "normal") result = norm.min;
+    else if (deviation === "high") result = Math.round((norm.max + randomBetween(8, 18)) * 10) / 10;
+    else result = Math.max(0.1, Math.round((norm.min - randomBetween(6, 15)) * 10) / 10);
+  } else if (deviation === "normal") {
+    result = Math.round(randomBetween(norm.min, norm.max) * 10) / 10;
+  } else if (deviation === "high") {
+    const delta = Math.max(1, (norm.max - norm.min) * 0.35);
+    result = Math.round((norm.max + randomBetween(Math.max(0.5, delta * 0.35), delta)) * 10) / 10;
+  } else {
+    const delta = Math.max(0.5, norm.min * 0.45);
+    result = Math.round(Math.max(0.1, norm.min - randomBetween(Math.max(0.2, delta * 0.5), delta)) * 10) / 10;
+  }
+
+  const localIds = cell.localIds;
+  const external = EXTERNAL_IMAGES.filter((item) => item.cell === cell.key);
+  let source: "local" | "external";
+  if (sourceMode === "local" && localIds.length) source = "local";
+  else if (sourceMode === "external" && external.length) source = "external";
+  else if (localIds.length) source = Math.random() > 0.25 ? "local" : "external";
+  else source = "external";
+
+  const id = ["case", String(round), String(Date.now())].join("-");
+
+  if (source === "local") {
+    return { id, age, cell: cell.key, norm, result, deviation, source, imageId: localIds[Math.floor(Math.random() * localIds.length)] };
+  }
+
+  const image = external[0] || EXTERNAL_IMAGES[Math.floor(Math.random() * EXTERNAL_IMAGES.length)];
+  return { id, age, cell: image.cell, norm: age.norms[image.cell], result: image.cell === cell.key ? result : age.norms[image.cell].min, deviation: image.cell === cell.key ? deviation : "normal", source, imageUrl: image.url, imageSourceUrl: image.sourceUrl };
+}
+
+const EMPTY: Answers = { cell: "", norm: "", result: "", conclusion: "", diagnosis: "" };
 
 export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
   const spec = useMemo<Spec>(() => {
     try {
       const value = JSON.parse(raw || "{}") as Spec;
+      const requested = value.mode;
       return {
         title: String(value.title || "Лейкоцитарная формула — тренажёр"),
-        mode: value.mode === "percent" || value.mode === "changes" || value.mode === "morphology" || value.mode === "mixed" ? value.mode : "mixed",
+        mode: requested === "percent" || requested === "changes" || requested === "morphology" || requested === "case" || requested === "mixed" ? requested : "case",
         sourceMode: value.sourceMode === "local" || value.sourceMode === "external" || value.sourceMode === "mixed" ? value.sourceMode : "mixed",
         rounds: Math.min(30, Math.max(5, Number(value.rounds) || 12)),
       };
     } catch {
-      return { title: "Лейкоцитарная формула — тренажёр", mode: "mixed", sourceMode: "mixed", rounds: 12 };
+      return { title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 };
     }
   }, [raw]);
 
   const [round, setRound] = useState(0);
-  const [selected, setSelected] = useState("");
-  const [checked, setChecked] = useState<boolean | null>(null);
-  const [score, setScore] = useState(0);
+  const [currentCase, setCurrentCase] = useState<Case | null>(null);
+  const [answers, setAnswers] = useState<Answers>(EMPTY);
+  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const [sourceTab, setSourceTab] = useState<"local" | "external">(spec.sourceMode === "external" ? "external" : "local");
+  const [grades, setGrades] = useState<number[]>([]);
 
-  const modeForRound = spec.mode === "mixed"
-    ? (["percent", "changes", "morphology"] as const)[round % 3]
-    : spec.mode;
-
-  const question = useMemo(() => {
-    if (modeForRound === "percent") {
-      const item = PERCENT_QUESTIONS[deterministicIndex(round, PERCENT_QUESTIONS.length)];
-      return { kind: "percent" as const, ...item };
-    }
-    if (modeForRound === "changes") {
-      const item = CHANGE_QUESTIONS[deterministicIndex(round, CHANGE_QUESTIONS.length)];
-      return { kind: "changes" as const, ...item };
-    }
-    const localCandidates = CELLS.flatMap((item) => item.localIds.map((id) => ({ source: "local" as const, cell: item.key, id })));
-    const externalCandidates = EXTERNAL_IMAGES.map((item) => ({ source: "external" as const, cell: item.cell, url: item.url, sourceUrl: item.sourceUrl, caption: item.caption }));
-    const candidates = sourceTab === "local"
-      ? localCandidates
-      : sourceTab === "external"
-        ? externalCandidates
-        : [...localCandidates, ...externalCandidates];
-    const item = candidates[deterministicIndex(round, candidates.length)];
-    if (!item) {
-      return { kind: "morphology" as const, source: "external" as const, cell: EXTERNAL_IMAGES[0].cell, url: EXTERNAL_IMAGES[0].url, sourceUrl: EXTERNAL_IMAGES[0].sourceUrl, caption: EXTERNAL_IMAGES[0].caption };
-    }
-    return { kind: "morphology" as const, ...item };
-  }, [modeForRound, round, sourceTab]);
+  const actualMode = spec.mode === "mixed" ? "case" : spec.mode;
 
   useEffect(() => {
-    setSelected("");
-    setChecked(null);
-    setImageFailed(false);
+    if (actualMode !== "case") return;
+    setCurrentCase(createCase(round, spec.sourceMode || "mixed"));
+    setAnswers(EMPTY);
+    setEvaluation(null);
     setImageUrl(null);
-    if (question.kind !== "morphology") return;
-    if (question.source === "external") {
-      setImageUrl(question.url);
+    setImageFailed(false);
+  }, [actualMode, round, spec.sourceMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentCase || currentCase.source !== "local" || !currentCase.imageId) {
+      setImageLoading(false);
       return;
     }
     setImageLoading(true);
-    void getTrainerImageUrl(question.id).then((url) => {
-      setImageLoading(false);
-      setImageUrl(url || null);
-      if (!url) setImageFailed(true);
-    }).catch(() => {
-      setImageLoading(false);
-      setImageFailed(true);
-    });
-  }, [question]);
+    void getTrainerImageUrl(currentCase.imageId)
+      .then((url) => {
+        if (cancelled) return;
+        setImageLoading(false);
+        setImageUrl(url || null);
+        if (!url) setImageFailed(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setImageLoading(false);
+        setImageFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, [currentCase]);
 
-  const cell = cellByKey(question.cell);
-
-  function submit() {
-    if (checked !== null || !selected) return;
-    const correct = selected === question.cell || selected === question.answer;
-    setChecked(correct);
-    if (correct) setScore((value) => value + 1);
+  function update(field: keyof Answers, value: string) {
+    setAnswers((prev) => ({ ...prev, [field]: value }));
   }
 
-  function next() {
+  function evaluate(event: FormEvent) {
+    event.preventDefault();
+    if (!currentCase || evaluation) return;
+
+    const info = cellByKey(currentCase.cell);
+    const cellAnswer = normalizeText(answers.cell);
+    const cellCorrect = cellAnswer.includes(normalizeText(info.name)) || ["нейтрофил", "лимфоцит", "моноцит", "эозинофил", "базофил"].some((x) => cellAnswer.includes(x) && normalizeText(info.name).includes(x));
+
+    const normCorrect = normMatches(answers.norm, currentCase.norm);
+    const resultCorrect = resultMatches(answers.result, currentCase.result);
+    const conclusionTerms = CONCLUSION_TERMS[currentCase.cell][currentCase.deviation];
+    const conclusionCorrect = conclusionTerms.some((term) => normalizeText(answers.conclusion).includes(term));
+
+    const diagnosisText = normalizeText(answers.diagnosis);
+    const diagnosisCorrect = currentCase.deviation === "normal"
+      ? diagnosisText.includes("норм") || diagnosisText.includes("нет") || diagnosisText.includes("без отклон")
+      : info[currentCase.deviation === "high" ? "highHypotheses" : "lowHypotheses"].some((term) => diagnosisText.includes(term));
+
+    const baseCorrect = [cellCorrect, normCorrect, resultCorrect, conclusionCorrect].every(Boolean);
+    const grade: 2 | 4 | 5 = !baseCorrect ? 2 : diagnosisCorrect ? 5 : 4;
+
+    setEvaluation({ cell: cellCorrect, norm: normCorrect, result: resultCorrect, conclusion: conclusionCorrect, diagnosis: diagnosisCorrect, grade });
+    setGrades((prev) => [...prev, grade]);
+  }
+
+  function nextCase() {
     if (round + 1 >= spec.rounds) return;
     setRound((value) => value + 1);
-    setSelected("");
-    setChecked(null);
   }
 
   function restart() {
     setRound(0);
-    setScore(0);
-    setSelected("");
-    setChecked(null);
+    setGrades([]);
+    setAnswers(EMPTY);
+    setEvaluation(null);
+    setCurrentCase(null);
   }
 
-  const options = question.kind === "morphology"
-    ? [cellByKey(question.cell).name, "Другая клетка", "Эритроцит", "Тромбоцит"].sort((a, b) => a.localeCompare(b, "ru"))
-    : question.options || [];
+  if (actualMode !== "case") {
+    return (
+      <section className="my-7 rounded-3xl border border-indigo-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl bg-indigo-50 p-4">
+          <h3 className="text-lg font-extrabold text-slate-900">{spec.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">Этот блок сохранён для совместимости со старыми режимами. Для практики по методичке используется режим «Карточка исследования».</p>
+        </div>
+      </section>
+    );
+  }
 
-  const progress = Math.min(100, ((round + 1) / spec.rounds) * 100);
-  const done = round + 1 >= spec.rounds && checked !== null;
+  if (!currentCase) {
+    return <section className="my-7 rounded-3xl border border-indigo-200 bg-white p-6 text-sm text-slate-500">Готовлю карточку исследования…</section>;
+  }
+
+  const cell = cellByKey(currentCase.cell);
+  const visibleImage = currentCase.source === "external" ? currentCase.imageUrl || null : imageUrl;
+  const overallDone = Boolean(evaluation && round + 1 >= spec.rounds);
+  const average = grades.length ? Math.round((grades.reduce((sum, value) => sum + value, 0) / grades.length) * 10) / 10 : null;
 
   return (
     <section className="my-7 overflow-hidden rounded-3xl border border-indigo-200 bg-white shadow-sm">
-      <div className="bg-gradient-to-r from-indigo-50 via-white to-emerald-50 p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Интерактивный тренажёр</div>
-            <h3 className="mt-1 text-lg font-extrabold text-slate-900">{spec.title}</h3>
+      <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-emerald-50 p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-800">
+              <ClipboardCheck className="h-3.5 w-3.5" /> Практическая карточка
+            </div>
+            <h3 className="mt-2 text-xl font-extrabold text-slate-900">{spec.title}</h3>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
-              Проценты → увеличение/уменьшение → распознавание мазка. Для запоминания используется учебная норма Lecture 05; лабораторные референсы могут отличаться.
+              1) опознай клетку по мазку → 2) назови норму по возрасту → 3) перепиши результат → 4) сравни и поставь термин → 5) объясни функцию и сформулируй предварительную гипотезу.
             </p>
           </div>
-          <div className="min-w-[150px] text-right">
-            <div className="text-xs font-semibold text-slate-500">Раунд {Math.min(round + 1, spec.rounds)} / {spec.rounds}</div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-indigo-500" style={{ width: progress + "%" }} /></div>
-            <div className="mt-1 text-xs font-bold text-slate-700">Счёт: {score}</div>
+          <div className="rounded-2xl border border-indigo-100 bg-white/80 px-4 py-3 text-right shadow-sm">
+            <div className="text-xs font-semibold text-slate-500">Карточка</div>
+            <div className="text-lg font-extrabold text-slate-900">{round + 1} / {spec.rounds}</div>
+            {average !== null ? <div className="mt-1 text-[11px] font-bold text-indigo-700">Средняя: {average}</div> : null}
           </div>
         </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {modeForRound === "morphology" ? (
-            <>
-              <button type="button" onClick={() => setSourceTab("local")} className={"rounded-full border px-3 py-1.5 text-xs font-bold " + (sourceTab === "local" ? "border-indigo-500 bg-indigo-100 text-indigo-800" : "bg-white text-slate-600")}>Мои препараты</button>
-              <button type="button" onClick={() => setSourceTab("external")} className={"rounded-full border px-3 py-1.5 text-xs font-bold " + (sourceTab === "external" ? "border-indigo-500 bg-indigo-100 text-indigo-800" : "bg-white text-slate-600")}>Внешняя сверка</button>
-            </>
-          ) : null}
-          <div className="ml-auto rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500">режим: {modeForRound === "percent" ? "проценты" : modeForRound === "changes" ? "↑ / ↓" : "мазок"}</div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: String(((round + 1) / spec.rounds) * 100) + "%" }} />
         </div>
       </div>
 
-      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div>
-          {question.kind === "morphology" ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-              {imageLoading ? (
-                <div className="flex min-h-[280px] items-center justify-center text-sm text-slate-500">Загружаем препарат…</div>
-              ) : imageUrl && !imageFailed ? (
-                <ImageLightbox
-                  src={imageUrl}
-                  alt={"Учебное изображение: " + cell.name}
-                  caption={question.source === "external" ? question.caption : "Канонический препарат MEDBIOHIM"}
-                  className="min-h-[280px] bg-slate-50"
-                  imageClassName="mx-auto max-h-[420px] w-full object-contain p-2 sm:max-h-[520px]"
-                />
-              ) : (
-                <div className="flex min-h-[280px] flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500">
-                  <span>Изображение временно недоступно.</span>
-                  {question.source === "external" ? (
-                    <a href={question.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-indigo-600 underline">Открыть источник</a>
-                  ) : null}
-                </div>
-              )}
-              <div className="border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
-                <div className="font-bold text-slate-900">Смотри сначала сам</div>
-                <div className="mt-1">Размер → ядро → сегментация → зернистость → клетка.</div>
-                {question.source === "external" ? (
-                  <a href={question.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex font-semibold text-indigo-600 underline">{question.caption} · WebPath</a>
+      <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_300px] sm:p-5">
+        <div className="min-w-0 space-y-5">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Карточка исследования</div>
+                <div className="mt-1 text-lg font-extrabold text-slate-900">Возраст пациента: {currentCase.age.label}</div>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2 text-right shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Результат исследования</div>
+                <div className="text-2xl font-black text-slate-900">{resultLabel(currentCase.result)}</div>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">Это единственное числовое значение на карточке. Его нужно самостоятельно переписать в 3-й столбик.</p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <div className="p-3 text-sm font-extrabold text-slate-900">1. Опознать клетку</div>
+              <div className="bg-slate-950">
+                {visibleImage ? (
+                  <ImageLightbox
+                    src={visibleImage}
+                    alt="Мазок периферической крови"
+                    caption="Учебный мазок периферической крови"
+                    className="bg-slate-950"
+                    imageClassName="mx-auto h-[235px] w-full object-contain p-2 sm:h-[270px]"
+                  />
                 ) : (
-                  <a href="/subjects/histology?tab=trainer" className="mt-2 inline-flex font-semibold text-indigo-600 underline">Открыть локальный атлас</a>
+                  <div className="flex h-[235px] items-center justify-center text-xs text-white/60">{imageLoading ? "Загрузка мазка…" : "Изображение временно недоступно"}</div>
+                )}
+              </div>
+              <div className="border-t border-slate-200 px-3 py-2 text-[10px] text-slate-500">
+                {currentCase.source === "local" ? "Канонический препарат MEDBIOHIM" : "University of Utah WebPath"}
+                {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
+              </div>
+              <input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Какой это лейкоцит?" />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="text-sm font-extrabold text-slate-900">2. Норма по возрасту</div>
+              <div className="mt-2 rounded-xl bg-indigo-50 p-3 text-xs leading-5 text-indigo-900">Возраст: <b>{currentCase.age.label}</b></div>
+              <div className="mt-3 text-xs leading-5 text-slate-500">Пиши норму именно для распознанной клетки и этого возраста. Можно: «19–37%», «19-37%».</div>
+              <input value={answers.norm} onChange={(e) => update("norm", e.target.value)} disabled={Boolean(evaluation)} className="mt-4 w-full rounded-xl border px-3 py-3 text-sm" placeholder="Норма, %" />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="text-sm font-extrabold text-slate-900">3. Результат исследования</div>
+              <div className="mt-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">Скопируй вручную число с карточки исследования выше.</div>
+              <input value={answers.result} onChange={(e) => update("result", e.target.value)} disabled={Boolean(evaluation)} className="mt-4 w-full rounded-xl border px-3 py-3 text-sm" placeholder="Результат, %" />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="text-sm font-extrabold text-slate-900">4. Вывод</div>
+              <div className="mt-2 text-xs leading-5 text-slate-500">Сравни результат с возрастной нормой и напиши термин из методички.</div>
+              <input value={answers.conclusion} onChange={(e) => update("conclusion", e.target.value)} disabled={Boolean(evaluation)} className="mt-4 w-full rounded-xl border px-3 py-3 text-sm" placeholder="Норма / нейтрофилия / ..." />
+            </div>
+
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 md:col-span-2 xl:col-span-4">
+              <div className="text-sm font-extrabold text-slate-900">5. Предварительный диагноз / гипотеза для «5»</div>
+              <div className="mt-2 text-xs leading-5 text-slate-600">Сначала назови функцию клетки, затем свяжи её с найденным отклонением. Это учебная гипотеза, а не окончательный диагноз.</div>
+              <input value={answers.diagnosis} onChange={(e) => update("diagnosis", e.target.value)} disabled={Boolean(evaluation)} className="mt-4 w-full rounded-xl border px-3 py-3 text-sm" placeholder="Например: предполагаю бактериальную инфекцию" />
+            </div>
+          </div>
+
+          <form onSubmit={evaluate}>
+            {!evaluation ? (
+              <button type="submit" disabled={!answers.cell.trim() || !answers.norm.trim() || !answers.result.trim() || !answers.conclusion.trim()} className="w-full rounded-2xl bg-indigo-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-40">
+                Проверить карточку
+              </button>
+            ) : null}
+          </form>
+
+          {evaluation ? (
+            <div className="space-y-4">
+              <div className={"rounded-3xl border p-4 " + (evaluation.grade === 2 ? "border-rose-200 bg-rose-50" : evaluation.grade === 5 ? "border-emerald-200 bg-emerald-50" : "border-indigo-200 bg-indigo-50")}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Результат карточки</div>
+                    <div className="mt-1 text-3xl font-black text-slate-900">{evaluation.grade}</div>
+                  </div>
+                  <div className="text-right text-xs font-semibold text-slate-600">
+                    {evaluation.grade === 2 ? "Ошибка хотя бы в одном из первых 4 столбиков." : evaluation.grade === 5 ? "Все 4 столбика верны + обоснована предварительная гипотеза." : "Все 4 основных столбика решены верно."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-5">
+                {[
+                  ["Клетка", evaluation.cell],
+                  ["Норма", evaluation.norm],
+                  ["Результат", evaluation.result],
+                  ["Вывод", evaluation.conclusion],
+                  ["Гипотеза", evaluation.diagnosis],
+                ].map(([label, ok]) => (
+                  <div key={String(label)} className={"rounded-xl border px-3 py-3 text-xs " + (ok ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50")}>
+                    <div className="font-bold text-slate-500">{label}</div>
+                    <div className="mt-1 flex items-center gap-1 font-extrabold">{ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-rose-600" />}{ok ? "Верно" : "Ошибка"}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-extrabold text-slate-900">Эталон разбора</div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">1. Клетка</div><div className="mt-1 font-bold">{cell.name}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">2. Норма</div><div className="mt-1 font-bold">{currentCase.norm.text}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">3. Результат</div><div className="mt-1 font-bold">{resultLabel(currentCase.result)}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">4. Вывод</div><div className="mt-1 font-bold">{currentCase.deviation === "normal" ? "Норма" : currentCase.deviation === "high" ? cell.highTerm : cell.lowTerm || "отклонение"}</div></div>
+                </div>
+                <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-700"><b>Функция клетки:</b> {cell.function}</div>
+                <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm leading-6 text-emerald-900">
+                  <b>Для «5»:</b>{" "}
+                  {currentCase.deviation === "normal"
+                    ? "при нормальном результате по этому показателю отдельная патологическая гипотеза не формируется."
+                    : currentCase.deviation === "high"
+                      ? "учебные направления: " + cell.highHypotheses.join(", ") + ". Конкретный диагноз требует дополнительных данных."
+                      : "контекст снижения: " + cell.lowHypotheses.join(", ") + ". Одного процента недостаточно для диагноза."}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                {overallDone ? (
+                  <button type="button" onClick={restart} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700"><RotateCcw className="h-4 w-4" /> Пройти заново</button>
+                ) : (
+                  <button type="button" onClick={nextCase} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white"><Sparkles className="h-4 w-4" /> Следующая карточка</button>
                 )}
               </div>
             </div>
-          ) : (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              {question.kind === "percent" ? (
-                <>
-                  <div className="text-xs font-bold uppercase tracking-wider text-indigo-600">Запомни процент</div>
-                  <div className="mt-2 text-lg font-extrabold text-slate-900">{question.prompt}</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-xs font-bold uppercase tracking-wider text-indigo-600">↑ / ↓</div>
-                  <div className="mt-2 text-lg font-extrabold text-slate-900">{question.prompt}</div>
-                </>
-              )}
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {options.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    disabled={checked !== null}
-                    onClick={() => setSelected(option)}
-                    className={"rounded-xl border px-3 py-3 text-left text-sm font-semibold transition " +
-                      (selected === option ? "border-indigo-500 bg-indigo-100 text-indigo-900" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50") +
-                      (checked !== null && (option === question.cell || option === question.answer) ? " border-emerald-400 bg-emerald-50 text-emerald-900" : "")}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {checked !== null && (
-            <div className={"mt-4 rounded-2xl border p-4 " + (checked ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50")}>
-              <div className="text-sm font-extrabold">{checked ? "✓ Правильно" : "✕ Пока нет"}</div>
-              <div className="mt-2 text-sm leading-6 text-slate-700">
-                <b>{cell.name}:</b> {cell.morphology}
-              </div>
-              {question.kind === "percent" && <div className="mt-2 text-sm text-slate-700">{question.explanation}</div>}
-              {question.kind === "changes" && <div className="mt-2 text-sm text-slate-700">{question.explanation}</div>}
-              {question.kind === "morphology" && <div className="mt-2 text-sm text-slate-700">{cell.morphology}</div>}
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap justify-end gap-2">
-            {done ? (
-              <button type="button" onClick={restart} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">Пройти ещё раз</button>
-            ) : checked !== null ? (
-              <button type="button" onClick={next} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white">Следующий</button>
-            ) : (
-              <button type="button" disabled={!selected} onClick={submit} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Проверить</button>
-            )}
-          </div>
+          ) : null}
         </div>
 
         <aside className="space-y-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Норма взрослого · курс</div>
-            <div className="mt-3 space-y-2">
-              {CELLS.map((item) => (
-                <div key={item.key} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs">
-                  <span className="font-semibold text-slate-700">{item.short}</span>
-                  <span className="font-extrabold text-slate-900">{item.courseAdult.label}</span>
-                </div>
-              ))}
+            <div className="text-sm font-extrabold text-slate-900">Критерии оценки</div>
+            <div className="mt-3 space-y-2 text-xs leading-5 text-slate-600">
+              <div className="rounded-xl bg-rose-50 p-3"><b>2</b> — ошибка хотя бы в одном из первых 4 столбиков.</div>
+              <div className="rounded-xl bg-indigo-50 p-3"><b>4</b> — все 4 основных столбика верны.</div>
+              <div className="rounded-xl bg-emerald-50 p-3"><b>5</b> — все 4 верны + предварительная гипотеза связана с функцией клетки.</div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-            <div className="text-xs font-bold uppercase tracking-wider text-amber-800">Внешняя сверка</div>
-            <div className="mt-2 text-xs leading-5 text-amber-900">
-              University of Iowa Health Care: нейтрофилы 50–60%, лимфоциты 20–40%, моноциты 2–9%, эозинофилы 1–4%, базофилы 0,5–2%. Референсы зависят от лаборатории.
-            </div>
-            <a href="https://uihc.org/cancer/educational-resources/complete-blood-count-guide-patients-cancer" target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-amber-900 underline">Открыть источник Iowa</a>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Возрастные перекрёсты</div>
-            <div className="mt-2 space-y-2">
-              {AGE_CROSSINGS.map((item) => (
-                <div key={item.age} className="rounded-xl bg-slate-50 p-2.5 text-[11px] leading-5">
-                  <div className="font-bold text-slate-800">{item.age}</div>
-                  <div className="text-slate-600">N {item.neut} · L {item.lymph} · {item.note}</div>
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+            <div className="text-sm font-extrabold text-indigo-950">Нормы для карточек</div>
+            <div className="mt-2 text-[11px] leading-5 text-indigo-900">Источник: <b>{COURSE_NORM_SOURCE}</b>. Используются именно возрастные значения лейкоцитарной формулы.</div>
+            <div className="mt-3 space-y-1.5">
+              {AGE_PROFILES.map((age) => (
+                <div key={age.id} className="rounded-xl bg-white/80 p-2.5 text-[10px] text-slate-700">
+                  <div className="font-bold">{age.label}</div>
+                  <div className="mt-1">N {age.norms.neutrophils.text} · L {age.norms.lymphocytes.text} · M {age.norms.monocytes.text}</div>
+                  <div>E {age.norms.eosinophils.text} · B {age.norms.basophils.text}</div>
                 </div>
               ))}
+            </div>
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] leading-5 text-amber-900">
+              Эозинофилы и базофилы в курсовой таблице имеют только оценку «норма/повышение» для этой карточки: отдельный термин снижения в исходном документе не указан.
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Главный алгоритм</div>
-            <div className="mt-2 text-sm font-bold leading-6 text-slate-800">Возраст → процент → ↑/↓ → морфология → функция.</div>
-            <div className="mt-2 text-[11px] leading-5 text-slate-500">
-              Процентный тренажёр учебный. При реальной лабораторной интерпретации учитываются абсолютные числа, симптомы и референсный интервал конкретной лаборатории.
+            <div className="text-sm font-extrabold text-slate-900">Как делать на занятии</div>
+            <div className="mt-3 space-y-2 text-xs leading-5 text-slate-600">
+              <div><b>1.</b> Узнай клетку по размеру, ядру и зернистости.</div>
+              <div><b>2.</b> Открой нужную возрастную колонку и назови норму.</div>
+              <div><b>3.</b> Перепиши значение исследования без округления.</div>
+              <div><b>4.</b> Назови термин: норма, повышение или понижение.</div>
+              <div><b>5.</b> Свяжи функцию клетки с возможной причиной отклонения.</div>
             </div>
           </div>
         </aside>
