@@ -423,6 +423,72 @@ export async function listMaterials(params:any={}){const q=new URLSearchParams()
 export async function syncAcademicState(){return api<any>("/academic/sync",{method:"POST",body:"{}"})}
 export async function getAcademicState(){return api<AcademicState>("/academic/state")}
 export async function generateAcademicAiPlan(){return api<{plan:any;items:any[];source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
+
+export type AdminDatabaseConnection = {
+  id: string;
+  slug: string;
+  label: string;
+  driver: "pgsql" | "mysql";
+  host: string;
+  port: number | null;
+  database_name: string;
+  username: string;
+  password_configured?: boolean;
+  sslmode?: string | null;
+  charset?: string | null;
+  enabled?: boolean;
+  builtin?: boolean;
+  status?: "unknown" | "connected" | "failed" | "untested";
+  last_test_ok?: boolean | null;
+  last_tested_at?: string | null;
+  last_error?: string | null;
+  updated_at?: string | null;
+};
+
+export async function adminDatabaseConnections(): Promise<any> {
+  return api("/admin/database/connections") as any;
+}
+export async function adminDatabaseSaveConnection(id:string,payload:Record<string,unknown>): Promise<any> {
+  return api("/admin/database/connections/" + encodeURIComponent(id), {
+    method:"PUT",
+    body:JSON.stringify(payload),
+  }) as any;
+}
+export async function adminDatabaseTestConnection(id:string): Promise<any> {
+  return api("/admin/database/connections/" + encodeURIComponent(id) + "/test", {method:"POST",body:"{}"}) as any;
+}
+export async function adminDatabaseTables(id:string): Promise<any> {
+  return api("/admin/database/" + encodeURIComponent(id) + "/tables") as any;
+}
+export async function adminDatabaseSchema(id:string,table:string): Promise<any> {
+  return api("/admin/database/" + encodeURIComponent(id) + "/schema/" + encodeURIComponent(table)) as any;
+}
+export async function adminDatabaseRows(id:string,table:string,limit=100,offset=0,q=""): Promise<any> {
+  const params=new URLSearchParams({limit:String(limit),offset:String(offset)});
+  if(q.trim()) params.set("q",q.trim());
+  return api("/admin/database/" + encodeURIComponent(id) + "/rows/" + encodeURIComponent(table) + "?" + params.toString()) as any;
+}
+export async function adminDatabaseInsert(id:string,table:string,row:Record<string,unknown>): Promise<any> {
+  return api("/admin/database/" + encodeURIComponent(id) + "/rows/" + encodeURIComponent(table),{
+    method:"POST",body:JSON.stringify(row),
+  }) as any;
+}
+export async function adminDatabaseUpdate(id:string,table:string,key:Record<string,unknown>,row:Record<string,unknown>): Promise<any> {
+  return api("/admin/database/" + encodeURIComponent(id) + "/rows/" + encodeURIComponent(table),{
+    method:"PATCH",body:JSON.stringify({key,row}),
+  }) as any;
+}
+export async function adminDatabaseDelete(id:string,table:string,key:Record<string,unknown>): Promise<any> {
+  return api("/admin/database/" + encodeURIComponent(id) + "/rows/" + encodeURIComponent(table),{
+    method:"DELETE",body:JSON.stringify({key}),
+  }) as any;
+}
+export async function adminDatabaseSql(id:string,sql:string,confirmed=false): Promise<any> {
+  return api("/admin/database/" + encodeURIComponent(id) + "/sql",{
+    method:"POST",body:JSON.stringify({sql,confirmed}),
+  }) as any;
+}
+
 export type AdminDbRow = any;
 export type AdminDbMeta = any;
 export type AdminContentImportPayload = any;
