@@ -211,7 +211,7 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   }
 
   if (kind === "pdf") {
-    const url = URL.createObjectURL(blob);
+    const url = blobUrl;
     return <iframe title={title} src={url} className="min-h-[78vh] w-full rounded-2xl border bg-white" />;
   }
 
