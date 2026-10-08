@@ -98,6 +98,27 @@ for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
 if (malformedImports.length) fail("malformed Medbiohim namespace imports: " + malformedImports.join(", "));
 else pass("backend namespace imports look valid");
 
+// Namespaced PHP files must qualify built-in exception classes. An unqualified
+// RuntimeException/InvalidArgumentException/Throwable resolves to the current
+// namespace and can fail only when that branch is executed, so syntax checks
+// alone do not catch it.
+const namespaceExceptionHits = [];
+for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
+  const text = await readFile(file, "utf8");
+  if (!/namespace\s+[^;]+;/.test(text)) continue;
+  const lines = text.split("\n");
+  lines.forEach((line, index) => {
+    const stripped = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
+    if (/\b(?:new\s+|catch\s*\(\s*|extends\s+)\b/.test(stripped) &&
+        /\b(RuntimeException|InvalidArgumentException|Throwable|PDOException|LogicException|ErrorException)\b/.test(stripped) &&
+        !/\\(?:RuntimeException|InvalidArgumentException|Throwable|PDOException|LogicException|ErrorException)\b/.test(stripped)) {
+      namespaceExceptionHits.push(relative(root, file) + ":" + (index + 1));
+    }
+  });
+}
+if (namespaceExceptionHits.length) fail("unqualified PHP exception classes in namespaced files: " + namespaceExceptionHits.join(", "));
+else pass("namespaced PHP exception classes are qualified");
+
 const exposedDebugRoutes = [];
 const platformPath = join(root, "backend/config/routes/platform.php");
 if (existsSync(platformPath)) {
