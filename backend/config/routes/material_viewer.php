@@ -11,6 +11,82 @@ use Medbiohim\Services\B2Storage;
 use Medbiohim\Services\SpecialtyAccess;
 
 return static function (Router $router): void {
+    $router->get('/api/v1/materials/{id}/file-url', static function (Request $req, array $params): void {
+        if (!RequireAuth::handle($req)) return;
+
+        $id = trim((string)($params['id'] ?? ''));
+        if ($id === '') {
+            Response::error('BAD_REQUEST', 'Material id is required', $req->requestId, 400);
+            return;
+        }
+
+        try {
+            $stmt = Connection::pdo()->prepare(
+                "SELECT m.id, m.file_id, m.source_key, s.slug AS subject_slug, s.specialty_slug,
+                        f.object_key AS file_object_key, f.group_id AS file_group_id,
+                        cs.source_path
+                 FROM public.materials m
+                 JOIN public.subjects s ON s.id = m.subject_id
+                 LEFT JOIN public.files f
+                   ON f.id = m.file_id AND f.status = 'active'
+                 LEFT JOIN public.content_sources cs
+                   ON cs.id::text = m.source_key
+                 WHERE m.id = :id AND m.is_published = true
+                 LIMIT 1"
+            );
+            $stmt->execute(['id' => $id]);
+            $row = $stmt->fetch();
+
+            if ($row === false) {
+                Response::error('NOT_FOUND', 'Material not found', $req->requestId, 404);
+                return;
+            }
+
+            $specialty = trim((string)($row['specialty_slug'] ?? ''));
+            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+                Response::error('FORBIDDEN', 'Этот материал недоступен для вашей специальности', $req->requestId, 403);
+                return;
+            }
+
+            $fileGroupId = trim((string)($row['file_group_id'] ?? ''));
+            if ($fileGroupId !== '') {
+                (new AcademicContextResolver())->assertGroupMember($req->user->id, $fileGroupId);
+            }
+
+            if (!empty($row['file_object_key'])) {
+                $storage = new B2Storage();
+                if ($storage->isConfigured()) {
+                    try {
+                        $url = $storage->presignedDownloadUrl((string)$row['file_object_key'], 3600);
+                        Response::success(['url' => $url, 'mode' => 'presigned'], $req->requestId);
+                        return;
+                    } catch (\Throwable $e) {
+                        // Fall through to legacy source if available.
+                    }
+                }
+            }
+
+            $relative = trim((string)($row['source_path'] ?? ''));
+            if ($relative !== '' && ($row['subject_slug'] ?? '') === 'histology') {
+                Response::success([
+                    'url' => null,
+                    'mode' => 'authenticated_binary',
+                    'path' => '/api/v1/materials/' . rawurlencode($id) . '/file',
+                ], $req->requestId);
+                return;
+            }
+
+            if ($row['file_id'] !== null) {
+                Response::error('FILE_UNAVAILABLE', 'Физический файл материала временно недоступен', $req->requestId, 503);
+                return;
+            }
+
+            Response::error('NOT_FOUND', 'Material source file is not mapped', $req->requestId, 404);
+        } catch (\Throwable $e) {
+            Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
+        }
+    });
+
     $router->get('/api/v1/materials/{id}/file', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
 
