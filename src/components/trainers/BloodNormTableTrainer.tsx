@@ -238,9 +238,33 @@ export function BloodNormTableTrainer() {
       ) : null}
 
       {showReference ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-          <b>Эталон из 4.Кровь.docx:</b> таблица выше содержит все 35 значений в исходном порядке.
-          Здесь специально не добавлены нормы, которых в исходном файле нет.
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
+          <div className="mb-3 text-sm font-extrabold text-amber-950">Эталон из 4.Кровь.docx</div>
+          <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-white">
+            <table className="w-full min-w-[880px] border-collapse text-sm">
+              <thead>
+                <tr className="bg-amber-50">
+                  <th className="min-w-[220px] border-b border-r border-amber-200 px-4 py-3 text-left font-bold">Показатель</th>
+                  {AGE_COLUMNS.map((column) => (
+                    <th key={column.id} className="border-b border-amber-200 px-3 py-3 text-center font-bold">{column.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {NORMS.map((row) => (
+                  <tr key={row.id} className="border-b border-amber-100 last:border-b-0">
+                    <th className="border-r border-amber-100 px-4 py-3 text-left font-semibold">{row.label}</th>
+                    {row.values.map((value, index) => (
+                      <td key={AGE_COLUMNS[index].id} className="border-l border-amber-100 px-3 py-3 text-center font-semibold">{value}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-xs leading-5 text-amber-900">
+            Использованы только значения исходной таблицы; внешние справочные диапазоны сюда не подмешаны.
+          </div>
         </div>
       ) : null}
     </section>
