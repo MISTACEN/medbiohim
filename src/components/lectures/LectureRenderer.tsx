@@ -342,6 +342,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
       .split("\\`").join("`")
       .split('\\\"').join('"');
   }, [markdown]);
+  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz)\\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
   const parts = useMemo(() => parseBlocks(normalizedMarkdown), [normalizedMarkdown]);
 
   useEffect(() => {
@@ -400,7 +401,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
 
   return (
     <div ref={ref} className="lecture-body space-y-1 text-sm leading-relaxed">
-      {safeHtml ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
+      {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
         if (p.kind === "md") {
           return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
         }
