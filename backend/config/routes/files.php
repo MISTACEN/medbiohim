@@ -59,7 +59,12 @@ return static function (Router $router): void {
             // Client input cannot grant group access. The uploader must already belong
             // to the selected group; otherwise the file remains explicitly global only.
             if ($groupId !== null && $groupId !== '') {
-                (new AcademicContextResolver())->assertGroupMember($req->user->id, $groupId);
+                $isStaff = in_array((string)$req->user->role, ['teacher','moderator','admin'], true);
+                if ($isStaff) {
+                    (new AcademicContextResolver())->assertActiveGroup($groupId);
+                } else {
+                    (new AcademicContextResolver())->assertGroupMember($req->user->id, $groupId);
+                }
             }
             $visibility = trim((string) ($req->json('visibility') ?? $_POST['visibility'] ?? 'group'));
             if (!in_array($visibility, ['group','public'], true)) {

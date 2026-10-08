@@ -329,6 +329,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   const [addHomeworkOpen, setAddHomeworkOpen] = useState(false);
   const [addHomeworkTitle, setAddHomeworkTitle] = useState("");
   const [addHomeworkDescription, setAddHomeworkDescription] = useState("");
+  const [addHomeworkFiles, setAddHomeworkFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) setView("day");
@@ -389,10 +390,16 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
 
   const selectedHomeworks = useMemo(() => {
     if (!selected) return [];
-    return homeworks.filter((h:any) => String(h.due_date || h.due_at?.slice(0,10) || "") === String(selected.date) && (!selected.subject_id || String(h.subject_id || "") === String(selected.subject_id)));
+    return homeworks.filter((h:any) => {
+      if (h.schedule_entry_id) return String(h.schedule_entry_id) === String(selected.id);
+      return String(h.due_date || h.due_at?.slice(0,10) || "") === String(selected.date)
+        && (!selected.subject_id || String(h.subject_id || "") === String(selected.subject_id));
+    });
   }, [homeworks, selected]);
 
-  const canManageHomework = ["admin","teacher","moderator"].includes(String(user?.role || ""));
+  const canManageHomework =
+    ["admin","teacher","moderator"].includes(String(user?.role || "")) ||
+    user?.groupRole === "starosta";
 
   function homeworkStatus(h:any) {
     if (h.my_status === "done" || h.my_completed === true || ["submitted","graded","returned"].includes(String(h.submission_status || ""))) return "done";
@@ -413,7 +420,8 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
     setHomeworkBusy(String(h.id));
     let fileId:string|undefined;
     if (file) {
-      const uploaded = await uploadFile(file, user?.groupId);
+      const targetGroupId = user?.groupId || (selected as any)?.group_id || undefined;
+      const uploaded = await uploadFile(file, targetGroupId);
       if (!uploaded.ok) { setError(uploaded.error.message); setHomeworkBusy(null); return; }
       fileId = uploaded.data.file?.id;
     }
@@ -427,12 +435,50 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   }
 
   async function addHomeworkForSelected() {
-    if (!selected || !selected.subject_id || !addHomeworkTitle.trim()) return;
+    if (!selected || !selected.subject_id || !selected.id || !addHomeworkTitle.trim()) return;
     setHomeworkBusy("add");
-    const r = await createHomework({title:addHomeworkTitle.trim(),description:addHomeworkDescription.trim() || undefined,subject_id:String(selected.subject_id),due_date:String(selected.date),group_id:user?.groupId});
+    setError(null);
+
+    const attachmentFileIds: string[] = [];
+    for (const file of addHomeworkFiles) {
+      if (!file.type.startsWith("image/")) {
+        setError(`«${file.name}» не является изображением`);
+        setHomeworkBusy(null);
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        setError(`«${file.name}» больше 15 МБ`);
+        setHomeworkBusy(null);
+        return;
+      }
+      const uploaded = await uploadFile(file, user?.groupId);
+      if (!uploaded.ok) {
+        setError(uploaded.error.message);
+        setHomeworkBusy(null);
+        return;
+      }
+      const id = String(uploaded.data?.file?.id || "");
+      if (!id) {
+        setError(`Сервер не вернул ID файла «${file.name}»`);
+        setHomeworkBusy(null);
+        return;
+      }
+      attachmentFileIds.push(id);
+    }
+
+    const r = await createHomework({
+      title:addHomeworkTitle.trim(),
+      description:addHomeworkDescription.trim() || undefined,
+      subject_id:String(selected.subject_id),
+      due_date:String(selected.date),
+      group_id:(user?.groupId || (selected as any)?.group_id || undefined),
+      schedule_entry_id:String(selected.id),
+      attachment_file_ids:attachmentFileIds,
+    });
     if (r.ok) {
       setAddHomeworkTitle("");
       setAddHomeworkDescription("");
+      setAddHomeworkFiles([]);
       setAddHomeworkOpen(false);
       const refreshed = await getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId);
       if (refreshed.ok) setHomeworks(Array.isArray(refreshed.data.homeworks) ? refreshed.data.homeworks : []);
@@ -443,6 +489,10 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   async function openLesson(item: ScheduleItem) {
     setSelected(item);
     setLesson(null);
+    setAddHomeworkOpen(false);
+    setAddHomeworkTitle("");
+    setAddHomeworkDescription("");
+    setAddHomeworkFiles([]);
     setLessonWeeks([]);
     setLessonLoading(true);
     const res = await getLessonPlan({
@@ -720,7 +770,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
                 <h2 className="text-xl font-bold">{selected.subject_name}</h2>
                 <p className="text-sm opacity-70">{selected.date} · {selected.start_time.slice(0,5)}–{selected.end_time.slice(0,5)} · Хабаровск</p>
               </div>
-              <button type="button" className="rounded-lg p-2 hover:bg-black/5" onClick={()=>setSelected(null)} aria-label="Закрыть"><X className="h-5 w-5" /></button>
+              <button type="button" className="rounded-lg p-2 hover:bg-black/5" onClick={()=>{setSelected(null);setAddHomeworkOpen(false);setAddHomeworkFiles([])}} aria-label="Закрыть"><X className="h-5 w-5" /></button>
             </div>
 
 
@@ -729,9 +779,34 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
                 <div><div className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4" style={{color:"var(--primary)"}}/> ДЗ по этому занятию</div><p className="mt-0.5 text-xs opacity-60">Дата и предмет уже выбраны: {selected.date} · {selected.subject_name}</p></div>
                 {canManageHomework && selected.subject_id && <button type="button" onClick={()=>setAddHomeworkOpen(v=>!v)} className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold"><Plus className="mr-1 inline h-3.5 w-3.5"/>Добавить ДЗ</button>}
               </div>
-              {addHomeworkOpen && canManageHomework && <div className="mb-3 space-y-2 rounded-xl border bg-[var(--card)] p-3"><input value={addHomeworkTitle} onChange={e=>setAddHomeworkTitle(e.target.value)} placeholder="Что задать" className="w-full rounded-lg border px-3 py-2 text-sm"/><textarea value={addHomeworkDescription} onChange={e=>setAddHomeworkDescription(e.target.value)} rows={2} placeholder="Страницы, номера, требования..." className="w-full rounded-lg border px-3 py-2 text-sm"/><button type="button" disabled={homeworkBusy==="add"} onClick={()=>void addHomeworkForSelected()} className="btn-primary w-full">{homeworkBusy==="add"?"Сохранение…":"Добавить на этот предмет и день"}</button></div>}
-              {selectedHomeworks.length===0 ? <div className="rounded-xl border border-dashed p-4 text-center text-sm opacity-60">На этот день для этого предмета ДЗ пока нет.</div> : <div className="space-y-2">
-                {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-emerald-600":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{h.description}</p>}<div className="mt-2 flex flex-wrap gap-2">{hs!=="done" && <button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white">{homeworkBusy===String(h.id)?<Loader2 className="inline h-3 w-3 animate-spin"/>:"Выполнено"}</button>}<button type="button" onClick={()=>setHomeworkOpenId(homeworkOpenId===String(h.id)?null:String(h.id))} className="rounded-lg border px-3 py-1.5 text-xs">{homeworkOpenId===String(h.id)?"Скрыть":"Записать ответ"}</button></div>{homeworkOpenId===String(h.id) && <div className="mt-3 space-y-2 border-t pt-3"><textarea value={homeworkAnswer} onChange={e=>setHomeworkAnswer(e.target.value)} rows={3} placeholder="Ответ, решение, комментарий..." className="w-full rounded-lg border px-3 py-2 text-sm"/><div className="flex flex-wrap gap-2"><label className="cursor-pointer rounded-lg border px-3 py-2 text-xs"><Upload className="mr-1 inline h-3.5 w-3.5"/>Файл<input type="file" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)void submitSelectedHomework(h,f)}}/></label><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void submitSelectedHomework(h)} className="rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-white">Сохранить ответ</button></div></div>}</article>})}
+              {addHomeworkOpen && canManageHomework && <div className="mb-3 space-y-2 rounded-xl border bg-[var(--card)] p-3">
+                <div className="rounded-lg bg-black/5 px-3 py-2 text-xs font-semibold">Привязка к занятию: {selected.date} · {selected.subject_name} · {selected.start_time.slice(0,5)}–{selected.end_time.slice(0,5)}</div>
+                <input value={addHomeworkTitle} onChange={e=>setAddHomeworkTitle(e.target.value)} placeholder="Что задать" className="w-full rounded-lg border px-3 py-2 text-sm"/>
+                <textarea value={addHomeworkDescription} onChange={e=>setAddHomeworkDescription(e.target.value)} rows={2} placeholder="Страницы, номера, требования..." className="w-full rounded-lg border px-3 py-2 text-sm"/>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold"><Upload className="mr-1 inline h-3.5 w-3.5"/>Добавить фото
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={e=>{const next=Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/"));setAddHomeworkFiles(prev=>[...prev,...next].slice(0,12));e.currentTarget.value="";}}/>
+                  </label>
+                  {addHomeworkFiles.length>0 && <span className="text-xs opacity-60">{addHomeworkFiles.length}/12 фото</span>}
+                </div>
+                {addHomeworkFiles.length>0 && <div className="space-y-1">
+                  {addHomeworkFiles.map((file,index)=><div key={file.name+"-"+file.size+"-"+index} className="flex items-center gap-2 rounded-lg bg-black/5 px-2.5 py-1.5 text-xs"><span className="min-w-0 flex-1 truncate">{file.name}</span><button type="button" className="rounded p-1 hover:bg-black/10" onClick={()=>setAddHomeworkFiles(prev=>prev.filter((_,i)=>i!==index))} aria-label={`Удалить ${file.name}`}><X className="h-3.5 w-3.5"/></button></div>)}
+                </div>}
+                <button type="button" disabled={homeworkBusy==="add"} onClick={()=>void addHomeworkForSelected()} className="btn-primary w-full">{homeworkBusy==="add"?"Сохранение…":"Добавить ДЗ к этому занятию"}</button>
+              </div>}
+              {selectedHomeworks.length===0 ? <div className="rounded-xl border border-dashed p-4 text-center text-sm opacity-60">На это занятие ДЗ пока нет.</div> : <div className="space-y-2">
+                {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-emerald-600":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{h.description}</p>}
+                {Array.isArray(h.attachments) && h.attachments.length>0 && <div className="mt-3 grid grid-cols-2 gap-2">
+                  {h.attachments.map((att:any,index:number)=>{
+                    const image=String(att.mime_type||"").startsWith("image/");
+                    const href=String(att.download_url||"");
+                    return image && href
+                      ? <a key={att.file_id||index} href={href} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border" title={att.name||"Фото ДЗ"}><img src={href} alt={att.name||"Фото ДЗ"} className="h-28 w-full object-cover"/></a>
+                      : href
+                        ? <a key={att.file_id||index} href={href} target="_blank" rel="noreferrer" className="rounded-lg border px-3 py-2 text-xs font-semibold">{att.name||"Файл ДЗ"}</a>
+                        : <div key={att.file_id||index} className="rounded-lg border px-3 py-2 text-xs opacity-60">{att.name||"Файл ДЗ"}</div>;
+                  })}
+                </div>}<div className="mt-2 flex flex-wrap gap-2">{hs!=="done" && <button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white">{homeworkBusy===String(h.id)?<Loader2 className="inline h-3 w-3 animate-spin"/>:"Выполнено"}</button>}<button type="button" onClick={()=>setHomeworkOpenId(homeworkOpenId===String(h.id)?null:String(h.id))} className="rounded-lg border px-3 py-1.5 text-xs">{homeworkOpenId===String(h.id)?"Скрыть":"Записать ответ"}</button></div>{homeworkOpenId===String(h.id) && <div className="mt-3 space-y-2 border-t pt-3"><textarea value={homeworkAnswer} onChange={e=>setHomeworkAnswer(e.target.value)} rows={3} placeholder="Ответ, решение, комментарий..." className="w-full rounded-lg border px-3 py-2 text-sm"/><div className="flex flex-wrap gap-2"><label className="cursor-pointer rounded-lg border px-3 py-2 text-xs"><Upload className="mr-1 inline h-3.5 w-3.5"/>Файл<input type="file" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)void submitSelectedHomework(h,f)}}/></label><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void submitSelectedHomework(h)} className="rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-white">Сохранить ответ</button></div></div>}</article>})}
               </div>}
             </section>
 

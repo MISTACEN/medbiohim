@@ -831,3 +831,11 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟢 The viewer must not alter Atlas page layout or inherit the position of the source card.
 - 🟡 Target-device smoke test remains required before production sign-off.
 
+
+## 2026-10-07 — Pass 32: Schedule → exact lesson → homework → photos
+| Exact lesson homework binding | 🟢 | `homeworks.schedule_entry_id` implemented in API/repository/UI; live column + index verified |
+| Homework photo attachments | 🟢 source | Multi-photo creation UI + `homework_attachments` + B2 delivery implemented; authenticated runtime E2E still pending |
+| Starosta homework creation | 🟢 source | UI and backend now recognize group `starosta`; ordinary student cannot publish shared homework |
+| Homework due_date persistence | 🟢 | Primary repository now writes `due_date` |
+| Private test env inventory | 🟢 | Variable families documented; secret values remain outside GitHub |
+| Target runtime deployment smoke | 🟡 P0 | Latest branch still needs READY Vercel/SpaceWeb authenticated smoke |

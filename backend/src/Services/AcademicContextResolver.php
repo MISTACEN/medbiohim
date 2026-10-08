@@ -88,6 +88,29 @@ final class AcademicContextResolver
         return $this->resolveGroup($userId, $groupId);
     }
 
+    /** Resolve an active group without requiring the caller to be a member (staff/admin use). */
+    public function assertActiveGroup(string $groupId): array
+    {
+        $groupId = trim($groupId);
+        if ($groupId === '') {
+            throw new AcademicContextException('NO_GROUP', 'Для действия нужна учебная группа', 422);
+        }
+        $q = $this->db->prepare(
+            'SELECT id AS group_id, name AS group_name, code AS group_code,
+                    course_number, admission_year, academic_program_name,
+                    specialty_slug, is_active
+             FROM public.groups
+             WHERE id = :gid AND is_active = true
+             LIMIT 1'
+        );
+        $q->execute(['gid' => $groupId]);
+        $row = $q->fetch();
+        if ($row === false) {
+            throw new AcademicContextException('INVALID_GROUP', 'Учебная группа не найдена или отключена', 422);
+        }
+        return $row;
+    }
+
     /**
      * Resolve a subject only by authoritative UUID. The group check uses schedule
      * membership first, then the group's academic course/specialty as a compatibility

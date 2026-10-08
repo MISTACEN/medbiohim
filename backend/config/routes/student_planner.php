@@ -8,6 +8,7 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Database\Connection;
 use Medbiohim\Services\AcademicContextResolver;
 use Medbiohim\Services\AcademicContextException;
+use Medbiohim\Services\B2Storage;
 
 return static function(Router $router): void {
     $router->get('/api/v1/planner', static function(Request $req,array $params): void {
@@ -23,7 +24,7 @@ return static function(Router $router): void {
             $where=['h.group_id IS NULL OR h.group_id = :gid'];$p=['u'=>$uid,'gid'=>$groupId];
             if($from!==''){ $where[]='h.due_date >= :from'; $p['from']=$from; }
             if($to!==''){ $where[]='h.due_date <= :to'; $p['to']=$to; }
-            $sql="SELECT h.id,h.title,h.description,h.due_at,h.due_date,h.subject_id,h.group_id,h.created_by,h.created_by_role,h.created_at,
+            $sql="SELECT h.id,h.title,h.description,h.due_at,h.due_date,h.subject_id,h.group_id,h.schedule_entry_id,h.created_by,h.created_by_role,h.created_at,
                          s.name AS subject_name,s.slug AS subject_slug,s.color_hex,
                          hp.completed AS my_completed,hp.submitted_at AS completed_at,
                          hs.status AS submission_status,hs.id AS submission_id,hs.grade,
@@ -46,6 +47,40 @@ return static function(Router $router): void {
             if($to!=='') $sql.=' AND h.due_date <= :to';
             $sql.=' ORDER BY h.due_date NULLS LAST,h.due_at NULLS LAST,h.created_at DESC';
             $q=$db->prepare($sql);$q->execute($p);$homeworks=$q->fetchAll()?:[];
+
+            $attachmentsByHomework=[];
+            $homeworkIds=array_values(array_filter(array_map(static fn($row): string =>trim((string)($row['id']??'')),$homeworks)));
+            if($homeworkIds){
+                $ph=implode(',',array_fill(0,count($homeworkIds),'?'));
+                $a=$db->prepare(
+                    "SELECT ha.homework_id,ha.file_id,ha.attachment_type,ha.caption,ha.sort_order,ha.inline_view,
+                            f.original_name,f.mime_type,f.size_bytes,f.object_key
+                       FROM public.homework_attachments ha
+                       JOIN public.files f ON f.id=ha.file_id
+                      WHERE ha.homework_id IN ($ph) AND f.status='active'
+                      ORDER BY ha.homework_id,ha.sort_order,ha.created_at"
+                );
+                $a->execute($homeworkIds);
+                $b2=new B2Storage();
+                foreach(($a->fetchAll()?:[]) as $row){
+                    $item=[
+                        'file_id'=>(string)$row['file_id'],
+                        'name'=>$row['original_name'],
+                        'mime_type'=>$row['mime_type'],
+                        'size_bytes'=>$row['size_bytes']!==null?(int)$row['size_bytes']:null,
+                        'attachment_type'=>$row['attachment_type'],
+                        'caption'=>$row['caption'],
+                        'inline_view'=>(bool)$row['inline_view'],
+                        'download_url'=>null
+                    ];
+                    if($b2->isConfigured()&&!empty($row['object_key'])){
+                        try{$item['download_url']=$b2->presignedDownloadUrl((string)$row['object_key'],3600);}catch(\Throwable $e){}
+                    }
+                    $attachmentsByHomework[(string)$row['homework_id']][]=$item;
+                }
+            }
+            foreach($homeworks as &$homework)$homework['attachments']=$attachmentsByHomework[(string)$homework['id']]??[];
+            unset($homework);
 
             $q=$db->prepare("SELECT ar.id,ar.schedule_entry_id,ar.status,ar.note,ar.marked_at,se.date,se.start_time,se.end_time,se.subject_id,
                                     COALESCE(se.subject_name,s.name) AS subject_name,s.slug AS subject_slug,s.color_hex,se.type,se.is_makeup,

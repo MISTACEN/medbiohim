@@ -42,7 +42,7 @@ return static function(Router $router): void {
 
             if ($isStaff) {
                 $group = $requestedGroup !== null && $requestedGroup !== ''
-                    ? $resolver->assertGroupMember($req->user->id, $requestedGroup)
+                    ? $resolver->assertActiveGroup($requestedGroup)
                     : null;
             } else {
                 // Student-created shared homework must explicitly identify the group
@@ -50,21 +50,69 @@ return static function(Router $router): void {
                 $group = $resolver->requireGroup($req->user->id, $requestedGroup);
             }
 
+            if (!$isStaff && (!$group || (string)($group['role_in_group'] ?? '') !== 'starosta')) {
+                Response::error('FORBIDDEN', 'Только староста группы может создавать общее ДЗ', $req->requestId, 403);
+                return;
+            }
+
             $groupId = $group['group_id'] ?? null;
-            if ($subjectId !== null && $subjectId !== '') {
-                $resolver->resolveSubject($subjectId, $groupId);
+            $scheduleEntryId = $req->json('schedule_entry_id') !== null
+                ? trim((string)$req->json('schedule_entry_id')) : null;
+            $dueDate = $req->json('due_date') !== null
+                ? trim((string)$req->json('due_date')) : null;
+
+            if ($scheduleEntryId !== null && $scheduleEntryId !== '') {
+                if (!$groupId) {
+                    Response::error('INVALID_LESSON_CONTEXT', 'Для привязки ДЗ к занятию нужна учебная группа', $req->requestId, 422);
+                    return;
+                }
+                $lesson = $resolver->resolveLesson(
+                    (string)$groupId,
+                    $subjectId !== null && $subjectId !== '' ? $subjectId : null,
+                    $dueDate !== null && $dueDate !== '' ? $dueDate : null,
+                    null,
+                    $scheduleEntryId
+                );
+                if ($lesson === null) {
+                    Response::error('INVALID_LESSON_CONTEXT', 'Занятие не найдено в текущем расписании группы', $req->requestId, 422);
+                    return;
+                }
+                if ($subjectId === null || $subjectId === '') {
+                    $subjectId = $lesson['subject_id'] !== null ? (string)$lesson['subject_id'] : null;
+                }
+                if ($dueDate === null || $dueDate === '') {
+                    $dueDate = (string)$lesson['date'];
+                }
+            } elseif ($subjectId !== null && $subjectId !== '') {
+                $resolver->resolveSubject($subjectId, $groupId, $dueDate !== '' ? $dueDate : null);
             }
 
             $due = $req->json('due_at') !== null ? trim((string)$req->json('due_at')) : null;
-            if (!$due && $req->json('due_date')) $due = trim((string)$req->json('due_date')).' 23:59:00';
+            if (!$due && $dueDate) $due = $dueDate.' 23:59:00';
+
+            $rawAttachments = $req->json('attachment_file_ids');
+            if ($rawAttachments !== null && !is_array($rawAttachments)) {
+                Response::error('VALIDATION_ERROR', 'attachment_file_ids must be an array', $req->requestId, 422);
+                return;
+            }
+            $attachmentFileIds = array_values(array_unique(array_filter(array_map(
+                static fn($id): string => trim((string)$id),
+                is_array($rawAttachments) ? $rawAttachments : []
+            ))));
+            if (count($attachmentFileIds) > 12) {
+                Response::error('VALIDATION_ERROR', 'Можно прикрепить не более 12 файлов', $req->requestId, 422);
+                return;
+            }
 
             $payload = [
                 'title'=>$title,
                 'description'=>$req->json('description') !== null ? (string)$req->json('description') : null,
                 'subject_id'=>$subjectId ?: null,
                 'group_id'=>$groupId,
+                'schedule_entry_id'=>$scheduleEntryId ?: null,
                 'due_at'=>$due,
-                'due_date'=>$req->json('due_date') ? (string)$req->json('due_date') : null,
+                'due_date'=>$dueDate ?: null,
+                'attachment_file_ids'=>$attachmentFileIds,
                 'created_by'=>$req->user->id,
                 'created_by_role'=>$isStaff ? 'staff' : 'student'
             ];
@@ -72,12 +120,21 @@ return static function(Router $router): void {
             try {
                 $row = (new HomeworkRepository())->create(
                     $payload['title'],$payload['description'],$payload['subject_id'],
-                    $payload['group_id'],$payload['due_at'],$req->user->id,$payload['created_by_role']
+                    $payload['group_id'],$payload['due_at'],$req->user->id,$payload['created_by_role'],
+                    $payload['schedule_entry_id'],$payload['due_date'],$payload['attachment_file_ids']
                 );
             } catch (\Throwable $primaryError) {
                 // Fallback receives the already-resolved canonical group/subject;
                 // it is never allowed to choose a different context.
                 $row = SupabaseRest::createHomework($payload);
+                if (!empty($payload['attachment_file_ids']) && !empty($row['id'])) {
+                    SupabaseRest::attachHomeworkFiles(
+                        (string)$row['id'],
+                        $payload['attachment_file_ids'],
+                        (string)$req->user->id,
+                        $payload['group_id'] !== null ? (string)$payload['group_id'] : null
+                    );
+                }
             }
             Response::success($row, $req->requestId, 201);
         } catch (AcademicContextException $e) {
