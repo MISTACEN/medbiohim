@@ -91,7 +91,7 @@ return static function (Router $router): void {
             header('Content-Disposition: inline; filename="' . str_replace('"', '', $name) . '"');
             header('Cache-Control: private, max-age=300');
             readfile($candidate);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
         }
     });
