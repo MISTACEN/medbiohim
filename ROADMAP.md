@@ -1497,3 +1497,37 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 Live Supabase lecture updated and verified; only Lecture 05 was touched.
 - 🟡 Runtime/browser smoke on deployed Vercel build remains to be confirmed.
 \n## 2026-10-08 — Histology Lecture 05: iPhone/Safari visual defect repair\n\n### Фактически подтверждённые проблемы\nНа реальном скриншоте production medbiohim.vercel.app видно:\n1. 5 собственных фотографий препаратов дают broken-image placeholder.\n2. Markdown-ссылки отображаются как [Микропрепараты] + URL вместо кликабельной ссылки.\n3. Внешняя WebPath-фотография загружается корректно, значит проблема не является общим запретом изображений в Safari.\n\n### Исправление\n- В src/components/lectures/LectureRenderer.tsx исправлен Markdown-link parser.\n- Для защищённых MEDBIOHIM trainer images лекция больше не использует прямые /content/histology/...jpg URL. Контент хранит canonical trainerId, а client-side ImageBlock получает изображение через существующий authenticated getTrainerImageUrl().\n- Это соответствует фактической архитектуре: metadata в Supabase → authenticated trainer media endpoint → физический Histology media root на SpaceWeb.\n- Live Lecture 05 обновлена без изменения trainer cards, их plan mapping или других subjects.\n- Добавлена миграция: database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql.\n\n### Release gate\n🟡 До READY deployment и повторного browser smoke не считать пункт закрытым. Проверить:\n- «Микропрепараты» → /subjects/histology?tab=trainer;\n- «Материалы» → /subjects/histology?tab=materials;\n- тест «Гистология — общая: кровь» → 20 вопросов;\n- 5 MEDBIOHIM photos;\n- 4 WebPath photos;\n- 11 Mermaid blocks;\n- iPhone Safari layout/scroll.\n\nОграничение сохраняется: этот цикл касается только Histology Lecture 05.
+ 
+---
+
+# 2026-10-08 — Histology Lecture 05 learning UX / visual learning
+
+**Статус: 🟡 IN PROGRESS — code + live content updated; deployed/runtime smoke pending**
+
+Зафиксирован learning-слой: **теория → контекстный препарат → мини-тест из БД → ЭМ/практика → итоговый тест**.
+
+### Уже сделано
+- 🟢 Lecture 05 `lec-histology-blood-20261008` сохранена как canonical lecture в `site_content`.
+- 🟢 Markdown/HTML rendering regression исправлена в `LectureRenderer`.
+- 🟢 Mermaid parsing/normalization исправлен.
+- 🟢 собственные фото лекции переведены на canonical trainer IDs + authenticated `getTrainerImageUrl()`.
+- 🟢 Markdown links исправлены.
+- 🟢 создан `ImageLightbox`: viewport-centered modal, zoom, reset, close, fullscreen API fallback.
+- 🟢 Atlas `ImageBox` переведён на новый lightbox.
+- 🟢 canonical specimen cards получают название/окраску/описание из trainer card, поэтому текст препарата не дублируется вручную в каждом фото-блоке.
+- 🟢 Lecture 05 разбита на 6 логичных учебных блоков.
+- 🟢 после каждого блока добавлен mini-test block, вопросы берутся из опубликованной `public.questions`.
+- 🟢 создан authenticated backend `GET /questions/mini-quiz` + `POST /questions/mini-quiz/check`; answer key не отдаётся клиенту.
+- 🟢 live Lecture 05 обновлена: 6 quiz blocks, контекстные photo checkpoints, старый photo-wall убран.
+- 🟢 сохранена внешняя WebPath-проверка как дополнительный источник.
+- 🟢 создан документ `docs/HISTOLOGY-LECTURE-LEARNING-UX-2026-10-08.md`.
+
+### Остаётся
+- 🟡 Vercel READY + frontend build verification;
+- 🟡 SpaceWeb backend deployment для новых mini-quiz endpoints;
+- 🟡 авторизованный iPhone Safari smoke;
+- 🟡 проверить отсутствие regressions в других lecture pages;
+- 🟡 после подтверждения — перевести пункт из IN PROGRESS в DONE.
+
+### Non-regression
+Этот цикл не меняет другие subjects, ticket banks или существующие trainer/electronogram records.
