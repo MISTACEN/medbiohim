@@ -150,10 +150,17 @@ export function ImageLightbox({
   useEffect(() => {
     if (!open) return;
 
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscroll = document.body.style.overscrollBehavior;
-    document.body.style.overflow = "hidden";
-    document.body.style.overscrollBehavior = "none";
+    const body = document.body;
+    const html = document.documentElement;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscroll = body.style.overscrollBehavior;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousHtmlOverscroll = html.style.overscrollBehavior;
+
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -185,11 +192,13 @@ export function ImageLightbox({
     window.addEventListener("keydown", onKey);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscroll;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscroll;
+      html.style.overflow = previousHtmlOverflow;
+      html.style.overscrollBehavior = previousHtmlOverscroll;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, zoom, pan]);
+  }, [open]);
 
   useEffect(() => {
     if (openOnMount) setOpen(true);
@@ -386,8 +395,11 @@ export function ImageLightbox({
       ? createPortal(
           <div
             ref={viewerRef}
-            className="fixed inset-0 z-[2147483000] flex min-h-[100dvh] w-full items-center justify-center bg-black/88 p-1.5 text-white backdrop-blur-[6px] sm:p-3"
+            className="fixed inset-0 z-[2147483000] flex min-h-[100dvh] w-full items-center justify-center p-1.5 text-white sm:p-3"
             style={{
+              backgroundColor: "rgba(3, 7, 18, 0.96)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
               height: "100dvh",
               maxHeight: "100dvh",
               paddingTop: "calc(0.375rem + env(safe-area-inset-top))",
@@ -404,7 +416,16 @@ export function ImageLightbox({
             }}
           >
             <div className="flex h-full w-full max-w-[1900px] flex-col items-center justify-center gap-1.5 sm:gap-2.5">
-              <div className="flex w-full shrink-0 items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[0.08] px-2 py-1.5 shadow-2xl backdrop-blur-xl sm:px-3 sm:py-2">
+              <div
+                className="flex w-full shrink-0 items-center gap-1.5 rounded-2xl border px-2 py-1.5 shadow-2xl sm:px-3 sm:py-2"
+                style={{
+                  backgroundColor: "rgba(20, 26, 44, 0.94)",
+                  borderColor: "rgba(255,255,255,0.16)",
+                  boxShadow: "0 18px 50px rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(18px)",
+                  WebkitBackdropFilter: "blur(18px)",
+                }}
+              >
                 <div className="min-w-0 flex-1 overflow-hidden px-1">
                   <div className="truncate text-[11px] font-semibold text-white sm:text-sm">
                     {title || caption || alt || "Просмотр изображения"}
@@ -418,9 +439,10 @@ export function ImageLightbox({
                   <button
                     type="button"
                     onClick={() => changeZoom(zoom - ZOOM_STEP)}
-                    className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.09] p-2 text-white transition hover:bg-white/[0.17] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                    className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl p-2 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                     aria-label="Уменьшить"
                     title="Уменьшить"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -430,6 +452,7 @@ export function ImageLightbox({
                     className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.09] p-2 text-white transition hover:bg-white/[0.17] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     aria-label="Увеличить"
                     title="Увеличить"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -439,12 +462,14 @@ export function ImageLightbox({
                     className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.09] p-2 text-white transition hover:bg-white/[0.17] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     aria-label="Сбросить масштаб и положение"
                     title="Сбросить"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}
                   >
                     <RotateCcw className="h-4 w-4" />
                   </button>
                   <span
                     className="inline-flex h-9 min-w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] px-2 text-[11px] font-bold tabular-nums text-white/85"
                     aria-live="polite"
+                    style={{ backgroundColor: "rgba(0,0,0,0.32)", border: "1px solid rgba(255,255,255,0.18)", color: "#ffffff" }}
                   >
                     {Math.round(zoom * 100)}%
                   </span>
@@ -454,6 +479,7 @@ export function ImageLightbox({
                     className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.09] p-2 text-white transition hover:bg-white/[0.17] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     aria-label="Во весь экран"
                     title="Во весь экран"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}
                   >
                     <Maximize2 className="h-4 w-4" />
                   </button>
@@ -463,6 +489,7 @@ export function ImageLightbox({
                     className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.09] p-2 text-white transition hover:bg-white/[0.17] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     aria-label="Закрыть"
                     title="Закрыть"
+                    style={{ backgroundColor: "rgba(190, 35, 55, 0.88)", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -472,8 +499,10 @@ export function ImageLightbox({
               <div
                 ref={stageRef}
                 tabIndex={0}
-                className="relative min-h-0 min-w-0 flex-1 w-full overflow-hidden rounded-[22px] border border-white/10 bg-black/24 shadow-[0_22px_70px_rgba(0,0,0,.5)] outline-none"
+                className="relative min-h-0 min-w-0 flex-1 w-full overflow-hidden rounded-[22px] shadow-[0_22px_70px_rgba(0,0,0,.5)] outline-none"
                 style={{
+                  backgroundColor: "rgba(0,0,0,0.72)",
+                  border: "1px solid rgba(255,255,255,0.14)",
                   touchAction: "none",
                   cursor:
                     zoom > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in",
@@ -515,14 +544,29 @@ export function ImageLightbox({
                   />
                 </div>
 
-                <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-medium text-white/70 shadow-lg backdrop-blur-md sm:top-3 sm:text-[10px]">
+                <div
+                  className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full px-3 py-1.5 text-[9px] font-semibold text-white shadow-lg sm:top-3 sm:text-[10px]"
+                  style={{
+                    backgroundColor: "rgba(8,12,24,0.82)",
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.9)",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                  }}
+                >
                   {zoom > 1
                     ? "Перетаскивай · колесо / щипок — масштаб"
                     : "Колесо / щипок / двойной клик — увеличить"}
                 </div>
 
                 {zoom > 1 ? (
-                  <div className="pointer-events-none absolute bottom-2 left-2 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-[9px] font-semibold text-white/65 backdrop-blur-md sm:bottom-3 sm:left-3">
+                  <div
+                    className="pointer-events-none absolute bottom-2 left-2 rounded-lg px-2 py-1 text-[9px] font-semibold text-white sm:bottom-3 sm:left-3"
+                    style={{
+                      backgroundColor: "rgba(8,12,24,0.78)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }}
+                  >
                     {Math.round(zoom * 100)}%
                   </div>
                 ) : null}
