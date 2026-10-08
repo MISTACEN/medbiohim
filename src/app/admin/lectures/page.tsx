@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { RichLectureEditor } from "@/components/admin/RichLectureEditor";
 import { LectureLearningEditor } from "@/components/admin/LectureLearningEditor";
 import Link from "next/link";
-import { Save, Eye, EyeOff, X, ExternalLink } from "lucide-react";
+import { Save, Eye, EyeOff, X, ExternalLink, Sparkles } from "lucide-react";
 import {
   adminDeleteLecture, adminGenerateLecture, adminListLectures, adminPublishLecture,
   adminRejectLecture, adminUpdateLecture, listSubjectsCatalog, getSubjectPlan,
