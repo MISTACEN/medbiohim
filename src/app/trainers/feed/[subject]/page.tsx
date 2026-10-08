@@ -6,6 +6,7 @@ import { ArrowLeft, Check, CheckCircle2, ChevronRight, CircleHelp, ListChecks, L
 import { answerTrainerCard, getTrainerFeed, getTrainerImageUrl, hasToken, type TrainerFeedCard } from "@/lib/api";
 import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { AtlasThumb } from "@/components/trainers/HistologyTrainerParts";
+import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 const HISTO_PLAN_ORDER = [
   ["клетка и ее пр. животная","Клетка животная"],["симпласт","Симпласт"],["межклет","Межклеточное"],["гольдж","Аппарат Гольджи"],["липид","Липидные включения"],["гликоген","Гликоген"],["ядро","Ядро"],["митоз","Митоз"],["тимидин","Тимидин"],["сперматозоид","Сперматозоиды"],["яйцеклет","Яйцеклетка"],["зародышевых лист","зародышевых лист"],["осевых органов","осевых органов"],["мезотел","Мезотелий"],["цилиндрический эпител","Цилиндрический"],["многорядн","Многорядный"],["многослойный плос","Многослойный плос"],["переходный","Переходный"],["мезенхим","Мезенхима"],["кровь","Кровь человека"],["рыхлая волокнист","Рыхлая волокнист"],["фибробласт","Фибробласт"],["эластические волок","Эластические волокна"],["ретикуляр","Ретикулярная"],["жиров","Жировая"],["пигмент","Пигмент"],["сухожил","Сухожилие"],["гиалинов","Гиалинов"],["волокнистый хрящ","Волокнистый"],["эластический хрящ","Эластический"],["трубчатая кость","Трубчатая кость"],["развитие кости","Развитие кости"],["гладкая мыш","Гладкая мыш"],["поперечно-полосат","Поперечно-полосат"],["сердечн","Сердечная"],["нейрофибрил","Нейрофибрил"],["тигроид","Тигроид"],["астроцит","Астроцит"],["миелин","Миелин"],["тактильн","Тактильное"],["пластинчат","Пластинчатое"],["спинной мозг","Спинной мозг"],["спинальный ганг","Спинальный ганг"],["периферический нерв","Периферический нерв"],["кора больших","Кора больших"],["кора мозжеч","Кора мозжеч"],["грушевид","Грушевид"],["передняя часть","Передняя часть"],["задняя стенка","Задняя стенка"],["развитие глаза","Развитие глаза"],["вкусовая почка","Вкусовая почка"],["улитка","Улитка"]
@@ -221,7 +222,14 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
             <div className="overflow-hidden rounded-3xl bg-white shadow-2xl">
               <div className="relative aspect-[4/3] bg-slate-900">
                 {imageUrl ? (
-                  <img src={imageUrl} alt={card.preparation?.name || "Препарат"} className="h-full w-full object-contain" />
+                  <ImageLightbox
+                    src={imageUrl}
+                    alt={card.preparation?.name || "Препарат"}
+                    title={card.preparation?.name || "Препарат"}
+                    caption={card.mode_set === "electronogram" ? "Электронограмма" : "Микропрепарат"}
+                    className="h-full w-full"
+                    imageClassName="h-full w-full object-contain"
+                  />
                 ) : imageLoading ? (
                   <div className="flex h-full items-center justify-center text-sm text-white/60">Загружаем изображение…</div>
                 ) : (

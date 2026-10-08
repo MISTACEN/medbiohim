@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
@@ -13,8 +14,9 @@ import {
   X,
 } from "lucide-react";
 import JSZip from "jszip";
-import { fetchMaterialFile, getTrainerImageUrl, hasToken } from "@/lib/api";
+import { fetchMaterialFile, getTrainerImageUrl, retryTrainerImage, hasToken } from "@/lib/api";
 import { listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
+import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 type Item = any;
 
@@ -101,6 +103,11 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   const [kind, setKind] = useState<"doc" | "image" | "pdf" | "download">("doc");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const blobUrl = useMemo(() => URL.createObjectURL(blob), [blob]);
+
+  useEffect(() => {
+    return () => URL.revokeObjectURL(blobUrl);
+  }, [blobUrl]);
 
   useEffect(() => {
     let alive = true;
@@ -171,7 +178,7 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   }, [blob]);
 
   const openBinary = () => {
-    const url = URL.createObjectURL(blob);
+    const url = blobUrl;
     window.open(url, "_blank", "noopener,noreferrer");
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
@@ -189,16 +196,23 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
   }
 
   if (kind === "image") {
-    const url = URL.createObjectURL(blob);
+    const url = blobUrl;
     return (
       <div className="flex min-h-full items-center justify-center">
-        <img src={url} alt={title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" />
+        <ImageLightbox
+          src={url}
+          alt={title}
+          title={title}
+          caption="Изображение из материала"
+          className="w-full"
+          imageClassName="mx-auto max-h-[78vh] w-full rounded-2xl object-contain"
+        />
       </div>
     );
   }
 
   if (kind === "pdf") {
-    const url = URL.createObjectURL(blob);
+    const url = blobUrl;
     return <iframe title={title} src={url} className="min-h-[78vh] w-full rounded-2xl border bg-white" />;
   }
 
@@ -344,6 +358,12 @@ export default function HistologyMaterials() {
     setPhoto(await getTrainerImageUrl(item.id));
   }
 
+  async function retryPhoto() {
+    if (!active?.id || active.kind !== "photo") return;
+    setPhoto(null);
+    setPhoto(await retryTrainerImage(String(active.id)));
+  }
+
   const tabs = [
     ["all", "Все"],
     ["scheme", "Схемы"],
@@ -447,13 +467,44 @@ export default function HistologyMaterials() {
         })
       )}
 
-      {active ? (
+      {active?.kind === "photo" ? (
+        photo ? (
+          <ImageLightbox
+            src={photo}
+            alt={String(active.title || "Фото препарата")}
+            title={String(active.title || "Фото препарата")}
+            caption={active.topic_title ? String(active.topic_title) : "Материалы · фотографии препаратов"}
+            openOnMount
+            showTrigger={false}
+            onClose={() => setActive(null)}
+          />
+        ) : (
+          createPortal(
+            <div
+              className="fixed inset-0 flex items-center justify-center p-6 text-sm text-white"
+              style={{ zIndex: 2147483000, width: "100vw", height: "100dvh", background: "rgba(15,23,42,0.92)" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Загрузка фотографии препарата"
+            >
+              <div className="text-center">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                <div className="mt-3">Загружаем фотографию препарата…</div>
+                <button type="button" onClick={() => void retryPhoto()} className="mt-4 rounded-xl bg-white/10 px-4 py-2 font-semibold hover:bg-white/20">
+                  Повторить
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        )
+      ) : active ? (
         <div className="fixed inset-0 z-[70] bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5" onMouseDown={() => setActive(null)}>
           <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-3xl !bg-slate-100 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
             <header className="flex items-start justify-between gap-3 border-b !bg-white px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
-                  {active.kind === "photo" ? "Фото препарата" : categoryLabel[active.category] || "Документ"}
+                  {categoryLabel[active.category] || "Документ"}
                 </div>
                 <h2 className="mt-1 break-words font-bold text-slate-900">{active.title}</h2>
                 {active.topic_title ? <div className="mt-1 text-xs text-slate-500">{active.topic_title}</div> : null}
@@ -485,18 +536,7 @@ export default function HistologyMaterials() {
             </header>
 
             <div className="min-h-0 flex-1 overflow-auto !bg-slate-100 p-3 sm:p-6">
-              {active.kind === "photo" ? (
-                photo ? (
-                  <div className="flex min-h-full items-center justify-center">
-                    <img src={photo} alt={active.title} className="max-h-[82vh] max-w-full rounded-2xl object-contain shadow-lg" />
-                  </div>
-                ) : (
-                  <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                    <p className="mt-3">Загружаем фотографию препарата…</p>
-                  </div>
-                )
-              ) : blob ? (
+              {blob ? (
                 <DocumentView blob={blob} title={active.title} />
               ) : (
                 <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">

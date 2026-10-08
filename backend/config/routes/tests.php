@@ -226,11 +226,11 @@ return static function (Router $router): void {
                 (string) $params['questionId']
             );
             Response::success(['answer'=>$row], $req->requestId);
-        } catch (RuntimeException $e) {
+        } catch (\RuntimeException $e) {
             $code = $e->getMessage();
             $status = in_array($code, ['ATTEMPT_NOT_FOUND','ANSWER_NOT_FOUND'], true) ? 404 : 409;
             Response::error($code, $code === 'QUESTION_NOT_IN_ATTEMPT' ? 'Вопрос не входит в эту попытку' : $code, $req->requestId, $status);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             Response::error('GRADING_RETRY_ERROR', 'Не удалось повторно проверить ответ', $req->requestId, 503);
         }
     });

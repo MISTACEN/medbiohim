@@ -158,7 +158,7 @@ final class SrsService
     {
         $front = trim((string) ($payload['front'] ?? ''));
         $back = trim((string) ($payload['back'] ?? ''));
-        if ($front === '') throw new InvalidArgumentException('front обязателен');
+        if ($front === '') throw new \InvalidArgumentException('front обязателен');
         $subjectId = trim((string) ($payload['subject_id'] ?? ''));
         $subjectSlug = trim((string) ($payload['subject_slug'] ?? ''));
         if ($subjectId === '') $subjectId = null;
@@ -192,9 +192,9 @@ final class SrsService
 
     public function review(string $userId, string $cardId, int $rating): array
     {
-        if ($rating < 1 || $rating > 4) throw new InvalidArgumentException('rating должен быть от 1 до 4');
+        if ($rating < 1 || $rating > 4) throw new \InvalidArgumentException('rating должен быть от 1 до 4');
         $rows = SupabaseRest::select('srs_cards?id=eq.' . rawurlencode($cardId) . '&user_id=eq.' . rawurlencode($userId) . '&select=*');
-        if (!$rows) throw new InvalidArgumentException('Карточка не найдена');
+        if (!$rows) throw new \InvalidArgumentException('Карточка не найдена');
         $row = $rows[0];
         $ease = (float) ($row['ease'] ?? 2.5);
         $interval = (int) ($row['interval'] ?? 0);

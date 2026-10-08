@@ -105,3 +105,28 @@
 - В lightbox добавлены кнопки «Уменьшить / Увеличить / Сбросить / Полный экран / Закрыть».
 - Mobile-friendly controls сохранены; native Fullscreen API — дополнительный режим, fixed modal — fallback.
 - Production/iPhone Safari smoke остаётся открытым до фактической проверки.
+
+
+## 2026-10-08 — Unified Media Viewer correction
+- Branch: fix/unified-media-viewer-desktop-mobile
+- Fixed Atlas nested modal architecture: card → legacy modal → ImageBox → ImageLightbox replaced by direct TrainerImageViewer → ImageLightbox.
+- Viewer contract: 100dvh, safe-area, visible controls, zoom/reset, drag/pan, desktop wheel/double-click, touch Pointer Events, optional native Fullscreen.
+- New component: src/components/trainers/TrainerImageViewer.tsx.
+- Runtime gate: Windows desktop + macOS + iPhone Safari + Android Chrome + Lecture/Trainer/Materials regression.
+- Production status remains not verified until deployment/browser evidence exists.
+
+
+## 2026-10-08 — viewer regression cleanup
+- Removed literal escaped-newline TSX artifact in `HistologyTrainerParts.tsx`.
+- Removed unreachable legacy photo branch from Materials after unified viewer migration.
+- Materials image-file preview now uses `ImageLightbox`; trainer photo gets retry.
+- Materials blob URL lifecycle cleaned up for image/PDF/document preview.
+- Latest PR #18 head: `16b168126df8529441b0424e8b6b5b07874802d6`.
+- Runtime remains unverified: Vercel build-rate-limit; GitHub code-check jobs fail before steps/logs.
+
+## 2026-10-08 — pre-launch stability audit
+- Current working branch remains `fix/unified-media-viewer-desktop-mobile`; no new branch created.
+- Fixed live schedule session linkage: 309/309 schedule entries now have academic session context.
+- Fixed PHP namespace exception hazards in TestRepository, CalculatorsService and SrsService.
+- Viewer loading/error states now use the same top-level portal boundary as the main media viewer.
+- Runtime/deployment verification remains open until Vercel/SpaceWeb/browser evidence exists.

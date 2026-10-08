@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Menu } from "lucide-react";
 import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
@@ -12,6 +12,7 @@ import {
 import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
 import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
+import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
 
 type AnswerRow = {
   id: string;
@@ -280,7 +281,12 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {items.map((card: any) => (
                     <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
-                      <div className="aspect-square bg-slate-100"><AtlasThumb id={String(card.id)} /></div>
+                      <div className="relative aspect-square bg-slate-100">
+                        <AtlasThumb id={String(card.id)} />
+                        <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
+                          <Maximize2 className="h-3 w-3" /> Открыть
+                        </span>
+                      </div>
                       <div className="p-2 text-xs font-medium text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
                       <div className="px-2 pb-2 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
                     </button>
@@ -415,28 +421,13 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
         )}
 
         {lightbox && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setLightbox(null)}>
-            <div className="max-h-[90vh] max-w-3xl overflow-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
-              <ImageBox id={String(lightbox.id)} />
-              <h3 className="mt-3 text-lg font-bold">{lightbox.preparation?.name}</h3>
-              <div className="mt-1 text-xs font-medium text-indigo-500">Занятие: {topicLabel(lessonKeyOf(lightbox))}</div>
-              {Array.isArray(lightbox.preparation?.captions) && lightbox.preparation.captions.length > 0 && (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                  {lightbox.preparation.captions.map((c: string, i: number) => <li key={i}>{c}</li>)}
-                </ul>
-              )}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href="/subjects/histology?tab=materials"
-                  className="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
-                  onClick={() => setLightbox(null)}
-                >
-                  Подробный материал и файлы
-                </Link>
-                <button type="button" onClick={() => setLightbox(null)} className="btn-primary">Закрыть атлас</button>
-              </div>
-            </div>
-          </div>
+          <TrainerImageViewer
+            id={String(lightbox.id)}
+            title={String(lightbox.preparation?.name || "Гистологический препарат")}
+            lesson={topicLabel(lessonKeyOf(lightbox))}
+            captions={Array.isArray(lightbox.preparation?.captions) ? lightbox.preparation.captions : []}
+            onClose={() => setLightbox(null)}
+          />
         )}
       </div>
     );

@@ -67,7 +67,7 @@ const codeFiles = [...sourceFiles, ...backendFiles].filter((x) =>
 const escaped = [];
 for (const file of codeFiles) {
   const text = await readFile(file, "utf8");
-  if (/\\\\n\\s*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)/.test(text)) {
+  if (/\\n\\s*(async|const|let|var|return|export|import|function|if|for|while|class|type|interface|<)/.test(text)) {
     escaped.push(relative(root, file));
   }
 }
@@ -90,6 +90,33 @@ for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].include
 if (compatHits.length) fail("retired /api-compat calls remain in frontend: " + compatHits.join(", "));
 else pass("no retired /api-compat calls in frontend");
 
+const viewerPath = join(root, "src/components/media/ImageLightbox.tsx");
+if (existsSync(viewerPath)) {
+  const text = await readFile(viewerPath, "utf8");
+  if (text.includes("createPortal") && text.includes("document.body")) {
+    pass("media viewer is portaled to document.body");
+  } else {
+    fail("media viewer is not using a body portal; mobile/embedded stacking contexts may constrain the viewport");
+  }
+}
+
+const materialViewerPath = join(root, "backend/config/routes/material_viewer.php");
+if (existsSync(materialViewerPath)) {
+  const text = await readFile(materialViewerPath, "utf8");
+  if (text.includes("public.files") && text.includes("presignedDownloadUrl")) {
+    pass("materials viewer supports canonical uploaded files/B2");
+  } else {
+    fail("materials viewer does not support canonical uploaded files/B2");
+  }
+}
+
+const proxyPathForHeaders = join(root, "src/app/api/v1/[...path]/route.ts");
+if (existsSync(proxyPathForHeaders)) {
+  const text = await readFile(proxyPathForHeaders, "utf8");
+  if (text.includes('"location"')) pass("Vercel API proxy preserves backend redirects");
+  else fail("Vercel API proxy does not preserve backend Location redirects");
+}
+
 const malformedImports = [];
 for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
   const text = await readFile(file, "utf8");
@@ -97,6 +124,27 @@ for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
 }
 if (malformedImports.length) fail("malformed Medbiohim namespace imports: " + malformedImports.join(", "));
 else pass("backend namespace imports look valid");
+
+// Namespaced PHP files must qualify built-in exception classes. An unqualified
+// RuntimeException/InvalidArgumentException/Throwable resolves to the current
+// namespace and can fail only when that branch is executed, so syntax checks
+// alone do not catch it.
+const namespaceExceptionHits = [];
+for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
+  const text = await readFile(file, "utf8");
+  if (!/namespace\s+[^;]+;/.test(text)) continue;
+  const lines = text.split("\n");
+  lines.forEach((line, index) => {
+    const stripped = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
+    if (/\b(?:new\s+|catch\s*\(\s*|extends\s+)\b/.test(stripped) &&
+        /\b(RuntimeException|InvalidArgumentException|Throwable|PDOException|LogicException|ErrorException)\b/.test(stripped) &&
+        !/\\(?:RuntimeException|InvalidArgumentException|Throwable|PDOException|LogicException|ErrorException)\b/.test(stripped)) {
+      namespaceExceptionHits.push(relative(root, file) + ":" + (index + 1));
+    }
+  });
+}
+if (namespaceExceptionHits.length) fail("unqualified PHP exception classes in namespaced files: " + namespaceExceptionHits.join(", "));
+else pass("namespaced PHP exception classes are qualified");
 
 const exposedDebugRoutes = [];
 const platformPath = join(root, "backend/config/routes/platform.php");

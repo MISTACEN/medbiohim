@@ -179,7 +179,7 @@ return static function (Router $router): void {
                 $items = SupabaseRest::select($path);
                 $source = 'supabase_rest';
             }
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             try {
                 $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
                     'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module:modules(title),plan_topic:topics(title)'
@@ -189,7 +189,7 @@ return static function (Router $router): void {
                 $path .= '&order=id.asc&limit=' . $limit . '&offset=' . $offset;
                 $items = SupabaseRest::select($path);
                 $source = 'supabase_rest';
-            } catch (Throwable $fallback) {
+            } catch (\Throwable $fallback) {
                 Response::error('TRAINER_ERROR', 'Не удалось загрузить тренажёр', $req->requestId, 503);
                 return;
             }
@@ -467,7 +467,7 @@ return static function (Router $router): void {
         try {
             $meta = (new ScheduleRepository())->calendarMeta($course, $semester);
             Response::success($meta, $req->requestId);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             try { Response::success(SupabaseRest::calendarMeta($course, $semester), $req->requestId); }
             catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500); }
         }

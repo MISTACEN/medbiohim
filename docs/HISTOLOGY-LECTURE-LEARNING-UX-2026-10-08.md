@@ -106,3 +106,12 @@ Browser connector не заменяет реальную авторизован�
 - мини-тест из существующей базы гистологии.
 
 Числа сохранены по присланному материалу. Там, где пользовательский материал содержит варианты референсов из разных источников, они не объединены в одно значение без пометки.
+
+
+## 2026-10-08 — Cross-platform viewer correction
+
+В первоначальном release gate viewer рассматривался преимущественно как iPhone/Safari проверка. Повторный аудит показал, что дефект архитектурный и одинаково относится к desktop/Windows: Atlas имел внешний 90vh scroll-modal перед ImageLightbox.
+
+Текущая ветка переводит Atlas на direct unified viewer и распространяет общий viewer contract на trainer/material photo entry points. Native Fullscreen не является обязательным условием: основной viewer сам занимает 100dvh и предоставляет zoom/reset/close/pan.
+
+Открытый release gate: Windows Chrome/Edge/Firefox/Yandex, macOS Safari/Chrome, iPhone Safari, Android Chrome, затем Lecture → Atlas → Trainer → Materials. Production/runtime остаётся IN PROGRESS до фактической проверки deployment.

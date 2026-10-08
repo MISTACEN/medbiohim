@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { BookOpen, ExternalLink, File, FileText, Search, X, Presentation } from "lucide-react";
 import { getMaterialFileUrl, listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 function FileIcon({ type }: { type?: string | null }) {
   const t = String(type || "").toLowerCase();
@@ -31,7 +32,13 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (directUrl || material.content_html || material.external_url || String(material.subject_slug || "") !== "histology") {
+    const hasPhysicalSource = Boolean(
+      directUrl ||
+      material.source?.file_id ||
+      material.source?.source_path ||
+      material.file_id
+    );
+    if (directUrl || !hasPhysicalSource || material.external_url) {
       setPhysicalUrl(null);
       return;
     }
@@ -46,24 +53,31 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
 
   const url = directUrl || physicalUrl || "";
 
-  if (material.content_html) {
-    return <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: material.content_html }} />;
-  }
-
-  if (material.external_url) {
-    return <iframe src={material.external_url} title={material.title} className="h-full min-h-[60vh] w-full rounded-xl border" />;
-  }
-
   if (url && mime.startsWith("image/")) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center rounded-2xl bg-slate-50 p-4">
-        <img src={url} alt={material.title} className="max-h-[70vh] max-w-full rounded-xl object-contain" />
+        <ImageLightbox
+          src={url}
+          alt={material.title}
+          title={material.title}
+          caption={String(material.subject_name || "Материалы")}
+          className="w-full"
+          imageClassName="mx-auto max-h-[70vh] w-full rounded-xl object-contain"
+        />
       </div>
     );
   }
 
   if (url && mime.includes("pdf")) {
     return <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-xl border" />;
+  }
+
+  if (material.content_html) {
+    return <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: material.content_html }} />;
+  }
+
+  if (material.external_url) {
+    return <iframe src={material.external_url} title={material.title} className="h-full min-h-[60vh] w-full rounded-xl border" />;
   }
 
   return (

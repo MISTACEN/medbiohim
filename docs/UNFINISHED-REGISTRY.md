@@ -1,6 +1,6 @@
 # MEDBIOHIM — реестр незавершённого, скрытых недоделок и legacy
 
-Дата: 2026-10-04
+Дата: 2026-10-08
 
 Этот файл отражает текущее состояние после глубокого повторного аудита. Старые пункты, которые уже исправлены, явно помечены как CLOSED.
 
@@ -211,3 +211,125 @@ Still unverified:
 - проверка всех atlas/trainer image entry points после deployment.
 
 Не закрывать этот пункт только по состоянию GitHub: требуется target-runtime проверка.
+
+
+## U-2026-10-08-03 — Atlas / Unified Media Viewer desktop + mobile correction
+
+Severity: P1 / cross-platform UX
+
+### Найдено
+- Atlas использовал архитектуру card → legacy modal → ImageBox → ImageLightbox.
+- Legacy modal ограничивал контент max-h-[90vh] и overflow-auto, поэтому изображение требовало прокрутки и не занимало viewport.
+- Controls ImageLightbox находились только во втором уровне и фактически были недоступны пользователю в первом Atlas сценарии.
+- Это не iPhone-only defect: та же архитектура воспроизводима на Windows/desktop.
+
+### Исправлено в ветке fix/unified-media-viewer-desktop-mobile
+- unified ImageLightbox: 100dvh, safe-area, явные controls, zoom до 500%, reset, close;
+- desktop wheel + double-click + drag/pan;
+- Pointer Events для touch/pinch;
+- native Fullscreen API только как enhancement/fallback;
+- Atlas direct entry через TrainerImageViewer, без внешнего scroll-modal;
+- metadata/captions/material link перенесены внутрь unified viewer.
+
+### Ещё не закрыто
+- Vercel READY для этой ветки;
+- SpaceWeb/API runtime media delivery;
+- реальный Windows Chrome/Edge/Firefox/Yandex smoke;
+- macOS Safari/Chrome smoke;
+- iPhone Safari smoke;
+- Android Chrome touch smoke;
+- Lecture/Trainer/Materials cross-page regression;
+- Materials photo/document modal architecture audit.
+
+Не переводить в CLOSED/DONE до полного release gate.
+
+
+## U-2026-10-08-04 — Viewer regression cleanup
+
+В рамках Unified Media Viewer дополнительно найдено и исправлено:
+- literal escaped `\\n` в `HistologyTrainerParts.tsx`, который мог ломать TSX parsing;
+- unreachable legacy photo rendering внутри нового Materials document modal;
+- отдельный `<img>` для image-file preview в Materials заменён на `ImageLightbox`;
+- photo loading в Materials получил retry;
+- blob/object URLs для document/PDF/image preview переведены на управляемый lifecycle.
+
+Статус: исправлено в ветке `fix/unified-media-viewer-desktop-mobile`; runtime/build gate остаётся открытым.
+
+## U-2026-10-08-05 — iPhone viewport / stacking regression found from runtime screenshot
+
+Severity: P1 / mobile viewport
+
+### Подтверждено по iPhone Safari screenshot
+- viewer controls are present, but the viewer is physically constrained to the app content area;
+- the fixed overlay does not cover the full device viewport;
+- the mobile bottom navigation remains above the viewer;
+- the image therefore appears too high/inside a shortened viewer instead of being centered in the full visible viewport;
+- this proves that `fixed + z-index` inside the existing React tree is not sufficient for this app/runtime combination.
+
+### Исправлено в ветке fix/unified-media-viewer-desktop-mobile
+- `ImageLightbox` now renders the open viewer through `createPortal(..., document.body)`;
+- viewer gets an explicit viewport-level z-index and `100vw` / visualViewport height;
+- glass overlay/card colors are explicit inline RGBA values so the existing theme overrides cannot turn the viewer into an unintended dark surface;
+- page scroll lock no longer re-runs on every zoom change;
+- keyboard zoom uses a ref to avoid recreating the scroll-lock effect during zoom.
+
+Code commit: `6655e65c94072fa91bc3b96c65745865698cd95f`.
+
+### Release gate
+Still required:
+- deploy this exact commit;
+- iPhone Safari: full-width/full-height viewer, image centered between header/footer, bottom navigation fully covered, no page scroll;
+- pinch/pan/zoom/reset/fullscreen/close;
+- desktop and Android regression;
+- Lecture → Atlas → Trainer → Materials regression.
+
+Do not mark this item DONE from source inspection alone.
+
+
+2026-10-08 — additional launch blocker audit: found and fixed a literal `\\nuse` syntax artifact in `backend/config/routes/questions_rest.php` on the active viewer branch. This was a real PHP syntax blocker that could prevent the backend route set from loading. Commit: `b374a49fd03574806595064746d09c046a19778e`. The companion `HistologyTrainerParts.tsx` literal-newline issue is already clean on this branch. GitHub Actions currently fails before any job step/log is produced, so target syntax/build verification remains external/infrastructure-blocked.
+
+## U-2026-10-08-06 — Schedule session reconciliation
+
+Severity: P1 / academic-context integrity
+
+Live audit found all 309 current `schedule_entries` had `session_id = NULL`, despite an unambiguous current academic session for the active group's course/date range.
+
+Fixed:
+- idempotent migration `20261008_reconcile_schedule_entries_current_session`;
+- source-controlled migration in `database/migrations/20261008_reconcile_schedule_entries_current_session.sql`;
+- live result: 309/309 entries have `session_id`, 0 remain without session;
+- migration does not hardcode generated UUIDs and only fills entries when the current session/course/date match is unambiguous.
+
+Still required: production API/browser smoke for schedule loading and create/edit homework flow.
+
+## 2026-10-08 — launch-blocker sweep #2
+
+Found and fixed another real frontend syntax blocker in `src/components/trainers/HistologyMaterials.tsx`: `createPortal(...)` had been incorrectly wrapped in `{...}` inside a JavaScript conditional expression. Commit: `aa4fcd4975da79f187969f6685caf891572b80bb`.
+
+Additional source scan of all 12 files changed against `main` found no remaining literal-newline artifacts or malformed `{createPortal(...)}` patterns. The active branch remains `fix/unified-media-viewer-desktop-mobile`; no new branch created.
+
+GitHub Actions continues to terminate both frontend/backend jobs before any step/log is produced (GitHub log artifact returns `BlobNotFound`), and Vercel continues to report the external build-rate-limit blocker. These are release-verification blockers, not a reason to invent a code workaround.
+
+
+## Launch sweep — 2026-10-08
+
+| ID | Проверка | Результат |
+|---|---|---|
+| LS-01 | Atlas/ImageLightbox constrained by parent stacking context | ✅ fixed: viewer portaled to `document.body`, explicit viewport sizing/z-index/safe-area |
+| LS-02 | Generic Materials did not request physical file for non-Histology/file-backed records | ✅ fixed in `src/app/materials/page.tsx` |
+| LS-03 | Material backend only served Histology source_path | ✅ fixed: canonical `public.files`/B2 path + Histology legacy fallback |
+| LS-04 | Vercel proxy dropped backend media `Location` redirects | ✅ fixed; `location`/media headers are forwarded |
+| LS-05 | Material client could not safely consume B2 302 as a URL | ✅ fixed: manual redirect handling returns presigned URL |
+| LS-06 | Live duplicate `schedule_entries(session_id)` index | ✅ removed; single `idx_schedule_entries_session` remains |
+| LS-07 | Live `file_variants` RLS called `auth.uid()` per row | ✅ migrated to `(select auth.uid())` form |
+| LS-08 | All published Materials have a content source | ✅ live check: 80/80 have `content_sources.source_path`; 0 missing source |
+| LS-09 | Published schedule entries without session | ✅ live check: 0/309 |
+| LS-10 | Question/test integrity | ✅ live audit: no duplicate/orphan test-question links; no published tests without questions |
+
+### Current hard launch blockers
+
+1. Vercel target deployment of the exact current head is not available yet because of the platform build-rate limit.
+2. SpaceWeb physical Histology files still require HTTP-level verification on the deployed backend.
+3. Auth → schedule → tests/preparation → Materials/Atlas runtime smoke still requires the target environment.
+4. AI provider health remains external and must be verified with production-safe credentials.
+5. Generic full-fidelity document rendering for DOCX/PPTX remains a P2 feature gap; the fallback is an original-file link, not a fake in-browser Word renderer.

@@ -767,3 +767,67 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟢 Нативный Fullscreen API используется как дополнительный режим; fixed viewport-lightbox остаётся fallback для Safari.
 - 🟡 Не считать production/runtime DONE до Vercel READY и реального iPhone Safari smoke.
 - Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+
+
+## 2026-10-08 — Unified Media Viewer audit / correction
+
+| Контур | Статус | Фактическое состояние |
+|---|---|---|
+| Atlas outer modal | 🟢 FIXED IN BRANCH | удалён вложенный 90vh + overflow-auto слой |
+| Unified viewer | 🟢 CODE | 100dvh, safe-area, controls, zoom/pan, desktop wheel/double-click, touch Pointer Events |
+| Native fullscreen | 🟡 ENHANCEMENT | используется только если браузер разрешает; viewer без него остаётся полноценным |
+| Lecture viewer | 🟡 | использует общий ImageLightbox, нужен regression smoke |
+| Trainer viewer | 🟡 | общий компонент используется, нужен regression smoke |
+| Materials viewer | 🟡 | отдельный document/photo modal ещё требует отдельного UX-аудита |
+| Windows desktop | 🟡 | обязательный реальный browser smoke |
+| iPhone Safari | 🟡 | обязательный реальный authenticated smoke |
+| Android Chrome | 🟡 | обязательный touch/pinch smoke |
+| Cross-page regression | 🟡 | lecture → atlas → trainer → materials |
+
+Правило: наличие кода не переводит эти пункты в DONE; нужен target-runtime/browser evidence.
+
+
+### 2026-10-08 — viewer regression cleanup
+- 🟢 literal escaped-newline source artifact устранён из `HistologyTrainerParts.tsx`;
+- 🟢 legacy photo-rendering ветка Materials удалена после перехода на unified viewer;
+- 🟢 image-file preview в Materials использует unified viewer;
+- 🟢 retry для недоступного trainer photo добавлен;
+- 🟢 blob URL lifecycle для Materials document/PDF/image preview приведён к управляемому состоянию;
+- 🟡 CI/Vercel остаются инфраструктурными release blockers: GitHub jobs создаются, но завершаются без steps/logs; Vercel отвечает `build-rate-limit`.
+\n## 2026-10-08 — Unified Media Viewer: viewport/stacking correction\n\n| Viewer portal / viewport | 🟢 CODE PATCHED | `ImageLightbox` moved to `document.body` portal; explicit 100vw/visualViewport sizing and top-level z-index; glass colors made explicit |\n| iPhone Safari smoke | 🟡 | must confirm viewer covers MobileNav, fills visible viewport, centers image and prevents page scroll |\n| Cross-platform viewer smoke | 🟡 | Windows/macOS/iPhone/Android + Lecture → Atlas → Trainer → Materials |\n| Production DONE | 🔴 | blocked until target-runtime proof for exact commit |\n
+2026-10-08 — launch-blocker sweep: fixed a real PHP source artifact (`Router;\\nuse`) in `backend/config/routes/questions_rest.php` on the existing `fix/unified-media-viewer-desktop-mobile` branch. No new branch. GitHub Actions still terminates before steps/logs, while Vercel reports the external build-rate-limit blocker; source/runtime acceptance remains pending.
+
+
+## 2026-10-08 — Final pre-launch sweep
+
+| Контур | Статус | Фактическое состояние |
+|---|---|---|
+| Materials physical delivery | 🟢 CODE | canonical B2 presigned URL + authenticated legacy Histology fallback |
+| Vercel media proxy | 🟢 CODE | media redirect/cache/disposition headers preserved |
+| Materials URL negotiation | 🟢 CODE | dedicated `file-url` JSON endpoint avoids browser opaque redirects |
+| Schedule DB integrity | 🟢 LIVE | 309/309 entries have `session_id`; duplicate index removed |
+| Question/test integrity | 🟢 LIVE | 479/479 published active Histology questions linked; duplicate/orphan links 0 |
+| Homework backend syntax | 🟢 CODE | confirmed/fixed PHP SQL string quoting defect |
+| Atlas unified viewer | 🟢 CODE | portal + viewport + zoom/pan/fullscreen/close; runtime pending |
+| Vercel deployment | 🔴 BLOCKED | external build-rate-limit on current period |
+| SpaceWeb runtime | 🟡 | exact backend commit + media HTTP smoke required |
+| Browser acceptance | 🟡 | iPhone/Android/desktop required after deployment |
+| AI providers | 🟡 | external credentials/network; optional for base grading path |
+
+Правило неизменно: production DONE только после exact-deployment + authenticated runtime evidence.
+
+## 2026-10-08 — Pre-launch security/deployment gate
+
+- 🟢 Removed the hardcoded Supabase anon key from src/lib/supabase.ts.
+- 🟢 Removed the same hardcoded key fallback from the Vercel API proxy; deployment now requires the configured environment variable.
+- 🟢 Vercel successfully built the preceding branch commit 87c13f01eb5fb983dd063cf90d0c0e5744f27ef0 (READY).
+- 🟡 The next source commit is not yet represented by a new Vercel deployment; Vercel API access available in this session cannot create a fresh deployment for the project.
+- 🟡 GitHub Actions MEDBIOHIM code checks currently fails both backend/frontend jobs immediately with zero steps executed; this is an Actions runner/infrastructure gate, not a reported PHP/TypeScript test failure.
+
+## 2026-10-08 — Atlas viewer visual baseline restored
+
+- 🟢 `ImageLightbox` now uses the `main` branch visual composition as the source of truth: dark translucent viewport, centered image, compact top controls, no large white modal card.
+- 🟢 New functionality remains: portal to `document.body`, viewport/safe-area handling, external/open-on-mount use, title/details, fullscreen, zoom controls and background scroll lock.
+- 🟢 The viewer must not alter Atlas page layout or inherit the position of the source card.
+- 🟡 Target-device smoke test remains required before production sign-off.
+

@@ -65,7 +65,7 @@ return static function (Router $router): void {
             header('Cache-Control: private, max-age=3600');
             readfile($path);
             exit;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             Response::error('SOURCE_ERROR', $e->getMessage(), $req->requestId, 503);
         }
     });

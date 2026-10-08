@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
-use Medbiohim\Http\Router;\nuse Medbiohim\Database\Connection;
+use Medbiohim\Http\Router;
+use Medbiohim\Database\Connection;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Services\ExamQuestionStore;
 

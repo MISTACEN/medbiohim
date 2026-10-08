@@ -8,9 +8,7 @@ const SUPABASE_URL = (
   "https://gnobvyjywtqbdfeejxmf.supabase.co"
 ).replace(/\/$/, "");
 
-const SUPABASE_ANON =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub2J2eWp5d3RxYmRmZWVqeG1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MzgxMjIsImV4cCI6MjEwNDAxNDEyMn0.kVPf6gZ_7GGNt1nDvbev4RJM0iMQ9rBWBV_5xXWRUTg";
+const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export function getSupabaseUrl() {
   return SUPABASE_URL;

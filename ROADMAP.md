@@ -2,7 +2,7 @@
 
 > Единый план проекта и источник порядка по задачам.  
 > Обновляется вместе с изменениями в коде/БД.  
-> Дата актуализации: **2026-10-07**.
+> Дата актуализации: **2026-10-08**.
 
 ## Как читать статус
 
@@ -15,6 +15,31 @@
 Правило: задача получает ✅ только после проверки результата в целевом окружении. Сам факт коммита не считается проверкой.
 
 ---
+
+## CURRENT EXECUTION CYCLE — 2026-10-08
+
+**Текущий поток: Stability → Media → Histology → Runtime verification.**
+
+### Active P1 — Unified Media Viewer
+- 🟢 code architecture: unified viewer implemented;
+- 🟢 Atlas nested modal removed;
+- 🟢 Lecture/Trainer/Materials image entry points aligned;
+- 🟢 desktop + mobile interaction contract implemented;
+- 🟢 malformed TSX escaped-newline artifact found during regression and removed;
+- 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
+- 🟡 Vercel READY / production commit verification;
+- 🟡 SpaceWeb authenticated media smoke.
+
+### Immediate next after viewer source gate
+1. 🟡 Vercel/CI runtime unblock and exact-commit deployment verification.
+2. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation.
+3. 🟡 Histology 28 EM + captions + plan↔content matrix.
+4. 🟡 Histology tests/question bank final runtime smoke.
+5. 🟡 Schedule/auth/dashboard production smoke.
+6. 🟡 Admin Content Center / quick editors.
+7. 🟡 AI provider runtime health and verified primary provider.
+
+**Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
 
 ## 0. Source of truth и порядок работы
 
@@ -1551,3 +1576,55 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 Для iPhone/iPad Safari сохранён fallback: если нативный Fullscreen API недоступен, используется полноэкранный fixed-lightbox.
 - 🟡 Runtime на iPhone Safari и production deployment остаются непроверенными до фактического smoke-test.
 - Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+
+
+## 2026-10-08 — Unified Media Viewer / Atlas release gate
+
+**Статус: 🟡 IN PROGRESS — P1**
+
+Проблема подтверждена не только на iPhone: на Windows/desktop тот же архитектурный дефект проявляется как вложенное окно с ограничением 90vh, внутренним overflow-auto и отсутствующими на первом уровне controls.
+
+### Исправление в работе
+- 🟢 ImageLightbox переведён на единый viewport viewer: 100dvh, safe-area, явные controls, zoom до 500%, reset, close, desktop wheel, double-click, drag/pan и Pointer Events для pinch.
+- 🟢 native Fullscreen API оставлен только как enhancement; CSS viewport остаётся рабочим fallback для Safari/iOS.
+- 🟢 Atlas больше не использует внешний max-h-[90vh] overflow-auto modal вокруг изображения.
+- 🟢 Atlas открывает тот же unified viewer напрямую, с названием, занятием, captions и переходом к материалам.
+- 🟡 Lecture / Trainer / Materials должны пройти cross-page regression на том же viewer contract.
+- 🟡 target runtime пока не подтверждён: Vercel/SpaceWeb deployment и реальный браузерный smoke обязательны.
+
+### Release gate
+1. Windows Chrome/Edge/Firefox/Yandex: Atlas open → controls → zoom → pan → close.
+2. macOS Safari/Chrome: тот же сценарий.
+3. iPhone Safari: viewer сразу занимает viewport, нет page-scroll для изображения, controls видимы.
+4. Android Chrome: touch/pinch/drag/close.
+5. Lecture → Atlas → Trainer → Materials: нет вложенных image modals и regressions.
+6. Light/dark и safe-area не создают чёрных/пустых полос.
+7. Production commit совпадает с проверяемой веткой до перевода в DONE.
+
+До выполнения release gate пункт остаётся 🟡.
+\n## 2026-10-08 — Unified Media Viewer: iPhone viewport regression found and patched\n\n- 🟡 Screenshot smoke exposed a second-level issue: the fixed viewer was still physically constrained by the app DOM on iPhone Safari, so the overlay did not cover the full viewport and MobileNav remained visible above it.\n- 🟢 Patched in `fix/unified-media-viewer-desktop-mobile`: `ImageLightbox` renders through `createPortal(..., document.body)`, gets explicit viewport sizing/z-index, and uses explicit glass RGBA surfaces.\n- 🟢 Scroll-lock effect no longer restarts on every zoom change.\n- 🟡 Target-runtime smoke remains mandatory before calling the viewer DONE.\n- 🟡 Required: iPhone Safari, Android Chrome, Windows Chrome/Edge/Firefox/Yandex, macOS Safari/Chrome, and Lecture → Atlas → Trainer → Materials regression.\n
+2026-10-08 — launch-blocker sweep: fixed an additional literal-newline PHP syntax artifact in `backend/config/routes/questions_rest.php` on the same active viewer branch (`b374a49fd03574806595064746d09c046a19778e`). No new branch created. Remaining release gate is target runtime/Vercel build plus SpaceWeb/browser smoke.
+
+## 2026-10-08 — Runtime integrity fixes during pre-launch audit
+
+- 🟢 Schedule academic-session reconciliation: live `schedule_entries` now 309/309 with `session_id`; 0 unresolved current entries.
+- 🟢 Backend namespace exception audit: fixed unqualified exceptions in `TestRepository`, `CalculatorsService`, `SrsService` on the current working branch.
+- 🟡 Vercel remains externally blocked by current `build-rate-limit` status; exact branch deployment still required.
+- 🟡 GitHub code-check jobs currently fail without usable step/log evidence; do not interpret that as a source failure until runner evidence exists.
+- 🟡 SpaceWeb/auth/media/browser runtime gates remain open.
+
+Rule unchanged: no production DONE from source-only inspection.
+
+## 2026-10-08 — Final pre-launch sweep
+
+- 🟢 Materials: canonical `public.files`/B2 delivery + legacy Histology SpaceWeb fallback unified.
+- 🟢 Vercel API proxy preserves media redirect/cache/disposition headers.
+- 🟢 B2 materials now negotiate a presigned URL through a JSON `file-url` endpoint; legacy authenticated binaries remain blob-fetched with Bearer.
+- 🟢 Live DB integrity cleanup applied: duplicate schedule session index removed; `file_variants` RLS initplan fixed.
+- 🟢 Live checks: 309/309 schedule entries have `session_id`; 80/80 published Materials have source metadata; 479/479 published active Histology questions have test links; duplicate/orphan test-question links = 0.
+- 🟢 Found and fixed a real PHP SQL-string quoting bug in `HomeworkRepository.php` that could break backend parsing.
+- 🟢 Predeploy audit extended to media viewer/materials redirect regressions.
+- 🟡 Exact current branch deployment is still blocked by Vercel build-rate-limit; target SpaceWeb/browser runtime remains the final acceptance gate.
+
+No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mobile`.
+
