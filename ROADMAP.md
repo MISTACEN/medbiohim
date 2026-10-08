@@ -1641,3 +1641,5 @@ No new branch created; all fixes remain in `fix/unified-media-viewer-desktop-mob
 - Private test environment was inventoried by variable family. Repository templates contain placeholders only; real test credentials are not published to GitHub.
 
 - ⚠️ В live DB на 2026-10-07 нет ни одной активной membership с `role_in_group='starosta'`; сценарий ДЗ готов в коде, но для реального student-side создания общего ДЗ староста должен быть назначен администратором.
+
+- 🟡 Materials physical delivery audit: live Histology has 80 published materials, all source_path-only (materials.file_id/content_sources.file_id are null); unified viewer fix now prefers canonical B2 file objects and keeps authenticated SpaceWeb fallback.

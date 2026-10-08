@@ -839,3 +839,5 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Homework due_date persistence | 🟢 | Primary repository now writes `due_date` |
 | Private test env inventory | 🟢 | Variable families documented; secret values remain outside GitHub |
 | Target runtime deployment smoke | 🟡 P0 | Latest branch still needs READY Vercel/SpaceWeb authenticated smoke |
+
+| Materials physical delivery semantics | 🟢 source | live audit explains 80 Histology source_path-only rows; unified viewer fix is in draft PR #16; runtime HTTP smoke still pending |
