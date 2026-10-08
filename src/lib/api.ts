@@ -234,34 +234,55 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
   const cached=materialFileCache.get(key);
   if(cached)return cached;
   try{
+    const negotiate=async(token:string|null)=>{
+      const res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file-url`,{
+        headers:token?{Authorization:`Bearer ${token}`}: {},
+        cache:"no-store",
+      });
+      if(!res.ok)return null;
+      const parsed=await res.json() as {ok?:boolean;data?:{url?:string|null;mode?:string}};
+      if(!parsed?.ok)return null;
+      return parsed.data ?? null;
+    };
+
     let token=getToken();
-    let res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
-      headers:token?{Authorization:`Bearer ${token}`}:{},
-      cache:"no-store",
-      redirect:"manual"
-    });
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get("location");
-      if (location) {
-        materialFileCache.set(key, location);
-        return location;
+    let meta=await negotiate(token);
+    if(meta?.url){
+      materialFileCache.set(key,meta.url);
+      return meta.url;
+    }
+
+    if(!meta){
+      const access=await refreshAccessToken();
+      if(access){
+        token=access;
+        meta=await negotiate(access);
+        if(meta?.url){
+          materialFileCache.set(key,meta.url);
+          return meta.url;
+        }
       }
     }
+
+    // Legacy Histology files are private/authenticated binary responses.
+    // Fetch them with Bearer and expose only a local blob URL to the viewer.
+    const res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
+      headers:token?{Authorization:`Bearer ${token}`}: {},
+      cache:"no-store",
+    });
     if(res.status===401){
       const access=await refreshAccessToken();
       if(access){
-        res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
+        const retry=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
           headers:{Authorization:`Bearer ${access}`},
           cache:"no-store",
-          redirect:"manual"
         });
-        if (res.status >= 300 && res.status < 400) {
-          const location = res.headers.get("location");
-          if (location) {
-            materialFileCache.set(key, location);
-            return location;
-          }
-        }
+        if(!retry.ok)return null;
+        const blob=await retry.blob();
+        if(blob.size===0)return null;
+        const url=URL.createObjectURL(blob);
+        materialFileCache.set(key,url);
+        return url;
       }
     }
     if(!res.ok)return null;
