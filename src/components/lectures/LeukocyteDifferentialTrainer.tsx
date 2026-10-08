@@ -35,6 +35,7 @@ type Case = {
   imageId?: string;
   imageUrl?: string;
   imageSourceUrl?: string;
+  imageFocus?: { x: number; y: number; scale?: number };
 };
 type Answers = { cell: string; norm: string; result: string; conclusion: string; diagnosis: string };
 type Evaluation = { cell: boolean; norm: boolean; result: boolean; conclusion: boolean; diagnosis: boolean; grade: 2 | 4 | 5 };
@@ -108,7 +109,7 @@ const CELLS: CellInfo[] = [
     function: "Фагоцитоз микроорганизмов; участие в антигистаминных реакциях и гнойном воспалении.",
     highTerm: "нейтрофилия (нейтрофилёз)",
     lowTerm: "нейтрофилопения",
-    localIds: ["feed-prep-9f7dc534b5", "feed-prep-867b72a4b6", "feed-prep-a47e9dc83a"],
+    localIds: ["feed-prep-867b72a4b6"],
     highHypotheses: ["бактериаль", "инфекц", "воспал"],
     lowHypotheses: ["угнет", "костного мозга", "лекарств", "нейтропени"],
   },
@@ -119,7 +120,7 @@ const CELLS: CellInfo[] = [
     function: "Участие в иммунных реакциях; Т- и В-лимфоциты участвуют в клеточном и гуморальном иммунитете.",
     highTerm: "лимфоцитоз",
     lowTerm: "лимфоцитопения",
-    localIds: ["feed-prep-a2feb3ec86", "feed-prep-5a224c48f5", "feed-prep-29f73833e0"],
+    localIds: ["feed-prep-5a224c48f5"],
     highHypotheses: ["вирус", "инфекц"],
     lowHypotheses: ["иммунодефицит", "иммунн", "угнет", "кортикост"],
   },
@@ -130,7 +131,7 @@ const CELLS: CellInfo[] = [
     function: "Дифференцируются в макрофаги и формируют макрофагическую систему организма.",
     highTerm: "моноцитоз",
     lowTerm: "моноцитопения",
-    localIds: ["feed-prep-bca30caf3b", "feed-prep-a2feb3ec86"],
+    localIds: ["feed-prep-bca30caf3b"],
     highHypotheses: ["хроническ", "инфекц", "воспал", "аутоиммун"],
     lowHypotheses: ["угнет", "лекарств", "иммунодефицит", "инфекц"],
   },
@@ -140,7 +141,7 @@ const CELLS: CellInfo[] = [
     morphology: "12–14 мкм; ядро обычно из 2 сегментов; крупные оксифильные гранулы.",
     function: "Уничтожение микроорганизмов, гельминтов и простейших; разрушение гистамина и участие в аллергических реакциях.",
     highTerm: "эозинофилия",
-    localIds: ["feed-prep-9f7dc534b5", "feed-prep-a47e9dc83a"],
+    localIds: [],
     highHypotheses: ["аллерг", "паразит", "инваз"],
     lowHypotheses: ["кортикост", "стресс", "тяжёл"],
   },
@@ -156,12 +157,19 @@ const CELLS: CellInfo[] = [
   },
 ];
 
-const EXTERNAL_IMAGES = [
-  { cell: "neutrophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html" },
-  { cell: "lymphocytes" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html" },
-  { cell: "monocytes" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME003.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM021.html" },
-  { cell: "eosinophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME004.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM022.html" },
-  { cell: "basophils" as CellKey, url: "https://webpath.med.utah.edu/jpeg5/HEME005.jpg", sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM023.html" },
+const SINGLE_CELL_EXTERNAL = [
+  {
+    cell: "eosinophils" as CellKey,
+    url: "https://webpath.med.utah.edu/jpeg5/HEME004.jpg",
+    sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM022.html",
+    imageFocus: { x: 50, y: 50, scale: 1.9 },
+  },
+  {
+    cell: "basophils" as CellKey,
+    url: "https://webpath.med.utah.edu/jpeg5/HEME005.jpg",
+    sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM023.html",
+    imageFocus: { x: 50, y: 50, scale: 1.9 },
+  },
 ];
 
 const CONCLUSION_TERMS: Record<CellKey, { normal: string[]; high: string[]; low: string[] }> = {
@@ -181,13 +189,13 @@ function normalizeText(value: string) {
     .toLowerCase()
     .replace(/ё/g, "е")
     .replace(/й/g, "и")
-    .replace(/[^p{L}p{N}]+/gu, " ")
-    .replace(/s+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function numbers(value: string): number[] {
-  return (value.match(/d+(?:[.,]d+)?/g) || []).map((x) => Number(x.replace(",", ".")));
+  return (value.match(/\d+(?:[.,]\d+)?/g) || []).map((x) => Number(x.replace(",", ".")));
 }
 
 function closeNumber(a: number, b: number, tolerance = 0.15) {
@@ -237,23 +245,49 @@ function createCase(round: number, sourceMode: SourceMode): Case {
   }
 
   const localIds = cell.localIds;
-  const external = EXTERNAL_IMAGES.filter((item) => item.cell === cell.key);
+  const external = SINGLE_CELL_EXTERNAL.filter((item) => item.cell === cell.key);
   let source: "local" | "external";
+
+  // Проверка распознавания использует только одиночные, заранее подтверждённые
+  // изображения. Общие мазки с несколькими лейкоцитами не подмешиваются.
   if (sourceMode === "local" && localIds.length) source = "local";
-  else if (sourceMode === "external" && external.length) source = "external";
-  else if (localIds.length) source = Math.random() > 0.25 ? "local" : "external";
+  else if (sourceMode === "external") source = "external";
+  else if (localIds.length) source = "local";
   else source = "external";
 
   const id = ["case", String(round), String(Date.now())].join("-");
 
   if (source === "local") {
-    return { id, age, cell: cell.key, norm, result, deviation, source, imageId: localIds[Math.floor(Math.random() * localIds.length)] };
+    return {
+      id,
+      age,
+      cell: cell.key,
+      norm,
+      result,
+      deviation,
+      source,
+      imageId: localIds[Math.floor(Math.random() * localIds.length)],
+    };
   }
 
-  const image = external[0] || EXTERNAL_IMAGES[Math.floor(Math.random() * EXTERNAL_IMAGES.length)];
-  return { id, age, cell: image.cell, norm: age.norms[image.cell], result: image.cell === cell.key ? result : age.norms[image.cell].min, deviation: image.cell === cell.key ? deviation : "normal", source, imageUrl: image.url, imageSourceUrl: image.sourceUrl };
-}
+  const image = external[0];
+  if (!image) {
+    throw new Error("Для выбранной клетки нет однозначного учебного изображения.");
+  }
 
+  return {
+    id,
+    age,
+    cell: cell.key,
+    norm,
+    result,
+    deviation,
+    source,
+    imageUrl: image.url,
+    imageSourceUrl: image.sourceUrl,
+    imageFocus: image.imageFocus,
+  };
+}
 const EMPTY: Answers = { cell: "", norm: "", result: "", conclusion: "", diagnosis: "" };
 
 export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
@@ -403,6 +437,14 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
       <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_300px] sm:p-5">
         <div className="min-w-0 space-y-5">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-800">
+                На изображении: один целевой лейкоцит
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500">
+                Других лейкоцитов в рабочем кадре нет
+              </span>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Карточка исследования</div>
@@ -424,16 +466,17 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                   <ImageLightbox
                     src={visibleImage}
                     alt="Мазок периферической крови"
-                    caption="Учебный мазок периферической крови"
+                    caption="Один целевой лейкоцит — учебный мазок периферической крови"
                     className="bg-slate-950"
                     imageClassName="mx-auto h-[235px] w-full object-contain p-2 sm:h-[270px]"
+                    focus={currentCase.imageFocus}
                   />
                 ) : (
                   <div className="flex h-[235px] items-center justify-center text-xs text-white/60">{imageLoading ? "Загрузка мазка…" : "Изображение временно недоступно"}</div>
                 )}
               </div>
               <div className="border-t border-slate-200 px-3 py-2 text-[10px] text-slate-500">
-                {currentCase.source === "local" ? "Канонический препарат MEDBIOHIM" : "University of Utah WebPath"}
+                {currentCase.source === "local" ? "Канонический препарат MEDBIOHIM · одиночная клетка" : "University of Utah WebPath · сфокусирован центральный лейкоцит"}
                 {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
               </div>
               <input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Какой это лейкоцит?" />
