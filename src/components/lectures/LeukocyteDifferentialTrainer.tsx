@@ -577,13 +577,6 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 )}
               </div>
               <div className="border-t border-slate-200 px-3 py-2 text-[10px] text-slate-500">
-                {currentCase.identificationScope === "population" ? (
-                  <div className="mb-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 font-semibold text-amber-800">
-                    {currentCase.cell === "neutrophils"
-                      ? "Уточнение: на поле могут быть и палочкоядерные, и сегментоядерные нейтрофилы. Здесь нужен ответ «нейтрофилы всего», а не «п/я» или «с/я»."
-                      : currentCase.identificationHint}
-                  </div>
-                ) : null}
                 {currentCase.visual === "drawing"
                   ? "Учебный рисунок · однозначная морфология"
                   : currentCase.identificationScope === "population"
@@ -601,7 +594,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
     </div>
   ) : null}
 </div>
-<input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder={currentCase.identificationScope === "population" ? "Например: нейтрофилы / нейтрофилы всего" : "Какой это лейкоцит?"} />
+<input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Какой это лейкоцит?" />
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -670,7 +663,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-sm font-extrabold text-slate-900">Эталон разбора</div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">1. Клетка</div><div className="mt-1 font-bold">{currentCase.identificationScope === "population" && currentCase.cell === "neutrophils" ? "Нейтрофилы (всего)" : cell.name}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">1. Клетка</div><div className="mt-1 font-bold">{cell.name}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">2. Норма</div><div className="mt-1 font-bold">{currentCase.norm.text}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">3. Результат</div><div className="mt-1 font-bold">{resultLabel(currentCase.result)}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">4. Вывод</div><div className="mt-1 font-bold">{currentCase.deviation === "normal" ? "Норма" : currentCase.deviation === "high" ? cell.highTerm : cell.lowTerm || "отклонение"}</div></div>
