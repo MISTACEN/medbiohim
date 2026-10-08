@@ -369,7 +369,7 @@ export function RichLectureEditor({
   const [formula, setFormula] = useState("\\frac{a}{b}");
   const [tableText, setTableText] = useState("Показатель\tЗначение\nЭритроциты\t4,0–5,5 × 10¹²/л\nHb\t130–160 г/л");
   const [tableHeader, setTableHeader] = useState(true);
-  const [leukocyteMode, setLeukocyteMode] = useState("mixed");
+  const [leukocyteMode, setLeukocyteMode] = useState("case");
   const [leukocyteSourceMode, setLeukocyteSourceMode] = useState("mixed");
   const [leukocyteRounds, setLeukocyteRounds] = useState("12");
 
@@ -701,7 +701,7 @@ export function RichLectureEditor({
         {toolbarButton("Таблица","Создать таблицу",()=>openBlock("table"),<Table2 className="h-4 w-4"/>)}
         {toolbarButton("Схема","Создать Mermaid-схему",()=>{rememberSelection();setBlock("mermaid");setBlockTab("builder")},<Wand2 className="h-4 w-4"/>)}
         {toolbarButton("Мини-тест","Создать мини-тест",()=>openBlock("quiz"),<Braces className="h-4 w-4"/>)}
-        {toolbarButton("Лейкоциты","Тренажёр лейкоцитарной формулы",()=>openBlock("leukocyte"),<span className="font-bold">WBC</span>)}
+        {toolbarButton("Лейкоциты","Практическая карточка по лейкоцитарной формуле",()=>openBlock("leukocyte"),<span className="font-bold">WBC</span>)}
         {toolbarButton("Диаграмма","Создать диаграмму",()=>openBlock("chart"),<BarChart3 className="h-4 w-4"/>)}
         {toolbarButton("Формула","Создать формулу",()=>openBlock("formula"),<span className="font-bold">∑</span>)}
         {toolbarButton("Химия","Создать химическую фигуру",()=>openBlock("chem"),<span className="font-bold">⚗</span>)}
@@ -795,8 +795,8 @@ export function RichLectureEditor({
 
           {block==="leukocyte"&&<div className="mt-5 space-y-4">
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
-              <div className="text-sm font-extrabold text-indigo-900">Тренажёр лейкоцитарной формулы</div>
-              <p className="mt-1 text-xs leading-5 text-indigo-800">Проценты нормы → увеличение/снижение → распознавание клеток по мазку. Для морфологии можно использовать локальные препараты MEDBIOHIM и независимую внешнюю сверку.</p>
+              <div className="text-sm font-extrabold text-indigo-900">Практическая карточка по лейкоцитарной формуле</div>
+              <p className="mt-1 text-xs leading-5 text-indigo-800">Карта занятия: 1) опознать клетку на мазке; 2) назвать норму по возрасту; 3) переписать результат; 4) поставить термин отклонения; 5) связать функцию клетки с предварительной гипотезой для «5».</p>
             </div>
             <label className="block text-sm font-semibold">Режим
               <select value={leukocyteMode} onChange={(event)=>setLeukocyteMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
