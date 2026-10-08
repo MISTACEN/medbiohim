@@ -86,3 +86,13 @@
 - A new Vercel deployment could not be triggered from the connected deployment API because the Free daily deployment quota is exhausted (>100/day; retry window reported as 24h).
 - Therefore the current frontend learning-UX code is **not** declared production-verified.
 - Supabase Lecture 05 content changes are live and verified separately.
+
+ 
+## 2026-10-08 — Lecture 05 age norms update
+
+- Live lecture `lec-histology-blood-20261008` получила блок 7A–7E по присланным возрастным нормам.
+- Добавлены возрастные перекрёсты, возрастная лейкоцитарная формула, ключевые нормы гемограммы и алгоритм интерпретации карточки.
+- Мини-тест блока использует существующие вопросы `public.questions`: новорождённый, нормы эритроцитов у женщин и объём крови взрослого.
+- Количество quiz blocks в live Lecture 05: **8**.
+- Новый migration: `database/migrations/20261008_histology_lecture_05_age_norms.sql`.
+- Scope остаётся только `histology` / Lecture 05.
