@@ -479,7 +479,7 @@ export default function HistologyMaterials() {
             onClose={() => setActive(null)}
           />
         ) : (
-          {createPortal(
+          createPortal(
             <div
               className="fixed inset-0 flex items-center justify-center p-6 text-sm text-white"
               style={{ zIndex: 2147483000, width: "100vw", height: "100dvh", background: "rgba(15,23,42,0.92)" }}
@@ -496,7 +496,7 @@ export default function HistologyMaterials() {
               </div>
             </div>,
             document.body,
-          )}
+          )
         )
       ) : active ? (
         <div className="fixed inset-0 z-[70] bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5" onMouseDown={() => setActive(null)}>
