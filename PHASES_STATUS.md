@@ -689,3 +689,57 @@ Stable baseline 8e8fef5c2f661e7e1d625964909307c00c343884 remains the rollback re
 - 🟢 Live Supabase lecture updated and verified; only Lecture 05 was touched.
 - 🟡 Runtime/browser smoke on deployed Vercel build remains to be confirmed.
 \n## 2026-10-08 — Histology Lecture 05: production link/media repair\n\n🟢 По iPhone/Safari smoke со скриншотами подтверждены две реальные причины регрессии:\n- ссылки Markdown в production всё ещё показывались текстом, потому что предыдущая версия regex в LectureRenderer была некорректно экранирована;\n- 5 собственных фото лекции обращались напрямую к /content/histology на Vercel, хотя физические файлы Histology находятся на SpaceWeb и должны проходить через authenticated trainer-media pipeline.\n\n🟢 Исправлено:\n- LectureRenderer получил корректный Markdown-link parser для внутренних и внешних URL;\n- изображения собственных препаратов Lecture 05 переведены на canonical trainer IDs;\n- ImageBlock теперь получает authenticated trainer image через существующий getTrainerImageUrl(), поэтому Authorization не теряется на обычном <img>;\n- live Supabase Lecture 05 обновлена: старых прямых /content/histology/... URL в этих пяти блоках больше нет;\n- создана воспроизводимая миграция database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql;\n- 4 внешних WebPath-фотографии остаются прямыми HTTPS-источниками и продолжают работать без авторизации.\n\n🟡 Не ставить production DONE до нового Vercel READY + повторного iPhone/Safari smoke: ссылки, 5 MEDBIOHIM-фото, 4 WebPath-фото, Mermaid и тестовый переход должны быть проверены именно в deployed build.
+ 
+## 2026-10-08 — Histology Lecture 05: learning UX / photo-text / mini-tests / Atlas viewer
+
+**Статус: 🟡 IN PROGRESS**
+
+| Область | Статус | Факт |
+|---|---|---|
+| Lecture 05 source | 🟢 | `site_content(key=lectures)`, id `lec-histology-blood-20261008` |
+| Curriculum | 🟢 | module/topic canonical UUID сохранены |
+| Markdown renderer | 🟢 | headings, bold, tables, blockquotes, links восстановлены |
+| Mermaid | 🟢 | 11 блоков Lecture 05 |
+| Canonical trainer photos | 🟢 | 5 lecture photo blocks используют trainer IDs |
+| Photo ↔ text | 🟢 | название/метаданные берутся из trainer card |
+| Visual checkpoints | 🟢 | изображения распределены по смысловым местам, старый photo wall удалён |
+| Mini-tests | 🟢 | 6 блоков после логичных разделов, вопросы из `public.questions` |
+| Mini-test grading | 🟢 code/live API | server-side check, answer key не передаётся клиенту |
+| Atlas viewer | 🟢 code | centered viewport modal + zoom + close + fullscreen fallback |
+| WebPath | 🟢 | 2 external cross-check images |
+| Vercel production | 🟡 | нужен READY/build smoke после последних commits |
+| SpaceWeb | 🟡 | новые mini-quiz endpoints нужно развернуть |
+| iPhone Safari | 🟡 | нужен реальный authenticated smoke |
+| Cross-page regression | 🟡 | проверить лекции/атлас/тренажёр/материалы |
+
+### Full ledger
+- Lecture 05 curriculum/content sync;
+- 8 trainer cross-links;
+- 2 EM links;
+- 20-question blood test link;
+- 9 exam-question links;
+- 5 protected trainer image repairs;
+- Markdown link repair;
+- Mermaid normalization;
+- Markdown renderer regression repair;
+- canonical trainer-image flow;
+- viewport-centered image lightbox;
+- Atlas zoom/fullscreen behavior;
+- 6 database-backed mini-tests;
+- photo-text deduplication;
+- contextual visual checkpoints;
+- removal of old duplicate photo wall;
+- documentation in ROADMAP / SYNC_STAMP / dedicated learning UX document.
+
+### Release gate
+До 🟢 DONE проверить deployed/authenticated runtime:
+1. Lecture 05 opens;
+2. Markdown/table/link rendering;
+3. 6 mini-tests load and grade;
+4. 5 MEDBIOHIM photos load;
+5. photo card text matches canonical trainer card;
+6. image viewer is centered on viewport;
+7. zoom/close/fullscreen work on iPhone Safari;
+8. WebPath images work;
+9. 11 Mermaid blocks work;
+10. full 20-question blood test still opens.
