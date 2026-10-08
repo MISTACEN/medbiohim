@@ -56,6 +56,7 @@ type Case = {
   drawingVariant?: 0 | 1;
   identificationScope: IdentificationScope;
   identificationHint: string;
+  sourceLabel?: string;
 };
 type Answers = { cell: string; norm: string; result: string; conclusion: string; diagnosis: string };
 type Evaluation = { cell: boolean; norm: boolean; result: boolean; conclusion: boolean; diagnosis: boolean; grade: 2 | 4 | 5 };
@@ -677,6 +678,11 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                   : currentCase.source === "local"
                     ? "Реальный препарат MEDBIOHIM · одна конкретная клетка"
                     : "Реальный препарат WebPath · сфокусирована одна клетка"}
+                {currentCase.sourceLabel ? (
+                  <div className="mt-1 break-words text-[9px] leading-4 text-slate-400">
+                    Источник: {currentCase.sourceLabel}
+                  </div>
+                ) : null}
                 {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
               </div>
               <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-600">
