@@ -90,6 +90,33 @@ for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].include
 if (compatHits.length) fail("retired /api-compat calls remain in frontend: " + compatHits.join(", "));
 else pass("no retired /api-compat calls in frontend");
 
+const viewerPath = join(root, "src/components/media/ImageLightbox.tsx");
+if (existsSync(viewerPath)) {
+  const text = await readFile(viewerPath, "utf8");
+  if (text.includes("createPortal") && text.includes("document.body")) {
+    pass("media viewer is portaled to document.body");
+  } else {
+    fail("media viewer is not using a body portal; mobile/embedded stacking contexts may constrain the viewport");
+  }
+}
+
+const materialViewerPath = join(root, "backend/config/routes/material_viewer.php");
+if (existsSync(materialViewerPath)) {
+  const text = await readFile(materialViewerPath, "utf8");
+  if (text.includes("public.files") && text.includes("presignedDownloadUrl")) {
+    pass("materials viewer supports canonical uploaded files/B2");
+  } else {
+    fail("materials viewer does not support canonical uploaded files/B2");
+  }
+}
+
+const proxyPathForHeaders = join(root, "src/app/api/v1/[...path]/route.ts");
+if (existsSync(proxyPathForHeaders)) {
+  const text = await readFile(proxyPathForHeaders, "utf8");
+  if (text.includes('"location"')) pass("Vercel API proxy preserves backend redirects");
+  else fail("Vercel API proxy does not preserve backend Location redirects");
+}
+
 const malformedImports = [];
 for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
   const text = await readFile(file, "utf8");
