@@ -102,7 +102,7 @@ export function ImageLightbox({
   const viewer = open && mounted ? createPortal(
     <div
       ref={viewerRef}
-      className="fixed inset-0 z-[2147483000] flex min-h-[100dvh] w-full items-center justify-center bg-black/90 p-3 sm:p-5"
+      className="fixed inset-0 z-[2147483000] flex min-h-[100dvh] w-full items-center justify-center bg-black/80 backdrop-blur-[2px] p-3 sm:p-5"
       style={{
         height: "100dvh",
         maxHeight: "100dvh",
@@ -125,17 +125,17 @@ export function ImageLightbox({
             {title || caption || alt || "Просмотр изображения"}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button type="button" onClick={() => changeZoom(zoom - 0.25)} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Уменьшить"><Minus className="h-4 w-4" /></button>
+            <button type="button" onClick={() => changeZoom(zoom - 0.25)} className="rounded-xl bg-white/[0.12] p-2 hover:bg-white/[0.18]" aria-label="Уменьшить"><Minus className="h-4 w-4" /></button>
             <span className="min-w-12 text-center text-xs font-semibold">{Math.round(zoom * 100)}%</span>
             <button type="button" onClick={() => changeZoom(zoom + 0.25)} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Увеличить"><Plus className="h-4 w-4" /></button>
             <button type="button" onClick={() => changeZoom(1)} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Сбросить масштаб"><RotateCcw className="h-4 w-4" /></button>
-            <button type="button" onClick={() => void enterFullscreen()} className="rounded-xl bg-white/10 p-2" aria-label="Во весь экран"><Maximize2 className="h-4 w-4" /></button>
+            <button type="button" onClick={() => void enterFullscreen()} className="rounded-xl bg-white/[0.12] p-2" aria-label="Во весь экран"><Maximize2 className="h-4 w-4" /></button>
             <button type="button" onClick={close} className="rounded-xl bg-white/10 p-2 hover:bg-white/20" aria-label="Закрыть"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
         <div
-          className="min-h-0 min-w-0 flex-1 overflow-auto rounded-2xl bg-black/30 p-1 sm:p-2"
+          className="min-h-0 min-w-0 flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/25 p-1 backdrop-blur-sm sm:p-2"
           style={{ touchAction: "none" }}
         >
           <div className="flex min-h-full min-w-full items-center justify-center">
@@ -152,7 +152,7 @@ export function ImageLightbox({
         </div>
 
         {details ? (
-          <div className="max-h-[18dvh] w-full overflow-auto text-xs text-white/80">{details}</div>
+          <div className="max-h-[18dvh] w-full overflow-auto rounded-xl bg-black/20 px-3 py-2 text-xs text-white/85 backdrop-blur-sm">{details}</div>
         ) : null}
 
         <div className="text-center text-[11px] text-white/55">
