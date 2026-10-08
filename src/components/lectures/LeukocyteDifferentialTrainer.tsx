@@ -578,12 +578,10 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               </div>
               <div className="border-t border-slate-200 px-3 py-2 text-[10px] text-slate-500">
                 {currentCase.visual === "drawing"
-                  ? "Учебный рисунок · однозначная морфология"
-                  : currentCase.identificationScope === "population"
-                    ? "Реальный препарат MEDBIOHIM · общий мазок"
-                    : currentCase.source === "local"
-                      ? "Реальный препарат MEDBIOHIM · одиночная клетка"
-                      : "Реальный препарат WebPath · сфокусирована одна клетка"}
+                  ? "Учебный рисунок · одна конкретная клетка"
+                  : currentCase.source === "local"
+                    ? "Реальный препарат MEDBIOHIM · одна конкретная клетка"
+                    : "Реальный препарат WebPath · сфокусирована одна клетка"}
                 {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
               </div>
               <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-600">
