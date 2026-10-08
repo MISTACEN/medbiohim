@@ -375,8 +375,8 @@ export function ImageLightbox({
       />
       <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-85 shadow-lg backdrop-blur transition group-hover:opacity-100">
         <Maximize2 className="h-3.5 w-3.5" />
-        <span className="hidden xs:inline">Открыть</span>
-        <span className="xs:hidden">↗</span>
+        <span className="hidden sm:inline">Открыть</span>
+        <span className="sm:hidden">↗</span>
       </span>
     </button>
   ) : null;
