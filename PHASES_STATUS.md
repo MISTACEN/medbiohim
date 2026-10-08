@@ -785,3 +785,12 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 | Cross-page regression | 🟡 | lecture → atlas → trainer → materials |
 
 Правило: наличие кода не переводит эти пункты в DONE; нужен target-runtime/browser evidence.
+
+
+### 2026-10-08 — viewer regression cleanup
+- 🟢 literal escaped-newline source artifact устранён из `HistologyTrainerParts.tsx`;
+- 🟢 legacy photo-rendering ветка Materials удалена после перехода на unified viewer;
+- 🟢 image-file preview в Materials использует unified viewer;
+- 🟢 retry для недоступного trainer photo добавлен;
+- 🟢 blob URL lifecycle для Materials document/PDF/image preview приведён к управляемому состоянию;
+- 🟡 CI/Vercel остаются инфраструктурными release blockers: GitHub jobs создаются, но завершаются без steps/logs; Vercel отвечает `build-rate-limit`.
