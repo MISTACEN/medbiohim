@@ -800,10 +800,7 @@ export function RichLectureEditor({
             </div>
             <label className="block text-sm font-semibold">Режим
               <select value={leukocyteMode} onChange={(event)=>setLeukocyteMode(event.target.value)} className="mt-1 w-full rounded-xl border p-3">
-                <option value="mixed">Смешанный: проценты + ↑/↓ + мазок</option>
-                <option value="percent">Только проценты</option>
-                <option value="changes">Только ↑ / ↓</option>
-                <option value="morphology">Только распознавание мазка</option>
+                <option value="case">Практическая карточка: клетка → возрастная норма → результат → вывод → гипотеза на «5»</option>
               </select>
             </label>
             <label className="block text-sm font-semibold">Источник изображений
@@ -821,7 +818,7 @@ export function RichLectureEditor({
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={()=>setBlock(null)} className="rounded-xl border px-4 py-2">Отмена</button>
-              <button type="button" onClick={insertLeukocyteTrainer} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Вставить тренажёр</button>
+              <button type="button" onClick={insertLeukocyteTrainer} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Вставить практическую карточку</button>
             </div>
           </div>}
 
