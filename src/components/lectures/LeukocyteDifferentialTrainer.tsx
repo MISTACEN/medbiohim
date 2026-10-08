@@ -5,6 +5,11 @@ import { CheckCircle2, ClipboardCheck, RotateCcw, Sparkles, XCircle } from "luci
 import { getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteIllustration } from "@/components/lectures/LeukocyteIllustration";
+import {
+  GUARANTEED_LEUKOCYTE_ORDER,
+  VERIFIED_EXTERNAL_PHOTOS,
+  VERIFIED_LOCAL_SINGLE_PHOTOS,
+} from "@/components/lectures/LeukocyteVisualBank";
 
 type CellKey = "neutrophils" | "lymphocytes" | "monocytes" | "eosinophils" | "basophils";
 type Mode = "percent" | "changes" | "morphology" | "mixed" | "case";
@@ -12,7 +17,15 @@ type SourceMode = "local" | "external" | "mixed";
 type Deviation = "normal" | "high" | "low";
 
 type VisualMode = "photo" | "drawing" | "mixed";
-type Spec = { title?: string; mode?: Mode; sourceMode?: SourceMode; visualMode?: VisualMode; rounds?: number };
+type CoverageMode = "random" | "all";
+type Spec = {
+  title?: string;
+  mode?: Mode;
+  sourceMode?: SourceMode;
+  visualMode?: VisualMode;
+  coverageMode?: CoverageMode;
+  rounds?: number;
+};
 type Norm = { text: string; min: number; max: number; approximate?: boolean };
 type AgeProfile = { id: string; label: string; norms: Record<CellKey, Norm> };
 type CellInfo = {
@@ -169,32 +182,7 @@ const CELLS: CellInfo[] = [
   },
 ];
 
-const SINGLE_CELL_EXTERNAL = [
-  {
-    cell: "neutrophils" as CellKey,
-    url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg",
-    sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html",
-    imageFocus: { x: 73, y: 44, scale: 2.7 },
-  },
-  {
-    cell: "lymphocytes" as CellKey,
-    url: "https://webpath.med.utah.edu/jpeg5/HEME002.jpg",
-    sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM020.html",
-    imageFocus: { x: 35, y: 62, scale: 2.7 },
-  },
-  {
-    cell: "eosinophils" as CellKey,
-    url: "https://webpath.med.utah.edu/jpeg5/HEME004.jpg",
-    sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM022.html",
-    imageFocus: { x: 50, y: 50, scale: 2.2 },
-  },
-  {
-    cell: "basophils" as CellKey,
-    url: "https://webpath.med.utah.edu/jpeg5/HEME005.jpg",
-    sourceUrl: "https://webpath.med.utah.edu/HISTHTML/NORMAL/NORM023.html",
-    imageFocus: { x: 50, y: 50, scale: 2.2 },
-  },
-];
+const SINGLE_CELL_EXTERNAL = VERIFIED_EXTERNAL_PHOTOS;
 
 const CONCLUSION_TERMS: Record<CellKey, { normal: string[]; high: string[]; low: string[] }> = {
   neutrophils: { normal: ["норма", "норм"], high: ["нейтрофилия", "нейтрофилез"], low: ["нейтрофилопения"] },
@@ -245,9 +233,19 @@ function randomBetween(min: number, max: number) {
   return min + Math.random() * (max - min);
 }
 
-function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMode): Case {
+function createCase(
+  round: number,
+  sourceMode: SourceMode,
+  visualMode: VisualMode,
+  coverageMode: CoverageMode,
+  startCellOffset: number,
+): Case {
   const age = AGE_PROFILES[Math.floor(Math.random() * AGE_PROFILES.length)];
-  const cell = CELLS[Math.floor(Math.random() * CELLS.length)];
+  const cellIndex =
+    coverageMode === "all"
+      ? (startCellOffset + round) % GUARANTEED_LEUKOCYTE_ORDER.length
+      : Math.floor(Math.random() * GUARANTEED_LEUKOCYTE_ORDER.length);
+  const cell = CELLS.find((item) => item.key === GUARANTEED_LEUKOCYTE_ORDER[cellIndex]) || CELLS[0];
   const norm = age.norms[cell.key];
   const supportsLow = Boolean(CONCLUSION_TERMS[cell.key].low.length);
   const statusPool: Deviation[] = supportsLow ? ["normal", "high", "low"] : ["normal", "high"];
@@ -287,54 +285,24 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
     };
   }
 
-  const localIds = cell.localIds;
+  const local = VERIFIED_LOCAL_SINGLE_PHOTOS.filter((item) => item.cell === cell.key);
   const external = SINGLE_CELL_EXTERNAL.filter((item) => item.cell === cell.key);
-  let source: "local" | "external";
-  if (sourceMode === "local" && localIds.length) source = "local";
-  else if (sourceMode === "external" && external.length) source = "external";
-  else if (localIds.length && external.length) source = Math.random() < 0.55 ? "local" : "external";
-  else if (localIds.length) source = "local";
-  else source = "external";
 
-  if (source === "local") {
-    return {
-      id,
-      age,
-      cell: cell.key,
-      norm,
-      result,
-      deviation,
-      source,
-      visual: "photo",
-      imageId: localIds[Math.floor(Math.random() * localIds.length)],
-      identificationScope: "single_cell",
-      identificationHint: "Определите именно показанную клетку по размеру, ядру, цитоплазме и зернистости. Название заранее не подсказывается.",
-    };
+  let source: "local" | "external";
+  if (sourceMode === "local") {
+    source = local.length ? "local" : "external";
+  } else if (sourceMode === "external") {
+    source = external.length ? "external" : "local";
+  } else if (local.length && external.length) {
+    source = Math.random() < 0.55 ? "local" : "external";
+  } else if (local.length) {
+    source = "local";
+  } else {
+    source = "external";
   }
 
-  const image = external[0];
-  if (!image) {
-    // Для фото без подтверждённого одиночного внешнего кадра возвращаем
-    // проверенный локальный препарат, а не изображение другой клетки.
-    if (localIds.length) {
-      return {
-        id,
-        age,
-        cell: cell.key,
-        norm,
-        result,
-        deviation,
-        source: "local",
-        visual: "photo",
-        imageId: localIds[Math.floor(Math.random() * localIds.length)],
-        identificationScope: "single_cell",
-        identificationHint:
-          cell.key === "neutrophils"
-            ? "Определите именно показанную клетку по форме ядра и характеру зернистости."
-            : "Определите именно показанную клетку по морфологическим признакам.",
-      };
-    }
-    // В такой конфигурации эта клетка появится рисунком.
+  if (source === "local" && local.length) {
+    const visual = local[Math.floor(Math.random() * local.length)];
     return {
       id,
       age,
@@ -343,16 +311,35 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       result,
       deviation,
       source: "local",
-      visual: "drawing",
-      drawingVariant: Math.random() < 0.5 ? 0 : 1,
+      visual: "photo",
+      imageId: visual.trainerId,
       identificationScope: "single_cell",
-      identificationHint:
-        cell.key === "neutrophils"
-          ? "Определите именно показанную клетку по форме ядра и характеру зернистости."
-          : "Определите именно показанную клетку по морфологическим признакам.",
+      identificationHint: "Определите именно показанную клетку по размеру, ядру, цитоплазме и зернистости. Название заранее не подсказывается.",
     };
   }
 
+  if (source === "external" && external.length) {
+    const visual = external[Math.floor(Math.random() * external.length)];
+    return {
+      id,
+      age,
+      cell: cell.key,
+      norm,
+      result,
+      deviation,
+      source: "external",
+      visual: "photo",
+      imageUrl: visual.imageUrl,
+      imageSourceUrl: visual.sourceUrl,
+      imageFocus: visual.workingFocus,
+      identificationScope: "single_cell",
+      identificationHint: "На рабочем кадре сфокусирована одна конкретная клетка. Название заранее не подсказывается.",
+    };
+  }
+
+  // Строгий fallback: если выбранный фото-источник не содержит
+  // подтверждённого кадра для этой клетки, показываем правильный учебный
+  // рисунок той же клетки, никогда не чужое фото.
   return {
     id,
     age,
@@ -360,13 +347,11 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
     norm,
     result,
     deviation,
-    source: "external",
-    visual: "photo",
-    imageUrl: image.url,
-    imageSourceUrl: image.sourceUrl,
-    imageFocus: image.imageFocus,
+    source: "local",
+    visual: "drawing",
+    drawingVariant: Math.random() < 0.5 ? 0 : 1,
     identificationScope: "single_cell",
-    identificationHint: "На сфокусированном кадре оценивается одна конкретная клетка.",
+    identificationHint: "Реальный кадр для этой клетки недоступен в выбранном банке, поэтому используется проверенный учебный рисунок. Название заранее не подсказывается.",
   };
 }
 
@@ -382,15 +367,17 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
         mode: requested === "percent" || requested === "changes" || requested === "morphology" || requested === "case" || requested === "mixed" ? requested : "case",
         sourceMode: value.sourceMode === "local" || value.sourceMode === "external" || value.sourceMode === "mixed" ? value.sourceMode : "mixed",
         visualMode: value.visualMode === "photo" || value.visualMode === "drawing" || value.visualMode === "mixed" ? value.visualMode : "mixed",
+        coverageMode: value.coverageMode === "random" || value.coverageMode === "all" ? value.coverageMode : "all",
         rounds: Math.min(30, Math.max(5, Number(value.rounds) || 12)),
       };
     } catch {
-      return { title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", visualMode: "mixed", rounds: 12 };
+      return { title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", visualMode: "mixed", coverageMode: "all", rounds: 12 };
     }
   }, [raw]);
 
   const [round, setRound] = useState(0);
   const [history, setHistory] = useState<RoundSnapshot[]>([]);
+  const [startCellOffset, setStartCellOffset] = useState(() => Math.floor(Math.random() * GUARANTEED_LEUKOCYTE_ORDER.length));
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -418,6 +405,8 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
       round,
       spec.sourceMode || "mixed",
       spec.visualMode || "mixed",
+      spec.coverageMode || "all",
+      startCellOffset,
     );
     setCurrentCase(nextCase);
     setAnswers(EMPTY);
@@ -434,7 +423,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
       };
       return next;
     });
-  }, [actualMode, round, spec.sourceMode, spec.visualMode, history]);
+  }, [actualMode, round, spec.sourceMode, spec.visualMode, spec.coverageMode, startCellOffset, history]);
 
   useEffect(() => {
     let cancelled = false;
@@ -523,6 +512,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
   function restart() {
     setRound(0);
     setHistory([]);
+    setStartCellOffset(Math.floor(Math.random() * GUARANTEED_LEUKOCYTE_ORDER.length));
     setGrades([]);
     setAnswers(EMPTY);
     setEvaluation(null);
@@ -558,8 +548,13 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
       <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-emerald-50 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-800">
-              <ClipboardCheck className="h-3.5 w-3.5" /> Практическая карточка
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-800">
+                <ClipboardCheck className="h-3.5 w-3.5" /> Практическая карточка
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold text-emerald-800">
+                Гарантировано: все 5 видов за каждые 5 карточек
+              </div>
             </div>
             <h3 className="mt-2 text-xl font-extrabold text-slate-900">{spec.title}</h3>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
