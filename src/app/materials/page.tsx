@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { BookOpen, ExternalLink, File, FileText, Search, X, Presentation } from "lucide-react";
 import { getMaterialFileUrl, listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 function FileIcon({ type }: { type?: string | null }) {
   const t = String(type || "").toLowerCase();
@@ -57,7 +58,14 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
   if (url && mime.startsWith("image/")) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center rounded-2xl bg-slate-50 p-4">
-        <img src={url} alt={material.title} className="max-h-[70vh] max-w-full rounded-xl object-contain" />
+        <ImageLightbox
+          src={url}
+          alt={material.title}
+          title={material.title}
+          caption={String(material.subject_name || "Материалы")}
+          className="w-full"
+          imageClassName="mx-auto max-h-[70vh] w-full rounded-xl object-contain"
+        />
       </div>
     );
   }
