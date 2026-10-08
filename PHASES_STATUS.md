@@ -824,3 +824,10 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟡 The next source commit is not yet represented by a new Vercel deployment; Vercel API access available in this session cannot create a fresh deployment for the project.
 - 🟡 GitHub Actions MEDBIOHIM code checks currently fails both backend/frontend jobs immediately with zero steps executed; this is an Actions runner/infrastructure gate, not a reported PHP/TypeScript test failure.
 
+## 2026-10-08 — Atlas viewer visual baseline restored
+
+- 🟢 `ImageLightbox` now uses the `main` branch visual composition as the source of truth: dark translucent viewport, centered image, compact top controls, no large white modal card.
+- 🟢 New functionality remains: portal to `document.body`, viewport/safe-area handling, external/open-on-mount use, title/details, fullscreen, zoom controls and background scroll lock.
+- 🟢 The viewer must not alter Atlas page layout or inherit the position of the source card.
+- 🟡 Target-device smoke test remains required before production sign-off.
+
