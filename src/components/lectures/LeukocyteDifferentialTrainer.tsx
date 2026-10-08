@@ -331,9 +331,17 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
         source: "local",
         visual: "photo",
         imageId: localIds[Math.floor(Math.random() * localIds.length)],
+        identificationScope:
+          cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
+            ? "population"
+            : "single_cell",
+        identificationHint:
+          cell.key === "neutrophils" && localIds.includes("feed-prep-867b72a4b6")
+            ? "Это общий мазок: оцениваются Нейтрофилы всего — палочкоядерные и сегментоядерные вместе."
+            : "На рабочем кадре оценивается одна целевая клетка.",
       };
     }
-    // В такой конфигурации эта клетка появится рисунком при следующем раунде.
+    // В такой конфигурации эта клетка появится рисунком.
     return {
       id,
       age,
@@ -344,6 +352,11 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
       source: "local",
       visual: "drawing",
       drawingVariant: Math.random() < 0.5 ? 0 : 1,
+      identificationScope: "single_cell",
+      identificationHint:
+        cell.key === "neutrophils"
+          ? "Учебный рисунок показывает общий тип нейтрофила; п/я и с/я здесь не различаются."
+          : "Определите показанный тип лейкоцита.",
     };
   }
 
@@ -359,6 +372,8 @@ function createCase(round: number, sourceMode: SourceMode, visualMode: VisualMod
     imageUrl: image.url,
     imageSourceUrl: image.sourceUrl,
     imageFocus: image.imageFocus,
+    identificationScope: "single_cell",
+    identificationHint: "На сфокусированном кадре оценивается одна целевая клетка.",
   };
 }
 
@@ -594,9 +609,11 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 ) : null}
                 {currentCase.visual === "drawing"
                   ? "Учебный рисунок · однозначная морфология"
-                  : currentCase.source === "local"
-                    ? "Реальный препарат MEDBIOHIM · одиночная клетка"
-                    : "Реальный препарат WebPath · сфокусирована одна клетка"}
+                  : currentCase.identificationScope === "population"
+                    ? "Реальный препарат MEDBIOHIM · общий мазок"
+                    : currentCase.source === "local"
+                      ? "Реальный препарат MEDBIOHIM · одиночная клетка"
+                      : "Реальный препарат WebPath · сфокусирована одна клетка"}
                 {imageFailed && currentCase.imageSourceUrl ? <a href={currentCase.imageSourceUrl} target="_blank" rel="noreferrer" className="ml-1 font-semibold text-indigo-600 underline">Источник</a> : null}
               </div>
               <input value={answers.cell} onChange={(e) => update("cell", e.target.value)} disabled={Boolean(evaluation)} className="w-full border-0 border-t border-slate-200 px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Какой это лейкоцит?" />
