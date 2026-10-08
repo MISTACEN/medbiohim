@@ -502,3 +502,28 @@ AI не является обязательной платной зависим�
 При достижении free-tier лимита нельзя допускать незаметный расход. Нужны лимиты/защита/graceful degradation.
 
 Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
+
+
+# 25. Unified media viewer contract — 2026-10-08
+
+The media viewer is now treated as a cross-platform product contract, not an iPhone-specific patch.
+
+Required architecture:
+
+card/inline image → one unified viewport viewer → controls/zoom/pan/close → optional material action
+
+Forbidden for image viewing:
+- nested image modal inside another image modal;
+- max-h-[90vh] outer modal that forces the user to scroll to the image;
+- reliance on native Fullscreen API as the only way to get a viewport-sized viewer.
+
+Required behavior:
+- desktop and mobile use the same viewer contract;
+- 100dvh + safe-area;
+- explicit controls are visible at first open;
+- zoom and reset work without native fullscreen;
+- enlarged images can be panned;
+- touch uses Pointer Events; native fullscreen is optional enhancement;
+- original/high-detail medical images must not be aggressively downscaled by the viewer itself.
+
+Current state: implemented in branch, not target-runtime verified.
