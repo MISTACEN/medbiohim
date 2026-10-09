@@ -104,7 +104,21 @@ return static function (Router $router): void {
     $router->get('/api/v1/subjects/{id}/gradebook', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
         $subjectId = trim((string) ($params['id'] ?? ''));
-        if ($subjectId === '' || !(new SpecialtyAccess())->canAccessSubject($req->user->id, $subjectId)) {
+        if ($subjectId === '') {
+            Response::error('VALIDATION_ERROR', 'subject id is required', $req->requestId, 422);
+            return;
+        }
+        try {
+            $canAccessSubject = (new SpecialtyAccess())->canAccessSubject($req->user->id, $subjectId);
+        } catch (\\Throwable $accessError) {
+            \\Medbiohim\\Support\\Logger::error('subject_gradebook_access_check_failed', [
+                'requestId' => $req->requestId,
+                'message' => $accessError->getMessage(),
+            ]);
+            Response::error('DB_UNAVAILABLE', 'Subject access could not be verified', $req->requestId, 503);
+            return;
+        }
+        if (!$canAccessSubject) {
             Response::error('FORBIDDEN', 'Этот предмет недоступен для вашей специальности', $req->requestId, 403);
             return;
         }
