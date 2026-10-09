@@ -185,4 +185,6 @@ $function$;
 REVOKE ALL ON FUNCTION public.submit_trainer_feed_answer(text, text, text, boolean, integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.submit_trainer_feed_answer(text, text, text, boolean, integer) TO authenticated;
 
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
