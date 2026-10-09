@@ -6,7 +6,7 @@
 
 ## Статусы
 
-> Последняя сверка: Vercel deployment metadata + [security fix Pass 47 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/RELIABILITY-FIX-2026-10-10-PASS46.md) + [Pass 45 answer sanitization](docs/SECURITY-FIX-2026-10-10-PASS45.md) + [Pass 44 route access fix](docs/SECURITY-FIX-2026-10-10-PASS44.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
+> Последняя сверка: Vercel deployment metadata + [security fix Pass 49 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS49.md) + [Pass 48 viewer access](docs/SECURITY-FIX-2026-10-10-PASS48.md) + [Pass 47 media cache isolation](docs/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/RELIABILITY-FIX-2026-10-10-PASS46.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
@@ -18,11 +18,11 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in latest observed READY Vercel deployment `d0949aa3`; fixed PHP autoloader in CI, added 15-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
+| 0. Source of truth / sync | 🟡 | Pass 45–47 frontend source included in latest observed READY Vercel deployment `6687e057`; fixed PHP autoloader in CI, added 15-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
 | 1. Auth / account | 🟡 | login → /me → dashboard → logout не подтверждены в target runtime; Pass 46 prevents malformed JWTs sharing a cache bucket and Pass 47 scopes private media/card caches by user; two-account runtime check remains open |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
-| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 trainer route membership, Pass 45 recursive answer sanitization, Pass 47 user-scoped media caches, Pass 48 viewer-route checks and Pass 49 list/detail/source/file-route MBH checks are in source. Latest deployment inclusion, SpaceWeb deployment, authenticated smoke and media/source mapping remain open |
+| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 trainer route membership, Pass 45 recursive answer sanitization, Pass 47 user-scoped media caches, Pass 48 viewer-route checks and Pass 49 list/detail/source/file-route MBH checks are in source. Pass 45–47 frontend deployment observed READY; Pass 48–49 PHP deployment, authenticated smoke and media/source mapping remain open |
 | 5. Tests / Question Bank | 🟡 | данные/связи имеются; полный start → answer → finish → review smoke и аудит exam_questions не закрыты |
 | 6. Materials | 🟡 | записи и viewer существуют; наличие физических DOCX/PDF/image и единый lecture source ещё не подтверждены |
 | 7. Admin CMS | 🟡 | есть DB console; две PHP syntax ошибки исправлены в fb4eed97, target-runtime проверка ещё не выполнена |
