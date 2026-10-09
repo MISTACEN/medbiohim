@@ -6,7 +6,7 @@
 
 ## Статусы
 
-> Последняя сверка: [функциональный аудит Pass 41 (2026-10-09)](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
+> Последняя сверка: [security fix Pass 42 (2026-10-09)](docs/SECURITY-FIX-2026-10-09-PASS42.md) + [functional audit Pass 41](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
@@ -22,7 +22,7 @@
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
-| 4. Histology | 🔴 | подтверждена выдача correct-флагов в 206 trainer cards; также нужна сверка физического media и source mapping |
+| 4. Histology | 🟡 | P1 mitigation applied in live Supabase and API source; authenticated training/review smoke and media/source mapping still open |
 | 5. Tests / Question Bank | 🟡 | данные/связи имеются; полный start → answer → finish → review smoke и аудит exam_questions не закрыты |
 | 6. Materials | 🟡 | записи и viewer существуют; наличие физических DOCX/PDF/image и единый lecture source ещё не подтверждены |
 | 7. Admin CMS | 🟡 | есть DB console; две PHP syntax ошибки исправлены в fb4eed97, target-runtime проверка ещё не выполнена |
@@ -30,7 +30,7 @@
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
 | 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
-| 12. Documentation | 🟡 | добавлен функциональный Pass 41; исторические записи ниже могут содержать устаревшие live counts |
+| 12. Documentation | 🟡 | Pass 41 audit + Pass 42 security-fix record added; historical counts remain snapshots |
 
 ---
 
@@ -1106,3 +1106,15 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🔴 AI Tutor остаётся заблокированным до проверки работоспособного провайдера в целевой среде.
 
 Подробности, ссылки на code/CI и последовательность работ: [FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
+
+
+## Pass 42 — trainer answer-key mitigation (2026-10-09)
+
+- 🟢 Live Supabase Data API: base trainer_feed_cards is no longer readable by anon/authenticated; trainer_feed_cards_public exposes only sanitized published cards.
+- 🟢 Verified using an active MBH membership context: 206 cards visible; 0 correctness flags and 0 answer-bearing fields in the safe view.
+- 🟢 Direct client INSERT/UPDATE/DELETE on trainer_feed_answers revoked; submit_trainer_feed_answer RPC added for authenticated server-side scoring.
+- 🟢 PHP response boundary and Next.js proxy sanitize newly created/unanswered training snapshots while preserving review data after a question is answered or skipped.
+- 🟡 End-to-end flow is not yet accepted: GitHub Actions runner has not run steps; verify latest Vercel frontend and SpaceWeb PHP deployments, then test feed → training → answer → review → complete.
+- 🟡 Media, duplicate question review, lecture source reconciliation and AI provider runtime checks remain open.
+
+Details: [SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42.md).
