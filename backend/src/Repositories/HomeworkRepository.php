@@ -224,13 +224,13 @@ final class HomeworkRepository
             }
 
             $attachmentStmt = $this->db->prepare(
-                'SELECT id, original_name, mime_type
+                "SELECT id, original_name, mime_type
                    FROM public.files
                   WHERE id = :fid
                     AND status = 'active'
                     AND uploaded_by = :uid
                     AND (:gid IS NULL OR group_id = :gid OR group_id IS NULL)
-                  LIMIT 1'
+                  LIMIT 1"
             );
             $insertAttachment = $this->db->prepare(
                 'INSERT INTO public.homework_attachments
