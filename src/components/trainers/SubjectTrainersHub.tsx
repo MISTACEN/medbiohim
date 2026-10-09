@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Brain, Droplets, RotateCcw, Check, Flame, Loader2, Microscope, Sparkles, Table2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Brain, Check, Droplets, Flame, Loader2, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
@@ -190,42 +190,120 @@ function SrsPanel() {
   );
 }
 
-export function SubjectTrainersHub() {
-  const [mode, setMode] = useState<HubMode>("leukocytes");
-  const modes = useMemo(() => [
-    { id: "leukocytes" as const, label: "Лейкоциты", Icon: Droplets },
-    { id: "norms" as const, label: "Нормы крови", Icon: Table2 },
-    { id: "meaning" as const, label: "Ответ по смыслу", Icon: Sparkles },
-    { id: "preparations" as const, label: "Препараты крови", Icon: Microscope },
-    { id: "srs" as const, label: "Карточки SRS", Icon: Brain },
-  ], []);
+type TrainerMode = Exclude<HubMode, "srs">;
+
+const BLOOD_MODES: Array<{
+  id: TrainerMode;
+  label: string;
+  description: string;
+  Icon: typeof Droplets;
+}> = [
+  { id: "leukocytes", label: "Лейкоцитарная формула", description: "Опознать клетку, оценить процент и объяснить отклонение", Icon: Droplets },
+  { id: "norms", label: "Возрастные нормы", description: "Заполнить таблицу норм по возрастам и проверить себя", Icon: Table2 },
+  { id: "meaning", label: "Ответ по смыслу", description: "Вспомнить содержание лекции и сформулировать ответ", Icon: Sparkles },
+  { id: "preparations", label: "Микропрепараты крови", description: "Узнать клетку по реальному препарату и объяснить признаки", Icon: Microscope },
+];
+
+export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureHref?: string }) {
+  const [mode, setMode] = useState<HubMode | null>(null);
+
+  const selectedMode = BLOOD_MODES.find((item) => item.id === mode);
 
   return (
     <section className="space-y-5">
-      <div>
-        <h2 className="text-lg font-bold">Тренажёры</h2>
-        <p className="mt-1 text-sm text-slate-500">Все практические тренажёры гистологии собраны здесь, без дополнительных пунктов в навигации.</p>
-      </div>
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Тренажёры гистологии">
-        {modes.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={mode === id}
-            onClick={() => setMode(id)}
-            className={"inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold " + (mode === id ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}
-          >
-            <Icon className="h-4 w-4" /> {label}
-          </button>
-        ))}
-      </div>
+      <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Учебный план → лекция → практика</p>
+            <h2 className="mt-1 text-xl font-extrabold text-slate-950">Тренажёры по темам гистологии</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+              Тренажёры сгруппированы по теме занятия. Новые упражнения будут добавляться внутрь соответствующей темы, а не отдельными пунктами навигации.
+            </p>
+          </div>
+        </div>
+        <a href={lectureHref} className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50">
+          <BookOpen className="h-4 w-4" /> Открыть лекции
+        </a>
+      </header>
 
-      {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} /> : null}
-      {mode === "norms" ? <BloodNormTableTrainer /> : null}
-      {mode === "meaning" ? <BloodMeaningTrainer /> : null}
-      {mode === "preparations" ? <BloodPreparationTrainer /> : null}
-      {mode === "srs" ? <SrsPanel /> : null}
+      {mode === null ? (
+        <div className="space-y-4">
+          <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+            <div className="border-b border-[var(--border)] p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-indigo-600">Тема 1 · доступные тренажёры</div>
+                  <h3 className="mt-1 text-lg font-extrabold text-slate-950">Кровь и лимфа</h3>
+                  <p className="mt-1 text-sm leading-5 text-[var(--muted)]">Лекция 5 · ткани внутренней среды · практические занятия № 12–13</p>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">4 упражнения</span>
+              </div>
+            </div>
+            <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4">
+              {BLOOD_MODES.map(({ id, label, description, Icon }, index) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setMode(id)}
+                  className="group flex min-h-[124px] w-full items-start gap-3 rounded-xl border border-[var(--border)] bg-white p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold text-slate-400">Упражнение {index + 1}</span>
+                    <span className="mt-1 block font-bold leading-5 text-slate-900">{label}</span>
+                    <span className="mt-1 block text-sm leading-5 text-slate-600">{description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <button
+            type="button"
+            onClick={() => setMode("srs")}
+            className="flex min-h-[88px] w-full items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><Brain className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-extrabold text-slate-900">Карточки SRS · интервальное повторение</span>
+              <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">Общая и личная колоды для повторения терминов и фактов по гистологии. Это отдельный инструмент повторения, а не ещё одна лекционная тема.</span>
+            </span>
+          </button>
+          <p className="px-1 text-xs leading-5 text-[var(--muted)]">
+            Сейчас доступны упражнения по теме «Кровь и лимфа». По мере появления проверенных материалов новые темы появятся отдельными блоками с привязкой к соответствующим лекциям.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setMode(null)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          >
+            <ArrowLeft className="h-4 w-4" /> Все темы и тренажёры
+          </button>
+          {mode === "srs" ? (
+            <SrsPanel />
+          ) : (
+            <>
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 sm:p-4">
+                <div className="text-xs font-bold uppercase tracking-wide text-indigo-600">Кровь и лимфа · лекция 5</div>
+                <h3 className="mt-1 font-extrabold text-slate-950">{selectedMode?.label}</h3>
+                <p className="mt-1 text-sm leading-5 text-slate-600">{selectedMode?.description}</p>
+              </div>
+              {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} /> : null}
+              {mode === "norms" ? <BloodNormTableTrainer /> : null}
+              {mode === "meaning" ? <BloodMeaningTrainer /> : null}
+              {mode === "preparations" ? <BloodPreparationTrainer /> : null}
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }
