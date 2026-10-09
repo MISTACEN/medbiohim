@@ -35,6 +35,7 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 - [docs/README.md](docs/README.md) — карта документов и источников истины
 - [Браузерное расширение](integrations/browser-extension/README.md) — MVP быстрых ссылок для Chrome/Edge
 - [GitHub issue template](.github/ISSUE_TEMPLATE/bug_report.yml) — структурированная фиксация ошибок с commit SHA и доказательствами
+- [Optional integrations workflow](.github/workflows/optional-integrations-check.yml) — тесты Telegram webhook и минимальных прав расширения
 
 ## Docs
 - [BRANCHES.md](BRANCHES.md) — main vs beta
