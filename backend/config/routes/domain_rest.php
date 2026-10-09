@@ -72,7 +72,8 @@ return static function (Router $r): void {
             }
             Response::success($x, $q->requestId, 201);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 503);
+            \Medbiohim\Support\Logger::error('domain_rest_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Операция временно недоступна', $q->requestId, 503);
         }
     });
 
@@ -110,7 +111,8 @@ return static function (Router $r): void {
             $x = (new GroupRepository())->update($p['id'], $q->jsonBody() ?? []);
             Response::success(['group' => $x], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('domain_rest_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Операция временно недоступна', $q->requestId, 503);
         }
     });
 
@@ -127,7 +129,8 @@ return static function (Router $r): void {
             }
             Response::success(['deleted' => true, 'hard' => $hard], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('domain_rest_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Операция временно недоступна', $q->requestId, 503);
         }
     });
 
@@ -137,7 +140,8 @@ return static function (Router $r): void {
             $x = (new SubjectRepository())->update($p['id'], $q->jsonBody() ?? []);
             Response::success(['subject' => $x], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('domain_rest_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Операция временно недоступна', $q->requestId, 503);
         }
     });
 
@@ -151,7 +155,8 @@ return static function (Router $r): void {
             }
             Response::success(['deleted' => true], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('domain_rest_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Операция временно недоступна', $q->requestId, 503);
         }
     });
 };
