@@ -158,6 +158,7 @@ async function refreshAccessToken(): Promise<string | null> {
         headers: {"Accept":"application/json","Content-Type":"application/json"},
         body: JSON.stringify({refresh_token: refreshToken}),
         cache: "no-store",
+        signal: AbortSignal.timeout(10000),
       });
       const rt = await rr.text();
       if (!rr.ok) return null;
