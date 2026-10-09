@@ -103,9 +103,14 @@ return static function (Router $router): void {
 
     $router->get('/api/v1/subjects/{id}/gradebook', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
+        $subjectId = trim((string) ($params['id'] ?? ''));
+        if ($subjectId === '' || !(new SpecialtyAccess())->canAccessSubject($req->user->id, $subjectId)) {
+            Response::error('FORBIDDEN', 'Этот предмет недоступен для вашей специальности', $req->requestId, 403);
+            return;
+        }
         try {
             Response::success([
-                'items' => SupabaseRest::subjectGradebook((string) $params['id']),
+                'items' => SupabaseRest::subjectGradebook($subjectId),
             ], $req->requestId);
         } catch (\Throwable $e) {
             Response::error(
