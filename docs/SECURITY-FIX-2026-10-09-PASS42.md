@@ -11,7 +11,7 @@ Migration: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
 - Created public.trainer_feed_cards_public, a read-only view that exposes published cards but removes answer-bearing question fields and option keys (correct, isCorrect, is_correct).
 - The view filters histology / mbh cards to active MBH group members. A trusted service_role request can use the view for server-side fallback; an anonymous SQL-editor context sees no MBH cards.
 - Revoked all public/client privileges on public.trainer_feed_cards; only the safe view is granted SELECT to anon and authenticated.
-- Revoked direct INSERT, UPDATE, and DELETE on trainer_feed_answers from PUBLIC, anon, and authenticated.
+- Revoked all direct client privileges on trainer_feed_answers, trainings, and training_answers from PUBLIC, anon, and authenticated. The frontend uses the PHP API/Next proxy for these flows; server-side database access remains available.
 - Added public.submit_trainer_feed_answer(...), a SECURITY DEFINER RPC with fixed search_path=pg_catalog, an authenticated-user check, active-MBH-membership validation for histology cards, option validation, server-side scoring, bounded time values, and answer persistence. Execute is granted to authenticated, not anon or PUBLIC.
 - Sent NOTIFY pgrst, 'reload schema' after applying the schema changes.
 
