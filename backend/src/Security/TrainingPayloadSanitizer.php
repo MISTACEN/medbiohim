@@ -22,6 +22,16 @@ final class TrainingPayloadSanitizer
         return $value;
     }
 
+    public static function sanitizeQuestion(mixed $value): array
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($value)) return [];
+        return self::removeKeys($value);
+    }
+
     public static function protect(mixed $data, string $method, string $path): mixed
     {
         if (!is_array($data) || !preg_match('#/trainings(?:/|$)#', $path)) return $data;
