@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MEDBIOHIM</title>
+    <link rel="stylesheet" href="popup.css">
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <main class="app">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">МБ</div>
+        <div>
+          <h1>Медбиохим</h1>
+          <p>Быстрый доступ к платформе</p>
+        </div>
+      </header>
+
+      <button class="primary" type="button" data-path="/">Открыть платформу <span aria-hidden="true">↗</span></button>
+
+      <nav class="links" aria-label="Разделы MEDBIOHIM">
+        <button type="button" data-path="/schedule"><span class="glyph" aria-hidden="true">▦</span><span><strong>Расписание</strong><small>Занятия и даты</small></span><span class="arrow" aria-hidden="true">↗</span></button>
+        <button type="button" data-path="/tests"><span class="glyph" aria-hidden="true">✓</span><span><strong>Тесты и билеты</strong><small>Проверка знаний</small></span><span class="arrow" aria-hidden="true">↗</span></button>
+        <button type="button" data-path="/subjects"><span class="glyph" aria-hidden="true">⌕</span><span><strong>Предметы и атлас</strong><small>Материалы тренажёров</small></span><span class="arrow" aria-hidden="true">↗</span></button>
+        <button type="button" data-path="/materials"><span class="glyph" aria-hidden="true">▤</span><span><strong>Материалы</strong><small>Документы и файлы</small></span><span class="arrow" aria-hidden="true">↗</span></button>
+        <button type="button" data-path="/homework"><span class="glyph" aria-hidden="true">☷</span><span><strong>Задания</strong><small>Домашняя работа</small></span><span class="arrow" aria-hidden="true">↗</span></button>
+        <button type="button" data-path="/chemistry"><span class="glyph" aria-hidden="true">⚗</span><span><strong>Химия</strong><small>Справочник и задачи</small></span><span class="arrow" aria-hidden="true">↗</span></button>
+      </nav>
+
+      <footer>
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>Авторизация остаётся на официальном сайте</span>
+      </footer>
+    </main>
+  </body>
+</html>
