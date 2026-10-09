@@ -41,7 +41,8 @@ return static function(Router $router): void {
     $router->get('/api/v1/ai/conversations/{id}', static function(Request $req,array $params): void {
         if(!RequireAuth::handle($req)) return;
         try { Response::success((new AiChatService())->getConversation($req->user->id,(string)$params['id']),$req->requestId); }
-        catch(\Throwable $e){ Response::error('AI_ERROR',$e->getMessage(),$req->requestId,404); }
+        catch(\Throwable $e){ \Medbiohim\Support\Logger::error('ai_chat_lookup_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('AI_ERROR', 'Ресурс ИИ-сервиса недоступен', $req->requestId, 404); }
     });
 
     $router->delete('/api/v1/ai/conversations/{id}', static function(Request $req,array $params): void {
