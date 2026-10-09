@@ -17,7 +17,7 @@ final class SubjectRepository
 
     public function listActive(?int $course = null, ?int $semester = null): array
     {
-        $sql = 'SELECT * FROM public.subjects WHERE 1=1';
+        $sql = 'SELECT * FROM public.subjects WHERE is_active = true';
         $params = [];
         if ($course !== null) {
             $sql .= ' AND course_number = :course';
