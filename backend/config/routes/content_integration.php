@@ -12,11 +12,16 @@ use Medbiohim\Services\B2Storage;
 return static function (Router $router): void {
     $filterMaterialsForUser = static function (array $items, Request $req): array {
         $access = new SpecialtyAccess();
-        return array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
+        $membershipCache = [];
+        return array_values(array_filter($items, static function (array $item) use ($access, $req, &$membershipCache): bool {
             $subjectSlug = trim((string) ($item['subject_slug'] ?? ''));
             $specialty = trim((string) ($item['specialty_slug'] ?? ''));
             $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
-            return $requiredSpecialty === '' || $access->userHasSpecialty($req->user->id, $requiredSpecialty);
+            if ($requiredSpecialty === '') return true;
+            if (!array_key_exists($requiredSpecialty, $membershipCache)) {
+                $membershipCache[$requiredSpecialty] = $access->userHasSpecialty($req->user->id, $requiredSpecialty);
+            }
+            return $membershipCache[$requiredSpecialty];
         }));
     };
     $router->get('/api/v1/subject-materials', static function (Request $req, array $params) use ($filterMaterialsForUser): void {
