@@ -119,7 +119,7 @@ Production/runtime Vercel + SpaceWeb + CI; auth/security final gate; физич�
 ### Дополнительные инструменты
 
 - Browser extension MVP: `integrations/browser-extension/` — только быстрые ссылки, без permissions, токенов и доступа к приватным данным.
-- Telegram bot: проектировать как optional server-side integration с подтверждённой привязкой аккаунта, минимальными правами и отдельным secret; не отправлять приватное расписание/оценки до реализации и проверки привязки.
+- [Telegram bot MVP](integrations/telegram-bot/README.md): изолированный webhook с `/start`, `/help`, `/site`, `/schedule`, `/tests`, `/subjects`, `/materials`, `/privacy`. Пока только публичные ссылки; нет доступа к аккаунтам, расписанию конкретного студента или оценкам.
 
 ### Zero-cost правило
 
