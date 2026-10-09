@@ -164,7 +164,7 @@ jobs:
           test "$(grep -c 'requiredSpecialty' verify/material_viewer.php)" -ge 4
           grep -q "subjectSlug === 'histology'" verify/content_integration.php
           grep -q "is_histology_source" verify/content_integration.php
-          test "$(grep -c 'use (\$filterMaterialsForUser)' verify/content_integration.php)" -ge 2
+          test "$(grep -F -c 'use ($filterMaterialsForUser)' verify/content_integration.php)" -ge 2
           grep -q "is_histology_material" verify/FileRepository.php
           grep -q "requiredSpecialtyForFile" verify/files.php
           echo "Backend deployment verification passed."
