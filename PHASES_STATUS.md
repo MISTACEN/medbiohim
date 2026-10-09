@@ -1118,3 +1118,12 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟡 Media, duplicate question review, lecture source reconciliation and AI provider runtime checks remain open.
 
 Details: [SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42.md).
+
+
+## Pass 43 — API reliability (2026-10-09)
+
+- 🟢 Source: API timeout now combines internal timeout and caller abort; stale cache fallback is marked with stale=true.
+- 🟡 Production: latest observed Vercel READY deployment predates commit 77b0f4a1, so this fix is not yet confirmed live.
+- 🔴 CI runner: latest code-check jobs still terminate before checkout (runner_id=0, steps=[]).
+
+Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
