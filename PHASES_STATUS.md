@@ -6,7 +6,7 @@
 
 ## Статусы
 
-> Последняя сверка: Vercel deployment metadata + [security fix Pass 42 (2026-10-09)](docs/SECURITY-FIX-2026-10-09-PASS42.md) + [functional audit Pass 41](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
+> Последняя сверка: Vercel deployment metadata + [security fix Pass 45 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS45.md) + [Pass 44 route access fix](docs/SECURITY-FIX-2026-10-10-PASS44.md) + [functional audit Pass 41](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
@@ -30,7 +30,7 @@
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
 | 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
-| 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44 report and sanitizer regression test documented; historical counts remain snapshots |
+| 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44/45 reports, 13-assertion sanitizer test and unified checklist documented; historical counts remain snapshots |
 | 13. Optional integrations | 🟡 | Chrome/Edge quick-access extension and isolated public-command Telegram bot MVP added; manual browser install/bot deployment not performed; private account linking intentionally absent |
 
 ---
