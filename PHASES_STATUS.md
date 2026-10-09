@@ -18,7 +18,7 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | последний наблюдавшийся READY Vercel build — `e23fb882` (содержит Pass 44 source); более новый docs-only build `701573ef` был BUILDING на момент проверки. CI runner не исполняет шаги, exact-commit runtime smoke не выполнен |
+| 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in last observed READY Vercel build `e23fb882`; fixed PHP autoloader in CI, added 12-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
@@ -30,7 +30,7 @@
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
 | 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
-| 12. Documentation | 🟡 | Pass 41 audit + Pass 42 security-fix record added; historical counts remain snapshots |
+| 12. Documentation | 🟡 | Unified GitHub/production checklist added to README; Pass 44 report and sanitizer regression test documented; historical counts remain snapshots |
 
 ---
 
@@ -52,6 +52,10 @@
 - ✅ Aero Glass вынесен в отдельную beta-theme, не включён по умолчанию.
 
 ## Главные открытые блокеры
+
+- 🟡 **CI runner dispatch:** PHP autoloader smoke was fixed and a 12-assertion trainer payload sanitizer regression test was added, but GitHub Actions still fails before any step. The workflow changes are not verified until an actual runner executes them.
+- 🟡 **SpaceWeb deployment safety:** deployment now requires a non-empty source backup and checks deployed Pass 44 markers; actual successful deployment is still unconfirmed.
+- 🟡 **Unified acceptance:** follow [the GitHub/production verification checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) and record PASS/FAIL/BLOCKED with evidence.
 
 ### 🟡 Trainer route access — source fix awaiting deployment/test
 Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested. [Details](docs/SECURITY-FIX-2026-10-10-PASS44.md).
