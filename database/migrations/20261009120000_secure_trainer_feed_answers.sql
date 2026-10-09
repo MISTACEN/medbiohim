@@ -53,6 +53,7 @@ LEFT JOIN public.topics AS tt ON tt.id = c.plan_topic_id
 WHERE c.is_published = true
   AND (
     (c.subject_slug IS DISTINCT FROM 'histology' AND c.specialty_slug IS DISTINCT FROM 'mbh')
+    OR current_setting('request.jwt.claim.role', true) = 'service_role'
     OR EXISTS (
       SELECT 1
       FROM public.group_memberships AS gm
