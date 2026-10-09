@@ -30,7 +30,8 @@ return static function (Router $router): void {
             $out = (new SearchService())->search($q, $limit, $subject, $type, $subjectId);
             Response::success($out, $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('SEARCH_ERROR', $e->getMessage(), $req->requestId, 500);
+            \Medbiohim\Support\Logger::error('search_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('SEARCH_ERROR', 'Поиск временно недоступен', $req->requestId, 503);
         }
     });
 };
