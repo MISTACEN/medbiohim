@@ -8,6 +8,8 @@
 | [../PHASES_STATUS.md](../PHASES_STATUS.md) | Текущее состояние фаз | ✅ актуальный |
 | [GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md](GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) | Единый checklist для GitHub Actions, API, security, media и UI | 🟡 используется |
 | [SECURITY-FIX-2026-10-10-PASS45.md](SECURITY-FIX-2026-10-10-PASS45.md) | Рекурсивная очистка ответов тренажёра | 🟡 source-only до deployment verification |
+| [RELIABILITY-FIX-2026-10-10-PASS46.md](RELIABILITY-FIX-2026-10-10-PASS46.md) | Изоляция API cache для malformed JWT | 🟡 source-only до deployment verification |
+| [SECURITY-FIX-2026-10-10-PASS47.md](SECURITY-FIX-2026-10-10-PASS47.md) | Изоляция приватных media/cache по пользователю | 🟡 source-only до deployment verification |
 | [BRANCHES.md](../BRANCHES.md) | main / beta rules | ✅ актуальный |
 | [ACTIVE-EXPERIMENTS.md](ACTIVE-EXPERIMENTS.md) | Что находится в beta | ✅ актуальный |
 | [platform-concept-medbiohim.md](platform-concept-medbiohim.md) | Общая архитектурная идея | ✅ актуальный |
