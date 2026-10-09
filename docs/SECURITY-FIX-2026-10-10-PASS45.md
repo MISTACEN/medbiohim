@@ -20,7 +20,7 @@ The trainer sanitizers removed known answer fields from the top-level question a
 - The repository class/test contents were mirrored into an isolated PHP 8.4 CLI test directory. PHP syntax checks passed and all 15 assertions passed.
 - Read-only Supabase inspection found 206 published cards and zero nested answer-bearing fields anywhere inside the stored `question` JSON outside the known top-level/options shape; the recursive key-path scan returned no unexpected nested paths. This is a data-shape spot-check, not a substitute for end-to-end role testing.
 - GitHub Actions still fails before any step (`runner_id=0`, `steps=[]`), so the committed workflow tests have not run in GitHub.
-- The latest observed READY Vercel deployment predates this Pass 45 source change; the recursive Next.js sanitizer is **not yet confirmed deployed**.
+- Latest observed READY Vercel deployment `6687e057` includes the Pass 45 Next.js sanitizer source. Browser/runtime behavior is still unverified.
 - PHP changes are not confirmed deployed to SpaceWeb.
 
 ## Acceptance gate
