@@ -25,7 +25,7 @@
 - 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
 - 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
 - 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
-- 🟡 Latest observed READY Vercel deployment is `d0949aa3`; the frontend trainer/security changes from `e23fb882` are included. Subsequent commits primarily changed CI, documentation and isolated integrations. Live browser behavior remains unverified. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
+- 🟡 Latest observed READY Vercel deployment is `d0949aa3`; the frontend trainer/security changes from `e23fb882` are included. Subsequent commits also include Pass 45 recursive sanitizer source changes, plus CI/docs/integrations. Pass 45 is not yet confirmed in a READY deployment. Live browser behavior remains unverified. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
 - 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
 ### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
@@ -33,9 +33,15 @@
 - 🟢 The non-MBH feed query and both Supabase REST fallback branches exclude restricted cards; nested trainer-question answer fields are recursively sanitized.
 - 🟡 Source fix commit: `99ed1bc905a1b9fe2f2d5ca2f2b6e8bac2dd53a3`. PHP lint, authenticated/non-MBH integration tests, and SpaceWeb deployment remain unverified because Actions jobs terminate before steps. Details: [Pass 44 security report](docs/SECURITY-FIX-2026-10-10-PASS44.md).
 
+### P1 recursive answer-key sanitization — source fix committed (Pass 45, 2026-10-10)
+- 🟢 Shared PHP `TrainingPayloadSanitizer::sanitizeQuestion()` now recursively strips answer/explanation/correctness keys; PHP trainer routes reuse it rather than maintaining a weaker duplicate closure.
+- 🟢 Next.js trainer sanitizer now recursively traverses nested objects and arrays.
+- 🟢 13 PHP sanitizer assertions passed in an isolated PHP 8.4 CLI run using repository class/test contents. A read-only DB spot-check found 206 published cards and no nested answer fields under the checked `question`/`metadata` branches.
+- 🟡 Pass 45 is source-only until the next Vercel READY build and SpaceWeb deployment are verified; GitHub Actions still fails before steps. See [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
+
 ### CI/QA hardening — source updated, runner still blocked (2026-10-10)
 - 🟢 Fixed the PHP namespace prefix in `.github/workflows/code-check.yml` route-registration smoke test; it previously contained four literal backslashes, which PHP interpreted as two namespace separators instead of one.
-- 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 12 assertions passed.
+- 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 13 assertions passed.
 - 🟢 `scripts/predeploy-audit.mjs`, the code-check workflow, and the SpaceWeb deploy preflight now run this regression test.
 - 🟢 SpaceWeb deploy workflow now requires a non-empty backup before deployment and verifies Pass 44 route/sanitizer markers after upload.
 - 🟡 GitHub Actions runner allocation still fails before steps (`runner_id=0`, `steps=[]`); these new workflow checks have not run inside GitHub yet. See [the unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md).
