@@ -43,7 +43,9 @@ return static function (Router $router): void {
             }
 
             $specialty = trim((string)($row['specialty_slug'] ?? ''));
-            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+            $subjectSlug = trim((string)($row['subject_slug'] ?? ''));
+            $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
+            if ($requiredSpecialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $requiredSpecialty)) {
                 Response::error('FORBIDDEN', 'Этот материал недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
@@ -105,11 +107,7 @@ return static function (Router $router): void {
                         f.size_bytes AS file_size_bytes,
                         f.object_key AS file_object_key,
                         f.group_id AS file_group_id,
-                        cs.source_path, cs.original_format, cs.mime_type,
-                        s.specialty_slug,
-                        f.original_name AS file_original_name, f.mime_type AS file_mime_type,
-                        f.size_bytes AS file_size_bytes, f.object_key AS file_object_key,
-                        f.group_id AS file_group_id
+                        cs.source_path, cs.original_format, cs.mime_type
                  FROM public.materials m
                  JOIN public.subjects s ON s.id = m.subject_id
                  LEFT JOIN public.files f
@@ -128,9 +126,11 @@ return static function (Router $router): void {
             }
 
             $specialty = trim((string)($row['specialty_slug'] ?? ''));
+            $subjectSlug = trim((string)($row['subject_slug'] ?? ''));
+            $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
             if (
-                $specialty !== ''
-                && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)
+                $requiredSpecialty !== ''
+                && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $requiredSpecialty)
             ) {
                 Response::error(
                     'FORBIDDEN',
