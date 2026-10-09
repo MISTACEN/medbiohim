@@ -126,8 +126,32 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     setWorking(true);
     const r = await answerTrainingQuestion(training.id, a.order, value, skip);
     if (!r.ok) { setError(r.error.message); setWorking(false); return; }
-    setAnswers((v) => v.map((x, i) => i === active ? { ...x, user_answer: value, is_correct: r.data.correct, is_skipped: skip } : x));
+    const snapshot = a.question_snapshot as any;
+    const mode = String(snapshot?.mode_set || snapshot?.modeSet || "").toLowerCase();
+    const tags = Array.isArray(snapshot?.tags) ? snapshot.tags.map(String) : [];
+    const isElectronogram = training.content_type === "electronogram"
+      || mode.includes("electron")
+      || tags.some((tag: string) => tag.includes("electron") || tag.includes("электронограм"));
+    setAnswers((v) => v.map((x, i) => i === active ? {
+      ...x,
+      user_answer: value,
+      is_correct: r.data.correct,
+      is_skipped: skip,
+      options: r.data.correct === true && value != null
+        ? x.options.map((option) => ({ ...option, correct: option.id === value }))
+        : x.options,
+    } : x));
     setSessions((v) => v.map((x) => x.id === training.id ? { ...x, answered_count: (x.answered_count || 0) + 1, current_index: a.order } : x));
+
+    // Unanswered snapshots intentionally omit the answer key. Refresh only when
+    // the user needs the post-answer review data (wrong/skipped/free-text/EM).
+    if (skip || r.data.correct !== true || isElectronogram) {
+      const refreshed = await getTraining(training.id);
+      if (refreshed.ok) {
+        setTraining(refreshed.data.training);
+        setAnswers(refreshed.data.answers as AnswerRow[]);
+      }
+    }
     setWorking(false);
   };
 
