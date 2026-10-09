@@ -8,6 +8,28 @@ function safeEqual(a, b) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
+async function parseUpdateBody(req) {
+  let body = req.body;
+  if (body === undefined || body === null) {
+    if (typeof req[Symbol.asyncIterator] !== "function") return null;
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of req) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buffer.length;
+      if (size > 256 * 1024) throw new Error("REQUEST_TOO_LARGE");
+      chunks.push(buffer);
+    }
+    body = Buffer.concat(chunks);
+  }
+  if (Buffer.isBuffer(body)) body = body.toString("utf8");
+  if (typeof body === "string") {
+    if (Buffer.byteLength(body, "utf8") > 256 * 1024) throw new Error("REQUEST_TOO_LARGE");
+    try { body = JSON.parse(body); } catch { return null; }
+  }
+  return body && typeof body === "object" && !Array.isArray(body) ? body : null;
+}
+
 async function sendTelegramMessage(chatId, response) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
@@ -51,10 +73,16 @@ module.exports = async function webhook(req, res) {
     return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
   }
 
-  const update = req.body;
-  if (!update || typeof update !== "object" || Array.isArray(update)) {
+  let update;
+  try {
+    update = await parseUpdateBody(req);
+  } catch (error) {
+    if (error instanceof Error && error.message === "REQUEST_TOO_LARGE") {
+      return res.status(413).json({ ok: false, error: "PAYLOAD_TOO_LARGE" });
+    }
     return res.status(400).json({ ok: false, error: "INVALID_UPDATE" });
   }
+  if (!update) return res.status(400).json({ ok: false, error: "INVALID_UPDATE" });
 
   const message = update.message;
   if (!message || !message.chat || message.chat.type !== "private" || typeof message.chat.id !== "number") {
