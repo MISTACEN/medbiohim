@@ -24,7 +24,7 @@ This is a client-side cache isolation risk; no live cross-account access was dem
 
 - Source reviewed; no production cross-account leak was reproduced.
 - GitHub Actions still fails before steps, so TypeScript/pre-deploy audit has not executed in GitHub.
-- Latest observed READY Vercel deployment predates Pass 45–47 source changes; production inclusion is not confirmed.
+- Latest observed READY Vercel deployment `6687e057` includes Pass 45–47 frontend source changes. Browser/runtime behavior remains unverified.
 - SpaceWeb file authorization remains a separate required test: access must be enforced server-side regardless of browser cache behavior.
 
 ## Acceptance
