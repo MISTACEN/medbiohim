@@ -14,6 +14,13 @@
 
 Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 
+## CI/PHP audit — Pass 52 (2026-10-10)
+
+- 🟢 Fixed repeated named PDO placeholders in homework listing/attachment SQL.
+- 🟢 Added `backend/tests/HomeworkSqlContractTest.php` and wired it into code-check and SpaceWeb pre-deploy checks.
+- 🔴 GitHub Actions still fails before steps (`runner_id=0`, no logs); no CI success claimed. Full PHP lint and integration/deploy checks remain unverified.
+- Report: [CI/PHP audit Pass 52](docs/CI-PHP-AUDIT-2026-10-10-PASS52.md).
+
 ## Статусы
 
 > Последняя сверка: Vercel deployment metadata + [security fix Pass 49 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS49.md) + [Pass 48 viewer access](docs/SECURITY-FIX-2026-10-10-PASS48.md) + [Pass 47 media cache isolation](docs/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/RELIABILITY-FIX-2026-10-10-PASS46.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
