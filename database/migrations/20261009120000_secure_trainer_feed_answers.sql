@@ -136,7 +136,7 @@ BEGIN
      v_answer_text,
      COALESCE(p_is_skipped, false),
      v_correct,
-     CASE WHEN p_time_ms IS NULL THEN NULL ELSE pg_catalog.least(pg_catalog.greatest(p_time_ms, 0), 3600000) END)
+     CASE WHEN p_time_ms IS NULL THEN NULL WHEN p_time_ms < 0 THEN 0 WHEN p_time_ms > 3600000 THEN 3600000 ELSE p_time_ms END)
   RETURNING * INTO v_answer;
 
   RETURN pg_catalog.jsonb_build_object(
