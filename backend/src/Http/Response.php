@@ -17,7 +17,7 @@ final class Response
     {
         self::json([
             'ok' => true,
-            'data' => $data,
+            'data' => \Medbiohim\Security\TrainingPayloadSanitizer::protect($data, (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'), (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '')),
             'requestId' => $requestId,
         ], $status);
     }
