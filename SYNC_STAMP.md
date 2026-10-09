@@ -4,7 +4,8 @@
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
-- Full audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
+- Latest security fix: docs/SECURITY-FIX-2026-10-09-PASS42.md
+- Functional audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
 
@@ -12,7 +13,7 @@
 - Histology `exam_questions`: 466 records (366 published, 100 unpublished; repeated-text groups require comparison, not automatic deletion)
 - Histology `ticket_banks`: 5 (preserved; not modified)
 - Published histology material records: 80 (physical document/image availability is not proven by metadata)
-- Published trainer feed cards: 206; all 206 currently contain nested `question.options[].correct` flags
+- Published trainer feed cards: 206; the trusted base table retains grading keys, but public safe view exposes 0 correctness flags
 - Published electronogram cards: 28; physical paths still require SpaceWeb/B2 HTTP verification
 - `questions`: last full integrity snapshot recorded 855 rows and 660 published non-archived
 - `tests`: last full integrity snapshot recorded 33 total and 32 published
@@ -20,8 +21,8 @@
 
 ## Current open checks — updated 2026-10-09
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed.
-- Vercel production alias was last observed `READY` at commit `2a0d761`, which includes the `fb4eed97` source fix in the repository tree. This confirms frontend deployment metadata only; SpaceWeb PHP backend deployment/runtime remains unverified. The latest `main` commit `29db156` is a documentation-only sync-stamp refresh and had a pending Vercel check at the last read.
-- P1: prevent trainer-answer leakage through Supabase Data API, PHP trainer routes, Next fallback and training session snapshots.
+- Vercel production alias was last observed `READY` at commit `2a0d761`, which includes the `fb4eed97` source fix in the repository tree. This confirms frontend deployment metadata only; SpaceWeb PHP backend deployment/runtime remains unverified. Latest main now includes Pass 42 security changes; deployment metadata and target runtime must be rechecked for this commit.
+- P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Full authenticated runtime acceptance remains open.
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - AI provider runtime/fallback verification.
 - final histology plan ↔ content matrix and lecture-source reconciliation.
@@ -225,3 +226,12 @@
 - Code-check retry `37935997871`, attempt 2: job did not allocate a runner; no test steps ran.
 - Roadmap and phases status were synced to Pass 41; no Supabase rows or schema were modified by this audit.
 - Next work order: trainer-answer confidentiality → runner/CI recovery → exact commit deployment verification → physical media reconciliation → histology question/lecture source review → runtime/browser smoke.
+
+
+## 2026-10-09 — Trainer answer-key security Pass 42
+- Live Supabase migration applied: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
+- Public clients can SELECT only the sanitized trainer_feed_cards_public view; direct client SELECT on trainer_feed_cards is revoked.
+- Verified in an active MBH membership context: 206 published cards are visible and the view returns 0 correctness flags / 0 answer-bearing fields.
+- Direct INSERT/UPDATE/DELETE on trainer_feed_answers is revoked for anon/authenticated; submit_trainer_feed_answer RPC performs authenticated server-side scoring.
+- PHP response sanitizer protects newly-created and unanswered training snapshots; Next proxy applies the same protection while preserving review data after answer/skip.
+- Remaining gate: deploy latest frontend + SpaceWeb backend, then authenticated MBH/non-MBH feed → training → answer → review smoke. CI runner failure still prevents automated checks.
