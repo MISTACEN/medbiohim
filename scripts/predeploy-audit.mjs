@@ -238,6 +238,26 @@ if (existsSync(platformPath)) {
 if (exposedDebugRoutes.length) fail("production debug endpoints remain: " + exposedDebugRoutes.join(", "));
 else pass("no unauthenticated production debug routes");
 
+const routeFiles = (await walk(join(root, "backend/config/routes"))).filter((p) => extname(p) === ".php");
+const routeRegistry = new Map();
+let duplicateRouteFound = false;
+const routePattern = /\$[A-Za-z_]\w*->(get|post|put|patch|delete)\(\s*(['"])([^'"]+)\2/g;
+for (const file of routeFiles) {
+  const source = await readFile(file, "utf8");
+  for (const match of source.matchAll(routePattern)) {
+    const key = match[1].toUpperCase() + " " + match[3];
+    const previous = routeRegistry.get(key);
+    if (previous) {
+      fail("duplicate route " + key + " in " + relative(root, previous) + " and " + relative(root, file));
+      duplicateRouteFound = true;
+    } else {
+      routeRegistry.set(key, file);
+    }
+  }
+}
+if (!duplicateRouteFound) pass("no duplicate PHP HTTP route registrations (" + routeRegistry.size + " routes)");
+
+
 const homeworkPage = join(root, "src/app/homework/page.tsx");
 if (existsSync(homeworkPage)) {
   const text = await readFile(homeworkPage, "utf8");
