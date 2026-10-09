@@ -8,7 +8,7 @@
 - Previous access-control pass: docs/SECURITY-FIX-2026-10-10-PASS50.md
 - API cache isolation: docs/RELIABILITY-FIX-2026-10-10-PASS46.md
 - Functional audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
-- GitHub Actions status: runner recovery unverified; Ubuntu 24.04 pinned; see docs/CI-PHP-AUDIT-2026-10-10-PASS51.md
+- GitHub Actions status: blocked before step execution (`runner_id=0`, `BlobNotFound`); see docs/CI-PHP-AUDIT-2026-10-10-PASS51.md and run 37993824049
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
 - API reliability fix: docs/RELIABILITY-FIX-2026-10-09-PASS43.md
