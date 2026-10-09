@@ -34,7 +34,7 @@ final class SpecialtyAccess
     public function canAccessSubject(string $userId, string $subjectId): bool
     {
         $stmt = $this->db->prepare(
-            'SELECT specialty_slug
+            'SELECT slug, specialty_slug
              FROM public.subjects
              WHERE id = :id
              LIMIT 1'
@@ -45,11 +45,15 @@ final class SpecialtyAccess
             return false;
         }
 
-        $slug = trim((string) ($row['specialty_slug'] ?? ''));
-        if ($slug === '') {
+        $subjectSlug = trim((string) ($row['slug'] ?? ''));
+        $specialtySlug = trim((string) ($row['specialty_slug'] ?? ''));
+        $requiredSpecialty = ($subjectSlug === 'histology' || $specialtySlug === 'mbh')
+            ? 'mbh'
+            : $specialtySlug;
+        if ($requiredSpecialty === '') {
             return true;
         }
 
-        return $this->userHasSpecialty($userId, $slug);
+        return $this->userHasSpecialty($userId, $requiredSpecialty);
     }
 }
