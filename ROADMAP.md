@@ -44,6 +44,12 @@
 - 🟢 Added a pre-deploy audit guard for this contract.
 - 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment predates Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
 
+### P1 private media cache isolation — source fix committed (Pass 47, 2026-10-10)
+- 🟢 Trainer card, trainer image and material-file caches are now keyed by user scope; malformed token scopes bypass cache.
+- 🟢 Account switch/logout clears cached API data, private card/media caches and revokes blob URLs. Authenticated trainer images use `no-store`; expiring B2 presigned URLs are not cached.
+- 🟢 Direct image/material/source-file requests now have timeouts; pre-deploy audit checks the cache isolation contract.
+- 🟡 No live cross-account leak was reproduced; TypeScript, pre-deploy audit and account-switch acceptance remain open. Latest observed READY Vercel deployment predates Pass 45–47. See [Pass 47 report](docs/SECURITY-FIX-2026-10-10-PASS47.md).
+
 ### CI/QA hardening — source updated, runner still blocked (2026-10-10)
 - 🟢 Fixed the PHP namespace prefix in `.github/workflows/code-check.yml` route-registration smoke test; it previously contained four literal backslashes, which PHP interpreted as two namespace separators instead of one.
 - 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 15 assertions passed.
