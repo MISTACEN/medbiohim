@@ -30,33 +30,34 @@ function jwtSubject(token: string) {
   }
 }
 
-function safeTrainerQuestion(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const question = { ...(value as Record<string, unknown>) };
-  for (const key of ["explanation", "answer", "correct", "isCorrect", "is_correct", "correctAnswer", "correct_answer", "correctOption", "correct_option", "correctOptionId", "correct_option_id"]) {
-    delete question[key];
+function safeTrainerQuestion(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => safeTrainerQuestion(item));
+  if (!value || typeof value !== "object") return value;
+
+  const source = value as Record<string, unknown>;
+  const safe: Record<string, unknown> = {};
+  const answerKeys = new Set([
+    "explanation", "answer", "correct", "isCorrect", "is_correct",
+    "correctAnswer", "correct_answer", "correctOption", "correct_option",
+    "correctOptionId", "correct_option_id",
+  ]);
+
+  for (const [key, child] of Object.entries(source)) {
+    if (answerKeys.has(key)) continue;
+
+    if (key === "preparation" && child && typeof child === "object" && !Array.isArray(child)) {
+      const preparation = { ...(child as Record<string, unknown>) };
+      delete preparation.name;
+      delete preparation.organ;
+      delete preparation.captions;
+      safe[key] = safeTrainerQuestion(preparation);
+      continue;
+    }
+
+    safe[key] = safeTrainerQuestion(child);
   }
-  if (question.question && typeof question.question === "object" && !Array.isArray(question.question)) {
-    question.question = safeTrainerQuestion(question.question);
-  }
-  if (question.preparation && typeof question.preparation === "object" && !Array.isArray(question.preparation)) {
-    const preparation = { ...(question.preparation as Record<string, unknown>) };
-    delete preparation.name;
-    delete preparation.organ;
-    delete preparation.captions;
-    question.preparation = preparation;
-  }
-  if (Array.isArray(question.options)) {
-    question.options = question.options.map((item) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return item;
-      const option = { ...(item as Record<string, unknown>) };
-      delete option.correct;
-      delete option.isCorrect;
-      delete option.is_correct;
-      return option;
-    });
-  }
-  return question;
+
+  return safe;
 }
 
 async function supabaseRequest(path: string, req: NextRequest, init: RequestInit = {}) {
