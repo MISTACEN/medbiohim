@@ -14,6 +14,12 @@ use Medbiohim\Support\Logger;
 use Medbiohim\Support\Multipart;
 
 return static function (Router $router): void {
+    $requiredSpecialtyForFile = static function (array $file): string {
+        $specialty = trim((string) ($file['specialty_slug'] ?? ''));
+        $histologyFlag = strtolower((string) ($file['is_histology_material'] ?? ''));
+        $isHistologyMaterial = in_array($histologyFlag, ['1', 't', 'true', 'yes'], true);
+        return ($isHistologyMaterial || $specialty === 'mbh') ? 'mbh' : $specialty;
+    };
     $router->post('/api/v1/files/upload', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
 
@@ -110,8 +116,8 @@ return static function (Router $router): void {
                 Response::error('NOT_FOUND', 'File not found', $req->requestId, 404);
                 return;
             }
-            $specialty = trim((string)($file['specialty_slug'] ?? ''));
-            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+            $requiredSpecialty = $requiredSpecialtyForFile($file);
+            if ($requiredSpecialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $requiredSpecialty)) {
                 Response::error('FORBIDDEN', 'Этот файл недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
@@ -135,8 +141,8 @@ return static function (Router $router): void {
                 Response::error('NOT_FOUND', 'File not found', $req->requestId, 404);
                 return;
             }
-            $specialty = trim((string) ($file['specialty_slug'] ?? ''));
-            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+            $requiredSpecialty = $requiredSpecialtyForFile($file);
+            if ($requiredSpecialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $requiredSpecialty)) {
                 Response::error('FORBIDDEN', 'Этот файл недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
@@ -151,6 +157,7 @@ return static function (Router $router): void {
                     $download['status'] = 'error';
                 }
             }
+            unset($file['is_histology_material']);
             Response::success(['file' => $file, 'download' => $download], $req->requestId);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Database is not available', $req->requestId, 503);
