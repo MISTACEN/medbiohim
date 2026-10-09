@@ -8,6 +8,7 @@
 - Functional audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
+- API reliability fix: docs/RELIABILITY-FIX-2026-10-09-PASS43.md
 
 ## Latest available data snapshot (live counts last checked 2026-10-06; Pass 41 read-only spot checks 2026-10-09)
 - Histology `exam_questions`: 466 records (366 published, 100 unpublished; repeated-text groups require comparison, not automatic deletion)
@@ -235,3 +236,9 @@
 - Direct client access to trainer_feed_answers, trainings, and training_answers is revoked for anon/authenticated; submit_trainer_feed_answer RPC performs authenticated server-side scoring.
 - PHP response sanitizer protects newly-created and unanswered training snapshots; Next proxy applies the same protection while preserving review data after answer/skip.
 - Remaining gate: deploy latest frontend + SpaceWeb backend, then authenticated MBH/non-MBH feed → training → answer → review smoke. CI runner failure still prevents automated checks.
+
+
+## 2026-10-09 — API timeout/cache reliability Pass 43
+- Commit 77b0f4a1 fixes timeout bypass when a caller provides AbortSignal and marks stale cache fallback responses with stale=true.
+- Latest observed Vercel READY deployment was still commit b96bdcd at the last check, so API client fix is committed but not yet confirmed deployed.
+- CI runners still fail before checkout; TypeScript/build checks remain unexecuted.
