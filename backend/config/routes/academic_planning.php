@@ -14,7 +14,8 @@ return static function (Router $r): void {
             (new AcademicPlanningService())->sync($q->user->id);
             Response::success(['synced'=>true], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('ACADEMIC_SYNC_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('academic_sync_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('ACADEMIC_SYNC_ERROR', 'Синхронизация учебного плана временно недоступна', $q->requestId, 503);
         }
     });
 
@@ -23,7 +24,8 @@ return static function (Router $r): void {
         try {
             Response::success((new AcademicPlanningService())->state($q->user->id), $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('ACADEMIC_STATE_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('academic_state_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('ACADEMIC_STATE_ERROR', 'Состояние учебного плана временно недоступно', $q->requestId, 503);
         }
     });
 
@@ -35,7 +37,8 @@ return static function (Router $r): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION_ERROR', $e->getMessage(), $q->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('ACADEMIC_STATE_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('academic_state_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('ACADEMIC_STATE_ERROR', 'Состояние учебного плана временно недоступно', $q->requestId, 503);
         }
     });
 
@@ -44,7 +47,8 @@ return static function (Router $r): void {
         try {
             Response::success((new AcademicPlanningService())->generatePlan($q->user->id), $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('ACADEMIC_AI_PLAN_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('academic_ai_plan_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('ACADEMIC_AI_PLAN_ERROR', 'Не удалось сформировать план. Попробуйте позже', $q->requestId, 503);
         }
     });
 };
