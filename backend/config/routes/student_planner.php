@@ -112,7 +112,8 @@ return static function(Router $router): void {
             }
             Response::success(['group'=>$group,'homeworks'=>$homeworks,'attendance'=>$attendance,'recovery'=>array_values($recovery)],$req->requestId);
         } catch(AcademicContextException $e){ Response::error($e->errorCode,$e->getMessage(),$req->requestId,$e->httpStatus,$e->details);
-        } catch(\Throwable $e){ Response::error('PLANNER_ERROR',$e->getMessage(),$req->requestId,503); }
+        } catch(\Throwable $e){ \Medbiohim\Support\Logger::error('student_planner_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('PLANNER_ERROR', 'Учебный планер временно недоступен', $req->requestId, 503); }
     });
 
     $router->post('/api/v1/homeworks/{id}/progress', static function(Request $req,array $params): void {
