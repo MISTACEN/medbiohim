@@ -211,6 +211,8 @@ find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 - [Поиск непроверенных ссылок/медиа-путей](https://github.com/MISTACEN/medbiohim/search?q=imageUrl+OR+source_key+OR+presignedDownloadUrl&type=code)
 - [Все workflow-файлы](https://github.com/MISTACEN/medbiohim/tree/main/.github/workflows)
 
+Для быстрого оформления можно использовать [готовую GitHub Issue Form](../.github/ISSUE_TEMPLATE/bug_report.yml), которая требует commit SHA, шаги, ожидаемый/фактический результат и безопасные логи.
+
 ## 14. Создание issue на каждый подтверждённый дефект
 
 Использовать шаблон:
