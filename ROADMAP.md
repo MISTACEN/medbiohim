@@ -44,6 +44,13 @@
 - 🟢 Added a pre-deploy audit guard for this contract.
 - 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment predates Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
 
+### P1 consistent MBH access across material/file endpoints — source fix committed (Pass 49, 2026-10-10)
+- 🟢 Material list filters now enforce MBH for histology even with empty/inconsistent `specialty_slug`; detail follows the same rule.
+- 🟢 Content-source access checks both linked histology materials and canonical/legacy source paths instead of relying only on the source ID label.
+- 🟢 File repository adds an internal histology-link flag and both file metadata/download routes enforce MBH access from it.
+- 🟢 Pre-deploy audit and SpaceWeb post-deploy verifier now guard these source contracts.
+- 🟡 PHP lint, end-to-end role tests and SpaceWeb deployment remain unverified because GitHub Actions fails before steps. See [Pass 49 report](docs/SECURITY-FIX-2026-10-10-PASS49.md).
+
 ### P1 histology material access consistency — source fix committed (Pass 48, 2026-10-10)
 - 🟢 Both `materials/{id}/file-url` and `materials/{id}/file` now require MBH membership whenever `subject_slug = histology`, even if `specialty_slug` is empty/inconsistent.
 - 🟢 Deployment verifier downloads `material_viewer.php` and checks its MBH guard; pre-deploy audit guards the same contract.
