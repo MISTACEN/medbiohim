@@ -16,6 +16,7 @@ The two material lists could include histology rows with empty/inconsistent spec
 ## Changes
 
 - Added a shared material-list filter that requires MBH membership when either `subject_slug = histology` or `specialty_slug = mbh`.
+- Both list route closures explicitly capture the shared filter; pre-deploy and post-deploy checks verify those captures to prevent an undefined-variable regression.
 - Applied the same rule to material detail.
 - Content source access now checks linked histology materials in SQL and recognizes canonical/legacy histology source paths, while preserving existing source-ID checks.
 - `FileRepository::assertAccess()` now returns an internal `is_histology_material` flag based on linked materials; both file metadata/download routes enforce MBH access from that flag even if the file's own `specialty_slug` is empty.
