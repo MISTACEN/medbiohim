@@ -68,7 +68,8 @@ return static function (Router $router): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION_ERROR', $e->getMessage(), $req->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('CALC_ERROR', $e->getMessage(), $req->requestId, 500);
+            \Medbiohim\Support\Logger::error('calculator_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('CALC_ERROR', 'Не удалось выполнить расчёт', $req->requestId, 500);
         }
     });
 };
