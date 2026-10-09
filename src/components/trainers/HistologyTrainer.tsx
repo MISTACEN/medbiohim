@@ -287,8 +287,11 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                           <Maximize2 className="h-3 w-3" /> Открыть
                         </span>
                       </div>
-                      <div className="p-2 text-xs font-medium text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
-                      <div className="px-2 pb-2 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
+                      <div className="p-2 text-xs font-semibold text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
+                      <div className="px-2 pb-1 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
+                      {/(кров|эритроцит|лейкоцит|лимфоцит|нейтрофил|эозинофил|базофил|моноцит|тромбоцит|blood|smear)/i.test(`${card.preparation?.name || ""} ${lessonKeyOf(card)}`) ? (
+                        <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wide text-rose-700">Мазок крови</div>
+                      ) : null}
                     </button>
                   ))}
                 </div>
