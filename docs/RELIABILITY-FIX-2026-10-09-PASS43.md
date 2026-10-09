@@ -12,7 +12,7 @@ Commit: 77b0f4a1b44d47e38833cb32b67c7f1ecd3e478b
 
 ## Verification boundary
 - Source was reread after commit; timeout signal, caller abort relay, and stale marker are present.
-- Vercel production alias is now READY at commit a56d3fdb, which includes this API-client fix. Browser-level timeout behavior is still untested.
+- Vercel production alias is now READY at commit 37703f90, which includes this API-client fix. Browser-level timeout behavior is still untested.
 - GitHub Actions code-check jobs still fail before checkout with runner_id=0 and steps=[]; no TypeScript/build execution evidence is available.
 
 ## Next check
