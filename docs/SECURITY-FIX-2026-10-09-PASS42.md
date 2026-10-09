@@ -3,7 +3,7 @@
 **Related audit:** [Functional audit Pass 41](FUNCTIONAL-AUDIT-2026-10-09-PASS41.md)
 
 ## Result
-The original P1 issue is mitigated at the live Supabase Data API boundary and in source code. The Vercel production alias is now READY at commit bd645c39, which includes the frontend proxy sanitizer. Full end-to-end acceptance is still pending because GitHub Actions jobs have not allocated a runner, so the SpaceWeb PHP deployment and authenticated browser session have not been verified.
+The original P1 issue is mitigated at the live Supabase Data API boundary and in source code. The Vercel production alias is now READY at commit a56d3fdb, which includes the frontend proxy sanitizer for correctness flags and preparation names/captions in unanswered training snapshots, plus the API timeout fix. Full end-to-end acceptance is still pending because GitHub Actions jobs have not allocated a runner, so the SpaceWeb PHP deployment and authenticated browser session have not been verified.
 
 ## Live Supabase changes
 Migration: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
