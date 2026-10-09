@@ -6,6 +6,7 @@ namespace Medbiohim\Middleware;
 use Medbiohim\Http\Request;
 use Medbiohim\Http\Response;
 use Medbiohim\Repositories\UserRepository;
+use Medbiohim\Support\Logger;
 
 final class RequireRole
 {
@@ -17,21 +18,29 @@ final class RequireRole
             return false;
         }
 
-        $jwtRole = $request->user->role;
-        if ($jwtRole !== null && in_array($jwtRole, $allowed, true)) {
-            return true;
+        // user_roles is the authorization source of truth. Never authorize privileged
+        // requests solely from claims cached in an access token, which may be stale.
+        try {
+            $roles = (new UserRepository())->roleCodesForUser($request->user->id);
+        } catch (\Throwable $e) {
+            Logger::error('role_check_unavailable', [
+                'requestId' => $request->requestId,
+                'userId' => $request->user->id,
+                'error' => $e->getMessage(),
+            ]);
+            Response::error(
+                'ROLE_CHECK_UNAVAILABLE',
+                'Проверка прав временно недоступна',
+                $request->requestId,
+                503
+            );
+            return false;
         }
 
-        try {
-            $repo = new UserRepository();
-            $roles = $repo->roleCodesForUser($request->user->id);
-            foreach ($roles as $code) {
-                if (in_array($code, $allowed, true)) {
-                    return true;
-                }
+        foreach ($roles as $code) {
+            if (in_array($code, $allowed, true)) {
+                return true;
             }
-        } catch (\Throwable $e) {
-            // DB optional when JWT role present
         }
 
         Response::error(
