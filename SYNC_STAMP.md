@@ -1,6 +1,6 @@
 # Sync stamp
 
-- Date: 2026-10-09
+- Date: 2026-10-10
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
@@ -20,9 +20,9 @@
 - `tests`: last full integrity snapshot recorded 33 total and 32 published
 - Treat the counts above as the last recorded snapshots, not as proof that the newest deployment is functioning.
 
-## Current open checks — updated 2026-10-09
-- GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed.
-- Vercel production alias was last observed `READY` at commit `f5012cbf`, which includes the frontend proxy sanitizer (including preparation names/captions in unanswered sessions) and API timeout/cache fix. Vercel build/deployment metadata is green; live browser behavior is still unverified. SpaceWeb PHP deployment remains unverified because the deploy job fails before checkout (`runner_id=0`, no steps/logs).
+## Current open checks — updated 2026-10-10
+- GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed. This is a runner allocation/dispatch failure, not evidence that the test commands themselves failed.
+- Vercel production alias is confirmed `READY` on current `main` commit `e164191468e088214828b06325b6de2483df8d90`; it includes the frontend proxy sanitizer, post-answer review restoration, and API timeout/cache fix. Live browser behavior remains unverified. SpaceWeb PHP deployment remains unverified because GitHub Actions jobs fail before checkout (`runner_id=0`, no steps/logs).
 - P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Full authenticated runtime acceptance remains open.
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - AI provider runtime/fallback verification.
@@ -46,7 +46,7 @@
 - docs/UNFINISHED-REGISTRY.md
 - docs/API-COVERAGE-2026-10-04.md
 ## Current open checks
-- Vercel production deployment lag/verification remains separate from GitHub CI.
+- Vercel production metadata is current (`e1641914`, READY); live browser/API verification remains separate from GitHub CI.
 - SpaceWeb trainer media 404/502 requires real file/B2 verification.
 - AI provider runtime health / fallback credentials remain external checks.
 - Full histology plan ↔ content mapping remains a product/content task.
