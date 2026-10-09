@@ -25,7 +25,7 @@
 - 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
 - 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
 - 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
-- 🟡 Vercel frontend is confirmed READY on current `main` (`e1641914`); SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
+- 🟡 Latest observed READY Vercel build is `e23fb882` and includes the Pass 44 source commit; a newer docs-only `main` build (`701573ef`) was still BUILDING at last check. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
 - 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
 ### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
@@ -40,7 +40,7 @@
 - 🟢 desktop + mobile interaction contract implemented;
 - 🟢 malformed TSX escaped-newline artifact found during regression and removed;
 - 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
-- 🟢 Vercel production metadata confirms current `main` (`e1641914`) is READY; 🟡 real browser smoke on desktop/mobile remains open;
+- 🟢 Latest observed READY Vercel build (`e23fb882`) includes the Pass 44 source commit; a newer docs-only build was still BUILDING at last check. 🟡 Real browser smoke on desktop/mobile remains open;
 - 🟡 SpaceWeb authenticated media smoke.
 
 ### Immediate next gates — updated 2026-10-09
