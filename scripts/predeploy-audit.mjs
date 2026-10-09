@@ -43,6 +43,7 @@ for (const required of [
   "src/app/api/v1/[...path]/route.ts",
   "backend",
   "backend/tests/TrainingPayloadSanitizerTest.php",
+  "backend/tests/SupabaseAuthRoleTest.php",
   ".env.example"
 ]) {
   if (existsSync(join(root, required))) pass("required: " + required);
@@ -261,6 +262,54 @@ if (existsSync(join(root, "api/index.php"))) {
   fail("legacy root api/index.php exists; architecture expects Next proxy -> SpaceWeb");
 } else {
   pass("no legacy root api/index.php");
+}
+
+const authPath = join(root, "backend/src/Services/SupabaseAuth.php");
+const requireRolePath = join(root, "backend/src/Middleware/RequireRole.php");
+const requestPath = join(root, "backend/src/Http/Request.php");
+const bootstrapPath = join(root, "backend/src/Bootstrap.php");
+if ([authPath, requireRolePath, requestPath, bootstrapPath].every(existsSync)) {
+  const auth = await readFile(authPath, "utf8");
+  const requireRole = await readFile(requireRolePath, "utf8");
+  const request = await readFile(requestPath, "utf8");
+  const bootstrap = await readFile(bootstrapPath, "utf8");
+  if (auth.includes("trustedRoleFromUserPayload") &&
+      !auth.includes("$j['user_metadata']['role']") &&
+      !auth.includes("$meta['role'] ?? null")) {
+    pass("Supabase user-editable metadata cannot grant backend roles");
+  } else {
+    fail("auth role extraction trusts user-editable metadata");
+  }
+  if (requireRole.includes("roleCodesForUser") &&
+      !requireRole.includes("$jwtRole !== null && in_array")) {
+    pass("privileged role checks use canonical database roles");
+  } else {
+    fail("privileged role checks may trust stale token claims");
+  }
+  if (!request.includes("$this->query['access_token']")) {
+    pass("bearer access tokens are not accepted from query strings");
+  } else {
+    fail("bearer access tokens are accepted from query strings");
+  }
+  if (bootstrap.includes("$msg = 'Внутренняя ошибка сервера'") &&
+      !bootstrap.includes("$e::class . ': ' . $e->getMessage()")) {
+    pass("uncaught exceptions are logged server-side and hidden from clients");
+  } else {
+    fail("uncaught exceptions may expose internal details to clients");
+  }
+}
+
+const contentRoutesPath = join(root, "backend/config/routes/content_integration.php");
+const materialViewerPath = join(root, "backend/config/routes/material_viewer.php");
+if ([contentRoutesPath, materialViewerPath].every(existsSync)) {
+  const contentRoutes = await readFile(contentRoutesPath, "utf8");
+  const materialViewer = await readFile(materialViewerPath, "utf8");
+  if (!contentRoutes.includes("Response::error('CONTENT_ERROR', $e->getMessage()") &&
+      !materialViewer.includes("Response::error('CONTENT_ERROR', $e->getMessage()")) {
+    pass("content/material failures do not leak raw database errors");
+  } else {
+    fail("content/material failures expose raw exception messages");
+  }
 }
 
 console.log("\nProduction compilation:");
