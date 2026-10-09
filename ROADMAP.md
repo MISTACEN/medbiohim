@@ -44,6 +44,11 @@
 - 🟢 Added a pre-deploy audit guard for this contract.
 - 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment predates Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
 
+### P1 histology material access consistency — source fix committed (Pass 48, 2026-10-10)
+- 🟢 Both `materials/{id}/file-url` and `materials/{id}/file` now require MBH membership whenever `subject_slug = histology`, even if `specialty_slug` is empty/inconsistent.
+- 🟢 Deployment verifier downloads `material_viewer.php` and checks its MBH guard; pre-deploy audit guards the same contract.
+- 🟡 No live unauthorized access was demonstrated; PHP lint/CI and SpaceWeb deployment are still unverified. See [Pass 48 report](docs/SECURITY-FIX-2026-10-10-PASS48.md).
+
 ### P1 private media cache isolation — source fix committed (Pass 47, 2026-10-10)
 - 🟢 Trainer card, trainer image and material-file caches are now keyed by user scope; malformed token scopes bypass cache.
 - 🟢 Account switch/logout clears cached API data, private card/media caches and revokes blob URLs. Authenticated trainer images use `no-store`; expiring B2 presigned URLs are not cached.
