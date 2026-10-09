@@ -2,7 +2,7 @@
 
 > Единый план проекта и источник порядка по задачам.  
 > Обновляется вместе с изменениями в коде/БД.  
-> Дата актуализации: **2026-10-08**.
+> Дата актуализации: **2026-10-09**.
 
 ## Как читать статус
 
@@ -16,9 +16,15 @@
 
 ---
 
-## CURRENT EXECUTION CYCLE — 2026-10-08
+## CURRENT EXECUTION CYCLE — 2026-10-09
 
-**Текущий поток: Stability → Media → Histology → Runtime verification.**
+**Текущий поток: Stability → Security gate → Media → Histology → Runtime verification.**
+
+### New P1 gate — trainer-answer confidentiality (functional audit Pass 41, 2026-10-09)
+- 🔴 Live Supabase check: 206/206 published `trainer_feed_cards` contain a `correct` flag inside `question.options`; published-row SELECT policies exist for `anon` and `authenticated`.
+- 🔴 The PHP trainer feed/detail routes and Next.js Supabase fallback currently return `question` with those flags. Hiding the marker in UI is not a security fix.
+- ⬜ Safe fix must cover direct Data API access, a sanitized read projection, server-side grading/answer writes, and existing training-session snapshots without breaking retry/review.
+- 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); CI has not executed its steps, so runtime validation is pending.
 
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
@@ -30,14 +36,15 @@
 - 🟡 Vercel READY / production commit verification;
 - 🟡 SpaceWeb authenticated media smoke.
 
-### Immediate next after viewer source gate
-1. 🟡 Vercel/CI runtime unblock and exact-commit deployment verification.
-2. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation.
-3. 🟡 Histology 28 EM + captions + plan↔content matrix.
-4. 🟡 Histology tests/question bank final runtime smoke.
-5. 🟡 Schedule/auth/dashboard production smoke.
-6. 🟡 Admin Content Center / quick editors.
-7. 🟡 AI provider runtime health and verified primary provider.
+### Immediate next gates — updated 2026-10-09
+1. 🔴 **P1: trainer-answer confidentiality.** All 206 published trainer cards expose nested option `correct` flags through the current feed schema/policies; fix DB read projection, API/fallback and answer persistence together.
+2. 🔴 **CI runner allocation.** Current GitHub Actions jobs fail before the first step (`runner_id=0`, no steps/logs); no new code-check result exists. Restore runner execution and verify the exact `main` commit.
+3. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation (28 electronogram source-key paths have no matching `content_sources.source_path`).
+4. 🟡 Histology questions/tests: compare duplicate/blank-answer candidates against source materials; then run start → answer → finish → review.
+5. 🟡 Schedule/auth/dashboard production smoke; clarify makeup-session group scope before expanding recurring rows.
+6. 🟡 Compare `site_content` and `histology_lectures`, then unify the canonical lecture source and continue Admin Content Center / quick editors.
+7. 🟡 Admin database console target-runtime smoke after the `fb4eed97` syntax fix; validate SQL safety before wider use.
+8. 🔴 AI provider runtime health and verified primary provider.
 
 **Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
 
@@ -1916,3 +1923,9 @@ No new branch created; the unified viewer correction is already integrated into 
 - 🟡 Проверка отображения на сайте и мобильных устройствах не выполнена.
 - ⚠️ До расширения охвата сверить неоднозначность «первый семестр» vs фактически выбранный semester 3.
 - Подробности и дальнейшие действия: docs/HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md.
+
+
+## Functional audit Pass 41 — 2026-10-09
+Full findings, source references, data counts and the ordered corrective plan: [docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
+
+No broad cleanup or Supabase data modification was done in this pass. Do not mark security, media, runtime, or browser items complete until their target-environment checks pass.
