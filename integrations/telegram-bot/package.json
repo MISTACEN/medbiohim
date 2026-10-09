@@ -1,0 +1,12 @@
+{
+  "name": "medbiohim-telegram-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional public-command Telegram bot for MEDBIOHIM",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
