@@ -22,7 +22,7 @@
 
 ## Current open checks — updated 2026-10-09
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed.
-- Vercel production alias was last observed `READY` at commit `bd645c39`, which includes the trainer API proxy and PHP response-sanitizer source changes. Vercel build/deployment metadata is green; live browser behavior is still unverified. SpaceWeb PHP deployment remains unverified because the deploy job fails before checkout (`runner_id=0`, no steps/logs).
+- Vercel production alias was last observed `READY` at commit `a56d3fdb`, which includes the frontend proxy sanitizer (including preparation names/captions in unanswered sessions) and API timeout/cache fix. Vercel build/deployment metadata is green; live browser behavior is still unverified. SpaceWeb PHP deployment remains unverified because the deploy job fails before checkout (`runner_id=0`, no steps/logs).
 - P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Full authenticated runtime acceptance remains open.
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - AI provider runtime/fallback verification.
@@ -240,5 +240,5 @@
 
 ## 2026-10-09 — API timeout/cache reliability Pass 43
 - Commit 77b0f4a1 fixes timeout bypass when a caller provides AbortSignal and marks stale cache fallback responses with stale=true.
-- Latest observed Vercel READY deployment was still commit b96bdcd at the last check, so API client fix is committed but not yet confirmed deployed.
+- API client fix is now included in the Vercel production READY deployment at commit a56d3fdb; browser-level timeout behavior remains untested.
 - CI runners still fail before checkout; TypeScript/build checks remain unexecuted.
