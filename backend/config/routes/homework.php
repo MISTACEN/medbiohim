@@ -173,10 +173,23 @@ return static function(Router $router): void {
                 $row = SupabaseRest::submitHomework((string)$params['id'],$uid,$text,$fileId);
             }
             Response::success(['submission'=>$row],$req->requestId,201);
+        } catch (AcademicContextException $e) {
+            Response::error($e->errorCode, $e->getMessage(), $req->requestId, $e->httpStatus, $e->details);
         } catch (\RuntimeException $e) {
-            Response::error('FORBIDDEN',$e->getMessage(),$req->requestId,403);
+            $message = $e->getMessage();
+            if ($message === 'Submission file is not accessible in this homework context') {
+                Response::error('FORBIDDEN', 'Файл недоступен в контексте этого задания', $req->requestId, 403);
+                return;
+            }
+            if (str_contains($message, 'Работа уже сдана и ожидает проверки')) {
+                Response::error('SUBMISSION_LOCKED', $message, $req->requestId, 409);
+                return;
+            }
+            \Medbiohim\Support\Logger::error('homework_submission_failed', ['requestId' => $req->requestId, 'error' => $message]);
+            Response::error('DB_ERROR', 'Не удалось отправить задание. Попробуйте позже', $req->requestId, 503);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR','Could not submit homework',$req->requestId,503);
+            \Medbiohim\Support\Logger::error('homework_submission_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Не удалось отправить задание. Попробуйте позже', $req->requestId, 503);
         }
     });
 
