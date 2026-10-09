@@ -97,12 +97,18 @@ jobs:
         run: |
           SITE="${{ steps.discover.outputs.found }}"
           mkdir -p backup
+          set -euo pipefail
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+            set cmd:fail-exit yes;
             set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 2;
             mirror --verbose '${SITE}backend/src' backup/src;
             mirror --verbose '${SITE}backend/config/routes' backup/routes;
             get -O backup/ '${SITE}backend/config/routes.php';
-            bye" || true
+            bye"
+          test -s backup/routes.php
+          test -s backup/routes/platform.php
+          test -s backup/src/Repositories/TestRepository.php
+          echo "Verified a non-empty backend backup before deploying."
 
       - name: Deploy backend source and routes
         run: |
@@ -144,6 +150,10 @@ jobs:
           grep -q "function resolveTestId" verify/preparation.php
           grep -q "function resolveTestId" verify/tests.php
           grep -q "trainers/feed/{id}/image" verify/platform.php
+          grep -q '\$hasMbhAccess' verify/platform.php
+          grep -q "subject_slug.*histology" verify/platform.php
+          grep -q "correctOptionId" verify/platform.php
+          grep -q "submit_trainer_feed_answer" verify/platform.php || true
           echo "Backend deployment verification passed."
 
       - uses: actions/upload-artifact@v4
