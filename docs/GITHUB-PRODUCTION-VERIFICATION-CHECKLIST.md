@@ -129,7 +129,7 @@ find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 - [ ] Изображения препаратов загружаются в атласе, тренажёре, detail и mobile viewer.
 - [ ] Для каждого `source_key` / `imagePath` / `imageUrl` найден физический файл на SpaceWeb/B2; нет только записи metadata.
 - [ ] DOCX, PDF, изображения и методички открываются через Materials viewer, в том числе на iPhone.
-- [ ] Не-MBH пользователь получает 403 на `materials/{id}/file-url` и `materials/{id}/file` для `subject_slug = histology`, даже если `specialty_slug` пустой/NULL; MBH-пользователь с нужным доступом может открыть файл.
+- [ ] Не-MBH пользователь получает 403 на `/subject-materials`, `/materials`, `/materials/{id}`, `/materials/{id}/file-url`, `/materials/{id}/file`, `/content-sources/{id}`, `/files/{id}` и `/files/{id}/download` для histology-linked records, даже если `specialty_slug` пустой/NULL; MBH-пользователь с нужным доступом может открыть файл.
 - [ ] Большие файлы не читаются целиком в память без необходимости; загрузка/ошибка имеют таймаут и понятное состояние.
 - [ ] Нет 404/403/502, HTML-страницы вместо изображения, неверного MIME, битого URL или смешанного HTTP/HTTPS.
 - [ ] Image viewer поддерживает pinch-to-zoom, кнопки увеличения/уменьшения, pan, fit-to-screen, поворот/закрытие где предусмотрено.
