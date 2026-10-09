@@ -31,7 +31,7 @@
 ### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
 - 🟢 PHP source now treats both `subject_slug = histology` and `specialty_slug = mbh` as MBH-restricted in feed, detail, answer submission, and image routes.
 - 🟢 The non-MBH feed query and both Supabase REST fallback branches exclude restricted cards; nested trainer-question answer fields are recursively sanitized.
-- 🟡 Source fix commit: `99ed1bc905a1b9b1a1b9fe2f2d5ca2f2b6e8bac2dd53a3`. PHP lint, authenticated/non-MBH integration tests, and SpaceWeb deployment remain unverified because Actions jobs terminate before steps. Details: [Pass 44 security report](docs/SECURITY-FIX-2026-10-10-PASS44.md).
+- 🟡 Source fix commit: `99ed1bc905a1b9fe2f2d5ca2f2b6e8bac2dd53a3`. PHP lint, authenticated/non-MBH integration tests, and SpaceWeb deployment remain unverified because Actions jobs terminate before steps. Details: [Pass 44 security report](docs/SECURITY-FIX-2026-10-10-PASS44.md).
 
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
