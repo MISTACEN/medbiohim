@@ -70,21 +70,23 @@ return static function (Router $router): void {
 
         $course = isset($req->query['course']) ? (int) $req->query['course'] : null;
         $semester = isset($req->query['semester']) ? (int) $req->query['semester'] : null;
+        $filterSubjects = static function (array $items) use ($req): array {
+            $access = new SpecialtyAccess();
+            return array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
+                $subjectSlug = trim((string) ($item['slug'] ?? ''));
+                $specialty = trim((string) ($item['specialty_slug'] ?? ''));
+                $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
+                return $requiredSpecialty === '' || $access->userHasSpecialty($req->user->id, $requiredSpecialty);
+            }));
+        };
 
         try {
             $items = (new SubjectRepository())->listActive($course, $semester);
-            $access = new SpecialtyAccess();
-            $items = array_values(array_filter(
-                $items,
-                static function (array $item) use ($access, $req): bool {
-                    $slug = trim((string) ($item['specialty_slug'] ?? ''));
-                    return $slug === '' || $access->userHasSpecialty($req->user->id, $slug);
-                }
-            ));
-            Response::success(['items' => $items], $req->requestId);
+            Response::success(['items' => $filterSubjects($items)], $req->requestId);
         } catch (\Throwable $e) {
             try {
-                Response::success(['items' => SupabaseRest::listSubjects($course, $semester)], $req->requestId);
+                $items = SupabaseRest::listSubjects($course, $semester);
+                Response::success(['items' => $filterSubjects(is_array($items) ? $items : [])], $req->requestId);
             } catch (\Throwable $fallback) {
                 \Medbiohim\Support\Logger::error('subjects_list_soft_empty', [
                     'requestId' => $req->requestId,
