@@ -1,10 +1,12 @@
 # MEDBIOHIM — PHASES STATUS
 
-> Актуально на **2026-10-07**.  
+ > Актуально на **2026-10-09**.  
 > Source of truth: `main` + живой Supabase + целевые deployment environments.  
 > Подробный план: [ROADMAP.md](ROADMAP.md).
 
 ## Статусы
+
+> Последняя сверка: [функциональный аудит Pass 41 (2026-10-09)](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
@@ -16,19 +18,19 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | GitHub/Supabase/SpaceWeb/Vercel связаны, но требуется финальный production smoke-test |
-| 1. Auth / account | 🟡 | основные flow есть, требуется end-to-end проверка |
-| 2. Schedule | 🟡 | core готов, требуется финальная проверка UI/чередований |
+| 0. Source of truth / sync | 🟡 | CI runner не исполняет шаги; production metadata пока указывает на старый commit; нужен exact-commit smoke |
+| 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
+| 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
-| 4. Histology | 🟡 | основной контент есть, нужна финальная сверка и media verification |
-| 5. Tests / Question Bank | 🟡 | engine и данные есть, нужен audit UX/admin |
-| 6. Materials | 🟡 | subject-level materials + DOCX viewer есть, нужен file/media polish |
-| 7. Admin CMS | 🟡 | базовые инструменты есть, quick-edit контента ещё доводится |
+| 4. Histology | 🔴 | подтверждена выдача correct-флагов в 206 trainer cards; также нужна сверка физического media и source mapping |
+| 5. Tests / Question Bank | 🟡 | данные/связи имеются; полный start → answer → finish → review smoke и аудит exam_questions не закрыты |
+| 6. Materials | 🟡 | записи и viewer существуют; наличие физических DOCX/PDF/image и единый lecture source ещё не подтверждены |
+| 7. Admin CMS | 🟡 | есть DB console; две PHP syntax ошибки исправлены в fb4eed97, target-runtime проверка ещё не выполнена |
 | 8. AI Tutor | 🔴 | provider chain есть, но runtime availability не закрыта |
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
-| 11. SpaceWeb media | 🟡 | backend route готов, физические media links требуют smoke-test |
-| 12. Documentation | 🟡 | новая система документов создаётся сейчас |
+| 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
+| 12. Documentation | 🟡 | добавлен функциональный Pass 41; исторические записи ниже могут содержать устаревшие live counts |
 
 ---
 
@@ -1092,3 +1094,15 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 ## 2026-10-09 — общая отработка по гистологии
 
 **Статус: 🟡 частично выполнено.** В Supabase сохранены 33 записи на 09.10.2026–29.01.2027: понедельник 16:30–18:00 и пятница 15:30–16:00. Фактически обновлено только активное расписание МБХ-201 (semester 3; schedule ID 4cc2d535-4da4-43fa-93f7-bcb3cff471d4). Запрос пользователя — для всех групп первого семестра. Охват других групп и отображение на сайте пока не подтверждены; задача остаётся IN PROGRESS. Отдельно сверить смысл «первого семестра» с выбранным semester 3 до распространения записей. Подробности: docs/HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md.
+
+
+## Pass 41 — функциональная сверка 2026-10-09
+
+- 🔴 P1: trainer `question.options[].correct` доступен в опубликованных карточках через текущие API/публичную SELECT policy. Требуется полный fix across Supabase Data API, PHP, Next fallback и training snapshots; не скрывать только UI.
+- 🔴 CI: GitHub Actions повторно закончил до первого шага (`runner_id=0`, `steps=[]`, нет логов). TypeScript/build/PHP checks остаются неподтверждёнными, а не «упавшими на тестах».
+- 🟡 Admin Database Console: исправлены два PHP syntax дефекта в `fb4eed97`; runtime smoke ожидает восстановления CI/target access.
+- 🟡 Media/source: 28 EM paths требуют сопоставления с физическими файлами; физическое наличие не выводить из DB metadata.
+- 🟡 Вопросы/лекции: duplicate/blank-answer candidates и два источника лекций требуют сверки с методичками; массовое удаление/публикация запрещены без content comparison.
+- 🔴 AI Tutor остаётся заблокированным до проверки работоспособного провайдера в целевой среде.
+
+Подробности, ссылки на code/CI и последовательность работ: [FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
