@@ -176,6 +176,8 @@ find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
 - [ ] Повторный запрос не загружает повторно тяжёлые данные без причины.
 - [ ] Кэш не смешивает ответы разных пользователей/ролей.
+- [ ] При logout/account switch очищаются trainer card, image blob и material caches; blob URLs отзываются.
+- [ ] B2 presigned URLs не сохраняются как бессрочный cache; malformed/opaque JWT не использует общий `auth` cache bucket. См. [Pass 46](RELIABILITY-FIX-2026-10-10-PASS46.md) и [Pass 47](SECURITY-FIX-2026-10-10-PASS47.md).
 - [ ] Abort/timeout корректно прерывает запрос; stale cache помечается как устаревший, а не как свежий ответ.
 - [ ] Изображения lazy-load; длинные списки имеют пагинацию/виртуализацию там, где нужно.
 - [ ] Нет неограниченных запросов, циклов повторов или retry storm.
