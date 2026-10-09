@@ -82,6 +82,18 @@ if (existsSync(proxyPath)) {
   else fail("SPACEWEB_API_ORIGIN is not referenced by the Vercel API proxy");
 }
 
+const apiClientPath = join(root, "src/lib/api.ts");
+if (existsSync(apiClientPath)) {
+  const apiClient = await readFile(apiClientPath, "utf8");
+  if (apiClient.includes("const userScope = cacheUserScope();") &&
+      apiClient.includes("if (userScope === null) return api<T>(path, options);") &&
+      apiClient.includes("Never share a cache bucket between opaque/malformed tokens")) {
+    pass("API cache bypasses malformed/opaque token scopes");
+  } else {
+    fail("API cache may share a cache scope for malformed/opaque tokens");
+  }
+}
+
 const appFiles = await walk(join(root, "src/app"));
 const compatHits = [];
 for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].includes(extname(x)))) {
