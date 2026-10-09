@@ -2013,3 +2013,6 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 
 - Homework SQL now uses distinct named PDO placeholders; a static contract regression test is wired into CI and backend pre-deploy checks.
 - GitHub Actions runner allocation remains blocked before step execution; the full PHP audit and SpaceWeb verification are not yet complete. See `docs/CI-PHP-AUDIT-2026-10-10-PASS52.md`.
+
+
+- 2026-10-10 PHP audit follow-up: homework SQL placeholders and planner query bindings hardened; internal exception details removed from several admin/question/planner/media responses. Full lint and runtime integration remain blocked by GitHub Actions runner allocation. See `docs/CI-PHP-AUDIT-2026-10-10-PASS52.md`.
