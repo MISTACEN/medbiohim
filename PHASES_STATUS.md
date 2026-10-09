@@ -1,12 +1,12 @@
 # MEDBIOHIM — PHASES STATUS
 
-> Актуально на **2026-10-09**.  
+> Актуально на **2026-10-10**.  
 > Source of truth: `main` + живой Supabase + целевые deployment environments.  
 > Подробный план: [ROADMAP.md](ROADMAP.md).
 
 ## Статусы
 
-> Последняя сверка: [security fix Pass 42 (2026-10-09)](docs/SECURITY-FIX-2026-10-09-PASS42.md) + [functional audit Pass 41](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
+> Последняя сверка: Vercel deployment metadata + [security fix Pass 42 (2026-10-09)](docs/SECURITY-FIX-2026-10-09-PASS42.md) + [functional audit Pass 41](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
@@ -18,7 +18,7 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | CI runner не исполняет шаги; production metadata пока указывает на старый commit; нужен exact-commit smoke |
+| 0. Source of truth / sync | 🟡 | Vercel production metadata подтверждает READY для текущего `main` (`e1641914`); CI runner не исполняет шаги, exact-commit runtime smoke не выполнен |
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
@@ -60,7 +60,7 @@ Provider availability/runtime ещё не подтверждён end-to-end.
 Trainer feed image endpoints всё ещё требуют закрытия 404/502.
 
 ### 🟡 Production
-Последний frontend change должен пройти Vercel build + smoke-test.
+Vercel production metadata подтверждает READY для текущего `main` (`e1641914`); live browser/API smoke ещё не выполнен, SpaceWeb PHP deployment не подтверждён.
 
 ### 🟡 CMS
 Нужно довести быстрые правки вопросов/материалов/занятий.
