@@ -21,7 +21,7 @@
 
 ## Current open checks — updated 2026-10-09
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed.
-- Vercel production alias was last observed `READY` at commit `2a0d761`, which includes the `fb4eed97` source fix in the repository tree. This confirms frontend deployment metadata only; SpaceWeb PHP backend deployment/runtime remains unverified. Latest main now includes Pass 42 security changes; deployment metadata and target runtime must be rechecked for this commit.
+- Vercel production alias was last observed `READY` at commit `bd645c39`, which includes the trainer API proxy and PHP response-sanitizer source changes. Vercel build/deployment metadata is green; live browser behavior is still unverified. SpaceWeb PHP deployment remains unverified because the deploy job fails before checkout (`runner_id=0`, no steps/logs).
 - P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Full authenticated runtime acceptance remains open.
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - AI provider runtime/fallback verification.
