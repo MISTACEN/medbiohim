@@ -33,6 +33,8 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 - [PHASES_STATUS.md](PHASES_STATUS.md) — текущее состояние фаз
 - [Единый чек-лист GitHub/production](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) — Actions, сборка, API, безопасность, данные, media, UI и сценарии end-to-end
 - [docs/README.md](docs/README.md) — карта документов и источников истины
+- [Браузерное расширение](integrations/browser-extension/README.md) — MVP быстрых ссылок для Chrome/Edge
+- [GitHub issue template](.github/ISSUE_TEMPLATE/bug_report.yml) — структурированная фиксация ошибок с commit SHA и доказательствами
 
 ## Docs
 - [BRANCHES.md](BRANCHES.md) — main vs beta
@@ -113,6 +115,11 @@ Server-authoritative модель: клиент не является источ
 Production/runtime Vercel + SpaceWeb + CI; auth/security final gate; физическая сверка Histology media; Materials/DOCX/PDF/media delivery; smoke всех published tests; единый Schedule + Homework UX; Smart grading E2E; admin Content Center; DB/File/Storage Operations Center; mobile/browser acceptance; завершение Chemistry answers/formula verification; strict TypeScript/ESLint и architecture cleanup; AI tutor/provider runtime; performance/free-tier optimization; дополнительные бесплатные сервисы только как optional additions.
 
 Подробности и порядок работ находятся в ROADMAP.md и PHASES_STATUS.md.
+
+### Дополнительные инструменты
+
+- Browser extension MVP: `integrations/browser-extension/` — только быстрые ссылки, без permissions, токенов и доступа к приватным данным.
+- Telegram bot: проектировать как optional server-side integration с подтверждённой привязкой аккаунта, минимальными правами и отдельным secret; не отправлять приватное расписание/оценки до реализации и проверки привязки.
 
 ### Zero-cost правило
 
