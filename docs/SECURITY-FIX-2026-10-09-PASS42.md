@@ -3,7 +3,7 @@
 **Related audit:** [Functional audit Pass 41](FUNCTIONAL-AUDIT-2026-10-09-PASS41.md)
 
 ## Result
-The original P1 issue is mitigated at the live Supabase Data API boundary and in source code. Full end-to-end acceptance is still pending because GitHub Actions jobs have not allocated a runner and the latest PHP deployment/browser session has not been verified.
+The original P1 issue is mitigated at the live Supabase Data API boundary and in source code. The Vercel production alias is now READY at commit bd645c39, which includes the frontend proxy sanitizer. Full end-to-end acceptance is still pending because GitHub Actions jobs have not allocated a runner, so the SpaceWeb PHP deployment and authenticated browser session have not been verified.
 
 ## Live Supabase changes
 Migration: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
@@ -30,7 +30,7 @@ Migration: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
 - database/migrations/20261009120000_secure_trainer_feed_answers.sql: checked-in migration matches the live mitigation.
 
 ## Remaining acceptance gate
-1. GitHub Actions must run actual steps (current runner failure is before checkout).
+1. GitHub Actions must run actual steps (current runner failure is before checkout; repeated deploy/code-check jobs have runner_id=0 and empty steps).
 2. Verify Vercel deployed the latest frontend proxy changes.
 3. Verify SpaceWeb received the PHP Response sanitizer and trainer route changes.
 4. As an authenticated MBH test user, run: feed load → create training → confirm unanswered response contains no correctness flags → submit valid answer → verify correct/incorrect result and post-answer review → complete → reopen completed training.
