@@ -6,6 +6,8 @@
 |---|---|---|
 | [../ROADMAP.md](../ROADMAP.md) | Единый порядок работ | ✅ актуальный |
 | [../PHASES_STATUS.md](../PHASES_STATUS.md) | Текущее состояние фаз | ✅ актуальный |
+| [GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md](GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) | Единый checklist для GitHub Actions, API, security, media и UI | 🟡 используется |
+| [SECURITY-FIX-2026-10-10-PASS45.md](SECURITY-FIX-2026-10-10-PASS45.md) | Рекурсивная очистка ответов тренажёра | 🟡 source-only до deployment verification |
 | [BRANCHES.md](../BRANCHES.md) | main / beta rules | ✅ актуальный |
 | [ACTIVE-EXPERIMENTS.md](ACTIVE-EXPERIMENTS.md) | Что находится в beta | ✅ актуальный |
 | [platform-concept-medbiohim.md](platform-concept-medbiohim.md) | Общая архитектурная идея | ✅ актуальный |
@@ -20,6 +22,12 @@
 - `docs/histology-sql-tickets/`
 - `docs/20260928_sync_histology_em_captions.sql`
 - `docs/20260928_dedupe_histology_em_cards.sql`
+
+## Optional integrations
+
+- [../integrations/browser-extension/README.md](../integrations/browser-extension/README.md) — Chrome/Edge quick-access MVP
+- [../integrations/telegram-bot/README.md](../integrations/telegram-bot/README.md) — Telegram public-command webhook MVP
+- [../.github/ISSUE_TEMPLATE/bug_report.yml](../.github/ISSUE_TEMPLATE/bug_report.yml) — bug report form
 
 ## Deployment / infrastructure
 
