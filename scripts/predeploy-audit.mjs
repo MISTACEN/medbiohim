@@ -343,6 +343,11 @@ if (php.status === 0) {
   } else {
     fail("missing TrainingPayloadSanitizer regression test");
   }
+  if (existsSync(join(root, "backend/tests/SupabaseAuthRoleTest.php"))) {
+    run("php", ["backend/tests/SupabaseAuthRoleTest.php"], "Supabase trusted-role regression tests");
+  } else {
+    fail("missing Supabase trusted-role regression test");
+  }
 } else {
   warn("PHP CLI is not installed locally; backend syntax check must run in CI/SpaceWeb");
 }
