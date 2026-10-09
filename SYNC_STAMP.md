@@ -4,9 +4,11 @@
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
-- Latest security fix: docs/SECURITY-FIX-2026-10-10-PASS50.md
+- Latest security fix: docs/CI-PHP-AUDIT-2026-10-10-PASS51.md
+- Previous access-control pass: docs/SECURITY-FIX-2026-10-10-PASS50.md
 - API cache isolation: docs/RELIABILITY-FIX-2026-10-10-PASS46.md
 - Functional audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
+- GitHub Actions status: runner recovery unverified; Ubuntu 24.04 pinned; see docs/CI-PHP-AUDIT-2026-10-10-PASS51.md
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
 - API reliability fix: docs/RELIABILITY-FIX-2026-10-09-PASS43.md
