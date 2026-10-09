@@ -1,0 +1,41 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6f8fc;
+  color: #182238;
+}
+* { box-sizing: border-box; }
+body { margin: 0; width: 330px; min-height: 430px; }
+button { font: inherit; cursor: pointer; }
+.app { padding: 16px; }
+.brand { display: flex; align-items: center; gap: 11px; margin: 0 0 16px; }
+.brand-mark {
+  display: grid; place-items: center; width: 43px; height: 43px; flex: 0 0 43px;
+  border-radius: 14px; color: white; font-size: 13px; font-weight: 800;
+  background: linear-gradient(145deg, #6259e8, #8b5cf6);
+  box-shadow: 0 6px 15px #6659e833;
+}
+h1 { margin: 0; font-size: 17px; letter-spacing: -.3px; }
+.brand p { margin: 4px 0 0; color: #69758b; font-size: 11px; }
+.primary {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  border: 0; border-radius: 12px; padding: 12px 14px; color: #fff; font-weight: 700;
+  background: #5146df; box-shadow: 0 5px 14px #5146df25;
+}
+.primary:hover { background: #4338ca; }
+.links { display: grid; gap: 7px; margin-top: 12px; }
+.links button {
+  display: grid; grid-template-columns: 30px 1fr 16px; align-items: center; gap: 10px;
+  width: 100%; min-height: 49px; text-align: left; border: 1px solid #e4e9f2;
+  border-radius: 11px; padding: 8px 10px; color: inherit; background: #fff;
+  transition: border-color .15s ease, transform .15s ease, background .15s ease;
+}
+.links button:hover { border-color: #b9b6ff; background: #fbfaff; transform: translateY(-1px); }
+.links button:focus-visible, .primary:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 2px; }
+.glyph { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 9px; background: #f0efff; color: #5146df; font-size: 16px; }
+.links strong { display: block; font-size: 12px; font-weight: 700; }
+.links small { display: block; margin-top: 3px; color: #778197; font-size: 10px; }
+.arrow { color: #9aa3b4; font-size: 12px; }
+footer { display: flex; align-items: center; gap: 7px; margin: 15px 2px 0; color: #7b8497; font-size: 10px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
