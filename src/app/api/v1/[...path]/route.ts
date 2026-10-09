@@ -281,7 +281,32 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     return NextResponse.json({ ok: false, error: { code: "UPSTREAM", message: msg }, requestId: "proxy" }, { status: 502 });
   }
 
-  const buf = await upstream.arrayBuffer();
+  let buf = await upstream.arrayBuffer();
+  const upstreamContentType = upstream.headers.get("content-type") || "";
+  if (sub.startsWith("trainings") && upstreamContentType.includes("json")) {
+    try {
+      const payload = JSON.parse(new TextDecoder().decode(buf));
+      const data = payload && typeof payload === "object" ? (payload as any).data : null;
+      if (data && typeof data === "object") {
+        if (req.method === "POST" && sub === "trainings" && Array.isArray(data.questions)) {
+          data.questions = data.questions.map((question: unknown) => safeTrainerQuestion(question));
+        } else if (req.method === "GET" && sub.startsWith("trainings/") && sub.split("/").length === 2 && Array.isArray(data.answers)) {
+          data.answers = data.answers.map((answer: any) => {
+            if (!answer || typeof answer !== "object") return answer;
+            if (answer.user_answer != null || Boolean(answer.is_skipped)) return answer;
+            const safe = { ...answer };
+            for (const key of ["options", "question_snapshot", "review_snapshot"]) {
+              if (safe[key] !== undefined) safe[key] = safeTrainerQuestion(safe[key]);
+            }
+            return safe;
+          });
+        }
+      }
+      buf = new TextEncoder().encode(JSON.stringify(payload));
+    } catch {
+      // Keep the original upstream response if it is not valid JSON.
+    }
+  }
   const out = new NextResponse(buf, { status: upstream.status });
   const ct = upstream.headers.get("content-type");
   if (ct) out.headers.set("content-type", ct);
