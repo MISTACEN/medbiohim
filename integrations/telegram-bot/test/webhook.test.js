@@ -51,6 +51,15 @@ test("rejects a wrong webhook secret before processing update", async () => {
   assert.equal(res.body.error, "UNAUTHORIZED");
 });
 
+test("rejects malformed JSON updates", async () => {
+  process.env.TELEGRAM_BOT_TOKEN = "test-token";
+  process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
+  const res = makeResponse();
+  await webhook(makeRequest({ body: "{not-json" }), res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.error, "INVALID_UPDATE");
+});
+
 test("ignores group messages without calling Telegram API", async () => {
   process.env.TELEGRAM_BOT_TOKEN = "test-token";
   process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
@@ -80,7 +89,7 @@ test("replies to private public-command messages with a safe site link", async (
   };
   try {
     const res = makeResponse();
-    await webhook(makeRequest({ body: { update_id: 123, message: { text: "/schedule", chat: { id: 42, type: "private" } } } }), res);
+    await webhook(makeRequest({ body: JSON.stringify({ update_id: 123, message: { text: "/schedule", chat: { id: 42, type: "private" } } }) }), res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.ok, true);
     assert.equal(sent.chat_id, 42);
