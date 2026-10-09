@@ -1,6 +1,6 @@
 # MEDBIOHIM — PHASES STATUS
 
- > Актуально на **2026-10-09**.  
+> Актуально на **2026-10-09**.  
 > Source of truth: `main` + живой Supabase + целевые deployment environments.  
 > Подробный план: [ROADMAP.md](ROADMAP.md).
 
