@@ -133,7 +133,8 @@ return static function (Router $router): void {
                 'status' => $items === [] ? 'empty' : 'ready',
             ], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('SOURCE_LIST_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('histology_source_list_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('SOURCE_LIST_ERROR', 'Материалы по гистологии временно недоступны', $req->requestId, 503);
         }
     });
 
@@ -179,7 +180,8 @@ return static function (Router $router): void {
             readfile($path);
             exit;
         } catch (\Throwable $e) {
-            Response::error('SOURCE_FILE_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('histology_source_file_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('SOURCE_FILE_ERROR', 'Не удалось открыть учебник', $req->requestId, 503);
         }
     });
 
