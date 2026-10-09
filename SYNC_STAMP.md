@@ -4,7 +4,7 @@
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
-- Latest security fix: docs/SECURITY-FIX-2026-10-09-PASS42.md
+- Latest security fix: docs/SECURITY-FIX-2026-10-10-PASS45.md
 - Functional audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
@@ -27,7 +27,7 @@
 
 ## Current open checks — updated 2026-10-10
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed. This is a runner allocation/dispatch failure, not evidence that the test commands themselves failed. The PHP namespace autoloader in code-check was corrected; a 13-assertion sanitizer regression test was added and passed in an isolated PHP 8.4 run using the repository class/test content, but has not yet run on GitHub Actions.
-- Latest observed READY Vercel deployment is `d0949aa3`; it includes the frontend source from `e23fb882` with Pass 44 proxy sanitizer, post-answer review restoration, and API timeout/cache fix. Later commits primarily changed CI, documentation, and isolated integrations. Live browser behavior remains unverified. Live browser behavior remains unverified. SpaceWeb PHP deployment remains unverified because GitHub Actions jobs fail before checkout (`runner_id=0`, no steps/logs).
+- Latest observed READY Vercel deployment is `d0949aa3`; it includes the frontend source from `e23fb882` with Pass 44 proxy sanitizer, post-answer review restoration, and API timeout/cache fix. Later commits primarily changed CI, documentation, and isolated integrations. Live browser behavior remains unverified. SpaceWeb PHP deployment remains unverified because GitHub Actions jobs fail before checkout (`runner_id=0`, no steps/logs).
 - P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Pass 44 (`99ed1bc`) also hardens PHP route membership checks for feed/detail/answer/image and recursively sanitizes nested question payloads. Full authenticated runtime acceptance and SpaceWeb PHP deployment remain open; details: [Pass 44 report](docs/SECURITY-FIX-2026-10-10-PASS44.md) and [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - SpaceWeb deployment workflow now stops if its pre-deploy backup is missing/empty and verifies Pass 44 source markers after upload; actual deployment is still unconfirmed.
