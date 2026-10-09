@@ -23,7 +23,8 @@ return static function (Router $router): void {
             ]);
             Response::success(['presence' => $row], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('PRESENCE_ERROR', $e->getMessage(), $req->requestId, 500);
+            \Medbiohim\Support\Logger::error('presence_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('PRESENCE_ERROR', 'Не удалось обновить статус присутствия', $req->requestId, 500);
         }
     });
 
@@ -40,7 +41,8 @@ return static function (Router $router): void {
                 'within_sec' => $within,
             ], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('PRESENCE_ERROR', $e->getMessage(), $req->requestId, 500);
+            \Medbiohim\Support\Logger::error('presence_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('PRESENCE_ERROR', 'Не удалось обновить статус присутствия', $req->requestId, 500);
         }
     });
 };
