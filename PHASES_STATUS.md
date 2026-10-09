@@ -22,7 +22,7 @@
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
-| 4. Histology | 🟡 | P1 mitigation applied in live Supabase and API source; authenticated training/review smoke and media/source mapping still open |
+| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 fixes PHP membership checks for feed/detail/answer/image and recursive sanitization in source; SpaceWeb deployment + authenticated smoke and media/source mapping remain open |
 | 5. Tests / Question Bank | 🟡 | данные/связи имеются; полный start → answer → finish → review smoke и аудит exam_questions не закрыты |
 | 6. Materials | 🟡 | записи и viewer существуют; наличие физических DOCX/PDF/image и единый lecture source ещё не подтверждены |
 | 7. Admin CMS | 🟡 | есть DB console; две PHP syntax ошибки исправлены в fb4eed97, target-runtime проверка ещё не выполнена |
@@ -52,6 +52,9 @@
 - ✅ Aero Glass вынесен в отдельную beta-theme, не включён по умолчанию.
 
 ## Главные открытые блокеры
+
+### 🟡 Trainer route access — source fix awaiting deployment/test
+Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested.
 
 ### 🔴 AI
 Provider availability/runtime ещё не подтверждён end-to-end.
