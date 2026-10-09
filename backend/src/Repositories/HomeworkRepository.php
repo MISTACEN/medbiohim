@@ -40,13 +40,24 @@ final class HomeworkRepository
                ON sub.homework_id = h.id AND sub.user_id = :uid
              LEFT JOIN public.homework_progress hp
                ON hp.homework_id = h.id AND hp.user_id = :uid
-             WHERE (:gid IS NULL AND (h.group_id IS NULL OR h.group_id IN (
+             WHERE (
+                (:gid IS NULL AND (h.group_id IS NULL OR h.group_id IN (
                     SELECT group_id FROM public.group_memberships WHERE user_id = :uid2 AND is_active = true
                 )))
                 OR (:gid2 IS NOT NULL AND (h.group_id IS NULL OR h.group_id = :gid2))
+             )
+               AND (
+                    (COALESCE(s.slug, \'\') <> \'histology\' AND COALESCE(s.specialty_slug, \'\') <> \'mbh\')
+                    OR EXISTS (
+                        SELECT 1 FROM public.groups g_mbh
+                        WHERE g_mbh.id = :gid_mbh
+                          AND g_mbh.is_active = true
+                          AND g_mbh.specialty_slug = \'mbh\'
+                    )
+               )
              ORDER BY h.due_at NULLS LAST, h.created_at DESC'
         );
-        $stmt->execute(['uid' => $userId, 'uid2' => $userId, 'gid' => $groupId, 'gid2' => $groupId]);
+        $stmt->execute(['uid' => $userId, 'uid2' => $userId, 'uid3' => $userId, 'gid' => $groupId, 'gid2' => $groupId, 'gid_mbh' => $groupId]);
         $items = $stmt->fetchAll() ?: [];
         if ($items === []) return [];
 
