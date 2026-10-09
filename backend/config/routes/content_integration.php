@@ -8,6 +8,7 @@ use Medbiohim\Http\Router;
 use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Services\SpecialtyAccess;
 use Medbiohim\Services\B2Storage;
+use Medbiohim\Support\Logger;
 
 return static function (Router $router): void {
     $filterMaterialsForUser = static function (array $items, Request $req): array {
@@ -69,7 +70,8 @@ return static function (Router $router): void {
 
             Response::success(['items' => $items, 'source' => 'supabase'], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
+            Logger::error('content_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('CONTENT_ERROR', 'Материалы временно недоступны', $req->requestId, 503);
         }
     });
 
@@ -130,7 +132,8 @@ return static function (Router $router): void {
             unset($row['is_histology_source']);
             Response::success(['source' => $row, 'download' => $download], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
+            Logger::error('content_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('CONTENT_ERROR', 'Материалы временно недоступны', $req->requestId, 503);
         }
     });
 
