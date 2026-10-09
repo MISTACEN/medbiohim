@@ -110,7 +110,7 @@ BEGIN
   IF COALESCE(p_is_skipped, false) THEN
     v_correct := NULL;
     v_answer_text := COALESCE(v_answer_text, NULLIF(pg_catalog.btrim(COALESCE(p_option_id, '')), ''));
-  ELSIF CASE WHEN pg_catalog.jsonb_typeof(v_options) = 'array' THEN pg_catalog.jsonb_array_length(v_options) > 0 ELSE false END THEN
+  ELSIF (CASE WHEN pg_catalog.jsonb_typeof(v_options) = 'array' THEN pg_catalog.jsonb_array_length(v_options) > 0 ELSE false END) THEN
     IF p_option_id IS NULL OR pg_catalog.btrim(p_option_id) = '' THEN
       RAISE EXCEPTION 'option_id required' USING ERRCODE = '22023';
     END IF;
