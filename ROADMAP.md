@@ -51,6 +51,12 @@
 - 🟢 Pre-deploy audit and SpaceWeb post-deploy verifier now guard these source contracts.
 - 🟡 PHP lint, end-to-end role tests and SpaceWeb deployment remain unverified because GitHub Actions fails before steps. See [Pass 49 report](docs/SECURITY-FIX-2026-10-10-PASS49.md).
 
+### P1 subject catalog/gradebook/academic context access — source fix committed (Pass 50, 2026-10-10)
+- 🟢 Central subject access now requires MBH for `slug = histology` or `specialty_slug = mbh` and excludes inactive subjects.
+- 🟢 SQL and Supabase subject-list paths apply the same filter; gradebook checks access and fails closed if the access check cannot run.
+- 🟢 `AcademicContextResolver` requires an MBH group for histology through both schedule-entry and compatibility branches, even if `specialty_slug` is NULL.
+- 🟡 Source-only until PHP lint, CI and SpaceWeb deployment are confirmed. See [Pass 50 report](docs/SECURITY-FIX-2026-10-10-PASS50.md).
+
 ### P1 histology material access consistency — source fix committed (Pass 48, 2026-10-10)
 - 🟢 Both `materials/{id}/file-url` and `materials/{id}/file` now require MBH membership whenever `subject_slug = histology`, even if `specialty_slug` is empty/inconsistent.
 - 🟢 Deployment verifier downloads `material_viewer.php` and checks its MBH guard; pre-deploy audit guards the same contract.
