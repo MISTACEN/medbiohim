@@ -9,7 +9,7 @@
 - 🟢 Source hardening: trusted role claims, DB-backed role checks, token URL rejection, generic uncaught-error responses.
 - 🟢 Duplicate admin route registrations removed; route scanner now examines all router variable names.
 - 🟢 Homework attachment SQL PHP-string syntax fixed.
-- 🟡 GitHub Actions runner recovery is **not confirmed**. Previous jobs had no steps/logs; Ubuntu 24.04 pinning is a mitigation awaiting a fresh executed run.
+- 🔴 GitHub Actions runner allocation is **blocked**: fresh run [37993824049, attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049) on `ubuntu-24.04` still returned `runner_id=0`, zero steps and no logs. Pinning did not resolve it; check account Actions billing/permissions or contact GitHub Support.
 - 🟡 Full repository PHP lint, route registration, SQL/RLS/fallback tests, and SpaceWeb post-deploy smoke are still open.
 
 Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
