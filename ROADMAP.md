@@ -2,7 +2,7 @@
 
 > Единый план проекта и источник порядка по задачам.  
 > Обновляется вместе с изменениями в коде/БД.  
-> Дата актуализации: **2026-10-09**.
+> Дата актуализации: **2026-10-10**.
 
 ## Как читать статус
 
@@ -25,7 +25,7 @@
 - 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
 - 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
 - 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
-- 🟡 End-to-end acceptance remains open until latest Vercel/SpaceWeb code is deployed and a real authenticated test covers feed → training → answer → review → complete.
+- 🟡 Vercel frontend is confirmed READY on current `main` (`e1641914`); SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
 - 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
 ### Active P1 — Unified Media Viewer
@@ -35,11 +35,11 @@
 - 🟢 desktop + mobile interaction contract implemented;
 - 🟢 malformed TSX escaped-newline artifact found during regression and removed;
 - 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
-- 🟡 Vercel READY / production commit verification;
+- 🟢 Vercel production metadata confirms current `main` (`e1641914`) is READY; 🟡 real browser smoke on desktop/mobile remains open;
 - 🟡 SpaceWeb authenticated media smoke.
 
 ### Immediate next gates — updated 2026-10-09
-1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed; verify exact-commit deployment and authenticated MBH/non-MBH end-to-end training flows.
+1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed and Vercel is READY on current `main` (`e1641914`); verify authenticated MBH/non-MBH end-to-end training flows and confirm the SpaceWeb PHP deployment.
 2. 🔴 **CI runner allocation.** Current GitHub Actions jobs fail before the first step (`runner_id=0`, no steps/logs); no new code-check result exists. Restore runner execution and verify the exact `main` commit.
 3. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation (28 electronogram source-key paths have no matching `content_sources.source_path`).
 4. 🟡 Histology questions/tests: compare duplicate/blank-answer candidates against source materials; then run start → answer → finish → review.
@@ -47,7 +47,7 @@
 6. 🟡 Compare `site_content` and `histology_lectures`, then unify the canonical lecture source and continue Admin Content Center / quick editors.
 7. 🟡 Admin database console target-runtime smoke after the `fb4eed97` syntax fix; validate SQL safety before wider use.
 8. 🔴 AI provider runtime health and verified primary provider.
-9. 🟡 API client timeout/stale-cache fix committed at `77b0f4a1` and deployed in Vercel READY `a56d3fdb`; verify behavior in browser. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+9. 🟡 API client timeout/stale-cache fix (`77b0f4a1`) is included in the current Vercel READY production build (`e1641914`); browser/runtime behavior remains unverified. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
 
 **Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
 
