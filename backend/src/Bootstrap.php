@@ -41,9 +41,8 @@ final class Bootstrap
                 ]);
             } catch (\Throwable $ignored) {
             }
-            // Message always includes class/file/line (works with old Response::error without $details)
-            $msg = $e::class . ': ' . $e->getMessage()
-                . ' @' . basename((string)$e->getFile()) . ':' . $e->getLine();
+            // Never expose exception details, paths, SQL, or line numbers to API clients.
+            $msg = 'Внутренняя ошибка сервера';
             try {
                 Response::error('INTERNAL_ERROR', $msg, $requestId, 500);
             } catch (\Throwable $ignored) {
@@ -51,7 +50,7 @@ final class Bootstrap
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode([
                     'ok' => false,
-                    'error' => ['code' => 'INTERNAL_ERROR', 'message' => $msg],
+                    'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Внутренняя ошибка сервера'],
                     'requestId' => $requestId,
                 ], JSON_UNESCAPED_UNICODE);
             }
