@@ -25,7 +25,7 @@
 - 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
 - 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
 - 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
-- 🟡 Latest observed READY Vercel build is `e23fb882` and includes the Pass 44 source commit; a newer docs-only `main` build (`701573ef`) was still BUILDING at last check. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
+- 🟡 Latest observed READY Vercel deployment is `d0949aa3`; the frontend trainer/security changes from `e23fb882` are included. Subsequent commits primarily changed CI, documentation and isolated integrations. Live browser behavior remains unverified. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
 - 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
 ### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
@@ -55,7 +55,7 @@
 - 🟢 desktop + mobile interaction contract implemented;
 - 🟢 malformed TSX escaped-newline artifact found during regression and removed;
 - 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
-- 🟢 Latest observed READY Vercel build (`e23fb882`) includes the Pass 44 source commit; a newer docs-only build was still BUILDING at last check. 🟡 Real browser smoke on desktop/mobile remains open;
+- 🟢 Latest observed READY Vercel deployment (`d0949aa3`) includes the existing Pass 44 frontend source. 🟡 Real browser smoke on desktop/mobile remains open;
 - 🟡 SpaceWeb authenticated media smoke.
 
 ### Immediate next gates — updated 2026-10-10
@@ -67,7 +67,7 @@
 6. 🟡 Compare `site_content` and `histology_lectures`, then unify the canonical lecture source and continue Admin Content Center / quick editors.
 7. 🟡 Admin database console target-runtime smoke after the `fb4eed97` syntax fix; validate SQL safety before wider use.
 8. 🔴 AI provider runtime health and verified primary provider.
-9. 🟡 API client timeout/stale-cache fix (`77b0f4a1`) is included in the current Vercel READY production build (`e1641914`); browser/runtime behavior remains unverified. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+9. 🟡 API client timeout/stale-cache fix (`77b0f4a1`) is included in the latest observed READY Vercel deployment (`d0949aa3`); browser/runtime behavior remains unverified. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
 
 **Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
 
