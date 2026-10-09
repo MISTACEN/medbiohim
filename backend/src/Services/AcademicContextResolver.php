@@ -140,7 +140,7 @@ final class AcademicContextResolver
                       AND sch.is_active = true
                       AND (:d IS NULL OR se.date = CAST(:d AS date))
                       AND (
-                          subjects.slug <> 'histology'
+                          COALESCE(subjects.slug, '') <> 'histology'
                           OR EXISTS (
                               SELECT 1 FROM public.groups histology_group
                               WHERE histology_group.id = sch.group_id
@@ -156,7 +156,7 @@ final class AcademicContextResolver
                            OR subjects.course_number = g.course_number)
                       AND (subjects.specialty_slug IS NULL OR g.specialty_slug IS NULL
                            OR subjects.specialty_slug = g.specialty_slug)
-                      AND (subjects.slug <> 'histology' OR g.specialty_slug = 'mbh')
+                      AND (COALESCE(subjects.slug, '') <> 'histology' OR g.specialty_slug = 'mbh')
                 )
             )';
             $params['gid'] = $groupId;
