@@ -21,6 +21,24 @@ use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Support\ContentStore;
 
 return static function (Router $router): void {
+    $sanitizeTrainerQuestion = static function ($value): array {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($value)) return [];
+        foreach (['explanation', 'answer', 'correctAnswer', 'correct_answer', 'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'] as $key) {
+            unset($value[$key]);
+        }
+        if (isset($value['options']) && is_array($value['options'])) {
+            foreach ($value['options'] as &$option) {
+                if (!is_array($option)) continue;
+                unset($option['correct'], $option['isCorrect'], $option['is_correct']);
+            }
+            unset($option);
+        }
+        return $value;
+    };
 
     // --- dashboard always 200 ---
     $router->get('/api/v1/dashboard', static function (Request $req, array $params): void {
@@ -122,7 +140,7 @@ return static function (Router $router): void {
     });
 
     // --- trainer feed ---
-    $router->get('/api/v1/trainers/feed', static function (Request $req, array $params): void {
+    $router->get('/api/v1/trainers/feed', static function (Request $req, array $params) use ($sanitizeTrainerQuestion): void {
         if (!RequireAuth::handle($req)) return;
 
         $subjectSlug = trim((string) ($req->query['subject'] ?? ''));
@@ -170,8 +188,8 @@ return static function (Router $router): void {
             $items = $stmt->fetchAll() ?: [];
 
             if (count($items) === 0) {
-                $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
-                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module:modules(title),plan_topic:topics(title)'
+                $path = 'trainer_feed_cards_public?is_published=eq.true&select=' . rawurlencode(
+                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module_title,plan_topic_title'
                 );
                 if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
                 if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
@@ -181,8 +199,8 @@ return static function (Router $router): void {
             }
         } catch (\Throwable $e) {
             try {
-                $path = 'trainer_feed_cards?is_published=eq.true&select=' . rawurlencode(
-                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module:modules(title),plan_topic:topics(title)'
+                $path = 'trainer_feed_cards_public?is_published=eq.true&select=' . rawurlencode(
+                    'id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_module_title,plan_topic_title'
                 );
                 if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
                 if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
@@ -205,17 +223,12 @@ return static function (Router $router): void {
         }
         unset($item);
 
-        // PostgREST fallback returns embedded rows; flatten them to *_title fields.
         foreach ($items as &$item) {
-            foreach (['plan_module' => 'plan_module_title', 'plan_topic' => 'plan_topic_title'] as $embed => $flat) {
-                if (isset($item[$embed])) {
-                    if (is_array($item[$embed])) $item[$flat] = $item[$embed]['title'] ?? null;
-                    unset($item[$embed]);
-                }
-            }
+            if (isset($item['question'])) $item['question'] = $sanitizeTrainerQuestion($item['question']);
         }
         unset($item);
 
+        // PostgREST fallback reads the plan title aliases from the safe view.
         Response::success([
             'items' => array_values($items),
             'limit' => $limit,
@@ -224,7 +237,7 @@ return static function (Router $router): void {
         ], $req->requestId);
     });
 
-    $router->get('/api/v1/trainers/feed/{id}', static function (Request $req, array $params): void {
+    $router->get('/api/v1/trainers/feed/{id}', static function (Request $req, array $params) use ($sanitizeTrainerQuestion): void {
         if (!RequireAuth::handle($req)) return;
 
         try {
@@ -254,6 +267,7 @@ return static function (Router $router): void {
                 Response::error('NOT_FOUND', 'Trainer card not found', $req->requestId, 404);
                 return;
             }
+            $item['question'] = $sanitizeTrainerQuestion($item['question'] ?? []);
 
             if ((string) ($item['specialty_slug'] ?? '') === 'mbh'
                 && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
@@ -330,7 +344,7 @@ return static function (Router $router): void {
                 'time_ms' => is_numeric($timeMs) ? (int) $timeMs : null,
             ]);
 
-            Response::success(['answer' => $ins->fetch(), 'correct' => $isSkipped ? null : $correct], $req->requestId, 201);
+            Response::success(['answer' => $ins->fetch(), 'correct' => $isSkipped ? null : $correct, 'explanation' => $isSkipped ? null : ($question['explanation'] ?? null)], $req->requestId, 201);
         } catch (\Throwable $e) {
             Response::error('TRAINER_ERROR', $e->getMessage(), $req->requestId, 503);
         }
