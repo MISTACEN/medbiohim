@@ -47,7 +47,7 @@
 6. 🟡 Compare `site_content` and `histology_lectures`, then unify the canonical lecture source and continue Admin Content Center / quick editors.
 7. 🟡 Admin database console target-runtime smoke after the `fb4eed97` syntax fix; validate SQL safety before wider use.
 8. 🔴 AI provider runtime health and verified primary provider.
-9. 🟡 API client timeout/stale-cache fix committed at `77b0f4a1`; verify it after the next Vercel deployment. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+9. 🟡 API client timeout/stale-cache fix committed at `77b0f4a1` and deployed in Vercel READY `a56d3fdb`; verify behavior in browser. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
 
 **Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
 
