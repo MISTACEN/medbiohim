@@ -21,8 +21,9 @@ function getRefreshToken(){if(typeof window==="undefined")return null;const t=lo
 export function setTokens(access:string,refresh?:string){
   const previousScope = cacheUserScope();
   localStorage.setItem("mb_access_token",access);
-  if(refresh)localStorage.setItem("mb_refresh_token",refresh);
   const nextScope = cacheUserScope();
+  if(refresh) localStorage.setItem("mb_refresh_token",refresh);
+  else if(previousScope !== nextScope) localStorage.removeItem("mb_refresh_token");
   if(previousScope !== nextScope) clearUserScopedCaches();
 }
 export function clearTokens(){
