@@ -44,16 +44,20 @@ SELECT
   c.updated_at,
   c.plan_module_id,
   c.plan_topic_id,
-  c.plan_status
+  c.plan_status,
+  tm.title AS plan_module_title,
+  tt.title AS plan_topic_title
 FROM public.trainer_feed_cards AS c
+LEFT JOIN public.modules AS tm ON tm.id = c.plan_module_id
+LEFT JOIN public.topics AS tt ON tt.id = c.plan_topic_id
 WHERE c.is_published = true;
 
-REVOKE ALL ON TABLE public.trainer_feed_cards FROM anon, authenticated;
+REVOKE ALL ON TABLE public.trainer_feed_cards FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.trainer_feed_cards_public TO anon, authenticated;
 
 -- Direct writes let clients forge is_correct. Keep reading own history via RLS,
 -- but force all new answers through the trusted scoring function below.
-REVOKE INSERT, UPDATE, DELETE ON TABLE public.trainer_feed_answers FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.trainer_feed_answers FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.submit_trainer_feed_answer(
   p_card_id text,
