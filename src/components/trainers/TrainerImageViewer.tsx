@@ -47,6 +47,8 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
 
   if (!mounted) return null;
 
+  const bloodSmearContext = /кров|мазок|лейкоцит|эритроцит|тромбоцит|нейтрофил|лимфоцит|моноцит|эозинофил|базофил|blood|smear/i.test(`${title || ""} ${lesson || ""}`);
+
   if (loading) {
     return createPortal(
       <div
@@ -102,7 +104,18 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
       showTrigger={false}
       onClose={onClose}
       details={
-        <div className="flex flex-col gap-2 pb-1">
+        <div className="flex flex-col gap-3 pb-1">
+          {bloodSmearContext ? (
+            <section className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm leading-5 text-slate-800">
+              <h3 className="font-bold text-rose-900">Что видно на мазке крови</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                <li><strong>Эритроциты</strong> — многочисленные розовые диски без ядра; оценивай форму, размер и центральное просветление.</li>
+                <li><strong>Лейкоциты</strong> — встречаются реже, крупнее эритроцитов и имеют окрашенное ядро. Вид определяют по форме ядра, цвету цитоплазмы и зернистости.</li>
+                <li><strong>Тромбоциты</strong> — очень мелкие фиолетовые фрагменты, иногда собраны группами.</li>
+              </ul>
+              <p className="mt-2 text-xs text-slate-600">Сначала определи, какой элемент показан именно на этой фотографии; не считай, что каждый видимый элемент относится к названию препарата.</p>
+            </section>
+          ) : null}
           {captions.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5">
               {captions.map((caption, index) => <li key={index}>{caption}</li>)}
