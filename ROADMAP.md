@@ -16,9 +16,9 @@
 
 ---
 
-## CURRENT EXECUTION CYCLE — 2026-10-09
+## CURRENT EXECUTION CYCLE — 2026-10-10
 
-**Текущий поток: Stability → Security gate → Media → Histology → Runtime verification.**
+**Текущий поток: CI diagnostics → security regression tests → SpaceWeb deployment gate → media/data reconciliation → runtime verification.**
 
 ### P1 trainer-answer confidentiality — mitigation applied (Pass 42, 2026-10-09)
 - 🟢 Live Supabase: base table `trainer_feed_cards` is no longer readable by `anon` / `authenticated`; safe view `trainer_feed_cards_public` strips answer-bearing fields and option correctness flags.
@@ -33,6 +33,13 @@
 - 🟢 The non-MBH feed query and both Supabase REST fallback branches exclude restricted cards; nested trainer-question answer fields are recursively sanitized.
 - 🟡 Source fix commit: `99ed1bc905a1b9fe2f2d5ca2f2b6e8bac2dd53a3`. PHP lint, authenticated/non-MBH integration tests, and SpaceWeb deployment remain unverified because Actions jobs terminate before steps. Details: [Pass 44 security report](docs/SECURITY-FIX-2026-10-10-PASS44.md).
 
+### CI/QA hardening — source updated, runner still blocked (2026-10-10)
+- 🟢 Fixed the PHP namespace prefix in `.github/workflows/code-check.yml` route-registration smoke test; it previously contained four literal backslashes, which PHP interpreted as two namespace separators instead of one.
+- 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 12 assertions passed.
+- 🟢 `scripts/predeploy-audit.mjs`, the code-check workflow, and the SpaceWeb deploy preflight now run this regression test.
+- 🟢 SpaceWeb deploy workflow now requires a non-empty backup before deployment and verifies Pass 44 route/sanitizer markers after upload.
+- 🟡 GitHub Actions runner allocation still fails before steps (`runner_id=0`, `steps=[]`); these new workflow checks have not run inside GitHub yet. See [the unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md).
+
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
 - 🟢 Atlas nested modal removed;
@@ -43,7 +50,7 @@
 - 🟢 Latest observed READY Vercel build (`e23fb882`) includes the Pass 44 source commit; a newer docs-only build was still BUILDING at last check. 🟡 Real browser smoke on desktop/mobile remains open;
 - 🟡 SpaceWeb authenticated media smoke.
 
-### Immediate next gates — updated 2026-10-09
+### Immediate next gates — updated 2026-10-10
 1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed; Pass 44 also hardened PHP route membership checks. Verify authenticated MBH/non-MBH end-to-end training flows and confirm the current PHP source is deployed to SpaceWeb.
 2. 🔴 **CI runner allocation.** Current GitHub Actions jobs fail before the first step (`runner_id=0`, no steps/logs); no new code-check result exists. Restore runner execution and verify the exact `main` commit.
 3. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation (28 electronogram source-key paths have no matching `content_sources.source_path`).
