@@ -586,7 +586,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
         {tab === "trainers" && (
           histology ? (
-            <SubjectTrainersHub />
+            <SubjectTrainersHub lectureHref={`/subjects/${encodeURIComponent(subjectId)}?tab=lectures`} />
           ) : (
             <section className="card p-5">
               <h2 className="text-lg font-bold">Тренажёры</h2>
