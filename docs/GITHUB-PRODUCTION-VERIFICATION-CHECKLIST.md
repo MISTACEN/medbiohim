@@ -34,6 +34,7 @@
 - [MEDBIOHIM code checks](https://github.com/MISTACEN/medbiohim/actions/workflows/code-check.yml)
 - [MEDBIOHIM smoke](https://github.com/MISTACEN/medbiohim/actions/workflows/smoke.yml)
 - [Build SpaceWeb backend archive](https://github.com/MISTACEN/medbiohim/actions/workflows/build-spaceweb-archive.yml)
+- [Optional integrations checks](https://github.com/MISTACEN/medbiohim/actions/workflows/optional-integrations-check.yml)
 - [Deploy backend to SpaceWeb](https://github.com/MISTACEN/medbiohim/actions/workflows/deploy-backend.yml)
 
 Если run завершился за секунды, `runner_id=0`, `steps=[]` и без логов, пометить как **runner/dispatch failure**; не заявлять, что код прошёл или провалил тесты.
