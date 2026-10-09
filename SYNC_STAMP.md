@@ -232,6 +232,6 @@
 - Live Supabase migration applied: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
 - Public clients can SELECT only the sanitized trainer_feed_cards_public view; direct client SELECT on trainer_feed_cards is revoked.
 - Verified in an active MBH membership context: 206 published cards are visible and the view returns 0 correctness flags / 0 answer-bearing fields.
-- Direct INSERT/UPDATE/DELETE on trainer_feed_answers is revoked for anon/authenticated; submit_trainer_feed_answer RPC performs authenticated server-side scoring.
+- Direct client access to trainer_feed_answers, trainings, and training_answers is revoked for anon/authenticated; submit_trainer_feed_answer RPC performs authenticated server-side scoring.
 - PHP response sanitizer protects newly-created and unanswered training snapshots; Next proxy applies the same protection while preserving review data after answer/skip.
 - Remaining gate: deploy latest frontend + SpaceWeb backend, then authenticated MBH/non-MBH feed → training → answer → review smoke. CI runner failure still prevents automated checks.
