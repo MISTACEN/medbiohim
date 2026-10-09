@@ -47,6 +47,13 @@ assertSameValue(false, array_key_exists('organ', $preparation), 'POST training s
 assertSameValue(false, array_key_exists('captions', $preparation), 'POST training strips preparation captions');
 assertSameValue('/content/histology/example.png', $preparation['imageUrl'], 'POST training preserves media path');
 
+$standaloneQuestion = TrainingPayloadSanitizer::sanitizeQuestion(json_encode([
+    'prompt' => 'Nested question',
+    'metadata' => ['review' => ['answer' => 'private', 'correctAnswer' => 'private']],
+], JSON_THROW_ON_ERROR));
+assertSameValue(false, array_key_exists('answer', $standaloneQuestion['metadata']['review']), 'shared route sanitizer accepts JSON strings and strips nested answers');
+assertSameValue(false, array_key_exists('correctAnswer', $standaloneQuestion['metadata']['review']), 'shared route sanitizer strips nested correctness fields');
+
 $getPayload = [
     'answers' => [
         [
