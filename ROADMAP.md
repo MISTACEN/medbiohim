@@ -2007,3 +2007,9 @@ The live trainer answer-key mitigation and remaining runtime acceptance gates ar
 
 ## Reliability Pass 43 — 2026-10-09
 API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and included in the Vercel production READY deployment `a56d3fdb`; browser behavior still needs verification. Details: [docs/RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+
+
+## CI/PHP follow-up — 2026-10-10 (Pass 52)
+
+- Homework SQL now uses distinct named PDO placeholders; a static contract regression test is wired into CI and backend pre-deploy checks.
+- GitHub Actions runner allocation remains blocked before step execution; the full PHP audit and SpaceWeb verification are not yet complete. See `docs/CI-PHP-AUDIT-2026-10-10-PASS52.md`.
