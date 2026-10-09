@@ -42,6 +42,7 @@ for (const required of [
   "next.config.ts",
   "src/app/api/v1/[...path]/route.ts",
   "backend",
+  "backend/tests/TrainingPayloadSanitizerTest.php",
   ".env.example"
 ]) {
   if (existsSync(join(root, required))) pass("required: " + required);
@@ -207,6 +208,11 @@ if (php.status === 0) {
     }
   }
   if (phpOk) pass("PHP syntax (" + phpFiles.length + " files)");
+  if (existsSync(join(root, "backend/tests/TrainingPayloadSanitizerTest.php"))) {
+    run("php", ["backend/tests/TrainingPayloadSanitizerTest.php"], "TrainingPayloadSanitizer regression tests");
+  } else {
+    fail("missing TrainingPayloadSanitizer regression test");
+  }
 } else {
   warn("PHP CLI is not installed locally; backend syntax check must run in CI/SpaceWeb");
 }
