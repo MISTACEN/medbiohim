@@ -22,7 +22,7 @@ return static function(Router $router): void {
       if($existing){Response::success(['item'=>$existing[0],'duplicate'=>true],$req->requestId);return;}
       $row=SupabaseRest::insert('question_reports',['question_id'=>$p['id'],'reporter_user_id'=>$req->user->id,'category'=>$category,'message'=>$message!==''?$message:null],true)[0]??null;
       Response::success(['item'=>$row],$req->requestId,201);
-    }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('question_report_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Не удалось сохранить сообщение об ошибке вопроса',$req->requestId,503);}
   });
 
   $router->get('/api/v1/admin/problem-center',static function(Request $req,array $p)use($admin):void{
@@ -42,7 +42,7 @@ return static function(Router $router): void {
       $problems=[];
       foreach($grouped as $g){$g['question']=$qmap[$g['question_id']]??null;$problems[]= $g;}
       Response::success(['problems'=>$problems,'reports'=>$reports,'works'=>$works],$req->requestId);
-    }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('question_report_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Не удалось сохранить сообщение об ошибке вопроса',$req->requestId,503);}
   });
 
   $router->patch('/api/v1/admin/question-reports/{id}',static function(Request $req,array $p)use($admin):void{
@@ -55,7 +55,7 @@ return static function(Router $router): void {
       else{$patch['resolved_by']=null;$patch['resolved_at']=null;}
       $rows=SupabaseRest::patch('question_reports?id=eq.'.rawurlencode((string)$p['id']),$patch,true);
       Response::success(['item'=>$rows[0]??null],$req->requestId);
-    }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('question_report_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Не удалось сохранить сообщение об ошибке вопроса',$req->requestId,503);}
   });
 
   $router->post('/api/v1/admin/problem-center/work',static function(Request $req,array $p)use($admin):void{
@@ -66,7 +66,7 @@ return static function(Router $router): void {
       $row=SupabaseRest::insert('content_work_items',['title'=>$title,'description'=>$req->json('description',null),'priority'=>$req->json('priority','normal'),'question_id'=>$req->json('question_id',null),'report_id'=>$req->json('report_id',null),'created_by'=>$req->user->id],true)[0]??null;
       if($row && !empty($row['report_id']))SupabaseRest::patch('question_reports?id=eq.'.rawurlencode((string)$row['report_id']),['work_id'=>$row['id'],'status'=>'reviewing'],true);
       Response::success(['item'=>$row],$req->requestId,201);
-    }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('question_report_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Не удалось сохранить сообщение об ошибке вопроса',$req->requestId,503);}
   });
 
   $router->patch('/api/v1/admin/problem-center/work/{id}',static function(Request $req,array $p)use($admin):void{
@@ -77,6 +77,6 @@ return static function(Router $router): void {
       if(($patch['status']??'')==='done')$patch['completed_at']=date('c');$patch['updated_at']=date('c');
       $rows=SupabaseRest::patch('content_work_items?id=eq.'.rawurlencode((string)$p['id']),$patch,true);
       Response::success(['item'=>$rows[0]??null],$req->requestId);
-    }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('question_report_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Не удалось сохранить сообщение об ошибке вопроса',$req->requestId,503);}
   });
 };
