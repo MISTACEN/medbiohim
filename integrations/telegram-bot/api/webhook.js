@@ -49,7 +49,9 @@ async function sendTelegramMessage(chatId, response) {
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(8000),
   });
-  if (!result.ok) {
+  let resultBody = null;
+  try { resultBody = await result.json(); } catch {}
+  if (!result.ok || !resultBody || resultBody.ok !== true) {
     // Never log the bot token, full Telegram response, or chat ID.
     throw new Error(`Telegram sendMessage failed with HTTP ${result.status}`);
   }
