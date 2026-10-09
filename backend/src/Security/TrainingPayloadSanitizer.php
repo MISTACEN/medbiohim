@@ -11,8 +11,12 @@ final class TrainingPayloadSanitizer
         foreach (['correct', 'isCorrect', 'is_correct', 'explanation', 'answer', 'correctAnswer', 'correct_answer', 'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'] as $key) {
             unset($value[$key]);
         }
-        foreach ($value as &$child) {
-            if (is_array($child)) $child = self::removeKeys($child);
+        foreach ($value as $key => &$child) {
+            if (!is_array($child)) continue;
+            if ($key === 'preparation') {
+                unset($child['name'], $child['organ'], $child['captions']);
+            }
+            $child = self::removeKeys($child);
         }
         unset($child);
         return $value;
