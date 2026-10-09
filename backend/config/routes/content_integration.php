@@ -60,7 +60,6 @@ return static function (Router $router): void {
             $stmt->execute($paramsSql);
             $items = $stmt->fetchAll() ?: [];
 
-            $access = new SpecialtyAccess();
             $items = $filterMaterialsForUser($items, $req);
 
             Response::success(['items' => $items, 'source' => 'supabase'], $req->requestId);
@@ -178,7 +177,6 @@ return static function (Router $router): void {
             $stmt->execute($p);
             $items = $stmt->fetchAll() ?: [];
 
-            $access = new SpecialtyAccess();
             $storage = new B2Storage();
             $items = $filterMaterialsForUser($items, $req);
             foreach ($items as &$item) {
