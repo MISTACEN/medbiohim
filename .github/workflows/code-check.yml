@@ -69,6 +69,8 @@ jobs:
           find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Training payload sanitizer regression tests
         run: php backend/tests/TrainingPayloadSanitizerTest.php
+      - name: Supabase trusted-role regression tests
+        run: php backend/tests/SupabaseAuthRoleTest.php
       - name: Bootstrap route registration smoke test
         run: |
           set -euo pipefail
