@@ -19,6 +19,7 @@ $trainingPayload = [
         'question' => [
             'text' => 'Which cell is shown?',
             'explanation' => 'private explanation',
+            'metadata' => ['grading' => ['correctAnswer' => 'nested private answer']],
             'options' => [
                 ['id' => 'a', 'text' => 'A', 'correct' => true],
                 ['id' => 'b', 'text' => 'B', 'is_correct' => false],
@@ -38,6 +39,7 @@ $question = $protectedPost['questions'][0]['question'];
 $preparation = $protectedPost['questions'][0]['preparation'];
 
 assertSameValue(false, array_key_exists('explanation', $question), 'POST training strips nested explanation');
+assertSameValue(false, array_key_exists('correctAnswer', $question['metadata']['grading']), 'POST training strips deeply nested correctness fields');
 assertSameValue(false, array_key_exists('correct', $question['options'][0]), 'POST training strips option correctness');
 assertSameValue(false, array_key_exists('is_correct', $question['options'][1]), 'POST training strips alternate correctness flag');
 assertSameValue(false, array_key_exists('name', $preparation), 'POST training strips preparation name');
