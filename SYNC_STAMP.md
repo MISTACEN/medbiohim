@@ -20,7 +20,7 @@
 
 ## Current open checks — updated 2026-10-09
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed.
-- Vercel metadata still points to READY deployment of commit `4c6fc5e`; the code fix at `fb4eed97` is not confirmed in production.
+- Vercel production alias was last observed `READY` at commit `2a0d761`, which includes the `fb4eed97` source fix in the repository tree. This confirms frontend deployment metadata only; SpaceWeb PHP backend deployment/runtime remains unverified. The latest `main` commit `29db156` is a documentation-only sync-stamp refresh and had a pending Vercel check at the last read.
 - P1: prevent trainer-answer leakage through Supabase Data API, PHP trainer routes, Next fallback and training session snapshots.
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - AI provider runtime/fallback verification.
