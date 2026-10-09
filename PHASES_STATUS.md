@@ -4,6 +4,16 @@
 > Source of truth: `main` + живой Supabase + целевые deployment environments.  
 > Подробный план: [ROADMAP.md](ROADMAP.md).
 
+## CI/PHP audit — Pass 51 (2026-10-10)
+
+- 🟢 Source hardening: trusted role claims, DB-backed role checks, token URL rejection, generic uncaught-error responses.
+- 🟢 Duplicate admin route registrations removed; route scanner now examines all router variable names.
+- 🟢 Homework attachment SQL PHP-string syntax fixed.
+- 🟡 GitHub Actions runner recovery is **not confirmed**. Previous jobs had no steps/logs; Ubuntu 24.04 pinning is a mitigation awaiting a fresh executed run.
+- 🟡 Full repository PHP lint, route registration, SQL/RLS/fallback tests, and SpaceWeb post-deploy smoke are still open.
+
+Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
+
 ## Статусы
 
 > Последняя сверка: Vercel deployment metadata + [security fix Pass 49 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS49.md) + [Pass 48 viewer access](docs/SECURITY-FIX-2026-10-10-PASS48.md) + [Pass 47 media cache isolation](docs/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/RELIABILITY-FIX-2026-10-10-PASS46.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
