@@ -24,7 +24,8 @@ function parseCommand(text) {
   const first = trimmed.split(/\s+/, 1)[0];
   const withoutSlash = first.slice(1);
   const [name, botName] = withoutSlash.split("@", 2);
-  if (botName && botName.toLowerCase() !== (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, "").toLowerCase()) {
+  const configuredBotName = (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, "").toLowerCase();
+  if (botName && configuredBotName && botName.toLowerCase() !== configuredBotName) {
     return null;
   }
   return name.toLowerCase();
