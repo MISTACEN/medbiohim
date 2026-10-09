@@ -31,6 +31,7 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 ## План и документация
 - [ROADMAP.md](ROADMAP.md) — единый план проекта и порядок работ
 - [PHASES_STATUS.md](PHASES_STATUS.md) — текущее состояние фаз
+- [Единый чек-лист GitHub/production](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) — Actions, сборка, API, безопасность, данные, media, UI и сценарии end-to-end
 - [docs/README.md](docs/README.md) — карта документов и источников истины
 
 ## Docs
@@ -40,12 +41,14 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 - [docs/dev-notes.md](docs/dev-notes.md)
 - [docs/platform-concept-medbiohim.md](docs/platform-concept-medbiohim.md)
 
-Synced: 2026-10-07
+Synced: 2026-10-10
 
 
-## Текущее состояние проекта — 2026-10-07
+## Текущее состояние проекта — 2026-10-10
 
 MEDBIOHIM — единая образовательная платформа. Полный запланированный функционал сохраняется при $0 обязательных расходов.
+
+**Важно:** этот README описывает архитектуру и функциональные контуры. Он не заменяет runtime-проверку: актуальные статусы, подтверждённые deployment SHA, блокеры и правила закрытия задач фиксируются в [ROADMAP.md](ROADMAP.md), [PHASES_STATUS.md](PHASES_STATUS.md) и [едином чек-листе проверки](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md). Коммит или статус Vercel READY сам по себе не означает, что SpaceWeb API, физические файлы и пользовательские сценарии проверены.
 
 ### Каноническая архитектура
 
@@ -104,6 +107,8 @@ Server-authoritative модель: клиент не является источ
 Целевой сценарий: Расписание → дата → предмет → занятие → задание → выполнение/сдача → единый статус.
 
 ### Основной незакрытый backlog
+
+Перед тем как отмечать любой пункт готовым, пройти соответствующую часть [единого чек-листа GitHub/production](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md). Для каждого подтверждённого дефекта создать GitHub issue с commit SHA, шагами воспроизведения, ожидаемым/фактическим результатом и безопасно очищенными логами.
 
 Production/runtime Vercel + SpaceWeb + CI; auth/security final gate; физическая сверка Histology media; Materials/DOCX/PDF/media delivery; smoke всех published tests; единый Schedule + Homework UX; Smart grading E2E; admin Content Center; DB/File/Storage Operations Center; mobile/browser acceptance; завершение Chemistry answers/formula verification; strict TypeScript/ESLint и architecture cleanup; AI tutor/provider runtime; performance/free-tier optimization; дополнительные бесплатные сервисы только как optional additions.
 
