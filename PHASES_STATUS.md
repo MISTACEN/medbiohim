@@ -18,7 +18,7 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in last observed READY Vercel build `e23fb882`; fixed PHP autoloader in CI, added 12-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
+| 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in latest observed READY Vercel deployment `d0949aa3`; fixed PHP autoloader in CI, added 12-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
