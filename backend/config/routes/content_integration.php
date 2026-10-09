@@ -122,6 +122,7 @@ return static function (Router $router): void {
                     }
                 }
             }
+            unset($row['is_histology_source']);
             Response::success(['source' => $row, 'download' => $download], $req->requestId);
         } catch (\Throwable $e) {
             Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
