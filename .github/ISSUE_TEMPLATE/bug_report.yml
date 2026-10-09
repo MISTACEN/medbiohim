@@ -1,0 +1,131 @@
+name: Bug report / production regression
+description: Report a reproducible MEDBIOHIM bug with environment and evidence
+title: "[BUG][area] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, JWTs, cookies, API keys, student personal data, or unredacted production payloads.
+        If a workflow failed before its first step with runner_id=0 and no logs, select CI/runner infrastructure, not application bug.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CI / GitHub Actions
+        - Vercel deployment
+        - SpaceWeb / PHP API
+        - Auth / roles / groups
+        - Histology atlas / trainer
+        - Tests / question bank
+        - Materials / media files
+        - Schedule / homework
+        - Admin
+        - Chemistry
+        - Mobile / responsive UI
+        - AI provider
+        - Browser extension
+        - Telegram bot
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA
+      description: Exact commit being tested
+      placeholder: "40-character SHA"
+    validations:
+      required: true
+  - type: input
+    id: deployment
+    attributes:
+      label: Deployment URL / ID
+      description: Vercel deployment URL/ID or SpaceWeb deployment marker
+    validations:
+      required: false
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Production
+        - Preview
+        - Local
+        - GitHub Actions
+        - Supabase / database
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: "e.g. iPhone / Safari, Windows / Chrome"
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Preconditions and role
+      description: Role/access scope only; do not include email or personal identifiers.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Submit ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: input
+    id: request
+    attributes:
+      label: HTTP status / request ID / workflow run
+      description: Redact tokens and personal data.
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Console / Network / Actions log excerpts
+      description: Remove secrets and private user data. Link to full GitHub Actions run when possible.
+    validations:
+      required: false
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Frequency
+      options:
+        - Every time
+        - Intermittent
+        - Happened once
+        - Not yet reproduced
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0 — data/security loss or platform unavailable
+        - P1 — major user flow blocked or security boundary broken
+        - P2 — partial function/regression with workaround
+        - P3 — minor visual or low-impact issue
+    validations:
+      required: true
