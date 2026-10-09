@@ -36,6 +36,9 @@ function safeTrainerQuestion(value: unknown) {
   for (const key of ["explanation", "answer", "correctAnswer", "correct_answer", "correctOption", "correct_option", "correctOptionId", "correct_option_id"]) {
     delete question[key];
   }
+  if (question.question && typeof question.question === "object" && !Array.isArray(question.question)) {
+    question.question = safeTrainerQuestion(question.question);
+  }
   if (Array.isArray(question.options)) {
     question.options = question.options.map((item) => {
       if (!item || typeof item !== "object" || Array.isArray(item)) return item;
