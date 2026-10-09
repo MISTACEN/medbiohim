@@ -71,7 +71,9 @@ GRANT SELECT ON TABLE public.trainer_feed_cards_public TO anon, authenticated;
 
 -- Direct writes let clients forge is_correct. Keep reading own history via RLS,
 -- but force all new answers through the trusted scoring function below.
-REVOKE INSERT, UPDATE, DELETE ON TABLE public.trainer_feed_answers FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.trainer_feed_answers FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.trainings FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.training_answers FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.submit_trainer_feed_answer(
   p_card_id text,
