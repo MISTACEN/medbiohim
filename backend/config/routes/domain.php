@@ -110,8 +110,8 @@ return static function (Router $router): void {
         }
         try {
             $canAccessSubject = (new SpecialtyAccess())->canAccessSubject($req->user->id, $subjectId);
-        } catch (\\Throwable $accessError) {
-            \\Medbiohim\\Support\\Logger::error('subject_gradebook_access_check_failed', [
+        } catch (\Throwable $accessError) {
+            \Medbiohim\Support\Logger::error('subject_gradebook_access_check_failed', [
                 'requestId' => $req->requestId,
                 'message' => $accessError->getMessage(),
             ]);
