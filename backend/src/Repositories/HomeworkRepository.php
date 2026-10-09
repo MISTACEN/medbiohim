@@ -37,9 +37,9 @@ final class HomeworkRepository
              FROM public.homeworks h
              LEFT JOIN public.subjects s ON s.id = h.subject_id
              LEFT JOIN public.homework_submissions sub
-               ON sub.homework_id = h.id AND sub.user_id = :uid
+               ON sub.homework_id = h.id AND sub.user_id = :uid_submission
              LEFT JOIN public.homework_progress hp
-               ON hp.homework_id = h.id AND hp.user_id = :uid
+               ON hp.homework_id = h.id AND hp.user_id = :uid_progress
              WHERE (
                 (:gid IS NULL AND (h.group_id IS NULL OR h.group_id IN (
                     SELECT group_id FROM public.group_memberships WHERE user_id = :uid2 AND is_active = true
@@ -57,7 +57,7 @@ final class HomeworkRepository
                )
              ORDER BY h.due_at NULLS LAST, h.created_at DESC'
         );
-        $stmt->execute(['uid' => $userId, 'uid2' => $userId, 'gid' => $groupId, 'gid2' => $groupId, 'gid_mbh' => $groupId]);
+        $stmt->execute(['uid_submission' => $userId, 'uid_progress' => $userId, 'uid2' => $userId, 'gid' => $groupId, 'gid2' => $groupId, 'gid_mbh' => $groupId]);
         $items = $stmt->fetchAll() ?: [];
         if ($items === []) return [];
 
@@ -229,7 +229,7 @@ final class HomeworkRepository
                   WHERE id = :fid
                     AND status = 'active'
                     AND uploaded_by = :uid
-                    AND (:gid IS NULL OR group_id = :gid OR group_id IS NULL)
+                    AND (:gid_null IS NULL OR group_id = :gid_match OR group_id IS NULL)
                   LIMIT 1"
             );
             $insertAttachment = $this->db->prepare(
@@ -243,7 +243,8 @@ final class HomeworkRepository
                 $attachmentStmt->execute([
                     'fid' => $fileId,
                     'uid' => $createdBy,
-                    'gid' => $groupId,
+                    'gid_null' => $groupId,
+                    'gid_match' => $groupId,
                 ]);
                 $file = $attachmentStmt->fetch();
                 if ($file === false) {
