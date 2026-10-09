@@ -10,7 +10,7 @@ Status: source fixes committed; GitHub Actions execution remains unverified.
 - Added \`backend/tests/SupabaseAuthRoleTest.php\` to the code-check workflow and SpaceWeb pre-deploy checks.
 - Reworked the duplicate route detector to scan any router variable (\`$router\`, \`$r\`, etc.) using a heredoc PHP script; the previous expression only targeted a specific variable name and was not a reliable cross-file route check.
 - Removed duplicate registrations for admin users/homework/role endpoints from \`backend/config/routes/admin_rest.php\`; the canonical implementations remain in \`backend/config/routes/admin.php\`.
-- The last retried historical Actions run again failed before any step and had no job logs. This does not prove the new Ubuntu image fixed the issue. GitHub Actions is **not marked recovered** until a new push-triggered run executes steps and publishes results.
+- A fresh push-triggered run using the pinned `ubuntu-24.04` image and a second retry both failed before any step. The latest observed code-check run is [37993824049](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049), attempt 2; jobs `114034899019` and `114034899286` report `runner_id=0`, empty runner name, and zero steps. Log download returns `BlobNotFound`. The image pin did **not** resolve runner allocation. The signature is consistent with a hosted-runner dispatch/account-level issue, not a PHP test failure.
 
 ## PHP/security fixes
 
@@ -31,7 +31,7 @@ Status: source fixes committed; GitHub Actions execution remains unverified.
 
 ## Remaining blockers
 
-- 🔴 GitHub Actions runner allocation and fresh run results.
+- 🔴 GitHub-hosted runner allocation. Recent community reports show the same `runner_id=0` / zero-step signature in private repositories; verify Actions billing/spending-limit settings and contact GitHub Support if those are healthy. Relevant references: [GitHub Actions status](https://www.githubstatus.com/) and [community report with the same failure signature](https://github.com/orgs/community/discussions/208438).
 - 🟡 Full PHP syntax/type/route/SQL audit against the exact current \`main\` tree.
 - 🟡 Authenticated database/RLS and fallback-path tests.
 - 🟡 SpaceWeb deployment and post-deploy API smoke.
