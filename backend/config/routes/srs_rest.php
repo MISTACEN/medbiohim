@@ -76,7 +76,8 @@ return static function (Router $router): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION_ERROR', $e->getMessage(), $req->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('SRS_ERROR', $e->getMessage(), $req->requestId, 500);
+            \Medbiohim\Support\Logger::error('srs_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('SRS_ERROR', 'Повторение временно недоступно', $req->requestId, 500);
         }
     });
 
@@ -96,7 +97,8 @@ return static function (Router $router): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION_ERROR', $e->getMessage(), $req->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('SRS_ERROR', $e->getMessage(), $req->requestId, 500);
+            \Medbiohim\Support\Logger::error('srs_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('SRS_ERROR', 'Повторение временно недоступно', $req->requestId, 500);
         }
     });
 
