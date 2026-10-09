@@ -19,10 +19,10 @@
 | Фаза | Состояние | Что это значит |
 |---|---|---|
 | 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in latest observed READY Vercel deployment `d0949aa3`; fixed PHP autoloader in CI, added 15-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
-| 1. Auth / account | 🟡 | login → /me → dashboard → logout не подтверждены в target runtime; Pass 46 prevents malformed JWTs from sharing a cache bucket; two-account runtime check remains open |
+| 1. Auth / account | 🟡 | login → /me → dashboard → logout не подтверждены в target runtime; Pass 46 prevents malformed JWTs sharing a cache bucket and Pass 47 scopes private media/card caches by user; two-account runtime check remains open |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
-| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 fixes PHP membership checks for feed/detail/answer/image; Pass 45 shares recursive PHP/Next sanitization and adds 15 assertions. Latest deployment inclusion, SpaceWeb deployment, authenticated smoke and media/source mapping remain open |
+| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 route membership, Pass 45 recursive answer sanitization and Pass 47 user-scoped private media caches are in source. Latest deployment inclusion, SpaceWeb deployment, authenticated smoke and media/source mapping remain open |
 | 5. Tests / Question Bank | 🟡 | данные/связи имеются; полный start → answer → finish → review smoke и аудит exam_questions не закрыты |
 | 6. Materials | 🟡 | записи и viewer существуют; наличие физических DOCX/PDF/image и единый lecture source ещё не подтверждены |
 | 7. Admin CMS | 🟡 | есть DB console; две PHP syntax ошибки исправлены в fb4eed97, target-runtime проверка ещё не выполнена |
@@ -30,7 +30,7 @@
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
 | 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
-| 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44/45/46 reports, 15-assertion sanitizer test and unified checklist documented; historical counts remain snapshots |
+| 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44/45/46/47 reports, 15-assertion sanitizer test, unified checklist and bug issue form documented; historical counts remain snapshots |
 | 13. Optional integrations | 🟡 | Chrome/Edge quick-access extension and isolated public-command Telegram bot MVP added; manual browser install/bot deployment not performed; private account linking intentionally absent |
 
 ---
