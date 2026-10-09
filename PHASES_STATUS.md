@@ -6,7 +6,7 @@
 
 ## Статусы
 
-> Последняя сверка: Vercel deployment metadata + [security fix Pass 45 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS45.md) + [Pass 44 route access fix](docs/SECURITY-FIX-2026-10-10-PASS44.md) + [functional audit Pass 41](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
+> Последняя сверка: Vercel deployment metadata + [security fix Pass 47 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/RELIABILITY-FIX-2026-10-10-PASS46.md) + [Pass 45 answer sanitization](docs/SECURITY-FIX-2026-10-10-PASS45.md) + [Pass 44 route access fix](docs/SECURITY-FIX-2026-10-10-PASS44.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
