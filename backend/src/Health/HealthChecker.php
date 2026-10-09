@@ -87,7 +87,8 @@ final class HealthChecker
         try {
             $cfg = Connection::config();
         } catch (\Throwable $e) {
-            return ['status' => 'fail', 'message' => $e->getMessage()];
+            \Medbiohim\Support\Logger::error('health_db_config_failed', ['error' => $e->getMessage()]);
+            return ['status' => 'fail', 'message' => 'Database configuration is invalid'];
         }
 
         if ($cfg['host'] === '' || $cfg['user'] === '') {
