@@ -54,7 +54,7 @@
 ## Главные открытые блокеры
 
 ### 🟡 Trainer route access — source fix awaiting deployment/test
-Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested.
+Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested. [Details](docs/SECURITY-FIX-2026-10-10-PASS44.md).
 
 ### 🔴 AI
 Provider availability/runtime ещё не подтверждён end-to-end.
