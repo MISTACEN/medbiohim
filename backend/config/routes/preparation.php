@@ -137,7 +137,8 @@ return static function (Router $router): void {
       if($existing){unset($existing['question_snapshot']);Response::success(['session'=>$existing,'resumed'=>true],$r->requestId);return;}
     }catch(\Throwable $e2){}
    }
-   Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);
+   \Medbiohim\Support\Logger::error('preparation_session_failed', ['requestId' => $r->requestId, 'error' => $e->getMessage()]);
+   Response::error('PREPARATION_ERROR', 'Подготовка к тесту временно недоступна', $r->requestId, 503);
   }
  });
 
@@ -181,7 +182,8 @@ return static function (Router $router): void {
         'completed_at'=>$session['completed_at']??null
       ] : null
     ],$r->requestId);
-  }catch(\Throwable $e){Response::error('PROGRESS_ERROR',$e->getMessage(),$r->requestId,422);}
+  }catch(\Throwable $e){\Medbiohim\Support\Logger::error('preparation_progress_failed', ['requestId' => $r->requestId, 'error' => $e->getMessage()]);
+   Response::error('PROGRESS_ERROR', 'Не удалось загрузить прогресс подготовки', $r->requestId, 503);}
  });
 
  $router->get('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
@@ -242,7 +244,8 @@ return static function (Router $router): void {
    $a->execute(['sid'=>$session['id']]);$answers=$a->fetchAll()?:[];
    unset($session['question_snapshot']);
    Response::success(['session'=>$session,'questions'=>$questions,'answers'=>$answers],$r->requestId);
-  }catch(\Throwable $e){Response::error('PREPARATION_ERROR',$e->getMessage(),$r->requestId,422);}
+  }catch(\Throwable $e){\Medbiohim\Support\Logger::error('preparation_session_failed', ['requestId' => $r->requestId, 'error' => $e->getMessage()]);
+   Response::error('PREPARATION_ERROR', 'Подготовка к тесту временно недоступна', $r->requestId, 503);}
  });
 
  $router->patch('/api/v1/tests/preparation/{id}',static function(Request $r,array $p)use($auth):void{
@@ -305,7 +308,8 @@ return static function (Router $router): void {
    Response::success(['session'=>$savedSession,'grading'=>$grading],$r->requestId);
   }catch(\Throwable $e){
    if(isset($db)&&$db instanceof \PDO && $db->inTransaction())$db->rollBack();
-   Response::error('SAVE_ERROR',$e->getMessage(),$r->requestId,422);
+   \Medbiohim\Support\Logger::error('preparation_answer_save_failed', ['requestId' => $r->requestId, 'error' => $e->getMessage()]);
+   Response::error('SAVE_ERROR', 'Не удалось сохранить ответ', $r->requestId, 503);
   }
  });
  
@@ -357,7 +361,8 @@ return static function (Router $router): void {
     'stats'=>['total'=>$total,'answered'=>$answered,'correct'=>$correct,'wrong'=>max(0,$answered-$correct-$unresolved),'unresolved'=>min($answered,$unresolved),'unanswered'=>max(0,$total-$answered),'percent'=>$percent,'topics'=>array_values($topic)],
     'errors'=>$rows
    ],$r->requestId);
-  }catch(\Throwable $e){Response::error('FINISH_ERROR',$e->getMessage(),$r->requestId,422);}
+  }catch(\Throwable $e){\Medbiohim\Support\Logger::error('preparation_finish_failed', ['requestId' => $r->requestId, 'error' => $e->getMessage()]);
+   Response::error('FINISH_ERROR', 'Не удалось завершить подготовку', $r->requestId, 503);}
  });
 
  $router->post('/api/v1/tests/preparation/{id}/retry-grading',static function(Request $r,array $p)use($auth):void{
@@ -436,7 +441,8 @@ return static function (Router $router): void {
     'model'=>$llm['model']??null
    ]);
    Response::success(['review'=>$review,'model'=>$llm['model']??null],$r->requestId);
-  }catch(\Throwable $e){Response::error('AI_REVIEW_ERROR',$e->getMessage(),$r->requestId,503);}
+  }catch(\Throwable $e){\Medbiohim\Support\Logger::error('preparation_ai_review_failed', ['requestId' => $r->requestId, 'error' => $e->getMessage()]);
+   Response::error('AI_REVIEW_ERROR', 'ИИ-проверка временно недоступна', $r->requestId, 503);}
  });
 
 };
