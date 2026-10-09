@@ -22,7 +22,7 @@
 
 ## Current open checks — updated 2026-10-10
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed. This is a runner allocation/dispatch failure, not evidence that the test commands themselves failed.
-- Vercel production alias is confirmed `READY` on current `main` commit `e164191468e088214828b06325b6de2483df8d90`; it includes the frontend proxy sanitizer, post-answer review restoration, and API timeout/cache fix. Live browser behavior remains unverified. SpaceWeb PHP deployment remains unverified because GitHub Actions jobs fail before checkout (`runner_id=0`, no steps/logs).
+- Latest observed READY Vercel build is `e23fb882` and includes the Pass 44 source commit plus frontend proxy sanitizer, post-answer review restoration, and API timeout/cache fix. A newer docs-only `main` build (`701573ef`) was still BUILDING at last check. Live browser behavior remains unverified. SpaceWeb PHP deployment remains unverified because GitHub Actions jobs fail before checkout (`runner_id=0`, no steps/logs).
 - P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Pass 44 (`99ed1bc`) also hardens PHP route membership checks for feed/detail/answer/image and recursively sanitizes nested question payloads. Full authenticated runtime acceptance and SpaceWeb PHP deployment remain open; details: [Pass 44 report](docs/SECURITY-FIX-2026-10-10-PASS44.md).
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - AI provider runtime/fallback verification.
@@ -46,7 +46,7 @@
 - docs/UNFINISHED-REGISTRY.md
 - docs/API-COVERAGE-2026-10-04.md
 ## Current open checks
-- Vercel production metadata is current (`e1641914`, READY); live browser/API verification remains separate from GitHub CI.
+- Latest observed READY Vercel build (`e23fb882`) includes the Pass 44 source commit; newer docs-only build was still BUILDING at last check. Live browser/API verification remains separate from GitHub CI.
 - SpaceWeb trainer media 404/502 requires real file/B2 verification.
 - AI provider runtime health / fallback credentials remain external checks.
 - Full histology plan ↔ content mapping remains a product/content task.
