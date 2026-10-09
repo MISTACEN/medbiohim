@@ -27,7 +27,7 @@ return static function (Router $router): void {
             $value = is_array($decoded) ? $decoded : [];
         }
         if (!is_array($value)) return [];
-        foreach (['explanation', 'answer', 'correctAnswer', 'correct_answer', 'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'] as $key) {
+        foreach (['explanation', 'answer', 'correct', 'isCorrect', 'is_correct', 'correctAnswer', 'correct_answer', 'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'] as $key) {
             unset($value[$key]);
         }
         if (isset($value['options']) && is_array($value['options'])) {
@@ -148,11 +148,10 @@ return static function (Router $router): void {
         $limit = max(1, min(500, (int) ($req->query['limit'] ?? 30)));
         $offset = max(0, (int) ($req->query['offset'] ?? 0));
 
-        if ($subjectSlug === 'histology' || $specialtySlug === 'mbh') {
-            if (!(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
-                Response::error('FORBIDDEN', 'Тренажёр по гистологии доступен только специальности МБХ', $req->requestId, 403);
-                return;
-            }
+        $hasMbhAccess = (new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh');
+        if (($subjectSlug === 'histology' || $specialtySlug === 'mbh') && !$hasMbhAccess) {
+            Response::error('FORBIDDEN', 'Тренажёр по гистологии доступен только специальности МБХ', $req->requestId, 403);
+            return;
         }
 
         $items = [];
@@ -178,6 +177,9 @@ return static function (Router $router): void {
                 $sql .= ' AND c.specialty_slug = :specialty_slug';
                 $paramsSql['specialty_slug'] = $specialtySlug;
             }
+            if (!$hasMbhAccess) {
+                $sql .= " AND c.subject_slug IS DISTINCT FROM 'histology' AND c.specialty_slug IS DISTINCT FROM 'mbh'";
+            }
 
             $sql .= ' ORDER BY c.id LIMIT :limit OFFSET :offset';
             $stmt = Connection::pdo()->prepare($sql);
@@ -193,6 +195,7 @@ return static function (Router $router): void {
                 );
                 if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
                 if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
+                if (!$hasMbhAccess) $path .= '&and=' . rawurlencode('(or(subject_slug.is.null,subject_slug.neq.histology),or(specialty_slug.is.null,specialty_slug.neq.mbh))');
                 $path .= '&order=id.asc&limit=' . $limit . '&offset=' . $offset;
                 $items = SupabaseRest::select($path);
                 $source = 'supabase_rest';
@@ -269,7 +272,7 @@ return static function (Router $router): void {
             }
             $item['question'] = $sanitizeTrainerQuestion($item['question'] ?? []);
 
-            if ((string) ($item['specialty_slug'] ?? '') === 'mbh'
+            if (((string) ($item['subject_slug'] ?? '') === 'histology' || (string) ($item['specialty_slug'] ?? '') === 'mbh')
                 && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
                 Response::error('FORBIDDEN', 'Карточка доступна только специальности МБХ', $req->requestId, 403);
                 return;
@@ -293,7 +296,7 @@ return static function (Router $router): void {
         try {
             $db = Connection::pdo();
             $cardStmt = $db->prepare(
-                'SELECT id, specialty_slug, question
+                'SELECT id, subject_slug, specialty_slug, question
                  FROM public.trainer_feed_cards
                  WHERE id = :id AND is_published = true
                  LIMIT 1'
@@ -305,7 +308,7 @@ return static function (Router $router): void {
                 return;
             }
 
-            if ((string) ($card['specialty_slug'] ?? '') === 'mbh'
+            if (((string) ($card['subject_slug'] ?? '') === 'histology' || (string) ($card['specialty_slug'] ?? '') === 'mbh')
                 && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
                 Response::error('FORBIDDEN', 'Карточка доступна только специальности МБХ', $req->requestId, 403);
                 return;
@@ -362,7 +365,7 @@ return static function (Router $router): void {
 
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT source_key, source_file_id, specialty_slug, preparation
+                'SELECT source_key, source_file_id, subject_slug, specialty_slug, preparation
                  FROM public.trainer_feed_cards
                  WHERE id = :id AND is_published = true
                  LIMIT 1'
@@ -374,7 +377,7 @@ return static function (Router $router): void {
                 return;
             }
 
-            if ((string) ($row['specialty_slug'] ?? '') === 'mbh'
+            if (((string) ($row['subject_slug'] ?? '') === 'histology' || (string) ($row['specialty_slug'] ?? '') === 'mbh')
                 && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
                 Response::error('FORBIDDEN', 'Медиа доступно только специальности МБХ', $req->requestId, 403);
                 return;
