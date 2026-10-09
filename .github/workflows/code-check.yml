@@ -80,6 +80,7 @@ jobs:
         run: php backend/tests/TrainingPayloadSanitizerTest.php
       - name: Supabase trusted-role regression tests
         run: php backend/tests/SupabaseAuthRoleTest.php
+        php backend/tests/HomeworkSqlContractTest.php
       - name: Bootstrap route registration smoke test
         run: |
           set -euo pipefail
