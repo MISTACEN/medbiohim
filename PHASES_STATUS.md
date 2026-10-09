@@ -19,7 +19,7 @@
 | Фаза | Состояние | Что это значит |
 |---|---|---|
 | 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in latest observed READY Vercel deployment `d0949aa3`; fixed PHP autoloader in CI, added 15-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
-| 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
+| 1. Auth / account | 🟡 | login → /me → dashboard → logout не подтверждены в target runtime; Pass 46 prevents malformed JWTs from sharing a cache bucket; two-account runtime check remains open |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
 | 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 fixes PHP membership checks for feed/detail/answer/image; Pass 45 shares recursive PHP/Next sanitization and adds 15 assertions. Latest deployment inclusion, SpaceWeb deployment, authenticated smoke and media/source mapping remain open |
@@ -30,7 +30,7 @@
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
 | 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
-| 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44/45 reports, 15-assertion sanitizer test and unified checklist documented; historical counts remain snapshots |
+| 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44/45/46 reports, 15-assertion sanitizer test and unified checklist documented; historical counts remain snapshots |
 | 13. Optional integrations | 🟡 | Chrome/Edge quick-access extension and isolated public-command Telegram bot MVP added; manual browser install/bot deployment not performed; private account linking intentionally absent |
 
 ---
