@@ -114,7 +114,8 @@ if (existsSync(contentIntegrationPath)) {
   const contentRoutes = await readFile(contentIntegrationPath, "utf8");
   if (contentRoutes.includes("subjectSlug === 'histology'") &&
       contentRoutes.includes("is_histology_source") &&
-      contentRoutes.includes("$filterMaterialsForUser")) {
+      contentRoutes.includes("$filterMaterialsForUser") &&
+      contentRoutes.split("use ($filterMaterialsForUser)").length - 1 === 2) {
     pass("materials lists/details and content source downloads enforce MBH scope");
   } else {
     fail("materials/content-source MBH access checks are incomplete");
