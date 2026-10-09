@@ -25,7 +25,7 @@
 - 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
 - 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
 - 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
-- 🟡 Latest observed READY Vercel deployment is `d0949aa3`; the frontend trainer/security changes from `e23fb882` are included. Subsequent commits also include Pass 45 recursive sanitizer source changes, plus CI/docs/integrations. Pass 45 is not yet confirmed in a READY deployment. Live browser behavior remains unverified. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
+- 🟡 Latest observed READY Vercel deployment is `6687e057`; it includes the frontend source changes for Pass 45–47. Later commits are primarily PHP route hardening, CI, docs and isolated integrations. Browser/runtime behavior remains unverified. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
 - 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
 ### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
@@ -42,7 +42,7 @@
 ### P1 API cache isolation — source fix committed (Pass 46, 2026-10-10)
 - 🟢 Malformed/opaque JWTs no longer share the literal `auth` cache scope; `apiCached()` bypasses cache when no valid subject can be parsed.
 - 🟢 Added a pre-deploy audit guard for this contract.
-- 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment predates Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
+- 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment `6687e057` includes Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
 
 ### P1 consistent MBH access across material/file endpoints — source fix committed (Pass 49, 2026-10-10)
 - 🟢 Material list filters now enforce MBH for histology even with empty/inconsistent `specialty_slug`; detail follows the same rule.
@@ -84,7 +84,7 @@
 - 🟢 desktop + mobile interaction contract implemented;
 - 🟢 malformed TSX escaped-newline artifact found during regression and removed;
 - 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
-- 🟢 Latest observed READY Vercel deployment (`d0949aa3`) includes the existing Pass 44 frontend source. 🟡 Real browser smoke on desktop/mobile remains open;
+- 🟢 Latest observed READY Vercel deployment (`6687e057`) includes frontend Pass 45–47 source changes. 🟡 Real browser smoke on desktop/mobile remains open;
 - 🟡 SpaceWeb authenticated media smoke.
 
 ### Immediate next gates — updated 2026-10-10
