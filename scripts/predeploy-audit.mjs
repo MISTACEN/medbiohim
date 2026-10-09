@@ -136,6 +136,11 @@ if (existsSync(materialViewerPath)) {
   } else {
     fail("materials viewer does not support canonical uploaded files/B2");
   }
+  if (text.includes("subjectSlug === 'histology'") && text.includes("$requiredSpecialty")) {
+    pass("histology materials are gated by MBH membership even if specialty_slug is empty");
+  } else {
+    fail("histology material routes may not enforce MBH membership consistently");
+  }
 }
 
 const proxyPathForHeaders = join(root, "src/app/api/v1/[...path]/route.ts");
