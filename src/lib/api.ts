@@ -356,7 +356,7 @@ export async function fetchHistologySourceFile(path:string):Promise<Blob|null>{
   const requestFile=async(token:string|null)=>{
     return fetch(
       API_URL + "/histology/source-file?path=" + encodeURIComponent(key),
-      {headers:token?{Authorization:"Bearer "+token}:{},cache:"no-store"}
+      {headers:token?{Authorization:"Bearer "+token}:{},cache:"no-store",signal:AbortSignal.timeout(30000)}
     );
   };
 
@@ -434,16 +434,16 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
   if(typeof window==="undefined") return null;
   const token=getToken();
   try{
-    let res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store"});
+    let res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store",signal:AbortSignal.timeout(30000)});
     if(res.status===401){
       const refreshToken=getRefreshToken();
       if(refreshToken){
-        const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});
+        const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store",signal:AbortSignal.timeout(10000)});
         if(rr.ok){
           const parsed=JSON.parse(await rr.text()) as {data?:{access_token?:string;refresh_token?:string}};
           if(parsed.data?.access_token){
             setTokens(parsed.data.access_token,parsed.data.refresh_token);
-            res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:{Authorization:`Bearer ${parsed.data.access_token}`},cache:"no-store"});
+            res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:{Authorization:`Bearer ${parsed.data.access_token}`},cache:"no-store",signal:AbortSignal.timeout(30000)});
           }
         }
       }
