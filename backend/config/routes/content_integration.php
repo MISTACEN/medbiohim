@@ -19,7 +19,7 @@ return static function (Router $router): void {
             return $requiredSpecialty === '' || $access->userHasSpecialty($req->user->id, $requiredSpecialty);
         }));
     };
-    $router->get('/api/v1/subject-materials', static function (Request $req, array $params): void {
+    $router->get('/api/v1/subject-materials', static function (Request $req, array $params) use ($filterMaterialsForUser): void {
         if (!RequireAuth::handle($req)) return;
 
         $subjectId = trim((string) ($req->query['subject_id'] ?? ''));
@@ -129,7 +129,7 @@ return static function (Router $router): void {
         }
     });
 
-    $router->get('/api/v1/materials', static function (Request $req, array $params): void {
+    $router->get('/api/v1/materials', static function (Request $req, array $params) use ($filterMaterialsForUser): void {
         if (!RequireAuth::handle($req)) return;
 
         $subjectId = trim((string) ($req->query['subject_id'] ?? ''));
