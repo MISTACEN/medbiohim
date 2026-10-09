@@ -10,6 +10,15 @@ use Medbiohim\Services\SpecialtyAccess;
 use Medbiohim\Services\B2Storage;
 
 return static function (Router $router): void {
+    $filterMaterialsForUser = static function (array $items, Request $req): array {
+        $access = new SpecialtyAccess();
+        return array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
+            $subjectSlug = trim((string) ($item['subject_slug'] ?? ''));
+            $specialty = trim((string) ($item['specialty_slug'] ?? ''));
+            $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
+            return $requiredSpecialty === '' || $access->userHasSpecialty($req->user->id, $requiredSpecialty);
+        }));
+    };
     $router->get('/api/v1/subject-materials', static function (Request $req, array $params): void {
         if (!RequireAuth::handle($req)) return;
 
@@ -52,10 +61,7 @@ return static function (Router $router): void {
             $items = $stmt->fetchAll() ?: [];
 
             $access = new SpecialtyAccess();
-            $items = array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
-                $slug = trim((string) ($item['specialty_slug'] ?? ''));
-                return $slug === '' || $access->userHasSpecialty($req->user->id, $slug);
-            }));
+            $items = $filterMaterialsForUser($items, $req);
 
             Response::success(['items' => $items, 'source' => 'supabase'], $req->requestId);
         } catch (\Throwable $e) {
@@ -68,9 +74,16 @@ return static function (Router $router): void {
 
         try {
             $stmt = Connection::pdo()->prepare(
-                'SELECT id, title, source_path, mime_type, original_format, source_archive, note, file_id, created_at
-                 FROM public.content_sources
-                 WHERE id = :id
+                'SELECT cs.id, cs.title, cs.source_path, cs.mime_type, cs.original_format,
+                        cs.source_archive, cs.note, cs.file_id, cs.created_at,
+                        EXISTS (
+                            SELECT 1
+                            FROM public.materials m
+                            JOIN public.subjects s ON s.id = m.subject_id
+                            WHERE m.source_key = cs.id::text AND s.slug = \'histology\'
+                        ) AS is_histology_source
+                 FROM public.content_sources cs
+                 WHERE cs.id = :id
                  LIMIT 1'
             );
             $stmt->execute(['id' => (string) ($params['id'] ?? '')]);
@@ -80,11 +93,16 @@ return static function (Router $router): void {
                 return;
             }
 
-            if (strtolower((string) ($row['id'] ?? '')) === 'histology' || str_starts_with((string) ($row['id'] ?? ''), 'histology-')) {
-                if (!(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
-                    Response::error('FORBIDDEN', 'Этот материал доступен только специальности МБХ', $req->requestId, 403);
-                    return;
-                }
+            $sourcePath = str_replace('\\\\', '/', trim((string) ($row['source_path'] ?? '')));
+            $sourceId = strtolower((string) ($row['id'] ?? ''));
+            $histologySourceFlag = in_array(strtolower((string) ($row['is_histology_source'] ?? '')), ['1', 't', 'true', 'yes'], true);
+            $isHistologySource = $histologySourceFlag
+                || $sourceId === 'histology'
+                || str_starts_with($sourceId, 'histology-')
+                || preg_match('#(?:^|/)(?:content|features)/histology(?:-content)?/#i', $sourcePath) === 1;
+            if ($isHistologySource && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, 'mbh')) {
+                Response::error('FORBIDDEN', 'Этот материал доступен только специальности МБХ', $req->requestId, 403);
+                return;
             }
 
             $download = null;
@@ -162,10 +180,7 @@ return static function (Router $router): void {
 
             $access = new SpecialtyAccess();
             $storage = new B2Storage();
-            $items = array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
-                $slug = trim((string) ($item['specialty_slug'] ?? ''));
-                return $slug === '' || $access->userHasSpecialty($req->user->id, $slug);
-            }));
+            $items = $filterMaterialsForUser($items, $req);
             foreach ($items as &$item) {
                 $item['source'] = [
                     'id' => $item['source_id'] ?? null,
@@ -217,8 +232,10 @@ return static function (Router $router): void {
                 Response::error('NOT_FOUND', 'Material not found', $req->requestId, 404);
                 return;
             }
+            $subjectSlug = trim((string) ($item['subject_slug'] ?? ''));
             $specialty = trim((string) ($item['specialty_slug'] ?? ''));
-            if ($specialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $specialty)) {
+            $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
+            if ($requiredSpecialty !== '' && !(new SpecialtyAccess())->userHasSpecialty($req->user->id, $requiredSpecialty)) {
                 Response::error('FORBIDDEN', 'Этот материал недоступен для вашей специальности', $req->requestId, 403);
                 return;
             }
