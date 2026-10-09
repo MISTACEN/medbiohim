@@ -18,8 +18,18 @@ export type AcademicState = {
 };
 function getToken(){if(typeof window==="undefined")return null;const t=localStorage.getItem("mb_access_token");return t&&t.trim()?t.trim():null}
 function getRefreshToken(){if(typeof window==="undefined")return null;const t=localStorage.getItem("mb_refresh_token");return t&&t.trim()?t.trim():null}
-export function setTokens(access:string,refresh?:string){localStorage.setItem("mb_access_token",access);if(refresh)localStorage.setItem("mb_refresh_token",refresh)}
-export function clearTokens(){localStorage.removeItem("mb_access_token");localStorage.removeItem("mb_refresh_token")}
+export function setTokens(access:string,refresh?:string){
+  const previousScope = cacheUserScope();
+  localStorage.setItem("mb_access_token",access);
+  if(refresh)localStorage.setItem("mb_refresh_token",refresh);
+  const nextScope = cacheUserScope();
+  if(previousScope !== nextScope) clearUserScopedCaches();
+}
+export function clearTokens(){
+  localStorage.removeItem("mb_access_token");
+  localStorage.removeItem("mb_refresh_token");
+  clearUserScopedCaches();
+}
 export function hasToken(){return !!getToken()}
 async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{
   const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};
@@ -200,20 +210,25 @@ const trainerImageCache=new Map<string,string>();
 const trainerImageInflight=new Map<string,Promise<string|null>>();
 export async function getTrainerImageUrl(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
-  const key=String(id);
-  const cached=trainerImageCache.get(key);
-  if(cached)return cached;
-  const pending=trainerImageInflight.get(key);
-  if(pending)return pending;
+  const idKey=String(id);
+  const userScope=cacheUserScope();
+  const cacheKey=userScope===null?null:`${userScope}|${idKey}`;
+  if(cacheKey){
+    const cached=trainerImageCache.get(cacheKey);
+    if(cached)return cached;
+    const pending=trainerImageInflight.get(cacheKey);
+    if(pending)return pending;
+  }
 
   const run=async()=>{
     let token=getToken();
     for(let attempt=0;attempt<3;attempt++){
       try{
         const bust=attempt===0?"":`?retry=${attempt}-${Date.now()}`;
-        let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image${bust}`,{
+        let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image${bust}`,{
           headers:token?{Authorization:`Bearer ${token}`}:{},
           cache:attempt===0?"force-cache":"no-store",
+          signal:AbortSignal.timeout(15000),
         });
         if(res.status===401){
           const refreshToken=getRefreshToken();
@@ -222,7 +237,8 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
               method:"POST",
               headers:{"Accept":"application/json","Content-Type":"application/json"},
               body:JSON.stringify({refresh_token:refreshToken}),
-              cache:"no-store"
+              cache:"no-store",
+              signal:AbortSignal.timeout(10000),
             });
             if(rr.ok){
               try{
@@ -230,9 +246,10 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
                 if(parsed.data?.access_token){
                   setTokens(parsed.data.access_token,parsed.data.refresh_token);
                   token=parsed.data.access_token;
-                  res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(key)}/image?retry=auth-${Date.now()}`,{
+                  res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image?retry=auth-${Date.now()}`,{
                     headers:{Authorization:`Bearer ${token}`},
-                    cache:"no-store"
+                    cache:"no-store",
+                    signal:AbortSignal.timeout(15000),
                   });
                 }
               }catch{}
@@ -243,7 +260,7 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
           const blob=await res.blob();
           if(blob.size>0){
             const url=URL.createObjectURL(blob);
-            trainerImageCache.set(key,url);
+            if(cacheKey && cacheUserScope()===userScope) trainerImageCache.set(cacheKey,url);
             return url;
           }
         }
@@ -252,22 +269,31 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
     }
     return null;
   };
-  const promise=run().finally(()=>{trainerImageInflight.delete(key);});
-  trainerImageInflight.set(key,promise);
+  const promise=run().finally(()=>{if(cacheKey)trainerImageInflight.delete(cacheKey);});
+  if(cacheKey)trainerImageInflight.set(cacheKey,promise);
   return promise;
 }
 const materialFileCache=new Map<string,string>();
 
 export async function getMaterialFileUrl(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
-  const key=String(id);
-  const cached=materialFileCache.get(key);
-  if(cached)return cached;
+  const idKey=String(id);
+  const userScope=cacheUserScope();
+  const cacheKey=userScope===null?null:`${userScope}|${idKey}`;
+  if(cacheKey){
+    const cached=materialFileCache.get(cacheKey);
+    if(cached)return cached;
+  }
+  const cacheForCurrentUser=(url:string)=>{
+    if(cacheKey && cacheUserScope()===userScope) materialFileCache.set(cacheKey,url);
+    return url;
+  };
   try{
     const negotiate=async(token:string|null)=>{
-      const res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file-url`,{
+      const res=await fetch(`${API_URL}/materials/${encodeURIComponent(idKey)}/file-url`,{
         headers:token?{Authorization:`Bearer ${token}`}: {},
         cache:"no-store",
+        signal:AbortSignal.timeout(15000),
       });
       if(!res.ok)return null;
       const parsed=await res.json() as {ok?:boolean;data?:{url?:string|null;mode?:string}};
@@ -278,7 +304,8 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
     let token=getToken();
     let meta=await negotiate(token);
     if(meta?.url){
-      materialFileCache.set(key,meta.url);
+      // B2 presigned URLs expire; never keep them in the in-memory cache.
+      if(meta.mode!=="presigned") return cacheForCurrentUser(meta.url);
       return meta.url;
     }
 
@@ -288,7 +315,7 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
         token=access;
         meta=await negotiate(access);
         if(meta?.url){
-          materialFileCache.set(key,meta.url);
+          if(meta.mode!=="presigned") return cacheForCurrentUser(meta.url);
           return meta.url;
         }
       }
@@ -296,31 +323,29 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
 
     // Legacy Histology files are private/authenticated binary responses.
     // Fetch them with Bearer and expose only a local blob URL to the viewer.
-    const res=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
+    const res=await fetch(`${API_URL}/materials/${encodeURIComponent(idKey)}/file`,{
       headers:token?{Authorization:`Bearer ${token}`}: {},
       cache:"no-store",
+      signal:AbortSignal.timeout(30000),
     });
     if(res.status===401){
       const access=await refreshAccessToken();
       if(access){
-        const retry=await fetch(`${API_URL}/materials/${encodeURIComponent(key)}/file`,{
+        const retry=await fetch(`${API_URL}/materials/${encodeURIComponent(idKey)}/file`,{
           headers:{Authorization:`Bearer ${access}`},
           cache:"no-store",
+          signal:AbortSignal.timeout(30000),
         });
         if(!retry.ok)return null;
         const blob=await retry.blob();
         if(blob.size===0)return null;
-        const url=URL.createObjectURL(blob);
-        materialFileCache.set(key,url);
-        return url;
+        return cacheForCurrentUser(URL.createObjectURL(blob));
       }
     }
     if(!res.ok)return null;
     const blob=await res.blob();
     if(blob.size===0)return null;
-    const url=URL.createObjectURL(blob);
-    materialFileCache.set(key,url);
-    return url;
+    return cacheForCurrentUser(URL.createObjectURL(blob));
   }catch{return null;}
 }
 
