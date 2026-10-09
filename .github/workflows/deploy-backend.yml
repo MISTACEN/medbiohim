@@ -153,7 +153,6 @@ jobs:
           grep -q '\$hasMbhAccess' verify/platform.php
           grep -q "subject_slug.*histology" verify/platform.php
           grep -q "correctOptionId" verify/platform.php
-          grep -q "submit_trainer_feed_answer" verify/platform.php || true
           echo "Backend deployment verification passed."
 
       - uses: actions/upload-artifact@v4
