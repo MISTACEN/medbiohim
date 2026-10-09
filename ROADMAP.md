@@ -11,7 +11,7 @@
 - 🟢 Removed duplicate admin route registrations and repaired the cross-file duplicate-route detector.
 - 🟢 Removed query-string bearer token fallback and hid internal exception details from client responses.
 - 🟢 Pinned active Actions workflows to Ubuntu 24.04; added role-claim regression tests to CI and deployment preflight.
-- 🟡 **GitHub Actions is still blocked/unverified**: the historical retry has no executed steps/logs, and a fresh run on the pinned image must actually execute before this is marked recovered.
+- 🔴 **GitHub Actions runner allocation is blocked**: fresh run [37993824049, attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049) used `ubuntu-24.04`, but both jobs had `runner_id=0`, zero steps and no logs (`BlobNotFound`). Pinning the image did not help; check account Actions billing/permissions or contact GitHub Support.
 - 🟡 Full exact-tree PHP lint, route registration, SQL/RLS/fallback integration, and SpaceWeb deployment smoke remain pending.
 
 Details: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
