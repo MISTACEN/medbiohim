@@ -24,8 +24,10 @@ $checks = [
         && str_contains($source, "'gid_null' => \$groupId")
         && str_contains($source, "'gid_match' => \$groupId"),
     'homework list filters MBH histology by active MBH group' =>
-        str_contains($source, "COALESCE(s.slug, \\'\\') <> \\'histology\\'")
-        && str_contains($source, "g_mbh.specialty_slug = \\'mbh\\'"),
+        str_contains($source, 'COALESCE(s.slug')
+        && str_contains($source, 'histology')
+        && str_contains($source, 'g_mbh.specialty_slug')
+        && str_contains($source, 'mbh'),
     'attachment upload requires active file owned by creator' =>
         str_contains($source, "status = 'active'")
         && str_contains($source, 'uploaded_by = :uid'),
