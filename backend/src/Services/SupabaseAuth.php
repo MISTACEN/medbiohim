@@ -139,10 +139,20 @@ final class SupabaseAuth
         $id = (string) ($j['id'] ?? '');
         $email = (string) ($j['email'] ?? '');
         if ($id === '') return null;
-        $role = null;
-        if (isset($j['user_metadata']['role']) && is_string($j['user_metadata']['role'])) $role = $j['user_metadata']['role'];
-        if (isset($j['app_metadata']['role']) && is_string($j['app_metadata']['role'])) $role = $j['app_metadata']['role'];
+        // user_metadata is editable by the user and must never grant backend roles.
+        $role = self::trustedRoleFromUserPayload($j);
         return new AuthUser($id, $email, $role, $j);
+    }
+
+    /**
+     * Only app_metadata is server-controlled in Supabase. Never trust user_metadata
+     * or the top-level user.role field for authorization.
+     */
+    public static function trustedRoleFromUserPayload(array $user): ?string
+    {
+        $appMetadata = is_array($user['app_metadata'] ?? null) ? $user['app_metadata'] : [];
+        $role = $appMetadata['role'] ?? null;
+        return is_string($role) && trim($role) !== '' ? trim($role) : null;
     }
 
     private function apiKey(): string
@@ -163,7 +173,7 @@ final class SupabaseAuth
                 'id' => $user['id'] ?? null,
                 'email' => $user['email'] ?? null,
                 'full_name' => $meta['full_name'] ?? ($meta['name'] ?? null),
-                'role' => $user['role'] ?? ($meta['role'] ?? null),
+                'role' => self::trustedRoleFromUserPayload($user),
             ],
         ];
     }
