@@ -250,7 +250,8 @@ return static function (Router $router): void {
                 Response::error('ATTEMPT_ALREADY_FINISHED', 'Попытка уже завершена; изменять её результат нельзя', $req->requestId, 409);
                 return;
             }
-            Response::error('DB_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('test_attempt_finish_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Не удалось завершить попытку', $req->requestId, 503);
         } catch (\Throwable $e) {
             Response::error('DB_UNAVAILABLE', 'Не удалось завершить попытку', $req->requestId, 503);
         }
