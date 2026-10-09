@@ -57,7 +57,7 @@ final class HomeworkRepository
                )
              ORDER BY h.due_at NULLS LAST, h.created_at DESC'
         );
-        $stmt->execute(['uid' => $userId, 'uid2' => $userId, 'uid3' => $userId, 'gid' => $groupId, 'gid2' => $groupId, 'gid_mbh' => $groupId]);
+        $stmt->execute(['uid' => $userId, 'uid2' => $userId, 'gid' => $groupId, 'gid2' => $groupId, 'gid_mbh' => $groupId]);
         $items = $stmt->fetchAll() ?: [];
         if ($items === []) return [];
 
