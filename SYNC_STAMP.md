@@ -4,7 +4,7 @@
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
-- Latest security fix: docs/SECURITY-FIX-2026-10-10-PASS45.md
+- Latest security fix: docs/SECURITY-FIX-2026-10-10-PASS47.md
 - API cache isolation: docs/RELIABILITY-FIX-2026-10-10-PASS46.md
 - Functional audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
