@@ -20,11 +20,13 @@
 
 **Текущий поток: Stability → Security gate → Media → Histology → Runtime verification.**
 
-### New P1 gate — trainer-answer confidentiality (functional audit Pass 41, 2026-10-09)
-- 🔴 Live Supabase check: 206/206 published `trainer_feed_cards` contain a `correct` flag inside `question.options`; published-row SELECT policies exist for `anon` and `authenticated`.
-- 🔴 The PHP trainer feed/detail routes and Next.js Supabase fallback currently return `question` with those flags. Hiding the marker in UI is not a security fix.
-- ⬜ Safe fix must cover direct Data API access, a sanitized read projection, server-side grading/answer writes, and existing training-session snapshots without breaking retry/review.
-- 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); CI has not executed its steps, so runtime validation is pending.
+### P1 trainer-answer confidentiality — mitigation applied (Pass 42, 2026-10-09)
+- 🟢 Live Supabase: base table `trainer_feed_cards` is no longer readable by `anon` / `authenticated`; safe view `trainer_feed_cards_public` strips answer-bearing fields and option correctness flags.
+- 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
+- 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
+- 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
+- 🟡 End-to-end acceptance remains open until latest Vercel/SpaceWeb code is deployed and a real authenticated test covers feed → training → answer → review → complete.
+- 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
@@ -37,7 +39,7 @@
 - 🟡 SpaceWeb authenticated media smoke.
 
 ### Immediate next gates — updated 2026-10-09
-1. 🔴 **P1: trainer-answer confidentiality.** All 206 published trainer cards expose nested option `correct` flags through the current feed schema/policies; fix DB read projection, API/fallback and answer persistence together.
+1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed; verify exact-commit deployment and authenticated MBH/non-MBH end-to-end training flows.
 2. 🔴 **CI runner allocation.** Current GitHub Actions jobs fail before the first step (`runner_id=0`, no steps/logs); no new code-check result exists. Restore runner execution and verify the exact `main` commit.
 3. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation (28 electronogram source-key paths have no matching `content_sources.source_path`).
 4. 🟡 Histology questions/tests: compare duplicate/blank-answer candidates against source materials; then run start → answer → finish → review.
@@ -1929,3 +1931,7 @@ No new branch created; the unified viewer correction is already integrated into 
 Full findings, source references, data counts and the ordered corrective plan: [docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
 
 No broad cleanup or Supabase data modification was done in this pass. Do not mark security, media, runtime, or browser items complete until their target-environment checks pass.
+
+
+## Functional security Pass 42 — 2026-10-09
+The live trainer answer-key mitigation and remaining runtime acceptance gates are documented in [docs/SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42.md). Do not mark the trainer flow fully accepted until Vercel + SpaceWeb and authenticated end-to-end checks pass.
