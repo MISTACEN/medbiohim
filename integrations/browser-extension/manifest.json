@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "MEDBIOHIM — Быстрый доступ",
+  "version": "0.1.0",
+  "description": "Быстрые ссылки на разделы образовательной платформы MEDBIOHIM.",
+  "action": {
+    "default_title": "MEDBIOHIM",
+    "default_popup": "popup.html"
+  }
+}
