@@ -21,7 +21,8 @@ use Medbiohim\Services\SupabaseRest;
 use Medbiohim\Support\ContentStore;
 
 return static function (Router $router): void {
-    $sanitizeTrainerQuestion = static function ($value): array {
+    $sanitizeTrainerQuestion = null;
+    $sanitizeTrainerQuestion = static function ($value) use (&$sanitizeTrainerQuestion): array {
         if (is_string($value)) {
             $decoded = json_decode($value, true);
             $value = is_array($decoded) ? $decoded : [];
@@ -29,6 +30,12 @@ return static function (Router $router): void {
         if (!is_array($value)) return [];
         foreach (['explanation', 'answer', 'correct', 'isCorrect', 'is_correct', 'correctAnswer', 'correct_answer', 'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'] as $key) {
             unset($value[$key]);
+        }
+        if (isset($value['question']) && is_array($value['question'])) {
+            $value['question'] = $sanitizeTrainerQuestion($value['question']);
+        }
+        if (isset($value['preparation']) && is_array($value['preparation'])) {
+            unset($value['preparation']['name'], $value['preparation']['organ'], $value['preparation']['captions']);
         }
         if (isset($value['options']) && is_array($value['options'])) {
             foreach ($value['options'] as &$option) {
