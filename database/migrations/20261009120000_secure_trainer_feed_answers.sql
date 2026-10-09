@@ -16,7 +16,7 @@ SELECT
   CASE
     WHEN jsonb_typeof(c.question->'options') = 'array' THEN
       (c.question - ARRAY[
-        'explanation', 'answer', 'correctAnswer', 'correct_answer',
+        'explanation', 'answer', 'correct', 'isCorrect', 'is_correct', 'correctAnswer', 'correct_answer',
         'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'
       ]::text[])
       || jsonb_build_object(
@@ -31,7 +31,7 @@ SELECT
       )
     ELSE
       c.question - ARRAY[
-        'explanation', 'answer', 'correctAnswer', 'correct_answer',
+        'explanation', 'answer', 'correct', 'isCorrect', 'is_correct', 'correctAnswer', 'correct_answer',
         'correctOption', 'correct_option', 'correctOptionId', 'correct_option_id'
       ]::text[]
   END AS question,
