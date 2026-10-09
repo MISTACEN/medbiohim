@@ -1939,4 +1939,4 @@ The live trainer answer-key mitigation and remaining runtime acceptance gates ar
 
 
 ## Reliability Pass 43 — 2026-10-09
-API timeout and stale-cache signalling are fixed in source at `77b0f4a1`; production confirmation awaits a Vercel deployment newer than `b96bdcd`. Details: [docs/RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and included in the Vercel production READY deployment `a56d3fdb`; browser behavior still needs verification. Details: [docs/RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
