@@ -61,7 +61,14 @@ final class FileRepository
     public function assertAccess(string $fileId, string $userId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT f.* FROM public.files f
+            "SELECT f.*,
+                    EXISTS (
+                        SELECT 1
+                        FROM public.materials m
+                        JOIN public.subjects s ON s.id = m.subject_id
+                        WHERE m.file_id = f.id AND s.slug = 'histology'
+                    ) AS is_histology_material
+             FROM public.files f
              WHERE f.id=:id AND f.status='active'
                AND (
                  f.uploaded_by=:uid
