@@ -26,7 +26,7 @@ Migration: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
 ## Source-code changes
 - src/app/api/v1/[...path]/route.ts: trainer feed, detail, and image fallback now read from the safe view; answer submission uses the RPC rather than client-writable table inserts. Nested question keys are removed. The API proxy also sanitizes unanswered training snapshots returned by the PHP backend.
 - backend/config/routes/platform.php: PHP feed and detail responses remove answer-bearing keys; invalid option IDs are rejected; time values are bounded; explanation is returned only after answer submission.
-- backend/src/Http/Response.php and backend/src/Security/TrainingPayloadSanitizer.php: common PHP response boundary strips answer keys from newly-created training questions and unanswered session snapshots, while retaining review keys for already answered/skipped questions.
+- backend/src/Http/Response.php and backend/src/Security/TrainingPayloadSanitizer.php: common PHP response boundary strips answer keys from newly-created training questions and unanswered session snapshots, including preparation names/organ/captions that act as answers, while retaining review data for already answered/skipped questions. The Next.js proxy applies the same projection.
 - database/migrations/20261009120000_secure_trainer_feed_answers.sql: checked-in migration matches the live mitigation.
 
 ## Remaining acceptance gate
