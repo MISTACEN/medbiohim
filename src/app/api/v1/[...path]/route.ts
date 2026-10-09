@@ -30,6 +30,25 @@ function jwtSubject(token: string) {
   }
 }
 
+function safeTrainerQuestion(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const question = { ...(value as Record<string, unknown>) };
+  for (const key of ["explanation", "answer", "correctAnswer", "correct_answer", "correctOption", "correct_option", "correctOptionId", "correct_option_id"]) {
+    delete question[key];
+  }
+  if (Array.isArray(question.options)) {
+    question.options = question.options.map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+      const option = { ...(item as Record<string, unknown>) };
+      delete option.correct;
+      delete option.isCorrect;
+      delete option.is_correct;
+      return option;
+    });
+  }
+  return question;
+}
+
 async function supabaseRequest(path: string, req: NextRequest, init: RequestInit = {}) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   const token = bearer(req);
@@ -66,7 +85,7 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
     const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
 
     const params = new URLSearchParams({
-      select: "id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at",
+      select: "id,subject_id,subject_slug,specialty_slug,mode_set,preparation,hotspots,question,tags,difficulty,source_key,source_file_id,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_status,plan_module_title,plan_topic_title",
       is_published: "eq.true",
       order: "id.asc",
       limit: String(limit),
@@ -75,7 +94,7 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
     if (subject) params.set("subject_slug", `eq.${subject}`);
     if (specialty) params.set("specialty_slug", `eq.${specialty}`);
 
-    const response = await supabaseRequest(`trainer_feed_cards?${params.toString()}`, req);
+    const response = await supabaseRequest(`trainer_feed_cards_public?${params.toString()}`, req);
     if (!response) return null;
     const text = await response.text();
     let data: unknown;
@@ -86,8 +105,9 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
         { status: response.status }
       );
     }
+    const safeItems = Array.isArray(data) ? data.map((item: any) => ({ ...item, question: safeTrainerQuestion(item?.question) })) : [];
     return NextResponse.json(
-      { ok: true, data: { items: Array.isArray(data) ? data : [], limit, offset, source: "supabase_rest_fallback" }, requestId: "trainer-fallback" },
+      { ok: true, data: { items: safeItems, limit, offset, source: "supabase_rest_fallback" }, requestId: "trainer-fallback" },
       { status: 200 }
     );
   }
@@ -108,56 +128,35 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
       return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "Invalid Authorization Bearer token" }, requestId: "trainer-fallback" }, { status: 401 });
     }
 
-    const cardParams = new URLSearchParams({
-      select: "id,specialty_slug,question",
-      id: `eq.${cardId}`,
-      is_published: "eq.true",
-      limit: "1",
-    });
-    const cardResponse = await supabaseRequest(`trainer_feed_cards?${cardParams.toString()}`, req);
-    if (!cardResponse) return null;
-    const cardText = await cardResponse.text();
-    let cards: any[] = [];
-    try { cards = JSON.parse(cardText); } catch {}
-    if (!cardResponse.ok || !cards[0]) {
-      return NextResponse.json({ ok: false, error: { code: "NOT_FOUND", message: "Trainer card not found" }, requestId: "trainer-fallback" }, { status: 404 });
-    }
-
-    const question = cards[0].question && typeof cards[0].question === "object" ? cards[0].question : {};
     const optionId = typeof payload.option_id === "string" ? payload.option_id.trim() : "";
     const answerText = typeof payload.answer_text === "string" ? payload.answer_text.trim() : "";
     const skipped = Boolean(payload.is_skipped);
-    let correct: boolean | null = null;
-    const options = Array.isArray((question as any).options) ? (question as any).options : [];
-    for (const option of options) {
-      if (String(option?.id || "") === optionId) {
-        correct = Boolean(option?.correct);
-        break;
-      }
-    }
+    const rawTime = Number(payload.time_ms);
+    const timeMs = Number.isFinite(rawTime) ? Math.max(0, Math.min(3600000, Math.trunc(rawTime))) : null;
 
-    const insert = {
-      user_id: userId,
-      card_id: cardId,
-      option_id: optionId || null,
-      answer_text: answerText || (optionId || null),
-      is_skipped: skipped,
-      is_correct: skipped ? null : correct,
-      time_ms: Number.isFinite(Number(payload.time_ms)) ? Number(payload.time_ms) : null,
-    };
-    const answerResponse = await supabaseRequest("trainer_feed_answers", req, {
+    const answerResponse = await supabaseRequest("rpc/submit_trainer_feed_answer", req, {
       method: "POST",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify(insert),
+      body: JSON.stringify({
+        p_card_id: cardId,
+        p_option_id: optionId || null,
+        p_answer_text: answerText || null,
+        p_is_skipped: skipped,
+        p_time_ms: timeMs,
+      }),
     });
     if (!answerResponse) return null;
     const answerTextResponse = await answerResponse.text();
-    let answer: unknown = null;
-    try { answer = JSON.parse(answerTextResponse); } catch {}
-    if (!answerResponse.ok) {
-      return NextResponse.json({ ok: false, error: { code: "TRAINER_ERROR", message: "Could not save trainer answer", details: answer }, requestId: "trainer-fallback" }, { status: answerResponse.status });
+    let result: any = null;
+    try { result = JSON.parse(answerTextResponse); } catch {}
+    if (!answerResponse.ok || !result || typeof result !== "object") {
+      return NextResponse.json({ ok: false, error: { code: "TRAINER_ERROR", message: "Could not save trainer answer" }, requestId: "trainer-fallback" }, { status: answerResponse.status || 503 });
     }
-    return NextResponse.json({ ok: true, data: { answer: Array.isArray(answer) ? answer[0] : answer, correct: skipped ? null : correct }, requestId: "trainer-fallback" }, { status: 201 });
+    return NextResponse.json({
+      ok: true,
+      data: { answer: result.answer ?? null, correct: result.correct ?? null, explanation: result.explanation ?? null },
+      requestId: "trainer-fallback",
+    }, { status: 201 });
   }
 
   // GET /trainers/feed/{id}/image: keep the existing backend as the media source.
@@ -165,7 +164,7 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
   if (req.method === "GET" && imageMatch) {
     const id = decodeURIComponent(imageMatch[1]);
     const params = new URLSearchParams({ select: "preparation", id: "eq." + id, is_published: "eq.true", limit: "1" });
-    const response = await supabaseRequest("trainer_feed_cards?" + params.toString(), req);
+    const response = await supabaseRequest("trainer_feed_cards_public?" + params.toString(), req);
     if (!response) return null;
     const text = await response.text();
     let rows: any[] = [];
@@ -202,7 +201,7 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
       is_published: "eq.true",
       limit: "1",
     });
-    const response = await supabaseRequest(`trainer_feed_cards?${params.toString()}`, req);
+    const response = await supabaseRequest(`trainer_feed_cards_public?${params.toString()}`, req);
     if (!response) return null;
     const text = await response.text();
     let data: unknown;
@@ -210,7 +209,7 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
     if (!response.ok || !Array.isArray(data) || !data[0]) {
       return NextResponse.json({ ok: false, error: { code: "NOT_FOUND", message: "Trainer card not found" }, requestId: "trainer-fallback" }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, data: { item: data[0] }, requestId: "trainer-fallback" }, { status: 200 });
+    return NextResponse.json({ ok: true, data: { item: { ...data[0], question: safeTrainerQuestion(data[0]?.question) } }, requestId: "trainer-fallback" }, { status: 200 });
   }
 
   return null;
