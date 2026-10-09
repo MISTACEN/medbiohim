@@ -19,7 +19,7 @@ The API cache scope was derived from the JWT `sub` claim, but when the token was
 - Source-level check is committed.
 - GitHub Actions still fails before the first step, so the pre-deploy audit has not executed in GitHub.
 - No live cross-account leak was demonstrated; the fix removes the ambiguous shared cache bucket defensively.
-- The latest observed READY Vercel deployment predates Pass 45/46 source commits; production inclusion must be verified from deployment metadata after a new READY build.
+- Latest observed READY Vercel deployment `6687e057` includes Pass 45–47 frontend source changes, including Pass 46 cache-scope hardening. Browser/runtime behavior remains unverified.
 
 ## Acceptance
 
