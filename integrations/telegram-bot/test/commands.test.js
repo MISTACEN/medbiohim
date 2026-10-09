@@ -8,10 +8,12 @@ test("parses supported slash commands case-insensitively", () => {
   assert.equal(parseCommand("/help some text"), "help");
 });
 
-test("ignores ordinary text and commands addressed to another configured bot", () => {
+test("ignores ordinary text and commands addressed to another or unknown bot", () => {
   const previous = process.env.TELEGRAM_BOT_USERNAME;
-  process.env.TELEGRAM_BOT_USERNAME = "medbiohim_bot";
+  delete process.env.TELEGRAM_BOT_USERNAME;
   assert.equal(parseCommand("hello"), null);
+  assert.equal(parseCommand("/start@some_bot"), null);
+  process.env.TELEGRAM_BOT_USERNAME = "medbiohim_bot";
   assert.equal(parseCommand("/start@another_bot"), null);
   assert.equal(parseCommand("/start@MEDBIOHIM_BOT"), "start");
   if (previous === undefined) delete process.env.TELEGRAM_BOT_USERNAME;
