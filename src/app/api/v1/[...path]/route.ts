@@ -39,6 +39,13 @@ function safeTrainerQuestion(value: unknown) {
   if (question.question && typeof question.question === "object" && !Array.isArray(question.question)) {
     question.question = safeTrainerQuestion(question.question);
   }
+  if (question.preparation && typeof question.preparation === "object" && !Array.isArray(question.preparation)) {
+    const preparation = { ...(question.preparation as Record<string, unknown>) };
+    delete preparation.name;
+    delete preparation.organ;
+    delete preparation.captions;
+    question.preparation = preparation;
+  }
   if (Array.isArray(question.options)) {
     question.options = question.options.map((item) => {
       if (!item || typeof item !== "object" || Array.isArray(item)) return item;
