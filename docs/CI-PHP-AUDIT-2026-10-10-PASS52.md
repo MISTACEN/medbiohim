@@ -28,3 +28,8 @@ Pinning workflows to `ubuntu-24.04` did not fix runner allocation. The next exte
 - The new contract test is static and is not a substitute for PostgreSQL integration tests against the actual schema/RLS policies.
 - No live Supabase data, memberships, role assignments, schedule rows, homework rows, or learning content were modified.
 - SpaceWeb deployment remains unverified; do not assume these backend source changes are live until the deployment workflow and post-deploy checks execute successfully.
+
+
+## Frontend deployment status
+
+The latest observed Vercel commit status is `failure` with the target URL indicating `build-rate-limit` / upgrade-to-Pro. This is a Vercel build quota/plan blocker, not evidence of a source compilation failure. Until Vercel allows a build, frontend deployment status also remains unverified. See the [Vercel project status target](https://vercel.com/mistacen1?upgradeToPro=build-rate-limit).
