@@ -10,6 +10,12 @@ Scope: follow-up static review of homework SQL and CI recovery.
 2. Added `backend/tests/HomeworkSqlContractTest.php`, a credential-free static regression test for the homework query placeholders, MBH/histology scope predicate, and active/owned attachment requirement.
 3. Wired the new test into both `code-check.yml` and the SpaceWeb pre-deploy checks, so it will run before backend deployment once Actions can allocate a runner.
 
+## Additional PHP findings fixed in this pass
+
+4. `backend/config/routes/student_planner.php`: split repeated PDO placeholders between homework progress/submission joins and between the completed flag and its timestamp expression. The attendance update handler now logs internal details and returns a generic client error.
+5. `backend/config/routes/admin_questions.php`, `admin_rest.php`, and `admin.php`: replaced raw exception text in database/admin failure responses with generic messages and server-side log entries. Input validation errors continue to return their specific validation message.
+6. `backend/config/routes/platform.php`: the media route's caught failure now logs the internal exception and returns a generic message. One remaining legacy platform handler is still under review and is explicitly not counted as verified.
+
 ## CI status — not resolved
 
 The latest available evidence from run [37993824049](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049) remains an infrastructure failure: jobs have no step list or logs and GitHub reports `runner_id=0`. Retrying the failed jobs was accepted, but both jobs again failed without executing steps. This means we still cannot honestly report that the full PHP lint, regression suite, route registration, TypeScript checks, or production build passed in CI.
