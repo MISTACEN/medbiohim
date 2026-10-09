@@ -268,7 +268,7 @@ final class AdminDatabaseManager
         $this->assertTable($table);
         if(!$row)throw new RuntimeException('Строка пуста');
         $pdo=$this->open($id);$driver=$this->driver($id);$schema=$this->schema($id,$table);$allowed=[];
-        foreach($schema['columns']??[] as $col)$allowed[(string)$col['column_name']=true;
+        foreach($schema['columns']??[] as $col)$allowed[(string)$col['column_name']]=true;
         $data=array_intersect_key($row,$allowed);
         if(!$data)throw new RuntimeException('Нет допустимых колонок для вставки');
         $columns=array_keys($data);$holders=[];foreach($columns as $column)$holders[]=':p_'.$this->paramSafe($column);
@@ -283,7 +283,7 @@ final class AdminDatabaseManager
         $this->assertTable($table);
         if(!$key)throw new RuntimeException('Не указан ключ строки');
         $pdo=$this->open($id);$driver=$this->driver($id);$schema=$this->schema($id,$table);$valid=[];
-        foreach($schema['columns']??[] as $col)$valid[(string)$col['column_name']=true;
+        foreach($schema['columns']??[] as $col)$valid[(string)$col['column_name']]=true;
         foreach(array_keys($key) as $k)if(!isset($valid[$k]))throw new RuntimeException('Недопустимый ключ: '.$k);
         $changes=array_diff_key($row,$key);if(!$changes)throw new RuntimeException('Изменений нет');
         $sets=[];$params=[];
