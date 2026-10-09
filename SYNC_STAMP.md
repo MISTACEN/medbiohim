@@ -10,6 +10,9 @@
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
 - API reliability fix: docs/RELIABILITY-FIX-2026-10-09-PASS43.md
 - Unified verification checklist: docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md
+- Structured bug report form: .github/ISSUE_TEMPLATE/bug_report.yml
+- Browser extension MVP: integrations/browser-extension/README.md
+- Telegram bot MVP: integrations/telegram-bot/README.md
 
 ## Latest available data snapshot (live counts last checked 2026-10-06; Pass 41 read-only spot checks 2026-10-09)
 - Histology `exam_questions`: 466 records (366 published, 100 unpublished; repeated-text groups require comparison, not automatic deletion)
@@ -28,6 +31,8 @@
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - SpaceWeb deployment workflow now stops if its pre-deploy backup is missing/empty and verifies Pass 44 source markers after upload; actual deployment is still unconfirmed.
 - AI provider runtime/fallback verification.
+- Optional browser extension manual install and route check.
+- Telegram bot MVP deployment and webhook registration require separate Vercel project + secret environment variables; no token is stored in GitHub. Private notifications remain blocked until account linking/idempotency/security gates are implemented.
 - final histology plan ↔ content matrix and lecture-source reconciliation.
 - admin database console target-runtime test and raw SQL safety review.
 - duplicate/blank-answer question review; no mass deletion or auto-publication.
