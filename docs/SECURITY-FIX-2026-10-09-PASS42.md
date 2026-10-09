@@ -19,7 +19,7 @@ Migration: database/migrations/20261009120000_secure_trainer_feed_answers.sql.
 - Live view query: 206 cards were returned before specialty filtering was added, with 0 answer fields and 0 option correctness flags.
 - Live membership-context transaction: an active MBH member can see all 206 published cards through the safe view.
 - The safe view's correctness-flag scan returned 0 rows with a correct / isCorrect / is_correct key.
-- information_schema.role_table_grants after the change shows only SELECT on trainer_feed_cards_public for anon / authenticated; it shows no SELECT/INSERT/UPDATE/DELETE grants on the base trainer_feed_cards table and no direct write grants on trainer_feed_answers.
+- information_schema.role_table_grants after the change shows only SELECT on trainer_feed_cards_public for anon / authenticated; it shows no SELECT/INSERT/UPDATE/DELETE grants on trainer_feed_cards, trainer_feed_answers, trainings, or training_answers for public client roles.
 - Function metadata confirms owner postgres, SECURITY DEFINER, and search_path=pg_catalog; routine grants list authenticated, service_role, and postgres, not anon or PUBLIC.
 - No answer rows were intentionally added or altered by the audit. A write-and-rollback scoring integration test was not completed; authenticated RPC end-to-end remains an acceptance check.
 
