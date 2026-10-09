@@ -92,7 +92,7 @@ return static function (Router $router): void {
                 return;
             }
 
-            $sourcePath = str_replace('\\\\', '/', trim((string) ($row['source_path'] ?? '')));
+            $sourcePath = str_replace('\\', '/', trim((string) ($row['source_path'] ?? '')));
             $sourceId = strtolower((string) ($row['id'] ?? ''));
             $histologySourceFlag = in_array(strtolower((string) ($row['is_histology_source'] ?? '')), ['1', 't', 'true', 'yes'], true);
             $isHistologySource = $histologySourceFlag
