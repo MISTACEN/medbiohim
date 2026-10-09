@@ -14,6 +14,7 @@ This is a client-side cache isolation risk; no live cross-account access was dem
 - Trainer card, trainer image and material-file caches now include the current user scope.
 - Opaque/malformed tokens bypass cache rather than sharing a generic authenticated cache bucket (Pass 46).
 - Changing account scope and logging out clears cached API data, private card data and private media blob URLs; blob URLs are revoked.
+- If a new account scope is selected without a new refresh token, the previous account's refresh token is removed rather than retained.
 - Authenticated trainer images use `cache: no-store` rather than browser `force-cache`.
 - Presigned B2 URLs are returned but not retained in the in-memory material cache.
 - Direct trainer-image, material-file and histology-source-file fetches now have bounded request timeouts; refresh requests use a 10-second timeout.
