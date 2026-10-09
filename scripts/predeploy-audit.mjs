@@ -109,6 +109,30 @@ if (existsSync(privateMediaCacheContract)) {
   }
 }
 
+const contentIntegrationPath = join(root, "backend/config/routes/content_integration.php");
+if (existsSync(contentIntegrationPath)) {
+  const contentRoutes = await readFile(contentIntegrationPath, "utf8");
+  if (contentRoutes.includes("subjectSlug === 'histology'") &&
+      contentRoutes.includes("is_histology_source") &&
+      contentRoutes.includes("$filterMaterialsForUser")) {
+    pass("materials lists/details and content source downloads enforce MBH scope");
+  } else {
+    fail("materials/content-source MBH access checks are incomplete");
+  }
+}
+
+const fileRoutesPath = join(root, "backend/config/routes/files.php");
+const fileRepositoryPath = join(root, "backend/src/Repositories/FileRepository.php");
+if (existsSync(fileRoutesPath) && existsSync(fileRepositoryPath)) {
+  const fileRoutes = await readFile(fileRoutesPath, "utf8");
+  const fileRepository = await readFile(fileRepositoryPath, "utf8");
+  if (fileRoutes.includes("$requiredSpecialtyForFile") && fileRepository.includes("is_histology_material")) {
+    pass("file download metadata carries histology access scope");
+  } else {
+    fail("file downloads may miss histology access scope when specialty_slug is empty");
+  }
+}
+
 const appFiles = await walk(join(root, "src/app"));
 const compatHits = [];
 for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].includes(extname(x)))) {
