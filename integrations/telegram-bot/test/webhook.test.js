@@ -77,6 +77,24 @@ test("ignores group messages without calling Telegram API", async () => {
   }
 });
 
+test("does not treat an unsuccessful Telegram API payload as delivered", async () => {
+  process.env.TELEGRAM_BOT_TOKEN = "test-token";
+  process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
+  const oldFetch = global.fetch;
+  const oldError = console.error;
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ ok: false }) });
+  console.error = () => {};
+  try {
+    const res = makeResponse();
+    await webhook(makeRequest({ body: { message: { text: "/site", chat: { id: 42, type: "private" } } } }), res);
+    assert.equal(res.statusCode, 502);
+    assert.equal(res.body.error, "TELEGRAM_DELIVERY_FAILED");
+  } finally {
+    global.fetch = oldFetch;
+    console.error = oldError;
+  }
+});
+
 test("replies to private public-command messages with a safe site link", async () => {
   process.env.TELEGRAM_BOT_TOKEN = "test-token";
   process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
@@ -85,7 +103,7 @@ test("replies to private public-command messages with a safe site link", async (
   global.fetch = async (url, init) => {
     assert.match(url, /bottest-token\/sendMessage$/);
     sent = JSON.parse(init.body);
-    return { ok: true, status: 200 };
+    return { ok: true, status: 200, json: async () => ({ ok: true }) };
   };
   try {
     const res = makeResponse();
