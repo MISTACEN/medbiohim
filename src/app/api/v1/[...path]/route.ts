@@ -33,7 +33,7 @@ function jwtSubject(token: string) {
 function safeTrainerQuestion(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const question = { ...(value as Record<string, unknown>) };
-  for (const key of ["explanation", "answer", "correctAnswer", "correct_answer", "correctOption", "correct_option", "correctOptionId", "correct_option_id"]) {
+  for (const key of ["explanation", "answer", "correct", "isCorrect", "is_correct", "correctAnswer", "correct_answer", "correctOption", "correct_option", "correctOptionId", "correct_option_id"]) {
     delete question[key];
   }
   if (question.question && typeof question.question === "object" && !Array.isArray(question.question)) {
