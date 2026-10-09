@@ -39,6 +39,11 @@
 - 🟢 15 PHP sanitizer assertions passed in an isolated PHP 8.4 CLI run using repository class/test contents. A read-only DB spot-check found 206 published cards and no nested answer fields under the checked `question`/`metadata` branches.
 - 🟡 Pass 45 is source-only until the next Vercel READY build and SpaceWeb deployment are verified; GitHub Actions still fails before steps. See [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
 
+### P1 API cache isolation — source fix committed (Pass 46, 2026-10-10)
+- 🟢 Malformed/opaque JWTs no longer share the literal `auth` cache scope; `apiCached()` bypasses cache when no valid subject can be parsed.
+- 🟢 Added a pre-deploy audit guard for this contract.
+- 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment predates Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
+
 ### CI/QA hardening — source updated, runner still blocked (2026-10-10)
 - 🟢 Fixed the PHP namespace prefix in `.github/workflows/code-check.yml` route-registration smoke test; it previously contained four literal backslashes, which PHP interpreted as two namespace separators instead of one.
 - 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 15 assertions passed.
