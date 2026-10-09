@@ -72,11 +72,16 @@ return static function (Router $router): void {
         $semester = isset($req->query['semester']) ? (int) $req->query['semester'] : null;
         $filterSubjects = static function (array $items) use ($req): array {
             $access = new SpecialtyAccess();
-            return array_values(array_filter($items, static function (array $item) use ($access, $req): bool {
+            $membershipCache = [];
+            return array_values(array_filter($items, static function (array $item) use ($access, $req, &$membershipCache): bool {
                 $subjectSlug = trim((string) ($item['slug'] ?? ''));
                 $specialty = trim((string) ($item['specialty_slug'] ?? ''));
                 $requiredSpecialty = ($subjectSlug === 'histology' || $specialty === 'mbh') ? 'mbh' : $specialty;
-                return $requiredSpecialty === '' || $access->userHasSpecialty($req->user->id, $requiredSpecialty);
+                if ($requiredSpecialty === '') return true;
+                if (!array_key_exists($requiredSpecialty, $membershipCache)) {
+                    $membershipCache[$requiredSpecialty] = $access->userHasSpecialty($req->user->id, $requiredSpecialty);
+                }
+                return $membershipCache[$requiredSpecialty];
             }));
         };
 
