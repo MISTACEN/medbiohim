@@ -1,31 +1,33 @@
 # Sync stamp
 
-- Date: 2026-10-04
+- Date: 2026-10-09
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
-- Full audit: docs/FULL-AUDIT-2026-10-04.md
+- Full audit: docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md
 - Unfinished registry: docs/UNFINISHED-REGISTRY.md
 - API coverage audit: docs/API-COVERAGE-2026-10-04.md
 
-## Current verified data
-- Supabase histology `exam_questions`: 350
-- Histology `ticket_banks`: 5
-- Published histology materials: 27
-- Published histology trainer feed cards: 206
-- Canonical histology trainer/atlas cards used by the current subject flow: 30
-- Published tests total: 33
-- Published questions total: 855
+## Latest available data snapshot (live counts last checked 2026-10-06; Pass 41 read-only spot checks 2026-10-09)
+- Histology `exam_questions`: 466 records (366 published, 100 unpublished; repeated-text groups require comparison, not automatic deletion)
+- Histology `ticket_banks`: 5 (preserved; not modified)
+- Published histology material records: 80 (physical document/image availability is not proven by metadata)
+- Published trainer feed cards: 206; all 206 currently contain nested `question.options[].correct` flags
+- Published electronogram cards: 28; physical paths still require SpaceWeb/B2 HTTP verification
+- `questions`: last full integrity snapshot recorded 855 rows and 660 published non-archived
+- `tests`: last full integrity snapshot recorded 33 total and 32 published
+- Treat the counts above as the last recorded snapshots, not as proof that the newest deployment is functioning.
 
-## Current open checks
-- latest code-check after Deep Audit documentation commit: running
-- Vercel target deployment after latest commits
-- SpaceWeb backend target deployment after latest backend commits
-- trainer feed media 404/502 physical verification
-- AI provider runtime/fallback verification
-- final histology plan ↔ content matrix
-- admin CMS material/trainer/version-history completion
-- duplicate route consolidation (after contract audit)
+## Current open checks — updated 2026-10-09
+- GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed.
+- Vercel metadata still points to READY deployment of commit `4c6fc5e`; the code fix at `fb4eed97` is not confirmed in production.
+- P1: prevent trainer-answer leakage through Supabase Data API, PHP trainer routes, Next fallback and training session snapshots.
+- SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
+- AI provider runtime/fallback verification.
+- final histology plan ↔ content matrix and lecture-source reconciliation.
+- admin database console target-runtime test and raw SQL safety review.
+- duplicate/blank-answer question review; no mass deletion or auto-publication.
+- browser regression for login/dashboard/schedule/tests/materials and iPhone/desktop viewer.
 
 ## Current verified cleanup
 - no frontend /api-compat calls
@@ -215,3 +217,11 @@
 - Пароли внешних БД не показываются обратно и хранятся на backend только в зашифрованном виде.
 - В Supabase создана отдельная public.admin_db_connections; RLS включён, прямой доступ anon/authenticated закрыт.
 - Реальные подключения SpaceWeb пока не тестировались без пароля: профили заполнены по предоставленным реквизитам, поле пароля остаётся пустым до ввода секрета администратором.
+
+
+## 2026-10-09 — Functional audit Pass 41
+- Audit report: `docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md`.
+- Fixed two malformed PHP array expressions in `backend/src/Services/AdminDatabaseManager.php`: commit `fb4eed97e0710eaeaccc8aeddb51a42acc53af24`.
+- Code-check retry `37935997871`, attempt 2: job did not allocate a runner; no test steps ran.
+- Roadmap and phases status were synced to Pass 41; no Supabase rows or schema were modified by this audit.
+- Next work order: trainer-answer confidentiality → runner/CI recovery → exact commit deployment verification → physical media reconciliation → histology question/lecture source review → runtime/browser smoke.
