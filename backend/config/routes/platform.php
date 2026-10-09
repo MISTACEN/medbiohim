@@ -320,11 +320,18 @@ return static function (Router $router): void {
             $timeMs = $req->json('time_ms');
             $correct = null;
 
-            foreach (($question['options'] ?? []) as $option) {
-                if ((string) ($option['id'] ?? '') === $givenOption) {
+            $options = is_array($question['options'] ?? null) ? $question['options'] : [];
+            $optionFound = false;
+            foreach ($options as $option) {
+                if ((string) ($option['id'] ?? '') === $givenOption && $givenOption !== '') {
+                    $optionFound = true;
                     $correct = (bool) ($option['correct'] ?? false);
                     break;
                 }
+            }
+            if (!$isSkipped && $options !== [] && !$optionFound) {
+                Response::error('VALIDATION_ERROR', 'option_id is not a valid option for this card', $req->requestId, 422);
+                return;
             }
 
             $answerText = $givenText !== '' ? $givenText : ($givenOption !== '' ? $givenOption : null);
@@ -341,7 +348,7 @@ return static function (Router $router): void {
                 'answer_text' => $answerText,
                 'skipped' => $isSkipped,
                 'correct' => $isSkipped ? null : $correct,
-                'time_ms' => is_numeric($timeMs) ? (int) $timeMs : null,
+                'time_ms' => is_numeric($timeMs) ? max(0, min(3600000, (int) $timeMs)) : null,
             ]);
 
             Response::success(['answer' => $ins->fetch(), 'correct' => $isSkipped ? null : $correct, 'explanation' => $isSkipped ? null : ($question['explanation'] ?? null)], $req->requestId, 201);
