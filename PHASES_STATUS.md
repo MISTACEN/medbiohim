@@ -42,9 +42,9 @@
 - ✅ beta — experiment branch.
 - ✅ subject-level navigation.
 - ✅ histology canonical subject cleanup.
-- ✅ 350 histology exam questions.
+- 🟡 Histology `exam_questions` exist; latest recorded live snapshot is 466 rows (366 published, 100 unpublished as of 2026-10-06). Duplicate-text groups and blank-answer candidates still need source comparison; count is not a completion criterion.
 - ✅ 5 histology ticket banks.
-- ✅ 27 published histology materials.
+- 🟡 Histology material counts need reconciliation: older phase notes say 27 published, while the later live snapshot records 80 published material records; neither count proves physical files are available.
 - ✅ histology trainer feed and atlas data.
 - ✅ test-key resolution via `source_key`.
 - ✅ backend deployment workflow.
