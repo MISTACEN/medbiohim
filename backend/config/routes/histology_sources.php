@@ -66,7 +66,8 @@ return static function (Router $router): void {
             readfile($path);
             exit;
         } catch (\Throwable $e) {
-            Response::error('SOURCE_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('histology_source_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('SOURCE_ERROR', 'Источник материала временно недоступен', $req->requestId, 503);
         }
     });
 
