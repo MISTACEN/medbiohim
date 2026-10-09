@@ -40,6 +40,12 @@
 - 🟢 SpaceWeb deploy workflow now requires a non-empty backup before deployment and verifies Pass 44 route/sanitizer markers after upload.
 - 🟡 GitHub Actions runner allocation still fails before steps (`runner_id=0`, `steps=[]`); these new workflow checks have not run inside GitHub yet. See [the unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md).
 
+### Optional integration — browser extension MVP (2026-10-10)
+- 🟢 Added `integrations/browser-extension/` Manifest V3 quick-access popup for Chrome/Edge.
+- 🟢 No permissions, host permissions, cookies, API tokens, or private data access; it only opens canonical MEDBIOHIM routes.
+- 🟡 Manual installation and all destination routes still need browser acceptance; not published to any extension store.
+- ⬜ Telegram bot remains a separate optional workstream: first implement secure one-time account linking, durable update idempotency, authorization checks, and privacy-safe notification preferences; no bot token or private account data belongs in the repo.
+
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
 - 🟢 Atlas nested modal removed;
