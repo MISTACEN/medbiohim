@@ -47,6 +47,7 @@
 6. 🟡 Compare `site_content` and `histology_lectures`, then unify the canonical lecture source and continue Admin Content Center / quick editors.
 7. 🟡 Admin database console target-runtime smoke after the `fb4eed97` syntax fix; validate SQL safety before wider use.
 8. 🔴 AI provider runtime health and verified primary provider.
+9. 🟡 API client timeout/stale-cache fix committed at `77b0f4a1`; verify it after the next Vercel deployment. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
 
 **Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
 
@@ -1935,3 +1936,7 @@ No broad cleanup or Supabase data modification was done in this pass. Do not mar
 
 ## Functional security Pass 42 — 2026-10-09
 The live trainer answer-key mitigation and remaining runtime acceptance gates are documented in [docs/SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42.md). Do not mark the trainer flow fully accepted until Vercel + SpaceWeb and authenticated end-to-end checks pass.
+
+
+## Reliability Pass 43 — 2026-10-09
+API timeout and stale-cache signalling are fixed in source at `77b0f4a1`; production confirmation awaits a Vercel deployment newer than `b96bdcd`. Details: [docs/RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
