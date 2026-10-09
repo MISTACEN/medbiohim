@@ -9,6 +9,7 @@ use Medbiohim\Middleware\RequireAuth;
 use Medbiohim\Services\AcademicContextResolver;
 use Medbiohim\Services\B2Storage;
 use Medbiohim\Services\SpecialtyAccess;
+use Medbiohim\Support\Logger;
 
 return static function (Router $router): void {
     $router->get('/api/v1/materials/{id}/file-url', static function (Request $req, array $params): void {
@@ -85,7 +86,8 @@ return static function (Router $router): void {
 
             Response::error('NOT_FOUND', 'Material source file is not mapped', $req->requestId, 404);
         } catch (\Throwable $e) {
-            Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
+            Logger::error('material_viewer_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('CONTENT_ERROR', 'Материал временно недоступен', $req->requestId, 503);
         }
     });
 
@@ -256,7 +258,8 @@ return static function (Router $router): void {
             header('Cache-Control: private, max-age=300');
             readfile($candidate);
         } catch (\Throwable $e) {
-            Response::error('CONTENT_ERROR', $e->getMessage(), $req->requestId, 503);
+            Logger::error('material_viewer_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('CONTENT_ERROR', 'Материал временно недоступен', $req->requestId, 503);
         }
     });
 };
