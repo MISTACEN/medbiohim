@@ -21,7 +21,7 @@ return static function(Router $router): void {
             $groupId=(string)$group['group_id'];
             $from=trim((string)($req->query['from']??''));
             $to=trim((string)($req->query['to']??''));
-            $where=['h.group_id IS NULL OR h.group_id = :gid'];$p=['u'=>$uid,'gid'=>$groupId];
+            $where=['h.group_id IS NULL OR h.group_id = :gid'];$p=['uid_progress'=>$uid,'uid_submission'=>$uid,'gid'=>$groupId];
             if($from!==''){ $where[]='h.due_date >= :from'; $p['from']=$from; }
             if($to!==''){ $where[]='h.due_date <= :to'; $p['to']=$to; }
             $sql="SELECT h.id,h.title,h.description,h.due_at,h.due_date,h.subject_id,h.group_id,h.schedule_entry_id,h.created_by,h.created_by_role,h.created_at,
@@ -40,8 +40,8 @@ return static function(Router $router): void {
                          END AS my_status_source
                     FROM public.homeworks h
                     LEFT JOIN public.subjects s ON s.id=h.subject_id
-                    LEFT JOIN public.homework_progress hp ON hp.homework_id=h.id AND hp.user_id=:u
-                    LEFT JOIN public.homework_submissions hs ON hs.homework_id=h.id AND hs.user_id=:u
+                    LEFT JOIN public.homework_progress hp ON hp.homework_id=h.id AND hp.user_id=:uid_progress
+                    LEFT JOIN public.homework_submissions hs ON hs.homework_id=h.id AND hs.user_id=:uid_submission
                    WHERE (h.group_id IS NULL OR h.group_id = :gid)";
             if($from!=='') $sql.=' AND h.due_date >= :from';
             if($to!=='') $sql.=' AND h.due_date <= :to';
@@ -126,10 +126,10 @@ return static function(Router $router): void {
             $resolver->homeworkAccess($uid,$homework);
             if(!empty($homework['subject_id'])) $resolver->resolveForRequest($uid,(string)($homework['group_id']??''),(string)$homework['subject_id']);
             $q=$db->prepare("INSERT INTO public.homework_progress(homework_id,user_id,completed,submitted_at)
-                             VALUES(:h,:u,:done,CASE WHEN :done=true THEN now() ELSE NULL END)
+                             VALUES(:h,:u,:done_value,CASE WHEN :done_timestamp=true THEN now() ELSE NULL END)
                              ON CONFLICT(homework_id,user_id) DO UPDATE SET completed=EXCLUDED.completed,submitted_at=EXCLUDED.submitted_at
                              RETURNING *");
-            $q->execute(['h'=>(string)$params['id'],'u'=>$uid,'done'=>$done]);
+            $q->execute(['h'=>(string)$params['id'],'u'=>$uid,'done_value'=>$done,'done_timestamp'=>$done]);
             Response::success(['progress'=>$q->fetch()],$req->requestId);
         } catch(AcademicContextException $e){Response::error($e->errorCode,$e->getMessage(),$req->requestId,$e->httpStatus,$e->details);
         } catch(\Throwable $e){Response::error('DB_ERROR','Не удалось сохранить прогресс задания',$req->requestId,503);}
@@ -151,6 +151,6 @@ return static function(Router $router): void {
             $q->execute(['e'=>(string)$lesson['lesson_id'],'u'=>$uid,'s'=>$status,'n'=>$req->json('note')!==null?(string)$req->json('note'):null]);
             Response::success(['attendance'=>$q->fetch(),'context'=>['group_id'=>$group['group_id'],'schedule_id'=>$lesson['schedule_id'],'schedule_version'=>$lesson['schedule_version'],'session_id'=>$lesson['session_id']??null]],$req->requestId);
         } catch(AcademicContextException $e){Response::error($e->errorCode,$e->getMessage(),$req->requestId,$e->httpStatus,$e->details);
-        } catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+        } catch(\Throwable $e){\Medbiohim\Support\Logger::error('attendance_update_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Не удалось сохранить посещаемость',$req->requestId,503);}
     });
 };
