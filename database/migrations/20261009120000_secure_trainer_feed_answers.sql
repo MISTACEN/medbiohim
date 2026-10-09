@@ -50,7 +50,19 @@ SELECT
 FROM public.trainer_feed_cards AS c
 LEFT JOIN public.modules AS tm ON tm.id = c.plan_module_id
 LEFT JOIN public.topics AS tt ON tt.id = c.plan_topic_id
-WHERE c.is_published = true;
+WHERE c.is_published = true
+  AND (
+    (c.subject_slug IS DISTINCT FROM 'histology' AND c.specialty_slug IS DISTINCT FROM 'mbh')
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_memberships AS gm
+      JOIN public.groups AS g ON g.id = gm.group_id
+      WHERE gm.user_id = auth.uid()
+        AND gm.is_active = true
+        AND g.is_active = true
+        AND g.specialty_slug = 'mbh'
+    )
+  );
 
 REVOKE ALL ON TABLE public.trainer_feed_cards FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.trainer_feed_cards_public FROM PUBLIC, anon, authenticated;
@@ -75,6 +87,8 @@ AS $function$
 DECLARE
   v_user_id uuid;
   v_question jsonb;
+  v_subject_slug text;
+  v_specialty_slug text;
   v_options jsonb;
   v_option jsonb;
   v_option_found boolean := false;
@@ -92,8 +106,8 @@ BEGIN
     RAISE EXCEPTION 'card_id required' USING ERRCODE = '22023';
   END IF;
 
-  SELECT c.question
-    INTO v_question
+  SELECT c.question, c.subject_slug, c.specialty_slug
+    INTO v_question, v_subject_slug, v_specialty_slug
     FROM public.trainer_feed_cards AS c
    WHERE c.id = p_card_id
      AND c.is_published = true
@@ -101,6 +115,19 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Trainer card not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF (v_subject_slug = 'histology' OR v_specialty_slug = 'mbh')
+     AND NOT EXISTS (
+       SELECT 1
+       FROM public.group_memberships AS gm
+       JOIN public.groups AS g ON g.id = gm.group_id
+       WHERE gm.user_id = v_user_id
+         AND gm.is_active = true
+         AND g.is_active = true
+         AND g.specialty_slug = 'mbh'
+     ) THEN
+    RAISE EXCEPTION 'Forbidden' USING ERRCODE = '42501';
   END IF;
 
   v_options := v_question->'options';
