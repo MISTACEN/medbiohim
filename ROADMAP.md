@@ -4,6 +4,18 @@
 > Обновляется вместе с изменениями в коде/БД.  
 > Дата актуализации: **2026-10-10**.
 
+## CI recovery + PHP security audit — Pass 51 (2026-10-10)
+
+- 🟢 Fixed a concrete PHP parse defect in the homework attachment SQL string.
+- 🟢 Backend role claims no longer trust editable Supabase \`user_metadata\`; privileged route checks use canonical DB roles and fail closed if role lookup is unavailable.
+- 🟢 Removed duplicate admin route registrations and repaired the cross-file duplicate-route detector.
+- 🟢 Removed query-string bearer token fallback and hid internal exception details from client responses.
+- 🟢 Pinned active Actions workflows to Ubuntu 24.04; added role-claim regression tests to CI and deployment preflight.
+- 🟡 **GitHub Actions is still blocked/unverified**: the historical retry has no executed steps/logs, and a fresh run on the pinned image must actually execute before this is marked recovered.
+- 🟡 Full exact-tree PHP lint, route registration, SQL/RLS/fallback integration, and SpaceWeb deployment smoke remain pending.
+
+Details: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
+
 ## Как читать статус
 
 - ✅ **DONE** — реализовано и проверено в живой системе.
