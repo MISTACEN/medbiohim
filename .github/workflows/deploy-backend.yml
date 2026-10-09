@@ -145,6 +145,7 @@ jobs:
             get -O verify/ '${SITE}backend/config/routes/preparation.php';
             get -O verify/ '${SITE}backend/config/routes/tests.php';
             get -O verify/ '${SITE}backend/config/routes/platform.php';
+            get -O verify/ '${SITE}backend/config/routes/material_viewer.php';
             get -O verify/ '${SITE}backend/src/Security/TrainingPayloadSanitizer.php';
             bye"
           grep -q "use Medbiohim\\\\Http\\\\Router;" verify/routes.php
@@ -156,6 +157,8 @@ jobs:
           grep -q "subject_slug.*histology" verify/platform.php
           grep -q "correctOptionId" verify/TrainingPayloadSanitizer.php
           grep -q "function sanitizeQuestion" verify/TrainingPayloadSanitizer.php
+          grep -q "subjectSlug === 'histology'" verify/material_viewer.php
+          test "$(grep -c 'requiredSpecialty' verify/material_viewer.php)" -ge 4
           echo "Backend deployment verification passed."
 
       - uses: actions/upload-artifact@v4
