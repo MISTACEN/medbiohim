@@ -189,7 +189,8 @@ return static function (Router $r): void {
             Response::success(['question' => $row, 'version_no' => $versionNo], $q->requestId);
         } catch (\Throwable $e) {
             if ($db instanceof \PDO && $db->inTransaction()) $db->rollBack();
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('admin_question_write_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Не удалось выполнить операцию с вопросом', $q->requestId, 503);
         }
     });
 
@@ -204,7 +205,8 @@ return static function (Router $r): void {
             ExamQuestionStore::delete($id);
             Response::success(['deleted' => true], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('admin_question_write_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Не удалось выполнить операцию с вопросом', $q->requestId, 503);
         }
     });
 };
