@@ -36,12 +36,12 @@
 ### P1 recursive answer-key sanitization — source fix committed (Pass 45, 2026-10-10)
 - 🟢 Shared PHP `TrainingPayloadSanitizer::sanitizeQuestion()` now recursively strips answer/explanation/correctness keys; PHP trainer routes reuse it rather than maintaining a weaker duplicate closure.
 - 🟢 Next.js trainer sanitizer now recursively traverses nested objects and arrays.
-- 🟢 13 PHP sanitizer assertions passed in an isolated PHP 8.4 CLI run using repository class/test contents. A read-only DB spot-check found 206 published cards and no nested answer fields under the checked `question`/`metadata` branches.
+- 🟢 15 PHP sanitizer assertions passed in an isolated PHP 8.4 CLI run using repository class/test contents. A read-only DB spot-check found 206 published cards and no nested answer fields under the checked `question`/`metadata` branches.
 - 🟡 Pass 45 is source-only until the next Vercel READY build and SpaceWeb deployment are verified; GitHub Actions still fails before steps. See [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
 
 ### CI/QA hardening — source updated, runner still blocked (2026-10-10)
 - 🟢 Fixed the PHP namespace prefix in `.github/workflows/code-check.yml` route-registration smoke test; it previously contained four literal backslashes, which PHP interpreted as two namespace separators instead of one.
-- 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 13 assertions passed.
+- 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 15 assertions passed.
 - 🟢 `scripts/predeploy-audit.mjs`, the code-check workflow, and the SpaceWeb deploy preflight now run this regression test.
 - 🟢 SpaceWeb deploy workflow now requires a non-empty backup before deployment and verifies Pass 44 route/sanitizer markers after upload.
 - 🟡 GitHub Actions runner allocation still fails before steps (`runner_id=0`, `steps=[]`); these new workflow checks have not run inside GitHub yet. See [the unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md).
