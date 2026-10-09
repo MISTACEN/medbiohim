@@ -51,17 +51,19 @@ type CacheEntry<T> = { value: ApiSuccess<T>; expires: number };
 const apiCache = new Map<string, CacheEntry<any>>();
 const API_CACHE_TTL = 60_000;
 
-function cacheUserScope(): string {
-  if (typeof window === "undefined") return "server";
+function cacheUserScope(): string | null {
+  if (typeof window === "undefined") return null;
   const token = getToken();
   if (!token) return "anon";
   try {
     const part = token.split(".")[1];
-    if (!part) return "auth";
+    if (!part) return null;
     const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof json?.sub === "string" && json.sub ? json.sub : "auth";
+    return typeof json?.sub === "string" && json.sub ? json.sub : null;
   } catch {
-    return "auth";
+    // Never share a cache bucket between opaque/malformed tokens. In this case,
+    // bypass caching and let the API authenticate the request normally.
+    return null;
   }
 }
 
@@ -80,7 +82,9 @@ function isCacheableGet(path: string, options: RequestInit) {
 
 export async function apiCached<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   if (!isCacheableGet(path, options)) return api<T>(path, options);
-  const key = path + "|user:" + cacheUserScope();
+  const userScope = cacheUserScope();
+  if (userScope === null) return api<T>(path, options);
+  const key = path + "|user:" + userScope;
   const now = Date.now();
   let stale: ApiSuccess<T> | null = null;
 
