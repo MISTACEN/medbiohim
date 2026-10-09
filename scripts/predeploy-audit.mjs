@@ -134,6 +134,30 @@ if (existsSync(fileRoutesPath) && existsSync(fileRepositoryPath)) {
   }
 }
 
+const subjectAccessPath = join(root, "backend/src/Services/SpecialtyAccess.php");
+const academicContextPath = join(root, "backend/src/Services/AcademicContextResolver.php");
+const domainRoutesPath = join(root, "backend/config/routes/domain.php");
+const subjectRepositoryPath = join(root, "backend/src/Repositories/SubjectRepository.php");
+const supabaseRestPath = join(root, "backend/src/Services/SupabaseRest.php");
+if ([subjectAccessPath, academicContextPath, domainRoutesPath, subjectRepositoryPath, supabaseRestPath].every(existsSync)) {
+  const subjectAccess = await readFile(subjectAccessPath, "utf8");
+  const academicContext = await readFile(academicContextPath, "utf8");
+  const domainRoutes = await readFile(domainRoutesPath, "utf8");
+  const subjectRepository = await readFile(subjectRepositoryPath, "utf8");
+  const supabaseRest = await readFile(supabaseRestPath, "utf8");
+  if (subjectAccess.includes("subjectSlug === 'histology'") &&
+      subjectAccess.includes("is_active = true") &&
+      (academicContext.match(/COALESCE\(subjects\.slug, ''\) <> 'histology'/g) || []).length >= 2 &&
+      domainRoutes.includes("$filterSubjects") &&
+      domainRoutes.includes("canAccessSubject($req->user->id, $subjectId)") &&
+      subjectRepository.includes("WHERE is_active = true") &&
+      supabaseRest.includes("select=id,slug,name,specialty_slug,course_number")) {
+    pass("histology subject, gradebook and academic-context access is MBH-scoped");
+  } else {
+    fail("subject list/fallback, gradebook or academic-context MBH guard is incomplete");
+  }
+}
+
 const appFiles = await walk(join(root, "src/app"));
 const compatHits = [];
 for (const file of appFiles.filter((x) => [".ts", ".tsx", ".js", ".jsx"].includes(extname(x)))) {
