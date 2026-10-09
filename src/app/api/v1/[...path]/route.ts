@@ -30,20 +30,21 @@ function jwtSubject(token: string) {
   }
 }
 
+const TRAINER_ANSWER_KEYS = new Set([
+  "explanation", "answer", "correct", "isCorrect", "is_correct",
+  "correctAnswer", "correct_answer", "correctOption", "correct_option",
+  "correctOptionId", "correct_option_id",
+]);
+
 function safeTrainerQuestion(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => safeTrainerQuestion(item));
   if (!value || typeof value !== "object") return value;
 
   const source = value as Record<string, unknown>;
   const safe: Record<string, unknown> = {};
-  const answerKeys = new Set([
-    "explanation", "answer", "correct", "isCorrect", "is_correct",
-    "correctAnswer", "correct_answer", "correctOption", "correct_option",
-    "correctOptionId", "correct_option_id",
-  ]);
 
   for (const [key, child] of Object.entries(source)) {
-    if (answerKeys.has(key)) continue;
+    if (TRAINER_ANSWER_KEYS.has(key)) continue;
 
     if (key === "preparation" && child && typeof child === "object" && !Array.isArray(child)) {
       const preparation = { ...(child as Record<string, unknown>) };
