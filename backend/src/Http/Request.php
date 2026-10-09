@@ -108,9 +108,7 @@ final class Request
                 break;
             }
         }
-        if ($auth === '' && isset($this->query['access_token']) && is_string($this->query['access_token'])) {
-            return $this->query['access_token'] !== '' ? $this->query['access_token'] : null;
-        }
+        // Access tokens must not be accepted from query parameters: URLs leak into logs and referrers.
         if (preg_match('/^Bearer\s+(\S+)/i', $auth, $m)) {
             return $m[1];
         }
