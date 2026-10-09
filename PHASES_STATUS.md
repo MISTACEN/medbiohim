@@ -18,7 +18,7 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | Vercel production metadata подтверждает READY для текущего `main` (`e1641914`); CI runner не исполняет шаги, exact-commit runtime smoke не выполнен |
+| 0. Source of truth / sync | 🟡 | последний наблюдавшийся READY Vercel build — `e23fb882` (содержит Pass 44 source); более новый docs-only build `701573ef` был BUILDING на момент проверки. CI runner не исполняет шаги, exact-commit runtime smoke не выполнен |
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
@@ -63,7 +63,7 @@ Provider availability/runtime ещё не подтверждён end-to-end.
 Trainer feed image endpoints всё ещё требуют закрытия 404/502.
 
 ### 🟡 Production
-Vercel production metadata подтверждает READY для текущего `main` (`e1641914`); live browser/API smoke ещё не выполнен, SpaceWeb PHP deployment не подтверждён.
+Последний наблюдавшийся READY Vercel build — `e23fb882`; более новый docs-only build `701573ef` был BUILDING. Live browser/API smoke ещё не выполнен, SpaceWeb PHP deployment не подтверждён.
 
 ### 🟡 CMS
 Нужно довести быстрые правки вопросов/материалов/занятий.
