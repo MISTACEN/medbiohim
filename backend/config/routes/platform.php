@@ -433,7 +433,7 @@ return static function (Router $router): void {
             readfile($path);
             exit;
         } catch (\Throwable $e) {
-            Response::error('MEDIA_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('media_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]); Response::error('MEDIA_ERROR', 'Не удалось обработать медиафайл', $req->requestId, 503);
         }
     });
 
@@ -480,7 +480,7 @@ return static function (Router $router): void {
             Response::success($meta, $req->requestId);
         } catch (\Throwable $e) {
             try { Response::success(SupabaseRest::calendarMeta($course, $semester), $req->requestId); }
-            catch (Throwable $x) { Response::error('DB_ERROR', $x->getMessage(), $req->requestId, 500); }
+            catch (Throwable $x) { \Medbiohim\Support\Logger::error('platform_route_failed',['requestId'=>$req->requestId,'error'=>$x->getMessage()]); Response::error('DB_ERROR', 'Операция временно недоступна', $req->requestId, 503); }
         }
     });
 
