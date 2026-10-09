@@ -38,6 +38,7 @@ jobs:
           set -euo pipefail
           find backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php backend/tests/TrainingPayloadSanitizerTest.php
+          php backend/tests/SupabaseAuthRoleTest.php
           php -d display_errors=1 -r '
             $root = getcwd() . "/backend";
             spl_autoload_register(static function (string $class) use ($root): void {
