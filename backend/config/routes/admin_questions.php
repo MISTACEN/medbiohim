@@ -56,7 +56,8 @@ return static function (Router $r): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION_ERROR', $e->getMessage(), $q->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('admin_question_write_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Не удалось сохранить вопрос', $q->requestId, 503);
         }
     });
 
@@ -78,7 +79,8 @@ return static function (Router $r): void {
             $row = ExamQuestionStore::upsert($patch, $id);
             Response::success(['question' => $row], $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('DB_ERROR', $e->getMessage(), $q->requestId, 500);
+            \Medbiohim\Support\Logger::error('admin_question_write_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('DB_ERROR', 'Не удалось сохранить вопрос', $q->requestId, 503);
         }
     });
 
