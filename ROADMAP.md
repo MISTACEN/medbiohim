@@ -44,7 +44,8 @@
 - 🟢 Added `integrations/browser-extension/` Manifest V3 quick-access popup for Chrome/Edge.
 - 🟢 No permissions, host permissions, cookies, API tokens, or private data access; it only opens canonical MEDBIOHIM routes.
 - 🟡 Manual installation and all destination routes still need browser acceptance; not published to any extension store.
-- ⬜ Telegram bot remains a separate optional workstream: first implement secure one-time account linking, durable update idempotency, authorization checks, and privacy-safe notification preferences; no bot token or private account data belongs in the repo.
+- 🟢 Telegram bot public-command MVP added under `integrations/telegram-bot/`: secret-verified webhook, private-chat-only public commands, canonical links, privacy response; 10 local Node tests passed using the source/test content.
+- 🟡 Not deployed: bot token/webhook secret are not configured; no private data or account linking exists. Before schedule/grade notifications, add one-time linking, durable update idempotency, consent/preferences, group authorization, unlinking and privacy review.
 
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
