@@ -1,6 +1,6 @@
 /** API client for SpaceWeb backend — restored exports for Vercel. */
 const API_URL="/api/v1";
-export type ApiSuccess<T>={ok:true;data:T;requestId:string};
+export type ApiSuccess<T>={ok:true;data:T;requestId:string;stale?:boolean};
 export type ApiError={ok:false;error:{code:string;message:string;details?:unknown};requestId:string};
 export type ApiResult<T>=ApiSuccess<T>|ApiError;
 export type AcademicState = {
@@ -21,8 +21,33 @@ function getRefreshToken(){if(typeof window==="undefined")return null;const t=lo
 export function setTokens(access:string,refresh?:string){localStorage.setItem("mb_access_token",access);if(refresh)localStorage.setItem("mb_refresh_token",refresh)}
 export function clearTokens(){localStorage.removeItem("mb_access_token");localStorage.removeItem("mb_refresh_token")}
 export function hasToken(){return !!getToken()}
-async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;if(options.body&&!isForm&&!headers["Content-Type"])headers["Content-Type"]="application/json";const token=tokenOverride??getToken();if(token)headers.Authorization=`Bearer ${token}`;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),(options.method||"GET").toUpperCase()==="GET"?12000:20000);try{const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store",signal:options.signal??controller.signal});return{res,text:await res.text()}}finally{clearTimeout(timeout)}}
-type CacheEntry<T> = { value: ApiResult<T>; expires: number };
+async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{
+  const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};
+  const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;
+  if(options.body&&!isForm&&!headers["Content-Type"])headers["Content-Type"]="application/json";
+  const token=tokenOverride??getToken();
+  if(token)headers.Authorization=`Bearer ${token}`;
+
+  // One controller combines the caller's cancellation with the client timeout.
+  // Passing options.signal directly would disable the timeout whenever a caller
+  // supplied its own AbortSignal.
+  const controller=new AbortController();
+  const externalSignal=options.signal;
+  const abortFromCaller=()=>controller.abort();
+  if(externalSignal){
+    if(externalSignal.aborted)controller.abort();
+    else externalSignal.addEventListener("abort",abortFromCaller,{once:true});
+  }
+  const timeout=setTimeout(()=>controller.abort(),(options.method||"GET").toUpperCase()==="GET"?12000:20000);
+  try{
+    const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store",signal:controller.signal});
+    return{res,text:await res.text()};
+  }finally{
+    clearTimeout(timeout);
+    if(externalSignal)externalSignal.removeEventListener("abort",abortFromCaller);
+  }
+}
+type CacheEntry<T> = { value: ApiSuccess<T>; expires: number };
 const apiCache = new Map<string, CacheEntry<any>>();
 const API_CACHE_TTL = 60_000;
 
@@ -57,12 +82,12 @@ export async function apiCached<T>(path: string, options: RequestInit = {}): Pro
   if (!isCacheableGet(path, options)) return api<T>(path, options);
   const key = path + "|user:" + cacheUserScope();
   const now = Date.now();
-  let stale: ApiResult<T> | null = null;
+  let stale: ApiSuccess<T> | null = null;
 
   const memory = apiCache.get(key);
   if (memory) {
     if (memory.expires > now) return memory.value as ApiResult<T>;
-    stale = memory.value as ApiResult<T>;
+    stale = memory.value as ApiSuccess<T>;
   }
 
   const storageKey = "mb_api_cache:" + key;
@@ -75,7 +100,7 @@ export async function apiCached<T>(path: string, options: RequestInit = {}): Pro
           apiCache.set(key, parsed);
           return parsed.value;
         }
-        stale = parsed.value;
+        stale = parsed.value as ApiSuccess<T>;
       }
     }
   } catch {}
@@ -92,7 +117,7 @@ export async function apiCached<T>(path: string, options: RequestInit = {}): Pro
   // successful shared content visible instead of replacing the whole page
   // with "Database is not available".
   if (stale && ["NETWORK", "UPSTREAM", "DB_UNAVAILABLE", "BAD_RESPONSE"].includes(result.error.code)) {
-    return stale;
+    return { ...stale, stale: true };
   }
   return result;
 }
