@@ -36,7 +36,7 @@ final class SpecialtyAccess
         $stmt = $this->db->prepare(
             'SELECT slug, specialty_slug
              FROM public.subjects
-             WHERE id = :id
+             WHERE id = :id AND is_active = true
              LIMIT 1'
         );
         $stmt->execute(['id' => $subjectId]);
