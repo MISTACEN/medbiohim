@@ -28,6 +28,11 @@
 - 🟡 Vercel frontend is confirmed READY on current `main` (`e1641914`); SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
 - 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
 
+### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
+- 🟢 PHP source now treats both `subject_slug = histology` and `specialty_slug = mbh` as MBH-restricted in feed, detail, answer submission, and image routes.
+- 🟢 The non-MBH feed query and both Supabase REST fallback branches exclude restricted cards; nested trainer-question answer fields are recursively sanitized.
+- 🟡 Source fix commit: `99ed1bc905a1b9fe2f2d5ca2f2b6e8bac2dd53a3`. PHP lint, authenticated/non-MBH integration tests, and SpaceWeb deployment remain unverified because Actions jobs terminate before steps.
+
 ### Active P1 — Unified Media Viewer
 - 🟢 code architecture: unified viewer implemented;
 - 🟢 Atlas nested modal removed;
@@ -39,7 +44,7 @@
 - 🟡 SpaceWeb authenticated media smoke.
 
 ### Immediate next gates — updated 2026-10-09
-1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed and Vercel is READY on current `main` (`e1641914`); verify authenticated MBH/non-MBH end-to-end training flows and confirm the SpaceWeb PHP deployment.
+1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed; Pass 44 also hardened PHP route membership checks. Verify authenticated MBH/non-MBH end-to-end training flows and confirm the current PHP source is deployed to SpaceWeb.
 2. 🔴 **CI runner allocation.** Current GitHub Actions jobs fail before the first step (`runner_id=0`, no steps/logs); no new code-check result exists. Restore runner execution and verify the exact `main` commit.
 3. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation (28 electronogram source-key paths have no matching `content_sources.source_path`).
 4. 🟡 Histology questions/tests: compare duplicate/blank-answer candidates against source materials; then run start → answer → finish → review.
