@@ -1112,7 +1112,7 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 
 - 🟢 Live Supabase Data API: base trainer_feed_cards is no longer readable by anon/authenticated; trainer_feed_cards_public exposes only sanitized published cards.
 - 🟢 Verified using an active MBH membership context: 206 cards visible; 0 correctness flags and 0 answer-bearing fields in the safe view.
-- 🟢 Direct client INSERT/UPDATE/DELETE on trainer_feed_answers revoked; submit_trainer_feed_answer RPC added for authenticated server-side scoring.
+- 🟢 Direct client privileges on trainer_feed_answers, trainings and training_answers revoked; submit_trainer_feed_answer RPC added for authenticated server-side scoring.
 - 🟢 PHP response boundary and Next.js proxy sanitize newly created/unanswered training snapshots while preserving review data after a question is answered or skipped.
 - 🟡 End-to-end flow is not yet accepted: GitHub Actions runner has not run steps; verify latest Vercel frontend and SpaceWeb PHP deployments, then test feed → training → answer → review → complete.
 - 🟡 Media, duplicate question review, lecture source reconciliation and AI provider runtime checks remain open.
