@@ -11,7 +11,8 @@ The API cache scope was derived from the JWT `sub` claim, but when the token was
 
 - `cacheUserScope()` now returns `null` when a token cannot be parsed to a subject.
 - `apiCached()` bypasses both memory and sessionStorage caches for that case and lets the API authenticate the request normally.
-- `scripts/predeploy-audit.mjs` now checks that this bypass contract remains present.
+- The refresh-token request now has a 10-second timeout so an unresponsive refresh endpoint cannot hang the auth retry indefinitely.
+- `scripts/predeploy-audit.mjs` now checks that the cache-bypass contract remains present.
 
 ## Verification / limitations
 
