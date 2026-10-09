@@ -18,11 +18,11 @@
 
 | Фаза | Состояние | Что это значит |
 |---|---|---|
-| 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in latest observed READY Vercel deployment `d0949aa3`; fixed PHP autoloader in CI, added 12-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
+| 0. Source of truth / sync | 🟡 | Pass 44 frontend/PHP source included in latest observed READY Vercel deployment `d0949aa3`; fixed PHP autoloader in CI, added 13-assertion sanitizer regression test and required pre-deploy backup. GitHub runner still fails before steps; exact-commit runtime smoke remains open. See [unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) |
 | 1. Auth / account | 🟡 | исходники есть; login → /me → dashboard → logout не подтверждены в target runtime |
 | 2. Schedule | 🟡 | core/data есть; production-smoke и охват повторяющихся отработок требуют сверки |
 | 3. Subjects architecture | 🟡 | предметный hub реализован, остальные subject flows доводятся |
-| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 fixes PHP membership checks for feed/detail/answer/image and recursive sanitization in source; SpaceWeb deployment + authenticated smoke and media/source mapping remain open |
+| 4. Histology | 🟡 | Supabase answer-key mitigation live; Pass 44 fixes PHP membership checks for feed/detail/answer/image; Pass 45 shares recursive PHP/Next sanitization and adds 13 assertions. Latest deployment inclusion, SpaceWeb deployment, authenticated smoke and media/source mapping remain open |
 | 5. Tests / Question Bank | 🟡 | данные/связи имеются; полный start → answer → finish → review smoke и аудит exam_questions не закрыты |
 | 6. Materials | 🟡 | записи и viewer существуют; наличие физических DOCX/PDF/image и единый lecture source ещё не подтверждены |
 | 7. Admin CMS | 🟡 | есть DB console; две PHP syntax ошибки исправлены в fb4eed97, target-runtime проверка ещё не выполнена |
@@ -59,6 +59,7 @@
 - 🟡 **Unified acceptance:** follow [the GitHub/production verification checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) and record PASS/FAIL/BLOCKED with evidence.
 
 ### 🟡 Trainer route access — source fix awaiting deployment/test
+Pass 45 further hardens recursive answer-key stripping in PHP and Next source. [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
 Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested. [Details](docs/SECURITY-FIX-2026-10-10-PASS44.md).
 
 ### 🔴 AI
