@@ -227,7 +227,7 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
         const bust=attempt===0?"":`?retry=${attempt}-${Date.now()}`;
         let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image${bust}`,{
           headers:token?{Authorization:`Bearer ${token}`}:{},
-          cache:attempt===0?"force-cache":"no-store",
+          cache:"no-store",
           signal:AbortSignal.timeout(15000),
         });
         if(res.status===401){
@@ -378,17 +378,30 @@ export async function fetchHistologySourceFile(path:string):Promise<Blob|null>{
 
 export async function retryTrainerImage(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
-  const key=String(id);
-  const old=trainerImageCache.get(key);
-  if(old){try{URL.revokeObjectURL(old);}catch{} trainerImageCache.delete(key);}
-  trainerImageInflight.delete(key);
-  return getTrainerImageUrl(key);
+  const idKey=String(id);
+  const userScope=cacheUserScope();
+  const cacheKey=userScope===null?null:`${userScope}|${idKey}`;
+  const old=cacheKey?trainerImageCache.get(cacheKey):undefined;
+  if(old){try{URL.revokeObjectURL(old);}catch{} trainerImageCache.delete(cacheKey!);}
+  if(cacheKey)trainerImageInflight.delete(cacheKey);
+  return getTrainerImageUrl(idKey);
 }
 export function prefetchTrainerImages(ids:(string|null|undefined)[]):void{
   if(typeof window==="undefined")return;
-  for(const id of ids){if(!id)continue;const key=String(id);if(trainerImageCache.has(key)||trainerImageInflight.has(key))continue;void getTrainerImageUrl(key);}
+  const userScope=cacheUserScope();
+  for(const id of ids){
+    if(!id)continue;
+    const idKey=String(id);
+    const cacheKey=userScope===null?null:`${userScope}|${idKey}`;
+    if(cacheKey&&(trainerImageCache.has(cacheKey)||trainerImageInflight.has(cacheKey)))continue;
+    void getTrainerImageUrl(idKey);
+  }
 }
-export function peekTrainerImageUrl(id: string): string | null { if (typeof window === "undefined") return null; return trainerImageCache.get(String(id)) ?? null; }
+export function peekTrainerImageUrl(id: string): string | null {
+  if(typeof window==="undefined")return null;
+  const userScope=cacheUserScope();
+  return userScope===null?null:trainerImageCache.get(`${userScope}|${String(id)}`)??null;
+}
 export async function login(email:string,password:string){return api<any>("/auth/login",{method:"POST",body:JSON.stringify({email,password})})}
 export async function recoverPassword(email:string){return api<any>("/auth/recover",{method:"POST",body:JSON.stringify({email})})}
 export async function me(){return api<any>("/auth/me")}
@@ -444,17 +457,33 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
 const trainerCardCache=new Map<string, any>();
 const trainerCardInflight=new Map<string, Promise<ApiResult<any>>>();
+
+function clearUserScopedCaches(){
+  invalidateApiCache();
+  for(const url of trainerImageCache.values()){if(url.startsWith("blob:")){try{URL.revokeObjectURL(url);}catch{}}}
+  for(const url of materialFileCache.values()){if(url.startsWith("blob:")){try{URL.revokeObjectURL(url);}catch{}}}
+  trainerImageCache.clear();
+  trainerImageInflight.clear();
+  materialFileCache.clear();
+  trainerCardCache.clear();
+  trainerCardInflight.clear();
+}
+
 export async function getTrainerFeedCard(id:string){
-  const key=String(id);
-  const cached=trainerCardCache.get(key);
-  if(cached) return {ok:true as const,data:{item:cached},requestId:"cache"};
-  const pending=trainerCardInflight.get(key);
-  if(pending) return pending;
-  const promise=api<any>("/trainers/feed/" + encodeURIComponent(key)).then((result)=>{
-    if(result.ok && result.data?.item) trainerCardCache.set(key,result.data.item);
+  const idKey=String(id);
+  const userScope=cacheUserScope();
+  const cacheKey=userScope===null?null:`${userScope}|${idKey}`;
+  if(cacheKey){
+    const cached=trainerCardCache.get(cacheKey);
+    if(cached) return {ok:true as const,data:{item:cached},requestId:"cache"};
+    const pending=trainerCardInflight.get(cacheKey);
+    if(pending) return pending;
+  }
+  const promise=api<any>("/trainers/feed/" + encodeURIComponent(idKey)).then((result)=>{
+    if(cacheKey && cacheUserScope()===userScope && result.ok && result.data?.item) trainerCardCache.set(cacheKey,result.data.item);
     return result;
-  }).finally(()=>trainerCardInflight.delete(key));
-  trainerCardInflight.set(key,promise);
+  }).finally(()=>{if(cacheKey)trainerCardInflight.delete(cacheKey);});
+  if(cacheKey)trainerCardInflight.set(cacheKey,promise);
   return promise;
 }
 export async function getLectureMiniQuizQuestions(questionIds:string[],subjectId:string){
