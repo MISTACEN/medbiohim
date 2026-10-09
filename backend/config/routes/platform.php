@@ -207,6 +207,7 @@ return static function (Router $router): void {
                 );
                 if ($subjectSlug !== '') $path .= '&subject_slug=eq.' . rawurlencode($subjectSlug);
                 if ($specialtySlug !== '') $path .= '&specialty_slug=eq.' . rawurlencode($specialtySlug);
+                if (!$hasMbhAccess) $path .= '&and=' . rawurlencode('(or(subject_slug.is.null,subject_slug.neq.histology),or(specialty_slug.is.null,specialty_slug.neq.mbh))');
                 $path .= '&order=id.asc&limit=' . $limit . '&offset=' . $offset;
                 $items = SupabaseRest::select($path);
                 $source = 'supabase_rest';
