@@ -53,6 +53,7 @@ LEFT JOIN public.topics AS tt ON tt.id = c.plan_topic_id
 WHERE c.is_published = true;
 
 REVOKE ALL ON TABLE public.trainer_feed_cards FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.trainer_feed_cards_public FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.trainer_feed_cards_public TO anon, authenticated;
 
 -- Direct writes let clients forge is_correct. Keep reading own history via RLS,
