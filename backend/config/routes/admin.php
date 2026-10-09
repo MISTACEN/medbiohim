@@ -19,9 +19,9 @@ $router->get('/api/v1/site', static function (Request $req, array $params): void
         ], $req->requestId);
     }
 });
-$router->post('/api/v1/admin/claim-admin',static function(Request $req,array $params):void{if(!RequireAuth::handle($req))return;$secret=trim((string)$req->json('secret',''));$expected=trim((string)Env::get('ADMIN_BOOTSTRAP_SECRET',''));if($expected===''||!hash_equals($expected,$secret)){Response::error('FORBIDDEN','Invalid bootstrap secret',$req->requestId,403);return;}try{$repo=new UserRepository();if($repo->countWithRole('admin')>0){Response::error('BOOTSTRAP_CLOSED','Admin bootstrap is already complete',$req->requestId,409);return;}$repo->assignRole($req->user->id,'admin');$roles=$repo->roleCodesForUser($req->user->id);try{(new SupabaseAuth())->setAppRole($req->user->id,'admin');}catch(\Throwable $e){}Response::success(['roles'=>$roles,'message'=>'Admin role assigned','session_refresh_required'=>true],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
-$router->get('/api/v1/admin/users',static function(Request $req,array $params)use($strictAdmin):void{if(!$strictAdmin($req))return;try{Response::success(['items'=>(new UserRepository())->listUsers(100)],$req->requestId);}catch(\Throwable $e){try{Response::success(['items'=>SupabaseRest::listUsers(100)],$req->requestId);}catch(\Throwable $x){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}}});
-$router->post('/api/v1/admin/users/roles',static function(Request $req,array $params)use($strictAdmin):void{if(!$strictAdmin($req))return;$userId=trim((string)$req->json('user_id',''));$role=trim((string)$req->json('role',''));$action=trim((string)$req->json('action','assign'));if($userId===''||$role===''){Response::error('VALIDATION_ERROR','user_id and role required',$req->requestId,422);return;}if(!in_array($role,['admin','moderator','teacher','student'],true)){Response::error('VALIDATION_ERROR','invalid role',$req->requestId,422);return;}try{$repo=new UserRepository();if($action==='revoke'){if($role==='admin'&&$userId===$req->user->id&&$repo->countWithRole('admin')<=1){Response::error('LAST_ADMIN','Cannot revoke the last administrator role.',$req->requestId,409);return;}$repo->revokeRole($userId,$role);}else{$repo->assignRole($userId,$role);}$roles=$repo->roleCodesForUser($userId);if($role==='admin')(new SupabaseAuth())->setAppRole($userId,in_array('admin',$roles,true)?'admin':null);Response::success(['roles'=>$roles,'session_refresh_required'=>$userId===$req->user->id&&$role==='admin'],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
+$router->post('/api/v1/admin/claim-admin',static function(Request $req,array $params):void{if(!RequireAuth::handle($req))return;$secret=trim((string)$req->json('secret',''));$expected=trim((string)Env::get('ADMIN_BOOTSTRAP_SECRET',''));if($expected===''||!hash_equals($expected,$secret)){Response::error('FORBIDDEN','Invalid bootstrap secret',$req->requestId,403);return;}try{$repo=new UserRepository();if($repo->countWithRole('admin')>0){Response::error('BOOTSTRAP_CLOSED','Admin bootstrap is already complete',$req->requestId,409);return;}$repo->assignRole($req->user->id,'admin');$roles=$repo->roleCodesForUser($req->user->id);try{(new SupabaseAuth())->setAppRole($req->user->id,'admin');}catch(\Throwable $e){}Response::success(['roles'=>$roles,'message'=>'Admin role assigned','session_refresh_required'=>true],$req->requestId);}catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}});
+$router->get('/api/v1/admin/users',static function(Request $req,array $params)use($strictAdmin):void{if(!$strictAdmin($req))return;try{Response::success(['items'=>(new UserRepository())->listUsers(100)],$req->requestId);}catch(\Throwable $e){try{Response::success(['items'=>SupabaseRest::listUsers(100)],$req->requestId);}catch(\Throwable $x){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}}});
+$router->post('/api/v1/admin/users/roles',static function(Request $req,array $params)use($strictAdmin):void{if(!$strictAdmin($req))return;$userId=trim((string)$req->json('user_id',''));$role=trim((string)$req->json('role',''));$action=trim((string)$req->json('action','assign'));if($userId===''||$role===''){Response::error('VALIDATION_ERROR','user_id and role required',$req->requestId,422);return;}if(!in_array($role,['admin','moderator','teacher','student'],true)){Response::error('VALIDATION_ERROR','invalid role',$req->requestId,422);return;}try{$repo=new UserRepository();if($action==='revoke'){if($role==='admin'&&$userId===$req->user->id&&$repo->countWithRole('admin')<=1){Response::error('LAST_ADMIN','Cannot revoke the last administrator role.',$req->requestId,409);return;}$repo->revokeRole($userId,$role);}else{$repo->assignRole($userId,$role);}$roles=$repo->roleCodesForUser($userId);if($role==='admin')(new SupabaseAuth())->setAppRole($userId,in_array('admin',$roles,true)?'admin':null);Response::success(['roles'=>$roles,'session_refresh_required'=>$userId===$req->user->id&&$role==='admin'],$req->requestId);}catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}});
 $router->put('/api/v1/admin/users/{id}/academic',static function(Request $req,array $params)use($strictAdmin):void{
     if(!$strictAdmin($req))return;
     $userId=trim((string)($params['id']??''));
@@ -35,7 +35,7 @@ $router->put('/api/v1/admin/users/{id}/academic',static function(Request $req,ar
     }catch(\InvalidArgumentException $e){
         Response::error('VALIDATION_ERROR',$e->getMessage(),$req->requestId,422);
     }catch(\Throwable $e){
-        Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);
+        \Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);
     }
 });
 $router->get('/api/v1/admin/overview',static function(Request $req,array $params)use($adminGate):void{
@@ -129,10 +129,10 @@ $router->get('/api/v1/admin/files/audit',static function(Request $req,array $par
  }
 });
 $router->get('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['items'=>(new HomeworkRepository())->listAllAdmin()],$req->requestId);}catch(\Throwable $e){Response::error('DB_UNAVAILABLE','Домашние задания временно недоступны',$req->requestId,503);}});
-$router->post('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['item'=>(new HomeworkRepository())->create($req->jsonBody??[])],$req->requestId,201);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
-$router->delete('/api/v1/admin/homeworks/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{(new HomeworkRepository())->delete($params['id']);Response::success(['deleted'=>true],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
+$router->post('/api/v1/admin/homeworks',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['item'=>(new HomeworkRepository())->create($req->jsonBody??[])],$req->requestId,201);}catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}});
+$router->delete('/api/v1/admin/homeworks/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{(new HomeworkRepository())->delete($params['id']);Response::success(['deleted'=>true],$req->requestId);}catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}});
 $router->get('/api/v1/admin/materials',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{Response::success(['items'=>(new FileRepository())->listActive(null)],$req->requestId);}catch(\Throwable $e){Response::error('DB_UNAVAILABLE','Материалы временно недоступны',$req->requestId,503);}});
-$router->delete('/api/v1/admin/materials/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{(new FileRepository())->softDelete($params['id']);Response::success(['deleted'=>true],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}});
+$router->delete('/api/v1/admin/materials/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;try{(new FileRepository())->softDelete($params['id']);Response::success(['deleted'=>true],$req->requestId);}catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}});
 $router->get('/api/v1/admin/community',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req))return;Response::success(['items'=>(new ContentStore())->listCommunityPosts()],$req->requestId);});
 $router->patch('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$patch=[];if($req->jsonBody!==null)foreach(['title','body','pinned','hidden'] as $k)if(array_key_exists($k,$req->jsonBody))$patch[$k]=$req->jsonBody[$k];$row=(new ContentStore())->updateCommunityPost($params['id'],$patch);if($row===null){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['post'=>$row],$req->requestId);});
 $router->delete('/api/v1/admin/community/{id}',static function(Request $req,array $params)use($adminGate):void{if(!$adminGate($req)||!RequireRole::handle($req,['admin','moderator']))return;$ok=(new ContentStore())->deleteCommunityPost($params['id']);if(!$ok){Response::error('NOT_FOUND','Post not found',$req->requestId,404);return;}Response::success(['deleted'=>true],$req->requestId);});
@@ -160,13 +160,13 @@ $router->patch('/api/v1/admin/db/{table}/row',static function(Request $req,array
  if(!$adminGridGate($req))return;$table=(string)$params['table'];if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available',$req->requestId,403);return;}
  $p=is_array($req->jsonBody??null)?$req->jsonBody:[];$key=is_array($p['key']??null)?$p['key']:[];$row=is_array($p['row']??null)?$p['row']:[];$keys=$adminKeyMap[$table]??['id'];foreach($keys as $k)if(!array_key_exists($k,$key)||$key[$k]===''){Response::error('VALIDATION_ERROR','Missing key: '.$k,$req->requestId,422);return;}
  try{$filters=[];foreach($key as $k=>$v)$filters[]=$k.'=eq.'.rawurlencode((string)$v);$old=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));if(!$old){Response::error('NOT_FOUND','Row not found',$req->requestId,404);return;}$new=SupabaseRest::patch($table.'?'.implode('&',$filters),$row,true);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'update','table_name'=>$table,'row_key'=>$key,'old_data'=>$old[0],'new_data'=>$new[0]??array_merge($old[0],$row),'source'=>'admin_ui'],false);Response::success(['item'=>$new[0]??array_merge($old[0],$row)],$req->requestId);
- }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+ }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 $router->delete('/api/v1/admin/db/{table}/row',static function(Request $req,array $params)use($adminGridGate,$adminGridTables,$adminKeyMap):void{
  if(!$adminGridGate($req))return;$table=(string)$params['table'];if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available',$req->requestId,403);return;}
  $p=is_array($req->jsonBody??null)?$req->jsonBody:[];$key=is_array($p['key']??null)?$p['key']:[];$keys=$adminKeyMap[$table]??['id'];foreach($keys as $k)if(!array_key_exists($k,$key)||$key[$k]===''){Response::error('VALIDATION_ERROR','Missing key: '.$k,$req->requestId,422);return;}
  try{$filters=[];foreach($key as $k=>$v)$filters[]=$k.'=eq.'.rawurlencode((string)$v);$old=SupabaseRest::select($table.'?select=*&'.implode('&',$filters));if(!$old){Response::error('NOT_FOUND','Row not found',$req->requestId,404);return;}SupabaseRest::deleteWhere($table.'?'.implode('&',$filters));SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'delete','table_name'=>$table,'row_key'=>$key,'old_data'=>$old[0],'new_data'=>null,'source'=>'admin_ui'],false);Response::success(['deleted'=>true],$req->requestId);
- }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+ }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 $router->get('/api/v1/admin/content/validate',static function(Request $req,array $params)use($strictAdmin):void{
  if(!$strictAdmin($req))return;
@@ -195,10 +195,10 @@ $router->get('/api/v1/admin/content/validate',static function(Request $req,array
   $exam=SupabaseRest::select('exam_questions?is_published=eq.true&select=id,text,answer,subject_slug,type&limit=5000');
   foreach($exam as $q){$type=(string)($q['type']??'open');$answerMissing=trim((string)($q['answer']??''))==='';if($answerMissing&&in_array($type,['mc','mcq','case'],true))$issues[]=['type'=>'published_exam_question_without_answer','id'=>$q['id'],'subject_slug'=>$q['subject_slug']??null,'type'=>$type,'text'=>mb_substr((string)($q['text']??''),0,140)];}
   Response::success(['ok'=>$issues===[],'issues'=>array_slice($issues,0,500),'count'=>count($issues),'checked'=>['tests'=>count($tests),'questions'=>count($questions),'test_questions'=>count($testLinks),'trainer_cards'=>count($cards),'materials'=>count($materials),'exam_questions'=>count($exam)]],$req->requestId);
- }catch(\Throwable $e){Response::error('VALIDATION_FAILED',$e->getMessage(),$req->requestId,503);}
+ }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_validation_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('VALIDATION_FAILED','Не удалось проверить данные',$req->requestId,503);}
 });
 $router->get('/api/v1/admin/db/audit',static function(Request $req,array $params)use($strictAdmin):void{
- if(!$strictAdmin($req))return;$limit=min(500,max(1,(int)($req->query['limit']??200)));try{Response::success(['items'=>SupabaseRest::select('admin_change_log?select=*&order=created_at.desc&limit='.$limit)],$req->requestId);}catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+ if(!$strictAdmin($req))return;$limit=min(500,max(1,(int)($req->query['limit']??200)));try{Response::success(['items'=>SupabaseRest::select('admin_change_log?select=*&order=created_at.desc&limit='.$limit)],$req->requestId);}catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 $router->post('/api/v1/admin/db/audit/{id}/rollback',static function(Request $req,array $params)use($strictAdmin,$adminGridTables,$adminKeyMap):void{
  if(!$strictAdmin($req))return;
@@ -226,7 +226,7 @@ $router->post('/api/v1/admin/db/audit/{id}/rollback',static function(Request $re
     Response::success(['item'=>$restored[0]??$old],$req->requestId);return;
   }
   Response::error('VALIDATION_ERROR','This audit action cannot be rolled back',$req->requestId,422);
- }catch(\Throwable $e){Response::error('ROLLBACK_FAILED',$e->getMessage(),$req->requestId,422);}
+ }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_rollback_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('ROLLBACK_FAILED','Не удалось отменить операцию',$req->requestId,503);}
 });
 
 $router->get('/api/v1/admin/db/tables', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
@@ -245,7 +245,7 @@ $router->get('/api/v1/admin/db/{table}', static function(Request $req,array $par
     if(!in_array($table,$adminGridTables,true)){Response::error('FORBIDDEN','Table is not available in admin grid',$req->requestId,403);return;}
     $limit=min(500,(int)($req->query['limit']??200)); if($limit<1)$limit=200;
     try{Response::success(['items'=>SupabaseRest::select($table.'?select=*&limit='.$limit)],$req->requestId);}
-    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,503);}
+    catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 
 $router->post('/api/v1/admin/db/{table}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
@@ -255,7 +255,7 @@ $router->post('/api/v1/admin/db/{table}', static function(Request $req,array $pa
     $row=is_array($req->jsonBody??null)?$req->jsonBody:[];
     unset($row['id']);
     try{$item=SupabaseRest::insert($table,$row,true)[0]??$row;SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'insert','table_name'=>$table,'row_key'=>['id'=>$item['id']??null],'old_data'=>null,'new_data'=>$item,'source'=>'admin_ui'],false);Response::success(['item'=>$item],$req->requestId,201);}
-    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+    catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 
 $router->patch('/api/v1/admin/db/{table}/{id}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
@@ -264,7 +264,7 @@ $router->patch('/api/v1/admin/db/{table}/{id}', static function(Request $req,arr
     if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
     $row=is_array($req->jsonBody??null)?$req->jsonBody:[]; unset($row['id']);
     try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');$x=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$row,true);$item=$x[0]??array_merge(['id'=>$id],$row);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'update','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0]??null,'new_data'=>$item,'source'=>'admin_ui'],false);Response::success(['item'=>$item],$req->requestId);}
-    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+    catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 
 $router->delete('/api/v1/admin/db/{table}/{id}', static function(Request $req,array $params)use($adminGridGate,$adminGridTables):void{
@@ -272,7 +272,7 @@ $router->delete('/api/v1/admin/db/{table}/{id}', static function(Request $req,ar
     $table=(string)($params['table']??''); $id=(string)($params['id']??'');
     if(!in_array($table,$adminGridTables,true)||$id===''){Response::error('FORBIDDEN','Invalid table or id',$req->requestId,403);return;}
     try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');SupabaseRest::deleteWhere($table.'?id=eq.'.rawurlencode($id));SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'delete','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0]??null,'new_data'=>null,'source'=>'admin_ui'],false);Response::success(['deleted'=>true],$req->requestId);}
-    catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+    catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 
 
@@ -332,19 +332,19 @@ $router->post('/api/v1/admin/content/import', static function(Request $req,array
             if(!$dryRun){SupabaseRest::insert('test_questions',['test_id'=>$tid,'question_id'=>$qid,'order_index'=>(int)($row['order_index']??$i)],true);$createdLinks++;}
         }
         Response::success(['dry_run'=>$dryRun,'created'=>['tests'=>$createdTests,'questions'=>$createdQuestions,'test_questions'=>$createdLinks],'errors'=>$errors],$req->requestId,$dryRun?200:201);
-    }catch(\Throwable $e){Response::error('IMPORT_ERROR',$e->getMessage(),$req->requestId,422);}
+    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_import_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('IMPORT_ERROR','Не удалось импортировать данные',$req->requestId,503);}
 });
 
 // Safe content operations: archive instead of destructive delete, move across hierarchy, and restore snapshots.
 $router->post('/api/v1/admin/content/archive',static function(Request $req,array $params)use($adminGridGate):void{
  if(!$adminGridGate($req))return; $p=is_array($req->jsonBody??null)?$req->jsonBody:[]; $table=(string)($p['table']??''); $id=(string)($p['id']??''); if(!in_array($table,['tests','questions'],true)||$id===''){Response::error('VALIDATION_ERROR','table and id required',$req->requestId,422);return;}
  try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1'); if(!$old){Response::error('NOT_FOUND','Content not found',$req->requestId,404);return;} $new=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),['archived_at'=>gmdate('c')],true); SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'update','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0],'new_data'=>$new[0]??null,'source'=>'admin_archive'],false); Response::success(['item'=>$new[0]??null],$req->requestId);
- }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+ }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 $router->post('/api/v1/admin/content/move',static function(Request $req,array $params)use($adminGridGate):void{
  if(!$adminGridGate($req))return; $p=is_array($req->jsonBody??null)?$req->jsonBody:[]; $table=(string)($p['table']??''); $id=(string)($p['id']??''); $patch=[]; foreach(['subject_id','module_id','topic_id'] as $k)if(array_key_exists($k,$p))$patch[$k]=$p[$k]?:null; if(!in_array($table,['tests','questions'],true)||$id===''||!$patch){Response::error('VALIDATION_ERROR','table, id and destination required',$req->requestId,422);return;}
  try{$old=SupabaseRest::select($table.'?id=eq.'.rawurlencode($id).'&limit=1');if(!$old){Response::error('NOT_FOUND','Content not found',$req->requestId,404);return;} $new=SupabaseRest::patch($table.'?id=eq.'.rawurlencode($id),$patch,true);SupabaseRest::insert('admin_change_log',['actor_user_id'=>$req->user->id,'action'=>'move','table_name'=>$table,'row_key'=>['id'=>$id],'old_data'=>$old[0],'new_data'=>$new[0]??null,'source'=>'admin_ui'],false);Response::success(['item'=>$new[0]??null],$req->requestId);
- }catch(\Throwable $e){Response::error('DB_ERROR',$e->getMessage(),$req->requestId,422);}
+ }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_route_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('DB_ERROR','Операция администратора временно недоступна',$req->requestId,503);}
 });
 
 $router->get('/api/v1/admin/content/question-integrity',static function(Request $req,array $params)use($strictAdmin):void{
