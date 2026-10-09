@@ -20,7 +20,8 @@ return static function (Router $r): void {
             $data = (new AccountSettingsService())->getAccount($token);
             Response::success($data, $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('SETTINGS_ERROR', $e->getMessage(), $q->requestId, 502);
+            \Medbiohim\Support\Logger::error('settings_account_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('SETTINGS_ERROR', 'Настройки временно недоступны', $q->requestId, 503);
         }
     });
 
@@ -34,7 +35,8 @@ return static function (Router $r): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION', $e->getMessage(), $q->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('PROFILE_UPDATE_FAILED', $e->getMessage(), $q->requestId, 400);
+            \Medbiohim\Support\Logger::error('profile_update_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('PROFILE_UPDATE_FAILED', 'Не удалось обновить профиль', $q->requestId, 502);
         }
     });
 
@@ -53,7 +55,8 @@ return static function (Router $r): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION', $e->getMessage(), $q->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('PASSWORD_CHANGE_FAILED', $e->getMessage(), $q->requestId, 400);
+            \Medbiohim\Support\Logger::error('password_change_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('PASSWORD_CHANGE_FAILED', 'Не удалось изменить пароль', $q->requestId, 502);
         }
     });
 
@@ -71,7 +74,8 @@ return static function (Router $r): void {
         } catch (\InvalidArgumentException $e) {
             Response::error('VALIDATION', $e->getMessage(), $q->requestId, 422);
         } catch (\Throwable $e) {
-            Response::error('LINK_START_FAILED', $e->getMessage(), $q->requestId, 400);
+            \Medbiohim\Support\Logger::error('identity_link_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('LINK_START_FAILED', 'Не удалось начать привязку аккаунта', $q->requestId, 502);
         }
     });
 
@@ -83,7 +87,8 @@ return static function (Router $r): void {
             $data = (new AccountSettingsService())->unlinkIdentity($token, $id);
             Response::success($data, $q->requestId);
         } catch (\Throwable $e) {
-            Response::error('UNLINK_FAILED', $e->getMessage(), $q->requestId, 400);
+            \Medbiohim\Support\Logger::error('identity_unlink_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+            Response::error('UNLINK_FAILED', 'Не удалось отвязать аккаунт', $q->requestId, 502);
         }
     });
 
