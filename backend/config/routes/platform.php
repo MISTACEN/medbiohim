@@ -265,7 +265,8 @@ return static function (Router $router): void {
 
             Response::success(['item' => $item], $req->requestId);
         } catch (\Throwable $e) {
-            Response::error('TRAINER_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('trainer_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('TRAINER_ERROR', 'Тренажёр временно недоступен', $req->requestId, 503);
         }
     });
 
@@ -341,7 +342,8 @@ return static function (Router $router): void {
 
             Response::success(['answer' => $ins->fetch(), 'correct' => $isSkipped ? null : $correct, 'explanation' => $isSkipped ? null : ($question['explanation'] ?? null)], $req->requestId, 201);
         } catch (\Throwable $e) {
-            Response::error('TRAINER_ERROR', $e->getMessage(), $req->requestId, 503);
+            \Medbiohim\Support\Logger::error('trainer_route_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            Response::error('TRAINER_ERROR', 'Тренажёр временно недоступен', $req->requestId, 503);
         }
     });
 
