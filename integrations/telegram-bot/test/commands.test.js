@@ -8,9 +8,14 @@ test("parses supported slash commands case-insensitively", () => {
   assert.equal(parseCommand("/help some text"), "help");
 });
 
-test("ignores ordinary text and commands for another bot", () => {
+test("ignores ordinary text and commands addressed to another configured bot", () => {
+  const previous = process.env.TELEGRAM_BOT_USERNAME;
+  process.env.TELEGRAM_BOT_USERNAME = "medbiohim_bot";
   assert.equal(parseCommand("hello"), null);
   assert.equal(parseCommand("/start@another_bot"), null);
+  assert.equal(parseCommand("/start@MEDBIOHIM_BOT"), "start");
+  if (previous === undefined) delete process.env.TELEGRAM_BOT_USERNAME;
+  else process.env.TELEGRAM_BOT_USERNAME = previous;
 });
 
 test("creates canonical same-origin-independent platform links", () => {
