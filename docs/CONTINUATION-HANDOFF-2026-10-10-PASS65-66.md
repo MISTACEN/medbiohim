@@ -1,4 +1,4 @@
-# MEDBIOHIM — Pass 65–70: workflow permissions, YAML repair and runner failure diagnosis
+# MEDBIOHIM — Pass 65–73: workflow permissions, YAML repair, runner diagnosis and verification
 
 Date: 2026-10-10  
 Branch: `main`  
@@ -70,6 +70,14 @@ After runner execution is restored:
 - No deployment was triggered manually.
 - Archive security guards are committed but remain **unverified by execution** while the runner issue persists.
 - A commit being present on `main` is not evidence of successful tests or deployment.
+
+## Pass 71–73 — final consistency verification
+
+- Re-audited all six workflow YAML files. Each has one top-level `jobs:` key and explicit `permissions: contents: read`; no remaining lines matching the malformed two-space ZIP continuation pattern were found.
+- Verified the latest source-package run uses the proper workflow name and has a real `package` job, but still fails pre-step. Latest relevant runs remain code-check `38025017750`, smoke `38025017788`, SpaceWeb archive `38025017818`, and source package `38025017740`.
+- Re-fetched the handoff, unfinished registry, roadmap, phase status, sync stamp, README, and docs index. Each points to the same handoff file; the handoff title now reflects its updated scope.
+- Verified `main` points to commit `d023470bf8626794a66b036f9c267465e225d6d1`, the latest handoff update. Documentation-only follow-up commits are ignored by the code workflows as intended.
+- No code execution, archive creation, production deployment, or database mutation could be claimed from these API inspections.
 
 ## Exact continuation prompt
 
