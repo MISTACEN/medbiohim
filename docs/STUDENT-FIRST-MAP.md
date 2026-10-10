@@ -330,3 +330,14 @@ Detailed findings: `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md`.
 - Primary and fallback backend paths must implement the same semantic contract.
 - Empty result and backend failure must never be indistinguishable.
 - A production build that ignores TypeScript/ESLint errors is not final proof of correctness.
+
+## Product contract clarification — 2026-10-11
+
+See the canonical [product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
+
+- MEDBIOHIM is a standalone student self-preparation tool for exams, tests, pass/fail assessments and learning workflows—not the official university site or a replacement for the official portal.
+- Existing site structure and visual organization are approved; improve and complete the current UX rather than redesigning or duplicating sections.
+- Imported real questions should preserve source/provenance and remain distinguishable from AI-generated or unverified content.
+- Any authenticated member of the same group should be able to add shared homework. UI and API must agree; group membership and academic scope must be checked server-side. Individual completion/submission remains separate from the group assignment.
+- Telegram is both an account entry point (registration/login and opening the site as a Mini App) and an academic chat ingestion channel.
+- Open findings: checked homework UI/API still restrict creation to privileged roles/starosta; PHP webhook secret validation is fail-open if no secret is configured; complete Telegram registration/account-linking/Mini App flow is not proven. These are work items, not completed features.
