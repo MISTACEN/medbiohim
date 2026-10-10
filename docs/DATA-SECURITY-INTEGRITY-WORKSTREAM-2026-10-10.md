@@ -23,7 +23,7 @@ Historical detail remains in [Pass 54](DATA-INTEGRITY-RECONCILIATION-2026-10-10-
 
 ## 2. Public-schema table privilege audit — new finding
 
-A read-only check of effective privileges found that the `anon` and `authenticated` roles can have `TRUNCATE`, `TRIGGER`, and `REFERENCES` privileges on many public base tables. The exact table ACLs vary, and this query alone does not prove an exploit path through PostgREST. However, RLS policies do not govern `TRUNCATE`; these privileges are unnecessary for browser-facing roles and violate least privilege.
+A read-only check on PostgreSQL 17.6 found effective `MAINTAIN`, `TRUNCATE`, `TRIGGER`, and `REFERENCES` privileges on public tables: 71 of 83 tables for `anon` and 78 of 83 for `authenticated` for each of these four privileges. This count does not prove every table is exposed through PostgREST or establish a specific exploit path. RLS does not govern `TRUNCATE`; all four privileges are unnecessary for browser-facing roles and violate least privilege.
 
 The audit also observed permissive default ACL entries for client roles on tables created by `postgres` and `supabase_admin`. New-table defaults need to be tightened as well as existing table grants.
 
@@ -33,9 +33,9 @@ Added migration:
 
 `database/migrations/20261010_revoke_non_rls_table_privileges.sql`
 
-It revokes only `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `anon` and `authenticated` across existing public tables, and tightens those default privileges for `postgres` and `supabase_admin`. It deliberately leaves SELECT/INSERT/UPDATE/DELETE grants and all RLS policies unchanged.
+It revokes `MAINTAIN`, `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `anon` and `authenticated` across existing public tables, and tightens those default privileges for `postgres` and `supabase_admin`. It deliberately leaves SELECT/INSERT/UPDATE/DELETE grants and all RLS policies unchanged. A read-only verification query is available at `database/audits/20261010_public_table_privilege_verification.sql`.
 
-**The migration is committed but has NOT been applied to live Supabase.** Do not report the database as fixed yet. First validate the migration owner/default-privilege behavior in a staging clone, check app flows, then apply through the approved migration process and rerun effective privilege queries. No production database writes were made during this workstream.
+**The migration is committed but has NOT been applied to live Supabase.** Do not report the database as fixed yet. First validate the migration owner/default-privilege behavior in a staging clone, check app flows, then apply through the approved migration process and rerun effective privilege queries. Current pre-migration effective counts and follow-up are documented in `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`. No production database writes were made during this workstream.
 
 ## 3. Verification status
 
