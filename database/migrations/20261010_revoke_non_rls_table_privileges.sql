@@ -4,8 +4,8 @@
 -- MAINTAIN, REFERENCES, or TRIGGER privileges on application tables.
 -- IMPORTANT: this migration is committed but has NOT been applied to live Supabase.
 -- Review in staging and apply only after confirming the migration runner role.
--- Tested for syntax compatibility by targeting the observed PostgreSQL 17.6 server;
--- execution against production has intentionally not been performed.
+-- Privilege syntax is intended for the observed PostgreSQL 17.6 server;
+-- migration execution in staging/production has not yet been performed.
 
 BEGIN;
 
