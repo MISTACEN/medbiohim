@@ -1,3 +1,13 @@
+## Data integrity reconciliation — Pass 54 (2026-10-10)
+
+- 🟢 Read-only Supabase check: 854 question links; no duplicate pairs or broken links; 32/32 active published tests have questions; 660/660 active published questions have test links.
+- 🟢 776 published `exam_questions` have non-empty prompts and valid checked curriculum links.
+- 🟡 719 blank answer fields belong to open-ticket/preparation-style types in the grouped audit; no auto-fill/delete/unpublish was performed.
+- 🟡 Five linked Anatomy/Biochemistry questions have a valid `subject_id` but their legacy subject has NULL `slug`; normalization is deferred until canonical mapping is confirmed.
+- 🔴 CI and production runtime are still unverified; Actions jobs terminate before steps.
+
+Report: [Pass 54](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+
 ## API proxy hardening — Pass 53 (2026-10-10)
 
 - 🟢 Trainer fallback now respects PHP-first routing; Supabase fallback is only used after an upstream 404.
