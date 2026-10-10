@@ -1226,3 +1226,12 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - 🔴 FTPS certificate verification is disabled in the deploy workflow. Confirm the hosting certificate/hostname and test before enabling verification.
 - 🟡 Existing remote backup is verified before upload, but no tested rollback after partial deploy is present.
 - Report: [Pass 58 release-gate source audit](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+
+
+## Pass 59 — 2026-10-10
+- **CI runner:** BLOCKED. Four current-head workflows (code checks, smoke, backend archive, source package) ended in failure; all inspected jobs return `steps: null`. No test command is confirmed to have run.
+- **Frontend/PHP validation:** UNVERIFIED; require actual executable Actions results.
+- **Lockfile/ESLint quality gates:** OPEN. Do not fabricate a lockfile or enable untested rules without registry-enabled validation.
+- **SpaceWeb FTPS:** OPEN; certificate verification remains disabled in deploy workflow and must be validated safely before changing transport settings.
+- **Production database/deployment:** unchanged by this pass.
+- Evidence: `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md`.
