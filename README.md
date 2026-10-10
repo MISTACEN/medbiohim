@@ -30,6 +30,7 @@ Copy `.env.example` → `.env`. Folder `data/` must be writable.
 
 ## План и документация
 - [ROADMAP.md](ROADMAP.md) — единый план проекта и порядок работ
+- [Отчёт Pass 53: API proxy hardening](docs/API-PROXY-HARDENING-2026-10-10-PASS53.md) — PHP-first fallback, приватное кеширование media, безопасные 502; CI/runtime verification ещё заблокированы
 - [PHASES_STATUS.md](PHASES_STATUS.md) — текущее состояние фаз
 - [Единый чек-лист GitHub/production](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) — Actions, сборка, API, безопасность, данные, media, UI и сценарии end-to-end
 - [docs/README.md](docs/README.md) — карта документов и источников истины
