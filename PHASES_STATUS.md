@@ -1,3 +1,12 @@
+## Consolidated workstream — Data + DB privileges (2026-10-10)
+
+- 🟢 Read-only integrity checks show no broken/duplicate test-question links and all active published tests/questions linked.
+- 🟡 Privilege audit found client roles with unnecessary `TRUNCATE`, `TRIGGER`, and `REFERENCES` rights on many public tables; RLS does not govern TRUNCATE.
+- 🟡 Prepared migration `database/migrations/20261010_revoke_non_rls_table_privileges.sql`; **not applied** to live Supabase. Staging and migration-owner verification are required before applying.
+- 🔴 GitHub Actions is still not executing steps; CI/runtime not green.
+
+Combined report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). Previous Pass 54 report retained.
+
 ## Data integrity reconciliation — Pass 54 (2026-10-10)
 
 - 🟢 Read-only Supabase check: 854 question links; no duplicate pairs or broken links; 32/32 active published tests have questions; 660/660 active published questions have test links.
