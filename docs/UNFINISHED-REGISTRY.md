@@ -105,18 +105,18 @@ Supabase has many intentionally empty activity/content tables:
 
 These are not to be filled with demo rows. They are expected to be zero for an unused feature.
 
-## Current quality gates
+## Current quality gates (reconciled 2026-10-10)
 
-- ✅ no active /api-compat calls in frontend;
-- ✅ homework runtime is API-only;
-- ✅ frontend literal escaped-newline check passes;
-- ✅ Next production build passes;
-- ✅ PHP syntax passes;
-- ✅ smoke workflow passes;
-- ✅ dead shadow trees removed;
-- 🟡 latest code-check after newest UI commit is still running;
+The items below distinguish historical source checks from the latest end-to-end release gate. Latest Actions runs `38011994749` (code checks), `38011994779` (smoke), and `38011994746` (backend archive) all ended with `steps: null`; commands did not produce actionable step results. Current CI is **blocked/unverified** regardless of older successful run records.
+
+- 🟢 no active /api-compat calls in frontend (source audit);
+- 🟢 homework runtime is API-only (source audit);
+- 🟡 frontend escaped-newline, Next build, PHP syntax and route checks need a fresh executed run on current main;
+- 🔴 smoke workflow currently blocked before steps; no current green claim;
+- 🟢 dead shadow trees removed (historical source change);
 - 🟡 target SpaceWeb media verification remains;
-- 🟡 AI runtime provider verification remains.
+- 🟡 AI runtime provider verification remains;
+- 🟡 database least-privilege migration is prepared but not applied; staging and post-migration privilege verification required.
 
 ## Definition of done for the remaining items
 
