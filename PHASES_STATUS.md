@@ -1,7 +1,8 @@
-## Latest status — 2026-10-10, Pass 65–67
+## Latest status — 2026-10-10, Pass 65–70
 
-- 🟢 Explicit `contents: read` permission is now set on four non-deployment workflows.
-- 🔴 GitHub Actions execution remains blocked before steps: latest code-check `38024900534`, SpaceWeb archive `38024900530`; jobs report `runner_id: 0`, no runner name, empty steps and no logs.
+- 🟢 Explicit `contents: read` permission is now set on all six workflows.
+- 🟢 Fixed malformed indentation in `package-archives.yml`; GitHub now recognizes its `package` job.
+- 🔴 GitHub Actions execution remains blocked before steps: code-check `38025017750`, smoke `38025017788`, SpaceWeb archive `38025017818`, source package `38025017740`; raw jobs report `runner_id: 0`, no runner name and empty steps.
 - 🟡 ZIP `.env` exclusion guards are committed but not execution-verified.
 - 🟡 Next: inspect owner-side Actions settings/runner availability or contact GitHub support; after execution returns, run PHP/frontend checks, archive validation and smoke tests.
 - Handoff: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
