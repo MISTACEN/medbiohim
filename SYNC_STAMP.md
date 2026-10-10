@@ -4,6 +4,7 @@
 - Branch: main
 - Source of truth: GitHub main + Supabase + target deployment environments
 - Documentation baseline: ROADMAP.md + PHASES_STATUS.md + docs/README.md
+- Latest API proxy hardening: commit 6aeb401 (PHP-first trainer fallback, private media no-store, generic 502); CI still blocked before steps.
 - Latest PHP/CI follow-up: docs/CI-PHP-AUDIT-2026-10-10-PASS52.md (homework SQL placeholders, planner SQL, error response hardening; full CI still blocked)
 - Latest security fix: docs/CI-PHP-AUDIT-2026-10-10-PASS51.md
 - Previous access-control pass: docs/SECURITY-FIX-2026-10-10-PASS50.md
