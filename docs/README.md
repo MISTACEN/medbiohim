@@ -13,6 +13,7 @@
 | [SECURITY-FIX-2026-10-10-PASS48.md](SECURITY-FIX-2026-10-10-PASS48.md) | MBH-доступ к материалам гистологии в viewer | 🟡 source-only до deployment verification |
 | [SECURITY-FIX-2026-10-10-PASS49.md](SECURITY-FIX-2026-10-10-PASS49.md) | Единая проверка MBH-доступа во всех material/file routes | 🟡 source-only до deployment verification |
 | [SECURITY-FIX-2026-10-10-PASS50.md](SECURITY-FIX-2026-10-10-PASS50.md) | MBH-доступ к предметам, журналу оценок и учебному контексту | 🟡 source-only до deployment verification |
+| [API-PROXY-HARDENING-2026-10-10-PASS53.md](API-PROXY-HARDENING-2026-10-10-PASS53.md) | PHP-first trainer fallback, no-store для приватных изображений, generic 502 | 🟡 source-only; CI/runtime blocked |
 | [BRANCHES.md](../BRANCHES.md) | main / beta rules | ✅ актуальный |
 | [ACTIVE-EXPERIMENTS.md](ACTIVE-EXPERIMENTS.md) | Что находится в beta | ✅ актуальный |
 | [platform-concept-medbiohim.md](platform-concept-medbiohim.md) | Общая архитектурная идея | ✅ актуальный |
