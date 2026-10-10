@@ -7,7 +7,7 @@ Grouped pass covering archive confidentiality, post-change CI diagnosis, and rec
 - Hardened `.github/workflows/package-archives.yml` to exclude root and nested `.env*` files from both full-source and backend archives.
 - Hardened `.github/workflows/build-spaceweb-archive.yml` to exclude root and nested backend `.env*` files.
 - Added archive-list validation before artifact upload. If an archive contains a path matching `.env` or `.env.*`, the workflow exits non-zero instead of uploading it.
-- Added a consolidated pass inventory: the recursive GitHub tree currently contains **37 documentation files whose names end in PASS<number>.md**, with pass numbers up to 62. This is not 62 completed sequential passes; historical numbering has gaps and some pass reports are consolidated.
+- Added a consolidated pass inventory: the recursive GitHub tree contained **37 documentation files named PASS<number>.md before Pass 64**; including this report, the current count is **38**, with numbering up to 64. This is not 62 completed sequential passes; historical numbering has gaps and some pass reports are consolidated.
 - The unfinished registry currently lists 22 closed legacy blockers (C-01 through C-22) and 7 broad remaining workstreams (R1–R7).
 
 ## CI verification
