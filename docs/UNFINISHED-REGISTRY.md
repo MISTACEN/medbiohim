@@ -572,3 +572,6 @@ Severity: P1 / security hygiene
 Source and backend archive workflows now exclude root/nested `.env*` paths and inspect the ZIP listing before artifact upload. However, latest GitHub Actions runs still fail before steps/logs, so the guard and ZIP contents have not been executed/verified. Keep this item open until a successful artifact build confirms no environment files are included.
 
 See [Pass 64 report](ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+
+
+Latest retry confirmation: code-check run [38019548725 attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/38019548725) again failed with no job steps/logs for both backend and frontend. CI root cause remains open.
