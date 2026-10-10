@@ -1,3 +1,11 @@
+## Latest continuation stamp — Pass 65–67, 2026-10-10
+
+- Handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
+- Latest commits restrict `contents: read` in four non-deployment workflows.
+- Current CI runs: code-check `38024900534`; SpaceWeb archive `38024900530`. Both fail pre-step; jobs show `runner_id: 0`, no runner name, empty steps and null logs.
+- Do not claim CI or archive verification. Next action is owner-side GitHub Actions settings/runner provisioning investigation, then rerun real checks.
+- No production DB mutation or manual deployment in this pass.
+
 # Latest consolidated workstream — 2026-10-10
 
 - Report: `docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md`.
