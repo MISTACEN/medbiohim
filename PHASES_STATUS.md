@@ -1290,3 +1290,8 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 ### Pass 77
 - 🟢 Added fail-fast shell mode to SpaceWeb archive creation (`4d37b00438ebfe4a73291e1176e942f0da8f00f1`).
 - 🔴 CI execution still unverified: Actions jobs fail before steps with no logs. Do not mark PHP/frontend checks passed until a runner executes them.
+
+
+### Pass 78
+- 🟢 Added regression test for `AccountSettingsService::getPreferences()` and safe defaults; hooked into CI and deployment preflight.
+- 🔴 Test execution not verified: GitHub Actions still fails before steps, without logs.
