@@ -1235,3 +1235,10 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - **SpaceWeb FTPS:** OPEN; certificate verification remains disabled in deploy workflow and must be validated safely before changing transport settings.
 - **Production database/deployment:** unchanged by this pass.
 - Evidence: `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md`.
+
+
+## Pass 60 — 2026-10-10
+- **CI noise reduction:** source changes in four workflow trigger blocks now skip Markdown-only pushes/PRs where applicable.
+- **Verification:** source edits committed; execution of path filters not yet confirmed. Runner initialization blocker remains open; no green checks claimed.
+- **Production:** no deployment, secret change, or DB write.
+- Report: `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
