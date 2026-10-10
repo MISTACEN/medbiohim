@@ -4,6 +4,17 @@
 > Обновляется вместе с изменениями в коде/БД.  
 > Дата актуализации: **2026-10-10**.
 
+## CI/PHP audit follow-up — Pass 52 (2026-10-10)
+
+- 🟢 Fixed repeated named PDO placeholders in homework listing/attachment queries and student-planner queries.
+- 🟢 Added `backend/tests/HomeworkSqlContractTest.php` and wired it into code-check + SpaceWeb pre-deploy gates.
+- 🟢 Hardened selected attendance/admin/media error responses: internal details are logged server-side and generic messages are returned to clients. One legacy platform handler remains explicitly under review.
+- 🔴 GitHub Actions runner allocation remains blocked. Run `37993824049` has repeatedly failed with `runner_id=0`, zero steps and no logs; a further retry has been requested, but must be checked for actual runner execution before claiming success.
+- 🔴 Vercel deployment is independently blocked by the observed `build-rate-limit` / upgrade-to-Pro target. This is a quota/plan blocker, not proof of a source build error.
+- 🟡 Full PHP lint, real DB/RLS integration, exact-main CI and SpaceWeb post-deploy smoke remain unverified.
+
+Details: [CI/PHP audit Pass 52](docs/CI-PHP-AUDIT-2026-10-10-PASS52.md).
+
 ## CI recovery + PHP security audit — Pass 51 (2026-10-10)
 
 - 🟢 Fixed a concrete PHP parse defect in the homework attachment SQL string.
