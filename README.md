@@ -1,6 +1,6 @@
-## Current engineering status — 2026-10-10
+## Current engineering status — 2026-10-10 (Pass 65–70)
 
-GitHub Actions currently fails before job steps start. Latest runs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38024900534) and [SpaceWeb archive](https://github.com/MISTACEN/medbiohim/actions/runs/38024900530). Raw job metadata reports no runner allocation (`runner_id: 0`), no steps and no logs. This is a release blocker; archive security guards are committed but not yet executed in CI. See the [continuation handoff](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) for the exact next steps.
+GitHub Actions currently fails before job steps start. Latest runs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38025017750), [smoke](https://github.com/MISTACEN/medbiohim/actions/runs/38025017788), [SpaceWeb archive](https://github.com/MISTACEN/medbiohim/actions/runs/38025017818), and [source package](https://github.com/MISTACEN/medbiohim/actions/runs/38025017740). Raw job metadata reports no runner allocation (`runner_id: 0`), no steps and no logs. A malformed YAML indentation issue in the source-package workflow has been fixed, but the job still cannot start. This is a release blocker; archive security guards are committed but not yet executed in CI. See the [continuation handoff](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) for the exact next steps.
 
 ## Latest consolidated engineering workstream — 2026-10-10
 
