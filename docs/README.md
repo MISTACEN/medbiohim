@@ -81,3 +81,6 @@ Historical recovery notes are useful only when debugging an old incident.
 
 ## Latest reports — 2026-10-10
 - [Pass 59 — Actions runner reconciliation](CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md): latest-head workflow evidence, unverified checks, and safe next steps.
+
+
+- [Pass 60 — CI documentation-only filters](CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md): workflow path filters that reduce redundant jobs from docs-only changes; not a CI recovery claim.
