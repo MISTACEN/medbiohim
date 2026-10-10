@@ -114,3 +114,10 @@ Added `set -euo pipefail` at the start of `.github/workflows/build-spaceweb-arch
 3. Run the PHP checks against current `main`, especially `AccountSettingsService::getPreferences()`, route registration, `SupabaseRest` usage and auth/schedule/trainer endpoints; no production deploy until a verified backup and passing pre-deploy checks.
 4. Validate SpaceWeb FTP TLS certificate and hostname before enabling certificate verification; current workflow still disables certificate verification.
 5. Continue auditing app code and tests after CI runner access is restored. Do not treat these workflow changes as proof that the site login, data, or media paths work.
+
+
+## Pass 78 — regression coverage for account preferences in auth/me
+
+Inspected the current `backend/src/Services/AccountSettingsService.php` and `backend/config/routes/auth.php`. The `getPreferences(string $userId)` method is currently present, so the earlier `auth/me` fatal is not reproduced by static inspection of current `main`; it is still worth protecting against regression. Added `backend/tests/AccountSettingsPreferencesTest.php` to assert the method exists and that safe defaults are returned without an account ID (commit `80ec61c9d6cf67fb84f65641ca9a41f06eaedaef`). Wired this test into both `.github/workflows/code-check.yml` (`b2cd34932677b92141d0d309d740f581b975514b`) and the deploy workflow preflight (`0471c13a1208f830dbe9901a0119175e08518f51`).
+
+**CI recheck:** runs `38035609359` (code checks), `38035609394` (smoke), `38035609378` (source package), and `38035609353` (SpaceWeb archive) all finished as failures before any steps; job summaries still contain no step/log details. This does not tell us whether the new PHP test passes. It does confirm runner execution remains the blocking issue. Current `main` at this point: `0471c13a1208f830dbe9901a0119175e08518f51`.
