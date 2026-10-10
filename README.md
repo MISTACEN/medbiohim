@@ -171,3 +171,7 @@ The job-step endpoint returned no steps and log downloads returned `BlobNotFound
 
 ### Vercel observability — Pass 62
 A recent docs-only production deployment was READY, but the newer commit's deployment state was not confirmed. Vercel runtime-log access returned 403 and build-event retrieval returned 404, so this does not establish runtime health. See `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
+
+
+### Pre-deploy audit reconciliation — 2026-10-10
+The pre-deploy audit now warns when the ESLint config appears to contain no rules or recognized presets. This is a heuristic warning, not a substitute for a real lint baseline. CI remains unverified while Actions jobs fail before exposing steps/logs. See [report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
