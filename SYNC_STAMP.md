@@ -361,3 +361,14 @@ Pass 77 (2026-10-10): `.github/workflows/build-spaceweb-archive.yml` now enables
 
 
 Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, wired into code-check and deploy preflight. Current `main` at code change: `0471c13a1208f830dbe9901a0119175e08518f51`; CI still fails before steps without logs, so tests are not verified. Handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
+
+## 2026-10-11 — Product intent and integration contract recorded
+
+- Canonical requirements: `docs/MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md`.
+- Preserve existing site structure/design; improve current workflows without a global redesign unless requested.
+- MEDBIOHIM is an independent student exam/self-preparation platform, not the official university site.
+- Imported real questions must retain provenance; AI-generated or unverified answers must not be presented as official.
+- Manual student entry, Telegram and future extension imports must converge on one homework model with server-side group membership checks.
+- Telegram must support both registration/login + Mini App entry and group-chat homework ingestion.
+- Open source findings: checked homework UI/API restrict creation to privileged roles, conflicting with the intended group-member policy; PHP webhook secret validation accepts requests if the configured secret is empty; full Telegram account-linking/Mini App E2E is not confirmed.
+- This pass records requirements only; no code, production deployment or DB writes. GitHub Actions remains unverified because jobs terminate before steps.
