@@ -1,4 +1,4 @@
-# MEDBIOHIM — Pass 65–73: workflow permissions, YAML repair, runner diagnosis and verification
+# MEDBIOHIM — Pass 65–76: workflow safety hardening, YAML repair and runner diagnosis
 
 Date: 2026-10-10  
 Branch: `main`  
@@ -78,6 +78,26 @@ After runner execution is restored:
 - Re-fetched the handoff, unfinished registry, roadmap, phase status, sync stamp, README, and docs index. Each points to the same handoff file; the handoff title now reflects its updated scope.
 - Verified `main` points to commit `d023470bf8626794a66b036f9c267465e225d6d1`, the latest handoff update. Documentation-only follow-up commits are ignored by the code workflows as intended.
 - No code execution, archive creation, production deployment, or database mutation could be claimed from these API inspections.
+
+## Pass 74 — prevent automatic deployment on workflow-file edits
+
+Removed `.github/workflows/deploy-backend.yml` from its own `push.paths` trigger. Backend code/config and histology content changes still trigger the deploy workflow, and `workflow_dispatch` remains available. Editing the deploy workflow itself now requires a deliberate manual dispatch instead of automatically attempting a production deployment. Commit: `f264663bb38bf3dd2ea412158b0e9fcf63df5b46`. The follow-up run list showed code checks, smoke and archive workflows, but no deploy-backend run for that workflow-only commit, as intended.
+
+## Pass 75 — make FTP deployment commands fail closed
+
+In `.github/workflows/deploy-backend.yml`, added `set -euo pipefail` to the backend-source and histology upload steps, plus `set cmd:fail-exit yes;` to the source upload, histology upload and remote verification `lftp` sessions. This reduces the chance of an intermediate FTP command failing while a later `bye` command leaves the step looking successful. Backup already had the lftp fail-exit setting. Commit: `11ef306a7aac25245b3cf49bf0e06e4763aaf0f3`.
+
+The FTP TLS certificate check remains disabled (`ssl:verify-certificate no`, and `curl --ssl -k`) because the trusted SpaceWeb certificate/hostname has not been validated from an appropriate network. Do not enable certificate verification blindly; validate it first. No deployment was manually triggered.
+
+## Pass 76 — latest CI result recheck
+
+Runs on commit `11ef306a7aac25245b3cf49bf0e06e4763aaf0f3`:
+- [Source package 38025653446](https://github.com/MISTACEN/medbiohim/actions/runs/38025653446)
+- [Code checks 38025653322](https://github.com/MISTACEN/medbiohim/actions/runs/38025653322)
+- [Smoke 38025653334](https://github.com/MISTACEN/medbiohim/actions/runs/38025653334)
+- [SpaceWeb archive 38025653314](https://github.com/MISTACEN/medbiohim/actions/runs/38025653314)
+
+All four fail before steps; job wrappers return no steps/logs. The underlying jobs API must be consulted where possible; current evidence remains consistent with no runner allocation, not a reported test assertion failure. These commits are therefore **not verified by executing tests**.
 
 ## Exact continuation prompt
 
