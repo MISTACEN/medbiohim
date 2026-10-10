@@ -84,3 +84,6 @@ Historical recovery notes are useful only when debugging an old incident.
 
 
 - [Pass 60 — CI documentation-only filters](CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md): workflow path filters that reduce redundant jobs from docs-only changes; not a CI recovery claim.
+
+
+- [Pass 61 — Actions job log diagnostics](CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md): empty step arrays and missing log blobs, plus owner-side investigation checklist.
