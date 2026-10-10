@@ -1295,3 +1295,14 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 ### Pass 78
 - 🟢 Added regression test for `AccountSettingsService::getPreferences()` and safe defaults; hooked into CI and deployment preflight.
 - 🔴 Test execution not verified: GitHub Actions still fails before steps, without logs.
+
+
+## 2026-10-11 — Product intent and integration contract
+
+- Added canonical product contract: [docs/MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md](docs/MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
+- Product direction clarified: standalone student self-preparation platform, not official university site; retain current approved structure and improve in place rather than redesigning.
+- Real imported questions must retain provenance and be distinguished from AI-generated/unverified content.
+- Homework entry from students, Telegram and future extension import must converge on one shared group workflow; any authenticated member of the same group is intended to be able to add homework, with server-side group-membership checks.
+- Telegram has two roles: site registration/login + Web App/Mini App, and group-chat homework ingestion. Current full registration/linking/Mini App flow is not proven end-to-end.
+- Open implementation checks: UI/API homework permission mismatch; PHP Telegram webhook secret must fail closed when unset; unify/verify bot and PHP ingestion paths; safely validate Telegram identity and initData.
+- These are recorded requirements and findings, not claims of implementation completion. GitHub Actions remains blocked before steps, so CI results are unverified.
