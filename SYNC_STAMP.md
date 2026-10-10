@@ -294,3 +294,9 @@ After the Pass 55 documentation commits, checked fresh runs on the current docum
 - Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
 
 Latest read-only privilege counts and current Actions evidence: 83 public tables; anon has four unnecessary privileges on 71 tables, authenticated on 78. Migration remains unapplied. Latest smoke/code-check/archive jobs fail with `steps: null`; do not claim CI green.
+
+## 2026-10-10 — Pass 57 CI/DB preflight
+
+- Latest checked smoke retry: [run 38012180433](https://github.com/MISTACEN/medbiohim/actions/runs/38012180433), attempt 2 — failed before steps; job reports `steps: null`, no logs. CI remains blocked/unverified.
+- Read-only Supabase role/default-ACL review completed. Least-privilege migration remains unapplied; no production writes.
+- Detailed report: `docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md`.
