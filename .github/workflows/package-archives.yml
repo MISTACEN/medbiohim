@@ -25,14 +25,24 @@ jobs:
   -x '.git/*' \
   -x 'node_modules/*' \
   -x '.next/*' \
-  -x '.env' -x '.env.*' -x '*/.env' -x '*/.env.*'
+  -x '.env*' -x '*/.env*'
 
       - name: Build backend archive
         run: |
           set -euo pipefail
           rm -f "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip"
           zip -qr "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip" backend \
-  -x 'backend/.env' -x 'backend/.env.*' -x 'backend/*/.env' -x 'backend/*/.env.*'
+  -x 'backend/.env*' -x 'backend/*/.env*' -x '*/.env*'
+
+      - name: Reject environment files in archives
+        run: |
+          set -euo pipefail
+          for archive in "$GITHUB_WORKSPACE/medbiohim-full-$GITHUB_SHA.zip" "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip"; do
+            if zipinfo -1 "$archive" | grep -E '(^|/)\.env($|\.)'; then
+              echo "Environment file leaked into archive: $archive"
+              exit 1
+            fi
+          done
 
       - uses: actions/upload-artifact@v4
         with:
