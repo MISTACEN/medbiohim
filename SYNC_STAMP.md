@@ -358,3 +358,6 @@ Vercel read-only inspection found a READY deployment for a recent docs commit an
 
 
 Pass 77 (2026-10-10): `.github/workflows/build-spaceweb-archive.yml` now enables `set -euo pipefail` before archive preparation (commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`). CI remains blocked before job steps; no test pass is claimed. Current handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
+
+
+Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, wired into code-check and deploy preflight. Current `main` at code change: `0471c13a1208f830dbe9901a0119175e08518f51`; CI still fails before steps without logs, so tests are not verified. Handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
