@@ -532,3 +532,12 @@ Execution of the filters has not yet been confirmed. The separate Actions initia
 
 ### Pass 60 follow-up evidence
 The workflow-definition commits themselves triggered runs as expected. Latest inspected runs: code-check [38013521893](https://github.com/MISTACEN/medbiohim/actions/runs/38013521893), smoke [38013522004](https://github.com/MISTACEN/medbiohim/actions/runs/38013522004), package [38013521967](https://github.com/MISTACEN/medbiohim/actions/runs/38013521967), backend archive [38013522082](https://github.com/MISTACEN/medbiohim/actions/runs/38013522082). All jobs still expose `steps: null`. The newer run list contains no runs for the subsequent Markdown-only status commits, consistent with path filters reducing docs-only churn. Runner failure remains unresolved.
+
+
+## U-2026-10-10-61 — Actions job records/log blobs are absent
+
+Severity: P1 / release verification
+
+For code-check run [38013521893](https://github.com/MISTACEN/medbiohim/actions/runs/38013521893), backend job `114098661992` and frontend job `114098662106` have `steps: null` and `logs_url: null`; explicit step endpoint returns an empty list and log download returns HTTP 404 `BlobNotFound`. Repository metadata shows the repository is private, active, and integration permissions include admin/maintain/push. Root cause remains unknown; no test command is confirmed to have executed.
+
+Owner action: inspect the run/job in GitHub UI, Settings → Actions → General, account usage/limits and service incidents; escalate to GitHub Support with runs `38013521893`, `38013522004`, `38013521967`, `38013522082` if no logs are available. Report: [Pass 61](CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md).
