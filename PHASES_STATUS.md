@@ -53,7 +53,7 @@ Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 | 8. AI Tutor | 🔴 | provider chain есть, но runtime availability не закрыта |
 | 9. Chemistry | 🟡 | core на main, экспериментальные части в beta |
 | 10. UI system | 🟡 | основной UI стабилен; Aero Glass — beta |
-| 11. SpaceWeb media | 🟡 | 28 EM source_key не сопоставились с content_sources.source_path; наличие файлов на SpaceWeb/B2 требует HTTP 200 smoke |
+| 11. SpaceWeb media | 🟡 | Read-only reconciliation confirms 28/28 published electronogram cards have non-empty source_key but 0 exact or basename matches in content_sources.source_path; GitHub main tree also has 0 matching electronogram/image assets. This does not prove the files are absent on SpaceWeb/B2; authenticated HTTP 200 checks and path mapping remain required |
 | 12. Documentation | 🟡 | Unified GitHub/production checklist and issue template added; Pass 44–50 reports, 15-assertion sanitizer test, unified checklist and bug issue form documented; historical counts remain snapshots |
 | 13. Optional integrations | 🟡 | Chrome/Edge quick-access extension and isolated public-command Telegram bot MVP added; manual browser install/bot deployment not performed; private account linking intentionally absent |
 
