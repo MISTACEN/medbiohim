@@ -145,3 +145,9 @@ Reviewed GitHub Actions workflow definitions and rechecked the runner failure; c
 ### Pass 56 — security status
 
 The PostgreSQL 17.6 privilege audit found unnecessary MAINTAIN/TRUNCATE/REFERENCES/TRIGGER privileges on 71 public tables for `anon` and 78 for `authenticated` (out of 83). The migration was updated but remains unapplied. Latest Actions runs are pre-step failures, so current CI is blocked/unverified. Details: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
+
+### Latest verification status — 2026-10-10 (Pass 57)
+
+- GitHub Actions smoke job retry still fails before steps/logs (`steps: null`); PHP/frontend checks have not been verified by CI. Do not treat this as a code-test failure or a green build.
+- Supabase default ACL/role-membership preflight was read-only. Least-privilege migration is committed but **not applied**; no production writes in this pass.
+- Details: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
