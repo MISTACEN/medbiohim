@@ -14,6 +14,13 @@
 
 Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 
+## CI runner retry — attempt 4 (2026-10-10)
+
+- 🔴 Retried failed jobs for run [37993824049](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049); attempt 4 again ended with both frontend/backend jobs failing before any steps (`steps=[]`).
+- This remains runner allocation/dispatch failure, not a result from PHP/TypeScript/build commands. Do not mark checks green or weaken required checks.
+- Next external unblock: verify GitHub Actions account/org billing, spending limit, repository Actions permissions and runner availability; contact GitHub Support if those are normal.
+- Vercel is separately blocked by the observed `build-rate-limit` target; production deployment/runtime smoke remains open.
+
 ## CI/PHP audit — Pass 52 (2026-10-10)
 
 - 🟢 Fixed repeated named PDO placeholders in homework listing/attachment SQL.
