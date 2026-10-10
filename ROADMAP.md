@@ -2146,3 +2146,8 @@ One recent docs-only production deployment was READY; a newer deployment was BUI
 ### CI reliability follow-up (Pass 77)
 - SpaceWeb archive preparation now fails immediately on any shell/copy error (`set -euo pipefail`), commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`.
 - Still blocked: GitHub Actions runs report failure before steps, so no workflow test can yet be called passing. Resolve runner provisioning/settings first, then rerun the full checks.
+
+
+### Pass 78 — auth preferences contract
+- Added `backend/tests/AccountSettingsPreferencesTest.php` and wired it into code-check and deployment preflight to guard the previously reported `getPreferences()` fatal. Current source has the method, but the test cannot yet be confirmed passing because Actions fails before job steps.
+- Runner block remains a release gate: runs `38035609359`, `38035609394`, `38035609378`, `38035609353` have no step logs.
