@@ -2071,3 +2071,11 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 - 🟢 Read-only audit of Histology electronograms: 28 cards, 28 caption arrays, 28 missing `source_file_id`, 27 canonical `source_key` values, and 5 source-key/image-URL basename mismatches.
 - 🟡 No live image paths changed: actual SpaceWeb/B2 object existence has not been verified, and the shorter paths may reflect legacy physical filenames.
 - Report: [CI + media traceability workstream](docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md). Repeatable SELECT-only query: `database/audits/20261010_electronogram_asset_traceability.sql`.
+
+
+## Pass 56 — database least-privilege + quality-gate reconciliation (2026-10-10)
+
+- PostgreSQL 17.6 read-only audit: effective MAINTAIN/TRUNCATE/REFERENCES/TRIGGER privileges exist on 71/83 public tables for `anon` and 78/83 for `authenticated`.
+- Proposed migration now covers all four privileges and default ACLs for `postgres` and `supabase_admin`; it is not applied.
+- Added read-only post-migration verification SQL and corrected stale quality-gate claims: latest Actions runs are pre-step failures, not current green checks.
+- Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
