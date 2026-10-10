@@ -1242,3 +1242,7 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - **Verification:** source edits committed; execution of path filters not yet confirmed. Runner initialization blocker remains open; no green checks claimed.
 - **Production:** no deployment, secret change, or DB write.
 - Report: `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
+
+
+### Pass 60 verification update
+The four workflow-definition commits triggered Actions, as expected; all four latest inspected runs still failed with `steps: null`. Subsequent Markdown-only status commits did not create newer runs in the latest Actions list, consistent with docs-only filters working. CI execution remains blocked/unverified.
