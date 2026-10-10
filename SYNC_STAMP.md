@@ -1,4 +1,4 @@
-## Latest continuation stamp — Pass 65–70, 2026-10-10
+## Latest continuation stamp — Pass 65–73, 2026-10-10
 
 - Handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
 - All six workflows now explicitly restrict token permissions to `contents: read`.
