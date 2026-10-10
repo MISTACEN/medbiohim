@@ -422,3 +422,20 @@ Important: no cleanup or deletion was performed from this audit. The 67-question
 - 🟢 rechecked `preparation.php`: exception classes in the grading/retry paths are already globally qualified;
 - 🟡 authenticated target-runtime E2E remains required: save answer → deterministic result, AI fallback, provider failure → stored unresolved state, regrade, finish;
 - 🟡 browser verification remains required for the frontend's handling of unresolved/pending answers.
+
+
+## U-2026-10-10-54 — Read-only question/test integrity reconciliation
+
+Severity: P1 / data integrity
+
+Latest read-only Supabase evidence:
+- 854 `test_questions` rows; 0 duplicate (test, question) pairs; 0 broken links.
+- 32 active published tests, 0 without questions.
+- 660 active published questions, 0 without a test link.
+- 776 published `exam_questions`; 0 blank prompts, 0 missing subject identity, 0 broken non-null module/topic links.
+- 719 published blank answer fields group under open-ticket/preparation-style types. Treat as intentional until source/curriculum review says otherwise; do not bulk fill, unpublish, or delete.
+- Five legacy Anatomy/Biochemistry question rows have valid subject IDs and links, but their subjects have NULL slugs. Canonical subject mapping remains a separate cleanup task.
+
+Report: [DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md](DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+
+No database writes were made. CI runner and production/runtime checks remain blocked/unverified.
