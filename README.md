@@ -151,3 +151,7 @@ The PostgreSQL 17.6 privilege audit found unnecessary MAINTAIN/TRUNCATE/REFERENC
 - GitHub Actions smoke job retry still fails before steps/logs (`steps: null`); PHP/frontend checks have not been verified by CI. Do not treat this as a code-test failure or a green build.
 - Supabase default ACL/role-membership preflight was read-only. Least-privilege migration is committed but **not applied**; no production writes in this pass.
 - Details: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+
+### Release verification caveats — Pass 58 (2026-10-10)
+
+The latest source audit found no tracked frontend dependency lockfile, a minimal ESLint config without rules, Next.js build configuration that ignores built-in TypeScript errors (the separate predeploy audit runs typecheck), and disabled FTPS certificate verification in the backend deployment workflow. GitHub Actions still fails before steps, so none of these gates has been confirmed by a successful run. Details: [Pass 58 report](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
