@@ -372,3 +372,11 @@ Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, 
 - Telegram must support both registration/login + Mini App entry and group-chat homework ingestion.
 - Open source findings: checked homework UI/API restrict creation to privileged roles, conflicting with the intended group-member policy; PHP webhook secret validation accepts requests if the configured secret is empty; full Telegram account-linking/Mini App E2E is not confirmed.
 - This pass records requirements only; no code, production deployment or DB writes. GitHub Actions remains unverified because jobs terminate before steps.
+
+## 2026-10-11 — First implementation slice: homework permissions + webhook hardening
+
+- PHP Telegram webhook secret now uses `Medbiohim\\Support\\TelegramWebhookSecret::matches()`, which rejects missing/empty configured and supplied secrets.
+- Added `backend/tests/TelegramWebhookSecretTest.php`; wired into backend code-check workflow.
+- Shared homework creation now permits authenticated group members, not only starosta, while non-staff requests must resolve a valid group membership through `AcademicContextResolver::requireGroup()`.
+- Schedule create button is visible for signed-in users in the existing subject-selected flow; privileged management behavior is not widened.
+- Automated execution remains unverified until GitHub Actions gets past runner initialization. No production deploy or DB writes.
