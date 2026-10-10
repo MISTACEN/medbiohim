@@ -2151,3 +2151,8 @@ One recent docs-only production deployment was READY; a newer deployment was BUI
 ### Pass 78 — auth preferences contract
 - Added `backend/tests/AccountSettingsPreferencesTest.php` and wired it into code-check and deployment preflight to guard the previously reported `getPreferences()` fatal. Current source has the method, but the test cannot yet be confirmed passing because Actions fails before job steps.
 - Runner block remains a release gate: runs `38035609359`, `38035609394`, `38035609378`, `38035609353` have no step logs.
+
+
+## Product contract update — 2026-10-11
+
+Canonical product intent and integration rules are recorded in [MEDBIOHIM product intent and integration contract](docs/MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md). Preserve the existing approved site structure/UI; MEDBIOHIM is a student-built exam/self-preparation tool, not an official university portal. Keep source provenance for imported real questions and distinguish verified keys from AI-generated suggestions. All homework entry channels must converge on one group homework model; target policy allows any authenticated member of the same group to add shared homework, while server-side membership/scope checks remain mandatory. Telegram is both a site registration/login + Mini App entry point and a group-chat homework ingestion channel. Browser extension bridge remains a staged, consent-based import flow. Current gaps to address: reconcile privileged-only homework creation in UI/API with the group-member contract; make PHP Telegram webhook secret validation fail closed; verify account linking and Mini App end-to-end. CI runner failure remains an explicit verification blocker.
