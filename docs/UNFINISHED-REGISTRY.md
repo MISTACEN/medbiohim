@@ -508,3 +508,14 @@ Severity: P1/P2. Source-only findings, not yet runtime verified:
 - Deployment backs up files but has no demonstrated tested rollback after partial upload.
 
 No source runtime behavior, deployment, secret, or production database was changed in Pass 58. Report: [RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md](RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+
+
+## U-2026-10-10-59 — GitHub Actions jobs fail before exposing steps
+
+Severity: P1 / release verification
+
+Latest inspected head `8bb7f04320b0e497a7035a85545073dc26a69df7` produced failures in four workflows: code-check run [38013074629](https://github.com/MISTACEN/medbiohim/actions/runs/38013074629), smoke [38013074634](https://github.com/MISTACEN/medbiohim/actions/runs/38013074634), backend archive [38013074669](https://github.com/MISTACEN/medbiohim/actions/runs/38013074669), source package [38013074655](https://github.com/MISTACEN/medbiohim/actions/runs/38013074655). The Jobs API returns `steps: null` for all inspected jobs. No command-level failure can be diagnosed from this evidence, and no test command is confirmed to have executed.
+
+Required: owner checks Actions service/usage/permissions and runner initialization; escalate to GitHub Support with run IDs if steps/logs remain absent. Then run frontend typecheck/build/predeploy audit, PHP lint/regression/route tests, and target smoke. Lockfile and ESLint improvements remain pending a registry-enabled environment and executable checks.
+
+No production deployment, secret change, or database write was performed. Report: [Pass 59](CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md).
