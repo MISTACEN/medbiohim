@@ -559,3 +559,7 @@ Severity: P2 / quality gate
 The pre-deploy audit now warns when the discovered ESLint flat config contains neither a `rules:` block nor recognizable Next.js/TypeScript/recommended preset markers. This is a heuristic signal, not proof of complete lint coverage. The current config was observed to contain only ignore patterns, so `npm run lint` should not be treated as a meaningful gate until a baseline config is added and findings are remediated.
 
 Validation remains blocked by GitHub Actions jobs failing before steps/logs. No local lint run or successful CI result is claimed. Report: [Pre-deploy audit/status reconciliation](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
+
+
+### CI retry after Pass 63 source change
+Latest runs for commit `09ca10a746c508e0b3ad2643fff3fbba5d2fba87`: code checks [38019157502](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), smoke [38019157491](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), backend archive [38019157478](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), package [38019157470](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). Every job still has `steps: null` and `logs_url: null`; root cause remains external/unknown and no test result is confirmed. See [Pass 63 reconciliation](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
