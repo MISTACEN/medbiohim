@@ -2120,3 +2120,9 @@ One recent docs-only production deployment was READY; a newer deployment was BUI
 
 ## Pass 62 — Vercel observability check (2026-10-10)
 One recent docs-only production deployment was READY; a newer deployment was BUILDING during inspection and its final state was not confirmed. Vercel runtime-log query returned 403 and deployment-event endpoint returned 404, so application health cannot be inferred from missing logs. Next: confirm deployment in dashboard, run public/authenticated runtime smoke, restore log access. Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
+
+
+## Pass 63 follow-up — Actions retry (2026-10-10)
+- The pre-deploy audit now warns when ESLint config has no recognizable rules/presets; this is a heuristic and does not replace a proper lint baseline.
+- The four workflows triggered by the source commit all failed before exposing steps or logs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), [smoke](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), [backend archive](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), [package](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). No tests are confirmed to have executed.
+- Details: [Pass 63 report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
