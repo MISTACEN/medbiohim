@@ -318,3 +318,7 @@ Report: `docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md`.
 - CI path filters committed for docs-only changes: `ad80b9c7`, `f2ae57b5`, `3d0bc8a4`, `1e14f1e5`.
 - This reduces unnecessary queue load but does not establish that GitHub Actions can execute steps. CI remains blocked/unverified until jobs expose actual steps and results.
 - Report: `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
+
+
+### Pass 60 verification update
+Observed: workflow-change commits triggered CI and all latest jobs still returned `steps: null`; later docs-only commits did not produce newer workflow runs. Path filters appear to reduce docs-only churn, but runner initialization remains unresolved.
