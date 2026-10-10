@@ -326,3 +326,7 @@ Observed: workflow-change commits triggered CI and all latest jobs still returne
 
 ## Pass 61 — 2026-10-10
 Explicit job-step API returned empty arrays and job-log download returned `BlobNotFound` for code-check run `38013521893` (backend job `114098661992`, frontend `114098662106`). CI remains blocked/unverified. See `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
+
+
+## Pass 62 — 2026-10-10
+Vercel read-only inspection found a READY deployment for a recent docs commit and a newer deployment still BUILDING at inspection time; final latest state is unconfirmed. Runtime logs API returned 403 and build-event logs were unavailable (404). See `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
