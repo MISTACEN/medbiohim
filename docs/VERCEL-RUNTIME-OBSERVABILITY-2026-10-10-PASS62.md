@@ -6,7 +6,7 @@ Checked the Vercel project/deployment state after the CI diagnostics pass and at
 ## Findings
 - Vercel project `medbiohim` was found, framework `nextjs`, project ID `prj_85Mu4sV2fNkF8OGdKl1f4Ua4aPdk`, team `team_wvgTulETxKwtPv43Ms0jNrf9`.
 - The latest deployment list observed earlier in this pass contained a `READY` production deployment for source commit `9ca6eab2cd0dde7301f06493e83e8ddab372d2c3` (report-only commit), with production aliases `medbiohim.vercel.app`, `medbiohim-mistacen1.vercel.app`, and `medbiohim-git-main-mistacen1.vercel.app`.
-- A later production deployment for commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160` was reported as `BUILDING` during inspection. Its final state was not confirmed in this pass.
+- A later production deployment for commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160` was reported as `BUILDING` during inspection. A subsequent lookup of the production alias `medbiohim.vercel.app` confirmed that deployment reached `READY`, with all three production aliases attached.
 - Runtime log query for production warnings/errors in the last hour failed with Vercel API HTTP 403 `forbidden`. This is an access/query failure, not evidence that production has no errors.
 - Deployment event/log endpoint returned 404 `Deployment not found` even when using the known deployment ID and explicit team scope. Build-event logs could not be inspected through this connector path.
 
