@@ -54,10 +54,24 @@ if (!existsSync(join(root, "package-lock.json"))) {
   warn("package-lock.json is not tracked/present; npm/Vercel resolve dependency ranges instead of a locked tree");
 }
 
-if (!existsSync(join(root, "eslint.config.js")) &&
-    !existsSync(join(root, "eslint.config.mjs")) &&
-    !existsSync(join(root, "eslint.config.cjs"))) {
+const eslintConfigPath = [
+  "eslint.config.js",
+  "eslint.config.mjs",
+  "eslint.config.cjs"
+].map((name) => join(root, name)).find((path) => existsSync(path));
+
+if (!eslintConfigPath) {
   warn("no ESLint flat-config file found; npm run lint may not be usable with ESLint 9");
+} else {
+  const eslintConfig = await readFile(eslintConfigPath, "utf8");
+  const hasRulesOrPresets =
+    /\brules\s*:/m.test(eslintConfig) ||
+    /eslint-config-next|next\/core-web-vitals|@typescript-eslint|recommended/i.test(eslintConfig);
+  if (hasRulesOrPresets) {
+    pass("ESLint config declares rules or a recognized preset");
+  } else {
+    warn("ESLint config contains no recognizable rules/preset; npm run lint may pass without meaningful code analysis");
+  }
 }
 
 const sourceFiles = await walk(join(root, "src"));
