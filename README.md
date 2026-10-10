@@ -175,3 +175,7 @@ A recent docs-only production deployment was READY, but the newer commit's deplo
 
 ### Pre-deploy audit reconciliation — 2026-10-10
 The pre-deploy audit now warns when the ESLint config appears to contain no rules or recognized presets. This is a heuristic warning, not a substitute for a real lint baseline. CI remains unverified while Actions jobs fail before exposing steps/logs. See [report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
+
+
+### Pass 64 — archive security and project inventory
+Archive workflows now exclude root and nested `.env*` paths and include a pre-upload archive listing guard. CI has not executed the guard because Actions jobs still fail before steps/logs are available. Current inventory: 37 named PASS reports (numbering up to 62, with historical gaps), 22 closed legacy blockers, and 7 broad remaining workstreams. [Details](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
