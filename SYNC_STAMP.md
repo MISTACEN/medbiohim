@@ -300,3 +300,9 @@ Latest read-only privilege counts and current Actions evidence: 83 public tables
 - Latest checked smoke retry: [run 38012180433](https://github.com/MISTACEN/medbiohim/actions/runs/38012180433), attempt 2 — failed before steps; job reports `steps: null`, no logs. CI remains blocked/unverified.
 - Read-only Supabase role/default-ACL review completed. Least-privilege migration remains unapplied; no production writes.
 - Detailed report: `docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md`.
+
+## 2026-10-10 — Pass 58 release-gate source audit
+
+Manual source review found: missing frontend lockfile; ESLint config has ignore patterns only; Next build ignores built-in TypeScript errors while predeploy audit separately runs typecheck; SpaceWeb FTPS certificate verification is disabled; rollback after partial upload is not demonstrated. No source/deployment/production mutation was made. Actions remains blocked before steps/logs.
+
+Report: `docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md`.
