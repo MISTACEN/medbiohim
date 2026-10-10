@@ -1253,3 +1253,10 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - **Required external action:** repository owner must inspect Actions settings/usage/run UI and escalate to GitHub Support if logs remain absent.
 - **Tests:** frontend/PHP commands still not confirmed to have executed; no green checks claimed.
 - Report: `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
+
+
+## Pass 62 — 2026-10-10
+- **Vercel:** one recent docs-only production deployment observed READY; a newer deployment was BUILDING when inspected, final state unconfirmed.
+- **Runtime observability:** log API returned 403; deployment event logs returned 404. This is an access/query blocker, not evidence of no runtime errors.
+- **Production smoke:** still required; no application-health or release-green claim.
+- Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
