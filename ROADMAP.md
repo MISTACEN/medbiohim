@@ -1,3 +1,10 @@
+## Latest execution gate — Pass 65–67 (2026-10-10)
+
+- Read-only workflow permissions tightened in the source/package/archive/smoke workflows.
+- GitHub Actions still fails before runner execution: latest code-check run `38024900534` and SpaceWeb archive run `38024900530` have no steps/logs; raw jobs show `runner_id: 0` and no runner name.
+- Next critical path: restore Actions runner allocation in repository/org settings or escalate to GitHub support; then execute code checks, archive leak guards and smoke checks. Do not treat source commits as test success.
+- Detailed restart instructions: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
+
 ## Consolidated workstream — Data + DB privileges (2026-10-10)
 
 This workstream groups the Pass 54 data-integrity audit with the follow-on public-schema privilege review. Historical Pass 54 and all earlier reports remain intact; future work will be grouped by domain instead of creating a separate long report for every micro-step.
