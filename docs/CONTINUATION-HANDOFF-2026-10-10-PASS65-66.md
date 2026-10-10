@@ -1,4 +1,4 @@
-# MEDBIOHIM — Pass 65–66: workflow permissions and runner failure diagnosis
+# MEDBIOHIM — Pass 65–70: workflow permissions, YAML repair and runner failure diagnosis
 
 Date: 2026-10-10  
 Branch: `main`  
