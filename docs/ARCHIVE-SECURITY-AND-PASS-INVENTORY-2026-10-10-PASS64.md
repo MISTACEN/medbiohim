@@ -36,3 +36,7 @@ Additional release blockers tracked separately: GitHub Actions runner/log outage
 - No secrets were read or modified.
 - No manual deployment was performed.
 - No test, archive build, PHP lint, TypeScript check, or production runtime check is claimed as passed.
+
+
+## Additional retry result
+The failed code-check run [38019548725](https://github.com/MISTACEN/medbiohim/actions/runs/38019548725) was retried (attempt 2). Both backend and frontend jobs failed again with `steps: null` and `logs_url: null`. This confirms the retry did not restore command execution; it still does not identify the underlying GitHub runner/service cause.
