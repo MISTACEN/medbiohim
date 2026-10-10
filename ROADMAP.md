@@ -2087,3 +2087,13 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 - 🟡 Role membership confirms PostgREST `authenticator` uses explicit SET ROLE for anon/authenticated/service_role (inherit disabled). No browser privilege escalation was established by this query.
 - 🔴 Migration is still unapplied; staging project/runner role not confirmed. No production writes.
 - Report: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+
+## Pass 58 — release-gate source audit (2026-10-10)
+
+- 🔴 Actions still fails before workflow steps/logs; actual tests remain unverified.
+- 🔴 Source audit found the frontend has no tracked package lockfile; current CI uses `npm install`, so dependency resolution can drift. A real lockfile must be generated with registry access; none was fabricated.
+- 🟡 `next.config.ts` ignores built-in TypeScript build errors, but the independent predeploy audit runs `npm run typecheck`; it must be executed before relying on it.
+- 🟡 `eslint.config.mjs` currently contains ignores only, not actual lint rules; `npm run lint` is not a meaningful gate yet.
+- 🔴 SpaceWeb deploy workflow disables FTPS certificate verification (`curl -k`, `ssl:verify-certificate no`). Verify host certificate/hostname before enabling verification; no secret read/changed.
+- 🟡 Backup exists but automatic rollback after partial deployment is not demonstrated. No code/deployment/production writes in this pass.
+- Report: [Pass 58 release-gate source audit](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
