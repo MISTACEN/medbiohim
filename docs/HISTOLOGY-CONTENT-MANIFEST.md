@@ -135,6 +135,7 @@ Metadata в Supabase сама по себе не доказывает налич
 | `5_Фотографии препаратов/` | 🟢 |
 | README | 🟢 |
 | 206 trainer cards | 🟢 |
+| Electronogram path reconciliation | 🟡 | 23/28 exact source_key ↔ preparation.imagePath matches; 5 mismatches require physical filename verification; 0 source_path matches in content_sources |
 | 28 EM metadata/captions | 🟢 |
 | все 206 cards сопоставлены с физическими файлами | 🟡 |
 | 52 DOCX полностью проверены на SpaceWeb | 🟡 |
