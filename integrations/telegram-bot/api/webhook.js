@@ -38,7 +38,11 @@ async function sendTelegramMessage(chatId, response) {
     text: response.text,
     disable_web_page_preview: true,
   };
-  if (response.url) {
+  if (response.webAppUrl) {
+    payload.reply_markup = {
+      inline_keyboard: [[{ text: "Открыть MEDBIOHIM", web_app: { url: response.webAppUrl } }]],
+    };
+  } else if (response.url) {
     payload.reply_markup = {
       inline_keyboard: [[{ text: "Открыть раздел", url: response.url }]],
     };
