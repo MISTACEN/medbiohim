@@ -1,3 +1,13 @@
+## Data integrity reconciliation — Pass 54 (2026-10-10)
+
+- 🟢 Read-only Supabase audit: 854 question links; 0 duplicate pairs; 0 broken links; all 32 active published tests have questions; all 660 active published questions have test links.
+- 🟢 `exam_questions`: 776 published, no blank prompts, no missing subject identity, no broken non-null module/topic links.
+- 🟡 719 published blank answers were classified by type and appear to be open-ticket/preparation questions; no content changes are justified from counts alone.
+- 🟡 Five linked legacy Anatomy/Biochemistry questions belong to subjects whose `slug` is NULL; not orphans, leave unchanged pending canonical mapping.
+- 🔴 GitHub Actions still fails before steps (`runner_id=0`, `steps=[]`). No CI or runtime pass is claimed.
+
+Details: [Pass 54 read-only data integrity report](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+
 ## API proxy hardening — Pass 53 (2026-10-10)
 
 - 🟢 Restored the documented PHP-first behavior for trainer endpoints: the Supabase compatibility fallback is now attempted only after the PHP upstream returns 404.
