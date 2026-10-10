@@ -1272,7 +1272,7 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 
 ## Pass 64 — archive security + pass inventory (2026-10-10)
 - Hardened source/backend/SpaceWeb archive workflows to exclude root and nested `.env*` files and added an archive-list guard before upload.
-- Recursive repo inventory: 37 documentation files named PASS<number>.md, highest numbered report Pass 62; this is not 62 sequentially completed passes because numbering has historical gaps.
+- Recursive repo inventory: 38 documentation files named PASS<number>.md, highest numbered report Pass 64; this is not 62 sequentially completed passes because numbering has historical gaps.
 - Unfinished registry currently has 22 closed legacy blockers (C-01…C-22) and 7 broad open workstreams (R1–R7), plus release blockers for CI execution, dependency lockfile/lint, FTPS validation, and DB migration staging.
 - Validation caveat: four latest workflow attempts still failed before exposing executable steps/logs; archive guard has not yet run in CI.
 - Report: [Pass 64 archive security and inventory](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
