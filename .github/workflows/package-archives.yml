@@ -11,6 +11,9 @@ on:
       - "README.md"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   package:
     runs-on: ubuntu-24.04
