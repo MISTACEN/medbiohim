@@ -1,3 +1,11 @@
+## Latest status — 2026-10-10, Pass 65–67
+
+- 🟢 Explicit `contents: read` permission is now set on four non-deployment workflows.
+- 🔴 GitHub Actions execution remains blocked before steps: latest code-check `38024900534`, SpaceWeb archive `38024900530`; jobs report `runner_id: 0`, no runner name, empty steps and no logs.
+- 🟡 ZIP `.env` exclusion guards are committed but not execution-verified.
+- 🟡 Next: inspect owner-side Actions settings/runner availability or contact GitHub support; after execution returns, run PHP/frontend checks, archive validation and smoke tests.
+- Handoff: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
+
 ## Consolidated workstream — Data + DB privileges (2026-10-10)
 
 - 🟢 Read-only integrity checks show no broken/duplicate test-question links and all active published tests/questions linked.
