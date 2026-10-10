@@ -483,3 +483,11 @@ Older pass notes below remain historical evidence only. Latest Actions runs `380
 ## Pass 56 — database least-privilege + quality-gate reconciliation (2026-10-10)
 
 Read-only effective privilege audit on PostgreSQL 17.6 (83 public base/partitioned tables): `anon` has MAINTAIN/TRUNCATE/REFERENCES/TRIGGER on 71 tables; `authenticated` on 78. The proposed migration now revokes all four privileges and adjusts default privileges for `postgres` and `supabase_admin`. It is still **not applied**. Added `database/audits/20261010_public_table_privilege_verification.sql` to verify the before/after state. Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
+
+## U-2026-10-10-57 — CI runner initialization + privilege migration preflight
+
+Latest retry of smoke run [38012180433](https://github.com/MISTACEN/medbiohim/actions/runs/38012180433), attempt 2, still ends before workflow steps (`steps: null`, no logs). Workflow YAML review does not identify a specific command-level failure. Root cause remains unknown and requires repository-owner Actions usage/permissions inspection or GitHub Support.
+
+Read-only Supabase checks confirm default public-table ACLs exist for both `postgres` and `supabase_admin`; the committed migration covers both. PostgREST `authenticator` role membership is configured for explicit SET ROLE with inheritance disabled. No privilege migration has been applied; no production writes. Next: confirm staging + migration runner role, apply only in approved staging, run the verification audit and browser-role flow tests.
+
+Report: [Pass 57 CI + DB preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
