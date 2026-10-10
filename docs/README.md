@@ -87,3 +87,6 @@ Historical recovery notes are useful only when debugging an old incident.
 
 
 - [Pass 61 — Actions job log diagnostics](CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md): empty step arrays and missing log blobs, plus owner-side investigation checklist.
+
+
+- [Pass 62 — Vercel runtime observability](VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md): current production alias is READY; runtime log API access remains blocked.
