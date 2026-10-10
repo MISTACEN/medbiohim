@@ -1,3 +1,13 @@
+## API proxy hardening — Pass 53 (2026-10-10)
+
+- 🟢 Restored the documented PHP-first behavior for trainer endpoints: the Supabase compatibility fallback is now attempted only after the PHP upstream returns 404.
+- 🟢 Authenticated trainer image responses now use `private, no-store` to avoid browser retention of private media across account/session changes.
+- 🟢 Generic 502 responses no longer include raw upstream exception messages.
+- 🟢 Added pre-deploy audit assertions for the fallback order, private-media cache header, and generic proxy errors.
+- 🔴 Validation remains blocked: workflow runs triggered by commits `ec4aad1` and `6aeb401` failed before steps with `runner_id=0`; this does not mean the checks themselves ran or passed. No live deployment/runtime test is claimed.
+
+Code: [`ec4aad1`](https://github.com/MISTACEN/medbiohim/commit/ec4aad139413292c3beb6992e58bdfb6ef7ae17b), audit guard: [`6aeb401`](https://github.com/MISTACEN/medbiohim/commit/6aeb401434ab8ba10dad778bc48c585a5fe4347e).
+
 # MEDBIOHIM ROADMAP
 
 > Единый план проекта и источник порядка по задачам.  
