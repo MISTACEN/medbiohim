@@ -397,9 +397,7 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
     });
   }, [homeworks, selected]);
 
-  const canManageHomework =
-    ["admin","teacher","moderator"].includes(String(user?.role || "")) ||
-    user?.groupRole === "starosta";
+  const canCreateHomework = Boolean(user);
 
   function homeworkStatus(h:any) {
     if (h.my_status === "done" || h.my_completed === true || ["submitted","graded","returned"].includes(String(h.submission_status || ""))) return "done";
@@ -777,9 +775,9 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
             <section className="mt-4 rounded-2xl border p-4" style={{background:"color-mix(in srgb,var(--primary) 4%,var(--card))"}}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div><div className="flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4" style={{color:"var(--primary)"}}/> ДЗ по этому занятию</div><p className="mt-0.5 text-xs opacity-60">Дата и предмет уже выбраны: {selected.date} · {selected.subject_name}</p></div>
-                {canManageHomework && selected.subject_id && <button type="button" onClick={()=>setAddHomeworkOpen(v=>!v)} className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold"><Plus className="mr-1 inline h-3.5 w-3.5"/>Добавить ДЗ</button>}
+                {canCreateHomework && selected.subject_id && <button type="button" onClick={()=>setAddHomeworkOpen(v=>!v)} className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold"><Plus className="mr-1 inline h-3.5 w-3.5"/>Добавить ДЗ</button>}
               </div>
-              {addHomeworkOpen && canManageHomework && <div className="mb-3 space-y-2 rounded-xl border bg-[var(--card)] p-3">
+              {addHomeworkOpen && canCreateHomework && <div className="mb-3 space-y-2 rounded-xl border bg-[var(--card)] p-3">
                 <div className="rounded-lg bg-black/5 px-3 py-2 text-xs font-semibold">Привязка к занятию: {selected.date} · {selected.subject_name} · {selected.start_time.slice(0,5)}–{selected.end_time.slice(0,5)}</div>
                 <input value={addHomeworkTitle} onChange={e=>setAddHomeworkTitle(e.target.value)} placeholder="Что задать" className="w-full rounded-lg border px-3 py-2 text-sm"/>
                 <textarea value={addHomeworkDescription} onChange={e=>setAddHomeworkDescription(e.target.value)} rows={2} placeholder="Страницы, номера, требования..." className="w-full rounded-lg border px-3 py-2 text-sm"/>
