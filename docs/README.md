@@ -77,3 +77,7 @@ Historical recovery notes are useful only when debugging an old incident.
 ## Latest source audit — 2026-10-10
 
 - [Pass 58: release-gate source audit](RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md) — missing lockfile, no effective ESLint rules, TypeScript build override, FTPS certificate verification disabled, rollback gap; no production changes.
+
+
+## Latest reports — 2026-10-10
+- [Pass 59 — Actions runner reconciliation](CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md): latest-head workflow evidence, unverified checks, and safe next steps.
