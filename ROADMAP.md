@@ -2104,3 +2104,7 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 - Keep CI restoration as a release blocker; do not claim checks passed. Owner-side Actions usage/permissions inspection or GitHub Support is required if the platform continues to provide no steps/logs.
 - After execution is restored: real lockfile + `npm ci`, meaningful ESLint rules backed by actual results, frontend typecheck/build, PHP lint/regressions/routes, then runtime smoke.
 - Report: `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md`.
+
+
+## Pass 60 — reduce documentation-only CI churn (2026-10-10)
+Added Markdown-only `paths-ignore` filters to code-check, smoke push, source-package, and SpaceWeb archive workflows. Manual dispatch and scheduled smoke remain enabled. This reduces redundant workflow queue pressure but does not fix the underlying `steps: null` runner failure. Report: `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
