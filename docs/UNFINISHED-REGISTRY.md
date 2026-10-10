@@ -495,3 +495,16 @@ Report: [Pass 57 CI + DB preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57
 ### Latest Pass 57 evidence update
 
 After the docs-only commits, current-head Actions runs also failed before steps/logs: code-check `38012550501`, smoke `38012550519`, archive `38012550490`; code-check `38012554325` also has both jobs with `steps: null`. See [Pass 57 report](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md). This reproduces across workflows and commits; no PHP/frontend test results exist yet.
+
+## U-2026-10-10-58 — release-gate configuration and transport hardening
+
+Severity: P1/P2. Source-only findings, not yet runtime verified:
+
+- GitHub Actions code-check/smoke/archive jobs continue to fail before steps/logs, so checks are blocked.
+- Frontend has no tracked package lockfile; `npm install` can resolve drift across builds. Generate a genuine lockfile in an environment with registry access, validate it, then use `npm ci`.
+- `eslint.config.mjs` currently contains ignore patterns only and no recommended Next/TypeScript rules; `npm run lint` is not a meaningful gate.
+- `next.config.ts` sets `typescript.ignoreBuildErrors: true`. The separate predeploy audit runs `npm run typecheck`, but it has not executed successfully in CI; remove the override only after type errors are actually remediated.
+- `.github/workflows/deploy-backend.yml` disables FTPS certificate verification (`curl -k`, `ssl:verify-certificate no`). Validate SpaceWeb certificate/hostname on a trusted network, then enable verification and test read-only listing before deploying.
+- Deployment backs up files but has no demonstrated tested rollback after partial upload.
+
+No source runtime behavior, deployment, secret, or production database was changed in Pass 58. Report: [RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md](RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
