@@ -102,3 +102,15 @@ All four fail before steps; job wrappers return no steps/logs. The underlying jo
 ## Exact continuation prompt
 
 Continue work on `MISTACEN/medbiohim` directly on `main`, without creating unnecessary branches. Read this report and `docs/UNFINISHED-REGISTRY.md` first. Continue in short grouped passes (up to 10 small passes, fewer for large tasks), keeping each work session under 20 minutes where possible. For every pass, inspect the current state, make a real change or gather actionable evidence, verify what is possible, commit, and update the handoff. Do not claim tests passed when GitHub Actions jobs have `runner_id: 0`, empty steps, or missing logs. First unblock GitHub Actions execution via owner-side settings/support; then run the actual code/archive/smoke checks. Do not modify production data or manually deploy without explicit approval.
+
+
+## Pass 77 — fail-fast SpaceWeb archive creation
+
+Added `set -euo pipefail` at the start of `.github/workflows/build-spaceweb-archive.yml`'s archive build step (commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`). A failed `cp` or preparation command can no longer be masked by a later successful `zip` command. This is a workflow hardening change; it is **not runtime-verified**, because the GitHub-hosted jobs continue to terminate before their first step.
+
+### Next actions, in order
+1. Check repository/org GitHub Actions settings and runner availability; ask an owner to inspect billing/usage, Actions policy and any runner provisioning restriction. The API job summaries for recent runs show no steps/logs, so no code test result is available.
+2. Once jobs start, rerun code-check, smoke, source archive and SpaceWeb archive; inspect actual step logs and fix real failures rather than infer them from pre-step failures.
+3. Run the PHP checks against current `main`, especially `AccountSettingsService::getPreferences()`, route registration, `SupabaseRest` usage and auth/schedule/trainer endpoints; no production deploy until a verified backup and passing pre-deploy checks.
+4. Validate SpaceWeb FTP TLS certificate and hostname before enabling certificate verification; current workflow still disables certificate verification.
+5. Continue auditing app code and tests after CI runner access is restored. Do not treat these workflow changes as proof that the site login, data, or media paths work.
