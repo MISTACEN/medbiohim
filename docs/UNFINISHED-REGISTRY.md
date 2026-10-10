@@ -456,3 +456,20 @@ Required before closure:
 4. Smoke-test all required browser-facing read/write flows under anon/authenticated JWTs.
 
 No production DB writes were made. Report: [DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md](DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md).
+
+
+## U-2026-10-10-CI-MEDIA-TRACEABILITY — runner and Histology media delivery
+
+Severity: P1 / release verification and learning-media availability
+
+Evidence:
+- Latest inspected Actions smoke job has `steps: null`; workflow source has expected triggers and checks, but no actionable runner output identifies a YAML command failure.
+- 28 Histology electronogram cards have captions and imageUrl values, but all 28 have `source_file_id IS NULL`; five have source_key/imageUrl basename mismatches. Physical SpaceWeb/B2 existence is not proven.
+
+Required next steps:
+1. Owner checks GitHub Actions run details, usage/permissions and runner initialization; escalate to GitHub Support if the platform provides no logs.
+2. Verify all 28 media objects read-only on SpaceWeb/B2 and issue authenticated HTTP checks for expected routes.
+3. Only after confirming actual filenames, prepare a Histology-only correction for the five mismatches and test mobile/desktop trainer rendering.
+4. Restore CI execution and run PHP lint/regression/route checks, frontend typecheck/build/predeploy audit; verify target deployment separately.
+
+Report: `docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md`. Query: `database/audits/20261010_electronogram_asset_traceability.sql`.
