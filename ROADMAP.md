@@ -2112,3 +2112,7 @@ Added Markdown-only `paths-ignore` filters to code-check, smoke push, source-pac
 
 ## Pass 61 — diagnose missing Actions job logs (2026-10-10)
 The job-step endpoint for code-check run `38013521893` returned empty step lists for both jobs; log downloads returned HTTP 404 `BlobNotFound`. Repo is active/private and integration permissions are admin-level. Root cause remains unknown; owner-side Settings → Actions, usage/limits, run UI annotations, and Support escalation are required. Report: `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
+
+
+## Pass 61 — diagnose missing Actions job logs (2026-10-10)
+The job-step endpoint for code-check run `38013521893` returned empty step lists for both jobs; log downloads returned HTTP 404 `BlobNotFound`. Repo is active/private and integration permissions are admin-level. Root cause remains unknown; owner-side Settings → Actions, usage/limits, run UI annotations, and Support escalation are required. Report: `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
