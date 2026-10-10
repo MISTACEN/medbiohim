@@ -2141,3 +2141,8 @@ One recent docs-only production deployment was READY; a newer deployment was BUI
 - Unfinished registry currently has 22 closed legacy blockers (C-01…C-22) and 7 broad open workstreams (R1–R7), plus release blockers for CI execution, dependency lockfile/lint, FTPS validation, and DB migration staging.
 - Validation caveat: four latest workflow attempts still failed before exposing executable steps/logs; archive guard has not yet run in CI.
 - Report: [Pass 64 archive security and inventory](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+
+
+### CI reliability follow-up (Pass 77)
+- SpaceWeb archive preparation now fails immediately on any shell/copy error (`set -euo pipefail`), commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`.
+- Still blocked: GitHub Actions runs report failure before steps, so no workflow test can yet be called passing. Resolve runner provisioning/settings first, then rerun the full checks.
