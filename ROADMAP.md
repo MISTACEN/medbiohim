@@ -1,7 +1,7 @@
-## Latest execution gate — Pass 65–67 (2026-10-10)
+## Latest execution gate — Pass 65–70 (2026-10-10)
 
-- Read-only workflow permissions tightened in the source/package/archive/smoke workflows.
-- GitHub Actions still fails before runner execution: latest code-check run `38024900534` and SpaceWeb archive run `38024900530` have no steps/logs; raw jobs show `runner_id: 0` and no runner name.
+- Explicit `contents: read` permissions are set in all six workflows, including deploy and optional integrations.
+- Fixed malformed YAML indentation in `.github/workflows/package-archives.yml` (commit `d566031d01e73f7a62a91e7502c9410456a9e6f2`); GitHub now recognizes the workflow, but job `38025017740` still fails before steps. Code-check `38025017750`, smoke `38025017788`, and SpaceWeb archive `38025017818` also fail pre-step; raw job metadata shows `runner_id: 0` and no runner name.
 - Next critical path: restore Actions runner allocation in repository/org settings or escalate to GitHub support; then execute code checks, archive leak guards and smoke checks. Do not treat source commits as test success.
 - Detailed restart instructions: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
 
