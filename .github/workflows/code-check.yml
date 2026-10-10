@@ -3,8 +3,22 @@ name: MEDBIOHIM code checks
 on:
   push:
     branches: [main, beta]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "ROADMAP.md"
+      - "PHASES_STATUS.md"
+      - "SYNC_STAMP.md"
+      - "README.md"
   pull_request:
     branches: [main, beta]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "ROADMAP.md"
+      - "PHASES_STATUS.md"
+      - "SYNC_STAMP.md"
+      - "README.md"
   workflow_dispatch:
 
 jobs:
