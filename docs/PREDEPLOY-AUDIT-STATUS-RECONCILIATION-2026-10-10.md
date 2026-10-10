@@ -24,3 +24,7 @@ Grouped follow-up work after Pass 62: strengthen the pre-deploy audit's ESLint s
 
 ## Safety
 No production database writes, secret changes, manual deployment, or educational-content changes were made.
+
+
+## Post-commit CI retry evidence
+The ESLint audit-guard source commit `09ca10a746c508e0b3ad2643fff3fbba5d2fba87` triggered four workflows: code checks [38019157502](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), smoke [38019157491](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), backend archive [38019157478](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), and source package [38019157470](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). All completed as failure with job `steps: null` and `logs_url: null`; the source checks still did not expose evidence that commands ran.
