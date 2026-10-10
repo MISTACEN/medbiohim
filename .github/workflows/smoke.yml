@@ -3,6 +3,13 @@ name: MEDBIOHIM smoke
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "ROADMAP.md"
+      - "PHASES_STATUS.md"
+      - "SYNC_STAMP.md"
+      - "README.md"
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
