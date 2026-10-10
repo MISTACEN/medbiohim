@@ -35,7 +35,7 @@ final class TelegramHomeworkService
 
     public function webhookSecretMatches(?string $value): bool
     {
-        return $this->secret !== '' && $value !== null && $value !== '' && hash_equals($this->secret, $value);
+        return \Medbiohim\Support\TelegramWebhookSecret::matches($this->secret, $value);
     }
 
     public function handleUpdate(array $update): array
