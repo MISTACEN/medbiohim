@@ -98,3 +98,6 @@ Historical recovery notes are useful only when debugging an old incident.
 - [Pre-deploy audit/status reconciliation — 2026-10-10](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md): adds a conservative warning for ESLint configs with no recognizable rules/presets and records release blockers; no CI success claimed.
 
 - [Pass 64 — archive security and pass inventory](ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md): env-file exclusions, archive pre-upload guards, latest CI failures, and count of historical pass reports/open workstreams.
+
+
+Latest continuation handoff (2026-10-10, Pass 65–77): [`CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md). CI remains unverified because GitHub Actions jobs fail before steps; do not interpret committed workflow hardening as a successful test run.
