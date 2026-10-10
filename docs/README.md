@@ -65,3 +65,7 @@ Historical recovery notes are useful only when debugging an old incident.
 
 - [Pass 55 — CI + Histology media traceability workstream](CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md): Actions runner diagnosis and read-only electronogram path audit.
 - Read-only query: `../database/audits/20261010_electronogram_asset_traceability.sql`.
+
+
+- [Pass 56 — database least-privilege and quality-gate reconciliation](DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md): effective PostgreSQL privileges, unapplied mitigation, and correction of stale CI status.
+- Read-only post-migration verification: `../database/audits/20261010_public_table_privilege_verification.sql`.
