@@ -9,7 +9,6 @@ on:
       - "backend/config/routes/**"
       - "backend/config/**"
       - "content/histology/**"
-      - ".github/workflows/deploy-backend.yml"
 
 concurrency:
   group: deploy-spaceweb
