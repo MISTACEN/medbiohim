@@ -2108,3 +2108,7 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 
 ## Pass 60 — reduce documentation-only CI churn (2026-10-10)
 Added Markdown-only `paths-ignore` filters to code-check, smoke push, source-package, and SpaceWeb archive workflows. Manual dispatch and scheduled smoke remain enabled. This reduces redundant workflow queue pressure but does not fix the underlying `steps: null` runner failure. Report: `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
+
+
+## Pass 61 — diagnose missing Actions job logs (2026-10-10)
+The job-step endpoint for code-check run `38013521893` returned empty step lists for both jobs; log downloads returned HTTP 404 `BlobNotFound`. Repo is active/private and integration permissions are admin-level. Root cause remains unknown; owner-side Settings → Actions, usage/limits, run UI annotations, and Support escalation are required. Report: `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
