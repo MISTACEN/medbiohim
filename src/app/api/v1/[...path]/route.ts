@@ -195,7 +195,7 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
       if (!media.ok) return NextResponse.json({ ok: false, error: { code: "MEDIA_NOT_FOUND", message: "Original trainer media is not available on the backend" }, requestId: "trainer-fallback" }, { status: 404 });
       const out = new NextResponse(await media.arrayBuffer(), { status: 200 });
       out.headers.set("content-type", media.headers.get("content-type") || "image/png");
-      out.headers.set("cache-control", "private, max-age=86400");
+      out.headers.set("cache-control", "private, no-store");
       out.headers.set("x-medbiohim-proxy", "trainer-media-fallback");
       return out;
     } catch {
@@ -229,11 +229,6 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
 
 async function proxy(req: NextRequest, pathParts: string[]) {
   const sub = pathParts.join("/");
-
-  if (sub.startsWith("trainers/feed")) {
-    const fallback = await trainerFallback(req, pathParts);
-    if (fallback) return fallback;
-  }
 
   if (!UPSTREAM) {
     return NextResponse.json(
@@ -286,8 +281,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   }
 
   if (!upstream) {
-    const msg = lastError instanceof Error ? lastError.message : "upstream unreachable";
-    return NextResponse.json({ ok: false, error: { code: "UPSTREAM", message: msg }, requestId: "proxy" }, { status: 502 });
+    return NextResponse.json({ ok: false, error: { code: "UPSTREAM", message: "Backend is temporarily unavailable" }, requestId: "proxy" }, { status: 502 });
   }
 
   let buf = await upstream.arrayBuffer();
