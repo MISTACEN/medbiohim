@@ -1,3 +1,7 @@
+## Current engineering status — 2026-10-10
+
+GitHub Actions currently fails before job steps start. Latest runs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38024900534) and [SpaceWeb archive](https://github.com/MISTACEN/medbiohim/actions/runs/38024900530). Raw job metadata reports no runner allocation (`runner_id: 0`), no steps and no logs. This is a release blocker; archive security guards are committed but not yet executed in CI. See the [continuation handoff](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) for the exact next steps.
+
 ## Latest consolidated engineering workstream — 2026-10-10
 
 The project now groups related audits into domain workstreams to reduce pass/report overhead without deleting historical evidence. Current report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). A least-privilege migration is committed but **not applied** to live Supabase; no production database writes were made. CI runner and deployment/runtime checks remain open.
