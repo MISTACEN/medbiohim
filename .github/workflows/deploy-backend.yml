@@ -20,6 +20,9 @@ env:
   FTP_USER: ryazansev3_logigpt
   FTP_PASS: ${{ secrets.FTP_PASSWORD }}
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
