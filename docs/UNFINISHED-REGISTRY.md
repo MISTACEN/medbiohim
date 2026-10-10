@@ -473,3 +473,13 @@ Required next steps:
 4. Restore CI execution and run PHP lint/regression/route checks, frontend typecheck/build/predeploy audit; verify target deployment separately.
 
 Report: `docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md`. Query: `database/audits/20261010_electronogram_asset_traceability.sql`.
+
+
+## Quality-gate correction — 2026-10-10
+
+Older pass notes below remain historical evidence only. Latest Actions runs `38011994749`, `38011994779`, and `38011994746` ended with `steps: null`; current CI is blocked/unverified and smoke is not currently claimed green. Re-run frontend build/typecheck, PHP lint/regressions, routes and predeploy once the runner executes. The least-privilege migration is prepared but unapplied.
+
+
+## Pass 56 — database least-privilege + quality-gate reconciliation (2026-10-10)
+
+Read-only effective privilege audit on PostgreSQL 17.6 (83 public base/partitioned tables): `anon` has MAINTAIN/TRUNCATE/REFERENCES/TRIGGER on 71 tables; `authenticated` on 78. The proposed migration now revokes all four privileges and adjusts default privileges for `postgres` and `supabase_admin`. It is still **not applied**. Added `database/audits/20261010_public_table_privilege_verification.sql` to verify the before/after state. Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
