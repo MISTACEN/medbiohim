@@ -596,3 +596,19 @@ Latest retry confirmation: code-check run [38019548725 attempt 2](https://github
 - Added `backend/tests/AccountSettingsPreferencesTest.php`; it checks the `getPreferences()` contract and no-user defaults. Wired into code checks and deployment preflight.
 - Static inspection finds `getPreferences()` in current `AccountSettingsService.php`; the prior fatal is not currently visible in source, but regression coverage is now committed.
 - Still blocked: CI runs `38035609359`, `38035609394`, `38035609378`, `38035609353` fail before steps with no logs. The test is committed but not executed.
+
+## Product and integration contract — 2026-10-11
+
+Canonical source: [MEDBIOHIM product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
+
+Track these as open until implementation and verification:
+- [ ] Align homework-create UI/API with the requirement that any authenticated member of the same group can add a shared assignment; keep server-side membership and academic-scope checks.
+- [ ] Make PHP Telegram webhook secret verification reject requests when the secret is absent or empty; add regression coverage.
+- [ ] Reconcile the Node Telegram bot and PHP group-ingestion service into one documented, idempotent end-to-end flow.
+- [ ] Implement and verify secure Telegram account linking/registration and launch of the existing site as a Telegram Mini App; validate Telegram-signed initialization data on the server.
+- [ ] Keep group homework separate from each student's personal completion/submission.
+- [ ] Preserve provenance/versioning for imported real questions and clearly label AI-generated or unverified content.
+- [ ] Define preview/confirmation for future browser-extension imports after access and rights review.
+- [ ] Preserve the current approved site structure; no global redesign without explicit request.
+
+Do not mark these complete from documentation or source presence alone. GitHub Actions runner initialization remains blocked in the latest observed runs; verify actual test execution.
