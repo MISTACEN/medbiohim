@@ -380,3 +380,10 @@ Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, 
 - Shared homework creation now permits authenticated group members, not only starosta, while non-staff requests must resolve a valid group membership through `AcademicContextResolver::requireGroup()`.
 - Schedule create button is visible for signed-in users in the existing subject-selected flow; privileged management behavior is not widened.
 - Automated execution remains unverified until GitHub Actions gets past runner initialization. No production deploy or DB writes.
+
+## 2026-10-11 — Telegram Web App entry MVP
+
+- Added `/app` command; `/start` now presents a Telegram Web App button opening `MEDBIOHIM_APP_URL` (default `https://medbiohim.vercel.app/`).
+- Added regression coverage for the command response; setup notes now cover BotFather domain + webhook registration.
+- This only opens the existing site in Telegram. It does not yet validate Telegram initData, register a new user, or link a Telegram identity to an existing account.
+- Runtime test and CI remain pending; GitHub Actions runner blocker persists. No production deployment, secrets or DB were changed.
