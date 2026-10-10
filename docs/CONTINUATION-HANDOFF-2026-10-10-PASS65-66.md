@@ -38,9 +38,24 @@ Additional direct API observations:
 
 Interpretation: current evidence points to failure before runner allocation / job execution, rather than a failing PHP, npm, ZIP, or smoke-test command. It does **not** prove the exact platform-side root cause. Changing project source cannot reliably repair a runner that never starts.
 
-## Pass 67 — continuation record / next action
+## Pass 68 — token permissions across all workflows
 
-The next action is to inspect GitHub Actions repository/org settings and runner availability in the GitHub UI, check any disabled Actions policy, usage/billing limit, queue/service incident, or runner provisioning restriction, then request GitHub support if no setting explains the immediate pre-step failures.
+Added explicit `permissions: contents: read` to the remaining two workflows:
+
+- `.github/workflows/deploy-backend.yml` — commit `7695100f2e92d37f9a3511e16c96b84f0f9d4f6e`.
+- `.github/workflows/optional-integrations-check.yml` — commit `d3641f2aee698dbf1f7069a5ffc01520294159d0`.
+
+All six workflows now have explicit read-only repository-token permissions. The deployment workflow still has its FTP credential in Actions secrets; the source change did not trigger a successful deployment.
+
+## Pass 69 — fixed malformed source-archive workflow YAML
+
+A closer inspection found a real, independent bug in `.github/workflows/package-archives.yml`: five ZIP exclusion continuation lines were indented outside the YAML `run: |` block. GitHub consequently showed the workflow path as its display name and the run had no jobs. Corrected the shell-block indentation in commit `d566031d01e73f7a62a91e7502c9410456a9e6f2`. The next run now has the proper workflow name `Package MEDBIOHIM source` and a `package` job, confirming GitHub recognizes the workflow YAML again.
+
+However, the package job still fails before steps: run [38025017740](https://github.com/MISTACEN/medbiohim/actions/runs/38025017740), raw job metadata shows `runner_id: 0`, empty `runner_name`, `steps: []`, and completion about two seconds after creation. Code checks [38025017750](https://github.com/MISTACEN/medbiohim/actions/runs/38025017750), smoke [38025017788](https://github.com/MISTACEN/medbiohim/actions/runs/38025017788), and SpaceWeb archive [38025017818](https://github.com/MISTACEN/medbiohim/actions/runs/38025017818) remain blocked in the same pre-step manner.
+
+## Pass 70 — continuation record / next action
+
+The next action is to inspect GitHub Actions repository/org settings and runner availability in the GitHub UI, check any disabled Actions policy, usage/billing limit, queue/service incident, or runner provisioning restriction, then request GitHub support if no setting explains the immediate pre-step failures. The malformed source-archive YAML is now fixed; do not revert that correction. The archive still needs a real successful run to verify its output.
 
 After runner execution is restored:
 1. dispatch code checks and verify that step logs exist;
