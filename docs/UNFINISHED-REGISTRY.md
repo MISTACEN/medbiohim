@@ -4,7 +4,7 @@
 
 Этот файл отражает текущее состояние после глубокого повторного аудита. Старые пункты, которые уже исправлены, явно помечены как CLOSED.
 
-## Latest handoff — Pass 65–70 (2026-10-10)
+## Latest handoff — Pass 65–73 (2026-10-10)
 
 - Current continuation report: [CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
 - All six workflows now declare `permissions: contents: read`; this reduces token scope but did not restore Actions execution.
