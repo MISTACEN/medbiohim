@@ -10,7 +10,7 @@ Read the current `.github/workflows/smoke.yml`, `.github/workflows/code-check.ym
 - The smoke workflow has `push`, `workflow_dispatch`, and scheduled triggers, and targets `ubuntu-24.04`.
 - Code checks have separate frontend and backend jobs, both targeting `ubuntu-24.04`; backend checks include PHP lint, sanitizer/auth/homework SQL regression tests, and route registration.
 - SpaceWeb deployment is gated by a non-empty `FTP_PASSWORD`, pre-deploy PHP/test/route checks, a verified non-empty backup, and post-upload source-marker checks.
-- Latest inspected smoke run `38011594578` is failed with `steps: null`; the corresponding job has no usable step summaries. Adjacent runs for other workflows also terminated immediately before actionable steps/logs.
+- Latest inspected smoke run `38011594578` is failed with `steps: null`; follow-up runs triggered by the documentation commits were also checked: code checks `38011994749` (both `backend` and `frontend` jobs), smoke `38011994779`, and archive build `38011994746` all completed as failures with `steps: null`. This confirms the failure persists across different workflows on the latest docs commit, without actionable step logs.
 
 **Conclusion:** no workflow-YAML defect was established as the cause of the runner failure. The evidence is consistent with runner allocation/initialization or repository/account-side Actions infrastructure, but does not identify the exact external cause. Do not mark CI as restored. Next diagnostic needs repository owner access to the Actions UI/account usage/permissions or GitHub Support; do not change workflow commands blindly to compensate for a job that never starts.
 
