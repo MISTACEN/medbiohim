@@ -50,11 +50,8 @@ return static function(Router $router): void {
                 $group = $resolver->requireGroup($req->user->id, $requestedGroup);
             }
 
-            if (!$isStaff && (!$group || (string)($group['role_in_group'] ?? '') !== 'starosta')) {
-                Response::error('FORBIDDEN', 'Только староста группы может создавать общее ДЗ', $req->requestId, 403);
-                return;
-            }
-
+            // Any authenticated member may add shared homework to their own group.
+            // requireGroup() above is the authorization boundary for non-staff users.
             $groupId = $group['group_id'] ?? null;
             $scheduleEntryId = $req->json('schedule_entry_id') !== null
                 ? trim((string)$req->json('schedule_entry_id')) : null;
