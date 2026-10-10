@@ -167,3 +167,7 @@ Documentation-only pushes now skip code-check, smoke-on-push, source-package, an
 
 ### Actions diagnostics — Pass 61
 The job-step endpoint returned no steps and log downloads returned `BlobNotFound` for both code-check jobs. The connected integration has repository admin-level permissions and the repo is not archived, so root cause remains unknown. Owner-side Actions settings/usage checks and potentially GitHub Support are needed. No successful CI result is claimed. See `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
+
+
+### Vercel observability — Pass 62
+A recent docs-only production deployment was READY, but the newer commit's deployment state was not confirmed. Vercel runtime-log access returned 403 and build-event retrieval returned 404, so this does not establish runtime health. See `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
