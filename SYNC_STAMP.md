@@ -29,7 +29,7 @@
 - Histology `ticket_banks`: 5 (preserved; not modified)
 - Published histology material records: 80 (physical document/image availability is not proven by metadata)
 - Published trainer feed cards: 206; the trusted base table retains grading keys, but public safe view exposes 0 correctness flags
-- Published electronogram cards: 28; physical paths still require SpaceWeb/B2 HTTP verification
+- Published electronogram cards: 28; read-only reconciliation on 2026-10-10 found 28 non-empty source keys, 0 exact/basename matches in `content_sources.source_path`, and 0 matching image assets in the GitHub `main` tree. SpaceWeb/B2 file existence and authenticated HTTP responses remain unverified.
 - `questions`: last full integrity snapshot recorded 855 rows and 660 published non-archived
 - `tests`: last full integrity snapshot recorded 33 total and 32 published
 - Treat the counts above as the last recorded snapshots, not as proof that the newest deployment is functioning.
