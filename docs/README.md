@@ -61,3 +61,7 @@ Historical recovery notes are useful only when debugging an old incident.
 - [DEEP-AUDIT-3-2026-10-04.md](DEEP-AUDIT-3-2026-10-04.md) — третий глубокий проход по скрытым unfinished/legacy следам и live data integrity
 
 - [HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md](HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md) — общие отработки по гистологии: сохранённые записи Supabase, расписание и незакрытые проверки охвата групп/UI
+
+
+- [Pass 55 — CI + Histology media traceability workstream](CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md): Actions runner diagnosis and read-only electronogram path audit.
+- Read-only query: `../database/audits/20261010_electronogram_asset_traceability.sql`.
