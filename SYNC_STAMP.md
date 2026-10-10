@@ -284,3 +284,13 @@
 ### Pass 55 follow-up — fresh Actions run check
 
 After the Pass 55 documentation commits, checked fresh runs on the current documentation commit: code checks `38011994749` (frontend + backend), smoke `38011994779`, and archive build `38011994746`. All three workflows ended in failure with `steps: null`. This reproduces the pre-step failure across different workflow definitions; it still does not expose a root cause or mean that PHP/frontend test commands ran. CI remains blocked.
+
+
+## Pass 56 — database least-privilege + quality-gate reconciliation (2026-10-10)
+
+- PostgreSQL 17.6 read-only audit: effective MAINTAIN/TRUNCATE/REFERENCES/TRIGGER privileges exist on 71/83 public tables for `anon` and 78/83 for `authenticated`.
+- Proposed migration now covers all four privileges and default ACLs for `postgres` and `supabase_admin`; it is not applied.
+- Added read-only post-migration verification SQL and corrected stale quality-gate claims: latest Actions runs are pre-step failures, not current green checks.
+- Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
+
+Latest read-only privilege counts and current Actions evidence: 83 public tables; anon has four unnecessary privileges on 71 tables, authenticated on 78. Migration remains unapplied. Latest smoke/code-check/archive jobs fail with `steps: null`; do not claim CI green.
