@@ -101,3 +101,6 @@ Historical recovery notes are useful only when debugging an old incident.
 
 
 Latest continuation handoff (2026-10-10, Pass 65–77): [`CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md). CI remains unverified because GitHub Actions jobs fail before steps; do not interpret committed workflow hardening as a successful test run.
+
+
+Pass 78 adds an account preferences regression test; see [`CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md). CI is still blocked before steps, so test execution remains unverified.
