@@ -322,3 +322,7 @@ Report: `docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md`.
 
 ### Pass 60 verification update
 Observed: workflow-change commits triggered CI and all latest jobs still returned `steps: null`; later docs-only commits did not produce newer workflow runs. Path filters appear to reduce docs-only churn, but runner initialization remains unresolved.
+
+
+## Pass 61 — 2026-10-10
+Explicit job-step API returned empty arrays and job-log download returned `BlobNotFound` for code-check run `38013521893` (backend job `114098661992`, frontend `114098662106`). CI remains blocked/unverified. See `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
