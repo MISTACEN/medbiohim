@@ -2079,3 +2079,11 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 - Proposed migration now covers all four privileges and default ACLs for `postgres` and `supabase_admin`; it is not applied.
 - Added read-only post-migration verification SQL and corrected stale quality-gate claims: latest Actions runs are pre-step failures, not current green checks.
 - Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
+
+## CI + DB preflight follow-up — Pass 57 (2026-10-10)
+
+- 🔴 Re-ran GitHub Actions smoke job (run 38012180433, attempt 2); it again failed before steps (`steps: null`, no logs). Workflow definitions look structurally consistent; no code/workflow defect is evidenced by the available runner record. CI remains blocked, not green.
+- 🟡 Read-only Supabase review confirmed default table ACLs for both `postgres` and `supabase_admin` currently grant broad rights to browser roles; the prepared migration addresses the four unnecessary privileges for both owners.
+- 🟡 Role membership confirms PostgREST `authenticator` uses explicit SET ROLE for anon/authenticated/service_role (inherit disabled). No browser privilege escalation was established by this query.
+- 🔴 Migration is still unapplied; staging project/runner role not confirmed. No production writes.
+- Report: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
