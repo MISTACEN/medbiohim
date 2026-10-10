@@ -200,6 +200,29 @@ if (existsSync(proxyPathForHeaders)) {
   else fail("Vercel API proxy does not preserve backend Location redirects");
 }
 
+if (existsSync(proxyPathForHeaders)) {
+  const text = await readFile(proxyPathForHeaders, "utf8");
+  const fallbackIndex = text.indexOf('if (upstream?.status === 404 && sub.startsWith("trainers/feed"))');
+  const primaryProxyIndex = text.indexOf('const targets = [');
+  if (fallbackIndex >= 0 && primaryProxyIndex >= 0 && fallbackIndex > primaryProxyIndex &&
+      !text.includes('if (sub.startsWith("trainers/feed")) {')) {
+    pass("trainer compatibility fallback runs only after the PHP upstream returns 404");
+  } else {
+    fail("trainer compatibility fallback may bypass the PHP upstream");
+  }
+  if (text.includes('out.headers.set("cache-control", "private, no-store")')) {
+    pass("authenticated trainer image proxy disables browser caching");
+  } else {
+    fail("authenticated trainer image proxy may cache private media");
+  }
+  if (text.includes('message: "Backend is temporarily unavailable"') &&
+      !text.includes('message: msg')) {
+    pass("proxy 502 response does not expose raw upstream exception messages");
+  } else {
+    fail("proxy 502 response may expose internal upstream exception details");
+  }
+}
+
 const malformedImports = [];
 for (const file of backendFiles.filter((x) => extname(x) === ".php")) {
   const text = await readFile(file, "utf8");
