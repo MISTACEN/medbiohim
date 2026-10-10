@@ -11,6 +11,9 @@ on:
       - "README.md"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   archive-backend:
     runs-on: ubuntu-24.04
