@@ -1201,3 +1201,11 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - 🟡 Physical files on SpaceWeb/B2 remain unverified; do not rewrite URLs until object existence is checked.
 - 🔴 GitHub Actions runner and production/runtime gates remain blocked/unverified.
 - Details: `docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md`.
+
+
+## Pass 56 — database least-privilege + quality-gate reconciliation (2026-10-10)
+
+- PostgreSQL 17.6 read-only audit: effective MAINTAIN/TRUNCATE/REFERENCES/TRIGGER privileges exist on 71/83 public tables for `anon` and 78/83 for `authenticated`.
+- Proposed migration now covers all four privileges and default ACLs for `postgres` and `supabase_admin`; it is not applied.
+- Added read-only post-migration verification SQL and corrected stale quality-gate claims: latest Actions runs are pre-step failures, not current green checks.
+- Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
