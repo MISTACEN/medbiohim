@@ -183,3 +183,6 @@ The pre-deploy audit now warns when the ESLint config appears to contain no rule
 
 ### Pass 64 — archive security and project inventory
 Archive workflows now exclude root and nested `.env*` paths and include a pre-upload archive listing guard. CI has not executed the guard because Actions jobs still fail before steps/logs are available. Current inventory: 38 named PASS reports (numbering up to 64, with historical gaps), 22 closed legacy blockers, and 7 broad remaining workstreams. [Details](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+
+
+**Development status (2026-10-10):** GitHub Actions workflows have explicit read-only repository permissions, and archive/deployment steps have additional fail-fast guards. However, recent CI jobs terminate before steps and expose no logs; tests are not considered passed until runner execution is restored. See [`docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) and [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md).
