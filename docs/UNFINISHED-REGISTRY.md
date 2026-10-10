@@ -439,3 +439,20 @@ Latest read-only Supabase evidence:
 Report: [DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md](DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
 
 No database writes were made. CI runner and production/runtime checks remain blocked/unverified.
+
+
+## U-2026-10-10-DB-PRIVILEGES — Client-role table grants need least-privilege review
+
+Severity: P1 security / database hardening
+
+Read-only audit observed effective `TRUNCATE`, `TRIGGER`, and `REFERENCES` privileges for `anon` and/or `authenticated` across many public base tables, plus permissive default ACLs for future tables. This does not alone prove a PostgREST exploit path, but the privileges are unnecessary for browser-facing roles; RLS does not govern TRUNCATE.
+
+Prepared but NOT APPLIED: `database/migrations/20261010_revoke_non_rls_table_privileges.sql`.
+
+Required before closure:
+1. Review execution role and default-privilege ownership in staging.
+2. Apply via approved migration process only after staging validation.
+3. Recheck effective privileges for both client roles.
+4. Smoke-test all required browser-facing read/write flows under anon/authenticated JWTs.
+
+No production DB writes were made. Report: [DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md](DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md).
