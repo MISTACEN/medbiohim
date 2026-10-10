@@ -1,3 +1,7 @@
+## Latest consolidated engineering workstream — 2026-10-10
+
+The project now groups related audits into domain workstreams to reduce pass/report overhead without deleting historical evidence. Current report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). A least-privilege migration is committed but **not applied** to live Supabase; no production database writes were made. CI runner and deployment/runtime checks remain open.
+
 ## Полная концепция проекта
 Полное описание идеи, архитектуры, учебной логики, предметных контуров, принципов бесплатности, администрирования, безопасности и будущего развития: [docs/PROJECT-CONCEPT-AND-VISION.md](docs/PROJECT-CONCEPT-AND-VISION.md).
 
