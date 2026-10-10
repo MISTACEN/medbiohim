@@ -163,3 +163,7 @@ GitHub Actions currently fails across code-check, smoke, backend archive, and so
 
 ### CI efficiency update — Pass 60
 Documentation-only pushes now skip code-check, smoke-on-push, source-package, and backend-archive workflows where configured. Scheduled/manual checks remain available. This is queue-noise reduction only; the Actions runner initialization issue remains unresolved. See `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
+
+
+### Actions diagnostics — Pass 61
+The job-step endpoint returned no steps and log downloads returned `BlobNotFound` for both code-check jobs. The connected integration has repository admin-level permissions and the repo is not archived, so root cause remains unknown. Owner-side Actions settings/usage checks and potentially GitHub Support are needed. No successful CI result is claimed. See `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
