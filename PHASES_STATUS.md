@@ -1,3 +1,11 @@
+## API proxy hardening — Pass 53 (2026-10-10)
+
+- 🟢 Trainer fallback now respects PHP-first routing; Supabase fallback is only used after an upstream 404.
+- 🟢 Authenticated trainer images are marked `private, no-store`; proxy 502 messages are generic.
+- 🟢 Pre-deploy audit now checks these three contracts.
+- 🔴 Workflow runs for commits `ec4aad1` and `6aeb401` still fail before any steps with `runner_id=0`; source/build/test checks and live runtime remain unverified.
+- Code: [`ec4aad1`](https://github.com/MISTACEN/medbiohim/commit/ec4aad139413292c3beb6992e58bdfb6ef7ae17b); audit guard: [`6aeb401`](https://github.com/MISTACEN/medbiohim/commit/6aeb401434ab8ba10dad778bc48c585a5fe4347e).
+
 # MEDBIOHIM — PHASES STATUS
 
 > Актуально на **2026-10-10**.  
