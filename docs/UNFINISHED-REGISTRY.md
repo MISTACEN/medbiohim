@@ -491,3 +491,7 @@ Latest retry of smoke run [38012180433](https://github.com/MISTACEN/medbiohim/ac
 Read-only Supabase checks confirm default public-table ACLs exist for both `postgres` and `supabase_admin`; the committed migration covers both. PostgREST `authenticator` role membership is configured for explicit SET ROLE with inheritance disabled. No privilege migration has been applied; no production writes. Next: confirm staging + migration runner role, apply only in approved staging, run the verification audit and browser-role flow tests.
 
 Report: [Pass 57 CI + DB preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+
+### Latest Pass 57 evidence update
+
+After the docs-only commits, current-head Actions runs also failed before steps/logs: code-check `38012550501`, smoke `38012550519`, archive `38012550490`; code-check `38012554325` also has both jobs with `steps: null`. See [Pass 57 report](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md). This reproduces across workflows and commits; no PHP/frontend test results exist yet.
