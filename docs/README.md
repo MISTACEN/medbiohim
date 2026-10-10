@@ -73,3 +73,7 @@ Historical recovery notes are useful only when debugging an old incident.
 ## Latest workstream report — 2026-10-10
 
 - [Pass 57: CI runner retry + DB privilege migration preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md) — latest retry still has no workflow steps/logs; default ACL/role membership reviewed read-only; migration not applied.
+
+## Latest source audit — 2026-10-10
+
+- [Pass 58: release-gate source audit](RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md) — missing lockfile, no effective ESLint rules, TypeScript build override, FTPS certificate verification disabled, rollback gap; no production changes.
