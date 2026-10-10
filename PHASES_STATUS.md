@@ -1262,3 +1262,9 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
 
 
+
+
+## Pass 63 follow-up — Actions retry (2026-10-10)
+- The pre-deploy audit now warns when ESLint config has no recognizable rules/presets; this is a heuristic and does not replace a proper lint baseline.
+- The four workflows triggered by the source commit all failed before exposing steps or logs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), [smoke](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), [backend archive](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), [package](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). No tests are confirmed to have executed.
+- Details: [Pass 63 report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
