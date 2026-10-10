@@ -541,3 +541,12 @@ Severity: P1 / release verification
 For code-check run [38013521893](https://github.com/MISTACEN/medbiohim/actions/runs/38013521893), backend job `114098661992` and frontend job `114098662106` have `steps: null` and `logs_url: null`; explicit step endpoint returns an empty list and log download returns HTTP 404 `BlobNotFound`. Repository metadata shows the repository is private, active, and integration permissions include admin/maintain/push. Root cause remains unknown; no test command is confirmed to have executed.
 
 Owner action: inspect the run/job in GitHub UI, Settings → Actions → General, account usage/limits and service incidents; escalate to GitHub Support with runs `38013521893`, `38013522004`, `38013521967`, `38013522082` if no logs are available. Report: [Pass 61](CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md).
+
+
+## U-2026-10-10-62 — Vercel runtime/build log visibility
+
+Severity: P1 / release verification
+
+The production alias `medbiohim.vercel.app` was rechecked and resolves to a READY deployment for commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160`. Vercel runtime-log query returned HTTP 403 `forbidden`; deployment event logs returned 404 `Deployment not found`. These are access/endpoint failures, not evidence that production has no errors.
+
+Required: inspect build logs in Vercel dashboard, restore runtime-log API access or use authorized CLI/dashboard, then run public and authenticated runtime smoke. Report: [Pass 62](VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md).
