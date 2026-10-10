@@ -25,17 +25,17 @@ jobs:
           set -euo pipefail
           rm -f "$GITHUB_WORKSPACE/medbiohim-full-$GITHUB_SHA.zip"
           zip -qr "$GITHUB_WORKSPACE/medbiohim-full-$GITHUB_SHA.zip" . \
-  -x '.git/*' \
-  -x 'node_modules/*' \
-  -x '.next/*' \
-  -x '.env*' -x '*/.env*'
+          -x '.git/*' \
+          -x 'node_modules/*' \
+          -x '.next/*' \
+          -x '.env*' -x '*/.env*'
 
       - name: Build backend archive
         run: |
           set -euo pipefail
           rm -f "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip"
           zip -qr "$GITHUB_WORKSPACE/medbiohim-backend-$GITHUB_SHA.zip" backend \
-  -x 'backend/.env*' -x 'backend/*/.env*' -x '*/.env*'
+          -x 'backend/.env*' -x 'backend/*/.env*' -x '*/.env*'
 
       - name: Reject environment files in archives
         run: |
