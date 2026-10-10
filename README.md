@@ -155,3 +155,7 @@ The PostgreSQL 17.6 privilege audit found unnecessary MAINTAIN/TRUNCATE/REFERENC
 ### Release verification caveats — Pass 58 (2026-10-10)
 
 The latest source audit found no tracked frontend dependency lockfile, a minimal ESLint config without rules, Next.js build configuration that ignores built-in TypeScript errors (the separate predeploy audit runs typecheck), and disabled FTPS certificate verification in the backend deployment workflow. GitHub Actions still fails before steps, so none of these gates has been confirmed by a successful run. Details: [Pass 58 report](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+
+
+### Latest engineering status — 2026-10-10 (Pass 59)
+GitHub Actions currently fails across code-check, smoke, backend archive, and source-package workflows before step details are exposed (`steps: null`). This does not establish that code checks ran or failed; frontend/PHP validation remains unverified. Follow `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md` for evidence and next steps. No production deployment or database writes were made in this pass.
