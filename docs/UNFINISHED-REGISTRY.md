@@ -590,3 +590,9 @@ Latest retry confirmation: code-check run [38019548725 attempt 2](https://github
 ### Pass 77 update — archive fail-fast
 - `.github/workflows/build-spaceweb-archive.yml` now uses `set -euo pipefail` before removing/copying/packing files (commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`).
 - **Verification status:** committed, but not executed in CI because latest jobs terminate before any steps. GitHub Actions runner/job provisioning remains an open release gate.
+
+
+### Pass 78 update — account preferences regression
+- Added `backend/tests/AccountSettingsPreferencesTest.php`; it checks the `getPreferences()` contract and no-user defaults. Wired into code checks and deployment preflight.
+- Static inspection finds `getPreferences()` in current `AccountSettingsService.php`; the prior fatal is not currently visible in source, but regression coverage is now committed.
+- Still blocked: CI runs `38035609359`, `38035609394`, `38035609378`, `38035609353` fail before steps with no logs. The test is committed but not executed.
