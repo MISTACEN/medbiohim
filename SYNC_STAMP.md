@@ -355,3 +355,6 @@ Vercel read-only inspection found a READY deployment for a recent docs commit an
 - Unfinished registry currently has 22 closed legacy blockers (C-01…C-22) and 7 broad open workstreams (R1–R7), plus release blockers for CI execution, dependency lockfile/lint, FTPS validation, and DB migration staging.
 - Validation caveat: four latest workflow attempts still failed before exposing executable steps/logs; archive guard has not yet run in CI.
 - Report: [Pass 64 archive security and inventory](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+
+
+Pass 77 (2026-10-10): `.github/workflows/build-spaceweb-archive.yml` now enables `set -euo pipefail` before archive preparation (commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`). CI remains blocked before job steps; no test pass is claimed. Current handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
