@@ -2,6 +2,13 @@ name: Package MEDBIOHIM source
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "ROADMAP.md"
+      - "PHASES_STATUS.md"
+      - "SYNC_STAMP.md"
+      - "README.md"
   workflow_dispatch:
 
 jobs:
