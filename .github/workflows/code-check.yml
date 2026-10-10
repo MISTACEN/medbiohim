@@ -99,6 +99,8 @@ jobs:
         run: php backend/tests/SupabaseAuthRoleTest.php
       - name: Homework SQL contract regression tests
         run: php backend/tests/HomeworkSqlContractTest.php
+      - name: Account settings preferences regression tests
+        run: php backend/tests/AccountSettingsPreferencesTest.php
       - name: Bootstrap route registration smoke test
         run: |
           set -euo pipefail
