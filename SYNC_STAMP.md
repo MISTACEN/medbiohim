@@ -1,8 +1,9 @@
-## Latest continuation stamp — Pass 65–67, 2026-10-10
+## Latest continuation stamp — Pass 65–70, 2026-10-10
 
 - Handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
-- Latest commits restrict `contents: read` in four non-deployment workflows.
-- Current CI runs: code-check `38024900534`; SpaceWeb archive `38024900530`. Both fail pre-step; jobs show `runner_id: 0`, no runner name, empty steps and null logs.
+- All six workflows now explicitly restrict token permissions to `contents: read`.
+- Fixed malformed shell-block indentation in `package-archives.yml`; commit `d566031d01e73f7a62a91e7502c9410456a9e6f2`.
+- Current CI runs: code-check `38025017750`; smoke `38025017788`; SpaceWeb archive `38025017818`; source package `38025017740`. All still fail pre-step; package job has `runner_id: 0`, no runner name and empty steps.
 - Do not claim CI or archive verification. Next action is owner-side GitHub Actions settings/runner provisioning investigation, then rerun real checks.
 - No production DB mutation or manual deployment in this pass.
 
