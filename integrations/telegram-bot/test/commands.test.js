@@ -37,3 +37,12 @@ test("privacy response explicitly avoids account-bound data", () => {
   assert.match(result.text, /не связывает Telegram с аккаунтом/);
   assert.equal(result.url, null);
 });
+
+
+test("/start and /app offer the Telegram Web App entry point", () => {
+  const start = getCommandResponse("/start");
+  const app = getCommandResponse("/app");
+  assert.equal(start.webAppUrl, "https://medbiohim.vercel.app/");
+  assert.equal(app.webAppUrl, "https://medbiohim.vercel.app/");
+  assert.equal(start.url, null);
+});
