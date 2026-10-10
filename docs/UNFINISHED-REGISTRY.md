@@ -625,3 +625,9 @@ Still open:
 - [ ] Validate student from own group can create homework and a non-member cannot, including subject/schedule ownership and attachments.
 - [ ] Test Telegram webhook against real Telegram using a newly configured secret; do not expose tokens in logs.
 - [ ] Implement secure Telegram account linking/registration and existing-site Mini App entry; current code is not yet accepted as end-to-end complete.
+
+### Telegram Web App status — 2026-10-11
+- [x] Add `/app` and a `/start` Web App button that opens the existing site URL.
+- [ ] Configure the correct public HTTPS hostname in BotFather and `MEDBIOHIM_APP_URL`; register webhook with a strong secret and verify on mobile Telegram.
+- [ ] Implement and security-test Telegram `initData` validation, one-time account linking and registration. Opening a Web App is not authentication.
+- [ ] Verify Node bot unit tests and PHP regression test on a functioning runner; do not infer success from source edits.
