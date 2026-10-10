@@ -2,12 +2,14 @@ const APP_ORIGIN = (process.env.MEDBIOHIM_APP_URL || "https://medbiohim.vercel.a
 
 const COMMANDS = {
   start: {
-    text: "Привет! Это бот быстрого доступа к MEDBIOHIM. Сейчас доступны только публичные команды и ссылки; личное расписание и оценки бот не запрашивает.",
+    text: "Привет! MEDBIOHIM помогает готовиться к занятиям, тестам и экзаменам. Откройте платформу кнопкой ниже или используйте /help. Пока бот не запрашивает личные данные.",
+    webApp: true,
   },
   help: {
-    text: "Команды MEDBIOHIM:\n/start — приветствие\n/site — открыть платформу\n/schedule — открыть расписание на сайте\n/tests — открыть тесты\n/subjects — открыть предметы и атлас\n/materials — открыть материалы\n/privacy — правила приватности",
+    text: "Команды MEDBIOHIM:\n/start — приветствие и кнопка открытия приложения\n/app — открыть MEDBIOHIM внутри Telegram\n/site — открыть платформу\n/schedule — открыть расписание на сайте\n/tests — открыть тесты\n/subjects — открыть предметы и атлас\n/materials — открыть материалы\n/privacy — правила приватности",
   },
   site: { text: "Открыть MEDBIOHIM", path: "/" },
+  app: { text: "Открыть MEDBIOHIM внутри Telegram", webApp: true },
   schedule: { text: "Открыть расписание MEDBIOHIM", path: "/schedule" },
   tests: { text: "Открыть тесты MEDBIOHIM", path: "/tests" },
   subjects: { text: "Открыть предметы и атлас MEDBIOHIM", path: "/subjects" },
@@ -40,6 +42,7 @@ function getCommandResponse(text) {
   return {
     text: result.text,
     url: result.path ? new URL(result.path, APP_ORIGIN).toString() : null,
+    webAppUrl: result.webApp ? new URL("/", APP_ORIGIN).toString() : null,
   };
 }
 
