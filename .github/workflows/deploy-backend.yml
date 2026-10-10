@@ -117,8 +117,10 @@ jobs:
 
       - name: Deploy backend source and routes
         run: |
+          set -euo pipefail
           SITE="${{ steps.discover.outputs.found }}"
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+            set cmd:fail-exit yes;
             set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
             mirror -R --verbose ./backend/src '${SITE}backend/src';
             mirror -R --verbose ./backend/config/routes '${SITE}backend/config/routes';
@@ -127,9 +129,11 @@ jobs:
 
       - name: Deploy histology media when present in repository
         run: |
+          set -euo pipefail
           SITE="${{ steps.discover.outputs.found }}"
           if [ -d content/histology ]; then
             lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+              set cmd:fail-exit yes;
               set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3;
               mirror -R --verbose ./content/histology '${SITE}content/histology';
               bye"
@@ -143,6 +147,7 @@ jobs:
           SITE="${{ steps.discover.outputs.found }}"
           mkdir -p verify
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" -e "
+            set cmd:fail-exit yes;
             set ftp:ssl-allow yes; set ssl:verify-certificate no;
             get -O verify/ '${SITE}backend/src/Repositories/TestRepository.php';
             get -O verify/ '${SITE}backend/config/routes.php';
