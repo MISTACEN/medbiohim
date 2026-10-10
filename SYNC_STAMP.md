@@ -279,3 +279,8 @@
 - Read-only Histology electronogram audit: 28 cards, 28 with captions, 28 with `source_file_id IS NULL`, 5 basename mismatches between `source_key` and `preparation.imageUrl`.
 - Reproducible SELECT-only audit: `database/audits/20261010_electronogram_asset_traceability.sql`.
 - No production DB writes or path rewrites. Next: owner-side runner diagnosis, physical SpaceWeb/B2 media check, then evidence-based path correction if required.
+
+
+### Pass 55 follow-up — fresh Actions run check
+
+After the Pass 55 documentation commits, checked fresh runs on the current documentation commit: code checks `38011994749` (frontend + backend), smoke `38011994779`, and archive build `38011994746`. All three workflows ended in failure with `steps: null`. This reproduces the pre-step failure across different workflow definitions; it still does not expose a root cause or mean that PHP/frontend test commands ran. CI remains blocked.
