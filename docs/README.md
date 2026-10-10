@@ -1,3 +1,7 @@
+## Актуальная точка продолжения — 2026-10-10
+
+- [Pass 65–67: права workflow и диагностика GitHub Actions](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) — последние коммиты, реальные результаты запусков, блокер runner allocation и точное ТЗ для продолжения.
+
 # MEDBIOHIM documentation
 
 ## Главные документы
