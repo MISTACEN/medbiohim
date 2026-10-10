@@ -4,13 +4,14 @@
 
 Этот файл отражает текущее состояние после глубокого повторного аудита. Старые пункты, которые уже исправлены, явно помечены как CLOSED.
 
-## Latest handoff — Pass 65–67 (2026-10-10)
+## Latest handoff — Pass 65–70 (2026-10-10)
 
 - Current continuation report: [CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
-- Four read-only workflows now declare `permissions: contents: read`; this reduces token scope but did not restore Actions execution.
-- Latest code-check run [38024900534](https://github.com/MISTACEN/medbiohim/actions/runs/38024900534) and SpaceWeb archive run [38024900530](https://github.com/MISTACEN/medbiohim/actions/runs/38024900530) fail before visible steps. Raw jobs show `runner_id: 0`, empty runner name, no steps and no logs.
+- All six workflows now declare `permissions: contents: read`; this reduces token scope but did not restore Actions execution.
+- Pass 69 fixed malformed indentation in `.github/workflows/package-archives.yml`; GitHub now recognizes the workflow and creates a `package` job. The job still fails before steps.
+- Latest runs [code checks 38025017750](https://github.com/MISTACEN/medbiohim/actions/runs/38025017750), [smoke 38025017788](https://github.com/MISTACEN/medbiohim/actions/runs/38025017788), [SpaceWeb archive 38025017818](https://github.com/MISTACEN/medbiohim/actions/runs/38025017818), and [source package 38025017740](https://github.com/MISTACEN/medbiohim/actions/runs/38025017740) fail before visible steps. Raw package job confirms `runner_id: 0`, empty runner name and no steps. Raw jobs show `runner_id: 0`, empty runner name, no steps and no logs.
 - **Release gate remains BLOCKED/UNVERIFIED.** Owner-side GitHub Actions settings/runner provisioning and potentially GitHub support are required before source-level CI failures can be evaluated.
-- Archive secret-exclusion guards remain committed but untested by a running job. No deployment or production database write occurred.
+- Archive secret-exclusion guards remain committed but untested by a running job. No deployment or production database write occurred. No deployment or production database write occurred.
 
 
 ## Закрытые ранее найденные блокеры
