@@ -1209,3 +1209,11 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - Proposed migration now covers all four privileges and default ACLs for `postgres` and `supabase_admin`; it is not applied.
 - Added read-only post-migration verification SQL and corrected stale quality-gate claims: latest Actions runs are pre-step failures, not current green checks.
 - Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
+
+## Pass 57 — CI runner retry + DB migration preflight (2026-10-10)
+
+- 🔴 GitHub Actions smoke retry failed again before any step/log (`steps: null`, `logs_url: null`). PHP/frontend tests did not run; no green status claimed.
+- 🟡 Reviewed workflow triggers/runner config; evidence still points to runner/platform initialization, with root cause unknown.
+- 🟡 Read-only Supabase audit reviewed default ACLs for both observed table owners and role switching for PostgREST. Migration remains prepared, unapplied; no production DDL/DML.
+- Next: owner-side Actions usage/permissions/support escalation; identify staging and migration role; run post-migration privilege checks and browser-flow regression only after approved staging validation.
+- Report: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
