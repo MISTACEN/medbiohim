@@ -735,3 +735,14 @@ Bridge использует те же normalized contracts, что и серве
 
 Правило обновления:
 **любая новая идея, связанная с FESMU/EIOS/Bridge/интерактивными тренажёрами/внешними интеграциями, сначала фиксируется здесь, затем получает конкретную задачу в ROADMAP и только после этого реализуется.**
+
+## Product contract clarification — 2026-10-11
+
+The canonical requirements now live in [MEDBIOHIM product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
+
+- Preserve the approved current website structure; integrate useful capabilities into existing UX.
+- Telegram has two core responsibilities: secure registration/login + launch of MEDBIOHIM as a Telegram Web App, and ingestion of group-chat homework/messages/attachments.
+- Manual student entry, Telegram extraction and future browser imports feed one canonical homework workflow with group membership checks, provenance, duplicate protection and review for uncertain extraction.
+- Browser extension remains a user-controlled import bridge with preview, source tracking and dedup/versioning; do not store EIOS passwords or bypass access controls.
+- Imported real questions require provenance; AI-inferred content must be labelled and not silently promoted to official.
+- Current implementation gap: Node bot MVP and PHP ingestion service exist separately; complete registration/linking and Mini App are not proven. Reconcile existing parts before adding parallel infrastructure.
