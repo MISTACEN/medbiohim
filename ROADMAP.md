@@ -2062,3 +2062,12 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 
 
 - 2026-10-10 PHP audit follow-up: homework SQL placeholders and planner query bindings hardened; internal exception details removed from several admin/question/planner/media responses. Full lint and runtime integration remain blocked by GitHub Actions runner allocation. See `docs/CI-PHP-AUDIT-2026-10-10-PASS52.md`.
+
+
+## Consolidated workstream — CI + Histology media traceability (Pass 55, 2026-10-10)
+
+- 🟢 Reviewed current smoke, code-check, and SpaceWeb deployment workflows. Their intended checks/gates are present in source; no YAML root cause for the pre-step runner failure was established.
+- 🔴 Latest inspected Actions job still has `steps: null`; CI is not restored. Need owner-side Actions runner/account diagnosis or GitHub Support; do not mask an infrastructure failure by weakening checks.
+- 🟢 Read-only audit of Histology electronograms: 28 cards, 28 caption arrays, 28 missing `source_file_id`, 27 canonical `source_key` values, and 5 source-key/image-URL basename mismatches.
+- 🟡 No live image paths changed: actual SpaceWeb/B2 object existence has not been verified, and the shorter paths may reflect legacy physical filenames.
+- Report: [CI + media traceability workstream](docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md). Repeatable SELECT-only query: `database/audits/20261010_electronogram_asset_traceability.sql`.
