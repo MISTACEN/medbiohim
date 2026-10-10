@@ -178,4 +178,4 @@ The pre-deploy audit now warns when the ESLint config appears to contain no rule
 
 
 ### Pass 64 — archive security and project inventory
-Archive workflows now exclude root and nested `.env*` paths and include a pre-upload archive listing guard. CI has not executed the guard because Actions jobs still fail before steps/logs are available. Current inventory: 37 named PASS reports (numbering up to 62, with historical gaps), 22 closed legacy blockers, and 7 broad remaining workstreams. [Details](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+Archive workflows now exclude root and nested `.env*` paths and include a pre-upload archive listing guard. CI has not executed the guard because Actions jobs still fail before steps/logs are available. Current inventory: 38 named PASS reports (numbering up to 64, with historical gaps), 22 closed legacy blockers, and 7 broad remaining workstreams. [Details](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
