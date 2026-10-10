@@ -1217,3 +1217,12 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - 🟡 Read-only Supabase audit reviewed default ACLs for both observed table owners and role switching for PostgREST. Migration remains prepared, unapplied; no production DDL/DML.
 - Next: owner-side Actions usage/permissions/support escalation; identify staging and migration role; run post-migration privilege checks and browser-flow regression only after approved staging validation.
 - Report: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+
+## Pass 58 — source-level release gate audit (2026-10-10)
+
+- 🔴 CI still cannot execute steps; no test/build success claimed.
+- 🔴 Missing package lockfile means npm install can resolve different dependency versions over time. Must generate and validate a real lockfile in an environment with npm registry access, then switch CI to `npm ci`.
+- 🟡 ESLint flat config has no rules; TypeScript errors are ignored by Next's own build, although the predeploy audit separately invokes typecheck. These checks need a working execution environment and remediation before release confidence improves.
+- 🔴 FTPS certificate verification is disabled in the deploy workflow. Confirm the hosting certificate/hostname and test before enabling verification.
+- 🟡 Existing remote backup is verified before upload, but no tested rollback after partial deploy is present.
+- Report: [Pass 58 release-gate source audit](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
