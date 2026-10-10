@@ -1262,8 +1262,3 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
 
 
-## Pass 62 — 2026-10-10
-- **Vercel:** one recent docs-only production deployment observed READY; a newer deployment was BUILDING when inspected, final state unconfirmed.
-- **Runtime observability:** log API returned 403; deployment event logs returned 404. This is an access/query blocker, not evidence of no runtime errors.
-- **Production smoke:** still required; no application-health or release-green claim.
-- Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
