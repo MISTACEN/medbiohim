@@ -186,3 +186,6 @@ Archive workflows now exclude root and nested `.env*` paths and include a pre-up
 
 
 **Development status (2026-10-10):** GitHub Actions workflows have explicit read-only repository permissions, and archive/deployment steps have additional fail-fast guards. However, recent CI jobs terminate before steps and expose no logs; tests are not considered passed until runner execution is restored. See [`docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) and [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md).
+
+
+**Latest code follow-up (2026-10-10):** A regression test now covers `AccountSettingsService::getPreferences()` and its default values, wired into CI and deployment preflight. It is committed but not verified in execution because GitHub Actions jobs still fail before their first step. See the continuation handoff and unfinished registry for evidence and next steps.
