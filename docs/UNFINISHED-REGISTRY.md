@@ -612,3 +612,16 @@ Track these as open until implementation and verification:
 - [ ] Preserve the current approved site structure; no global redesign without explicit request.
 
 Do not mark these complete from documentation or source presence alone. GitHub Actions runner initialization remains blocked in the latest observed runs; verify actual test execution.
+
+## Implementation update — 2026-10-11
+
+Completed in source, pending runtime/CI proof:
+- [x] Changed PHP Telegram webhook secret matching to fail closed and added a pure regression test wired into code-check.
+- [x] Removed the starosta-only gate from non-staff shared homework creation; the server still requires membership in the requested/active group.
+- [x] Exposed homework creation to authenticated students in the existing schedule UI without widening unrelated management controls.
+
+Still open:
+- [ ] Run `php backend/tests/TelegramWebhookSecretTest.php` and the full backend/frontend checks on an actual runner; Actions has been blocked before steps.
+- [ ] Validate student from own group can create homework and a non-member cannot, including subject/schedule ownership and attachments.
+- [ ] Test Telegram webhook against real Telegram using a newly configured secret; do not expose tokens in logs.
+- [ ] Implement secure Telegram account linking/registration and existing-site Mini App entry; current code is not yet accepted as end-to-end complete.
