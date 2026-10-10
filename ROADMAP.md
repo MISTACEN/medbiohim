@@ -1,3 +1,18 @@
+## Consolidated workstream — Data + DB privileges (2026-10-10)
+
+This workstream groups the Pass 54 data-integrity audit with the follow-on public-schema privilege review. Historical Pass 54 and all earlier reports remain intact; future work will be grouped by domain instead of creating a separate long report for every micro-step.
+
+- 🟢 Read-only invariants: 854 test-question links, 0 duplicates/broken links; 32/32 active published tests and 660/660 active published questions are linked; 776 published exam questions have prompts and valid checked curriculum links.
+- 🟡 719 blank exam answers appear to be open-ticket/preparation records; no bulk content edits. Five legacy linked subject rows have NULL slugs; no orphan links.
+- 🟡 New least-privilege migration committed: `database/migrations/20261010_revoke_non_rls_table_privileges.sql`. It is **not applied** to live Supabase. Stage-review and privilege verification required first.
+- 🔴 GitHub Actions still fails before steps; CI remains unverified.
+
+Combined report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). Historical detail: [Pass 54](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+
+## Work batching rule
+
+Group related changes and their verification into domain workstreams (CI/PHP/deployment; database/data/security; learning UX/media). Keep commit history and historical reports, but do not create a new pass report for every micro-change. A consolidated workstream is complete only when its required source, CI, and target-runtime gates are verified.
+
 ## Data integrity reconciliation — Pass 54 (2026-10-10)
 
 - 🟢 Read-only Supabase audit: 854 question links; 0 duplicate pairs; 0 broken links; all 32 active published tests have questions; all 660 active published questions have test links.
