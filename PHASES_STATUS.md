@@ -1315,3 +1315,11 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - 🟢 Schedule UI now exposes homework creation to signed-in users in the existing selected-subject flow; edit/delete controls were not broadened by this change.
 - 🟡 Validation pending: Actions has historically failed before job steps; do not claim PHP tests passed until a runner actually executes. End-to-end homework and Telegram runtime tests remain open.
 - No production deployment, database write or secret changes performed.
+
+### Telegram Web App entry — implementation update 2026-10-11
+
+- 🟢 Added `/app` command and Web App button on `/start` in the existing Node bot; button opens the current MEDBIOHIM site using `MEDBIOHIM_APP_URL`.
+- 🟢 Added command-level regression coverage for the Web App URL.
+- 🟡 Still requires BotFather domain configuration, webhook registration, mobile Telegram smoke test and correct production URL configuration.
+- 🔴 Telegram identity validation, account linking and registration are not implemented by this button; do not describe the account flow as complete.
+- Cost target: Telegram Bot API is free; Vercel Hobby may host the small webhook and current site subject to current platform limits; existing PHP group ingestion remains on the existing backend/hosting. AI-provider usage is optional and may cost money, so baseline behavior must remain useful without a paid AI API.
