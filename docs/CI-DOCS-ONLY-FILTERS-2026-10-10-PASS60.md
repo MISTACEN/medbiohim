@@ -22,3 +22,7 @@ This is queue/noise reduction only. It does not repair the observed GitHub Actio
 Workflow files were re-fetched from the repository and the trigger blocks updated through GitHub's contents API. GitHub Actions execution of the new filters has not yet been confirmed. Do not treat this change as a green CI result.
 
 No production deployment, secret changes, or database writes were made.
+
+
+## Post-commit observation
+After the workflow-file commits, the newest generated runs are attached to workflow-change commits (latest inspected: code-check `38013521893`, smoke `38013522004`, source package `38013521967`, backend archive `38013522082`). Each again fails with job `steps: null`. Subsequent Markdown-only status/report commits did not appear as newer workflow runs in the Actions runs listing, consistent with the new path filters skipping docs-only commits. This is observational confirmation of reduced docs-only run churn, not confirmation that job execution is repaired.
