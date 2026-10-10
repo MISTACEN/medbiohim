@@ -1,3 +1,11 @@
+# Latest consolidated workstream — 2026-10-10
+
+- Report: `docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md`.
+- Read-only data integrity checks remain green for test/question links.
+- Least-privilege migration `database/migrations/20261010_revoke_non_rls_table_privileges.sql` is committed but NOT applied to production.
+- No production database writes performed; GitHub Actions runner and target-runtime checks remain blocked/unverified.
+- Work batching policy: group related changes by domain; preserve historical pass reports and commit history.
+
 # Sync stamp
 
 - Latest data integrity audit: Pass 54, `a4475b2` — 854 test-question links, no duplicate/broken links, all published active tests/questions linked; 719 blank exam answers classified as open-ticket/preparation-style; no database writes. Report: docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md.
