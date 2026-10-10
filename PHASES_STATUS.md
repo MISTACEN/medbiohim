@@ -1246,3 +1246,10 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 
 ### Pass 60 verification update
 The four workflow-definition commits triggered Actions, as expected; all four latest inspected runs still failed with `steps: null`. Subsequent Markdown-only status commits did not create newer runs in the latest Actions list, consistent with docs-only filters working. CI execution remains blocked/unverified.
+
+
+## Pass 61 — 2026-10-10
+- **Actions diagnosis:** no steps are exposed for code-check backend/frontend; job-log downloads return `BlobNotFound`. Repository is not archived and integration has admin-level access; this does not explain the failure.
+- **Required external action:** repository owner must inspect Actions settings/usage/run UI and escalate to GitHub Support if logs remain absent.
+- **Tests:** frontend/PHP commands still not confirmed to have executed; no green checks claimed.
+- Report: `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
