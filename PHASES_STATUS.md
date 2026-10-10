@@ -1306,3 +1306,12 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - Telegram has two roles: site registration/login + Web App/Mini App, and group-chat homework ingestion. Current full registration/linking/Mini App flow is not proven end-to-end.
 - Open implementation checks: UI/API homework permission mismatch; PHP Telegram webhook secret must fail closed when unset; unify/verify bot and PHP ingestion paths; safely validate Telegram identity and initData.
 - These are recorded requirements and findings, not claims of implementation completion. GitHub Actions remains blocked before steps, so CI results are unverified.
+
+## 2026-10-11 — Telegram/homework implementation started
+
+- 🟢 PHP webhook secret now fails closed when either configured or supplied secret is missing; shared validator added at `backend/src/Support/TelegramWebhookSecret.php`.
+- 🟢 Added `backend/tests/TelegramWebhookSecretTest.php` and wired it into `.github/workflows/code-check.yml`.
+- 🟢 Homework POST API no longer requires a non-staff student to be starosta; authenticated students still pass through `AcademicContextResolver::requireGroup()` so group membership remains the authorization boundary.
+- 🟢 Schedule UI now exposes homework creation to signed-in users in the existing selected-subject flow; edit/delete controls were not broadened by this change.
+- 🟡 Validation pending: Actions has historically failed before job steps; do not claim PHP tests passed until a runner actually executes. End-to-end homework and Telegram runtime tests remain open.
+- No production deployment, database write or secret changes performed.
