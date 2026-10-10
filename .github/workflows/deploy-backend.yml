@@ -42,6 +42,7 @@ jobs:
           php backend/tests/TrainingPayloadSanitizerTest.php
           php backend/tests/SupabaseAuthRoleTest.php
           php backend/tests/HomeworkSqlContractTest.php
+          php backend/tests/AccountSettingsPreferencesTest.php
           php -d display_errors=1 -r '
             $root = getcwd() . "/backend";
             spl_autoload_register(static function (string $class) use ($root): void {
