@@ -21,6 +21,11 @@ Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 - Next external unblock: verify GitHub Actions account/org billing, spending limit, repository Actions permissions and runner availability; contact GitHub Support if those are normal.
 - Vercel is separately blocked by the observed `build-rate-limit` target; production deployment/runtime smoke remains open.
 
+## Histology media reconciliation — 2026-10-10
+
+- 🟡 Read-only comparison of 28 published electronograms found 5 `source_key` / `preparation.imagePath` mismatches; no database writes were made. Exact mismatches and the SpaceWeb HTTP verification checklist are recorded in [the reconciliation report](docs/HISTOLOGY-MEDIA-RECONCILIATION-2026-10-10.md).
+- 🟡 Histology materials: 80 rows, all have inline `content_html` and a resolvable `source_key`; none has `file_id` or `external_url`. This is not automatically an error, but source download/viewer behavior must be checked in the target runtime.
+
 ## CI/PHP audit — Pass 52 (2026-10-10)
 
 - 🟢 Fixed repeated named PDO placeholders in homework listing/attachment SQL.
