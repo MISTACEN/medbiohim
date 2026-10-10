@@ -11,7 +11,7 @@ Checked the Vercel project/deployment state after the CI diagnostics pass and at
 - Deployment event/log endpoint returned 404 `Deployment not found` even when using the known deployment ID and explicit team scope. Build-event logs could not be inspected through this connector path.
 
 ## Interpretation
-Vercel had successfully built at least one recent documentation-only commit, but this does not prove application health, target API connectivity, or that the newest deployment completed. Runtime error visibility remains blocked by API permissions/endpoint behavior. GitHub Actions independently remains blocked because its job step lists and log blobs are absent.
+Vercel production alias `medbiohim.vercel.app` currently resolves to a READY deployment for commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160`. This confirms deployment completion, not application health or target API connectivity. Runtime error visibility remains blocked by API permissions/endpoint behavior. Later documentation commits may not be reflected in the currently aliased deployment; no application source changed in these passes. GitHub Actions independently remains blocked because its job step lists and log blobs are absent.
 
 ## Actions taken
 - Read-only Vercel project/deployment/log inspection only.
@@ -25,4 +25,4 @@ Vercel had successfully built at least one recent documentation-only commit, but
 4. Restore GitHub Actions logs before treating CI gates as verified.
 
 ## Status
-**Partial deployment evidence only.** One recent docs-only deployment is READY; the latest commit's deployment completion and production runtime health are not verified. No release-green claim.
+**Deployment completion confirmed; runtime health unverified.** The current production alias is READY at commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160`. Runtime logs remain inaccessible through this API path, and no public/authenticated end-to-end smoke was run. No release-green claim.
