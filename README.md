@@ -159,3 +159,7 @@ The latest source audit found no tracked frontend dependency lockfile, a minimal
 
 ### Latest engineering status — 2026-10-10 (Pass 59)
 GitHub Actions currently fails across code-check, smoke, backend archive, and source-package workflows before step details are exposed (`steps: null`). This does not establish that code checks ran or failed; frontend/PHP validation remains unverified. Follow `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md` for evidence and next steps. No production deployment or database writes were made in this pass.
+
+
+### CI efficiency update — Pass 60
+Documentation-only pushes now skip code-check, smoke-on-push, source-package, and backend-archive workflows where configured. Scheduled/manual checks remain available. This is queue-noise reduction only; the Actions runner initialization issue remains unresolved. See `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
