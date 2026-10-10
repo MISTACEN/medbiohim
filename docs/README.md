@@ -92,3 +92,5 @@ Historical recovery notes are useful only when debugging an old incident.
 - [Pass 62 — Vercel runtime observability](VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md): current production alias is READY; runtime log API access remains blocked.
 
 - [Pre-deploy audit/status reconciliation — 2026-10-10](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md): adds a conservative warning for ESLint configs with no recognizable rules/presets and records release blockers; no CI success claimed.
+
+- [Pass 64 — archive security and pass inventory](ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md): env-file exclusions, archive pre-upload guards, latest CI failures, and count of historical pass reports/open workstreams.
