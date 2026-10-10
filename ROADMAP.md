@@ -2097,3 +2097,10 @@ API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and inc
 - 🔴 SpaceWeb deploy workflow disables FTPS certificate verification (`curl -k`, `ssl:verify-certificate no`). Verify host certificate/hostname before enabling verification; no secret read/changed.
 - 🟡 Backup exists but automatic rollback after partial deployment is not demonstrated. No code/deployment/production writes in this pass.
 - Report: [Pass 58 release-gate source audit](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+
+
+## 2026-10-10 — Pass 59: Actions runner reconciliation
+- Latest-head runs across code-check, smoke, backend archive, and source-package workflows fail with jobs exposing `steps: null`; no command-level failure is evidenced.
+- Keep CI restoration as a release blocker; do not claim checks passed. Owner-side Actions usage/permissions inspection or GitHub Support is required if the platform continues to provide no steps/logs.
+- After execution is restored: real lockfile + `npm ci`, meaningful ESLint rules backed by actual results, frontend typecheck/build, PHP lint/regressions/routes, then runtime smoke.
+- Report: `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md`.
