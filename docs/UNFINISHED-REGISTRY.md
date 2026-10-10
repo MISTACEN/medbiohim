@@ -519,3 +519,12 @@ Latest inspected head `8bb7f04320b0e497a7035a85545073dc26a69df7` produced failur
 Required: owner checks Actions service/usage/permissions and runner initialization; escalate to GitHub Support with run IDs if steps/logs remain absent. Then run frontend typecheck/build/predeploy audit, PHP lint/regression/route tests, and target smoke. Lockfile and ESLint improvements remain pending a registry-enabled environment and executable checks.
 
 No production deployment, secret change, or database write was performed. Report: [Pass 59](CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md).
+
+
+## U-2026-10-10-60 — CI queue churn from documentation-only commits
+
+Severity: P2 / CI efficiency
+
+Added Markdown-only path filters to `.github/workflows/code-check.yml` (push and pull_request), `smoke.yml` (push only), `package-archives.yml`, and `build-spaceweb-archive.yml`. Manual dispatch and scheduled smoke remain enabled. This avoids starting repeated jobs for docs-only commits; changes that include source/workflow files still trigger relevant checks.
+
+Execution of the filters has not yet been confirmed. The separate Actions initialization issue remains open; latest prior jobs had `steps: null`. Report: [Pass 60](CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md). No production changes were made.
