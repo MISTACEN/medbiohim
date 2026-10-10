@@ -1,4 +1,4 @@
-## Latest execution gate — Pass 65–70 (2026-10-10)
+## Latest execution gate — Pass 65–73 (2026-10-10)
 
 - Explicit `contents: read` permissions are set in all six workflows, including deploy and optional integrations.
 - Fixed malformed YAML indentation in `.github/workflows/package-archives.yml` (commit `d566031d01e73f7a62a91e7502c9410456a9e6f2`); GitHub now recognizes the workflow, but job `38025017740` still fails before steps. Code-check `38025017750`, smoke `38025017788`, and SpaceWeb archive `38025017818` also fail pre-step; raw job metadata shows `runner_id: 0` and no runner name.
