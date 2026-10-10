@@ -585,3 +585,8 @@ See [Pass 64 report](ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
 
 
 Latest retry confirmation: code-check run [38019548725 attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/38019548725) again failed with no job steps/logs for both backend and frontend. CI root cause remains open.
+
+
+### Pass 77 update — archive fail-fast
+- `.github/workflows/build-spaceweb-archive.yml` now uses `set -euo pipefail` before removing/copying/packing files (commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`).
+- **Verification status:** committed, but not executed in CI because latest jobs terminate before any steps. GitHub Actions runner/job provisioning remains an open release gate.
