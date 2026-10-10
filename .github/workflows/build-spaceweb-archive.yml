@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build backend archive
         run: |
+          set -euo pipefail
           rm -rf /tmp/medbiohim-spaceweb
           mkdir -p /tmp/medbiohim-spaceweb
           cp -a backend /tmp/medbiohim-spaceweb/backend
