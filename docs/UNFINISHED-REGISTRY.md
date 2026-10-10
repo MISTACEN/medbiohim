@@ -528,3 +528,7 @@ Severity: P2 / CI efficiency
 Added Markdown-only path filters to `.github/workflows/code-check.yml` (push and pull_request), `smoke.yml` (push only), `package-archives.yml`, and `build-spaceweb-archive.yml`. Manual dispatch and scheduled smoke remain enabled. This avoids starting repeated jobs for docs-only commits; changes that include source/workflow files still trigger relevant checks.
 
 Execution of the filters has not yet been confirmed. The separate Actions initialization issue remains open; latest prior jobs had `steps: null`. Report: [Pass 60](CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md). No production changes were made.
+
+
+### Pass 60 follow-up evidence
+The workflow-definition commits themselves triggered runs as expected. Latest inspected runs: code-check [38013521893](https://github.com/MISTACEN/medbiohim/actions/runs/38013521893), smoke [38013522004](https://github.com/MISTACEN/medbiohim/actions/runs/38013522004), package [38013521967](https://github.com/MISTACEN/medbiohim/actions/runs/38013521967), backend archive [38013522082](https://github.com/MISTACEN/medbiohim/actions/runs/38013522082). All jobs still expose `steps: null`. The newer run list contains no runs for the subsequent Markdown-only status commits, consistent with path filters reducing docs-only churn. Runner failure remains unresolved.
