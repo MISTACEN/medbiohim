@@ -550,3 +550,12 @@ Severity: P1 / release verification
 The production alias `medbiohim.vercel.app` was rechecked and resolves to a READY deployment for commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160`. Vercel runtime-log query returned HTTP 403 `forbidden`; deployment event logs returned 404 `Deployment not found`. These are access/endpoint failures, not evidence that production has no errors.
 
 Required: inspect build logs in Vercel dashboard, restore runtime-log API access or use authorized CLI/dashboard, then run public and authenticated runtime smoke. Report: [Pass 62](VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md).
+
+
+## U-2026-10-10-63 — ESLint config presence is not lint coverage
+
+Severity: P2 / quality gate
+
+The pre-deploy audit now warns when the discovered ESLint flat config contains neither a `rules:` block nor recognizable Next.js/TypeScript/recommended preset markers. This is a heuristic signal, not proof of complete lint coverage. The current config was observed to contain only ignore patterns, so `npm run lint` should not be treated as a meaningful gate until a baseline config is added and findings are remediated.
+
+Validation remains blocked by GitHub Actions jobs failing before steps/logs. No local lint run or successful CI result is claimed. Report: [Pre-deploy audit/status reconciliation](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
