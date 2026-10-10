@@ -30,3 +30,7 @@ Follow-up to Pass 56: re-run a failed Actions job, inspect current workflow defi
 - Prior context: Pass 55 CI/media traceability; Pass 56 DB least-privilege status reconciliation.
 
 Status: source/config reviewed; runner still blocked; migration preflight read-only only.
+
+### Follow-up after documentation commits
+
+New runs triggered on the updated main head also failed before steps: code-check [38012550501](https://github.com/MISTACEN/medbiohim/actions/runs/38012550501) (backend + frontend), smoke [38012550519](https://github.com/MISTACEN/medbiohim/actions/runs/38012550519), archive [38012550490](https://github.com/MISTACEN/medbiohim/actions/runs/38012550490); each job reports `steps: null` and `logs_url: null`. A further code-check run [38012554325](https://github.com/MISTACEN/medbiohim/actions/runs/38012554325) is also recorded failed with both jobs having no steps/logs. Thus the failure is reproducible across workflow types and commits, and the runner root cause remains outside what repository source inspection can establish.
