@@ -69,3 +69,7 @@ Historical recovery notes are useful only when debugging an old incident.
 
 - [Pass 56 — database least-privilege and quality-gate reconciliation](DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md): effective PostgreSQL privileges, unapplied mitigation, and correction of stale CI status.
 - Read-only post-migration verification: `../database/audits/20261010_public_table_privilege_verification.sql`.
+
+## Latest workstream report — 2026-10-10
+
+- [Pass 57: CI runner retry + DB privilege migration preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md) — latest retry still has no workflow steps/logs; default ACL/role membership reviewed read-only; migration not applied.
