@@ -15,6 +15,40 @@ test("health endpoint identifies this as a non-production migration scaffold", a
   assert.equal(body.role, "migration-scaffold");
 });
 
+test("GET /api/v1 preserves the PHP public metadata response contract", async () => {
+  const response = await worker.fetch(request("/api/v1"), { APP_ENV: "shadow", MEDBIOHIM_BUILD: "test-build" });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.data.name, "MEDBIOHIM API");
+  assert.equal(body.data.version, "v1");
+  assert.equal(body.data.build, "test-build");
+  assert.equal(body.data.phase, "D");
+  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files"]);
+  assert.equal(typeof body.requestId, "string");
+});
+
+test("GET /api/v1/ping returns the PHP-compatible ping fields", async () => {
+  const response = await worker.fetch(request("/api/v1/ping"), { APP_ENV: "shadow", MEDBIOHIM_BUILD: "test-build" });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, true);
+  assert.deepEqual(Object.keys(body.data).sort(), ["build", "env", "pong", "time"]);
+  assert.equal(body.data.pong, true);
+  assert.equal(body.data.build, "test-build");
+  assert.equal(body.data.env, "shadow");
+  assert.match(body.data.time, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}\+00:00$/);
+  assert.equal(typeof body.requestId, "string");
+});
+
+test("metadata routes normalize trailing slash and reject non-GET methods like the PHP router", async () => {
+  const trailing = await worker.fetch(request("/api/v1/ping/"), {});
+  assert.equal(trailing.status, 200);
+  const post = await worker.fetch(request("/api/v1/ping", { method: "POST" }), {});
+  assert.equal(post.status, 404);
+  assert.equal((await post.json()).error.code, "NOT_FOUND");
+});
+
 test("unmigrated API routes are not proxied to the current PHP origin", async () => {
   const response = await worker.fetch(request("/api/v1/auth/me"), {
     APP_ENV: "shadow",
