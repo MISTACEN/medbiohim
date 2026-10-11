@@ -1476,3 +1476,5 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - ⬜ Next: run \`npm test\` once runner allocation works; produce a complete PHP route inventory; specify auth/JWT, role/ownership, RLS, input-validation and error contracts; migrate routes incrementally with rollback.
 
 - 🟢 Added route-family migration inventory and per-route checklist: `docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`. It explicitly marks exact route contracts and runtime behavior as pending review.
+
+- 🔴 Latest verification attempt after adding the Cloudflare API scaffold: workflow run [38146062456](https://github.com/MISTACEN/medbiohim/actions/runs/38146062456) failed before executing any step; job metadata shows `runner_id: 0`, empty `runner_name`, and `steps: []`. The new `npm test` command therefore did not run. This confirms the runner-allocation blocker persists; it does not indicate a test assertion failure.
