@@ -2389,3 +2389,14 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 New tests are written but not yet confirmed by a successful GitHub Actions run. Cloudflare Worker is not deployed.
 - 🔒 No live settings, production API URL, DNS, database policy, or Telegram webhook changed.
 - ⬜ Next: confirm CI execution and continue with the next auth route only after reviewing rate limiting and profile-side effects in the PHP login/register handlers.
+
+
+
+## Cloudflare API migration — Pass 5 (2026-10-12)
+
+- 🟢 Added `POST /api/v1/auth/recover` backed by Supabase Auth over HTTPS, with a fixed callback path on the configured HTTPS app origin.
+- 🟢 Normalizes Supabase 4xx responses to avoid revealing whether an email exists; handles throttling and upstream errors separately. Request body is limited to 16 KiB.
+- 🟢 Added helper tests for callback safety, anti-enumeration behavior, throttling and upstream failure; route tests cover input validation, method and fail-closed configuration.
+- 🟡 Tests are written but have not been confirmed by a successful Node/GitHub Actions run. No Worker deployment has occurred.
+- ⚠️ Before production, add Cloudflare edge rate limiting for recovery; current code relies on Supabase's built-in limits, matching the absence of an app-level limiter in the PHP handler.
+- 🔒 SpaceWeb remains production. No frontend API URL, DNS, Supabase policy or Telegram webhook changed.
