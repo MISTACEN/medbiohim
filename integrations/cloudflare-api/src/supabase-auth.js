@@ -127,3 +127,77 @@ export async function logoutSupabaseSession(accessToken, env, fetcher = fetch) {
 
   return { ok: true };
 }
+
+export async function refreshSupabaseSession(refreshToken, env, fetcher = fetch) {
+  const token = String(refreshToken || "").trim();
+  if (!token || token.length > 8192) {
+    return failure(422, "VALIDATION_ERROR", "refresh_token is required");
+  }
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  if (!baseUrl || !anonKey) {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth is not configured on the server");
+  }
+  let endpoint;
+  try {
+    endpoint = new URL("/auth/v1/token?grant_type=refresh_token", baseUrl);
+    if (endpoint.protocol !== "https:") {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth must use HTTPS");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth URL is invalid");
+  }
+  let response;
+  try {
+    response = await fetcher(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: "Bearer " + anonKey,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({ refresh_token: token }),
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status === 400 || response.status === 401 || response.status === 403) {
+    return failure(401, "AUTH_REFRESH_FAILED", "Could not refresh session");
+  }
+  if (!response.ok) {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth is temporarily unavailable");
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an invalid response");
+  }
+  const user = payload && payload.user && typeof payload.user === "object" ? payload.user : null;
+  if (!payload || typeof payload.access_token !== "string" ||
+      typeof payload.refresh_token !== "string" || !user ||
+      typeof user.id !== "string" || !user.id) {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an invalid session");
+  }
+  const meta = user.user_metadata && typeof user.user_metadata === "object" ? user.user_metadata : {};
+  const appMeta = user.app_metadata && typeof user.app_metadata === "object" ? user.app_metadata : {};
+  return {
+    ok: true,
+    data: {
+      access_token: payload.access_token,
+      refresh_token: payload.refresh_token,
+      expires_in: payload.expires_in ?? null,
+      token_type: payload.token_type || "bearer",
+      user: {
+        id: user.id,
+        email: typeof user.email === "string" ? user.email : null,
+        full_name: typeof meta.full_name === "string" ? meta.full_name :
+          (typeof meta.name === "string" ? meta.name : null),
+        role: typeof appMeta.role === "string" && appMeta.role.trim() ? appMeta.role.trim() : null,
+      },
+    },
+  };
+}
