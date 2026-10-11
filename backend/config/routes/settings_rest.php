@@ -110,14 +110,14 @@ return static function (Router $r): void {
             return;
         }
         try {
-            $db = \\Medbiohim\\Database\\Connection::pdo();
+            $db = \Medbiohim\\Database\\Connection::pdo();
             $token = bin2hex(random_bytes(24));
             $stmt = $db->prepare("INSERT INTO public.telegram_account_link_tokens (user_id, token_hash, expires_at) VALUES (:uid, :hash, now() + interval '10 minutes')");
             $stmt->execute(['uid' => $uid, 'hash' => hash('sha256', $token)]);
-            $bot = ltrim(trim((string) (\\Medbiohim\\Support\\Env::get('TELEGRAM_BOT_USERNAME', 'MEDBIOCHIM_bot') ?? 'MEDBIOCHIM_bot')), '@');
+            $bot = ltrim(trim((string) (\Medbiohim\\Support\\Env::get('TELEGRAM_BOT_USERNAME', 'MEDBIOCHIM_bot') ?? 'MEDBIOCHIM_bot')), '@');
             Response::success(['url' => 'https://t.me/' . rawurlencode($bot) . '?start=link_' . $token, 'expires_in_seconds' => 600], $q->requestId);
-        } catch (\\Throwable $e) {
-            \\Medbiohim\\Support\\Logger::error('telegram_link_start_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            \Medbiohim\\Support\\Logger::error('telegram_link_start_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
             Response::error('TELEGRAM_LINK_UNAVAILABLE', 'Не удалось начать привязку Telegram', $q->requestId, 503);
         }
     });
@@ -125,12 +125,12 @@ return static function (Router $r): void {
     $r->get('/api/v1/settings/telegram/status', static function (Request $q, array $p): void {
         if (!RequireAuth::handle($q)) return;
         try {
-            $stmt = \\Medbiohim\\Database\\Connection::pdo()->prepare('SELECT username, first_name, linked_at FROM public.telegram_accounts WHERE user_id = :uid LIMIT 1');
+            $stmt = \Medbiohim\\Database\\Connection::pdo()->prepare('SELECT username, first_name, linked_at FROM public.telegram_accounts WHERE user_id = :uid LIMIT 1');
             $stmt->execute(['uid' => (string) ($q->user?->id ?? '')]);
-            $row = $stmt->fetch(\\PDO::FETCH_ASSOC);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
             Response::success(['linked' => is_array($row), 'account' => is_array($row) ? $row : null], $q->requestId);
-        } catch (\\Throwable $e) {
-            \\Medbiohim\\Support\\Logger::error('telegram_link_status_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            \Medbiohim\\Support\\Logger::error('telegram_link_status_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
             Response::error('TELEGRAM_LINK_UNAVAILABLE', 'Статус Telegram временно недоступен', $q->requestId, 503);
         }
     });
@@ -138,11 +138,11 @@ return static function (Router $r): void {
     $r->post('/api/v1/settings/telegram/unlink', static function (Request $q, array $p): void {
         if (!RequireAuth::handle($q)) return;
         try {
-            $stmt = \\Medbiohim\\Database\\Connection::pdo()->prepare('DELETE FROM public.telegram_accounts WHERE user_id = :uid');
+            $stmt = \Medbiohim\\Database\\Connection::pdo()->prepare('DELETE FROM public.telegram_accounts WHERE user_id = :uid');
             $stmt->execute(['uid' => (string) ($q->user?->id ?? '')]);
             Response::success(['unlinked' => $stmt->rowCount() > 0], $q->requestId);
-        } catch (\\Throwable $e) {
-            \\Medbiohim\\Support\\Logger::error('telegram_unlink_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            \Medbiohim\\Support\\Logger::error('telegram_unlink_failed', ['requestId' => $q->requestId, 'error' => $e->getMessage()]);
             Response::error('TELEGRAM_UNLINK_FAILED', 'Не удалось отвязать Telegram', $q->requestId, 503);
         }
     });
