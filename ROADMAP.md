@@ -2229,3 +2229,7 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - Priority: measure and optimize the existing slow path; then test a second independent foreign origin (Cloudflare Pages/compatible Next.js hosting) with a separate backup URL; later publish a Russian read-only emergency snapshot.
 - Telegram bot: Cloudflare Workers is the first PoC candidate, not yet selected for production. Keep current Node/Vercel webhook until parity tests and rollback exist; one active Telegram webhook per bot token.
 - User-provided provider quotas/card requirements are unverified. No provider migration, DNS change, production secret change or database replication is authorized.
+
+### Project checkpoint and continuation prompt — 2026-10-11
+- Full continuation snapshot and copy/paste new-chat prompt are recorded at the end of `docs/UNFINISHED-REGISTRY.md` under `SESSION HANDOFF SNAPSHOT — 2026-10-11`.
+- Use that snapshot together with the product contract and hosting strategy before resuming. It explicitly separates implemented source edits from unverified tests and production configuration.
