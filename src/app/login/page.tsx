@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Mail, Shield } from "lucide-react";
 import { clearTokens, login, recoverPassword, setTokens } from "@/lib/api";
-import { startGoogleOAuth, startMagicLink, startVkOAuth, startTelegramOAuth } from "@/lib/supabase";
+import { startGoogleOAuth, startMagicLink, startVkOAuth } from "@/lib/supabase";
 
 function mapLoginError(code: string, message: string): string {
   const m = (message || "").toLowerCase();
@@ -108,24 +108,18 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-3xl border border-emerald-100 bg-emerald-50/90 p-5 shadow-sm">
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-sm font-bold text-emerald-800">
-              TG
-            </div>
-            <div>
-              <div className="font-bold text-slate-900">Войти через Telegram</div>
-              <p className="mt-0.5 text-sm leading-snug text-slate-600">
-                Открываем бота — он узнает вас и вернёт в кабинет. Один клик.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => startTelegramOAuth()}
-            className="flex w-full items-center justify-center rounded-2xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+          <div className="mb-2 font-bold text-slate-900">Telegram для вашего аккаунта</div>
+          <p className="text-sm leading-relaxed text-slate-600">
+            Сначала войдите через Google или почту. Затем откройте Настройки → Telegram и привяжите бота. После завершения безопасного серверного входа Telegram станет самостоятельным способом входа в тот же аккаунт.
+          </p>
+          <a
+            href="https://t.me/MEDBIOCHIM_bot"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 flex w-full items-center justify-center rounded-2xl border border-emerald-700 px-4 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
           >
-            Войти через Telegram →
-          </button>
+            Открыть бота MEDBIOHIM →
+          </a>
         </div>
 
         <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-sm">
