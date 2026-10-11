@@ -18,6 +18,12 @@ The existing PHP API on SpaceWeb remains the current backend. This Worker is an 
 - The ping clock is emitted as an ISO-8601 UTC timestamp; the `env` value deliberately identifies the shadow environment.
 - These routes have not been deployed and are not receiving application traffic. No frontend API base URL or production route was changed.
 
+## Authentication groundwork — Pass 2
+
+- Added a shared Supabase Auth validator for future protected routes. It accepts Bearer tokens only from the Authorization header, calls `/auth/v1/user` over HTTPS with the anon key, applies a timeout, blocks redirects, and returns only the verified user ID/email.
+- The helper does not trust `user_id` sent by a client and does not treat `user_metadata` as authorization. It is not connected to any route yet; route-by-route policy parity is required before use.
+- Do not configure a Supabase service-role key in the Worker for this helper. Runtime credentials are not stored in source or `wrangler.toml`.
+
 ## Local checks
 
 Use Node.js 20 or later:
