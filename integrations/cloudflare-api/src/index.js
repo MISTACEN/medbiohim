@@ -1,3 +1,5 @@
+import { logoutSupabaseSession } from "./supabase-auth.js";
+
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
 
@@ -74,6 +76,37 @@ export default {
 
         // First contract-matched PHP routes. They are public, read-only metadata and
     // deliberately do not touch Supabase, user data, or the SpaceWeb origin.
+    if (pathname === `${API_PREFIX}/auth/logout`) {
+      if (request.method !== "POST") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+
+      const authorization = request.headers.get("authorization") || "";
+      const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+      if (!match) {
+        return withCors(json({
+          ok: false,
+          error: { code: "UNAUTHORIZED", message: "Missing or invalid Authorization Bearer token" },
+          requestId: crypto.randomUUID(),
+        }, 401), origin);
+      }
+
+      const result = await logoutSupabaseSession(match[1], env);
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+
+      return withCors(success({ logged_out: true }), origin);
+    }
+
     if (pathname === API_PREFIX || pathname === `${API_PREFIX}/ping`) {
       if (request.method !== "GET") {
         return withCors(notFound(), origin);
