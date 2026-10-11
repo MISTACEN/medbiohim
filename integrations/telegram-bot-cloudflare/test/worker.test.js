@@ -62,7 +62,7 @@ test("shows onboarding buttons and registers Telegram command menu", async (t) =
       assert.ok(calls.at(-1).payload.commands.some((item) => item.command === "login"));
       assert.ok(calls.at(-1).payload.commands.some((item) => item.command === "schedule"));
     } else {
-      assert.match(String(url), /bottest-token\\/sendMessage$/);
+      assert.match(String(url), /bottest-token\/sendMessage$/);
       const payload = calls.at(-1).payload;
       assert.match(payload.text, /привяжите этот чат/i);
       assert.equal(payload.reply_markup.inline_keyboard.length, 3);
@@ -77,7 +77,8 @@ test("shows onboarding buttons and registers Telegram command menu", async (t) =
   assert.equal(response.status, 200);
   assert.equal(calls.length, 2);
 });
-\ntest("sends /schedule reply with canonical site link", async (t) => {
+
+test("sends /schedule reply with canonical site link", async (t) => {
   const oldFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     assert.match(String(url), /bottest-token\/sendMessage$/);
