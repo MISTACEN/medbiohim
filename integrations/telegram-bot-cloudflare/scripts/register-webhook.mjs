@@ -44,7 +44,7 @@ function readSecret(label) {
 }
 
 async function telegram(token, method, body) {
-  stdout.write(`Проверка Telegram API: ${method}...\\n`);
+  stdout.write(`Проверка Telegram API: ${method}...\n`);
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -76,7 +76,7 @@ try {
       throw new Error("Токен пустой или secret не соответствует требованиям Telegram (A-Z, a-z, 0-9, _ и -, до 256 символов).");
     }
 
-    stdout.write("Проверка доступности Cloudflare Worker...\\n");
+    stdout.write("Проверка доступности Cloudflare Worker...\n");
     const healthResponse = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(30000) });
     const health = await healthResponse.json().catch(() => null);
     if (!healthResponse.ok || health?.ok !== true || health?.configured !== true) {
