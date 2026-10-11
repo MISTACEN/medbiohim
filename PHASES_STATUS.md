@@ -1359,3 +1359,7 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟡 Next: restore CI, measure network/API/media latency, test Cloudflare Worker webhook PoC, audit Next.js compatibility for a secondary foreign host.
 - 🔵 Russian emergency static snapshot is lower priority and must be read-only, public-data-only, and show its last-updated timestamp.
 - 🔴 No failover deployment or free-tier quota/card requirement has been verified yet.
+
+### Full continuation checkpoint — 2026-10-11
+- A detailed project handoff, known issue list, current Telegram/hosting status, next-step order and copy/paste prompt are stored in `docs/UNFINISHED-REGISTRY.md` under `SESSION HANDOFF SNAPSHOT — 2026-10-11`.
+- Treat CI/runtime status as unverified until actual jobs run steps. No production migration or live Telegram setup was performed.
