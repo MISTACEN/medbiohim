@@ -385,6 +385,9 @@ Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, 
 
 Complete hand-off and project inventory: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). The snapshot records implemented source changes separately from unverified runtime behavior and historical issues that require re-audit.
 
+## 2026-10-11 — Полный контрольный снимок перед паузой
+Создан [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md): продукт, архитектура, последний код, подтверждённые и неподтверждённые состояния, известные дефекты, расходы/лимиты и точная последовательность возобновления. Главный блокер — GitHub Actions завершается до выполнения шагов; тесты не объявлять пройденными.
+
 ## 2026-10-11 — Single Telegram webhook + PHP homework relay
 
 - Node webhook now optionally forwards group/supergroup updates to PHP `/api/v1/telegram/webhook` over HTTPS using the shared `X-Telegram-Bot-Api-Secret-Token` header.
