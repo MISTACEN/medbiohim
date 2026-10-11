@@ -617,6 +617,9 @@ Do not mark these complete from documentation or source presence alone. GitHub A
 
 Read [the full MEDBIOHIM project checkpoint](STATUS-2026-10-11.md) before resuming. It contains the last pass, CI blocker, architecture, known issues, and ordered continuation plan.
 
+## Перед паузой: полный снимок состояния — 2026-10-11
+См. [PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](PROJECT-CONTROL-SNAPSHOT-2026-10-11.md) для полной карты продукта, изменений, незавершённых задач, CI-блокера и безопасной очередности работ.
+
 ### Telegram group relay — source added 2026-10-11
 - [x] Node webhook can relay group/supergroup updates over HTTPS to the existing PHP `/api/v1/telegram/webhook` endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured.
 - [x] Relay uses the configured shared webhook secret and rejects non-HTTPS target URLs; Node remains the single Telegram `setWebhook` destination.
