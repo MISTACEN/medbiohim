@@ -1,5 +1,14 @@
 
 
+## Multimodal STEM questions — formula/equation groundwork (2026-10-11)
+
+- 🟢 Side panel now has an editable formula/equation field and attempts to collect text exposed by MathML, KaTeX, MathJax, MathJax v3 containers, accessible formula labels, data-math nodes and code blocks in the likely question area.
+- 🟢 Formula text and image captions are included in the explicit copy/search handoff alongside question and answer options. This covers some text-rendered chemical equations, mathematical notation and formula descriptions.
+- 🟡 It does **not** reconstruct arbitrary 2D chemical structures, stereochemistry, reaction arrows, charges/subscripts lost by the page renderer, or formula drawings embedded only as pixels/canvas. Extracted notation must be reviewed before using it for answer matching.
+- ⬜ Future work: structure-aware chemistry representation (e.g. MOL/SDF/SMILES when genuinely available in page data), image selection + user-consented OCR/vision, equation normalization that preserves stoichiometry/charge/state/conditions, and tests for organic structures, ionic equations, redox, equilibrium, graphs and image-only prompts.
+- 🔒 No image/formula upload is automatic; no new host permissions or access-control bypass added.
+
+
 ## Image-based questions — extraction groundwork (2026-10-11)
 
 - 🟢 Side panel now collects visible image-like elements in the likely question area and their available alt/ARIA/title/figcaption descriptions. This metadata is editable and included in the user-triggered copy/search handoff.
