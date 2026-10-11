@@ -52,6 +52,16 @@ $badUserId = makeInitData($token, $now - 30, [
 ]);
 check(TelegramWebAppInitData::validate($badUserId, $token, $now)['ok'] === false);
 
+$fractionalUserId = makeInitData($token, $now - 30, [
+    'user' => json_encode(['id' => 12.5, 'first_name' => 'Student']),
+]);
+check(TelegramWebAppInitData::validate($fractionalUserId, $token, $now)['error'] === 'invalid_user');
+
+$zeroUserId = makeInitData($token, $now - 30, [
+    'user' => json_encode(['id' => 0, 'first_name' => 'Student']),
+]);
+check(TelegramWebAppInitData::validate($zeroUserId, $token, $now)['error'] === 'invalid_user');
+
 $noUser = makeInitData($token, $now - 30, ['user' => null]);
 check(TelegramWebAppInitData::validate($noUser, $token, $now)['ok'] === false);
 
