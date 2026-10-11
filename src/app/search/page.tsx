@@ -28,14 +28,15 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [typeFilter, setTypeFilter] = useState("");
+  const [subjectSlug, setSubjectSlug] = useState("");
 
-  const run = useCallback(async (query: string, type?: string) => {
+  const run = useCallback(async (query: string, type?: string, subjectFilter?: string) => {
     const qq = query.trim();
     if (!qq) return;
     setLoading(true);
     setError(null);
     setSearched(true);
-    const res = await globalSearch(qq, { limit: 30, type: type || undefined });
+    const res = await globalSearch(qq, { limit: 30, type: type || undefined, subject_slug: subjectFilter || undefined });
     setLoading(false);
     if (!res.ok) {
       setError(res.error.message);
@@ -49,15 +50,17 @@ export default function SearchPage() {
     const params = new URLSearchParams(window.location.search);
     const initial = (params.get("q") || "").trim();
     const type = (params.get("type") || "").trim();
+    const subject = (params.get("subject_slug") || "").trim();
     if (!initial || searched) return;
     setQ(initial);
     setTypeFilter(type);
-    void run(initial, type);
+    setSubjectSlug(subject);
+    void run(initial, type, subject);
   }, [searched, run]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    void run(q, typeFilter);
+    void run(q, typeFilter, subjectSlug);
   }
 
   return (
@@ -90,6 +93,20 @@ export default function SearchPage() {
           <option value="trainer">Тренажёры</option>
           <option value="subject">Предметы</option>
           <option value="plan">Учебные планы</option>
+        </select>
+        <select
+          value={subjectSlug}
+          onChange={(e) => setSubjectSlug(e.target.value)}
+          aria-label="Фильтр по предмету"
+          className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-3 text-sm"
+        >
+          <option value="">Все предметы</option>
+          <option value="histology">Гистология</option>
+          <option value="biochemistry">Биохимия</option>
+          <option value="anatomy">Анатомия</option>
+          <option value="physiology">Физиология</option>
+          <option value="microbiology">Микробиология</option>
+          <option value="chemistry">Химия</option>
         </select>
         <button
           type="submit"
