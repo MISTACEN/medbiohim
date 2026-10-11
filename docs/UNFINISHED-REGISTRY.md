@@ -613,6 +613,10 @@ Track these as open until implementation and verification:
 
 Do not mark these complete from documentation or source presence alone. GitHub Actions runner initialization remains blocked in the latest observed runs; verify actual test execution.
 
+## Pause hand-off snapshot — 2026-10-11
+
+Read [the full MEDBIOHIM project checkpoint](STATUS-2026-10-11.md) before resuming. It contains the last pass, CI blocker, architecture, known issues, and ordered continuation plan.
+
 ### Telegram group relay — source added 2026-10-11
 - [x] Node webhook can relay group/supergroup updates over HTTPS to the existing PHP `/api/v1/telegram/webhook` endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured.
 - [x] Relay uses the configured shared webhook secret and rejects non-HTTPS target URLs; Node remains the single Telegram `setWebhook` destination.
