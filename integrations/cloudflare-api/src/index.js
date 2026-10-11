@@ -1,4 +1,4 @@
-import { logoutSupabaseSession, refreshSupabaseSession } from "./supabase-auth.js";
+import { logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -103,6 +103,40 @@ export default {
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
+    if (pathname === `${API_PREFIX}/auth/recover`) {
+      if (request.method !== "POST") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (parsed.tooLarge) {
+        return withCors(json({
+          ok: false,
+          error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" },
+          requestId: crypto.randomUUID(),
+        }, 413), origin);
+      }
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object") {
+        return withCors(json({
+          ok: false,
+          error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" },
+          requestId: crypto.randomUUID(),
+        }, 422), origin);
+      }
+      const result = await recoverSupabasePassword(parsed.value.email, env);
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
     if (pathname === `${API_PREFIX}/auth/refresh`) {
       if (request.method !== "POST") {
         return withCors(json({
