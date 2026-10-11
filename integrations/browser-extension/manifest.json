@@ -1,10 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "MEDBIOHIM — Быстрый доступ",
-  "version": "0.1.0",
-  "description": "Быстрые ссылки на разделы образовательной платформы MEDBIOHIM.",
+  "name": "MEDBIOHIM Bridge — помощник по тестам",
+  "version": "0.2.0",
+  "description": "Компактная боковая панель для определения предмета и подготовки вопросов к поиску в MEDBIOHIM.",
+  "minimum_chrome_version": "114",
+  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
-    "default_title": "MEDBIOHIM",
-    "default_popup": "popup.html"
+    "default_title": "Открыть MEDBIOHIM Bridge"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   }
 }
