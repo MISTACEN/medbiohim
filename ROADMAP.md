@@ -2256,3 +2256,13 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - Admin panel requirements: source allowlist, complete dated ingestion/change journal, filters/sorting, editing, evidence/provenance, audit history, duplicate review/merge and safe rejection.
 - Preserve existing extension quick links and avoid broad permissions, privileged secrets in the extension, unauthorized scraping, parallel question databases, or invented API routes.
 - **Not yet implemented or verified.** Next: inspect existing extension and API/schema, then build staged vertical slices. CI runner allocation remains an independent verification blocker.
+
+
+## Browser extension implementation — side-panel MVP (2026-10-11)
+
+- 🟢 Added Manifest V3 side panel (integrations/browser-extension/sidepanel.html, sidepanel.css, sidepanel.js) and service worker; existing quick links are preserved in the panel.
+- 🟢 Added user-triggered extraction of visible text/options from the active HTTP(S) tab, heuristic subject inference with manual override, editable question/options, copy action and a link to MEDBIOHIM global search.
+- 🟢 Permissions are limited to activeTab, scripting, sidePanel; no host permissions, cookies/history access, or automatic upload of captured text.
+- 🟡 This is an initial UI/extraction slice, not the full agreed feature: answer lookup is not yet connected directly to the authenticated API; question candidates are not saved; post-test answer capture, trusted-source registry, beta review queue and admin journal/editing remain pending.
+- 🟡 Syntax/manifest checks were added to .github/workflows/optional-integrations-check.yml, but have not been executed here; GitHub Actions runner allocation is still a known blocker. Browser acceptance on real sites is pending.
+- Next: inspect authenticated API contract and existing question models; add safe read-only search from a signed-in MEDBIOHIM session without extracting session tokens into extension code, then source registry and candidate-ingestion pipeline.
