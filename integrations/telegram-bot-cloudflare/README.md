@@ -2,15 +2,13 @@
 
 ## Текущее состояние (11 октября 2026)
 
-Worker `medbiohim-telegram` теперь развёрнут как основная beta-версия; прежний `medbiohim-telegram-test` оставлен как резервный Worker. Новый Worker пока не получает обновления Telegram, пока в нём не настроены секреты и не зарегистрирован webhook. Это сохраняет возможность отката.
-
-- Worker развёрнут: `medbiohim-telegram`.
-- Адрес: https://medbiohim-telegram.ryazansevegor.workers.dev
-- Проверка: https://medbiohim-telegram.ryazansevegor.workers.dev/health
+- Основной beta Worker развёрнут под именем `medbiohim-telegram`: https://medbiohim-telegram.ryazansevegor.workers.dev
+- Прежний `medbiohim-telegram-test` сохранён отдельно как резервный Worker: https://medbiohim-telegram-test.ryazansevegor.workers.dev
+- Для основного beta Worker включён адрес `workers.dev`.
+- Важно: Cloudflare не переносит секретные значения при создании нового Worker. В новом `medbiohim-telegram` необходимо отдельно задать секреты `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`. До этого health покажет `configured:false`, а webhook регистрировать не следует.
+- Webhook Telegram пока не переключён. Сначала задайте секреты, проверьте `/health`, затем запустите интерактивный скрипт регистрации.
 - Webhook endpoint: https://medbiohim-telegram.ryazansevegor.workers.dev/api/webhook
-- В Worker уже существуют секреты `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` (их значения не хранятся в репозитории).
-- Регистрация webhook в Telegram — отдельный шаг. Не считайте основной бот переключённым, пока скрипт не подтвердит URL через `getWebhookInfo`.
-- Для регистрации добавлен интерактивный локальный скрипт `scripts/register-webhook.mjs`. Он проверяет health Worker и токен через `getMe`, устанавливает webhook, затем проверяет результат через `getWebhookInfo`. Токен и secret вводятся в скрытом режиме и не выводятся скриптом.
+- Скрипт `scripts/register-webhook.mjs` проверяет Worker и токен, устанавливает webhook и проверяет результат через `getWebhookInfo`. Токен и secret вводятся в скрытом режиме и не выводятся скриптом.
 
 ## Безопасность
 
