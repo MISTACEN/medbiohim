@@ -1,3 +1,10 @@
+## Browser extension — resilient extraction pass (2026-10-11)
+
+- 🟢 Updated extraction to try multiple DOM/ARIA/question/option selectors and rank likely question containers; fallback text can be corrected manually.
+- 🟡 No guarantee for every LMS, cross-origin iframe, image/PDF/canvas-only question or protected page. No OCR, direct side-panel answer API, source trust queue or import journal yet.
+- 🔒 No bypass of site restrictions; only content available to the user and readable through active-tab permission is in scope.
+- 🟡 Source committed; syntax/runtime checks and real-browser tests remain pending because CI runner allocation is blocked.
+
 ## Browser extension — answer lookup groundwork (2026-10-11)
 
 - 🟢 `SearchService` now includes stored answer text for published `questions` and `exam_questions` in the authenticated search response; the search UI shows it only after the user expands “Показать ответ”. Trainer-feed answer keys are not added to this response.
