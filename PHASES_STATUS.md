@@ -1492,7 +1492,7 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 ## Cloudflare API authentication foundation — Pass 2 (2026-10-12)
 
 - 🟢 Added a Supabase Auth validation utility for future Cloudflare routes. It verifies Bearer tokens through `/auth/v1/user` over HTTPS; missing config fails closed, redirects are rejected, the request is timed, and upstream errors do not leak implementation details.
-- 🟢 Added seven auth regression tests. Combined isolated Worker tests passed locally **14/14** before these files were written to `main`; repository CI has not yet independently confirmed the result.
+- 🟢 Added seven auth regression tests. Combined isolated Worker tests passed locally **14/14** after correcting the Bearer-regex escaping and checking source syntax; repository CI has not independently confirmed the result.
 - 🔒 The helper is not attached to routes yet. It does not trust client-supplied IDs or roles, and it does not use the Supabase service-role key.
 - 🟡 No API Worker deployment exists yet; the current Cloudflare script list contains the Telegram production/test Workers only. No build configuration was found associated with the production Telegram script tag during this check.
 - ⬜ Next: review route-by-route auth/SQL/RLS contracts, then add a protected read only after negative-authorization tests and staged Wrangler validation are available.
