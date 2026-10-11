@@ -193,3 +193,10 @@ Archive workflows now exclude root and nested `.env*` paths and include a pre-up
 
 
 **Latest code follow-up (2026-10-10):** A regression test now covers `AccountSettingsService::getPreferences()` and its default values, wired into CI and deployment preflight. It is committed but not verified in execution because GitHub Actions jobs still fail before their first step. See the continuation handoff and unfinished registry for evidence and next steps.
+
+
+## Branch policy — SpaceWeb maintenance line (2026-10-12)
+
+This branch is reserved for maintaining the existing PHP API currently hosted on SpaceWeb. It was created as a source snapshot from the then-current `main` before subsequent Cloudflare migration commits. Keep PHP fixes and deployment-specific compatibility changes here when they are needed by the live backend. Do not add Cloudflare-only API rewrites to this branch by default.
+
+`main` is the forward Cloudflare migration line. Shared critical fixes should be reviewed and ported deliberately between branches. This branch is not a verified deployment artifact or a guaranteed rollback until PHP checks, environment configuration and a deployment test have passed. Production remains on SpaceWeb until a route-by-route Cloudflare verification and explicit cutover approval.
