@@ -1337,6 +1337,14 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟢 Added Node regression tests for relay success and unconfigured fallback; test execution is pending because the GitHub runner is not starting.
 - 🟡 Requires `TELEGRAM_HOMEWORK_WEBHOOK_URL`, matching `TELEGRAM_WEBHOOK_SECRET` in Node/PHP, valid PHP `TELEGRAM_BOT_TOKEN` + `TELEGRAM_BOT_USER_ID`, a mapped group, and end-to-end runtime validation.
 
+### Hosting resilience / free tiers — 2026-10-11
+
+- 🟢 Architecture and candidate shortlist documented in `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`.
+- 🟢 Current Vercel + Supabase + SpaceWeb + B2 stack explicitly retained as primary; no hosting migration performed.
+- 🟡 Measure the slow Vercel → SpaceWeb/API/media path before optimization.
+- 🟡 Cloudflare Workers is the first candidate for a separate Telegram webhook PoC; Cloudflare Pages/compatible Next.js hosting is a candidate secondary foreign frontend; a Russian static/read-only emergency snapshot is the last fallback.
+- 🔴 No secondary deployment, failover, cross-provider test, or current free-tier verification has been completed. These are plans, not live infrastructure.
+
 ### Telegram Web App entry — implementation update 2026-10-11
 
 - 🟢 Added `/app` command and Web App button on `/start` in the existing Node bot; button opens the current MEDBIOHIM site using `MEDBIOHIM_APP_URL`.
