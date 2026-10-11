@@ -1504,3 +1504,14 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🔵 `main` is the forward migration line for the Cloudflare API implementation in `integrations/cloudflare-api/`; the Telegram Worker remains a separate project in `integrations/telegram-bot-cloudflare/`.
 - 🔒 SpaceWeb remains the live backend until a route-by-route verification and an explicitly approved cutover. No production DNS, Vercel API URL, Supabase policy, or Telegram webhook changes are allowed as part of ordinary code migration.
 - ⚠️ The maintenance branch is a source snapshot, not yet a verified rollback/release branch. Keep fixes there when needed for the live PHP backend and port shared critical fixes intentionally.
+
+
+
+## Cloudflare API migration — Pass 4 (2026-10-12)
+
+- 🟢 Added `POST /api/v1/auth/refresh` in `integrations/cloudflare-api/src/index.js`, using the new Supabase Auth refresh helper.
+- 🟢 Session normalization mirrors the PHP service's key fields; role is derived only from server-controlled `app_metadata`, not editable `user_metadata`.
+- 🟢 Added tests for missing token, HTTPS/config requirements, token exchange, normalized response, invalid refresh token, wrong method and unconfigured Worker.
+- 🟡 New tests are written but not yet confirmed by a successful GitHub Actions run. Cloudflare Worker is not deployed.
+- 🔒 No live settings, production API URL, DNS, database policy, or Telegram webhook changed.
+- ⬜ Next: confirm CI execution and continue with the next auth route only after reviewing rate limiting and profile-side effects in the PHP login/register handlers.
