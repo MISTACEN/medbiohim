@@ -78,6 +78,16 @@ test("malformed JSON logout body returns validation error", async () => {
   assert.equal((await response.json()).error.code, "VALIDATION_ERROR");
 });
 
+test("logout JSON body has a strict byte limit even without Content-Length", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/logout", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ access_token: "x".repeat(17_000) }),
+  }), {});
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error.code, "PAYLOAD_TOO_LARGE");
+});
+
 test("GET is not accepted for the logout route", async () => {
   const response = await worker.fetch(request("/api/v1/auth/logout"), {});
   assert.equal(response.status, 405);
