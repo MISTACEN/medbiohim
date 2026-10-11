@@ -106,7 +106,7 @@ return static function (Router $r): void {
         if ($uid === '') { Response::error('UNAUTHORIZED', 'Нужна авторизация', $q->requestId, 401); return; }
         try {
             $db = \\Medbiohim\\Database\\Connection::pdo();
-            $token = bin2hex(random_bytes(32));
+            $token = bin2hex(random_bytes(24));
             $stmt = $db->prepare("INSERT INTO public.telegram_account_link_tokens (user_id, token_hash, expires_at) VALUES (:uid, :hash, now() + interval '10 minutes')");
             $stmt->execute(['uid' => $uid, 'hash' => hash('sha256', $token)]);
             $bot = ltrim(trim((string) (\\Medbiohim\\Support\\Env::get('TELEGRAM_BOT_USERNAME', 'MEDBIOCHIM_bot') ?? 'MEDBIOCHIM_bot')), '@');
