@@ -1,3 +1,12 @@
+
+
+## Image-based questions — extraction groundwork (2026-10-11)
+
+- 🟢 Side panel now collects visible image-like elements in the likely question area and their available alt/ARIA/title/figcaption descriptions. This metadata is editable and included in the user-triggered copy/search handoff.
+- 🟡 This is **not image recognition/OCR**: pixels, arrows/markers, histology morphology, chart axes and labels rendered only inside an image are not interpreted yet. Image URLs/pixels are not uploaded.
+- ⬜ Next image pass: let the user explicitly choose the relevant image(s), add local/consented OCR or a secure vision endpoint only after privacy/auth review, preserve captions/marker context, and rank matches by question + options + image evidence. Never label an answer correct from visual similarity alone.
+- 🔒 No host permissions, automatic image uploads, credential extraction or access-control bypass added.
+
 ## Browser extension — resilient extraction pass (2026-10-11)
 
 - Commit `1d0d923dd40ad955207cf55acaa38bc96efb4e9e`: improved active-tab extraction with multiple DOM/ARIA selectors, option label associations, likely-question-root scoring and clearer manual fallback.
