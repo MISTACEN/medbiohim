@@ -1384,3 +1384,12 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟢 Admin requirements: approve/disable sources, sort/filter the dated journal, edit all imported fields, preserve provenance/history and review/merge duplicates.
 - 🟡 Existing browser-extension MVP has not yet been modified for these requirements. No implementation, browser integration, API wiring or test pass is claimed.
 - 🔴 Next: inspect current extension, existing question search/import endpoints and schema before implementation; keep writes server-authorized and do not embed privileged keys in the extension.
+
+
+## Browser extension — first implementation slice (2026-10-11)
+
+- 🟢 Added compact Manifest V3 side panel and service worker under integrations/browser-extension/.
+- 🟢 User-triggered page extraction, heuristic subject inference/manual override, editable question/options, copy-to-clipboard, MEDBIOHIM search handoff and preserved quick links.
+- 🟢 Permission boundary: activeTab, scripting, sidePanel; no host permissions, cookies/history permissions, or automatic page-content upload.
+- 🟡 Direct authenticated question lookup, answer provenance, candidate persistence, post-test result capture, approved-source registry, beta queue and admin journal are not implemented yet.
+- 🟡 CI checks are configured but not verified; the known Actions runner dispatch issue remains. No real-browser acceptance is claimed.
