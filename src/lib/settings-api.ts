@@ -62,3 +62,23 @@ export async function saveAccountPreferences(prefs: Record<string, unknown>) {
     body: JSON.stringify(prefs),
   });
 }
+
+export type TelegramLinkStatus = {
+  linked: boolean;
+  account: { username?: string | null; first_name?: string | null; linked_at?: string | null } | null;
+};
+export async function startTelegramLink() {
+  return api<{ url: string; expires_in_seconds: number }>("/settings/telegram/link-start", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+export async function getTelegramLinkStatus() {
+  return api<TelegramLinkStatus>("/settings/telegram/status");
+}
+export async function unlinkTelegramAccount() {
+  return api<{ unlinked: boolean }>("/settings/telegram/unlink", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
