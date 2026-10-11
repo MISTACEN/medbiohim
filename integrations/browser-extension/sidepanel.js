@@ -55,6 +55,12 @@ async function extractFromActiveTab(){
     return text(el.getAttribute("aria-label")?el:p);
    }).filter(t=>t.length>1&&t.length<=450));
    if(rootOptions.length<2)rootOptions=options;
+   const mathNodes=[...new Set([...root.querySelectorAll("math, .katex, .katex-mathml, .MathJax, mjx-container, [data-math], [aria-label*=\"equation\" i], [class*=\"formula\" i], [class*=\"equation\" i], pre code")])].filter(visible).slice(0,30);
+   const mathNotes=unique(mathNodes.map(el=>{
+    const annotation=el.querySelector("annotation[encoding*='tex' i]");
+    const aria=el.getAttribute("aria-label")||el.getAttribute("data-math");
+    return clean(aria||annotation?.textContent||el.innerText||el.textContent||"");
+   }).filter(t=>t.length>0&&t.length<1200)).slice(0,30);
    const imageNodes=[...new Set([...root.querySelectorAll("img,svg[aria-label],canvas,[role=img],figure")])].filter(visible).slice(0,12);
    const imageNotes=unique(imageNodes.map(el=>{
     const caption=el.closest("figure")?.querySelector("figcaption");
@@ -65,7 +71,7 @@ async function extractFromActiveTab(){
    return{title:document.title,url:location.href,question:question.slice(0,3000),options:rootOptions.slice(0,20),imageNotes,imageCount,context,strategies:{questionSelectors:questionCandidates.length,optionNodes:optionNodes.length,roots:roots.length}};
   }});
   const data=results?.[0]?.result||{},question=String(data.question||"").trim(),options=Array.isArray(data.options)?data.options.map(String):[];
-  $("question").value=question;$("options").value=options.join("\\n");$("image-context").value=Array.isArray(data.imageNotes)?data.imageNotes.join("\\n"):"";$("image-status").textContent=(data.imageCount||0)+" визуальных элементов в области вопроса; пиксели изображений пока не анализируются.";
+  $("question").value=question;$("options").value=options.join("\\n");$("image-context").value=Array.isArray(data.imageNotes)?data.imageNotes.join("\\n"):"";$("image-status").textContent=(data.imageCount||0)+" визуальных элементов; содержимое пикселей не распознаётся.";$("formula-context").value=Array.isArray(data.mathNotes)?data.mathNotes.join("\\n"):"";$("formula-status").textContent=(data.mathCount||0)+" элементов математической/формульной разметки; проверьте индексы, заряды и стрелки реакций.";
   const subject=inferSubject((tab.title||"")+" "+question+" "+(data.context||"")+" "+$("image-context").value);
   if(!subjectWasManuallySelected){
    if(subject){$("subject").value=subject.value;$("subject-confidence").textContent="Предположение";}
