@@ -2337,3 +2337,13 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - GitHub Actions run 38143942074 for Telegram Worker checks failed before executing steps: runner_id=0, runner_name empty, steps empty. Treat tests as not executed; fix runner allocation before interpreting code tests.
 - Supabase advisor snapshot: 1 security ERROR (SECURITY DEFINER view), 2 warnings (SECURITY DEFINER RPC callable by authenticated users; leaked-password protection disabled), 44 unindexed foreign keys and 67 unused-index notices. Review security findings first; do not drop indexes without workload review.
 - Detailed decision record: docs/HOSTING-HTTPS-DECISION-2026-10-11.md.
+
+
+## Cloudflare API migration — shadow scaffold started (2026-10-12)
+
+- 🟢 User decision: keep the current PHP API on SpaceWeb for now; prepare a gradual, full migration of API functionality to Cloudflare without switching production traffic yet.
+- 🟢 Added isolated \`integrations/cloudflare-api/\` scaffold: Worker entry point, Wrangler config, Node test suite, and migration/deployment README.
+- 🟢 Scaffold health route reports \`productionTrafficEnabled: false\`; unimplemented \`/api/v1/*\` routes return \`501 ROUTE_NOT_MIGRATED\`. No SpaceWeb proxy/fallback exists, deliberately avoiding the currently untrusted HTTPS origin and HTTP downgrade.
+- 🟡 This is source preparation only. The Worker has not been deployed; tests have not been executed because GitHub Actions runner allocation remains a known blocker. Do not mark CI green or switch the frontend API URL.
+- ⬜ Next: restore runner execution; run the new test suite; inventory PHP routes into public/authenticated/admin/webhook/media groups; define route contracts and auth/RLS rules; migrate read-only endpoints first; add contract and authorization tests before each write route.
+- ⬜ Production gates: verified Cloudflare account/Worker configuration, secret setup outside Git, valid HTTPS, CI green, endpoint parity and rollback plan. Keep SpaceWeb active until all required API routes pass staging and end-to-end verification.
