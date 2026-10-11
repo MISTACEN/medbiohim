@@ -201,3 +201,56 @@ export async function refreshSupabaseSession(refreshToken, env, fetcher = fetch)
     },
   };
 }
+
+export async function recoverSupabasePassword(email, env, fetcher = fetch) {
+  const address = String(email || "").trim();
+  if (!address || address.length > 254) {
+    return failure(422, "VALIDATION_ERROR", "email is required");
+  }
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  if (!baseUrl || !anonKey) {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth is not configured on the server");
+  }
+  let endpoint;
+  try {
+    const supabase = new URL(baseUrl);
+    if (supabase.protocol !== "https:") {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth must use HTTPS");
+    }
+    const appOrigin = new URL(String(env.MEDBIOHIM_APP_ORIGIN || "https://medbiohim.vercel.app"));
+    if (appOrigin.protocol !== "https:") {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Recovery redirect must use HTTPS");
+    }
+    endpoint = new URL("/auth/v1/recover", supabase);
+    endpoint.searchParams.set("redirect_to", new URL("/auth/callback", appOrigin.origin).toString());
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth or recovery redirect URL is invalid");
+  }
+  let response;
+  try {
+    response = await fetcher(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: "Bearer " + anonKey,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({ email: address }),
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status === 429) {
+    return failure(429, "RATE_LIMITED", "Too many recovery requests. Try again later.");
+  }
+  if (response.status >= 500) {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth is temporarily unavailable");
+  }
+  // Do not expose whether an email address exists. Supabase 4xx responses are
+  // intentionally normalized to the same public success shape as the PHP route.
+  return { ok: true, data: { sent: true } };
+}
