@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -321,4 +321,61 @@ test("login normalizes invalid credentials, throttling and upstream failures", a
   );
   assert.equal(outage.status, 502);
   assert.equal(outage.message.includes("private"), false);
+});
+
+
+test("registration validates name, email and password before contacting Supabase", async () => {
+  const shortName = await registerSupabaseUser("student@example.com", "password123", "A", configured, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(shortName.status, 422);
+  const shortPassword = await registerSupabaseUser("student@example.com", "short", "Student", configured, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(shortPassword.status, 422);
+  const invalidEmail = await registerSupabaseUser("not-an-email", "password123", "Student", configured, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(invalidEmail.status, 422);
+});
+
+test("registration sends full-name metadata and handles email-confirmation-only response", async () => {
+  let calledUrl = "";
+  let calledInit;
+  const result = await registerSupabaseUser("student@example.com", "safe-password", "Student User", configured, async (url, init) => {
+    calledUrl = url;
+    calledInit = init;
+    return new Response(JSON.stringify({
+      user: {
+        id: "user-123",
+        email: "student@example.com",
+        user_metadata: { full_name: "Student User", role: "admin" },
+        app_metadata: {},
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  assert.equal(calledUrl, "https://project-id.supabase.co/auth/v1/signup");
+  assert.equal(calledInit.method, "POST");
+  assert.deepEqual(JSON.parse(calledInit.body), {
+    email: "student@example.com",
+    password: "safe-password",
+    data: { full_name: "Student User", name: "Student User" },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.needs_email_confirm, true);
+  assert.equal(result.data.access_token, null);
+  assert.equal(result.data.user.full_name, "Student User");
+  assert.equal(result.data.user.role, null);
+});
+
+test("registration hides Supabase account errors and maps throttling safely", async () => {
+  const duplicate = await registerSupabaseUser("student@example.com", "password123", "Student", configured, async () =>
+    new Response("account already exists", { status: 422 })
+  );
+  assert.equal(duplicate.status, 422);
+  assert.equal(duplicate.message, "Registration could not be completed");
+  const limited = await registerSupabaseUser("student@example.com", "password123", "Student", configured, async () =>
+    new Response("limited", { status: 429 })
+  );
+  assert.equal(limited.status, 429);
 });
