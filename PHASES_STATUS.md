@@ -1,3 +1,9 @@
+## Browser extension — answer lookup groundwork (2026-10-11)
+
+- 🟢 `SearchService` now includes stored answer text for published `questions` and `exam_questions` in the authenticated search response; the search UI shows it only after the user expands “Показать ответ”. Trainer-feed answer keys are not added to this response.
+- 🟡 Extension still hands off to the website search page. Direct answer display inside the side panel, candidate ingestion, source trust allowlist, end-of-test evidence capture and admin journal remain open.
+- 🟡 Source edits committed to `main`; PHP lint, frontend build, authenticated API test, deployed PHP/frontend verification and real Chrome/Edge tests are not verified because CI runner allocation remains blocked.
+
 ## Cloudflare Telegram Worker — initial source implementation (2026-10-11)
 
 - 🟢 Added separate `integrations/telegram-bot-cloudflare/` Worker prototype and deployment/configuration README; existing Node/Vercel bot remains untouched.
