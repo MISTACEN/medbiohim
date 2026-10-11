@@ -1,4 +1,4 @@
-name = "medbiohim-telegram-bot"
+name = "medbiohim-telegram"
 main = "src/worker.js"
 compatibility_date = "2026-10-11"
 workers_dev = true
