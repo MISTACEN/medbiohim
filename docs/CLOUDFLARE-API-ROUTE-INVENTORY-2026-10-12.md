@@ -27,6 +27,16 @@ The PHP bootstrap \`backend/config/routes.php\` registers the route modules list
 
 Other modules in the bootstrap that also require route-level review: \`presence.php\`, \`sessions_rest.php\`, \`student_planner.php\`, \`plans_rest.php\`, \`domain_rest.php\`, \`lectures_rest.php\`, \`admin_database.php\`, \`admin_content_package.php\`, \`admin_questions.php\`, \`00_admin_import_atomic.php\`. This list intentionally groups modules by domain; it is not a substitute for the exact method/path inventory.
 
+## Implemented in shadow — Pass 1 (2026-10-12)
+
+| PHP source | Route | Auth/data | Shadow status | Remaining gate |
+|---|---|---|---|---|
+| **backend/config/routes/health.php** | **GET /api/v1** | Public metadata only; no DB access | Implemented with PHP-compatible **ok/data/requestId** success envelope | Tests authored and locally pass; GitHub runner + Wrangler deploy compatibility still unverified |
+| **backend/config/routes/health.php** | **GET /api/v1/ping** | Public ping only; no DB access | Implemented with **pong/build/env/time** fields | Time is UTC ISO-8601; **env** intentionally reports the shadow environment |
+| **backend/config/routes/health.php** | **GET /api/v1/health** | PHP health checks inspect runtime, database and configuration | Shadow diagnostic only; **not contract-compatible** with PHP HealthChecker yet | Port checks deliberately only after deciding what configuration detail must remain private |
+
+Method/path requests outside those exact GET contracts are not treated as migrated. Other API routes continue to return **501 ROUTE_NOT_MIGRATED** in the shadow Worker and are never proxied to SpaceWeb.
+
 ## Route-by-route migration worksheet
 
 Before implementing a route in Workers, add a row to this worksheet (or an equivalent machine-readable fixture):
