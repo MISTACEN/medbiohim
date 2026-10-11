@@ -645,3 +645,40 @@ Still open:
 - [ ] Configure the correct public HTTPS hostname in BotFather and `MEDBIOHIM_APP_URL`; register webhook with a strong secret and verify on mobile Telegram.
 - [ ] Implement and security-test Telegram `initData` validation, one-time account linking and registration. Opening a Web App is not authentication.
 - [ ] Verify Node bot unit tests and PHP regression test on a functioning runner; do not infer success from source edits.
+
+## Full checkpoint — 2026-10-11 (Telegram relay, Mini App entry, CI blocker)
+
+### What was changed in source
+- [x] PHP helper `backend/src/Support/TelegramWebhookSecret.php` denies requests when expected/provided secret is missing or empty and compares configured secrets with `hash_equals`.
+- [x] `backend/src/Services/TelegramHomeworkService.php` delegates webhook secret validation to the helper.
+- [x] Added `backend/tests/TelegramWebhookSecretTest.php`; workflow `.github/workflows/code-check.yml` invokes it.
+- [x] Schedule UI now shows shared-homework creation to any signed-in user; homework API gate was adjusted to allow authenticated group members while retaining the existing group-scope resolver. Must still verify the exact authorization paths in runtime tests.
+- [x] Telegram bot `/start` and `/app` offer a Web App button opening the existing site. This is a launch button only, not authentication.
+- [x] Added strict Telegram Mini App `initData` validation helper and tests for missing/bad data, invalid/fractional/zero user IDs and duplicate/invalid payload cases. **Not yet wired into login/register/account-link routes.**
+- [x] Node webhook can optionally forward group/supergroup updates to the existing PHP Telegram homework webhook over HTTPS using the configured shared secret.
+- [x] Added Node tests for successful relay and no-endpoint fallback; updated the Telegram README to explain single webhook architecture and configuration.
+- [x] Updated roadmap, phase status, sync stamp and integration docs to record the requirements, changes, and open work.
+
+### Confirmed not done / not verified
+- [ ] GitHub Actions has not successfully executed test steps. Latest observed runs failed in seconds with zero runner / empty runner name / no steps on some jobs; exact GitHub-side cause is unknown. No test suite should be called green.
+- [ ] No end-to-end Telegram update has been received by the deployed bot and relayed to the actual PHP backend.
+- [ ] No production secrets, webhook registrations, Vercel configuration, BotFather settings, SpaceWeb configuration, or production database were changed.
+- [ ] `TELEGRAM_HOMEWORK_WEBHOOK_URL` is not confirmed/configured. Do not guess the actual API hostname.
+- [ ] Shared webhook secret must match on Node and PHP. PHP `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USER_ID`, valid mapped group, schema, and deployment environment must be checked before enabling.
+- [ ] BotFather Mini App domain, production `MEDBIOHIM_APP_URL`, and Telegram webhook registration still need setup and mobile smoke test.
+- [ ] Telegram login/registration and secure existing-account linking are not implemented. Opening the site from Telegram does not authenticate a user.
+- [ ] Node test source has been edited but not executed on a functioning runner; PHP syntax/full test suite also remain unverified.
+- [ ] No claim is made that deployment/build/archive succeeded.
+- [ ] Homework attachments, deduplication/idempotency, uncertain-message review, group authorization, and persistence must be tested end-to-end before claiming the Telegram homework feature complete.
+
+### Current architecture decision
+Telegram's bot token has one active webhook destination: register it only against the Node/Vercel `/api/webhook`. If the optional relay is enabled, Node forwards group/supergroup updates to PHP. Do not register the same bot token independently with Node and PHP, because one webhook registration would replace the other.
+
+### Next continuation order
+1. Inspect GitHub Actions account/repository settings and restore runner execution; do not change workflows blindly without evidence.
+2. Run Node bot tests, PHP syntax checks, `TelegramWebhookSecretTest.php`, Mini App validation tests and existing frontend/backend checks.
+3. Verify signed-in group member can create homework and non-member cannot; inspect subject/group/attachment checks server-side.
+4. Confirm real backend origin and deploy environment, then configure shared secrets with owner approval; verify one real group update end-to-end.
+5. Implement Telegram initData validation into an actual server endpoint, then one-time account-linking and registration with replay/expiry protection; add negative security tests.
+6. Configure BotFather Web App domain and run Telegram iOS/desktop smoke tests.
+7. Only then mark items complete in this registry and the phase/sync documents.
