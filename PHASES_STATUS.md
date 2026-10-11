@@ -1496,3 +1496,10 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🔒 The helper is not attached to routes yet. It does not trust client-supplied IDs or roles, and it does not use the Supabase service-role key.
 - 🟡 No API Worker deployment exists yet; the current Cloudflare script list contains the Telegram production/test Workers only. No build configuration was found associated with the production Telegram script tag during this check.
 - ⬜ Next: review route-by-route auth/SQL/RLS contracts, then add a protected read only after negative-authorization tests and staged Wrangler validation are available.
+
+
+## Branch policy — SpaceWeb maintenance line (2026-10-12)
+
+This branch is reserved for maintaining the existing PHP API currently hosted on SpaceWeb. It was created as a source snapshot from the then-current `main` before subsequent Cloudflare migration commits. Keep PHP fixes and deployment-specific compatibility changes here when they are needed by the live backend. Do not add Cloudflare-only API rewrites to this branch by default.
+
+`main` is the forward Cloudflare migration line. Shared critical fixes should be reviewed and ported deliberately between branches. This branch is not a verified deployment artifact or a guaranteed rollback until PHP checks, environment configuration and a deployment test have passed. Production remains on SpaceWeb until a route-by-route Cloudflare verification and explicit cutover approval.
