@@ -68,6 +68,24 @@ test("POST /api/v1/auth/refresh validates JSON and fails closed without Supabase
   assert.equal((await unconfigured.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
 
+test("refresh route rejects malformed and oversized JSON before calling Supabase", async () => {
+  const malformed = await worker.fetch(request("/api/v1/auth/refresh", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{",
+  }), {});
+  assert.equal(malformed.status, 422);
+  assert.equal((await malformed.json()).error.code, "VALIDATION_ERROR");
+
+  const oversized = await worker.fetch(request("/api/v1/auth/refresh", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ refresh_token: "x".repeat(17_000) }),
+  }), {});
+  assert.equal(oversized.status, 413);
+  assert.equal((await oversized.json()).error.code, "PAYLOAD_TOO_LARGE");
+});
+
 test("GET is not accepted for the refresh route", async () => {
   const response = await worker.fetch(request("/api/v1/auth/refresh"), {});
   assert.equal(response.status, 405);
