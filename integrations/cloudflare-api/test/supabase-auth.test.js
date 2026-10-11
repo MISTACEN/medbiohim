@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -259,6 +259,65 @@ test("password recovery maps upstream throttling and outages safely", async () =
   assert.equal(limited.code, "RATE_LIMITED");
   const outage = await recoverSupabasePassword("student@example.com", configured, async () =>
     new Response("private upstream details", { status: 503 })
+  );
+  assert.equal(outage.status, 502);
+  assert.equal(outage.message.includes("private"), false);
+});
+
+
+test("login validates credentials and requires HTTPS Supabase configuration", async () => {
+  const missing = await loginSupabaseUser("", "password123", configured, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(missing.status, 422);
+  const insecure = await loginSupabaseUser("student@example.com", "password123", {
+    ...configured, SUPABASE_URL: "http://project-id.supabase.co",
+  }, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(insecure.status, 503);
+});
+
+test("login exchanges credentials and returns a normalized session without trusting user_metadata role", async () => {
+  let calledUrl = "";
+  let calledInit;
+  const result = await loginSupabaseUser("student@example.com", "safe-password", configured, async (url, init) => {
+    calledUrl = url;
+    calledInit = init;
+    return new Response(JSON.stringify({
+      access_token: "access",
+      refresh_token: "refresh",
+      expires_in: 3600,
+      token_type: "bearer",
+      user: {
+        id: "user-123",
+        email: "student@example.com",
+        user_metadata: { full_name: "Student", role: "admin" },
+        app_metadata: { role: "student" },
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  assert.equal(calledUrl, "https://project-id.supabase.co/auth/v1/token?grant_type=password");
+  assert.equal(calledInit.method, "POST");
+  assert.equal(calledInit.redirect, "error");
+  assert.deepEqual(JSON.parse(calledInit.body), { email: "student@example.com", password: "safe-password" });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.user.role, "student");
+  assert.equal(result.data.access_token, "access");
+});
+
+test("login normalizes invalid credentials, throttling and upstream failures", async () => {
+  const invalid = await loginSupabaseUser("student@example.com", "wrong-password", configured, async () =>
+    new Response("private auth details", { status: 400 })
+  );
+  assert.equal(invalid.status, 401);
+  assert.equal(invalid.message, "Invalid credentials");
+  const limited = await loginSupabaseUser("student@example.com", "password", configured, async () =>
+    new Response("limited", { status: 429 })
+  );
+  assert.equal(limited.status, 429);
+  const outage = await loginSupabaseUser("student@example.com", "password", configured, async () =>
+    new Response("private details", { status: 503 })
   );
   assert.equal(outage.status, 502);
   assert.equal(outage.message.includes("private"), false);
