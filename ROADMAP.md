@@ -1,3 +1,9 @@
+## Browser extension — resilient page extraction (2026-10-11)
+
+- 🟢 Improved `sidepanel.js` extraction heuristics: multiple question selectors, ARIA labels/label associations, radio/checkbox/option variants, scored question roots and manual fallback messaging.
+- 🟡 It only reads visible DOM content in the active page. Complex cross-origin iframes, image-only questions, PDF viewers, canvas-rendered content and inaccessible pages are not guaranteed; add source-specific adapters and optional user-triggered OCR only after evaluating privacy/performance.
+- 🔒 “Works under restrictions” means robust parsing of different layouts where the user has normal access—not bypassing login, CAPTCHA, paywalls or technical protections.
+
 ## Browser extension — authenticated answer display groundwork (2026-10-11)
 
 - 🟢 Existing authenticated global search now includes the stored answer field for published `questions` and `exam_questions` results; the search page renders it behind an explicit “Показать ответ” disclosure. It does not expose answer keys for trainer cards.
