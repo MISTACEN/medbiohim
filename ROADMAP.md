@@ -2349,3 +2349,5 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - ⬜ Production gates: verified Cloudflare account/Worker configuration, secret setup outside Git, valid HTTPS, CI green, endpoint parity and rollback plan. Keep SpaceWeb active until all required API routes pass staging and end-to-end verification.
 
 - Route-family inventory and mandatory migration gates: [docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md](docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md).
+
+- 🔴 Latest verification attempt after adding the Cloudflare API scaffold: workflow run [38146062456](https://github.com/MISTACEN/medbiohim/actions/runs/38146062456) failed before executing any step; job metadata shows `runner_id: 0`, empty `runner_name`, and `steps: []`. The new `npm test` command therefore did not run. This confirms the runner-allocation blocker persists; it does not indicate a test assertion failure.
