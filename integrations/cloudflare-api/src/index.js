@@ -86,15 +86,42 @@ export default {
 
       const authorization = request.headers.get("authorization") || "";
       const match = /^Bearer\s+(\S+)$/i.exec(authorization);
-      if (!match) {
-        return withCors(json({
-          ok: false,
-          error: { code: "UNAUTHORIZED", message: "Missing or invalid Authorization Bearer token" },
-          requestId: crypto.randomUUID(),
-        }, 401), origin);
+      let accessToken = match?.[1] || "";
+
+      // Preserve the PHP handler's JSON access_token fallback, with a strict size
+      // cap. Authorization headers remain the preferred transport.
+      if (!accessToken && request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+        const length = Number(request.headers.get("content-length") || "0");
+        if (length > 16_384) {
+          return withCors(json({
+            ok: false,
+            error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" },
+            requestId: crypto.randomUUID(),
+          }, 413), origin);
+        }
+        try {
+          const body = await request.clone().json();
+          if (body && typeof body.access_token === "string") {
+            accessToken = body.access_token.trim();
+          }
+        } catch {
+          return withCors(json({
+            ok: false,
+            error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" },
+            requestId: crypto.randomUUID(),
+          }, 422), origin);
+        }
       }
 
-      const result = await logoutSupabaseSession(match[1], env);
+      if (!accessToken) {
+        return withCors(json({
+          ok: false,
+          error: { code: "VALIDATION_ERROR", message: "Bearer token or access_token required" },
+          requestId: crypto.randomUUID(),
+        }, 422), origin);
+      }
+
+      const result = await logoutSupabaseSession(accessToken, env);
       if (!result.ok) {
         return withCors(json({
           ok: false,
