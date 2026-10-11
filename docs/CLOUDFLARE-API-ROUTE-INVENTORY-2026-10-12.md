@@ -1,3 +1,11 @@
+## Migrated auth route — Pass 7 (partial; 2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/auth.php` | `POST /api/v1/auth/register` | Supabase signup over HTTPS; validates email, name and password; bounded body; generic signup errors; email-confirmation field | Helper/route/tests added; deliberately returns 503 until limiter binding exists; profile creation/default role assignment not migrated |
+
+**Cutover blockers:** configure/test `AUTH_REGISTER_LIMITER`; port the PHP `ensureProfile()` and default student-role behavior only after database/RLS permissions and a safe server-side write strategy are confirmed. Avoid service-role shortcuts and never let signup metadata assign privileged roles.
+
 ## Migrated auth route — Pass 6 (partial; 2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
