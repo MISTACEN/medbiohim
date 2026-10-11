@@ -52,7 +52,32 @@ test("rejects malformed JSON", async () => {
   assert.equal(response.status, 400);
 });
 
-test("sends /schedule reply with canonical site link", async (t) => {
+
+test("shows onboarding buttons and registers Telegram command menu", async (t) => {
+  const oldFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), payload: JSON.parse(init.body) });
+    if (String(url).endsWith("/setMyCommands")) {
+      assert.ok(calls.at(-1).payload.commands.some((item) => item.command === "login"));
+      assert.ok(calls.at(-1).payload.commands.some((item) => item.command === "schedule"));
+    } else {
+      assert.match(String(url), /bottest-token\\/sendMessage$/);
+      const payload = calls.at(-1).payload;
+      assert.match(payload.text, /привяжите этот чат/i);
+      assert.equal(payload.reply_markup.inline_keyboard.length, 3);
+      assert.equal(payload.reply_markup.inline_keyboard[1][0].url, "https://medbiohim.vercel.app/login");
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  t.after(() => { globalThis.fetch = oldFetch; });
+  const response = await handleRequest(request("/api/webhook", {
+    body: { update_id: 10, message: { text: "/start", from: { id: 42 }, chat: { id: 42, type: "private" } } },
+  }), baseEnv);
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 2);
+});
+\ntest("sends /schedule reply with canonical site link", async (t) => {
   const oldFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     assert.match(String(url), /bottest-token\/sendMessage$/);
