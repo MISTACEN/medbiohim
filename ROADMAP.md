@@ -2307,3 +2307,11 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 This is an initial UI/extraction slice, not the full agreed feature: answer lookup is not yet connected directly to the authenticated API; question candidates are not saved; post-test answer capture, trusted-source registry, beta review queue and admin journal/editing remain pending.
 - 🟡 Syntax/manifest checks were added to .github/workflows/optional-integrations-check.yml, but have not been executed here; GitHub Actions runner allocation is still a known blocker. Browser acceptance on real sites is pending.
 - Next: inspect authenticated API contract and existing question models; add safe read-only search from a signed-in MEDBIOHIM session without extracting session tokens into extension code, then source registry and candidate-ingestion pipeline.
+
+
+## Telegram account linking — 2026-10-11
+- Source pass committed: private one-time link tokens (10-minute expiry, SHA-256 hash storage), authenticated Settings endpoints for start/status/unlink, transactional PHP confirmation through the existing webhook secret, Cloudflare Worker `/start link_<token>` handling, and Settings UI.
+- Migration: `database/migrations/20261011120000_telegram_account_linking.sql`.
+- NOT live/verified yet: migration has not been confirmed applied; real SpaceWeb API origin is not identified; Worker variable `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` must be set; PHP/Worker deploy and E2E tests remain pending.
+- Telegram-only sign-in is a separate pending phase. Do not claim full Telegram login yet: a linked Telegram ID does not itself create a valid Supabase Auth session.
+- Details and setup checklist: `docs/TELEGRAM-ACCOUNT-INTEGRATION-2026-10-11.md`.
