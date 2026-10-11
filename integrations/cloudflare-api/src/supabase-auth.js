@@ -74,3 +74,56 @@ export async function authenticateSupabaseRequest(request, env, fetcher = fetch)
     },
   };
 }
+
+/**
+ * Revoke a Supabase Auth session using the caller's access token.
+ * The service-role key is never used; the caller's token is sent only to
+ * the configured HTTPS Supabase Auth endpoint.
+ */
+export async function logoutSupabaseSession(accessToken, env, fetcher = fetch) {
+  const token = String(accessToken || "").trim();
+  if (!token) {
+    return failure(401, "UNAUTHORIZED", "Missing or invalid Authorization Bearer token");
+  }
+
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  if (!baseUrl || !anonKey) {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth is not configured on the server");
+  }
+
+  let endpoint;
+  try {
+    endpoint = new URL("/auth/v1/logout", baseUrl);
+    if (endpoint.protocol !== "https:") {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth must use HTTPS");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth URL is invalid");
+  }
+
+  let response;
+  try {
+    response = await fetcher(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: "Bearer " + token,
+        accept: "application/json",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return failure(401, "UNAUTHORIZED", "Invalid or expired access token");
+  }
+  if (!response.ok) {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth is temporarily unavailable");
+  }
+
+  return { ok: true };
+}
