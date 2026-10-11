@@ -1,3 +1,11 @@
+## Migrated auth route — Pass 6 (partial; 2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/auth.php` | `POST /api/v1/auth/login` | Supabase password token exchange over HTTPS; generic invalid-credential response; bounded body; requires Cloudflare Rate Limiting binding | Helper/route/tests added; deliberately returns 503 until binding exists; DB profile/role sync not migrated |
+
+**Cutover blockers:** configure and test `AUTH_LOGIN_LIMITER`; migrate `UserRepository::ensureProfile()` and `roleCodesForUser()` only after confirming database-side ownership/RLS and the minimum required server-side DB credential strategy. Do not use the service-role key as a shortcut or trust client-supplied roles. The PHP login response includes `profile` and `roles` when profile synchronization succeeds; the Worker response currently lacks these fields and is therefore only a partial migration.
+
 ## Migrated auth route — Pass 5 (2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
