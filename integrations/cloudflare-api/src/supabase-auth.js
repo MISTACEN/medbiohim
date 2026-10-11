@@ -11,7 +11,7 @@ function failure(status, code, message) {
  */
 export async function authenticateSupabaseRequest(request, env, fetcher = fetch) {
   const authorization = request.headers.get("authorization") || "";
-  const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
   if (!match) {
     return failure(401, "UNAUTHORIZED", "Missing or invalid Authorization Bearer token");
   }
