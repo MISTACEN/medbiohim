@@ -50,6 +50,30 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 });
 
 
+test("POST /api/v1/auth/recover validates input and fails closed without Supabase config", async () => {
+  const missing = await worker.fetch(request("/api/v1/auth/recover", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  }), {});
+  assert.equal(missing.status, 422);
+  assert.equal((await missing.json()).error.code, "VALIDATION_ERROR");
+
+  const unconfigured = await worker.fetch(request("/api/v1/auth/recover", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "student@example.com" }),
+  }), {});
+  assert.equal(unconfigured.status, 503);
+  assert.equal((await unconfigured.json()).error.code, "AUTH_NOT_CONFIGURED");
+});
+
+test("GET is not accepted for the recovery route", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/recover"), {});
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "POST, OPTIONS");
+});
+
 test("POST /api/v1/auth/refresh validates JSON and fails closed without Supabase config", async () => {
   const missing = await worker.fetch(request("/api/v1/auth/refresh", {
     method: "POST",
