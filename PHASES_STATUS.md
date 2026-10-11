@@ -1474,3 +1474,5 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟡 Tests are authored but **not executed/verified** in this environment. GitHub Actions runner dispatch is still a blocker; do not treat commits as test success.
 - 🟡 No Worker deployment, secrets, DNS, production route, database migration, or frontend switch was performed.
 - ⬜ Next: run \`npm test\` once runner allocation works; produce a complete PHP route inventory; specify auth/JWT, role/ownership, RLS, input-validation and error contracts; migrate routes incrementally with rollback.
+
+- 🟢 Added route-family migration inventory and per-route checklist: `docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`. It explicitly marks exact route contracts and runtime behavior as pending review.
