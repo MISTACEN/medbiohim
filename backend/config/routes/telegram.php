@@ -55,7 +55,7 @@ return static function (Router $router): void {
         }
         $username = isset($body['username']) && is_string($body['username']) ? mb_substr(trim($body['username']), 0, 64) : null;
         $firstName = isset($body['first_name']) && is_string($body['first_name']) ? mb_substr(trim($body['first_name']), 0, 128) : null;
-        $db = \Medbiohim\\Database\\Connection::pdo();
+        $db = \Medbiohim\Database\Connection::pdo();
         try {
             $db->beginTransaction();
             $q = $db->prepare("SELECT id, user_id FROM public.telegram_account_link_tokens WHERE token_hash = :hash AND consumed_at IS NULL AND expires_at > now() FOR UPDATE");
@@ -91,7 +91,7 @@ return static function (Router $router): void {
             Response::success(['linked' => true], $req->requestId);
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
-            \Medbiohim\\Support\\Logger::error('telegram_account_link_confirm_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
+            \Medbiohim\Support\Logger::error('telegram_account_link_confirm_failed', ['requestId' => $req->requestId, 'error' => $e->getMessage()]);
             Response::error('TELEGRAM_LINK_FAILED', 'Не удалось подтвердить привязку', $req->requestId, 503);
         }
     });
