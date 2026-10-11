@@ -2411,3 +2411,14 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Not contract-complete: PHP login may return DB-backed `profile` and `roles`; Worker has not yet migrated this profile synchronization because RLS/DB credential safety must be confirmed first.
 - 🟡 Tests remain authored but not verified by a successful full Node/GitHub Actions run.
 - 🔒 Production stays on SpaceWeb; no frontend API URL, DNS, database policies, or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 7 (partial registration)
+
+- 🟢 Added `registerSupabaseUser()` and `POST /api/v1/auth/register` with HTTPS-only signup, bounded input, name/email/password validation, generic signup errors and email-confirmation handling.
+- 🟢 Added helper tests and route tests for required rate limiting.
+- 🟡 Route deliberately returns 503 until Cloudflare binding `AUTH_REGISTER_LIMITER` is configured.
+- 🟡 Not contract-complete: PHP also creates a DB profile and assigns the default student role. This remains blocked on RLS/database write strategy review.
+- 🟡 Test cases are authored but not verified by a successful full Node/GitHub Actions run.
+- 🔒 Production stays on SpaceWeb; no frontend URL, DNS, database policy or Telegram webhook changed.
