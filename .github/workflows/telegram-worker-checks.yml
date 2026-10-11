@@ -1,0 +1,37 @@
+name: Telegram Worker checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/telegram-bot-cloudflare/**"
+      - ".github/workflows/telegram-worker-checks.yml"
+  pull_request:
+    paths:
+      - "integrations/telegram-bot-cloudflare/**"
+      - ".github/workflows/telegram-worker-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-worker-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker-tests:
+    name: Worker tests (Node.js 20)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/telegram-bot-cloudflare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run Worker regression tests
+        run: npm test
