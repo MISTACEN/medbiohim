@@ -701,3 +701,12 @@ Telegram's bot token has one active webhook destination: register it only agains
 - [ ] Confirm current provider free-tier terms from official documentation; the provider limits copied from the user's proposal are not yet verified.
 - [ ] No hosting/DNS/deployment/production secrets/webhook/DB changes were performed for this plan.
 
+### Hosting resilience / free-tier plan — 2026-10-11
+- [x] Record the primary → secondary foreign → Russian emergency tier model in `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`.
+- [ ] Restore GitHub Actions runner execution before promoting new builds.
+- [ ] Measure current site/API/media performance on Wi-Fi and mobile networks.
+- [ ] Validate a Cloudflare Worker Telegram webhook proof of concept; do not switch production webhook until tests and rollback are proven.
+- [ ] Audit Next.js compatibility and deploy a read-only secondary foreign origin from the same main commit.
+- [ ] Create a Russian-hosted public static emergency snapshot with timestamp, only after the foreign fallback is proven.
+- [ ] Verify provider free-tier/card requirements, limits, data location and exit strategy from official current documentation.
+- [ ] Do not mirror private student data or create a second writable database.
