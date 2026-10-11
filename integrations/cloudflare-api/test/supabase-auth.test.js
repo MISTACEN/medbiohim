@@ -90,7 +90,7 @@ test("network failure returns a generic upstream error without leaking details",
   assert.equal(result.message.includes("secret network detail"), false);
 });
 
-import { logoutSupabaseSession, refreshSupabaseSession } from "../src/supabase-auth.js";
+import { logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "../src/supabase-auth.js";
 
 test("logout requires a token and makes no upstream request without it", async () => {
   let calls = 0;
@@ -210,4 +210,57 @@ test("refresh maps invalid tokens and hides upstream details", async () => {
   );
   assert.equal(failed.status, 502);
   assert.equal(failed.message.includes("sensitive"), false);
+});
+
+
+test("password recovery requires email and configured HTTPS Supabase", async () => {
+  const missing = await recoverSupabasePassword("", configured, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(missing.status, 422);
+  const unconfigured = await recoverSupabasePassword("student@example.com", {}, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(unconfigured.status, 503);
+  const insecure = await recoverSupabasePassword("student@example.com", {
+    ...configured, MEDBIOHIM_APP_ORIGIN: "http://medbiohim.example",
+  }, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(insecure.status, 503);
+});
+
+test("password recovery uses a fixed HTTPS callback and does not disclose account existence", async () => {
+  let calledUrl = "";
+  let calledInit;
+  const result = await recoverSupabasePassword("student@example.com", configured, async (url, init) => {
+    calledUrl = url;
+    calledInit = init;
+    return new Response(null, { status: 200 });
+  });
+  const parsed = new URL(calledUrl);
+  assert.equal(parsed.origin, "https://project-id.supabase.co");
+  assert.equal(parsed.pathname, "/auth/v1/recover");
+  assert.equal(parsed.searchParams.get("redirect_to"), "https://medbiohim.vercel.app/auth/callback");
+  assert.equal(calledInit.method, "POST");
+  assert.equal(calledInit.headers.apikey, configured.SUPABASE_ANON_KEY);
+  assert.deepEqual(JSON.parse(calledInit.body), { email: "student@example.com" });
+  assert.deepEqual(result, { ok: true, data: { sent: true } });
+  const unknown = await recoverSupabasePassword("nobody@example.com", configured, async () =>
+    new Response("not found", { status: 400 })
+  );
+  assert.deepEqual(unknown, { ok: true, data: { sent: true } });
+});
+
+test("password recovery maps upstream throttling and outages safely", async () => {
+  const limited = await recoverSupabasePassword("student@example.com", configured, async () =>
+    new Response("limited", { status: 429 })
+  );
+  assert.equal(limited.status, 429);
+  assert.equal(limited.code, "RATE_LIMITED");
+  const outage = await recoverSupabasePassword("student@example.com", configured, async () =>
+    new Response("private upstream details", { status: 503 })
+  );
+  assert.equal(outage.status, 502);
+  assert.equal(outage.message.includes("private"), false);
 });
