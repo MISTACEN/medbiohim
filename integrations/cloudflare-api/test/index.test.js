@@ -49,6 +49,28 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
   assert.equal((await post.json()).error.code, "NOT_FOUND");
 });
 
+
+test("POST /api/v1/auth/logout requires a bearer token", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/logout", { method: "POST" }), {});
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+});
+
+test("GET is not accepted for the logout route", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/logout"), {});
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "POST, OPTIONS");
+});
+
+test("logout route fails closed when Supabase configuration is absent", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/logout", {
+    method: "POST",
+    headers: { authorization: "Bearer test-token" },
+  }), {});
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
+});
+
 test("unmigrated API routes are not proxied to the current PHP origin", async () => {
   const response = await worker.fetch(request("/api/v1/auth/me"), {
     APP_ENV: "shadow",
