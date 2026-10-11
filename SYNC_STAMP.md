@@ -392,6 +392,13 @@ Complete hand-off and project inventory: [docs/STATUS-2026-10-11.md](docs/STATUS
 
 See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Full checkpoint — 2026-10-11”, for the full inventory of source changes, missing configuration, unverified behavior, safety requirements, and continuation order. No production configuration or database changes were made.
 
+## 2026-10-11 — Full state snapshot + hosting resilience plan
+
+- Added `docs/STATE-SNAPSHOT-2026-10-11.md`: project identity, architecture, current code edits, what is not implemented, CI blocker, previous known risks, content requirements and resumption order.
+- Added `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`: keep current primary hosting, measure latency, evaluate Cloudflare Worker for bot relay, a separate foreign secondary origin and a Russian emergency static mirror.
+- No production hosting migration, DNS change, secret change, bot webhook change or database migration was performed.
+- Hosting providers and quotas remain candidates to verify; no provider is approved as a guaranteed free or fully working failover yet.
+
 ## 2026-10-11 — Single Telegram webhook + PHP homework relay
 
 - Node webhook now optionally forwards group/supergroup updates to PHP `/api/v1/telegram/webhook` over HTTPS using the shared `X-Telegram-Bot-Api-Secret-Token` header.
