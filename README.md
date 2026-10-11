@@ -1,3 +1,15 @@
+## Branching and backend migration policy — 2026-10-12
+
+The user-approved working model is now:
+
+- **`spaceweb-backend`** — compatibility/maintenance line for the existing PHP API on SpaceWeb. Use this branch for urgent fixes required to keep the currently deployed backend working. Do not assume this branch is a deployable backup until its PHP checks and deployment state are verified.
+- **`main`** — forward migration line. Continue converting backend functionality to Cloudflare Workers/TypeScript/JavaScript in small, tested passes. Preserve the current frontend and production SpaceWeb API connection until each migrated route is verified and a cutover is explicitly approved.
+- **Cloudflare API project:** `integrations/cloudflare-api/`. **Telegram Worker project:** `integrations/telegram-bot-cloudflare/`. They are separate Workers and must have separate Workers Builds root paths/configurations.
+- Never copy secrets into Git. Do not change DNS, Vercel API base URL, Supabase policies, or the production Telegram webhook as part of a code-only migration pass.
+- When a critical fix must reach both lines, make and verify it on the relevant branch first, then port it deliberately; do not silently merge all migration work back into `spaceweb-backend`.
+
+At branch creation, `spaceweb-backend` was created from the then-current `main` head (`dcea6b01e50a8b7246f89850798e891db3d66ec9`) to preserve a starting point before continued Cloudflare work. It is a source-control safety line, not proof of a tested production rollback.
+
 ## Cloudflare Telegram Worker prototype (2026-10-11)
 
 An isolated Cloudflare Workers adapter now exists at [`integrations/telegram-bot-cloudflare/`](integrations/telegram-bot-cloudflare/README.md). It mirrors the existing public-command webhook and optional HTTPS group relay. It does not replace the current Node/Vercel bot, does not register the production webhook, and has not been deployed or connected to a real token. Test coverage is added to the optional-integrations workflow, but GitHub Actions runner availability remains a blocker, so the Worker tests are not yet CI-verified.
