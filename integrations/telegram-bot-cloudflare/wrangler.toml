@@ -1,0 +1,10 @@
+name = "medbiohim-telegram-bot"
+main = "src/worker.js"
+compatibility_date = "2026-10-11"
+workers_dev = true
+
+[vars]
+MEDBIOHIM_APP_URL = "https://medbiohim.vercel.app"
+# Optional: TELEGRAM_BOT_USERNAME = "your_bot_username"
+# Optional: TELEGRAM_HOMEWORK_WEBHOOK_URL = "https://your-php-api.example/api/v1/telegram/webhook"
+# Set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET as Worker secrets, not here.
