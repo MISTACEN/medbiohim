@@ -412,3 +412,10 @@ See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Ful
 - Added regression coverage for the command response; setup notes now cover BotFather domain + webhook registration.
 - This only opens the existing site in Telegram. It does not yet validate Telegram initData, register a new user, or link a Telegram identity to an existing account.
 - Runtime test and CI remain pending; GitHub Actions runner blocker persists. No production deployment, secrets or DB were changed.
+
+## 2026-10-11 — Hosting resilience plan
+
+- Added `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md` with tiered strategy: current primary retained; independent foreign fallback next; Russian read-only emergency snapshot later.
+- Cloudflare Workers is the first webhook hosting candidate for a proof of concept only; current Node/Vercel bot remains until compatibility tests and rollback are proven.
+- Free-tier limits/card requirements from the proposed list are unverified and must be checked against official terms at the time of deployment.
+- No hosting migration, DNS change, production secret change, or database replication was performed.
