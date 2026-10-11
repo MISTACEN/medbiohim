@@ -37,6 +37,14 @@ Other modules in the bootstrap that also require route-level review: \`presence.
 
 Method/path requests outside those exact GET contracts are not treated as migrated. Other API routes continue to return **501 ROUTE_NOT_MIGRATED** in the shadow Worker and are never proxied to SpaceWeb.
 
+## Migrated auth route — Pass 3 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/auth.php` | `POST /api/v1/auth/logout` | Accepts Bearer token; calls Supabase Auth logout over HTTPS using only anon key plus caller token; invalid/expired token maps to 401; upstream/network failures are generic 502; no service-role key | Implemented in isolated Worker; route and helper regression tests added; no deployment yet |
+
+This route intentionally requires the Bearer header; the PHP handler also accepts a JSON `access_token`, but the migration does not preserve that weaker credential transport because request bodies and logs are more easily mishandled. Frontend compatibility must be confirmed before any production cutover. The route has no persistent DB writes.
+
 ## Authentication foundation — Pass 2 (2026-10-12)
 
 A shared helper now validates a Bearer token by asking Supabase Auth for `/auth/v1/user` over HTTPS. It requires `SUPABASE_URL` and `SUPABASE_ANON_KEY`, blocks redirects, has a bounded timeout, returns 401 for invalid/expired tokens, and masks upstream exceptions behind a generic 502. Its output contains only user ID and email; roles, group membership, specialty access, and resource ownership are not inferred. The helper is deliberately not wired into existing API routes until each handler's authorization and response contract is confirmed.
