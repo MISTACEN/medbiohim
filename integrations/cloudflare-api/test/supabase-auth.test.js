@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -90,7 +90,6 @@ test("network failure returns a generic upstream error without leaking details",
   assert.equal(result.message.includes("secret network detail"), false);
 });
 
-import { logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "../src/supabase-auth.js";
 
 test("logout requires a token and makes no upstream request without it", async () => {
   let calls = 0;
