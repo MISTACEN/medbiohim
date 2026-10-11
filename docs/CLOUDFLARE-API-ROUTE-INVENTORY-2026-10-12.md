@@ -1,3 +1,11 @@
+## Migrated auth route — Pass 5 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/auth.php` | `POST /api/v1/auth/recover` | Requires email; sends recovery via Supabase Auth over HTTPS; fixed callback on configured HTTPS app origin; normalizes Supabase 4xx to avoid email enumeration | Implemented in Worker source; tests added; not deployed |
+
+Recovery currently relies on Supabase's built-in throttling, as the PHP handler has no app-level limiter. Before production, add a Cloudflare edge rate-limit binding and verify its per-IP behavior. Never accept a caller-supplied redirect URL for recovery.
+
 # MEDBIOHIM API migration inventory — Cloudflare Workers
 
 Date: 2026-10-12
