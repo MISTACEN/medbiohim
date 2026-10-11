@@ -388,6 +388,10 @@ Complete hand-off and project inventory: [docs/STATUS-2026-10-11.md](docs/STATUS
 ## 2026-10-11 — Полный контрольный снимок перед паузой
 Создан [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md): продукт, архитектура, последний код, подтверждённые и неподтверждённые состояния, известные дефекты, расходы/лимиты и точная последовательность возобновления. Главный блокер — GitHub Actions завершается до выполнения шагов; тесты не объявлять пройденными.
 
+## 2026-10-11 — Pause checkpoint / next-session handoff
+
+See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Full checkpoint — 2026-10-11”, for the full inventory of source changes, missing configuration, unverified behavior, safety requirements, and continuation order. No production configuration or database changes were made.
+
 ## 2026-10-11 — Single Telegram webhook + PHP homework relay
 
 - Node webhook now optionally forwards group/supergroup updates to PHP `/api/v1/telegram/webhook` over HTTPS using the shared `X-Telegram-Bot-Api-Secret-Token` header.
