@@ -44,4 +44,18 @@ check(TelegramWebAppInitData::validate($tampered, $token, $now)['ok'] === false)
 $duplicate = $valid . '&auth_date=' . $now;
 check(TelegramWebAppInitData::validate($duplicate, $token, $now)['ok'] === false);
 
-echo "Telegram Web App initData tests passed\n";
+$withoutUser = makeInitData($token, $now - 30, ['user' => '']);
+check(TelegramWebAppInitData::validate($withoutUser, $token, $now)['error'] === 'invalid_user');
+
+$badUserId = makeInitData($token, $now - 30, [
+    'user' => json_encode(['id' => 'not-an-id', 'first_name' => 'Student']),
+]);
+check(TelegramWebAppInitData::validate($badUserId, $token, $now)['ok'] === false);
+
+$noUser = makeInitData($token, $now - 30, ['user' => null]);
+check(TelegramWebAppInitData::validate($noUser, $token, $now)['ok'] === false);
+
+check(TelegramWebAppInitData::validate(str_repeat('a', 16385), $token, $now)['error'] === 'invalid_init_data');
+check(TelegramWebAppInitData::validate('', $token, $now)['error'] === 'invalid_init_data');
+
+echo "Telegram Web App initData tests passed\\n";
