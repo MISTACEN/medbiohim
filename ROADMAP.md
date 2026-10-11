@@ -2347,3 +2347,5 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 This is source preparation only. The Worker has not been deployed; tests have not been executed because GitHub Actions runner allocation remains a known blocker. Do not mark CI green or switch the frontend API URL.
 - ⬜ Next: restore runner execution; run the new test suite; inventory PHP routes into public/authenticated/admin/webhook/media groups; define route contracts and auth/RLS rules; migrate read-only endpoints first; add contract and authorization tests before each write route.
 - ⬜ Production gates: verified Cloudflare account/Worker configuration, secret setup outside Git, valid HTTPS, CI green, endpoint parity and rollback plan. Keep SpaceWeb active until all required API routes pass staging and end-to-end verification.
+
+- Route-family inventory and mandatory migration gates: [docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md](docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md).
