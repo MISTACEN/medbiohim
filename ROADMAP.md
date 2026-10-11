@@ -1,3 +1,7 @@
+## Project state and hosting failover snapshot — 2026-10-11
+
+Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
+
 ## Latest execution gate — Pass 65–73 (2026-10-10)
 
 - Explicit `contents: read` permissions are set in all six workflows, including deploy and optional integrations.
