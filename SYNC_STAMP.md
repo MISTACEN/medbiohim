@@ -1,3 +1,11 @@
+## Browser extension — authenticated search answer groundwork (2026-10-11)
+
+- `backend/src/Services/SearchService.php`: authenticated search result includes stored answer text for published `questions` and `exam_questions`.
+- `src/app/search/page.tsx`: answer is displayed in an explicit expandable section for question/ticket hits.
+- Extension still opens the MEDBIOHIM search page; no bearer-token bridge or extension-side API request was introduced. No automatic imports, database writes or production deployment performed.
+- Source commits: SearchService `95d6f7a038266f81bc79b28241a85e3b2c13b894`; search UI `aca96cfa873338f9ef75792fa2f7b56069fd3b2e`.
+- Verification limits: source structure only; CI runner dispatch, PHP lint, frontend build, live API auth and Chrome/Edge runtime remain unverified.
+
 ## Telegram Cloudflare Worker prototype — 2026-10-11
 
 - New isolated adapter: `integrations/telegram-bot-cloudflare/`; existing `integrations/telegram-bot/` Node/Vercel implementation is preserved.
