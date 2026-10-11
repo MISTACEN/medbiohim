@@ -6,7 +6,7 @@ This is an **optional, separately deployable** Node.js webhook. It does not modi
 
 - `/start`, `/help`, `/app`, `/site`, `/schedule`, `/tests`, `/subjects`, `/materials`, `/privacy`.
 - `/start` and `/app` return a Telegram Web App button opening the existing MEDBIOHIM site; this is an entry-point MVP, not yet Telegram account linking.
-- Only private-chat messages are handled; groups/channels are ignored.
+- Private-chat commands are handled by the Node webhook. Group/supergroup updates can be relayed to the existing PHP homework-ingestion endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured; channels and other chat types are ignored.
 - Replies contain public links to the official website.
 - Webhook requests require Telegram's `X-Telegram-Bot-Api-Secret-Token` header.
 - No bot token, account token, or database key is stored in source.
@@ -21,11 +21,14 @@ Set server-side environment variables in that separate project:
 - `TELEGRAM_WEBHOOK_SECRET` — random secret consisting of Telegram-supported letters, digits, underscore or hyphen.
 - `MEDBIOHIM_APP_URL` — optional; defaults to `https://medbiohim.vercel.app`.
 - `TELEGRAM_BOT_USERNAME` — optional; used to ignore commands addressed to another bot.
+- `TELEGRAM_HOMEWORK_WEBHOOK_URL` — optional HTTPS URL to the existing PHP endpoint, for example `https://YOUR-SPACEWEB-API/api/v1/telegram/webhook`. Set only after confirming the actual backend origin.
+
+For homework relay, set `TELEGRAM_WEBHOOK_SECRET` to the same strong secret in both the Node/Vercel project and the PHP backend environment. Configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USER_ID` on the PHP side as required by `TelegramHomeworkService`. The relay sends the original group update over HTTPS and does not expose the secret to the browser.
 
 After deployment:
 
 1. In BotFather, configure the Web App domain for the same HTTPS hostname as `MEDBIOHIM_APP_URL`.
-2. Register the webhook using Telegram's `setWebhook` API with the deployed `/api/webhook` URL and the same `secret_token` value.
+2. Register exactly one webhook for this bot using Telegram's `setWebhook` API with the deployed Node `/api/webhook` URL and the same `secret_token` value. Do not register the same bot token directly to both Node and PHP; Telegram supports one active webhook per bot. When the optional relay is enabled, Node forwards group/supergroup updates to PHP.
 3. Open the bot and test `/start` and `/app` on mobile Telegram. The Web App opens the current website; account linking and secure Telegram identity validation are a separate unfinished phase. Execute that request in a private terminal/password manager; never commit the bot token or paste it into GitHub issues.
 
 ## Local tests
@@ -36,7 +39,7 @@ npm test
 
 ## Explicit limitations
 
-- No account linking, private schedule, grades, assignments, or personal notifications yet.
+- No account linking, private schedule, grades, or personal notifications yet. The group relay is only an ingestion transport; end-to-end homework classification still requires valid PHP configuration, mapped Telegram chats, database schema and runtime tests.
 - The Web App button only opens the existing site. It does not authenticate the student as a Telegram identity or silently create/link an account.
 - No durable update-idempotency store is configured; current commands are read-only/public, but duplicate public replies may occur on webhook retries.
 - Before private features are added, implement one-time account linking, expiry/replay protection, durable update idempotency, group/specialty authorization, consent/preferences, unlinking, and audit-safe logging.
