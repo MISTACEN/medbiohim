@@ -1316,6 +1316,13 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - 🟡 Validation pending: Actions has historically failed before job steps; do not claim PHP tests passed until a runner actually executes. End-to-end homework and Telegram runtime tests remain open.
 - No production deployment, database write or secret changes performed.
 
+### Telegram group homework relay — implementation update 2026-10-11
+
+- 🟢 Node webhook now has an optional HTTPS relay for group/supergroup updates to the existing PHP `/api/v1/telegram/webhook` endpoint.
+- 🟢 Relay reuses the secret header, does not log payloads or secrets, and preserves the one-webhook-per-bot model: Telegram points to Node; Node optionally forwards group updates to PHP.
+- 🟢 Added Node regression tests for relay success and unconfigured fallback; test execution is pending because the GitHub runner is not starting.
+- 🟡 Requires `TELEGRAM_HOMEWORK_WEBHOOK_URL`, matching `TELEGRAM_WEBHOOK_SECRET` in Node/PHP, valid PHP `TELEGRAM_BOT_TOKEN` + `TELEGRAM_BOT_USER_ID`, a mapped group, and end-to-end runtime validation.
+
 ### Telegram Web App entry — implementation update 2026-10-11
 
 - 🟢 Added `/app` command and Web App button on `/start` in the existing Node bot; button opens the current MEDBIOHIM site using `MEDBIOHIM_APP_URL`.
