@@ -1,0 +1,10 @@
+name = "medbiohim-api-shadow"
+main = "src/index.js"
+compatibility_date = "2026-10-11"
+workers_dev = true
+
+# Deliberately isolated from production. This Worker is a shadow scaffold:
+# it does not replace the SpaceWeb PHP API and does not proxy requests to it.
+[vars]
+APP_ENV = "shadow"
+MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
