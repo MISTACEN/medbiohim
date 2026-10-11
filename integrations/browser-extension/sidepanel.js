@@ -1,5 +1,6 @@
 const APP_ORIGIN = "https://medbiohim.vercel.app";
 const $ = (id) => document.getElementById(id);
+let subjectWasManuallySelected = false;
 const SUBJECT_RULES = [
  {value:"histology",label:"Гистология, цитология и эмбриология",words:["гистолог","цитолог","эмбриолог","эпител","соединительн ткан","кровь и лимфа","препарат"]},
  {value:"biochemistry",label:"Биохимия",words:["биохими","фермент","аминокислот","метабол","гликолиз","липид","белков"]},
@@ -31,14 +32,16 @@ async function extractFromActiveTab(){
   const data=results?.[0]?.result||{},question=String(data.question||"").trim(),options=Array.isArray(data.options)?data.options.map(String):[];
   $("question").value=question;$("options").value=options.join("\n");
   const subject=inferSubject((tab.title||"")+" "+question+" "+(data.context||""));
-  if(!$("subject").value&&subject){$("subject").value=subject.value;$("subject-confidence").textContent="Предположение";}
-  else if(!subject)$("subject-confidence").textContent="Выберите вручную";
+  if(!subjectWasManuallySelected){
+   if(subject){$("subject").value=subject.value;$("subject-confidence").textContent="Предположение";}
+   else{$("subject").value="";$("subject-confidence").textContent="Выберите вручную";}
+  }
   $("page-status").textContent=question?"Считано":"Проверьте";
   setFeedback(question?"Вариантов распознано: "+options.length+". Проверьте вопрос и предмет.":"Вопрос не распознан автоматически. Вставьте его вручную.",!question);
  }catch(error){$("page-status").textContent="Нет доступа";setFeedback(error?.message||"Не удалось прочитать страницу.",true);}
 }
 $("extract").addEventListener("click",extractFromActiveTab);$("refresh").addEventListener("click",extractFromActiveTab);
-$("subject").addEventListener("change",()=>$("subject-confidence").textContent=$("subject").value?"Выбрано вручную":"Не определён");
+$("subject").addEventListener("change",()=>{subjectWasManuallySelected=Boolean($("subject").value);$("subject-confidence").textContent=subjectWasManuallySelected?"Выбрано вручную":"Не определён";});
 $("copy").addEventListener("click",async()=>{const question=$("question").value.trim();if(!question)return setFeedback("Сначала считайте или введите вопрос.",true);const subject=$("subject").selectedOptions[0]?.textContent||"Не определён",payload="Предмет: "+subject+"\nВопрос: "+question+"\nВарианты:\n"+$("options").value.trim();try{await navigator.clipboard.writeText(payload);setFeedback("Вопрос и варианты скопированы. В базу они пока не записываются.");}catch{setFeedback("Не удалось скопировать автоматически. Выделите текст и скопируйте вручную.",true);}});
 $("open-search").addEventListener("click",()=>{const question=$("question").value.trim();if(!question)return setFeedback("Сначала считайте или введите вопрос.",true);const url=new URL("/search",APP_ORIGIN);url.searchParams.set("q",question);if($("subject").value&&$("subject").value!=="other")url.searchParams.set("subject_slug",$("subject").value);chrome.tabs.create({url:url.toString()});setFeedback("Открыта платформа с запросом. Подтверждение ответа пока не выполняется.");});
 document.querySelectorAll("[data-path]").forEach(button=>button.addEventListener("click",()=>{const path=button.getAttribute("data-path")||"/";if(path.startsWith("/")&&!path.startsWith("//"))chrome.tabs.create({url:new URL(path,APP_ORIGIN).toString()});}));
