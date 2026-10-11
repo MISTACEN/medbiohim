@@ -86,13 +86,8 @@ try {
     stdout.write(`Токен проверен для бота @${me.username || "(username не указан)"}; значение токена не выводится.\n`);
     const before = await telegram(token, "getWebhookInfo");
     if (before.url && before.url !== WEBHOOK_URL) {
-      stdout.write(`Внимание: сейчас webhook указывает на другой адрес: ${before.url}\n`);
-      const switchAnyway = (await rl.question("Переключить с этого адреса на Cloudflare? Введите YES: ")).trim();
-      if (switchAnyway !== "YES") {
-        stdout.write("Отменено; существующий webhook сохранён.\n");
-        process.exitCode = 1;
-        process.exit();
-      }
+      stdout.write(`Текущий webhook: ${before.url}\n`);
+      stdout.write("Вы заранее подтвердили SWITCH-MAIN; сейчас он будет заменён адресом Cloudflare.\n");
     }
     await telegram(token, "setWebhook", {
       url: WEBHOOK_URL,
