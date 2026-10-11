@@ -15,6 +15,7 @@ on:
       - "integrations/browser-extension/**"
       - "integrations/telegram-bot/**"
       - "integrations/telegram-bot-cloudflare/**"
+      - "integrations/cloudflare-api/**"
       - ".github/workflows/optional-integrations-check.yml"
   workflow_dispatch:
 
