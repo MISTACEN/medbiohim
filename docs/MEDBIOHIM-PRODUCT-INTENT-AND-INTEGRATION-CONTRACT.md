@@ -121,6 +121,10 @@ Telegram — не только канал для домашних заданий
 
 Подробная сверка кода, документации, открытых рисков и точки продолжения: [STATUS-2026-10-11.md](STATUS-2026-10-11.md). Последние source changes: создание общего ДЗ участником группы, fail-closed PHP webhook secret, Telegram Mini App entry button, optional Node→PHP group relay. Ни одна из этих функций не считается полностью проверенной без успешных CI/runtime/E2E тестов.
 
+## 10. Pause checkpoint — 2026-10-11
+
+The canonical current-state inventory and handoff is maintained in [`UNFINISHED-REGISTRY.md`](UNFINISHED-REGISTRY.md), “Full checkpoint — 2026-10-11”. The contract defines intended behavior; it must not be read as proof that future or unverified features are already live.
+
 ## 9. Критерии готовности
 
 Функция не считается завершённой по наличию компонента или коммита. Требуются:
