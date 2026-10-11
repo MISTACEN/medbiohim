@@ -1,0 +1,13 @@
+{
+  "name": "medbiohim-telegram-bot-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Workers webhook adapter for the MEDBIOHIM Telegram bot",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
