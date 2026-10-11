@@ -37,6 +37,10 @@ Other modules in the bootstrap that also require route-level review: \`presence.
 
 Method/path requests outside those exact GET contracts are not treated as migrated. Other API routes continue to return **501 ROUTE_NOT_MIGRATED** in the shadow Worker and are never proxied to SpaceWeb.
 
+## Authentication foundation — Pass 2 (2026-10-12)
+
+A shared helper now validates a Bearer token by asking Supabase Auth for `/auth/v1/user` over HTTPS. It requires `SUPABASE_URL` and `SUPABASE_ANON_KEY`, blocks redirects, has a bounded timeout, returns 401 for invalid/expired tokens, and masks upstream exceptions behind a generic 502. Its output contains only user ID and email; roles, group membership, specialty access, and resource ownership are not inferred. The helper is deliberately not wired into existing API routes until each handler's authorization and response contract is confirmed.
+
 ## Route-by-route migration worksheet
 
 Before implementing a route in Workers, add a row to this worksheet (or an equivalent machine-readable fixture):
