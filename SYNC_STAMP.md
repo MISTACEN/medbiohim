@@ -495,3 +495,11 @@ See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Ful
 - Permissions: activeTab, scripting, sidePanel; no host permissions or automatic ingestion.
 - Remaining: direct authenticated search, candidate ingestion, end-of-test answer evidence, source trust/moderation and admin journal.
 - Validation: workflow syntax/manifest checks added; not yet executed because Actions runner allocation remains unverified. Real browser behavior not yet tested.
+
+
+## Telegram account linking — 2026-10-11
+- Source pass committed: private one-time link tokens (10-minute expiry, SHA-256 hash storage), authenticated Settings endpoints for start/status/unlink, transactional PHP confirmation through the existing webhook secret, Cloudflare Worker `/start link_<token>` handling, and Settings UI.
+- Migration: `database/migrations/20261011120000_telegram_account_linking.sql`.
+- NOT live/verified yet: migration has not been confirmed applied; real SpaceWeb API origin is not identified; Worker variable `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` must be set; PHP/Worker deploy and E2E tests remain pending.
+- Telegram-only sign-in is a separate pending phase. Do not claim full Telegram login yet: a linked Telegram ID does not itself create a valid Supabase Auth session.
+- Details and setup checklist: `docs/TELEGRAM-ACCOUNT-INTEGRATION-2026-10-11.md`.
