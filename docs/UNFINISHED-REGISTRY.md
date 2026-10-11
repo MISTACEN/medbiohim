@@ -710,3 +710,80 @@ Telegram's bot token has one active webhook destination: register it only agains
 - [ ] Create a Russian-hosted public static emergency snapshot with timestamp, only after the foreign fallback is proven.
 - [ ] Verify provider free-tier/card requirements, limits, data location and exit strategy from official current documentation.
 - [ ] Do not mirror private student data or create a second writable database.
+
+---
+
+# SESSION HANDOFF SNAPSHOT — 2026-10-11
+
+Этот раздел нужен для продолжения работы в новом чате. Считай его контрольной точкой состояния, а не доказательством, что все функции прошли runtime-тесты.
+
+## A. Репозиторий и правила работы
+- Repository: `MISTACEN/medbiohim`; рабочая ветка — `main`. Пользователь просил не плодить ветки. Не создавать дополнительные ветки без явной необходимости/согласования.
+- Неофициальная учебная платформа для самостоятельной подготовки студентов к экзаменам, тестам и зачётам; это не официальный сайт вуза и не замена EIOS.
+- Сохранять текущую структуру сайта и одобренный дизайн; улучшать существующие страницы, не дублировать продукт и не делать глобальный редизайн без запроса.
+- Все изменения вести небольшими проходами, примерно до 20 минут на единицу; после каждого прохода обновлять `ROADMAP.md`, `PHASES_STATUS.md`, `SYNC_STAMP.md` и этот реестр. При остановке оставлять понятные продолжение/проверки.
+- Не объявлять функцию готовой только из-за наличия кода/коммита. Нужны тесты, проверка негативных сценариев и подтверждение целевого окружения.
+
+## B. Главная архитектура, которую сохраняем
+- Frontend: Next.js на Vercel, автоматический деплой из GitHub.
+- Backend: PHP API на SpaceWeb; целевой runtime PHP 8.3, в панели ранее наблюдались Apache 2.4 / PHP 8.2. Перед релизом проверить фактическую версию.
+- Auth/database: Supabase; проект ref `gnobvyjywtqbdfeejxmf`. Supabase остаётся единственным источником истины для изменяемых пользовательских/учебных данных.
+- Media: контент атласа находится в папке `content`; изображения/медиа также связаны с существующим SpaceWeb расположением и приватным Backblaze B2 bucket `medbiohim-files` (EU endpoint `s3.eu-central-003.backblazeb2.com`). Не переводить приватный bucket в публичный ради скорости.
+- Нельзя делать две независимо записываемые базы для homework/progress/users без отдельно спроектированной репликации и разрешения конфликтов.
+- Основная цель — бесплатная эксплуатация в проверенных лимитах. Не добавлять обязательный платный AI; не обещать, что каждый free tier навсегда бесплатен/без карты.
+
+## C. Продуктовые требования, которые нельзя потерять
+- Любой авторизованный участник своей группы должен иметь возможность добавить общее домашнее задание; принадлежность к группе и доступ к предмету проверяются сервером. Завершение/сдача — отдельное состояние конкретного студента.
+- Одно общее задание должно поступать из ручного ввода, Telegram или будущего расширения в единый canonical workflow, с проверкой дублей, происхождением данных и подтверждением сомнительных извлечений.
+- Реальные импортированные вопросы должны иметь источник/происхождение и отличаться от AI-generated/unverified. Не выдавать неподтверждённые ответы за официальные.
+- Жалоба/сообщение об ошибке на вопросе/материале должна идти в админ-панель; вопросный банк по предмету должен быть доступен для просмотра с ответами без обязательного запуска теста.
+- Проверка свободных ответов должна быть семантической и не учитывать орфографию; AI-вызов необязателен, точные ответы должны обрабатываться без него.
+- Атлас: сохранить текущий визуальный подход главной страницы, подписи/названия препаратов, центрирование, fullscreen, zoom/pan, desktop + mobile, читаемость схем/таблиц; не ухудшать качество ради сжатия.
+- Telegram нужен и как entry point/будущая безопасная регистрация+привязка аккаунта, и как канал получения домашних заданий из группы.
+- Браузерное расширение — будущий user-controlled import bridge для EIOS: preview перед импортом, источник/дедупликация/версии, без хранения паролей EIOS и без обхода CAPTCHA/2FA/контролей доступа.
+
+## D. Последние изменения в коде и статус Telegram
+- `backend/src/Support/TelegramWebhookSecret.php` добавлен: пустой/отсутствующий ожидаемый секрет и пустой/отсутствующий присланный секрет отклоняются; сравнение использует `hash_equals`.
+- `backend/src/Services/TelegramHomeworkService.php` делегирует проверку секрета helper-классу. Ранее fail-open поведение (пустой настроенный секрет принимал запросы) устранено в исходном коде.
+- `backend/tests/TelegramWebhookSecretTest.php` добавлен; в `.github/workflows/code-check.yml` добавлен вызов PHP regression test. Выполнение теста не подтверждено из-за runner blocker.
+- `backend/src/Support/TelegramWebAppInitData.php` и `backend/tests/TelegramWebAppInitDataTest.php` существуют в текущем дереве; проверки initData/времени подписи/формата пользователя добавлены, Telegram ID валидируется строже (положительное целое число или цифровая строка). Полный end-to-end login/account linking НЕ реализован.
+- В `integrations/telegram-bot/lib/commands.js` команды `/start` и `/app` предлагают Web App entry на текущий сайт; по умолчанию URL `https://medbiohim.vercel.app/`, переопределяется `MEDBIOHIM_APP_URL`.
+- `integrations/telegram-bot/api/webhook.js` поддерживает необязательную HTTPS пересылку групповых/supergroup updates на `TELEGRAM_HOMEWORK_WEBHOOK_URL`, передавая `X-Telegram-Bot-Api-Secret-Token` из `TELEGRAM_WEBHOOK_SECRET`. Если relay не настроен, групповое событие не пересылается; если upstream отвечает ошибкой, webhook возвращает 502.
+- `integrations/telegram-bot/test/commands.test.js` дополнен тестом Web App URL; `integrations/telegram-bot/test/webhook.test.js` дополнен тестами relay и поведения без конфигурации. Тесты ещё нужно реально запустить.
+- `integrations/telegram-bot/README.md` объясняет раздельный Vercel-проект, BotFather, один webhook и optional PHP relay. Node/Vercel остаётся текущим ingress, Cloudflare Workers пока только кандидат для PoC.
+- Telegram позволяет одному bot token иметь один активный webhook. Не регистрировать один токен одновременно напрямую в Node и PHP; использовать Node → PHP relay либо мигрировать ingress осознанно после тестов.
+- Для live relay нужны фактический HTTPS origin PHP API, `TELEGRAM_HOMEWORK_WEBHOOK_URL`, одинаковый сильный `TELEGRAM_WEBHOOK_SECRET` на Node/PHP, требуемые PHP `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USER_ID`, а также mapping Telegram group → academic group. Ничего из этого production-конфигурацией в рамках последнего прохода не менялось.
+- Домашние задания: в `src/app/schedule/page.tsx` UI разрешает создавать задания авторизованному пользователю; в `backend/config/routes/homework.php` снят старый запрет только для staff/starosta, при этом групповой контекст/членство должно оставаться обязательным. Нужны позитивный и негативный API-тесты: участник своей группы может, неучастник — не может.
+
+## E. Текущая блокирующая проблема CI
+- Последние наблюдаемые GitHub Actions runs завершались с failure ещё до шагов: `runner_id=0`, пустой `runner_name`, `steps=[]`; некоторые jobs завершались примерно за 2–3 секунды. Логов тестовых шагов нет, следовательно это не доказательство падения самих тестов.
+- Точная причина GitHub-side пока неизвестна. Проверить в UI/settings доступность Actions, hosted runners, policy/billing/quota/permissions и статус GitHub Actions; не менять настройки вслепую.
+- До восстановления runner нельзя говорить, что frontend/backend/smoke/архивы зелёные. Последние workflow runs: https://github.com/MISTACEN/medbiohim/actions
+- После восстановления выполнить реальные Node tests, `php -l` для изменённых PHP-файлов, PHP regression test, существующие frontend/backend проверки, build и архивные workflow; зафиксировать логи/результаты.
+
+## F. Новая схема хостинга / доступности
+- Подробный план: `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`.
+- Tier 0: сохранить Vercel (primary frontend) → SpaceWeb PHP API → Supabase + существующее media storage. Сначала измерить/ускорить реальную цепочку.
+- Tier 1: независимый второй иностранный hosting/origin с отдельным URL, кандидат Cloudflare Pages/совместимый Next.js runtime. Не считать полной заменой Vercel, пока не проверены SSR/route handlers/auth/image optimization. Проверять Wi-Fi, мобильную сеть и разные ISP.
+- Telegram webhook: Cloudflare Workers — кандидат для PoC, но текущий Node/Vercel ingress не переносить до паритетных тестов и rollback.
+- Tier 2: российский emergency fallback позже, сначала только read-only static snapshot публичных учебных материалов/инструкций с timestamp/commit и предупреждением об устаревании. Не зеркалить секреты, приватные данные, сессии и персональный прогресс.
+- Перечень хостингов/квот/требований карты от пользователя — список кандидатов, не проверенные текущие факты. Перед PoC проверить официальные тарифы, региональную доступность, лимиты, сон/expiry, карты, домены, privacy, runtime и стоимость после квот.
+- Ни миграция, ни DNS changes, ни production secrets, ни база-репликация не выполнялись.
+
+## G. Известные старые дефекты, которые требуют отдельной проверки
+- Ранее зафиксированы: возможные ошибки dashboard 500/UNAUTHORIZED bearer; `/api/v1/auth/me` и `AccountSettingsService::getPreferences()`; маршруты auth/schedule 401; `routes.php:6` тип Router mismatch; trainer images 404/502; старый enum для завершённой сессии; вопросы и схема старого формата; отсутствующие поля B2/миграции; RLS для `homework_submissions`; самоназначение ролей; отсутствие/неполнота `/auth/register`, `/auth/me` роли/группы/курса/семестра. Это исторически выявленные пункты: заново проверить текущую ветку и не предполагать, что все они ещё присутствуют или уже исправлены.
+- Histology scope, когда работа возобновится: `subject_slug=histology`, `specialty_slug=mbh`, `mode_set=electronogram`; не трогать другие предметы. `ticket_banks` — 5 UUID, пользователь просил их не менять. Электронограммы 28; контент пакет `data/content_packages/histology-mbh-trainer-cards.json` — 206 cards (178 preparations + 28 EM). Проверять фактическую БД/файлы перед любыми импортами; не заменять существующие вопросы, добавлять только после проверки дублей/схемы.
+- Design preferences: keep current semi-transparent atlas aesthetic and layout, avoid replacing it with old colorful cards; test both desktop and iPhone. Do not claim visual regression fixed without screenshots or browser verification.
+
+## H. Recommended execution order from this checkpoint
+1. **First:** inspect Actions/repository/account runner configuration and get at least one workflow to execute actual steps.
+2. Run tests and syntax checks on the latest main; fix test/code failures in small batches; update docs after each batch.
+3. Verify homework group membership on both UI and API, including non-member denial and attachment/subject ownership.
+4. Verify Telegram webhook secret validation, relay behavior, idempotency (`update_id`), size/time limits and group mapping; then run a real end-to-end test only after deployment values are confirmed.
+5. Implement Telegram account linking/registration only with validated Telegram `initData`, freshness/replay protections, one-time link codes or equivalent explicit linking, and tests. Web App opening alone is not authentication.
+6. Measure site/API/media latency, then implement the hosting tier plan in the dedicated hosting document.
+7. Continue broader PHP API/SQL/RLS/auth/routes review; re-check each previously logged issue against current `main` rather than assuming status.
+8. Maintain roadmap, phases, sync stamp and unfinished registry; do not deploy to production or alter production DB/secrets without explicit authorization.
+
+## I. Copy/paste prompt for a new chat
+> Продолжай разработку MEDBIOHIM из актуального `main` репозитория `MISTACEN/medbiohim`. Сначала прочитай `docs/UNFINISHED-REGISTRY.md` (раздел SESSION HANDOFF SNAPSHOT), `ROADMAP.md`, `PHASES_STATUS.md`, `SYNC_STAMP.md`, `docs/MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md`, `docs/STUDENT-FIRST-MAP.md`, `docs/FUTURE-INTEGRATIONS-IDEAS-MAP.md` и `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`. Не создавай лишние ветки, работай в `main` небольшими проходами, сохраняй текущий UI/атлас и не делай глобальный редизайн. Первым делом восстанови фактическое выполнение GitHub Actions: последние jobs падают до steps (`runner_id=0`, `runner_name` пуст, `steps=[]`), так что тесты не считаются пройденными. Затем выполни Node/PHP tests, PHP syntax checks и проверку frontend/backend build; исправляй по одному пакету, обновляй документы и не заявляй успех без реальных результатов. Проверь авторизацию общего ДЗ (член своей группы может создавать, посторонний не может), Telegram relay/секреты/idempotency и только после этого переходи к безопасной привязке Telegram. Архитектуру хостинга не заменяй: сначала измерь скорость Vercel → SpaceWeb PHP → Supabase/медиа, затем PoC независимого иностранного хостинга, потом российский read-only emergency snapshot. Не меняй production secrets, DNS, webhook, Supabase данные и не запускай платные сервисы без согласования. После каждого прохода обнови ROADMAP, PHASES_STATUS, SYNC_STAMP и UNFINISHED-REGISTRY; если остановишься, оставь точный checkpoint, что сделано, что не проверено и следующий шаг.
