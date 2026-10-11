@@ -53,3 +53,7 @@ Before connecting production deployment to GitHub:
 - Cloudflare account, Worker name, secrets, routes, and environments must be reviewed.
 - Production routing and rollback must be explicit.
 - No authenticated requests may be sent to an HTTP origin or use disabled TLS verification.
+
+## Route inventory
+
+See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md) for route families, risk ordering, per-route worksheet, and cutover gates. This is a family-level inventory; exact methods, handlers, and contracts must be confirmed route-by-route before implementation.
