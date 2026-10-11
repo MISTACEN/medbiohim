@@ -331,6 +331,10 @@ Detailed findings: `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md`.
 - Empty result and backend failure must never be indistinguishable.
 - A production build that ignores TypeScript/ESLint errors is not final proof of correctness.
 
+## Last implementation checkpoint — 2026-10-11
+
+Full current status: [STATUS-2026-10-11.md](STATUS-2026-10-11.md). Note that the old findings below describe the pre-fix state; compare with the checkpoint before treating them as still open. Source changes for student homework creation and fail-closed PHP webhook secret have been made, but runtime/CI proof is still pending.
+
 ## Product contract clarification — 2026-10-11
 
 See the canonical [product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
@@ -340,4 +344,4 @@ See the canonical [product intent and integration contract](MEDBIOHIM-PRODUCT-IN
 - Imported real questions should preserve source/provenance and remain distinguishable from AI-generated or unverified content.
 - Any authenticated member of the same group should be able to add shared homework. UI and API must agree; group membership and academic scope must be checked server-side. Individual completion/submission remains separate from the group assignment.
 - Telegram is both an account entry point (registration/login and opening the site as a Mini App) and an academic chat ingestion channel.
-- Open findings: checked homework UI/API still restrict creation to privileged roles/starosta; PHP webhook secret validation is fail-open if no secret is configured; complete Telegram registration/account-linking/Mini App flow is not proven. These are work items, not completed features.
+- Historical pre-fix findings: the homework UI/API role restriction and PHP fail-open secret check were addressed in source on 2026-10-11. Runtime/CI proof remains pending. Complete Telegram registration/account-linking/Mini App flow is still not implemented.
