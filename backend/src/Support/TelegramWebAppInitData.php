@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Medbiohim\\Support;
+namespace Medbiohim\Support;
 
 /**
  * Validates Telegram Mini App initData before any Telegram identity is trusted.
