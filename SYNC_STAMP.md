@@ -1,3 +1,9 @@
+## Browser extension — resilient extraction pass (2026-10-11)
+
+- Commit `1d0d923dd40ad955207cf55acaa38bc96efb4e9e`: improved active-tab extraction with multiple DOM/ARIA selectors, option label associations, likely-question-root scoring and clearer manual fallback.
+- Best-effort parsing of user-accessible visible content, not universal support. It does not bypass login, CAPTCHA, paywalls, anti-bot systems or inaccessible content. OCR and specialized source adapters remain future work.
+- No host permissions, cookies/history access, automatic uploads or production data writes added. CI/browser runtime verification remains pending.
+
 ## Browser extension — authenticated search answer groundwork (2026-10-11)
 
 - `backend/src/Services/SearchService.php`: authenticated search result includes stored answer text for published `questions` and `exam_questions`.
