@@ -84,3 +84,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - The route requires JSON, limits the body to 16 KiB, rejects missing/oversized refresh tokens, refuses non-HTTPS origins and redirects, and fails closed when configuration is absent.
 - Session response fields follow the PHP `SupabaseAuth::normalizeSession()` contract; role comes only from server-controlled `app_metadata`, never `user_metadata`.
 - Added helper and route regression tests. The newest test suite still needs a successful Node/GitHub Actions run; no Worker deployment has occurred.
+
+## Auth route migration — Pass 5
+
+- Added `POST /api/v1/auth/recover` using Supabase Auth recovery over HTTPS.
+- Uses a fixed callback path, `/auth/callback`, on the configured HTTPS app origin; callers cannot supply an arbitrary redirect URL.
+- Normalizes Supabase 4xx responses to `{ sent: true }` to avoid exposing whether an email exists. Upstream throttling remains a 429; network/5xx failures are generic.
+- Request JSON is bounded to 16 KiB. Supabase's built-in recovery throttling is relied on for now; configure a Cloudflare rate-limiting binding before production deployment for an additional edge limit.
+- Tests are authored but require a successful Node/GitHub Actions run. The Worker remains undeployed.
