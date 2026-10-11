@@ -71,7 +71,13 @@ final class TelegramWebAppInitData
         $user = null;
         if (isset($fields['user'])) {
             $decoded = json_decode($fields['user'], true);
-            if (!is_array($decoded) || !isset($decoded['id']) || !is_numeric($decoded['id'])) {
+            if (!is_array($decoded) || !array_key_exists('id', $decoded)) {
+                return ['ok' => false, 'error' => 'invalid_user'];
+            }
+            $telegramUserId = $decoded['id'];
+            $validUserId = (is_int($telegramUserId) && $telegramUserId > 0)
+                || (is_string($telegramUserId) && ctype_digit($telegramUserId) && (float) $telegramUserId > 0);
+            if (!$validUserId) {
                 return ['ok' => false, 'error' => 'invalid_user'];
             }
             $user = $decoded;
