@@ -116,3 +116,62 @@ test("replies to private public-command messages with a safe site link", async (
     global.fetch = oldFetch;
   }
 });
+
+
+test("forwards group homework updates to the PHP API using the webhook secret", async () => {
+  const previous = {
+    token: process.env.TELEGRAM_BOT_TOKEN,
+    secret: process.env.TELEGRAM_WEBHOOK_SECRET,
+    endpoint: process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL,
+  };
+  process.env.TELEGRAM_BOT_TOKEN = "test-token";
+  process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
+  process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL = "https://api.example.test/api/v1/telegram/webhook";
+  const oldFetch = global.fetch;
+  let forwarded;
+  global.fetch = async (url, init) => {
+    assert.equal(url, process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL);
+    forwarded = { headers: init.headers, body: JSON.parse(init.body) };
+    return { ok: true, status: 200 };
+  };
+  try {
+    const update = { update_id: 987, message: { message_id: 2, chat: { id: -100123, type: "supergroup" }, text: "К следующему занятию выучить тему" } };
+    const res = makeResponse();
+    await webhook(makeRequest({ body: update }), res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.forwarded, true);
+    assert.equal(forwarded.headers["x-telegram-bot-api-secret-token"], "test-secret");
+    assert.deepEqual(forwarded.body, update);
+  } finally {
+    global.fetch = oldFetch;
+    if (previous.token === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = previous.token;
+    if (previous.secret === undefined) delete process.env.TELEGRAM_WEBHOOK_SECRET; else process.env.TELEGRAM_WEBHOOK_SECRET = previous.secret;
+    if (previous.endpoint === undefined) delete process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL; else process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL = previous.endpoint;
+  }
+});
+
+test("does not relay group updates when homework integration is not configured", async () => {
+  const previous = {
+    token: process.env.TELEGRAM_BOT_TOKEN,
+    secret: process.env.TELEGRAM_WEBHOOK_SECRET,
+    endpoint: process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL,
+  };
+  process.env.TELEGRAM_BOT_TOKEN = "test-token";
+  process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
+  delete process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
+  const oldFetch = global.fetch;
+  let called = false;
+  global.fetch = async () => { called = true; return { ok: true, status: 200 }; };
+  try {
+    const res = makeResponse();
+    await webhook(makeRequest({ body: { message: { message_id: 3, chat: { id: -100123, type: "group" }, text: "Домашнее задание" } }), res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.forwarded, false);
+    assert.equal(called, false);
+  } finally {
+    global.fetch = oldFetch;
+    if (previous.token === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = previous.token;
+    if (previous.secret === undefined) delete process.env.TELEGRAM_WEBHOOK_SECRET; else process.env.TELEGRAM_WEBHOOK_SECRET = previous.secret;
+    if (previous.endpoint === undefined) delete process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL; else process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL = previous.endpoint;
+  }
+});
