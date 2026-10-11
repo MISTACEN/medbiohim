@@ -217,7 +217,7 @@ export async function handleRequest(request, env) {
   if (message.chat.type !== "private") return json({ ok: true, ignored: true });
 
   const text = typeof message.text === "string" ? message.text.trim() : "";
-  const linkStart = text.match(/^\\/start(?:@[^\\s]+)?\\s+link_([a-f0-9]{64})$/i);
+  const linkStart = text.match(/^\\/start(?:@[^\\s]+)?\\s+link_([a-f0-9]{48})$/i);
   if (linkStart) {
     try {
       await confirmAccountLink(env, message, linkStart[1].toLowerCase());
