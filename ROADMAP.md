@@ -2351,3 +2351,12 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - Route-family inventory and mandatory migration gates: [docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md](docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md).
 
 - 🔴 Latest verification attempt after adding the Cloudflare API scaffold: workflow run [38146062456](https://github.com/MISTACEN/medbiohim/actions/runs/38146062456) failed before executing any step; job metadata shows `runner_id: 0`, empty `runner_name`, and `steps: []`. The new `npm test` command therefore did not run. This confirms the runner-allocation blocker persists; it does not indicate a test assertion failure.
+
+
+## Cloudflare API migration — Pass 1 (2026-10-12)
+
+- 🟢 Implemented the first two public, read-only PHP-contract routes in the isolated Worker: **GET /api/v1** and **GET /api/v1/ping**. They preserve the PHP success envelope and expected metadata fields without Supabase access.
+- 🟢 Added regression tests for response shape, environment/build values, UTC timestamp, trailing-slash normalization, non-GET behavior, CORS and no-proxy behavior. Local Node test run: **7/7 passing** for the isolated Worker test suite.
+- 🟡 GitHub Actions remains unverified because runner allocation previously failed before any step; Wrangler dry-run/deployment verification also remains open.
+- 🔴 Shadow Worker is not deployed or wired to the frontend. SpaceWeb remains active; no production DNS, API URL, database permissions, Telegram webhook, or secrets changed.
+- Next: verify the Worker build configuration and Wrangler dry-run in Cloudflare; then migrate HealthChecker only after reviewing public disclosure of runtime/configuration metadata. Proceed afterward to authenticated reads with server-side Supabase JWT validation and RLS parity.
