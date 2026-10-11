@@ -164,7 +164,7 @@ test("does not relay group updates when homework integration is not configured",
   global.fetch = async () => { called = true; return { ok: true, status: 200 }; };
   try {
     const res = makeResponse();
-    await webhook(makeRequest({ body: { message: { message_id: 3, chat: { id: -100123, type: "group" }, text: "Домашнее задание" } }), res);
+    await webhook(makeRequest({ body: { message: { message_id: 3, chat: { id: -100123, type: "group" }, text: "Домашнее задание" } } }), res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.forwarded, false);
     assert.equal(called, false);
