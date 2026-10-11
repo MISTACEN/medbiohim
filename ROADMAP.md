@@ -2163,6 +2163,9 @@ Canonical product intent and integration rules are recorded in [MEDBIOHIM produc
 2. Completed source changes: authenticated students may create shared homework in their own group; server-side group membership resolution remains required; schedule UI exposes the existing create flow to signed-in users.
 3. Next: verify PHP syntax/tests on a functioning runner, then test member/non-member authorization and the full Telegram webhook flow. CI currently fails before steps, so no test pass is claimed.
 4. Then implement secure Telegram account linking/registration and launching the existing site as a Mini App, reusing the current site rather than building a duplicate interface.
+### Project checkpoint — 2026-10-11
+- Full state snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). This is the hand-off source of truth for latest code edits, known historical risks, what remains unverified, and the exact continuation order.
+
 ### Pass 79 — Telegram webhook consolidation and relay
 - Node/Vercel is the single webhook target for the Telegram bot. Added optional HTTPS forwarding of group/supergroup updates to the PHP `/api/v1/telegram/webhook`, authenticated with the shared webhook secret.
 - Added Node tests for relay success and safe no-configuration behavior; tightened Mini App initData tests and Telegram user ID validation.
