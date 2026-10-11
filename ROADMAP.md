@@ -1,3 +1,10 @@
+## Browser extension — authenticated answer display groundwork (2026-10-11)
+
+- 🟢 Existing authenticated global search now includes the stored answer field for published `questions` and `exam_questions` results; the search page renders it behind an explicit “Показать ответ” disclosure. It does not expose answer keys for trainer cards.
+- 🟡 Bridge still opens the MEDBIOHIM search page rather than calling a protected API from the extension side panel. This avoids copying or storing site bearer tokens in the extension; direct in-panel lookup needs an explicit safe auth handoff design.
+- 🟡 Search result answer display depends on the PHP API deployment being current and on user authentication; CI runner dispatch remains blocked, so runtime verification is pending.
+- ⬜ Next: design authenticated side-panel lookup without copying tokens into extension storage; then implement pending candidate capture, source trust states, answer provenance and admin review journal. Never treat selected option/score-only as answer evidence.
+
 ## Telegram on Cloudflare — prototype added, production switch pending (2026-10-11)
 
 - Added isolated Worker implementation under `integrations/telegram-bot-cloudflare/`: `GET /health`, secret-protected `POST /api/webhook`, public commands, optional HTTPS relay to existing PHP homework endpoint, bounded request size and safe errors.
