@@ -13,6 +13,18 @@ function json(body, status = 200, extraHeaders = {}) {
   });
 }
 
+function success(data, status = 200) {
+  return json({ ok: true, data, requestId: crypto.randomUUID() }, status);
+}
+
+function notFound() {
+  return json({
+    ok: false,
+    error: { code: "NOT_FOUND", message: "Endpoint not found" },
+    requestId: crypto.randomUUID(),
+  }, 404);
+}
+
 function allowedOrigin(request, env) {
   const origin = request.headers.get("origin");
   if (!origin) return null;
@@ -37,6 +49,7 @@ function withCors(response, origin) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const pathname = url.pathname !== "/" ? url.pathname.replace(/\/+$/, "") : "/";
     const origin = allowedOrigin(request, env);
 
     if (request.method === "OPTIONS") {
@@ -46,7 +59,7 @@ export default {
       return withCors(new Response(null, { status: 204, headers: { "cache-control": "no-store" } }), origin);
     }
 
-    if (url.pathname === "/health" || url.pathname === `${API_PREFIX}/health`) {
+    if (pathname === "/health" || pathname === `${API_PREFIX}/health`) {
       if (request.method !== "GET" && request.method !== "HEAD") {
         return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED" } }, 405, { allow: "GET, HEAD" }), origin);
       }
@@ -59,7 +72,33 @@ export default {
       }), origin);
     }
 
-    if (url.pathname.startsWith(API_PREFIX)) {
+        // First contract-matched PHP routes. They are public, read-only metadata and
+    // deliberately do not touch Supabase, user data, or the SpaceWeb origin.
+    if (pathname === API_PREFIX || pathname === `${API_PREFIX}/ping`) {
+      if (request.method !== "GET") {
+        return withCors(notFound(), origin);
+      }
+
+      const build = env.MEDBIOHIM_BUILD || "unknown";
+      if (pathname === API_PREFIX) {
+        return withCors(success({
+          name: "MEDBIOHIM API",
+          version: "v1",
+          build,
+          phase: "D",
+          endpoints: ["auth, me, groups, subjects, tests, homeworks, files"],
+        }), origin);
+      }
+
+      return withCors(success({
+        pong: true,
+        build,
+        env: env.APP_ENV || "local",
+        time: new Date().toISOString().replace(/Z$/, "+00:00"),
+      }), origin);
+    }
+
+    if (pathname.startsWith(API_PREFIX)) {
       // Intentionally do not forward to SpaceWeb: its current HTTPS origin is not trusted.
       // New routes must be implemented and tested here before any traffic is switched.
       return withCors(json({
