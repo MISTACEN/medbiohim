@@ -1478,3 +1478,12 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟢 Added route-family migration inventory and per-route checklist: `docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`. It explicitly marks exact route contracts and runtime behavior as pending review.
 
 - 🔴 Latest verification attempt after adding the Cloudflare API scaffold: workflow run [38146062456](https://github.com/MISTACEN/medbiohim/actions/runs/38146062456) failed before executing any step; job metadata shows `runner_id: 0`, empty `runner_name`, and `steps: []`. The new `npm test` command therefore did not run. This confirms the runner-allocation blocker persists; it does not indicate a test assertion failure.
+
+
+## Cloudflare API migration — Pass 1 (2026-10-12)
+
+- 🟢 Shadow Worker implements contract-tested **GET /api/v1** and **GET /api/v1/ping** based on backend/config/routes/health.php; neither route calls Supabase or the current SpaceWeb API.
+- 🟢 Isolated Node test suite: 7/7 passing locally, including metadata response contracts, trailing slash, non-GET handling, CORS allowlist, and confirmation that unmigrated routes are not proxied.
+- 🟡 GitHub Actions result is still not verified due the previously documented runner allocation failure. Wrangler/Cloudflare deployment verification remains pending.
+- 🔒 No production deployment, Vercel API URL change, DNS change, database/RLS change, or Telegram webhook switch.
+- ⬜ Next: confirm Cloudflare Workers Builds runs from integrations/cloudflare-api (not the Telegram folder) and validate a dry run. Keep the Worker isolated until explicitly approved for staging traffic.
