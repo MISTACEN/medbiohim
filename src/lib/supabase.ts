@@ -50,15 +50,6 @@ export function parseOAuthTokensFromUrl(href: string): {
 
 export { SUPABASE_URL, SUPABASE_ANON };
 
-/** Start Telegram Login via Supabase custom OIDC provider. */
-export function startTelegramOAuth(redirectTo?: string) {
-  if (typeof window === "undefined") return;
-  const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
-  const redirect = redirectTo || `${appOrigin}/auth/callback`;
-  const url = `${SUPABASE_URL}/auth/v1/authorize?provider=custom:telegram&redirect_to=${encodeURIComponent(redirect)}`;
-  window.location.href = url;
-}
-
 /** Start VK OAuth via Supabase (requires VK provider enabled in dashboard). */
 export function startVkOAuth(redirectTo?: string) {
   if (typeof window === "undefined") return;
