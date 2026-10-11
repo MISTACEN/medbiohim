@@ -47,3 +47,25 @@ The newest observed run for **Telegram Worker checks** was https://github.com/MI
 4. Finish the account-link migration review and backup/checklist before applying it to production.
 5. Only after a trusted HTTPS origin exists, configure the Worker relay and test linking end-to-end.
 6. Revisit A/B/C/D only if a free, secure HTTPS route cannot be provided by the current host.
+
+
+## Update — user approved Cloudflare migration preparation (2026-10-12)
+
+The user has now chosen this execution strategy:
+
+- Keep SpaceWeb as the active PHP API host for now.
+- Prepare a gradual migration of API functionality to Cloudflare Workers.
+- Do not migrate production traffic, change the frontend API base URL, alter DNS, rotate webhooks, or deploy a replacement API as part of preparation.
+- Do not proxy sensitive traffic from a Worker to the current SpaceWeb URL: the HTTPS certificate is untrusted and HTTPS redirects to HTTP.
+- Keep Supabase as the existing data/auth layer and B2/SpaceWeb media storage unchanged until route-by-route dependencies are mapped.
+
+Source preparation now exists under \`integrations/cloudflare-api/\`. It is a shadow scaffold, not a live replacement. Its health endpoint declares \`productionTrafficEnabled: false\`; unimplemented API routes return \`501 ROUTE_NOT_MIGRATED\` rather than forwarding to the PHP origin. Tests are authored but remain unverified until a runner actually executes them.
+
+Next sequence:
+1. Restore GitHub Actions runner allocation and run the scaffold tests.
+2. Inventory all PHP routes, methods, auth requirements, role/ownership rules, DB/RLS use, media behavior, and error/status contracts.
+3. Add fixture-based contract tests for the current PHP behavior.
+4. Migrate public read-only endpoints first, then authenticated reads, then writes and webhook/media routes.
+5. Validate JWTs and enforce ownership/roles server-side; never trust client-supplied role/user IDs or put Supabase service keys in frontend code.
+6. Deploy a staging Worker only after CI is running; keep the frontend pointed at SpaceWeb until end-to-end parity and rollback are proven.
+7. Switch traffic gradually only after the user approves the cutover and all release gates are green.
