@@ -77,3 +77,10 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added `POST /api/v1/auth/logout`, using the caller's Bearer access token and Supabase Auth `/auth/v1/logout` over HTTPS.
 - Requires `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Cloudflare Worker secrets/vars; fails closed if missing, rejects non-HTTPS URLs and redirects, applies a timeout, and does not use the service-role key.
 - Regression tests cover missing bearer token, wrong method, missing config, upstream status handling and secret-safe errors. The route has not been deployed; configure bindings only in the Cloudflare dashboard when staging deployment is approved.
+
+## Auth route migration — Pass 4
+
+- Added `POST /api/v1/auth/refresh`, exchanging the supplied `refresh_token` through Supabase Auth over HTTPS.
+- The route requires JSON, limits the body to 16 KiB, rejects missing/oversized refresh tokens, refuses non-HTTPS origins and redirects, and fails closed when configuration is absent.
+- Session response fields follow the PHP `SupabaseAuth::normalizeSession()` contract; role comes only from server-controlled `app_metadata`, never `user_metadata`.
+- Added helper and route regression tests. The newest test suite still needs a successful Node/GitHub Actions run; no Worker deployment has occurred.
