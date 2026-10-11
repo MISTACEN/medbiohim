@@ -2,10 +2,12 @@
 
 ## Текущее состояние (11 октября 2026)
 
-- Worker развёрнут: `medbiohim-telegram-test`.
-- Адрес: https://medbiohim-telegram-test.ryazansevegor.workers.dev
-- Проверка: https://medbiohim-telegram-test.ryazansevegor.workers.dev/health
-- Webhook endpoint: https://medbiohim-telegram-test.ryazansevegor.workers.dev/api/webhook
+Worker `medbiohim-telegram` теперь развёрнут как основная beta-версия; прежний `medbiohim-telegram-test` оставлен как резервный Worker. Новый Worker пока не получает обновления Telegram, пока в нём не настроены секреты и не зарегистрирован webhook. Это сохраняет возможность отката.
+
+- Worker развёрнут: `medbiohim-telegram`.
+- Адрес: https://medbiohim-telegram.ryazansevegor.workers.dev
+- Проверка: https://medbiohim-telegram.ryazansevegor.workers.dev/health
+- Webhook endpoint: https://medbiohim-telegram.ryazansevegor.workers.dev/api/webhook
 - В Worker уже существуют секреты `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` (их значения не хранятся в репозитории).
 - Регистрация webhook в Telegram — отдельный шаг. Не считайте основной бот переключённым, пока скрипт не подтвердит URL через `getWebhookInfo`.
 - Для регистрации добавлен интерактивный локальный скрипт `scripts/register-webhook.mjs`. Он проверяет health Worker и токен через `getMe`, устанавливает webhook, затем проверяет результат через `getWebhookInfo`. Токен и secret вводятся в скрытом режиме и не выводятся скриптом.
@@ -18,7 +20,7 @@
 
 ## Перед переключением: сверить секреты Worker
 
-Поскольку токен мог быть перевыпущен через BotFather, сначала убедитесь, что Cloudflare использует именно актуальный токен. Откройте https://dash.cloudflare.com/ → аккаунт MEDBIOHIM → **Workers & Pages** → **medbiohim-telegram-test** → **Settings** → **Variables and Secrets**. В разделе secrets задайте/обновите `TELEGRAM_BOT_TOKEN` актуальным токеном через **Edit** или **Add** (тип Secret, не Text/Plaintext), сохраните и дождитесь завершения обновления. Не публикуйте значение. Если у вас нет точного значения `TELEGRAM_WEBHOOK_SECRET`, задайте новый секрет по инструкции ниже и используйте его же в скрипте.
+Поскольку токен мог быть перевыпущен через BotFather, сначала убедитесь, что Cloudflare использует именно актуальный токен. Откройте https://dash.cloudflare.com/ → аккаунт MEDBIOHIM → **Workers & Pages** → **medbiohim-telegram** → **Settings** → **Variables and Secrets**. В разделе secrets задайте/обновите `TELEGRAM_BOT_TOKEN` актуальным токеном через **Edit** или **Add** (тип Secret, не Text/Plaintext), сохраните и дождитесь завершения обновления. Не публикуйте значение. Если у вас нет точного значения `TELEGRAM_WEBHOOK_SECRET`, задайте новый секрет по инструкции ниже и используйте его же в скрипте.
 
 ## Что нужно сделать один раз на компьютере Windows
 
@@ -35,11 +37,11 @@
 6. Введите актуальный токен основного бота и значение `TELEGRAM_WEBHOOK_SECRET`, которое задано в Cloudflare Worker. Ввод скрыт: символы не отображаются. Не вводите токен в обычный текст чата.
 7. Дождитесь сообщения **«УСПЕХ: Telegram подтвердил новый webhook»**. Если скрипт сообщил ошибку, не повторяйте вслепую — скопируйте только текст ошибки, предварительно убедившись, что в нём нет секретов.
 8. Откройте Telegram, найдите своего бота, отправьте `/start`, затем `/help`. Проверьте кнопки и команды `/schedule`, `/tests`, `/subjects`, `/materials`.
-9. Проверьте https://medbiohim-telegram-test.ryazansevegor.workers.dev/health — ожидается JSON с `"ok":true` и `"configured":true`. Открытие `/api/webhook` в браузере методом GET вернёт `METHOD_NOT_ALLOWED`; это нормально, потому что Telegram отправляет POST.
+9. Проверьте https://medbiohim-telegram.ryazansevegor.workers.dev/health — ожидается JSON с `"ok":true` и `"configured":true`. Открытие `/api/webhook` в браузере методом GET вернёт `METHOD_NOT_ALLOWED`; это нормально, потому что Telegram отправляет POST.
 
 ### Если не знаете значение TELEGRAM_WEBHOOK_SECRET
 
-Не пытайтесь угадать его. Откройте https://dash.cloudflare.com/ → выберите аккаунт MEDBIOHIM → **Workers & Pages** → `medbiohim-telegram-test` → **Settings** → **Variables and Secrets**. Найдите `TELEGRAM_WEBHOOK_SECRET`. Если интерфейс не позволяет посмотреть сохранённое значение (обычно секреты скрыты), создайте новый случайный секрет, состоящий только из латинских букв, цифр, `_` и `-`; сохраните его в менеджере паролей, задайте его как secret `TELEGRAM_WEBHOOK_SECRET` для Worker и затем используйте то же значение в скрипте. После изменения подождите завершения обновления Worker и снова проверьте `/health`.
+Не пытайтесь угадать его. Откройте https://dash.cloudflare.com/ → выберите аккаунт MEDBIOHIM → **Workers & Pages** → `medbiohim-telegram` → **Settings** → **Variables and Secrets**. Найдите `TELEGRAM_WEBHOOK_SECRET`. Если интерфейс не позволяет посмотреть сохранённое значение (обычно секреты скрыты), создайте новый случайный секрет, состоящий только из латинских букв, цифр, `_` и `-`; сохраните его в менеджере паролей, задайте его как secret `TELEGRAM_WEBHOOK_SECRET` для Worker и затем используйте то же значение в скрипте. После изменения подождите завершения обновления Worker и снова проверьте `/health`.
 
 Если перевыпускали токен через BotFather, обновите и `TELEGRAM_BOT_TOKEN` в этом же разделе Cloudflare. Значения обоих секретов должны совпадать с теми, что использует Worker.
 
