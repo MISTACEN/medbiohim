@@ -1352,3 +1352,10 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟡 Still requires BotFather domain configuration, webhook registration, mobile Telegram smoke test and correct production URL configuration.
 - 🔴 Telegram identity validation, account linking and registration are not implemented by this button; do not describe the account flow as complete.
 - Cost target: Telegram Bot API is free; Vercel Hobby may host the small webhook and current site subject to current platform limits; existing PHP group ingestion remains on the existing backend/hosting. AI-provider usage is optional and may cost money, so baseline behavior must remain useful without a paid AI API.
+
+### Hosting resilience and free-tier plan — 2026-10-11
+- 🟢 Architecture documented in `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`.
+- 🟡 Current primary remains Vercel + SpaceWeb PHP API + Supabase + existing media storage.
+- 🟡 Next: restore CI, measure network/API/media latency, test Cloudflare Worker webhook PoC, audit Next.js compatibility for a secondary foreign host.
+- 🔵 Russian emergency static snapshot is lower priority and must be read-only, public-data-only, and show its last-updated timestamp.
+- 🔴 No failover deployment or free-tier quota/card requirement has been verified yet.
