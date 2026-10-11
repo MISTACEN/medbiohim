@@ -100,3 +100,10 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - When configured, the route limits attempts by Cloudflare's `cf-connecting-ip`, validates bounded JSON, exchanges credentials over HTTPS, and normalizes invalid credentials to a generic 401.
 - **Not contract-complete:** the PHP handler also attempts DB-backed profile synchronization and returns `profile` and `roles` when available. This Worker pass does not yet implement that database/RLS behavior. Do not route production login traffic here until profile/role parity is migrated and tested.
 - Added unit and route tests for login normalization, invalid credentials, upstream failures, and the required limiter. The suite has not yet been confirmed by a successful Node/GitHub Actions run.
+
+## Auth route migration — Pass 7 (partial registration)
+
+- Added `POST /api/v1/auth/register` and a Supabase signup helper with email/name/password validation, bounded request bodies, HTTPS-only upstream, generic signup errors and `needs_email_confirm` handling.
+- The route fails closed with 503 unless Cloudflare Rate Limiting binding `AUTH_REGISTER_LIMITER` is configured.
+- **Not contract-complete:** the PHP handler attempts DB-backed profile creation and default student-role assignment after Supabase signup. The Worker does not yet do that. Do not switch registration traffic until profile creation, default role assignment, RLS and email-confirmation behavior are migrated and tested.
+- Unit and route tests are authored; full execution remains unverified until CI or a reproducible local run succeeds.
