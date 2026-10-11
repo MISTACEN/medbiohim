@@ -2315,3 +2315,13 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - NOT live/verified yet: migration has not been confirmed applied; real SpaceWeb API origin is not identified; Worker variable `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` must be set; PHP/Worker deploy and E2E tests remain pending.
 - Telegram-only sign-in is a separate pending phase. Do not claim full Telegram login yet: a linked Telegram ID does not itself create a valid Supabase Auth session.
 - Details and setup checklist: `docs/TELEGRAM-ACCOUNT-INTEGRATION-2026-10-11.md`.
+
+
+## Telegram onboarding/menu and Cloudflare GitHub CI — 2026-10-11
+- Worker onboarding now directs new users to sign in/register on the site, then open Settings → Telegram; private account data is not shown before linking.
+- `/start` and `/help` register the Telegram native command menu with `setMyCommands` and show inline buttons for the site, login/registration, and linking settings.
+- Added `.github/workflows/telegram-worker-checks.yml` to run `npm test` under `integrations/telegram-bot-cloudflare` on relevant pushes/PRs. The run result must be inspected before claiming tests pass.
+- Wrangler target aligned to existing Worker name `medbiohim-telegram` to avoid creating a second Worker when GitHub auto-deploy is enabled.
+- Deployment guide: `docs/CLOUDFLARE-GITHUB-TELEGRAM-DEPLOYMENT.md`.
+- The user-provided PHP health URL is HTTP. Cloudflare Worker relays require HTTPS, and the HTTPS endpoint has not yet been confirmed reachable. Do not set a plain-HTTP relay variable.
+- Telegram-only website login is NOT implemented/verified yet. The former `custom:telegram` Supabase OAuth link was removed from the login page because it is not a real login flow without a configured, verified OIDC provider. Existing Google/email login remains; after signing in, Telegram linking is the supported current flow.
