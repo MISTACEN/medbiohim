@@ -2360,3 +2360,13 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 GitHub Actions remains unverified because runner allocation previously failed before any step; Wrangler dry-run/deployment verification also remains open.
 - 🔴 Shadow Worker is not deployed or wired to the frontend. SpaceWeb remains active; no production DNS, API URL, database permissions, Telegram webhook, or secrets changed.
 - Next: verify the Worker build configuration and Wrangler dry-run in Cloudflare; then migrate HealthChecker only after reviewing public disclosure of runtime/configuration metadata. Proceed afterward to authenticated reads with server-side Supabase JWT validation and RLS parity.
+
+
+## Cloudflare API authentication foundation — Pass 2 (2026-10-12)
+
+- 🟢 Added `integrations/cloudflare-api/src/supabase-auth.js`: server-side Supabase Auth token validation over HTTPS, requiring the public anon key, enforcing a timeout, refusing redirects, and returning only the verified identity (ID/email).
+- 🟢 Added seven isolated regression tests for missing bearer token, missing configuration, non-HTTPS origin, successful validation, expired token, upstream failure, and secret-safe error handling. Local Node run for both Worker suites: **14/14 passing** before adding the helper to `main`.
+- 🔒 The helper is not yet wired to a route; it does not grant roles or bypass RLS, and it never uses a service-role key. No live Supabase setting changed.
+- 🟡 GitHub Actions runner allocation and Wrangler/Cloudflare deployment checks remain unverified.
+- 🔴 Cloudflare account inspection found no deployed `medbiohim-api-shadow` Worker. A Workers Builds configuration was not found for the current Telegram Worker tag during this check; a filled UI form is not proof of a saved, successful build.
+- Next: wire the helper only into a route after reviewing that route's data contract and database-level authorization; separately configure the API Worker build with repository root `/integrations/cloudflare-api/` when a staging deploy is approved.
