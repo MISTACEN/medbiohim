@@ -60,7 +60,9 @@ test("rejects malformed JSON updates", async () => {
   assert.equal(res.body.error, "INVALID_UPDATE");
 });
 
-test("ignores group messages without calling Telegram API", async () => {
+test("ignores group messages without calling Telegram API when relay is not configured", async () => {
+  const oldEndpoint = process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
+  delete process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
   process.env.TELEGRAM_BOT_TOKEN = "test-token";
   process.env.TELEGRAM_WEBHOOK_SECRET = "test-secret";
   const oldFetch = global.fetch;
@@ -74,6 +76,8 @@ test("ignores group messages without calling Telegram API", async () => {
     assert.equal(called, false);
   } finally {
     global.fetch = oldFetch;
+    if (oldEndpoint === undefined) delete process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
+    else process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL = oldEndpoint;
   }
 });
 
