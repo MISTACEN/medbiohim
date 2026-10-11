@@ -6,6 +6,7 @@ on:
     paths:
       - "integrations/browser-extension/**"
       - "integrations/telegram-bot/**"
+      - "integrations/telegram-bot-cloudflare/**"
       - ".github/workflows/optional-integrations-check.yml"
   pull_request:
     branches: [main, beta]
@@ -28,6 +29,9 @@ jobs:
           node-version: 22
       - name: Test Telegram bot public commands and webhook
         working-directory: integrations/telegram-bot
+        run: npm test
+      - name: Test Cloudflare Workers Telegram webhook
+        working-directory: integrations/telegram-bot-cloudflare
         run: npm test
       - name: Validate extension JavaScript syntax
         run: node --check integrations/browser-extension/popup.js
