@@ -39,3 +39,11 @@ Connecting GitHub can cause each commit to `main` to deploy the Worker. The curr
 - Source contains account linking, onboarding buttons, and a native Telegram command menu registration on `/start` and `/help`.
 - Telegram-only website login is not yet implemented as a verified session exchange. Do not treat the old Supabase `custom:telegram` OAuth URL as functional unless a real, tested OIDC provider is configured.
 - The API health URL supplied for SpaceWeb is HTTP and has not been verified as HTTPS in this session. The Worker relay cannot use plain HTTP.
+
+
+## Updated verification checkpoint (2026-10-11)
+
+- SpaceWeb HTTP health returns 200, but HTTPS certificate verification fails and HTTPS redirects back to HTTP. Do not set either PHP relay variable until a trusted HTTPS origin is available.
+- Cloudflare account inspection found no DNS zones. Do not assume the existing workers.dev address can secure a plain-HTTP origin.
+- GitHub Actions run https://github.com/MISTACEN/medbiohim/actions/runs/38143942074 ended before any job steps (runner_id=0, empty runner_name, steps=[]). Do not enable auto-deploy based on an unexecuted test suite.
+- See docs/HOSTING-HTTPS-DECISION-2026-10-11.md for the agreed future hosting order and current audit.

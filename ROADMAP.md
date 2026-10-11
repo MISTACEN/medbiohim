@@ -2325,3 +2325,15 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - Deployment guide: `docs/CLOUDFLARE-GITHUB-TELEGRAM-DEPLOYMENT.md`.
 - The user-provided PHP health URL is HTTP. Cloudflare Worker relays require HTTPS, and the HTTPS endpoint has not yet been confirmed reachable. Do not set a plain-HTTP relay variable.
 - Telegram-only website login is NOT implemented/verified yet. The former `custom:telegram` Supabase OAuth link was removed from the login page because it is not a real login flow without a configured, verified OIDC provider. Existing Google/email login remains; after signing in, Telegram linking is the supported current flow.
+
+
+## Hosting / HTTPS contingency plan (2026-10-11)
+
+- **No hosting migration now.** Preserve Vercel + current PHP API + Supabase; work on code, CI, and security first.
+- Future order: **A)** Cloudflare HTTPS in front of the API only if we control a domain and can secure the origin; **B)** another free PHP host with valid HTTPS; **C)** separate API hosting while retaining SpaceWeb for files where practical; **D)** SpaceWeb as the permanent API host is the absolute last resort.
+- Live diagnostic: SpaceWeb health endpoint returns HTTP 200 and reports PHP 8.4.21, Supabase connection, required extensions and B2 config. HTTPS fails Windows certificate trust (SEC_E_UNTRUSTED_ROOT); when bypassed for diagnosis only, it returns 302 to HTTP. Do not send credentials or account-link tokens over HTTP.
+- Cloudflare account inspection found no DNS zones, only the existing Telegram Workers. The temporary temp.swtest.ru hostname cannot simply be added as our own zone; a secure Cloudflare origin path is not yet available.
+- Telegram account-link migration is in GitHub but not in the live Supabase migration list; tables are not present. No Supabase Edge Functions are deployed. Do not claim linking is live.
+- GitHub Actions run 38143942074 for Telegram Worker checks failed before executing steps: runner_id=0, runner_name empty, steps empty. Treat tests as not executed; fix runner allocation before interpreting code tests.
+- Supabase advisor snapshot: 1 security ERROR (SECURITY DEFINER view), 2 warnings (SECURITY DEFINER RPC callable by authenticated users; leaked-password protection disabled), 44 unindexed foreign keys and 67 unused-index notices. Review security findings first; do not drop indexes without workload review.
+- Detailed decision record: docs/HOSTING-HTTPS-DECISION-2026-10-11.md.

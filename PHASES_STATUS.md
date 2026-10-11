@@ -1452,3 +1452,15 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - Deployment guide: `docs/CLOUDFLARE-GITHUB-TELEGRAM-DEPLOYMENT.md`.
 - The user-provided PHP health URL is HTTP. Cloudflare Worker relays require HTTPS, and the HTTPS endpoint has not yet been confirmed reachable. Do not set a plain-HTTP relay variable.
 - Telegram-only website login is NOT implemented/verified yet. The former `custom:telegram` Supabase OAuth link was removed from the login page because it is not a real login flow without a configured, verified OIDC provider. Existing Google/email login remains; after signing in, Telegram linking is the supported current flow.
+
+
+## Hosting / HTTPS / CI audit checkpoint (2026-10-11)
+
+- 🟢 Confirmed SpaceWeb HTTP health endpoint returns 200 and reports PHP 8.4.21, Supabase connected, extensions present and B2 configured.
+- 🔴 HTTPS not usable safely yet: Windows reports SEC_E_UNTRUSTED_ROOT; with diagnostic-only certificate bypass, HTTPS responds 302 to HTTP. No sensitive API traffic over HTTP.
+- 🟡 Hosting unchanged by decision. Future preference: A) secure Cloudflare route with controlled domain and secure origin; B) free PHP host with trusted HTTPS; C) move API while keeping SpaceWeb files; D) SpaceWeb as permanent API host is the absolute last resort.
+- 🟢 Cloudflare account read-only inspection: zero DNS zones; existing Workers medbiohim-telegram and medbiohim-telegram-test remain present. No DNS or production Worker configuration changed.
+- 🔴 Telegram account-linking migration is not applied to live Supabase; tables absent in schema inspection; no Supabase Edge Functions deployed. Account linking is source-only/unverified.
+- 🔴 Telegram Worker checks run 38143942074 failed with runner_id=0 and steps=[]; the job never reached npm test. GitHub runner allocation remains the blocker; tests are not considered executed.
+- ⚠️ Supabase advisors: 1 security ERROR (trainer_feed_cards_public SECURITY DEFINER view), 2 warnings (submit_trainer_feed_answer SECURITY DEFINER callable by authenticated role; leaked-password protection disabled), 44 unindexed foreign keys, 67 unused-index notices. Security review first; no blind index drops.
+- Detailed notes: docs/HOSTING-HTTPS-DECISION-2026-10-11.md.

@@ -38,3 +38,11 @@ Source changes are committed to `main`; database migration application, SpaceWeb
 - Deployment guide: `docs/CLOUDFLARE-GITHUB-TELEGRAM-DEPLOYMENT.md`.
 - The user-provided PHP health URL is HTTP. Cloudflare Worker relays require HTTPS, and the HTTPS endpoint has not yet been confirmed reachable. Do not set a plain-HTTP relay variable.
 - Telegram-only website login is NOT implemented/verified yet. The former `custom:telegram` Supabase OAuth link was removed from the login page because it is not a real login flow without a configured, verified OIDC provider. Existing Google/email login remains; after signing in, Telegram linking is the supported current flow.
+
+
+## Hosting/production verification update (2026-10-11)
+
+- SpaceWeb health is confirmed only over HTTP (200). HTTPS currently fails certificate trust and redirects to HTTP when certificate verification is bypassed for diagnostics; do not set the Worker relay URL yet.
+- The live Supabase migration list does not include 20261011120000_telegram_account_linking and schema inspection found neither telegram_accounts nor telegram_account_link_tokens. Migration remains pending review/backup and application.
+- GitHub Actions run https://github.com/MISTACEN/medbiohim/actions/runs/38143942074 has runner_id=0 and no steps; npm test was not demonstrated to have run.
+- Hosting priority is documented in docs/HOSTING-HTTPS-DECISION-2026-10-11.md. No hosting migration was performed.
