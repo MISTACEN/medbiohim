@@ -35,7 +35,10 @@ jobs:
         working-directory: integrations/telegram-bot-cloudflare
         run: npm test
       - name: Validate extension JavaScript syntax
-        run: node --check integrations/browser-extension/popup.js
+        run: |
+          node --check integrations/browser-extension/popup.js
+          node --check integrations/browser-extension/sidepanel.js
+          node --check integrations/browser-extension/background.js
       - name: Validate extension manifest and permission boundary
         run: |
           node -e '
@@ -43,14 +46,15 @@ jobs:
             const assert = require("node:assert/strict");
             const root = "integrations/browser-extension";
             const manifest = JSON.parse(fs.readFileSync(root + "/manifest.json", "utf8"));
-            const html = fs.readFileSync(root + "/popup.html", "utf8");
-            const script = fs.readFileSync(root + "/popup.js", "utf8");
+            const html = fs.readFileSync(root + "/sidepanel.html", "utf8");
+            const script = fs.readFileSync(root + "/sidepanel.js", "utf8");
             assert.equal(manifest.manifest_version, 3);
-            assert.equal(manifest.action.default_popup, "popup.html");
-            assert.equal(manifest.permissions, undefined, "extension must not request permissions");
+            assert.equal(manifest.side_panel.default_path, "sidepanel.html");
+            assert.deepEqual([...manifest.permissions].sort(), ["activeTab", "scripting", "sidePanel"].sort());
             assert.equal(manifest.host_permissions, undefined, "extension must not request host permissions");
-            assert.match(html, /popup\.js/);
+            assert.equal(manifest.background.service_worker, "background.js");
+            assert.match(html, /sidepanel\.js/);
             assert.match(script, /https:\/\/medbiohim\.vercel\.app/);
             assert.doesNotMatch(script, /chrome\.cookies|chrome\.history|localStorage|sessionStorage/);
-            console.log("Extension manifest and minimal-permission checks passed.");
+            console.log("Extension manifest and minimal-permission checks configured.");
           '
