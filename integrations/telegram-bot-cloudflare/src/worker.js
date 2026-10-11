@@ -39,16 +39,30 @@ function commandResponse(text, env) {
   if (!command) return null;
   const commands = {
     start: {
-      text: "Привет! MEDBIOHIM помогает готовиться к занятиям, тестам и экзаменам. Откройте платформу кнопкой ниже или используйте /help. Пока бот не запрашивает личные данные.",
-      webApp: true,
+      text: "Привет! Я бот MEDBIOHIM. Сначала войдите или зарегистрируйтесь на сайте, затем откройте Настройки → Telegram и привяжите этот чат к своему аккаунту. После подтверждения смогу показывать персональное расписание и задания вашей группы. До привязки личные данные не показываю. Команды доступны в меню бота.",
+      menu: true,
+      buttons: [
+        [{ text: "🌐 Открыть MEDBIOHIM", url: new URL("/", origin).toString() }],
+        [{ text: "🔐 Войти / регистрация", url: new URL("/login", origin).toString() }],
+        [{ text: "🔗 Настройки и привязка", url: new URL("/settings", origin).toString() }],
+      ],
     },
     help: {
-      text: "Команды MEDBIOHIM:\n/start — приветствие и кнопка открытия приложения\n/app — открыть MEDBIOHIM внутри Telegram\n/site — открыть платформу\n/schedule — открыть расписание на сайте\n/tests — открыть тесты\n/subjects — открыть предметы и атлас\n/materials — открыть материалы\n/homework — как передать задание из учебной группы\n/privacy — правила приватности",
+      text: "Выберите команду через меню бота или нажмите кнопку ниже. Для персонального расписания и заданий сначала войдите/зарегистрируйтесь на сайте и привяжите Telegram в Настройках.\n\n/site — открыть платформу\n/login — вход или регистрация\n/link — привязка Telegram\n/schedule — расписание\n/tests — тесты\n/subjects — предметы и атлас\n/materials — материалы\n/homework — задания учебной группы\n/privacy — приватность",
+      menu: true,
+      buttons: [
+        [{ text: "🌐 Открыть MEDBIOHIM", url: new URL("/", origin).toString() }],
+        [{ text: "🔐 Войти / регистрация", url: new URL("/login", origin).toString() }],
+        [{ text: "🔗 Привязать Telegram", url: new URL("/settings", origin).toString() }],
+      ],
     },
     homework: {
       text: "Чтобы бот мог разобрать задание, оно должно быть отправлено в подключённую учебную группу, где настроен импорт MEDBIOHIM. Можно прислать текст, фото или документ; подпишите предмет/срок, если они не очевидны. Проверьте результат в платформе. В личном чате эта команда ничего не импортирует.",
     },
     site: { text: "Открыть MEDBIOHIM", path: "/" },
+    login: { text: "Войти или зарегистрироваться в MEDBIOHIM. После входа откройте Настройки → Telegram, чтобы связать аккаунт.", path: "/login" },
+    register: { text: "Создайте аккаунт MEDBIOHIM на сайте, затем откройте Настройки → Telegram и привяжите бота.", path: "/login" },
+    link: { text: "Чтобы привязать Telegram, войдите в MEDBIOHIM и откройте Настройки → Telegram.", path: "/settings" },
     app: { text: "Открыть MEDBIOHIM внутри Telegram", webApp: true },
     schedule: { text: "Открыть расписание MEDBIOHIM", path: "/schedule" },
     tests: { text: "Открыть тесты MEDBIOHIM", path: "/tests" },
@@ -65,6 +79,8 @@ function commandResponse(text, env) {
     text: result.text,
     url: result.path ? new URL(result.path, origin).toString() : null,
     webAppUrl: result.webApp ? new URL("/", origin).toString() : null,
+    buttons: result.buttons || null,
+    menu: result.menu === true,
   };
 }
 
@@ -103,7 +119,32 @@ async function fetchWithTimeout(url, init) {
 
 async function sendTelegramMessage(env, chatId, response) {
   const payload = { chat_id: chatId, text: response.text, disable_web_page_preview: true };
-  if (response.webAppUrl) {
+  if (response.menu) {
+    try {
+      await fetchWithTimeout(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/setMyCommands`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ commands: [
+          { command: "start", description: "Начать и открыть меню" },
+          { command: "login", description: "Войти или зарегистрироваться" },
+          { command: "link", description: "Привязать Telegram к аккаунту" },
+          { command: "site", description: "Открыть сайт MEDBIOHIM" },
+          { command: "schedule", description: "Моё расписание" },
+          { command: "homework", description: "Задания и домашняя работа" },
+          { command: "tests", description: "Тесты и билеты" },
+          { command: "subjects", description: "Предметы и атлас" },
+          { command: "materials", description: "Учебные материалы" },
+          { command: "help", description: "Помощь и список команд" },
+          { command: "privacy", description: "Приватность и данные" }
+        ] }),
+      });
+    } catch {
+      // Do not prevent the user from receiving /start if Telegram menu setup is temporarily unavailable.
+    }
+  }
+  if (response.buttons) {
+    payload.reply_markup = { inline_keyboard: response.buttons };
+  } else if (response.webAppUrl) {
     payload.reply_markup = {
       inline_keyboard: [[{ text: "Открыть MEDBIOHIM", web_app: { url: response.webAppUrl } }]],
     };
