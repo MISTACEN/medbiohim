@@ -692,3 +692,12 @@ Telegram's bot token has one active webhook destination: register it only agains
 5. Implement Telegram initData validation into an actual server endpoint, then one-time account-linking and registration with replay/expiry protection; add negative security tests.
 6. Configure BotFather Web App domain and run Telegram iOS/desktop smoke tests.
 7. Only then mark items complete in this registry and the phase/sync documents.
+
+
+### Whole-project snapshot and hosting resilience — 2026-10-11
+- [x] Added [full state snapshot](STATE-SNAPSHOT-2026-10-11.md) with product intent, current architecture, source changes, open work, CI blocker, historic defects to re-audit, and exact resume order.
+- [x] Added [hosting resilience/free-tier plan](HOSTING-RESILIENCE-AND-FREE-TIERS.md): primary Vercel + Supabase + SpaceWeb + B2 remains unchanged; independent foreign secondary; Russian read-only emergency fallback; Cloudflare Workers as bot-webhook PoC candidate.
+- [ ] Measure the reported slow Vercel-to-SpaceWeb/API/media path before selecting a performance fix.
+- [ ] Confirm current provider free-tier terms from official documentation; the provider limits copied from the user's proposal are not yet verified.
+- [ ] No hosting/DNS/deployment/production secrets/webhook/DB changes were performed for this plan.
+
