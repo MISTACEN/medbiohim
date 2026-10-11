@@ -150,6 +150,12 @@ export default function SearchPage() {
                   </div>
                   <div className="mt-1 font-semibold leading-snug">{hit.title}</div>
                   <p className="mt-1 text-sm text-[var(--muted)] line-clamp-2">{hit.snippet}</p>
+                  {hit.has_answer && hit.answer && (hit.type === "question" || hit.type === "ticket") && (
+                    <details className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-[var(--primary)]">Показать ответ</summary>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{hit.answer}</p>
+                    </details>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Link
                       href={hit.href}
