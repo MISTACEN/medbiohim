@@ -15,6 +15,34 @@ function json(body, status = 200, extraHeaders = {}) {
   });
 }
 
+async function readJsonLimited(request, maxBytes) {
+  if (!request.body) return { ok: true, value: null };
+  const reader = request.clone().body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        return { ok: false, tooLarge: true };
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+  } catch {
+    return { ok: false, invalid: true };
+  }
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false, invalid: true };
+  }
+}
+
 function success(data, status = 200) {
   return json({ ok: true, data, requestId: crypto.randomUUID() }, status);
 }
@@ -91,25 +119,23 @@ export default {
       // Preserve the PHP handler's JSON access_token fallback, with a strict size
       // cap. Authorization headers remain the preferred transport.
       if (!accessToken && request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
-        const length = Number(request.headers.get("content-length") || "0");
-        if (length > 16_384) {
+        const parsed = await readJsonLimited(request, 16_384);
+        if (parsed.tooLarge) {
           return withCors(json({
             ok: false,
             error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" },
             requestId: crypto.randomUUID(),
           }, 413), origin);
         }
-        try {
-          const body = await request.clone().json();
-          if (body && typeof body.access_token === "string") {
-            accessToken = body.access_token.trim();
-          }
-        } catch {
+        if (!parsed.ok) {
           return withCors(json({
             ok: false,
             error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" },
             requestId: crypto.randomUUID(),
           }, 422), origin);
+        }
+        if (parsed.value && typeof parsed.value.access_token === "string") {
+          accessToken = parsed.value.access_token.trim();
         }
       }
 
