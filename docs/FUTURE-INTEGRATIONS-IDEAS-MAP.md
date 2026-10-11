@@ -736,6 +736,10 @@ Bridge использует те же normalized contracts, что и серве
 Правило обновления:
 **любая новая идея, связанная с FESMU/EIOS/Bridge/интерактивными тренажёрами/внешними интеграциями, сначала фиксируется здесь, затем получает конкретную задачу в ROADMAP и только после этого реализуется.**
 
+## Current implementation checkpoint — 2026-10-11
+
+See [STATUS-2026-10-11.md](STATUS-2026-10-11.md) for the latest Telegram single-webhook relay, actual remaining account-linking work, CI runner blocker, and verification order. Do not treat the relay as a complete homework-ingestion workflow until the PHP endpoint and database path are tested.
+
 ## Product contract clarification — 2026-10-11
 
 The canonical requirements now live in [MEDBIOHIM product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
@@ -745,4 +749,4 @@ The canonical requirements now live in [MEDBIOHIM product intent and integration
 - Manual student entry, Telegram extraction and future browser imports feed one canonical homework workflow with group membership checks, provenance, duplicate protection and review for uncertain extraction.
 - Browser extension remains a user-controlled import bridge with preview, source tracking and dedup/versioning; do not store EIOS passwords or bypass access controls.
 - Imported real questions require provenance; AI-inferred content must be labelled and not silently promoted to official.
-- Current implementation gap: Node bot MVP and PHP ingestion service exist separately; complete registration/linking and Mini App are not proven. Reconcile existing parts before adding parallel infrastructure.
+- Current implementation: Node bot can optionally relay group/supergroup updates to PHP through a shared-secret HTTPS endpoint, so Telegram should have one webhook destination. End-to-end ingestion, idempotency, group authorization and secure registration/account linking are still unproven/open.
