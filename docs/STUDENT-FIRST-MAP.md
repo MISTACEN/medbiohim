@@ -335,6 +335,10 @@ Detailed findings: `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md`.
 
 Full current status: [STATUS-2026-10-11.md](STATUS-2026-10-11.md). Note that the old findings below describe the pre-fix state; compare with the checkpoint before treating them as still open. Source changes for student homework creation and fail-closed PHP webhook secret have been made, but runtime/CI proof is still pending.
 
+## Pause checkpoint — 2026-10-11
+
+Implementation and open verification tasks are tracked in [`UNFINISHED-REGISTRY.md`](UNFINISHED-REGISTRY.md), “Full checkpoint — 2026-10-11”. Source-level UI/API changes do not replace server-side group authorization tests.
+
 ## Product contract clarification — 2026-10-11
 
 See the canonical [product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
