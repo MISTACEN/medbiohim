@@ -104,6 +104,11 @@ return static function (Router $r): void {
         if (!RequireAuth::handle($q)) return;
         $uid = (string) ($q->user?->id ?? '');
         if ($uid === '') { Response::error('UNAUTHORIZED', 'Нужна авторизация', $q->requestId, 401); return; }
+        $limit = RateLimiter::attempt('telegram-link:' . $uid, 5, 900);
+        if (empty($limit['allowed'])) {
+            Response::error('RATE_LIMITED', 'Слишком много попыток привязки. Попробуйте позже.', $q->requestId, 429, ['retry_after' => $limit['retry_after'] ?? 900]);
+            return;
+        }
         try {
             $db = \\Medbiohim\\Database\\Connection::pdo();
             $token = bin2hex(random_bytes(24));
