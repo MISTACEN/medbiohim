@@ -1326,6 +1326,10 @@ Full hand-off snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). 
 ## Контрольный снимок перед паузой — 2026-10-11
 Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
 
+### Pause checkpoint — 2026-10-11
+
+The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Full checkpoint — 2026-10-11”. Do not mark the Telegram flow or CI green: the relay and validation tests have not been executed successfully in CI or verified against deployed services.
+
 ### Telegram group homework relay — implementation update 2026-10-11
 
 - 🟢 Node webhook now has an optional HTTPS relay for group/supergroup updates to the existing PHP `/api/v1/telegram/webhook` endpoint.
