@@ -15,6 +15,8 @@ import {
   startLinkIdentity,
   unlinkIdentity,
   updateAccountProfile,
+  startTelegramLink, getTelegramLinkStatus, unlinkTelegramAccount,
+  type TelegramLinkStatus,
   type AccountSettings,
   type LinkedIdentity,
 } from "@/lib/settings-api";
@@ -36,6 +38,7 @@ export default function SettingsPage() {
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
+  const [telegramStatus, setTelegramStatus] = useState<TelegramLinkStatus | null>(null);
 
   const referenceThemes = THEMES.filter((t) => (t as { family?: string }).family === "reference");
   const otherThemes = THEMES.filter((t) => (t as { family?: string }).family !== "reference");
@@ -56,6 +59,8 @@ export default function SettingsPage() {
       setFullName(user?.name || "");
       setEmail(user?.email || "");
     }
+    const tg = await getTelegramLinkStatus();
+    if (tg.ok) setTelegramStatus(tg.data);
     setLoading(false);
   }, [user?.name, user?.email]);
 
@@ -104,6 +109,25 @@ export default function SettingsPage() {
     else setErr("Нет URL для привязки");
   }
 
+  async function onStartTelegramLink() {
+    setBusy("telegram-link"); setErr(null); setMsg(null);
+    const r = await startTelegramLink();
+    setBusy(null);
+    if (!r.ok) return setErr(r.error.message);
+    window.location.href = r.data.url;
+  }
+
+  async function onUnlinkTelegram() {
+    if (!confirm("Отвязать Telegram от этого аккаунта MEDBIOHIM?")) return;
+    setBusy("telegram-unlink"); setErr(null);
+    const r = await unlinkTelegramAccount();
+    setBusy(null);
+    if (!r.ok) return setErr(r.error.message);
+    const status = await getTelegramLinkStatus();
+    if (status.ok) setTelegramStatus(status.data);
+    setMsg("Telegram отвязан");
+  }
+
   async function onUnlink(id: LinkedIdentity) {
     if (!id.can_unlink) return setErr("Нельзя отвязать единственный способ входа");
     if (!confirm(`Отвязать ${id.provider_label}?`)) return;
@@ -148,7 +172,7 @@ export default function SettingsPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title">Настройки</h1>
-          <p className="page-subtitle">Один аккаунт · почта / Google / VK · темы и уведомления</p>
+          <p className="page-subtitle">Один аккаунт · почта / Google / Telegram · темы и уведомления</p>
         </div>
         <button type="button" onClick={() => void load()} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
           <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} /> Обновить
@@ -191,7 +215,7 @@ export default function SettingsPage() {
 
       <section className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Привязанные входы</h2>
-        <p className="text-sm text-[var(--muted)]">Почта, Google, VK и Telegram — к одному аккаунту. VK удобнее без VPN; Google может потребовать VPN в браузере.</p>
+        <p className="text-sm text-[var(--muted)]">Почта и поддерживаемые OAuth-провайдеры привязываются к одному аккаунту. Telegram связывается через одноразовое подтверждение в боте.</p>
         <div className="space-y-2">
           {identities.map((id) => (
             <div key={id.id || id.provider} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
@@ -209,8 +233,7 @@ export default function SettingsPage() {
           {(account?.providers_available || [
             { id: "google", label: "Google", region: "global", enabled: true, linkable: true },
             { id: "custom:vk", label: "ВКонтакте", region: "ru", enabled: true, linkable: true },
-            { id: "custom:telegram", label: "Telegram", region: "any", enabled: true, linkable: true },
-          ]).filter((p) => p.linkable).map((p) => {
+          ]).filter((p) => p.linkable && p.id !== "custom:telegram").map((p) => {
             const linked = linkedProviders.has(p.id);
             return (
               <button key={p.id} type="button" disabled={linked || !p.enabled || !!busy} onClick={() => void onLink(p.id)}
@@ -221,6 +244,30 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </section>
+
+
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Telegram</h2>
+        <p className="text-sm text-[var(--muted)]">Свяжите Telegram с текущим аккаунтом MEDBIOHIM. Ссылка одноразовая и действует 10 минут; пароль и токены бот не запрашивает.</p>
+        {telegramStatus?.linked ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">
+            <div>
+              <div className="font-semibold">✓ Telegram привязан</div>
+              <div className="text-xs">{telegramStatus.account?.username ? "@" + telegramStatus.account.username : telegramStatus.account?.first_name || "Аккаунт Telegram"}</div>
+            </div>
+            <button type="button" disabled={!!busy} onClick={() => void onUnlinkTelegram()} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50">
+              <Unlink className="h-3.5 w-3.5" /> Отвязать
+            </button>
+          </div>
+        ) : (
+          <button type="button" disabled={!!busy} onClick={() => void onStartTelegramLink()} className="btn-primary disabled:opacity-60">
+            {busy === "telegram-link" ? "Создаём ссылку…" : "Привязать через @MEDBIOCHIM_bot"}
+          </button>
+        )}
+        <button type="button" disabled={loading} onClick={() => void getTelegramLinkStatus().then((r) => { if (r.ok) setTelegramStatus(r.data); else setErr(r.error.message); })} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
+          Проверить статус привязки
+        </button>
       </section>
 
       <section className="card space-y-4 p-5">
