@@ -1526,3 +1526,14 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟡 Tests are written but have not been confirmed by a successful Node/GitHub Actions run. No Worker deployment has occurred.
 - ⚠️ Before production, add Cloudflare edge rate limiting for recovery; current code relies on Supabase's built-in limits, matching the absence of an app-level limiter in the PHP handler.
 - 🔒 SpaceWeb remains production. No frontend API URL, DNS, Supabase policy or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 6 (partial login)
+
+- 🟢 Added `loginSupabaseUser()` and `POST /api/v1/auth/login` with HTTPS-only Supabase password exchange, bounded input, generic invalid-credential responses and upstream error handling.
+- 🟢 Login tests cover input/configuration, session normalization, invalid credentials, throttling and upstream failures; route tests cover missing/denied rate limiter.
+- 🟡 Login route intentionally returns 503 until Cloudflare binding `AUTH_LOGIN_LIMITER` is configured. Do not expose it before then.
+- 🟡 Not contract-complete: PHP login may return DB-backed `profile` and `roles`; Worker has not yet migrated this profile synchronization because RLS/DB credential safety must be confirmed first.
+- 🟡 Tests remain authored but not verified by a successful full Node/GitHub Actions run.
+- 🔒 Production stays on SpaceWeb; no frontend API URL, DNS, database policies, or Telegram webhook changed.
