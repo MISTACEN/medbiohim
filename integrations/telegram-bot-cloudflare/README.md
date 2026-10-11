@@ -12,7 +12,9 @@ This is a separate Cloudflare Workers implementation of the existing public-comm
 
 ## Configuration
 
-Do not put secrets in `wrangler.toml`, source files, or GitHub commits.
+Do not put secrets in `wrangler.toml`, source files, browser extension code, issue comments, logs, or GitHub commits. If a bot token has been pasted into a chat, issue, or commit, treat it as compromised and revoke it with BotFather (`/revoke`) before testing; use the newly issued token only as a secret.
+
+For local handler tests, a real Telegram token is not needed. Run `npm test`; tests use fake credentials and stub outbound requests. For an isolated live test, create a dedicated test bot with BotFather and use its token only in the local environment or Cloudflare Worker secret store.
 
 From this directory, install Wrangler in your local development environment (or use an approved Cloudflare dashboard workflow), then configure secrets:
 
