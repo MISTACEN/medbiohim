@@ -6,7 +6,7 @@ The existing PHP API on SpaceWeb remains the current backend. This Worker is an 
 
 - Worker name: `medbiohim-api-shadow`
 - Runtime: Cloudflare Workers JavaScript modules
-- Contract-matched public PHP routes in the shadow Worker: `GET /api/v1` and `GET /api/v1/ping`.
+- Contract-matched public PHP routes in the shadow Worker: `GET /api/v1` and `GET /api/v1/ping`; `POST /api/v1/auth/logout` is now implemented against Supabase Auth.
 - `GET /health` and `GET /api/v1/health` are shadow diagnostics, not yet contract-compatible ports of the PHP `HealthChecker`.
 - Unmigrated `/api/v1/*` routes return `501 ROUTE_NOT_MIGRATED`
 - No proxy/fallback to SpaceWeb is implemented. This is intentional because the currently checked SpaceWeb HTTPS endpoint fails certificate verification and redirects to HTTP.
@@ -70,3 +70,10 @@ Before connecting production deployment to GitHub:
 ## Route inventory
 
 See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md) for route families, risk ordering, per-route worksheet, and cutover gates. This is a family-level inventory; exact methods, handlers, and contracts must be confirmed route-by-route before implementation.
+
+
+## Auth route migration — Pass 3
+
+- Added `POST /api/v1/auth/logout`, using the caller's Bearer access token and Supabase Auth `/auth/v1/logout` over HTTPS.
+- Requires `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Cloudflare Worker secrets/vars; fails closed if missing, rejects non-HTTPS URLs and redirects, applies a timeout, and does not use the service-role key.
+- Regression tests cover missing bearer token, wrong method, missing config, upstream status handling and secret-safe errors. The route has not been deployed; configure bindings only in the Cloudflare dashboard when staging deployment is approved.
