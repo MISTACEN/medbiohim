@@ -332,3 +332,82 @@ export async function loginSupabaseUser(email, password, env, fetcher = fetch) {
     },
   };
 }
+
+export async function registerSupabaseUser(email, password, fullName, env, fetcher = fetch) {
+  const address = String(email || "").trim();
+  const secret = String(password || "");
+  const name = String(fullName || "").trim();
+  if (name.length < 2 || name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) ||
+      address.length > 254 || secret.length < 8 || secret.length > 1024) {
+    return failure(422, "VALIDATION_ERROR", "A valid email, password of at least 8 characters, and name are required");
+  }
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  if (!baseUrl || !anonKey) {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth is not configured on the server");
+  }
+  let endpoint;
+  try {
+    endpoint = new URL("/auth/v1/signup", baseUrl);
+    if (endpoint.protocol !== "https:") {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth must use HTTPS");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase Auth URL is invalid");
+  }
+  let response;
+  try {
+    response = await fetcher(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: "Bearer " + anonKey,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({ email: address, password: secret, data: { full_name: name, name } }),
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status === 429) {
+    return failure(429, "RATE_LIMITED", "Too many registration attempts. Try again later.");
+  }
+  if (response.status >= 400 && response.status < 500) {
+    return failure(422, "AUTH_REGISTER_FAILED", "Registration could not be completed");
+  }
+  if (!response.ok) {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth is temporarily unavailable");
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an invalid response");
+  }
+  const user = payload && payload.user && typeof payload.user === "object" ? payload.user : null;
+  if (!user || typeof user.id !== "string" || !user.id) {
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an invalid registration response");
+  }
+  const meta = user.user_metadata && typeof user.user_metadata === "object" ? user.user_metadata : {};
+  const appMeta = user.app_metadata && typeof user.app_metadata === "object" ? user.app_metadata : {};
+  return {
+    ok: true,
+    data: {
+      access_token: typeof payload.access_token === "string" ? payload.access_token : null,
+      refresh_token: typeof payload.refresh_token === "string" ? payload.refresh_token : null,
+      expires_in: payload.expires_in ?? null,
+      token_type: payload.token_type || "bearer",
+      needs_email_confirm: !payload.access_token,
+      user: {
+        id: user.id,
+        email: typeof user.email === "string" ? user.email : address,
+        full_name: typeof meta.full_name === "string" ? meta.full_name :
+          (typeof meta.name === "string" ? meta.name : name),
+        role: typeof appMeta.role === "string" && appMeta.role.trim() ? appMeta.role.trim() : null,
+      },
+    },
+  };
+}
