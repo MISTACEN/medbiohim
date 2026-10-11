@@ -1,3 +1,11 @@
+## Cloudflare Telegram Worker — initial source implementation (2026-10-11)
+
+- 🟢 Added separate `integrations/telegram-bot-cloudflare/` Worker prototype and deployment/configuration README; existing Node/Vercel bot remains untouched.
+- 🟢 Added tests for health, missing secrets, wrong secret, methods, invalid/oversized payloads, command reply and optional HTTPS group relay.
+- 🟢 Optional-integrations workflow now includes Worker tests for pushes and pull requests.
+- 🟡 Test code and deployment compatibility have **not** been executed/verified; GitHub Actions runner issue remains.
+- 🔴 Not deployed to Cloudflare; no production token/secrets/webhook changed. Do not switch Telegram webhook until preview tests pass and explicit approval is given.
+
 ## Project state and hosting failover snapshot — 2026-10-11
 
 Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
