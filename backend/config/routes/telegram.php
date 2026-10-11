@@ -49,7 +49,7 @@ return static function (Router $router): void {
         $body = is_array($req->jsonBody) ? $req->jsonBody : [];
         $token = (string) ($body['token'] ?? '');
         $telegramId = (string) ($body['telegram_user_id'] ?? '');
-        if (!preg_match('/^[a-f0-9]{64}$/', $token) || !preg_match('/^[1-9][0-9]{0,17}$/', $telegramId)) {
+        if (!preg_match('/^[a-f0-9]{48}$/', $token) || !preg_match('/^[1-9][0-9]{0,17}$/', $telegramId)) {
             Response::error('VALIDATION_ERROR', 'Invalid account-link confirmation', $req->requestId, 422);
             return;
         }
