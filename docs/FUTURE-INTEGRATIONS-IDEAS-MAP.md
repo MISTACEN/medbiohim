@@ -744,6 +744,18 @@ See [STATUS-2026-10-11.md](STATUS-2026-10-11.md) for the latest Telegram single-
 
 Current Telegram relay, single-webhook architecture, Mini App limitations, CI blocker, and next steps are recorded in [`UNFINISHED-REGISTRY.md`](UNFINISHED-REGISTRY.md), “Full checkpoint — 2026-10-11”. Keep secure account linking and extension imports open until implemented and tested.
 
+## Hosting resilience plan — 2026-10-11
+
+The detailed proposal is now recorded in [HOSTING-RESILIENCE-AND-FREE-TIERS.md](HOSTING-RESILIENCE-AND-FREE-TIERS.md).
+
+- Preserve Vercel + Supabase + SpaceWeb + B2 as the current primary system.
+- Explore Cloudflare Workers as a separate Telegram webhook/relay PoC; do not move production bot until tests, quota verification and rollback are ready.
+- Explore an independent foreign secondary origin (Cloudflare Pages or compatible Next.js hosting) so one provider/network path failing does not automatically make the frontend unavailable. First verify Next.js SSR/auth/API compatibility.
+- Keep a Russian emergency fallback as a secondary tier, initially read-only/static public learning content with a visible last-updated timestamp and no secrets/private student data.
+- Measure the current Vercel → SpaceWeb/API/media latency before moving anything. Hosting migration is not a substitute for profiling.
+- FPS.ms daily renewal, sleeping hosts, time-limited deploys, unverified providers and credit-based plans are not accepted as critical production dependencies without an explicit reliability review.
+- Provider limits and “no card” claims are provisional until rechecked against official terms at implementation time.
+
 ## Product contract clarification — 2026-10-11
 
 The canonical requirements now live in [MEDBIOHIM product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
