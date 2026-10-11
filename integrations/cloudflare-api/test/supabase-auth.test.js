@@ -90,7 +90,7 @@ test("network failure returns a generic upstream error without leaking details",
   assert.equal(result.message.includes("secret network detail"), false);
 });
 
-import { logoutSupabaseSession } from "../src/supabase-auth.js";
+import { logoutSupabaseSession, refreshSupabaseSession } from "../src/supabase-auth.js";
 
 test("logout requires a token and makes no upstream request without it", async () => {
   let calls = 0;
@@ -144,4 +144,70 @@ test("logout maps expired tokens to 401 and upstream/network failures to generic
   });
   assert.equal(network.status, 502);
   assert.equal(network.message.includes("private network details"), false);
+});
+
+
+test("refresh rejects missing token without contacting Supabase", async () => {
+  let calls = 0;
+  const result = await refreshSupabaseSession("", configured, async () => { calls += 1; });
+  assert.equal(result.status, 422);
+  assert.equal(result.code, "VALIDATION_ERROR");
+  assert.equal(calls, 0);
+});
+
+test("refresh requires HTTPS and configured anon key", async () => {
+  const missing = await refreshSupabaseSession("refresh-token", {}, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(missing.status, 503);
+  const insecure = await refreshSupabaseSession("refresh-token", {
+    ...configured, SUPABASE_URL: "http://project-id.supabase.co",
+  }, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(insecure.status, 503);
+});
+
+test("refresh exchanges the token and normalizes session without trusting user_metadata role", async () => {
+  let calledUrl = "";
+  let calledInit;
+  const result = await refreshSupabaseSession("old-refresh-token", configured, async (url, init) => {
+    calledUrl = url;
+    calledInit = init;
+    return new Response(JSON.stringify({
+      access_token: "new-access-token",
+      refresh_token: "new-refresh-token",
+      expires_in: 3600,
+      token_type: "bearer",
+      user: {
+        id: "user-123",
+        email: "student@example.com",
+        user_metadata: { full_name: "Student", role: "admin" },
+        app_metadata: { role: "student" },
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  assert.equal(calledUrl, "https://project-id.supabase.co/auth/v1/token?grant_type=refresh_token");
+  assert.equal(calledInit.method, "POST");
+  assert.equal(calledInit.headers.apikey, configured.SUPABASE_ANON_KEY);
+  assert.equal(calledInit.headers.authorization, "Bearer " + configured.SUPABASE_ANON_KEY);
+  assert.deepEqual(JSON.parse(calledInit.body), { refresh_token: "old-refresh-token" });
+  assert.equal(calledInit.redirect, "error");
+  assert.equal(result.ok, true);
+  assert.equal(result.data.access_token, "new-access-token");
+  assert.equal(result.data.user.full_name, "Student");
+  assert.equal(result.data.user.role, "student");
+});
+
+test("refresh maps invalid tokens and hides upstream details", async () => {
+  const invalid = await refreshSupabaseSession("expired-token", configured, async () =>
+    new Response("invalid", { status: 400 })
+  );
+  assert.equal(invalid.status, 401);
+  assert.equal(invalid.code, "AUTH_REFRESH_FAILED");
+  const failed = await refreshSupabaseSession("token", configured, async () =>
+    new Response("sensitive upstream details", { status: 503 })
+  );
+  assert.equal(failed.status, 502);
+  assert.equal(failed.message.includes("sensitive"), false);
 });
