@@ -1496,3 +1496,11 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🔒 The helper is not attached to routes yet. It does not trust client-supplied IDs or roles, and it does not use the Supabase service-role key.
 - 🟡 No API Worker deployment exists yet; the current Cloudflare script list contains the Telegram production/test Workers only. No build configuration was found associated with the production Telegram script tag during this check.
 - ⬜ Next: review route-by-route auth/SQL/RLS contracts, then add a protected read only after negative-authorization tests and staged Wrangler validation are available.
+
+
+## Branching policy — SpaceWeb maintenance vs Cloudflare migration (2026-10-12)
+
+- 🟢 Created branch `spaceweb-backend` from the current `main` head to preserve a maintenance line for the existing SpaceWeb PHP backend.
+- 🔵 `main` is the forward migration line for the Cloudflare API implementation in `integrations/cloudflare-api/`; the Telegram Worker remains a separate project in `integrations/telegram-bot-cloudflare/`.
+- 🔒 SpaceWeb remains the live backend until a route-by-route verification and an explicitly approved cutover. No production DNS, Vercel API URL, Supabase policy, or Telegram webhook changes are allowed as part of ordinary code migration.
+- ⚠️ The maintenance branch is a source snapshot, not yet a verified rollback/release branch. Keep fixes there when needed for the live PHP backend and port shared critical fixes intentionally.
