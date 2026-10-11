@@ -2245,3 +2245,14 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 ### Project checkpoint and continuation prompt — 2026-10-11
 - Full continuation snapshot and copy/paste new-chat prompt are recorded at the end of `docs/UNFINISHED-REGISTRY.md` under `SESSION HANDOFF SNAPSHOT — 2026-10-11`.
 - Use that snapshot together with the product contract and hosting strategy before resuming. It explicitly separates implemented source edits from unverified tests and production configuration.
+
+
+## Browser extension — subject-aware answer lookup and trusted-source ingestion (2026-10-11)
+
+- 🟢 **Requirements recorded, implementation pending:** [Browser extension trust/answer-learning specification](docs/BROWSER-EXTENSION-TRUSTED-SOURCES-ANSWER-LEARNING-SPEC-2026-10-11.md).
+- Extension must infer subject/topic, show compact side-panel answer lookup during supported tests, match the existing MEDBIOHIM question bank, and support manual correction when extraction is incomplete.
+- Admin-approved sources may be used automatically within configured adapter capabilities. Unknown sources remain beta/review candidates and cannot silently overwrite trusted answers.
+- First-seen questions with unknown answers are stored as candidates; after test completion, capture a source-provided key/review where available. A student's selected option or a score-only page is not proof of correctness.
+- Admin panel requirements: source allowlist, complete dated ingestion/change journal, filters/sorting, editing, evidence/provenance, audit history, duplicate review/merge and safe rejection.
+- Preserve existing extension quick links and avoid broad permissions, privileged secrets in the extension, unauthorized scraping, parallel question databases, or invented API routes.
+- **Not yet implemented or verified.** Next: inspect existing extension and API/schema, then build staged vertical slices. CI runner allocation remains an independent verification blocker.
