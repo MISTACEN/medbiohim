@@ -56,7 +56,8 @@ final class SearchService
                     'question',
                     !empty($row['answer']),
                     $this->score($title, $topic, $needle),
-                    $slug !== '' ? '/subjects/' . rawurlencode($slug) . '?tab=practice' : '/practice'
+                    $slug !== '' ? '/subjects/' . rawurlencode($slug) . '?tab=practice' : '/practice',
+                    trim((string) ($row['answer'] ?? ''))
                 );
             }
         }
@@ -82,7 +83,8 @@ final class SearchService
                     'ticket',
                     !empty($row['answer']),
                     $this->score($title, $topic, $needle),
-                    $slug !== '' ? '/subjects/' . rawurlencode($slug) . '?tab=tickets' : '/tickets'
+                    $slug !== '' ? '/subjects/' . rawurlencode($slug) . '?tab=tickets' : '/tickets',
+                    trim((string) ($row['answer'] ?? ''))
                 );
             }
         }
@@ -194,7 +196,7 @@ final class SearchService
         ];
     }
 
-    private function hit(string $id, string $title, string $snippet, string $subject, string $subjectSlug, string $topic, string $type, bool $hasAnswer, float $score, string $href): array
+    private function hit(string $id, string $title, string $snippet, string $subject, string $subjectSlug, string $topic, string $type, bool $hasAnswer, float $score, string $href, ?string $answer = null): array
     {
         return [
             'id' => $id,
@@ -206,6 +208,7 @@ final class SearchService
             'type' => $type,
             'score' => round($score, 4),
             'has_answer' => $hasAnswer,
+            'answer' => $answer !== null && trim($answer) !== '' ? mb_substr(trim($answer), 0, 5000) : null,
             'href' => $href,
         ];
     }
