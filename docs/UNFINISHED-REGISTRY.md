@@ -613,6 +613,13 @@ Track these as open until implementation and verification:
 
 Do not mark these complete from documentation or source presence alone. GitHub Actions runner initialization remains blocked in the latest observed runs; verify actual test execution.
 
+### Telegram group relay — source added 2026-10-11
+- [x] Node webhook can relay group/supergroup updates over HTTPS to the existing PHP `/api/v1/telegram/webhook` endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured.
+- [x] Relay uses the configured shared webhook secret and rejects non-HTTPS target URLs; Node remains the single Telegram `setWebhook` destination.
+- [x] Added tests for successful relay and the not-configured fallback.
+- [ ] Configure the real PHP endpoint and matching server-side secrets, map the Telegram group in the database, and verify ingestion end-to-end. No production secrets or webhook settings were changed.
+- [ ] Run Node/PHP tests on a functioning GitHub runner. Latest observed jobs fail within about three seconds with `runner_id=0`, empty `runner_name`, and `steps=[]`; logs are unavailable. This points to runner provisioning/account configuration rather than a failing test step, but the exact GitHub-side cause is not visible through the current connection.
+
 ## Implementation update — 2026-10-11
 
 Completed in source, pending runtime/CI proof:
