@@ -2163,3 +2163,9 @@ Canonical product intent and integration rules are recorded in [MEDBIOHIM produc
 2. Completed source changes: authenticated students may create shared homework in their own group; server-side group membership resolution remains required; schedule UI exposes the existing create flow to signed-in users.
 3. Next: verify PHP syntax/tests on a functioning runner, then test member/non-member authorization and the full Telegram webhook flow. CI currently fails before steps, so no test pass is claimed.
 4. Then implement secure Telegram account linking/registration and launching the existing site as a Mini App, reusing the current site rather than building a duplicate interface.
+### Pass 79 — Telegram webhook consolidation and relay
+- Node/Vercel is the single webhook target for the Telegram bot. Added optional HTTPS forwarding of group/supergroup updates to the PHP `/api/v1/telegram/webhook`, authenticated with the shared webhook secret.
+- Added Node tests for relay success and safe no-configuration behavior; tightened Mini App initData tests and Telegram user ID validation.
+- Updated the bot deployment guide and unfinished registry. No live webhook, environment secrets, production DB, or hosting configuration was changed.
+- Verification blocker remains external to the test steps: latest workflow jobs report `runner_id=0`, empty `runner_name`, and `steps=[]`, completing as failures in about three seconds. Logs are unavailable. The exact account/repository Actions setting or GitHub runner provisioning cause still needs to be inspected in the GitHub Actions UI/settings.
+- Next: restore runner execution; run `npm test`, PHP syntax and regression tests; configure the actual PHP API URL and shared secret only after confirming deployment settings; then perform an end-to-end group ingestion test. Telegram identity linking remains separate and must not trust unvalidated browser-provided IDs.
