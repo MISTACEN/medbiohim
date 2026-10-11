@@ -1,3 +1,11 @@
+## Telegram on Cloudflare — prototype added, production switch pending (2026-10-11)
+
+- Added isolated Worker implementation under `integrations/telegram-bot-cloudflare/`: `GET /health`, secret-protected `POST /api/webhook`, public commands, optional HTTPS relay to existing PHP homework endpoint, bounded request size and safe errors.
+- Added Node test suite and included it in `.github/workflows/optional-integrations-check.yml`.
+- **Not deployed:** no Cloudflare account/auth, secrets, webhook URL or production Telegram token was changed. Current Node/Vercel webhook remains the active documented path until a test Worker passes and the user approves switching.
+- Tests are authored but not run in a local project runtime; GitHub Actions runner failure still blocks verified CI execution.
+- Next: run `npm test` in this directory, inspect `npx wrangler deploy --dry-run` / Wrangler compatibility, deploy to a preview Worker, test /health and Telegram webhook secret, then ask before changing BotFather webhook. One bot token has one active webhook; do not register both endpoints simultaneously.
+
 ## Project state and hosting failover snapshot — 2026-10-11
 
 Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
