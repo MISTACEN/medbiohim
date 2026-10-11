@@ -7,7 +7,7 @@ This is an **optional, separately deployable** Node.js webhook. It does not modi
 - `/start`, `/help`, `/app`, `/site`, `/schedule`, `/tests`, `/subjects`, `/materials`, `/privacy`.
 - `/start` and `/app` return a Telegram Web App button opening the existing MEDBIOHIM site; this is an entry-point MVP, not yet Telegram account linking.
 - Private-chat commands are handled by the Node webhook. Group/supergroup updates can be relayed to the existing PHP homework-ingestion endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured; channels and other chat types are ignored.
-- Replies contain public links to the official website.
+- Replies contain public links to the MEDBIOHIM student-preparation platform.
 - Webhook requests require Telegram's `X-Telegram-Bot-Api-Secret-Token` header.
 - No bot token, account token, or database key is stored in source.
 
