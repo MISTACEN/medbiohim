@@ -1651,7 +1651,33 @@ Canonical metadata остаётся в Supabase, физические бинар
 - 🟢 External images are used only as a visual cross-check; canonical MEDBIOHIM trainer cards remain the primary practical material.
 - 🟢 Live Supabase lecture updated and verified; only Lecture 05 was touched.
 - 🟡 Runtime/browser smoke on deployed Vercel build remains to be confirmed.
-\n## 2026-10-08 — Histology Lecture 05: iPhone/Safari visual defect repair\n\n### Фактически подтверждённые проблемы\nНа реальном скриншоте production medbiohim.vercel.app видно:\n1. 5 собственных фотографий препаратов дают broken-image placeholder.\n2. Markdown-ссылки отображаются как [Микропрепараты] + URL вместо кликабельной ссылки.\n3. Внешняя WebPath-фотография загружается корректно, значит проблема не является общим запретом изображений в Safari.\n\n### Исправление\n- В src/components/lectures/LectureRenderer.tsx исправлен Markdown-link parser.\n- Для защищённых MEDBIOHIM trainer images лекция больше не использует прямые /content/histology/...jpg URL. Контент хранит canonical trainerId, а client-side ImageBlock получает изображение через существующий authenticated getTrainerImageUrl().\n- Это соответствует фактической архитектуре: metadata в Supabase → authenticated trainer media endpoint → физический Histology media root на SpaceWeb.\n- Live Lecture 05 обновлена без изменения trainer cards, их plan mapping или других subjects.\n- Добавлена миграция: database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql.\n\n### Release gate\n🟡 До READY deployment и повторного browser smoke не считать пункт закрытым. Проверить:\n- «Микропрепараты» → /subjects/histology?tab=trainer;\n- «Материалы» → /subjects/histology?tab=materials;\n- тест «Гистология — общая: кровь» → 20 вопросов;\n- 5 MEDBIOHIM photos;\n- 4 WebPath photos;\n- 11 Mermaid blocks;\n- iPhone Safari layout/scroll.\n\nОграничение сохраняется: этот цикл касается только Histology Lecture 05.
+
+## 2026-10-08 — Histology Lecture 05: iPhone/Safari visual defect repair
+
+### Фактически подтверждённые проблемы
+На реальном скриншоте production medbiohim.vercel.app видно:
+1. 5 собственных фотографий препаратов дают broken-image placeholder.
+2. Markdown-ссылки отображаются как [Микропрепараты] + URL вместо кликабельной ссылки.
+3. Внешняя WebPath-фотография загружается корректно, значит проблема не является общим запретом изображений в Safari.
+
+### Исправление
+- В src/components/lectures/LectureRenderer.tsx исправлен Markdown-link parser.
+- Для защищённых MEDBIOHIM trainer images лекция больше не использует прямые /content/histology/...jpg URL. Контент хранит canonical trainerId, а client-side ImageBlock получает изображение через существующий authenticated getTrainerImageUrl().
+- Это соответствует фактической архитектуре: metadata в Supabase → authenticated trainer media endpoint → физический Histology media root на SpaceWeb.
+- Live Lecture 05 обновлена без изменения trainer cards, их plan mapping или других subjects.
+- Добавлена миграция: database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql.
+
+### Release gate
+🟡 До READY deployment и повторного browser smoke не считать пункт закрытым. Проверить:
+- «Микропрепараты» → /subjects/histology?tab=trainer;
+- «Материалы» → /subjects/histology?tab=materials;
+- тест «Гистология — общая: кровь» → 20 вопросов;
+- 5 MEDBIOHIM photos;
+- 4 WebPath photos;
+- 11 Mermaid blocks;
+- iPhone Safari layout/scroll.
+
+Ограничение сохраняется: этот цикл касается только Histology Lecture 05.
  
 ---
 
@@ -1732,7 +1758,15 @@ Canonical metadata остаётся в Supabase, физические бинар
 7. Production commit совпадает с проверяемой веткой до перевода в DONE.
 
 До выполнения release gate пункт остаётся 🟡.
-\n## 2026-10-08 — Unified Media Viewer: iPhone viewport regression found and patched\n\n- 🟡 Screenshot smoke exposed a second-level issue: the fixed viewer was still physically constrained by the app DOM on iPhone Safari, so the overlay did not cover the full viewport and MobileNav remained visible above it.\n- 🟢 Patched in `fix/unified-media-viewer-desktop-mobile`: `ImageLightbox` renders through `createPortal(..., document.body)`, gets explicit viewport sizing/z-index, and uses explicit glass RGBA surfaces.\n- 🟢 Scroll-lock effect no longer restarts on every zoom change.\n- 🟡 Target-runtime smoke remains mandatory before calling the viewer DONE.\n- 🟡 Required: iPhone Safari, Android Chrome, Windows Chrome/Edge/Firefox/Yandex, macOS Safari/Chrome, and Lecture → Atlas → Trainer → Materials regression.\n
+
+## 2026-10-08 — Unified Media Viewer: iPhone viewport regression found and patched
+
+- 🟡 Screenshot smoke exposed a second-level issue: the fixed viewer was still physically constrained by the app DOM on iPhone Safari, so the overlay did not cover the full viewport and MobileNav remained visible above it.
+- 🟢 Patched in `fix/unified-media-viewer-desktop-mobile`: `ImageLightbox` renders through `createPortal(..., document.body)`, gets explicit viewport sizing/z-index, and uses explicit glass RGBA surfaces.
+- 🟢 Scroll-lock effect no longer restarts on every zoom change.
+- 🟡 Target-runtime smoke remains mandatory before calling the viewer DONE.
+- 🟡 Required: iPhone Safari, Android Chrome, Windows Chrome/Edge/Firefox/Yandex, macOS Safari/Chrome, and Lecture → Atlas → Trainer → Materials regression.
+
 2026-10-08 — launch-blocker sweep: fixed an additional literal-newline PHP syntax artifact in `backend/config/routes/questions_rest.php` on the same active viewer branch (`b374a49fd03574806595064746d09c046a19778e`). No new branch created. Remaining release gate is target runtime/Vercel build plus SpaceWeb/browser smoke.
 
 ## 2026-10-08 — Runtime integrity fixes during pre-launch audit
@@ -2181,4 +2215,10 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - Added Node tests for relay success and safe no-configuration behavior; tightened Mini App initData tests and Telegram user ID validation.
 - Updated the bot deployment guide and unfinished registry. No live webhook, environment secrets, production DB, or hosting configuration was changed.
 - Verification blocker remains external to the test steps: latest workflow jobs report `runner_id=0`, empty `runner_name`, and `steps=[]`, completing as failures in about three seconds. Logs are unavailable. The exact account/repository Actions setting or GitHub runner provisioning cause still needs to be inspected in the GitHub Actions UI/settings.
-- Next: restore runner execution; run `npm test`, PHP syntax and regression tests; configure the actual PHP API URL and shared secret only after confirming deployment settings; then perform an end-to-end group ingestion test. Telegram identity linking remains separate and must not trust unvalidated browser-provided IDs.\n### Pass 80 — Полный снимок состояния и hosting resilience (2026-10-11)\n- Создан `docs/STATE-SNAPSHOT-2026-10-11.md`: фиксирует продуктовый замысел, текущую архитектуру, последний набор исходных изменений, то, что не реализовано/не проверено, CI blocker, исторические технические риски и порядок возобновления.\n- Создан `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`: сохранить Vercel + Supabase + SpaceWeb + B2 как primary; сначала измерить медленную цепочку Vercel → SpaceWeb/API/media; затем отдельно проверить Cloudflare Workers для Telegram webhook, независимый foreign secondary frontend и российский read-only emergency mirror.\n- Идея отказоустойчивости: primary иностранный, secondary независимый иностранный, последний fallback — российская статика/совместимый хостинг. Secondary не считается полноценным failover, пока не проверены зависимости, Next.js/Auth/API, сеть и процедура возврата.\n- Никакие hosting/DNS/webhook/secret/production DB изменения не сделаны. Все тарифы и обещания «без карты» из списка пользователя — кандидаты к перепроверке по актуальным официальным условиям, не подтверждённые гарантии.\n- Основной блокер всё ещё GitHub Actions: задания падают до шагов. Первым делом при возобновлении проверить Actions/runner, затем тесты и E2E; только после этого PoC хостингов.\n
+- Next: restore runner execution; run `npm test`, PHP syntax and regression tests; configure the actual PHP API URL and shared secret only after confirming deployment settings; then perform an end-to-end group ingestion test. Telegram identity linking remains separate and must not trust unvalidated browser-provided IDs.
+### Pass 80 — Полный снимок состояния и hosting resilience (2026-10-11)
+- Создан `docs/STATE-SNAPSHOT-2026-10-11.md`: фиксирует продуктовый замысел, текущую архитектуру, последний набор исходных изменений, то, что не реализовано/не проверено, CI blocker, исторические технические риски и порядок возобновления.
+- Создан `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`: сохранить Vercel + Supabase + SpaceWeb + B2 как primary; сначала измерить медленную цепочку Vercel → SpaceWeb/API/media; затем отдельно проверить Cloudflare Workers для Telegram webhook, независимый foreign secondary frontend и российский read-only emergency mirror.
+- Идея отказоустойчивости: primary иностранный, secondary независимый иностранный, последний fallback — российская статика/совместимый хостинг. Secondary не считается полноценным failover, пока не проверены зависимости, Next.js/Auth/API, сеть и процедура возврата.
+- Никакие hosting/DNS/webhook/secret/production DB изменения не сделаны. Все тарифы и обещания «без карты» из списка пользователя — кандидаты к перепроверке по актуальным официальным условиям, не подтверждённые гарантии.
+- Основной блокер всё ещё GitHub Actions: задания падают до шагов. Первым делом при возобновлении проверить Actions/runner, затем тесты и E2E; только после этого PoC хостингов.
