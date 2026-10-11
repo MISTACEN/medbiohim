@@ -381,6 +381,13 @@ Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, 
 - Schedule create button is visible for signed-in users in the existing subject-selected flow; privileged management behavior is not widened.
 - Automated execution remains unverified until GitHub Actions gets past runner initialization. No production deploy or DB writes.
 
+## 2026-10-11 — Single Telegram webhook + PHP homework relay
+
+- Node webhook now optionally forwards group/supergroup updates to PHP `/api/v1/telegram/webhook` over HTTPS using the shared `X-Telegram-Bot-Api-Secret-Token` header.
+- This resolves the architecture conflict where a single Telegram bot token cannot independently deliver the same updates to two different webhooks. Register Telegram only against Node; Node relays group updates to PHP when configured.
+- Added Node regression tests for relay behavior. Not run successfully yet because GitHub Actions jobs are ending before any steps.
+- Configuration and live test remain pending; no secrets, webhook settings, or production database were changed.
+
 ## 2026-10-11 — Telegram Web App entry MVP
 
 - Added `/app` command; `/start` now presents a Telegram Web App button opening `MEDBIOHIM_APP_URL` (default `https://medbiohim.vercel.app/`).
