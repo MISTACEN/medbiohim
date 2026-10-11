@@ -1,0 +1,13 @@
+{
+  "name": "medbiohim-cloudflare-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Incremental Cloudflare Workers API migration scaffold for MEDBIOHIM",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
