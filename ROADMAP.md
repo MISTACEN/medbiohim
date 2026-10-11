@@ -2166,6 +2166,9 @@ Canonical product intent and integration rules are recorded in [MEDBIOHIM produc
 ### Project checkpoint — 2026-10-11
 - Full state snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). This is the hand-off source of truth for latest code edits, known historical risks, what remains unverified, and the exact continuation order.
 
+## Контрольный снимок перед паузой — 2026-10-11
+Полная фиксация текущего состояния, изменений последнего прохода, не подтверждённых функций, CI-блокера, продуктовых требований и безопасного порядка продолжения: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
+
 ### Pass 79 — Telegram webhook consolidation and relay
 - Node/Vercel is the single webhook target for the Telegram bot. Added optional HTTPS forwarding of group/supergroup updates to the PHP `/api/v1/telegram/webhook`, authenticated with the shared webhook secret.
 - Added Node tests for relay success and safe no-configuration behavior; tightened Mini App initData tests and Telegram user ID validation.
