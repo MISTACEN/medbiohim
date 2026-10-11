@@ -437,3 +437,10 @@ See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Ful
 - Added full handoff snapshot, current status, known historical defects, architecture constraints, next-step order and new-chat prompt to `docs/UNFINISHED-REGISTRY.md`.
 - Added `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md` and linked the plan from project documentation.
 - Snapshot distinguishes source changes from unverified tests/runtime and notes that production settings were not changed.
+
+
+## Browser extension requirements — 2026-10-11
+
+- Specification recorded: `docs/BROWSER-EXTENSION-TRUSTED-SOURCES-ANSWER-LEARNING-SPEC-2026-10-11.md`.
+- Requirements agreed: subject inference/manual correction; compact side-panel answer lookup; trusted-source allowlist; beta/review queue for unknown sources; first-seen question candidate capture; post-test evidence-based answer learning; admin journal with sorting/filtering/editing/audit trail.
+- This is documentation only. Existing extension functionality is not yet upgraded, and tests/live site compatibility are not verified.
