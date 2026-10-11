@@ -1375,3 +1375,12 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 ### Full continuation checkpoint — 2026-10-11
 - A detailed project handoff, known issue list, current Telegram/hosting status, next-step order and copy/paste prompt are stored in `docs/UNFINISHED-REGISTRY.md` under `SESSION HANDOFF SNAPSHOT — 2026-10-11`.
 - Treat CI/runtime status as unverified until actual jobs run steps. No production migration or live Telegram setup was performed.
+
+
+## Browser extension requirements agreed — 2026-10-11
+
+- 🟢 Recorded complete functional specification: [trusted sources, answer lookup, first-test learning pipeline and admin journal](docs/BROWSER-EXTENSION-TRUSTED-SOURCES-ANSWER-LEARNING-SPEC-2026-10-11.md).
+- 🟢 Product decisions: infer subject; compact side panel; lookup on supported tests; capture first-seen questions as candidates; acquire answer only from post-test/source evidence; trusted sources are automatically usable within configured capabilities; unknown sources remain in beta/review.
+- 🟢 Admin requirements: approve/disable sources, sort/filter the dated journal, edit all imported fields, preserve provenance/history and review/merge duplicates.
+- 🟡 Existing browser-extension MVP has not yet been modified for these requirements. No implementation, browser integration, API wiring or test pass is claimed.
+- 🔴 Next: inspect current extension, existing question search/import endpoints and schema before implementation; keep writes server-authorized and do not embed privileged keys in the extension.
