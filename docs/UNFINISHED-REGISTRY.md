@@ -640,6 +640,16 @@ Still open:
 - [ ] Test Telegram webhook against real Telegram using a newly configured secret; do not expose tokens in logs.
 - [ ] Implement secure Telegram account linking/registration and existing-site Mini App entry; current code is not yet accepted as end-to-end complete.
 
+### Hosting resilience — planned, not deployed (2026-10-11)
+- [x] Record primary/secondary/emergency hosting architecture and cost constraints.
+- [x] Record current stack must remain primary; no broad migration.
+- [ ] Profile the existing Vercel → SpaceWeb/PHP/API/media latency and establish a baseline.
+- [ ] Verify current official free-tier limits and no-card requirements for shortlisted providers.
+- [ ] Prototype Cloudflare Worker for Telegram webhook/relay without changing production webhook.
+- [ ] Prototype independent foreign secondary origin and test Next.js SSR/Auth/API compatibility.
+- [ ] Prototype Russian static/read-only emergency snapshot with public content only, commit timestamp and no private data/secrets.
+- [ ] Document/test manual failover and rollback. Do not call a fallback operational until tested from independent networks.
+
 ### Telegram Web App status — 2026-10-11
 - [x] Add `/app` and a `/start` Web App button that opens the existing site URL.
 - [ ] Configure the correct public HTTPS hostname in BotFather and `MEDBIOHIM_APP_URL`; register webhook with a strong secret and verify on mobile Telegram.
