@@ -37,6 +37,14 @@ Other modules in the bootstrap that also require route-level review: \`presence.
 
 Method/path requests outside those exact GET contracts are not treated as migrated. Other API routes continue to return **501 ROUTE_NOT_MIGRATED** in the shadow Worker and are never proxied to SpaceWeb.
 
+## Migrated auth route — Pass 4 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/auth.php` | `POST /api/v1/auth/refresh` | Requires `refresh_token`; uses Supabase Auth token exchange over HTTPS with anon key; normalizes session/user fields; never trusts `user_metadata.role` | Implemented in Worker source; tests added; not deployed |
+
+The Worker bounds JSON request size to 16 KiB and refresh token length to 8 KiB. Missing tokens are 422, invalid/expired refresh tokens are 401, missing configuration is 503, and upstream/network failures are returned as generic 502. This improves failure distinction compared with the current PHP implementation, which maps all refresh failures to 401; verify frontend expectations before production cutover.
+
 ## Migrated auth route — Pass 3 (2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
