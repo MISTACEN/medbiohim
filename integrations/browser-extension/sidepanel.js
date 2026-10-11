@@ -55,12 +55,18 @@ async function extractFromActiveTab(){
     return text(el.getAttribute("aria-label")?el:p);
    }).filter(t=>t.length>1&&t.length<=450));
    if(rootOptions.length<2)rootOptions=options;
-   const context=clean([document.title,rootText,questionCandidates.join(" ")].join(" ")).slice(0,5000);
-   return{title:document.title,url:location.href,question:question.slice(0,3000),options:rootOptions.slice(0,20),context,strategies:{questionSelectors:questionCandidates.length,optionNodes:optionNodes.length,roots:roots.length}};
+   const imageNodes=[...new Set([...root.querySelectorAll("img,svg[aria-label],canvas,[role=img],figure")])].filter(visible).slice(0,12);
+   const imageNotes=unique(imageNodes.map(el=>{
+    const caption=el.closest("figure")?.querySelector("figcaption");
+    return [el.getAttribute("alt"),el.getAttribute("aria-label"),el.getAttribute("title"),el.getAttribute("aria-describedby")?.split(/\\s+/).map(id=>document.getElementById(id)).map(text).filter(Boolean).join(" "),caption?text(caption):""].filter(Boolean).join(" — ");
+   }).filter(Boolean)).slice(0,12);
+   const imageCount=imageNodes.length;
+   const context=clean([document.title,rootText,questionCandidates.join(" "),imageNotes.join(" ")].join(" ")).slice(0,5000);
+   return{title:document.title,url:location.href,question:question.slice(0,3000),options:rootOptions.slice(0,20),imageNotes,imageCount,context,strategies:{questionSelectors:questionCandidates.length,optionNodes:optionNodes.length,roots:roots.length}};
   }});
   const data=results?.[0]?.result||{},question=String(data.question||"").trim(),options=Array.isArray(data.options)?data.options.map(String):[];
-  $("question").value=question;$("options").value=options.join("\\n");
-  const subject=inferSubject((tab.title||"")+" "+question+" "+(data.context||""));
+  $("question").value=question;$("options").value=options.join("\\n");$("image-context").value=Array.isArray(data.imageNotes)?data.imageNotes.join("\\n"):"";$("image-status").textContent=(data.imageCount||0)+" визуальных элементов в области вопроса; пиксели изображений пока не анализируются.";
+  const subject=inferSubject((tab.title||"")+" "+question+" "+(data.context||"")+" "+$("image-context").value);
   if(!subjectWasManuallySelected){
    if(subject){$("subject").value=subject.value;$("subject-confidence").textContent="Предположение";}
    else{$("subject").value="";$("subject-confidence").textContent="Выберите вручную";}
@@ -72,6 +78,6 @@ async function extractFromActiveTab(){
 $("extract").addEventListener("click",extractFromActiveTab);$("refresh").addEventListener("click",extractFromActiveTab);
 $("subject").addEventListener("change",()=>{subjectWasManuallySelected=Boolean($("subject").value);$("subject-confidence").textContent=subjectWasManuallySelected?"Выбрано вручную":"Не определён";});
 $("copy").addEventListener("click",async()=>{const question=$("question").value.trim();if(!question)return setFeedback("Сначала считайте или введите вопрос.",true);const subject=$("subject").selectedOptions[0]?.textContent||"Не определён",payload="Предмет: "+subject+"\nВопрос: "+question+"\nВарианты:\n"+$("options").value.trim();try{await navigator.clipboard.writeText(payload);setFeedback("Вопрос и варианты скопированы. В базу они пока не записываются.");}catch{setFeedback("Не удалось скопировать автоматически. Выделите текст и скопируйте вручную.",true);}});
-$("open-search").addEventListener("click",()=>{const question=$("question").value.trim();if(!question)return setFeedback("Сначала считайте или введите вопрос.",true);const url=new URL("/search",APP_ORIGIN);url.searchParams.set("q",question);if($("subject").value&&$("subject").value!=="other")url.searchParams.set("subject_slug",$("subject").value);chrome.tabs.create({url:url.toString()});setFeedback("Открыта платформа с запросом. Подтверждение ответа пока не выполняется.");});
+$("open-search").addEventListener("click",()=>{const question=$("question").value.trim();if(!question)return setFeedback("Сначала считайте или введите вопрос.",true);const url=new URL("/search",APP_ORIGIN);const imageContext=$("image-context").value.trim();url.searchParams.set("q",[question,$("options").value.trim(),imageContext].filter(Boolean).join(" "));if($("subject").value&&$("subject").value!=="other")url.searchParams.set("subject_slug",$("subject").value);chrome.tabs.create({url:url.toString()});setFeedback("Открыта платформа с запросом. Подтверждение ответа пока не выполняется.");});
 document.querySelectorAll("[data-path]").forEach(button=>button.addEventListener("click",()=>{const path=button.getAttribute("data-path")||"/";if(path.startsWith("/")&&!path.startsWith("//"))chrome.tabs.create({url:new URL(path,APP_ORIGIN).toString()});}));
 extractFromActiveTab();
