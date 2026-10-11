@@ -122,6 +122,48 @@ async function sendTelegramMessage(env, chatId, response) {
   if (!result.ok || !body || body.ok !== true) throw new Error("Telegram delivery failed");
 }
 
+
+async function confirmAccountLink(env, message, token) {
+  const endpoint = env.TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL;
+  if (!endpoint) {
+    await sendTelegramMessage(env, message.chat.id, {
+      text: "Привязка аккаунта пока не настроена на сервере MEDBIOHIM. Откройте настройки сайта и попробуйте позже.",
+    });
+    return false;
+  }
+  let target;
+  try { target = new URL(endpoint); } catch { throw new Error("Invalid account-link URL"); }
+  if (target.protocol !== "https:") throw new Error("Account-link URL must use HTTPS");
+  const user = message.from;
+  if (!user || !Number.isSafeInteger(user.id) || user.id <= 0) throw new Error("Invalid Telegram user");
+  const result = await fetchWithTimeout(target.toString(), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-telegram-bot-api-secret-token": env.TELEGRAM_WEBHOOK_SECRET,
+    },
+    body: JSON.stringify({
+      token,
+      telegram_user_id: String(user.id),
+      username: typeof user.username === "string" ? user.username : null,
+      first_name: typeof user.first_name === "string" ? user.first_name : null,
+    }),
+  });
+  let body;
+  try { body = await result.json(); } catch { body = null; }
+  if (!result.ok || !body || body.ok !== true) {
+    const messageText = result.status === 410 || result.status === 409
+      ? "Ссылка устарела или аккаунт уже связан. Вернитесь в настройки MEDBIOHIM и создайте новую ссылку."
+      : "Не удалось подтвердить привязку. Попробуйте создать новую ссылку в настройках сайта.";
+    await sendTelegramMessage(env, message.chat.id, { text: messageText });
+    return false;
+  }
+  await sendTelegramMessage(env, message.chat.id, {
+    text: "Telegram успешно привязан к вашему аккаунту MEDBIOHIM. Вернитесь на сайт и обновите настройки.",
+  });
+  return true;
+}
+
 async function relayGroupUpdate(env, update) {
   const endpoint = env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
   if (!endpoint) return { configured: false };
@@ -174,6 +216,16 @@ export async function handleRequest(request, env) {
   }
   if (message.chat.type !== "private") return json({ ok: true, ignored: true });
 
+  const text = typeof message.text === "string" ? message.text.trim() : "";
+  const linkStart = text.match(/^\\/start(?:@[^\\s]+)?\\s+link_([a-f0-9]{64})$/i);
+  if (linkStart) {
+    try {
+      await confirmAccountLink(env, message, linkStart[1].toLowerCase());
+      return json({ ok: true, accountLink: true });
+    } catch {
+      return json({ ok: false, error: "ACCOUNT_LINK_FAILED" }, 502);
+    }
+  }
   const response = commandResponse(message.text, env);
   if (!response) return json({ ok: true, ignored: true });
   try {
