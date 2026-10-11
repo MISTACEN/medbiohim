@@ -1,4 +1,4 @@
-import { loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "./supabase-auth.js";
+import { loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -103,6 +103,68 @@ export default {
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
+    if (pathname === `${API_PREFIX}/auth/register`) {
+      if (request.method !== "POST") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      if (!env.AUTH_REGISTER_LIMITER || typeof env.AUTH_REGISTER_LIMITER.limit !== "function") {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMIT_NOT_CONFIGURED", message: "Registration rate limiting is not configured" },
+          requestId: crypto.randomUUID(),
+        }, 503), origin);
+      }
+      const clientIp = request.headers.get("cf-connecting-ip") || "unknown";
+      let limit;
+      try {
+        limit = await env.AUTH_REGISTER_LIMITER.limit({ key: clientIp });
+      } catch {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMIT_UNAVAILABLE", message: "Registration is temporarily unavailable" },
+          requestId: crypto.randomUUID(),
+        }, 503), origin);
+      }
+      if (!limit || limit.success !== true) {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMITED", message: "Too many registration attempts. Try again later." },
+          requestId: crypto.randomUUID(),
+        }, 429), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (parsed.tooLarge) {
+        return withCors(json({
+          ok: false,
+          error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" },
+          requestId: crypto.randomUUID(),
+        }, 413), origin);
+      }
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object") {
+        return withCors(json({
+          ok: false,
+          error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" },
+          requestId: crypto.randomUUID(),
+        }, 422), origin);
+      }
+      const fullName = parsed.value.full_name ?? parsed.value.name;
+      const result = await registerSupabaseUser(parsed.value.email, parsed.value.password, fullName, env);
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+      // DB-backed profile creation/default role assignment is intentionally
+      // deferred until the database/RLS strategy is reviewed.
+      return withCors(success(result.data, 201), origin);
+    }
+
     if (pathname === `${API_PREFIX}/auth/login`) {
       if (request.method !== "POST") {
         return withCors(json({
