@@ -101,7 +101,7 @@ test("confirms a one-time account link through the HTTPS PHP relay", async (t) =
       assert.equal(init.headers["x-telegram-bot-api-secret-token"], "test-secret");
       return new Response(JSON.stringify({ ok: true, data: { linked: true } }), { status: 200 });
     }
-    assert.match(String(url), /bottest-token\\/sendMessage$/);
+    assert.match(String(url), /bottest-token\/sendMessage$/);
     assert.match(JSON.parse(init.body).text, /успешно привязан/i);
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   };
