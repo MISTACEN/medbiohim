@@ -87,6 +87,37 @@ test("forwards group update only to configured HTTPS relay", async (t) => {
   assert.equal((await response.json()).forwarded, true);
 });
 
+
+test("confirms a one-time account link through the HTTPS PHP relay", async (t) => {
+  const oldFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (String(url) === "https://api.example.test/api/v1/telegram/account-link/confirm") {
+      const body = JSON.parse(init.body);
+      assert.equal(body.token, "a".repeat(48));
+      assert.equal(body.telegram_user_id, "42");
+      assert.equal(body.username, "student_test");
+      assert.equal(init.headers["x-telegram-bot-api-secret-token"], "test-secret");
+      return new Response(JSON.stringify({ ok: true, data: { linked: true } }), { status: 200 });
+    }
+    assert.match(String(url), /bottest-token\\/sendMessage$/);
+    assert.match(JSON.parse(init.body).text, /успешно привязан/i);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  t.after(() => { globalThis.fetch = oldFetch; });
+  const response = await handleRequest(request("/api/webhook", {
+    body: { update_id: 9, message: {
+      text: "/start link_" + "a".repeat(48),
+      from: { id: 42, username: "student_test", first_name: "Student" },
+      chat: { id: 42, type: "private" },
+    } },
+  }), { ...baseEnv, TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL: "https://api.example.test/api/v1/telegram/account-link/confirm" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).accountLink, true);
+  assert.equal(calls.length, 2);
+});
+
 test("rejects oversized request bodies", async () => {
   const large = "x".repeat(256 * 1024 + 1);
   const response = await handleRequest(new Request("https://worker.example/api/webhook", {
