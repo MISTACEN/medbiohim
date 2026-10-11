@@ -30,6 +30,24 @@ async function parseUpdateBody(req) {
   return body && typeof body === "object" && !Array.isArray(body) ? body : null;
 }
 
+async function forwardGroupUpdate(update) {
+  const endpoint = process.env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!endpoint || !secret) return { configured: false };
+
+  let target;
+  try { target = new URL(endpoint); } catch { throw new Error("Invalid Telegram homework webhook URL"); }
+  if (target.protocol !== "https:") throw new Error("Telegram homework webhook URL must use HTTPS");
+
+  const result = await fetch(target.toString(), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": secret },
+    body: JSON.stringify(update),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!result.ok) throw new Error("Telegram homework relay failed with HTTP " + result.status);
+  return { configured: true };
+}
 async function sendTelegramMessage(chatId, response) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
@@ -90,9 +108,22 @@ module.exports = async function webhook(req, res) {
   }
   if (!update) return res.status(400).json({ ok: false, error: "INVALID_UPDATE" });
 
-  const message = update.message;
-  if (!message || !message.chat || message.chat.type !== "private" || typeof message.chat.id !== "number") {
-    // Ignore group/channel posts; the MVP is private-chat-only.
+  const message = update.message || update.edited_message;
+  if (!message || !message.chat || typeof message.chat.id !== "number") {
+    return res.status(200).json({ ok: true, ignored: true });
+  }
+
+  if (message.chat.type === "group" || message.chat.type === "supergroup") {
+    try {
+      const forwarded = await forwardGroupUpdate(update);
+      return res.status(200).json({ ok: true, forwarded: forwarded.configured });
+    } catch (error) {
+      console.error("[telegram-bot] homework relay failed:", error instanceof Error ? error.message : "unknown error");
+      return res.status(502).json({ ok: false, error: "HOMEWORK_RELAY_FAILED" });
+    }
+  }
+
+  if (message.chat.type !== "private") {
     return res.status(200).json({ ok: true, ignored: true });
   }
 
