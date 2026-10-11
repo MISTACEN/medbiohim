@@ -1323,6 +1323,9 @@ Full hand-off snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). 
 ## Контрольный снимок перед паузой — 2026-10-11
 Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
 
+## Контрольный снимок перед паузой — 2026-10-11
+Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
+
 ### Telegram group homework relay — implementation update 2026-10-11
 
 - 🟢 Node webhook now has an optional HTTPS relay for group/supergroup updates to the existing PHP `/api/v1/telegram/webhook` endpoint.
