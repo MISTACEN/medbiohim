@@ -419,3 +419,9 @@ See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Ful
 - Cloudflare Workers is the first webhook hosting candidate for a proof of concept only; current Node/Vercel bot remains until compatibility tests and rollback are proven.
 - Free-tier limits/card requirements from the proposed list are unverified and must be checked against official terms at the time of deployment.
 - No hosting migration, DNS change, production secret change, or database replication was performed.
+
+## 2026-10-11 — Full project continuation checkpoint
+
+- Added full handoff snapshot, current status, known historical defects, architecture constraints, next-step order and new-chat prompt to `docs/UNFINISHED-REGISTRY.md`.
+- Added `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md` and linked the plan from project documentation.
+- Snapshot distinguishes source changes from unverified tests/runtime and notes that production settings were not changed.
