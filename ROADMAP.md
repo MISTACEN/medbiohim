@@ -1,5 +1,15 @@
 
 
+## Extension + Telegram integration hardening (2026-10-11)
+
+- 🟢 Extension search now prefers question text instead of concatenating all options, formulas and captions into one long query; when the question is too short, it falls back to formula text or image captions.
+- 🟢 Telegram webhook adds /homework guidance and regression tests for commands addressed to a different bot and refusal of insecure HTTP relay URLs.
+- 🟡 Group homework ingestion depends on the existing PHP TelegramHomeworkService, an explicitly mapped/active Telegram chat and correct server-side bot/secret configuration. Cloudflare Worker remains an un-deployed alternative; no production webhook changed.
+- ⚠️ BotFather group privacy must permit ordinary group updates if the bot is expected to receive regular homework text/photos. Change this only for the intended bot and verify update delivery.
+- ⬜ Next: run both bot test suites in Node 20, test a mapped group with text/photo/reply/media-group updates against a non-production backend, then improve extension image selection and consent-based OCR/vision after privacy review.
+- 🔒 No production data writes, deploys, webhook changes, token exposure or new browser host permissions were made in this pass.
+
+
 ## Multimodal STEM questions — formula/equation groundwork (2026-10-11)
 
 - 🟢 Side panel now has an editable formula/equation field and attempts to collect text exposed by MathML, KaTeX, MathJax, MathJax v3 containers, accessible formula labels, data-math nodes and code blocks in the likely question area.
