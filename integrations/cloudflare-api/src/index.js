@@ -74,8 +74,7 @@ export default {
       }), origin);
     }
 
-        // First contract-matched PHP routes. They are public, read-only metadata and
-    // deliberately do not touch Supabase, user data, or the SpaceWeb origin.
+    // Explicitly migrated routes only; all other API paths fail closed below.
     if (pathname === `${API_PREFIX}/auth/logout`) {
       if (request.method !== "POST") {
         return withCors(json({
@@ -86,7 +85,7 @@ export default {
       }
 
       const authorization = request.headers.get("authorization") || "";
-      const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+      const match = /^Bearer\s+(\S+)$/i.exec(authorization);
       if (!match) {
         return withCors(json({
           ok: false,
