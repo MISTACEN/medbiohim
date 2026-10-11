@@ -6,10 +6,17 @@ The existing PHP API on SpaceWeb remains the current backend. This Worker is an 
 
 - Worker name: `medbiohim-api-shadow`
 - Runtime: Cloudflare Workers JavaScript modules
-- Current implemented route: `GET /health` and `GET /api/v1/health`
+- Contract-matched public PHP routes in the shadow Worker: `GET /api/v1` and `GET /api/v1/ping`.
+- `GET /health` and `GET /api/v1/health` are shadow diagnostics, not yet contract-compatible ports of the PHP `HealthChecker`.
 - Unmigrated `/api/v1/*` routes return `501 ROUTE_NOT_MIGRATED`
 - No proxy/fallback to SpaceWeb is implemented. This is intentional because the currently checked SpaceWeb HTTPS endpoint fails certificate verification and redirects to HTTP.
 - No secrets, service-role keys, database credentials, or user tokens belong in this directory or in `wrangler.toml`.
+
+## Migration progress — Pass 1
+
+- `GET /api/v1` and `GET /api/v1/ping` mirror the current PHP success-envelope fields and are covered by contract tests.
+- The ping clock is emitted as an ISO-8601 UTC timestamp; the `env` value deliberately identifies the shadow environment.
+- These routes have not been deployed and are not receiving application traffic. No frontend API base URL or production route was changed.
 
 ## Local checks
 
