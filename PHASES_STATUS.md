@@ -1316,6 +1316,10 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - 🟡 Validation pending: Actions has historically failed before job steps; do not claim PHP tests passed until a runner actually executes. End-to-end homework and Telegram runtime tests remain open.
 - No production deployment, database write or secret changes performed.
 
+## Project checkpoint — 2026-10-11
+
+Full hand-off snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). Read this before resuming; CI is not green and the Telegram flow is not end-to-end verified.
+
 ### Telegram group homework relay — implementation update 2026-10-11
 
 - 🟢 Node webhook now has an optional HTTPS relay for group/supergroup updates to the existing PHP `/api/v1/telegram/webhook` endpoint.
