@@ -50,6 +50,30 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 });
 
 
+test("POST /api/v1/auth/register fails closed until a Cloudflare rate limiter is configured", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.11" },
+    body: JSON.stringify({ email: "student@example.com", password: "password123", full_name: "Student" }),
+  }), {});
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, "RATE_LIMIT_NOT_CONFIGURED");
+});
+
+test("registration rejects attempts denied by the Cloudflare rate limiter before auth", async () => {
+  let calls = 0;
+  const response = await worker.fetch(request("/api/v1/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.11" },
+    body: JSON.stringify({ email: "student@example.com", password: "password123", full_name: "Student" }),
+  }), {
+    AUTH_REGISTER_LIMITER: { limit: async ({ key }) => { calls += 1; assert.equal(key, "203.0.113.11"); return { success: false }; } },
+  });
+  assert.equal(response.status, 429);
+  assert.equal((await response.json()).error.code, "RATE_LIMITED");
+  assert.equal(calls, 1);
+});
+
 test("POST /api/v1/auth/login fails closed until a Cloudflare rate limiter is configured", async () => {
   const response = await worker.fetch(request("/api/v1/auth/login", {
     method: "POST",
