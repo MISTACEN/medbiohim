@@ -1464,3 +1464,13 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🔴 Telegram Worker checks run 38143942074 failed with runner_id=0 and steps=[]; the job never reached npm test. GitHub runner allocation remains the blocker; tests are not considered executed.
 - ⚠️ Supabase advisors: 1 security ERROR (trainer_feed_cards_public SECURITY DEFINER view), 2 warnings (submit_trainer_feed_answer SECURITY DEFINER callable by authenticated role; leaked-password protection disabled), 44 unindexed foreign keys, 67 unused-index notices. Security review first; no blind index drops.
 - Detailed notes: docs/HOSTING-HTTPS-DECISION-2026-10-11.md.
+
+
+## Cloudflare API migration — shadow scaffold (2026-10-12)
+
+- 🟢 Decision recorded: SpaceWeb remains the active PHP API host during preparation; no production traffic or frontend API base URL changed.
+- 🟢 New isolated source directory: \`integrations/cloudflare-api/\` (\`src/index.js\`, \`wrangler.toml\`, \`package.json\`, \`test/index.test.js\`, \`README.md\`).
+- 🟢 Safety behavior authored: allowlisted CORS; no-store responses; public health route explicitly marks itself as a migration scaffold; unmigrated API routes return 501 rather than proxying to SpaceWeb.
+- 🟡 Tests are authored but **not executed/verified** in this environment. GitHub Actions runner dispatch is still a blocker; do not treat commits as test success.
+- 🟡 No Worker deployment, secrets, DNS, production route, database migration, or frontend switch was performed.
+- ⬜ Next: run \`npm test\` once runner allocation works; produce a complete PHP route inventory; specify auth/JWT, role/ownership, RLS, input-validation and error contracts; migrate routes incrementally with rollback.
