@@ -52,8 +52,30 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 
 test("POST /api/v1/auth/logout requires a bearer token", async () => {
   const response = await worker.fetch(request("/api/v1/auth/logout", { method: "POST" }), {});
-  assert.equal(response.status, 401);
-  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+  assert.equal(response.status, 422);
+  assert.equal((await response.json()).error.code, "VALIDATION_ERROR");
+});
+
+test("JSON access_token fallback is accepted by the PHP-compatible logout contract", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/logout", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ access_token: "test-token" }),
+  }), {});
+  // Token parsing succeeded; the request fails closed only because the shadow
+  // Worker has no Supabase configuration in this test.
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
+});
+
+test("malformed JSON logout body returns validation error", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/logout", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{",
+  }), {});
+  assert.equal(response.status, 422);
+  assert.equal((await response.json()).error.code, "VALIDATION_ERROR");
 });
 
 test("GET is not accepted for the logout route", async () => {
