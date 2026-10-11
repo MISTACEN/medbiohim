@@ -1,4 +1,4 @@
-import { logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "./supabase-auth.js";
+import { loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -103,6 +103,69 @@ export default {
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
+    if (pathname === `${API_PREFIX}/auth/login`) {
+      if (request.method !== "POST") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      // Login must not be exposed until a real Cloudflare Rate Limiting binding
+      // is configured; a per-isolate in-memory counter is not a safe substitute.
+      if (!env.AUTH_LOGIN_LIMITER || typeof env.AUTH_LOGIN_LIMITER.limit !== "function") {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMIT_NOT_CONFIGURED", message: "Login rate limiting is not configured" },
+          requestId: crypto.randomUUID(),
+        }, 503), origin);
+      }
+      const clientIp = request.headers.get("cf-connecting-ip") || "unknown";
+      let limit;
+      try {
+        limit = await env.AUTH_LOGIN_LIMITER.limit({ key: clientIp });
+      } catch {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMIT_UNAVAILABLE", message: "Login is temporarily unavailable" },
+          requestId: crypto.randomUUID(),
+        }, 503), origin);
+      }
+      if (!limit || limit.success !== true) {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMITED", message: "Too many login attempts. Try again later." },
+          requestId: crypto.randomUUID(),
+        }, 429), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (parsed.tooLarge) {
+        return withCors(json({
+          ok: false,
+          error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" },
+          requestId: crypto.randomUUID(),
+        }, 413), origin);
+      }
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object") {
+        return withCors(json({
+          ok: false,
+          error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" },
+          requestId: crypto.randomUUID(),
+        }, 422), origin);
+      }
+      const result = await loginSupabaseUser(parsed.value.email, parsed.value.password, env);
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+      // DB-backed profile/role sync is intentionally not guessed here. It must
+      // be migrated with verified RLS/ownership policies before cutover.
+      return withCors(success(result.data), origin);
+    }
+
     if (pathname === `${API_PREFIX}/auth/recover`) {
       if (request.method !== "POST") {
         return withCors(json({
