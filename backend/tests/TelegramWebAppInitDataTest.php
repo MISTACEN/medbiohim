@@ -3,7 +3,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/Support/TelegramWebAppInitData.php';
 
-use Medbiohim\\Support\\TelegramWebAppInitData;
+use Medbiohim\Support\TelegramWebAppInitData;
+
+function check(bool $condition): void
+{
+    if (!$condition) throw new RuntimeException('Telegram Web App initData regression test failed');
+}
 
 function makeInitData(string $token, int $authDate, array $extra = []): string
 {
@@ -26,17 +31,17 @@ $token = '123456:TEST_BOT_TOKEN';
 $now = 1800000000;
 $valid = makeInitData($token, $now - 30);
 $result = TelegramWebAppInitData::validate($valid, $token, $now);
-assert($result['ok'] === true);
-assert(($result['user']['id'] ?? null) === 123456789);
+check($result['ok'] === true);
+check(($result['user']['id'] ?? null) === 123456789);
 
-assert(TelegramWebAppInitData::validate($valid, null, $now)['error'] === 'bot_not_configured');
-assert(TelegramWebAppInitData::validate($valid, $token, $now, 10)['error'] === 'init_data_expired');
-assert(TelegramWebAppInitData::validate(makeInitData($token, $now + 120), $token, $now)['error'] === 'auth_date_in_future');
+check(TelegramWebAppInitData::validate($valid, null, $now)['error'] === 'bot_not_configured');
+check(TelegramWebAppInitData::validate($valid, $token, $now, 10)['error'] === 'init_data_expired');
+check(TelegramWebAppInitData::validate(makeInitData($token, $now + 120), $token, $now)['error'] === 'auth_date_in_future');
 
 $tampered = str_replace('Student', 'Attacker', $valid);
-assert(TelegramWebAppInitData::validate($tampered, $token, $now)['ok'] === false);
+check(TelegramWebAppInitData::validate($tampered, $token, $now)['ok'] === false);
 
 $duplicate = $valid . '&auth_date=' . $now;
-assert(TelegramWebAppInitData::validate($duplicate, $token, $now)['ok'] === false);
+check(TelegramWebAppInitData::validate($duplicate, $token, $now)['ok'] === false);
 
 echo "Telegram Web App initData tests passed\n";
