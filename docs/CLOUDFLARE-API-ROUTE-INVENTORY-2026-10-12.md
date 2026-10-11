@@ -43,7 +43,7 @@ Method/path requests outside those exact GET contracts are not treated as migrat
 |---|---|---|---|
 | `backend/config/routes/auth.php` | `POST /api/v1/auth/logout` | Accepts Bearer token; calls Supabase Auth logout over HTTPS using only anon key plus caller token; invalid/expired token maps to 401; upstream/network failures are generic 502; no service-role key | Implemented in isolated Worker; route and helper regression tests added; no deployment yet |
 
-This route intentionally requires the Bearer header; the PHP handler also accepts a JSON `access_token`, but the migration does not preserve that weaker credential transport because request bodies and logs are more easily mishandled. Frontend compatibility must be confirmed before any production cutover. The route has no persistent DB writes.
+The route prefers the Bearer header and preserves the PHP handler's JSON `access_token` fallback for compatibility. JSON is size-capped; malformed JSON is rejected. Frontend compatibility must be confirmed before any production cutover. The route has no persistent DB writes.
 
 ## Authentication foundation — Pass 2 (2026-10-12)
 
