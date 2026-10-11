@@ -740,6 +740,10 @@ Bridge использует те же normalized contracts, что и серве
 
 See [STATUS-2026-10-11.md](STATUS-2026-10-11.md) for the latest Telegram single-webhook relay, actual remaining account-linking work, CI runner blocker, and verification order. Do not treat the relay as a complete homework-ingestion workflow until the PHP endpoint and database path are tested.
 
+## Pause checkpoint — 2026-10-11
+
+Current Telegram relay, single-webhook architecture, Mini App limitations, CI blocker, and next steps are recorded in [`UNFINISHED-REGISTRY.md`](UNFINISHED-REGISTRY.md), “Full checkpoint — 2026-10-11”. Keep secure account linking and extension imports open until implemented and tested.
+
 ## Product contract clarification — 2026-10-11
 
 The canonical requirements now live in [MEDBIOHIM product intent and integration contract](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md).
