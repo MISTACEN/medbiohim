@@ -96,3 +96,25 @@ test("rejects oversized request bodies", async () => {
   }), baseEnv);
   assert.equal(response.status, 413);
 });
+
+
+test("ignores commands addressed to another bot username", async (t) => {
+  const oldFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => { called = true; return new Response(JSON.stringify({ ok: true }), { status: 200 }); };
+  t.after(() => { globalThis.fetch = oldFetch; });
+  const response = await handleRequest(request("/api/webhook", { body: { message: { text: "/start@some_other_bot", chat: { id: 8, type: "private" } } } }), { ...baseEnv, TELEGRAM_BOT_USERNAME: "medbiohim_bot" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ignored, true);
+  assert.equal(called, false);
+});
+
+test("rejects insecure HTTP homework relay URL without making a request", async (t) => {
+  const oldFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => { called = true; return new Response("{}", { status: 200 }); };
+  t.after(() => { globalThis.fetch = oldFetch; });
+  const response = await handleRequest(request("/api/webhook", { body: { message: { text: "Задание на завтра", chat: { id: -42, type: "group", title: "МБХ-201" } } }), { ...baseEnv, TELEGRAM_HOMEWORK_WEBHOOK_URL: "http://insecure.example/api/v1/telegram/webhook" });
+  assert.equal(response.status, 502);
+  assert.equal(called, false);
+});
