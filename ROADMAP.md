@@ -2370,3 +2370,11 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 GitHub Actions runner allocation and Wrangler/Cloudflare deployment checks remain unverified.
 - 🔴 Cloudflare account inspection found no deployed `medbiohim-api-shadow` Worker. A Workers Builds configuration was not found for the current Telegram Worker tag during this check; a filled UI form is not proof of a saved, successful build.
 - Next: wire the helper only into a route after reviewing that route's data contract and database-level authorization; separately configure the API Worker build with repository root `/integrations/cloudflare-api/` when a staging deploy is approved.
+
+
+## Branching policy — SpaceWeb maintenance vs Cloudflare migration (2026-10-12)
+
+- 🟢 Created branch `spaceweb-backend` from the current `main` head to preserve a maintenance line for the existing SpaceWeb PHP backend.
+- 🔵 `main` is the forward migration line for the Cloudflare API implementation in `integrations/cloudflare-api/`; the Telegram Worker remains a separate project in `integrations/telegram-bot-cloudflare/`.
+- 🔒 SpaceWeb remains the live backend until a route-by-route verification and an explicitly approved cutover. No production DNS, Vercel API URL, Supabase policy, or Telegram webhook changes are allowed as part of ordinary code migration.
+- ⚠️ The maintenance branch is a source snapshot, not yet a verified rollback/release branch. Keep fixes there when needed for the live PHP backend and port shared critical fixes intentionally.
