@@ -92,3 +92,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Normalizes Supabase 4xx responses to `{ sent: true }` to avoid exposing whether an email exists. Upstream throttling remains a 429; network/5xx failures are generic.
 - Request JSON is bounded to 16 KiB. Supabase's built-in recovery throttling is relied on for now; configure a Cloudflare rate-limiting binding before production deployment for an additional edge limit.
 - Tests are authored but require a successful Node/GitHub Actions run. The Worker remains undeployed.
+
+## Auth route migration — Pass 6 (partial login)
+
+- Added a Supabase password-login helper and `POST /api/v1/auth/login` route in Worker source.
+- The route **fails closed with 503** unless a Cloudflare Rate Limiting binding named `AUTH_LOGIN_LIMITER` exists. This is deliberate: an in-memory per-isolate counter is not an adequate production control.
+- When configured, the route limits attempts by Cloudflare's `cf-connecting-ip`, validates bounded JSON, exchanges credentials over HTTPS, and normalizes invalid credentials to a generic 401.
+- **Not contract-complete:** the PHP handler also attempts DB-backed profile synchronization and returns `profile` and `roles` when available. This Worker pass does not yet implement that database/RLS behavior. Do not route production login traffic here until profile/role parity is migrated and tested.
+- Added unit and route tests for login normalization, invalid credentials, upstream failures, and the required limiter. The suite has not yet been confirmed by a successful Node/GitHub Actions run.
