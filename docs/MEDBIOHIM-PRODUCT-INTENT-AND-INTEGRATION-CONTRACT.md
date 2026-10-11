@@ -136,3 +136,7 @@ The canonical current-state inventory and handoff is maintained in [`UNFINISHED-
 - обновление `ROADMAP.md`, `PHASES_STATUS.md`, `SYNC_STAMP.md` и реестра незавершённого.
 
 **Текущая оговорка:** GitHub Actions в последней проверенной серии завершались до выполнения шагов (`steps: null`, без логов). Поэтому новые тесты и CI не объявлять пройденными, пока раннер фактически не выполнит их. Документ фиксирует требования и очередность, но не утверждает, что перечисленные будущие функции уже реализованы.
+
+## Hosting resilience and free-tier strategy — 2026-10-11
+
+The canonical architecture plan is `HOSTING-RESILIENCE-AND-FREE-TIERS.md`. Preserve the existing primary stack, measure/optimize before migrating, then test a second independent foreign host and only later a Russian read-only emergency snapshot. The Telegram Worker is a proof-of-concept candidate, not a production decision. No production DNS/secrets/webhook/database settings were changed.
