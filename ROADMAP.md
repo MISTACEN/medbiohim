@@ -2222,3 +2222,10 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - Идея отказоустойчивости: primary иностранный, secondary независимый иностранный, последний fallback — российская статика/совместимый хостинг. Secondary не считается полноценным failover, пока не проверены зависимости, Next.js/Auth/API, сеть и процедура возврата.
 - Никакие hosting/DNS/webhook/secret/production DB изменения не сделаны. Все тарифы и обещания «без карты» из списка пользователя — кандидаты к перепроверке по актуальным официальным условиям, не подтверждённые гарантии.
 - Основной блокер всё ещё GitHub Actions: задания падают до шагов. Первым делом при возобновлении проверить Actions/runner, затем тесты и E2E; только после этого PoC хостингов.
+
+### Hosting resilience architecture — 2026-10-11
+- Canonical plan: `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`.
+- Keep current Vercel → SpaceWeb PHP API → Supabase + existing media storage as primary. Do not replace it.
+- Priority: measure and optimize the existing slow path; then test a second independent foreign origin (Cloudflare Pages/compatible Next.js hosting) with a separate backup URL; later publish a Russian read-only emergency snapshot.
+- Telegram bot: Cloudflare Workers is the first PoC candidate, not yet selected for production. Keep current Node/Vercel webhook until parity tests and rollback exist; one active Telegram webhook per bot token.
+- User-provided provider quotas/card requirements are unverified. No provider migration, DNS change, production secret change or database replication is authorized.
