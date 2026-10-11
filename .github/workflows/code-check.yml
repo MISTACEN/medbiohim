@@ -103,6 +103,8 @@ jobs:
         run: php backend/tests/AccountSettingsPreferencesTest.php
       - name: Telegram webhook secret regression tests
         run: php backend/tests/TelegramWebhookSecretTest.php
+      - name: Telegram Web App initData regression tests
+        run: php backend/tests/TelegramWebAppInitDataTest.php
       - name: Bootstrap route registration smoke test
         run: |
           set -euo pipefail
