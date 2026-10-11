@@ -1,8 +1,8 @@
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 
-const WEBHOOK_URL = "https://medbiohim-telegram-test.ryazansevegor.workers.dev/api/webhook";
-const HEALTH_URL = "https://medbiohim-telegram-test.ryazansevegor.workers.dev/health";
+const WEBHOOK_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/webhook";
+const HEALTH_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/health";
 
 function readSecret(label) {
   return new Promise((resolve, reject) => {
