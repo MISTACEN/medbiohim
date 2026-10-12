@@ -666,22 +666,30 @@ test("schedule read rejects a group outside the caller's active memberships", as
   assert.equal(result.code, "GROUP_ACCESS_DENIED");
 });
 
-test("published test catalog returns linked question counts without answer keys or attempts", async () => {
+test("published test catalog returns linked question counts and metadata without answer keys or attempts", async () => {
   const result = await listSupabasePublishedTests(request("Bearer valid-user-token"), configured, { limit: "10" }, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
     const parsed = new URL(String(url));
+    if (parsed.pathname === "/rest/v1/group_memberships") return new Response("[]", { status: 200 });
+    if (parsed.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: "subject-1", name: "Биохимия", specialty_slug: null, is_active: true }]), { status: 200 });
     if (parsed.pathname === "/rest/v1/tests") {
       assert.ok(!parsed.searchParams.get("select").includes("answer"));
       assert.ok(!parsed.searchParams.get("select").includes("attempt"));
-      return new Response(JSON.stringify([{ id: "test-1", title: "Тест", is_published: true }]), { status: 200 });
+      assert.ok(parsed.searchParams.get("select").includes("modules(title,order_index)"));
+      return new Response(JSON.stringify([{ id: "test-1", subject_id: "subject-1", title: "Тест", is_published: true, subjects: { name: "Биохимия" }, modules: { title: "Белки", order_index: 1 }, topics: { title: "Ферменты", order_index: 2 } }]), { status: 200 });
     }
-    assert.equal(parsed.pathname, "/rest/v1/test_questions");
-    assert.equal(parsed.searchParams.get("test_id"), "in.(test-1)");
-    return new Response(JSON.stringify([{ test_id: "test-1", order_index: 0 }, { test_id: "test-1", order_index: 1 }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/test_questions") {
+      assert.equal(parsed.searchParams.get("test_id"), "in.(test-1)");
+      return new Response(JSON.stringify([{ test_id: "test-1", order_index: 0 }, { test_id: "test-1", order_index: 1 }]), { status: 200 });
+    }
+    throw new Error("unexpected path " + parsed.pathname);
   });
   assert.equal(result.ok, true);
   assert.equal(result.data.items[0].id, "test-1");
-  assert.equal(result.data.items[0].question_count, 2);
+  assert.equal(result.data.items[0].questions_count, 2);
+  assert.equal(result.data.items[0].subject_name, "Биохимия");
+  assert.equal(result.data.items[0].module_title, "Белки");
+  assert.equal(result.data.items[0].topic_title, "Ферменты");
 });
 
 
