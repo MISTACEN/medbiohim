@@ -1,3 +1,11 @@
+## Cloudflare shadow deployment reconciliation — 2026-10-12
+
+- 🟢 Re-read Cloudflare API state for `medbiohim-api-shadow`; secret bindings for Supabase URL/anon key are present (values not read).
+- 🟢 Enabled only the isolated Worker's `workers.dev` subdomain for smoke testing; previews remain disabled. No custom domain, production routing, frontend API URL, DB policy, or Telegram webhook changed.
+- 🔴 Found source/deployment drift: GitHub `integrations/cloudflare-api/src/index.js` includes modules/routes not present in the Cloudflare script-content response. The deployed Worker cannot be assumed to match the latest repo source.
+- 🟡 External HTTP smoke tests and GitHub Actions execution remain unverified. Do not add further routes or switch production until the bundle is reconciled, Node tests pass, Wrangler build is clean, and shadow HTTP/RLS tests succeed.
+- Report and next steps: [Cloudflare shadow deployment reconciliation](docs/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
+
 
 
 ## Extension + Telegram integration hardening (2026-10-11)
