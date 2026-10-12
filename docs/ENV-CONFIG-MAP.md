@@ -22,7 +22,9 @@ The platform is split into:
 | NEXT_PUBLIC_SUPABASE_URL | Supabase project URL for client-side Supabase usage. |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Publishable/legacy anon key; browser-safe by design, subject to RLS. |
 | NEXT_PUBLIC_APP_NAME | Frontend application name. |
-| SPACEWEB_API_ORIGIN | Server-only Vercel → SpaceWeb PHP API target. |
+| SPACEWEB_API_ORIGIN | Server-only Vercel → SpaceWeb PHP API target; must use valid HTTPS when carrying authenticated traffic. |
+| CLOUDFLARE_API_ORIGIN | Optional server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. |
+| MEDBIOHIM_CF_FIRST | Preview-only opt-in. When exactly `true`, request Cloudflare first and use safe SpaceWeb fallback cases. Keep `false` in Production until the canary is accepted. |
 | GEMINI_API_KEY | Optional Vercel-side Gemini key for the proxy route. |
 | GEMINI_VERCEL_PROXY_SECRET | Optional server-to-server secret protecting the Gemini proxy. |
 
@@ -79,6 +81,7 @@ AI remains optional for core testing where deterministic logic exists. Provider/
 5. When debugging deployment, compare variable presence, scope, and precedence before changing code.
 6. Do not copy server-only variables into NEXT_PUBLIC_*.
 7. If a provider is unavailable, the platform should degrade gracefully where the feature is designed to be optional.
+8. Cloudflare-first fallback testing must use a valid HTTPS SpaceWeb origin. Authenticated requests must never fall back to plaintext HTTP. Ambiguous failed writes are not retried automatically.
 
 ## Current test-config inventory
 
