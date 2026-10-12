@@ -202,3 +202,16 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - The route verifies the Supabase access token, verifies the homework is visible through the caller JWT, confirms active group membership, and upserts only the authenticated user's progress. The request must contain a boolean `done`; JSON is capped at 8 KiB.
 - Regression tests cover the permitted write path and the out-of-group denial.
 - **Source-only, not deployed.** GitHub Actions still fails before any visible step execution, and the current code change has not passed a runnable test suite. The active PHP/SpaceWeb API remains unchanged.
+
+
+## Dashboard + schedule writes — Pass 19 (source-only, 2026-10-12)
+
+- Dashboard fixes in `src/app/page.tsx`: don't show only already-ended classes as the nearest event; include an in-progress lesson; treat returned/completed homework as non-pending.
+- Dashboard aggregate requests up to 200 published tests and returns explicit summary counts. These are additive response fields; the existing UI still derives its visible counts from its payload.
+- Schedule read fix: date weekday labels now parse ISO dates correctly.
+- Added `src/admin-schedule.js`: manager-protected schedule editor read and versioned full-schedule save. New version starts inactive, receives entries, activates after successful entry inserts, then prior active version is deactivated. If entry insertion fails, the incomplete version is kept inactive.
+- Added `src/schedule-mutations.js`: guarded create/update/soft-cancel routes for individual entries. The database's existing RLS manager policies remain the authorization boundary.
+- Routes authored: `GET/PUT /api/v1/admin/schedule`, `POST /api/v1/schedule/entries`, `PATCH/DELETE /api/v1/schedule/entries/{id}`.
+- Regression tests authored in `test/admin-schedule.test.js`, `test/schedule-mutations.test.js`, and `test/index.test.js`.
+- **Not deployed or runtime-verified.** Node tests could not be executed because the repository could not be cloned in the current network-isolated shell; GitHub Actions were left untouched as requested. The current PHP/SpaceWeb API remains active and frontend traffic has not been switched.
+- Before deploy, validate test syntax locally, compare admin payloads against the PHP editor, test real manager/student JWTs against live RLS, inspect partial-failure recovery, and upload all modules together to the shadow Worker.
