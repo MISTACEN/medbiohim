@@ -955,7 +955,7 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
       const group = groupMap.get(String(schedule.group_id || "")) || null;
       const dateValue = String(entry.date || "");
       let weekdayShort = "";
-      if (/^\\d{4}-\\d{2}-\\d{2}$/.test(dateValue)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
         weekdayShort = new Date(dateValue + "T12:00:00Z").toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
       }
       return {
