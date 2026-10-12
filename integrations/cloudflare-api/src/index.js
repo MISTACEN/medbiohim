@@ -29,7 +29,7 @@ function json(body, status = 200, extraHeaders = {}) {
 
 async function readJsonLimited(request, maxBytes) {
   if (!request.body) return { ok: true, value: null };
-  const reader = request.clone().body.getReader();
+  const reader = request.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let size = 0;
