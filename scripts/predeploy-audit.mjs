@@ -308,7 +308,7 @@ const cloudflareWorkerRoot = join(root, "integrations/cloudflare-api");
 const cloudflareWorkerEntry = join(cloudflareWorkerRoot, "src/index.js");
 if (existsSync(cloudflareWorkerEntry)) {
   const workerSource = await readFile(cloudflareWorkerEntry, "utf8");
-  const importPattern = /^import\\s+.+?\\s+from\\s+["'](\\.[^"']+)["'];?\\s*$/gm;
+  const importPattern = /^import\s+.+?\s+from\s+["'](\.[^"']+)["'];?\s*$/gm;
   const missingWorkerImports = [];
   for (const match of workerSource.matchAll(importPattern)) {
     const specifier = match[1];
