@@ -1,3 +1,12 @@
+## Wrangler validation and deployment gate — 2026-10-13
+
+- 🟢 Ran Wrangler `4.149.0 deploy --dry-run` against a minimal isolated fixture using the committed TOML binding syntax. Wrangler recognized both `AUTH_LOGIN_LIMITER` (5 requests/60s) and `AUTH_REGISTER_LIMITER` (3 requests/60s). This validates the config schema and binding declaration, **not** the full application bundle.
+- 🔴 Cloudflare API confirms there is currently **no Workers Builds configuration associated with** `medbiohim-api-shadow` (API error 12040). Therefore GitHub auto-deploy for this Worker is not set up/confirmed. No attempt was made to deploy an unreviewed or incomplete bundle through the live script API.
+- 🔴 GitHub Actions package/smoke jobs continue to terminate before any runner step (`runner_id=0`, no runner name, no steps). The complete Worker test suite has not been run in GitHub Actions; only the isolated 9-test API failover suite and the minimal Wrangler fixture dry-run passed in this session.
+- 🔒 Live Worker code and secrets remain unchanged; no production route or database permission was changed.
+
+**Deployment acceptance criteria:** create/verify Cloudflare Workers Builds connection for repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`; obtain a successful full source build; deploy to shadow; confirm deployed modules include all six source files; verify invalid bearer returns 401 (not 502), login/register are rate-limited, CORS remains strict, and read-only Supabase calls behave correctly. Keep Vercel Production in legacy mode until these pass.
+
 ## Rate-limit configuration added — 2026-10-13
 
 - 🟢 Updated `integrations/cloudflare-api/wrangler.toml` on `main` to declare Cloudflare native rate-limit bindings matching the existing Worker code: `AUTH_LOGIN_LIMITER` = 5 requests/IP/minute and `AUTH_REGISTER_LIMITER` = 3 requests/IP/minute. Namespace IDs are separate (`1001`, `1002`); thresholds are conservative initial values.
