@@ -394,6 +394,9 @@ async function proxy(req: NextRequest, pathParts: string[]) {
         }
       } catch (e) {
         error = e;
+        // A write may have reached SpaceWeb before the connection dropped.
+        // Do not retry it against a second legacy path.
+        if (req.method !== "GET") break;
       }
     }
     return { response, error };
