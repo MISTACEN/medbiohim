@@ -2544,3 +2544,11 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 The real Node test suite has **not** been executed and no runtime HTTP smoke test is confirmed. GitHub Actions remains untouched by instruction; the shell cannot clone the repository in the current network context.
 - 🔒 Test attempt start/save/finish remain intentionally fail-closed until their write path has database-enforced score/status integrity. Existing RLS permits a user to update their own attempt row and its score/status when direct table DML grants are present. The full test runner should use narrow authenticated database RPCs and a coordinated grants strategy rather than trusting the caller-JWT table write path.
 - 🔒 No production API base URL, live Supabase grants/schema, or Cloudflare deployment was changed. PHP/SpaceWeb remains the current backend.
+
+
+## Test bank response-contract follow-up — 2026-10-12
+
+- 🟢 The bank screen now calls a dedicated API-client helper `getTestBank()` which requests `/tests/{id}?view=bank&group_id=...`; the path remains compatible with the active PHP route and the Cloudflare source recognizes `view=bank` to include the correct answers only in the explicitly selected bank view. The default quiz detail route keeps answers/correct-choice flags stripped.
+- 🟢 A direct Cloudflare `GET /api/v1/tests/{id}/bank` alias is also present. The question-bank view receives `topic_title` / `module_title` fields expected by the UI and continues using the existing dedicated `bank-progress` endpoint.
+- 🟢 Published-test visibility now passes the selected group through the subject resolver and filters by active membership, specialty, and—when a single group is selected—course. Regression fixtures use UUID group/test identifiers.
+- 🟡 Static JavaScript parsing passed for 12 Worker/test JS files after the latest edits. `npm test` was not run because this environment cannot resolve GitHub; no claim of runtime test success.
