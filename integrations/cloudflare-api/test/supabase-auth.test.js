@@ -951,3 +951,27 @@ test("progress reports no overall score when the student has no homework or atte
   assert.equal(result.data.tests.attempts, 0);
   assert.equal(result.data.tests.avg_score, null);
 });
+
+
+test("selected-group subject catalog also filters by the active group course", async () => {
+  const groupId = "11111111-1111-4111-8111-111111111111";
+  const result = await listSupabaseSubjects(request("Bearer valid-user-token"), configured, { group_id: groupId }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      assert.equal(parsed.searchParams.get("group_id"), "eq." + groupId);
+      return new Response(JSON.stringify([{
+        group_id: groupId,
+        groups: { specialty_slug: "mbh", course_number: 2, is_active: true },
+      }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([
+      { id: "subject-2", name: "Курс 2", course_number: 2, specialty_slug: "mbh", is_active: true },
+      { id: "subject-3", name: "Курс 3", course_number: 3, specialty_slug: "mbh", is_active: true },
+      { id: "subject-general", name: "Общий", course_number: null, specialty_slug: null, is_active: true },
+    ]), { status: 200 });
+    throw new Error("unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.items.map((item) => item.id), ["subject-2", "subject-general"]);
+});
