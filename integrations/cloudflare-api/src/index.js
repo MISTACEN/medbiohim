@@ -1,5 +1,6 @@
 import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
+import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -144,6 +145,22 @@ export default {
         service_notice: degradedSources.length ? "Часть данных главной страницы временно недоступна. Показаны только подтверждённые данные." : null,
       };
       return withCors(success(data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/admin/schedule`) {
+      if (request.method === "GET") {
+        const result = await getSupabaseAdminSchedule(request, env, url.searchParams.get("group_id") || "", url.searchParams.get("semester") || "");
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "PUT") {
+        const parsed = await readJsonLimited(request, 2_000_000);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, parsed.tooLarge ? 413 : 400), origin);
+        const result = await replaceSupabaseAdminSchedule(request, env, parsed.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data, 201), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, PUT, OPTIONS" }), origin);
     }
 
     if (pathname === `${API_PREFIX}/schedule/meta`) {
