@@ -1,3 +1,13 @@
+## Frontend route-parity audit — 2026-10-13
+
+- 🟢 Re-read current `src/lib/api.ts` and Worker router from `main`; recorded a prioritized caller-family gap matrix in `docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`. It explicitly corrects stale historical statements that the shadow Worker is not deployed, and keeps production cutover prohibited.
+- 🔴 Large route parity gap remains. The frontend uses more API calls than the Worker has handlers: file uploads/downloads, homework create/submit, planner/attendance, community, settings/Telegram linking, mini-quiz/check/reports, trainer feed/answer, academic state/sync/AI plan, notes/favorites, preparation attempts, tickets/materials, group/subject mutations and most admin routes remain cutover blockers.
+- 🔒 Do not fill those gaps by forwarding to the legacy HTTP origin or by using a Supabase service-role key as a shortcut. Each route needs exact verb/payload/response compatibility, caller JWT ownership/group checks, RLS/schema verification and tests.
+- 🟢 Current fetched Worker source snapshot: `npm test` 135/135; `npm run build` Wrangler dry-run passed. This is the exact run performed in this pass; prior inventory notes mentioning 139 tests refer to a different snapshot and are not being represented as the same run.
+- 🔴 Auth limiter still lacks a reproducible live 429 proof; login/registration gate stays off. Test-attempt writes stay blocked. Vercel Production remains unchanged.
+
+---
+
 ## Exact-source verification pass — 2026-10-13
 
 - 🟢 Retrieved the current `main` versions of all Worker source modules, all six test files, `package.json`, and `wrangler.toml` through GitHub and staged them in a disposable Node box for verification. This pass used the current source SHAs from `main`, rather than the older mixed test tree noted in previous history.
