@@ -927,3 +927,20 @@ test("progress combines caller-scoped homework and test attempts without fabrica
   assert.equal(result.data.overall_pct, 50);
   assert.ok(attemptQuery);
 });
+
+
+test("progress reports no overall score when the student has no homework or attempts", async () => {
+  const result = await getSupabaseProgress(request("Bearer valid-user-token"), configured, {}, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", name: "МБХ-201", is_active: true } }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/homeworks") return new Response("[]", { status: 200 });
+    if (parsed.pathname === "/rest/v1/test_attempts") return new Response("[]", { status: 200 });
+    throw new Error("unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.overall_pct, null);
+  assert.equal(result.data.homework.total, 0);
+  assert.equal(result.data.tests.attempts, 0);
+  assert.equal(result.data.tests.avg_score, null);
+});
