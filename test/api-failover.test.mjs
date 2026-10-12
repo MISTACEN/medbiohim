@@ -1,0 +1,47 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { isHttpsOrigin, shouldFallbackFromCloudflare } from "../src/lib/api-failover.mjs";
+
+function req(method, path = "/api/v1/homeworks") {
+  return new Request("https://app.example.test" + path, { method });
+}
+function res(status, code = "") {
+  return new Response(JSON.stringify({ ok: false, error: { code } }), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+test("only HTTPS SpaceWeb origins are eligible for credentialed failover", () => {
+  assert.equal(isHttpsOrigin("https://spaceweb.example/api/v1"), true);
+  assert.equal(isHttpsOrigin("http://spaceweb.example/api/v1"), false);
+  assert.equal(isHttpsOrigin("not a URL"), false);
+  assert.equal(isHttpsOrigin(undefined), false);
+});
+
+test("falls back when Cloudflare explicitly marks a route not migrated", async () => {
+  assert.equal(await shouldFallbackFromCloudflare(req("POST"), res(501, "ROUTE_NOT_MIGRATED")), true);
+});
+
+test("falls back for server errors on read-only requests", async () => {
+  assert.equal(await shouldFallbackFromCloudflare(req("GET"), res(503, "DB_UNAVAILABLE")), true);
+  assert.equal(await shouldFallbackFromCloudflare(req("HEAD"), res(502, "UPSTREAM")), true);
+  assert.equal(await shouldFallbackFromCloudflare(req("OPTIONS"), res(504, "TIMEOUT")), true);
+});
+
+test("does not retry generic or ambiguous failed writes", async () => {
+  assert.equal(await shouldFallbackFromCloudflare(req("POST"), res(502, "UPSTREAM")), false);
+  assert.equal(await shouldFallbackFromCloudflare(req("PATCH"), res(503, "DB_UNAVAILABLE")), false);
+  assert.equal(await shouldFallbackFromCloudflare(req("DELETE"), res(500, "INTERNAL")), false);
+});
+
+test("allows safe auth fallback only for explicit pre-operation configuration guards", async () => {
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/auth/login"), res(503, "RATE_LIMIT_NOT_CONFIGURED")), true);
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/auth/refresh"), res(503, "AUTH_NOT_CONFIGURED")), true);
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/auth/login"), res(503, "DB_UNAVAILABLE")), false);
+});
+
+test("allows upload fallback only when the Worker returns before processing due to missing storage", async () => {
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/files/upload"), res(503, "STORAGE_NOT_CONFIGURED")), true);
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/files/upload"), res(503, "DB_UNAVAILABLE")), false);
+});
