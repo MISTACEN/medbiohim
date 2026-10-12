@@ -4,6 +4,40 @@ function failure(status, code, message) {
   return { ok: false, status, code, message };
 }
 
+function logAuthFetchFailure(operation, error) {
+  const cause = error && typeof error === "object" ? error.cause : undefined;
+  const outerMessage = error instanceof Error ? error.message : "";
+  const causeMessage = cause instanceof Error ? cause.message : "";
+  const combined = (outerMessage + " " + causeMessage).toLowerCase();
+
+  let reasonCategory = "unknown";
+  if (/enotfound|eai_again|getaddrinfo|dns/.test(combined)) {
+    reasonCategory = "dns";
+  } else if (/certificate|tls|ssl|cert_/.test(combined)) {
+    reasonCategory = "tls";
+  } else if (/timed?\s*out|timeout|aborted/.test(combined)) {
+    reasonCategory = "timeout";
+  } else if (/redirect/.test(combined)) {
+    reasonCategory = "redirect";
+  } else if (/econnreset|econnrefused|ehostunreach|socket|network|connect/.test(combined)) {
+    reasonCategory = "connection";
+  } else if (/fetch failed/.test(combined)) {
+    reasonCategory = "fetch_failed";
+  } else if (combined.trim()) {
+    reasonCategory = "other";
+  }
+
+  // Never log the URL, raw error message, credentials, token, or response body.
+  console.warn("supabase_auth_upstream_fetch_failed", {
+    operation,
+    errorName: error instanceof Error ? error.name : "UnknownError",
+    causeType: cause == null ? "none" : typeof cause,
+    causeName: cause instanceof Error ? cause.name : undefined,
+    causeCode: typeof cause?.code === "string" ? cause.code : undefined,
+    reasonCategory,
+  });
+}
+
 /**
  * Validate a bearer token with Supabase Auth over HTTPS.
  * This helper intentionally accepts only the public anon key and returns only
@@ -45,13 +79,7 @@ export async function authenticateSupabaseRequest(request, env, fetcher = fetch)
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    // Keep credentials, request URLs, and upstream response bodies out of logs.
-    // The error name/cause code is enough to distinguish timeout/network failures.
-    console.warn("supabase_auth_upstream_fetch_failed", {
-      operation: "authenticate",
-      errorName: error instanceof Error ? error.name : "UnknownError",
-      causeCode: typeof error?.cause?.code === "string" ? error.cause.code : undefined,
-    });
+    logAuthFetchFailure("authenticate", error);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
@@ -121,7 +149,8 @@ export async function logoutSupabaseSession(accessToken, env, fetcher = fetch) {
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
+    logAuthFetchFailure("logout", error);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
@@ -168,7 +197,8 @@ export async function refreshSupabaseSession(refreshToken, env, fetcher = fetch)
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
+    logAuthFetchFailure("refresh", error);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 400 || response.status === 401 || response.status === 403) {
@@ -248,7 +278,8 @@ export async function recoverSupabasePassword(email, env, fetcher = fetch) {
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
+    logAuthFetchFailure("recover", error);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 429) {
@@ -296,7 +327,8 @@ export async function loginSupabaseUser(email, password, env, fetcher = fetch) {
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
+    logAuthFetchFailure("login", error);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 400 || response.status === 401 || response.status === 403) {
@@ -376,7 +408,8 @@ export async function registerSupabaseUser(email, password, fullName, env, fetch
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
+    logAuthFetchFailure("register", error);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 429) {
