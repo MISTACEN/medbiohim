@@ -267,3 +267,72 @@ export async function listSupabaseMyAttempts(request, env, filters = {}, fetcher
     return publicAttemptErrors(error, "ATTEMPTS_UNAVAILABLE", "История попыток временно недоступна");
   }
 }
+
+
+export async function getSupabaseBankProgress(request, env, testId, groupId = "", fetcher = fetch) {
+  const client = await makeRestClient(request, env, fetcher);
+  if (!client.ok) return client;
+  try {
+    const loaded = await loadTest(client.call, String(testId || ""));
+    if (!loaded.ok) return loaded;
+    const groupResult = await resolveGroup(client.call, client.identity.user.id, groupId);
+    if (!groupResult.ok) return groupResult;
+    const subjectResult = await verifySubjectForGroup(client.call, loaded.test.subject_id, groupResult.group);
+    if (!subjectResult.ok) return subjectResult;
+
+    const links = await client.call("test_questions", {
+      select: "question_id,questions!inner(id)",
+      test_id: "eq." + loaded.test.id,
+      "questions.is_published": "eq.true",
+      "questions.archived_at": "is.null",
+      order: "order_index.asc,question_id.asc",
+      limit: "5000",
+    });
+    const total = links.length;
+    const sessions = await client.call("test_preparation_sessions", {
+      select: "id,group_id,session_id,context_version,status,current_index,started_at,completed_at",
+      user_id: "eq." + client.identity.user.id,
+      test_id: "eq." + loaded.test.id,
+      group_id: "eq." + groupResult.group.group_id,
+      mode: "eq.sequential",
+      order: "started_at.desc",
+      limit: "1",
+    });
+    const session = sessions[0] || null;
+    let answered = 0, correct = 0;
+    if (session) {
+      const results = await client.call("test_preparation_results", {
+        select: "id,is_correct",
+        session_id: "eq." + session.id,
+        user_id: "eq." + client.identity.user.id,
+        test_id: "eq." + loaded.test.id,
+        order: "answered_at.asc",
+        limit: "5000",
+      });
+      answered = results.length;
+      correct = results.filter((row) => row.is_correct === true).length;
+    }
+    return {
+      ok: true,
+      data: {
+        total,
+        answered,
+        correct,
+        remaining: Math.max(0, total - answered),
+        completed: Boolean(session && session.status === "completed" && total > 0 && answered >= total),
+        session: session ? {
+          id: session.id,
+          group_id: session.group_id ?? null,
+          session_id: session.session_id ?? null,
+          context_version: session.context_version ?? null,
+          status: session.status,
+          current_index: Number(session.current_index) || 0,
+          started_at: session.started_at ?? null,
+          completed_at: session.completed_at ?? null,
+        } : null,
+      },
+    };
+  } catch (error) {
+    return publicAttemptErrors(error, "BANK_PROGRESS_UNAVAILABLE", "Не удалось загрузить прогресс по банку вопросов");
+  }
+}
