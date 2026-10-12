@@ -1,3 +1,12 @@
+## API route migration — Pass 16 (2026-10-12; deployed to isolated shadow Worker)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/questions_rest.php` + `ExamQuestionStore.php` | `GET /api/v1/questions?subject_id=&subject_slug=&kind=&q=&limit=&offset=&include_answer=` | Published exam-question bank, filters and pagination; full answers only when explicitly requested; long answers previewed by default | Implemented and uploaded; table RLS permits published rows; live HTTP and full-count parity remain to verify |
+| `backend/config/routes/questions_rest.php` | `GET /api/v1/questions/subjects` | Summary by subject and question kind from all published rows | Implemented and uploaded; live HTTP smoke test pending |
+
+Worker deployment ID: `94a6ffc92a0741e1a7c1a7e559d989bd`. No question mutations or answer-key access to unpublished rows were added. These are read-only routes and use the caller JWT + anon key.
+
 ## API route migration — Pass 15 (2026-10-12; deployed to isolated shadow Worker)
 
 | PHP source | Route | Contract / safety | Shadow status |
