@@ -126,6 +126,7 @@ def extract_media(zip_path: Path, out_root: Path) -> dict[str, int]:
             digest = hashlib.sha256(data).hexdigest()
             if key in seen_targets:
                 if seen_targets[key] == digest:
+                    counts["duplicates"] += 1
                     continue
                 raise ValueError(f"Conflicting electronogram alias: {filename}")
             destination = out_root / target
