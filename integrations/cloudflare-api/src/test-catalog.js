@@ -107,10 +107,23 @@ export async function getSupabaseTestCurriculumMap(request, env, filters = {}, f
       limit: "2000",
     });
     if (!moduleRows.length) {
+      const unclassifiedRows = await client.rows("questions", {
+        select: "id,subject_id",
+        subject_id: "in.(" + subjectIds.join(",") + ")",
+        topic_id: "is.null",
+        is_published: "eq.true",
+        archived_at: "is.null",
+        limit: "5000",
+      });
+      const unclassifiedCounts = new Map();
+      for (const row of unclassifiedRows) {
+        const key = String(row.subject_id || "");
+        unclassifiedCounts.set(key, (unclassifiedCounts.get(key) || 0) + 1);
+      }
       return { ok: true, data: { items: subjectRows.map((row) => ({
         subject_id: String(row.id), subject_name: String(row.name || ""),
-        unclassified_questions: 0, modules: [],
-      })), group, source: "supabase" };
+        unclassified_questions: unclassifiedCounts.get(String(row.id)) || 0, modules: [],
+      })), group, source: "supabase" } };
     }
     const moduleIds = moduleRows.map((row) => String(row.id)).filter(uuid);
     const topicRows = await client.rows("topics", {
