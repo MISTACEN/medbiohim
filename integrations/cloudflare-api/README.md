@@ -194,3 +194,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Catalog and plan JSON use the existing Supabase `subjects` and `site_content` sources. Subject visibility is filtered by active group specialty; CMS reads continue to rely on the caller's JWT/RLS.
 - Plan schedule samples are queried only through the user's active group memberships. They do not reproduce the PHP legacy service-role read that could return global schedule rows.
 - Deployed as Worker deployment `8b8dc6a79d0b4ea294fba7f799d24c66`; live HTTP tests and CI remain unverified.
+
+
+## API route migration — Pass 14 (homework progress write; source only)
+
+- Added `POST /api/v1/homeworks/{id}/progress` to the Worker source.
+- The route verifies the Supabase access token, verifies the homework is visible through the caller JWT, confirms active group membership, and upserts only the authenticated user's progress. The request must contain a boolean `done`; JSON is capped at 8 KiB.
+- Regression tests cover the permitted write path and the out-of-group denial.
+- **Source-only, not deployed.** GitHub Actions still fails before any visible step execution, and the current code change has not passed a runnable test suite. The active PHP/SpaceWeb API remains unchanged.
