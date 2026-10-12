@@ -2518,3 +2518,17 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Added regression tests for progress aggregates, test-question counts and route authentication/methods. **Not executed here**; GitHub Actions were left untouched per request.
 - ⬜ Still not migrated in this pass: the full interactive test attempt lifecycle (`GET /tests/{id}`, start, answer save/grading, finish, history and retry grading) and the separate full `questions` vs `exam_questions` authoring/import workflow. Do not switch the tests UI to Cloudflare until these routes are implemented and tested.
 - 🔒 No live data was edited, no question/test was published, no RLS policy was broadened, and no Worker deployment or frontend API cutover was performed. SpaceWeb PHP remains active.
+
+
+## Progress + tests/question bank — Cloudflare API pass (2026-10-12)
+
+- 🟢 Added authenticated `GET /api/v1/progress?subject_id=&group_id=` source handler. It combines homework completion from the caller-scoped homework/progress/submission records with the authenticated user's test attempts; attempt history is restricted to the resolved active group. Score averaging follows PHP's `score` field and ignores null scores.
+- 🟢 Corrected progress UI so a missing average, zero attempts, or no assigned homework is rendered as “—” rather than a fabricated 0%; a degraded API response continues to suppress metric cards.
+- 🟢 Published test catalog now scopes subject-bound tests against the caller-visible active subject list and restores subject/module/topic labels, linked-question counts and optional source-file metadata expected by the frontend. Global tests remain visible.
+- 🟢 Added an authenticated `GET /api/v1/tests/{uuid}` read route that returns published question bodies and option labels without sending answer keys/correct-choice flags in the response.
+- 🟢 Added authenticated `GET /api/v1/my/attempts?subject_id=&group_id=` for the caller's own selected-group attempt history; response projection excludes `question_snapshot`.
+- 🟡 Test start, answer save and finish are deliberately **fail-closed** with `TEST_ATTEMPT_SECURITY_NOT_READY`. Live Supabase grants currently allow authenticated users to select `public.test_attempts.question_snapshot` and `public.questions.answer/options`; using those tables for caller-JWT snapshots would not keep the key private. Do not wire these writes to the frontend until a private snapshot store / guarded RPC strategy and column/table grants are audited and tested.
+- 🟡 Semantic AI grading is not migrated to Cloudflare. Exact matching and MCQ grading must not be presented as equivalent to the PHP AI-aware grading service.
+- 🟡 Regression tests were authored for progress totals, catalog scoping/counts, read projections, and the fail-closed attempt-write gate. They have **not been executed**: repository clone/network access was unavailable. GitHub Actions were not touched per instruction.
+- 🔒 No Supabase schema/grant change, Cloudflare deploy, or frontend API switch was made. PHP/SpaceWeb remains the active production API.
+- ⬜ Follow-up: design and test an inaccessible answer-snapshot table plus narrow database functions (or another private server-side store); then implement idempotent start/save/finish and AI regrade, compare against `TestRepository`/PHP response contracts, run the test suite, and smoke-test shadow only.
