@@ -38,6 +38,11 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
   if(options.body&&!isForm&&!headers["Content-Type"])headers["Content-Type"]="application/json";
   const token=tokenOverride??getToken();
   if(token)headers.Authorization=`Bearer ${token}`;
+  // Ask for transport tracing only while in the admin area. The server independently
+  // verifies the canonical database admin role before it returns any diagnostic header.
+  if(typeof window!=="undefined"&&window.location.pathname.startsWith("/admin")){
+    headers["X-MBH-Transport-Diagnostics"]="1";
+  }
 
   // One controller combines the caller's cancellation with the client timeout.
   // Passing options.signal directly would disable the timeout whenever a caller
@@ -52,6 +57,17 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
   const timeout=setTimeout(()=>controller.abort(),(options.method||"GET").toUpperCase()==="GET"?12000:20000);
   try{
     const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store",signal:controller.signal});
+    if(typeof window!=="undefined"&&window.location.pathname.startsWith("/admin")){
+      const source=res.headers.get("x-mbh-transport-source");
+      if(source){
+        window.dispatchEvent(new CustomEvent("mbh:api-transport",{detail:{
+          source,
+          fallback:res.headers.get("x-mbh-transport-fallback")==="true",
+          path:path.split("?")[0],
+          at:Date.now(),
+        }}));
+      }
+    }
     return{res,text:await res.text()};
   }finally{
     clearTimeout(timeout);
