@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseProfileBundle, getSupabaseSiteContent, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -695,4 +695,22 @@ test("dashboard CMS read returns site defaults plus saved announcements", async 
   assert.equal(result.data.site.title, "MEDBIOHIM");
   assert.equal(result.data.site.subtitle, "Для студентов");
   assert.equal(result.data.announcements[0].id, "ann-1");
+});
+
+
+test("schedule metadata validates filters and returns calendar periods and duration rules", async () => {
+  const result = await getSupabaseScheduleMeta(request("Bearer valid-user-token"), configured, { course: "2", semester: "3" }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith("/academic_calendar_periods")) {
+      assert.equal(parsed.searchParams.get("course_number"), "eq.2");
+      assert.equal(parsed.searchParams.get("semester"), "eq.3");
+      return new Response(JSON.stringify([{ id: "period-1", title: "Сессия" }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith("/subject_schedule_rules")) return new Response(JSON.stringify([{ id: "rule-1", subject_name: "Гистология", academic_hours: 2 }]), { status: 200 });
+    throw new Error("Unexpected table");
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.periods[0].id, "period-1");
+  assert.equal(result.data.duration_rules[0].id, "rule-1");
 });
