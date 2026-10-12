@@ -81,6 +81,12 @@ jobs:
           echo "Checked " . count($seen) . " unique route registrations.\n";
           PHP
 
+      - name: Test Cloudflare API Worker routes and helpers
+        run: |
+          set -euo pipefail
+          cd integrations/cloudflare-api
+          node --test
+          cd ../..
       - name: Full local-equivalent pre-deploy audit
         run: npm run predeploy:audit
 
