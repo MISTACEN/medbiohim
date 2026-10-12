@@ -1287,19 +1287,44 @@ export async function listSupabaseExamQuestions(request, env, filters = {}, fetc
 
 /** Summarize the published exam-question bank by subject and kind. */
 export async function listSupabaseQuestionSubjects(request, env, fetcher = fetch) {
-  const result = await listSupabaseExamQuestions(request, env, { kind: "", limit: "200", offset: "0", include_answer: "false" }, fetcher);
-  if (!result.ok) return result;
-  const map = new Map();
-  // The list helper paginates; summary must not silently use only the first page.
-  // Re-querying with a larger bounded page is deliberate because this table is a compact bank.
-  const items = result.data.items;
-  for (const row of items) {
-    const key = String(row.subject_id || ("slug:" + String(row.subject_slug || "other")));
-    if (!map.has(key)) map.set(key, { subject_id: row.subject_id || null, subject: row.subject_name || row.subject_slug || "Без предмета", subject_slug: row.subject_slug || "other", count: 0, kinds: {} });
-    const entry = map.get(key);
-    entry.count += 1;
-    const rowKind = String(row.kind || "other").trim() || "other";
-    entry.kinds[rowKind] = (entry.kinds[rowKind] || 0) + 1;
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let endpoint;
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+    endpoint = new URL("/rest/v1/exam_questions", base);
+  } catch {
+    return failure(503, "QUESTIONS_NOT_CONFIGURED", "Каталог вопросов временно недоступен");
   }
-  return { ok: true, data: { items: [...map.values()], source: "supabase" } };
+  endpoint.searchParams.set("select", "id,subject_id,subject_name,subject_slug,kind");
+  endpoint.searchParams.set("is_published", "eq.true");
+  endpoint.searchParams.set("order", "subject_name.asc,id.asc");
+  endpoint.searchParams.set("limit", "5000");
+  try {
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Question bank summary read failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid question bank summary");
+    const map = new Map();
+    for (const row of rows) {
+      const key = String(row.subject_id || ("slug:" + String(row.subject_slug || "other")));
+      if (!map.has(key)) map.set(key, { subject_id: row.subject_id || null, subject: row.subject_name || row.subject_slug || "Без предмета", subject_slug: row.subject_slug || "other", count: 0, kinds: {} });
+      const entry = map.get(key);
+      entry.count += 1;
+      const rowKind = String(row.kind || "other").trim() || "other";
+      entry.kinds[rowKind] = (entry.kinds[rowKind] || 0) + 1;
+    }
+    return { ok: true, data: { items: [...map.values()], source: "supabase" } };
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Каталог вопросов временно недоступен");
+  }
 }
