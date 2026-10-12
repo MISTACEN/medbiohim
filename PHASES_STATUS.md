@@ -1613,8 +1613,8 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 
 - 🟡 Cloudflare shadow Worker `medbiohim-api-shadow` is deployed and connected to the existing Supabase project using only `SUPABASE_URL` + `SUPABASE_ANON_KEY`; the service-role key is not used. SpaceWeb PHP remains the active backend.
 - 🟡 Added read routes for dashboard aggregation, schedule ranges, group homework, and published test catalog; added route guards/tests. Source uploaded to the shadow Worker, but external HTTP smoke tests and GitHub Actions execution are still unverified.
-- ⬜ Dashboard CMS site settings/announcements and full response parity.
-- ⬜ Schedule mutations: create/update/cancel lessons, attendance states, calendar/week/month/semester parity, and group/subject color behavior.
+- 🟡 Dashboard now reads site settings and announcements through RLS-protected `site_content`; full response parity and live role-specific behavior remain to verify.
+- 🟡 Schedule read range + calendar metadata are implemented; ⬜ mutations: create/update/cancel lessons, attendance states, and full calendar/week/month/semester parity.
 - ⬜ Homework mutations and submissions, completion tracking, photo/file attachments, private media permissions and storage integration.
 - ⬜ Remaining read/write routes: modules/materials/lectures, full question bank and test attempts, trainer feed/media, progress/SRS, academic plan, calculators, community, settings, presence, AI, Telegram admin, imports and admin panels.
 - 🔒 Preserve the existing UI and its translucent Atlas viewer; this is a backend migration, not a redesign. No production frontend switch until tests, RLS, PHP contract parity, and file/media authorization are verified.
