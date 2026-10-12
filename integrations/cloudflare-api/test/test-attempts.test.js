@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getSupabaseTestDetail, listSupabaseMyAttempts } from "../src/test-attempts.js";
+import { getSupabaseBankProgress, getSupabaseTestDetail, listSupabaseMyAttempts } from "../src/test-attempts.js";
 
 const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
 const groupId = "11111111-1111-4111-8111-111111111111";
@@ -61,4 +61,34 @@ test("attempt history is limited to the authenticated user's selected group and 
   assert.equal(result.data.items[0].test_title, "Тест");
   assert.equal(result.data.items[0].group_id, groupId);
   assert.equal("question_snapshot" in result.data.items[0], false);
+});
+
+
+test("bank progress counts published questions and selected-group sequential results only", async () => {
+  const result = await getSupabaseBankProgress(makeRequest("/tests/" + testId + "/bank-progress?group_id=" + groupId), env, testId, groupId, baseMock((url) => {
+    if (url.pathname === "/rest/v1/tests") return new Response(JSON.stringify([{ id: testId, title: "Тест", subject_id: subjectId, is_published: true }]), { status: 200 });
+    if (url.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify(membershipRow()), { status: 200 });
+    if (url.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: subjectId, name: "Биохимия", specialty_slug: "mbh", is_active: true }]), { status: 200 });
+    if (url.pathname === "/rest/v1/test_questions") {
+      assert.equal(url.searchParams.get("questions.is_published"), "eq.true");
+      assert.equal(url.searchParams.get("questions.archived_at"), "is.null");
+      return new Response(JSON.stringify([{ question_id: questionId, questions: { id: questionId } }, { question_id: "66666666-6666-4666-8666-666666666666", questions: { id: "66666666-6666-4666-8666-666666666666" } }]), { status: 200 });
+    }
+    if (url.pathname === "/rest/v1/test_preparation_sessions") {
+      assert.equal(url.searchParams.get("group_id"), "eq." + groupId);
+      assert.equal(url.searchParams.get("mode"), "eq.sequential");
+      assert.ok(!url.searchParams.get("select").includes("question_snapshot"));
+      return new Response(JSON.stringify([{ id: "77777777-7777-4777-8777-777777777777", group_id: groupId, status: "completed", current_index: 2, started_at: "2026-10-10T09:00:00Z", completed_at: "2026-10-10T09:05:00Z" }]), { status: 200 });
+    }
+    if (url.pathname === "/rest/v1/test_preparation_results") return new Response(JSON.stringify([{ id: "result-1", is_correct: true }, { id: "result-2", is_correct: false }]), { status: 200 });
+    throw new Error("unexpected path " + url.pathname);
+  }));
+  assert.equal(result.ok, true);
+  assert.equal(result.data.total, 2);
+  assert.equal(result.data.answered, 2);
+  assert.equal(result.data.correct, 1);
+  assert.equal(result.data.remaining, 0);
+  assert.equal(result.data.completed, true);
+  assert.equal(result.data.session.group_id, groupId);
+  assert.equal("question_snapshot" in result.data.session, false);
 });
