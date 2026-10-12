@@ -6,7 +6,7 @@ The existing PHP API on SpaceWeb remains the current backend. The Worker is depl
 
 ### Current verification gate — 2026-10-13 (supersedes older pass notes below)
 
-- Full Worker unit suite: **139/139 passing** from an isolated workspace assembled from the exact current main source and tests. from an isolated workspace assembled from the exact current `main` source and tests.
+- Full Worker unit suite: **139/139 passing** from an isolated workspace assembled from the exact current `main` source and tests.
 - The active shadow Worker includes all six source modules, the safe Supabase Auth diagnostics, the request-body reader fix, and the fail-closed test-attempt write gate.
 - `npm run build` passed on the current source workspace using Wrangler `4.149.0 deploy --dry-run`; it recognized both rate-limit bindings and emitted a 207.60 KiB bundle (31.07 KiB gzip). Cloudflare Workers Build for commit `6ea5331126d0dcb5b64817f39bfc9b80ea90088a` completed successfully; active deployment `5d1d324a-e64d-4f24-bd21-fb4d5f861cca` is 100% on version `5410855c-4884-499f-9009-7f5d95d3936b`.
 - Added and deployed `GET /api/v1/groups` for frontend `listGroups()`. It verifies the caller through Supabase Auth and reads group rows using the caller JWT plus anon key (no service-role key), preserving the PHP active/null-is-active filter and course/code ordering. Live unauthenticated smoke returns 401, and unsupported POST returns 405; a successful read with a real user's JWT/RLS remains to be checked.
