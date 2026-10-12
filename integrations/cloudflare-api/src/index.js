@@ -1,4 +1,4 @@
-import { getSupabaseProfileBundle, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -137,6 +137,20 @@ export default {
         service_notice: degradedSources.length ? "Часть данных главной страницы временно недоступна. Показаны только подтверждённые данные." : null,
       };
       return withCors(success(data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/schedule/meta`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await getSupabaseScheduleMeta(request, env, {
+        course: url.searchParams.get("course") || "",
+        semester: url.searchParams.get("semester") || "",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
     }
 
     if (pathname === `${API_PREFIX}/schedule`) {
