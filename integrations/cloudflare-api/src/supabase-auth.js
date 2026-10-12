@@ -528,7 +528,8 @@ export async function searchSupabaseContent(request, env, options = {}, fetcher 
   if (!identity.ok) return identity;
 
   const query = String(options.q ?? "").trim();
-  const limit = Math.max(1, Math.min(100, Number.parseInt(String(options.limit ?? "30"), 10) || 30));
+  const requestedLimit = Number.parseInt(String(options.limit ?? "30"), 10);
+  const limit = Math.max(1, Math.min(100, Number.isFinite(requestedLimit) ? requestedLimit : 30));
   const subjectSlug = String(options.subject_slug ?? "").trim() || null;
   const subjectId = String(options.subject_id ?? "").trim() || null;
   const type = String(options.type ?? "").trim() || null;
