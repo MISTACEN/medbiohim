@@ -692,7 +692,7 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
     return failure(422, "VALIDATION_ERROR", "A valid subject id is required");
   }
   const authorization = request.headers.get("authorization") || "";
-  const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
   const token = match?.[1] || "";
   const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
@@ -768,7 +768,7 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
   if (!identity.ok) return identity;
 
   const authorization = request.headers.get("authorization") || "";
-  const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
   const token = match?.[1] || "";
   const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
