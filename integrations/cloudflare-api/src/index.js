@@ -386,6 +386,7 @@ export default {
       }
       const result = await listSupabasePublishedTests(request, env, {
         subject_id: url.searchParams.get("subject_id") || "",
+        group_id: url.searchParams.get("group_id") || "",
         limit: url.searchParams.get("limit") || "50",
       });
       if (!result.ok) {
