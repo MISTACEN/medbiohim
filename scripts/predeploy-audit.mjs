@@ -217,7 +217,10 @@ if (existsSync(proxyPathForHeaders)) {
 if (existsSync(proxyPathForHeaders)) {
   const text = await readFile(proxyPathForHeaders, "utf8");
   const fallbackIndex = text.indexOf('if (upstream?.status === 404 && sub.startsWith("trainers/feed"))');
-  const primaryProxyIndex = text.indexOf('const targets = [');
+  const primaryProxyIndex = Math.max(
+    text.indexOf('const spacewebTargets = UPSTREAM ? ['),
+    text.indexOf('const targets = [')
+  );
   if (fallbackIndex >= 0 && primaryProxyIndex >= 0 && fallbackIndex > primaryProxyIndex &&
       !text.includes('if (sub.startsWith("trainers/feed")) {')) {
     pass("trainer compatibility fallback runs only after the PHP upstream returns 404");
@@ -234,6 +237,24 @@ if (existsSync(proxyPathForHeaders)) {
     pass("proxy 502 response does not expose raw upstream exception messages");
   } else {
     fail("proxy 502 response may expose internal upstream exception details");
+  }
+
+  if (text.includes('process.env.CLOUDFLARE_API_ORIGIN') &&
+      text.includes('process.env.MEDBIOHIM_CF_FIRST === "true"') &&
+      text.includes('shouldFallbackFromCloudflare') &&
+      text.includes('isHttpsOrigin(UPSTREAM)')) {
+    pass("Cloudflare-first mode is opt-in and only uses HTTPS SpaceWeb fallback");
+  } else {
+    fail("Cloudflare-first fallback lacks an explicit opt-in or HTTPS guard");
+  }
+
+  if (text.includes('async function isCanonicalAdminRequest') &&
+      text.includes('select", "roles(code)"') &&
+      text.includes('x-mbh-transport-diagnostics') &&
+      text.includes('x-mbh-transport-source')) {
+    pass("transport diagnostics require a canonical database admin-role check");
+  } else {
+    fail("transport diagnostics may be exposed without canonical admin verification");
   }
 }
 
