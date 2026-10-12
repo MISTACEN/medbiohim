@@ -8,7 +8,7 @@ import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type ProgressPayload = {
-  overall_pct?: number;
+  overall_pct?: number | null;
   homework?: { total: number; done: number; percent?: number; items?: unknown[] };
   tests?: { attempts: number; finished?: number; avg_score?: number | null; items?: unknown[] };
   note?: string;
