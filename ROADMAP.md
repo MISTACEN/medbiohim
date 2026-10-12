@@ -2473,3 +2473,11 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟢 Added PHP-compatible `GET /api/v1/me` alias for the authenticated profile bundle.
 - 🟢 Added a regression test confirming the alias requires authentication.
 - 🟡 Live RLS/table relationship compatibility remains unverified; the Worker is not deployed and SpaceWeb remains production.
+
+
+
+## Cloudflare API migration — Pass 12
+
+- 🟢 Added authenticated `GET /api/v1/subjects/{id}` with caller-JWT/anon-key Supabase REST reads for subject details and modules.
+- 🟢 Added helper tests for authentication, subject ID validation, response shape, missing subjects and RLS-denied reads; route tests cover auth and method handling.
+- 🟡 Full test run and live Supabase RLS/schema behavior are not yet verified. No deployment or production cutover occurred.
