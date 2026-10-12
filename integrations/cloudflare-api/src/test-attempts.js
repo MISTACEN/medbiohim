@@ -293,7 +293,7 @@ export async function getSupabaseBankProgress(request, env, testId, groupId = ""
       select: "id,group_id,session_id,context_version,status,current_index,started_at,completed_at",
       user_id: "eq." + client.identity.user.id,
       test_id: "eq." + loaded.test.id,
-      group_id: "eq." + groupResult.group.group_id,
+      group_id: "eq." + groupResult.group.id,
       mode: "eq.sequential",
       order: "started_at.desc",
       limit: "1",
