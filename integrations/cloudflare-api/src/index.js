@@ -114,8 +114,8 @@ export default {
       }
       const params = url.searchParams;
       const [homeworks, schedule, tests, cms] = await Promise.all([
-        listSupabaseHomeworks(request, env, { group_id: params.get("group_id") || "" }),
-        listSupabaseSchedule(request, env, { group_id: params.get("group_id") || "", from: params.get("from") || "", to: params.get("to") || "" }),
+        listSupabaseHomeworks(request, env, { group_id: params.get("group_id") || "", all_groups: true }),
+        listSupabaseSchedule(request, env, { group_id: params.get("group_id") || "", from: params.get("from") || "", to: params.get("to") || "", all_groups: true }),
         listSupabasePublishedTests(request, env, { limit: "20" }),
         getSupabaseSiteContent(request, env),
       ]);
@@ -152,7 +152,14 @@ export default {
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
-      return withCors(success(result.data), origin);
+      const selectedGroup = result.data.groups.length === 1 ? result.data.groups[0] : null;
+      return withCors(success({
+        items: result.data.items,
+        source: "supabase_rest",
+        group: selectedGroup,
+        from: result.data.from,
+        to: result.data.to,
+      }), origin);
     }
 
     if (pathname === `${API_PREFIX}/homeworks`) {
