@@ -1217,3 +1217,89 @@ export async function getSupabaseScheduleMeta(request, env, filters = {}, fetche
     return failure(503, "SCHEDULE_META_UNAVAILABLE", "Метаданные учебного календаря временно недоступны");
   }
 }
+
+
+/** Published exam-question bank with the same opt-in full-answer behavior as PHP. */
+export async function listSupabaseExamQuestions(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let endpoint;
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+    endpoint = new URL("/rest/v1/exam_questions", base);
+  } catch {
+    return failure(503, "QUESTIONS_NOT_CONFIGURED", "Банк вопросов временно недоступен");
+  }
+  const limit = Math.max(1, Math.min(200, Number.parseInt(String(filters.limit ?? "50"), 10) || 50));
+  const offset = Math.max(0, Math.min(100000, Number.parseInt(String(filters.offset ?? "0"), 10) || 0));
+  const kind = String(filters.kind ?? "ticket").trim().toLowerCase();
+  const subjectId = String(filters.subject_id || "").trim();
+  const subjectSlug = String(filters.subject_slug || "").trim();
+  const subject = String(filters.subject || "").trim().toLocaleLowerCase();
+  const query = String(filters.q || "").trim().toLocaleLowerCase();
+  const topic = String(filters.topic || "").trim().toLocaleLowerCase();
+  const type = String(filters.type || "").trim().toLocaleLowerCase();
+  const includeAnswer = ["1", "true", "yes"].includes(String(filters.include_answer || "").trim().toLowerCase());
+  if (subjectId.length > 128 || /[\/?#]/.test(subjectId) || subjectSlug.length > 128 || /[\/?#]/.test(subjectSlug)) {
+    return failure(422, "VALIDATION_ERROR", "Invalid subject filter");
+  }
+  endpoint.searchParams.set("select", "id,subject_id,subject_name,subject_slug,topic,text,answer,kind,type,for_exam,for_ticket,source,is_published,created_at,updated_at,plan_module_id,plan_topic_id,plan_status,sort_order");
+  endpoint.searchParams.set("is_published", "eq.true");
+  endpoint.searchParams.set("order", "subject_name.asc,sort_order.asc.nullslast,id.asc");
+  endpoint.searchParams.set("limit", "5000");
+  try {
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Question bank read failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid question bank response");
+    const filtered = rows.filter((row) => {
+      if (subjectId && String(row.subject_id || "") !== subjectId) return false;
+      if (subjectSlug && String(row.subject_slug || "") !== subjectSlug) return false;
+      if (subject && !String(row.subject_name || "").toLocaleLowerCase().includes(subject)) return false;
+      if (kind && String(row.kind || "").toLocaleLowerCase() !== kind) return false;
+      if (type && String(row.type || "").toLocaleLowerCase() !== type) return false;
+      if (topic && !String(row.topic || "").toLocaleLowerCase().includes(topic)) return false;
+      if (query && !(String(row.text || "") + " " + String(row.topic || "")).toLocaleLowerCase().includes(query)) return false;
+      return true;
+    });
+    const items = filtered.slice(offset, offset + limit).map((row) => {
+      const item = { ...row, has_answer: String(row.answer || "") !== "" };
+      if (!includeAnswer && String(item.answer || "").length > 120) {
+        item.answer_preview = String(item.answer).slice(0, 120) + "…";
+        delete item.answer;
+      }
+      return item;
+    });
+    return { ok: true, data: { items, total: filtered.length, limit, offset, source: "supabase", answers_included: includeAnswer } };
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Банк вопросов временно недоступен");
+  }
+}
+
+/** Summarize the published exam-question bank by subject and kind. */
+export async function listSupabaseQuestionSubjects(request, env, fetcher = fetch) {
+  const result = await listSupabaseExamQuestions(request, env, { kind: "", limit: "200", offset: "0", include_answer: "false" }, fetcher);
+  if (!result.ok) return result;
+  const map = new Map();
+  // The list helper paginates; summary must not silently use only the first page.
+  // Re-querying with a larger bounded page is deliberate because this table is a compact bank.
+  const items = result.data.items;
+  for (const row of items) {
+    const key = String(row.subject_id || ("slug:" + String(row.subject_slug || "other")));
+    if (!map.has(key)) map.set(key, { subject_id: row.subject_id || null, subject: row.subject_name || row.subject_slug || "Без предмета", subject_slug: row.subject_slug || "other", count: 0, kinds: {} });
+    const entry = map.get(key);
+    entry.count += 1;
+    const rowKind = String(row.kind || "other").trim() || "other";
+    entry.kinds[rowKind] = (entry.kinds[rowKind] || 0) + 1;
+  }
+  return { ok: true, data: { items: [...map.values()], source: "supabase" } };
+}
