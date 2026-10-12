@@ -815,11 +815,16 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
     };
     if (requestedGroup) membershipQuery.group_id = "eq." + requestedGroup;
     const memberships = await rows("group_memberships", membershipQuery);
-    if (requestedGroup && !memberships.some((row) => String(row.group_id || "") === requestedGroup)) {
+    const activeMemberships = memberships.filter((membership) => {
+      const raw = membership?.groups;
+      const group = Array.isArray(raw) ? raw[0] : raw;
+      return Boolean(group) && group.is_active !== false && Boolean(membership.group_id);
+    });
+    if (requestedGroup && !activeMemberships.some((row) => String(row.group_id || "") === requestedGroup)) {
       return failure(403, "GROUP_ACCESS_DENIED", "You do not belong to the requested group");
     }
     const allowedSpecialties = new Set();
-    for (const membership of memberships) {
+    for (const membership of activeMemberships) {
       const raw = membership?.groups;
       const group = Array.isArray(raw) ? raw[0] : raw;
       const slug = String(group?.specialty_slug || "").trim().toLowerCase();
