@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -713,4 +713,39 @@ test("schedule metadata validates filters and returns calendar periods and durat
   assert.equal(result.ok, true);
   assert.equal(result.data.periods[0].id, "period-1");
   assert.equal(result.data.duration_rules[0].id, "rule-1");
+});
+
+
+test("published question bank paginates and hides long answers unless explicitly requested", async () => {
+  const answer = "Подробный правильный ответ ".repeat(8);
+  const result = await listSupabaseExamQuestions(request("Bearer valid-user-token"), configured, {
+    kind: "ticket", subject_slug: "histology", limit: "1", offset: "0",
+  }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    return new Response(JSON.stringify([
+      { id: "question-1", subject_name: "Гистология", subject_slug: "histology", kind: "ticket", text: "Вопрос 1", answer },
+      { id: "question-2", subject_name: "Физиология", subject_slug: "physiology", kind: "ticket", text: "Вопрос 2", answer: "Ответ" },
+    ]), { status: 200 });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.total, 1);
+  assert.equal(result.data.items.length, 1);
+  assert.equal(result.data.items[0].has_answer, true);
+  assert.equal(result.data.items[0].answer, undefined);
+  assert.ok(result.data.items[0].answer_preview.length > 120);
+  assert.equal(result.data.answers_included, false);
+});
+
+test("question bank subject summary counts all published rows by subject and kind", async () => {
+  const result = await listSupabaseQuestionSubjects(request("Bearer valid-user-token"), configured, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    return new Response(JSON.stringify([
+      { id: "q1", subject_id: "s1", subject_name: "Гистология", subject_slug: "histology", kind: "ticket" },
+      { id: "q2", subject_id: "s1", subject_name: "Гистология", subject_slug: "histology", kind: "exam" },
+      { id: "q3", subject_id: "s2", subject_name: "Физиология", subject_slug: "physiology", kind: "ticket" },
+    ]), { status: 200 });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.items.find((item) => item.subject_id === "s1").count, 2);
+  assert.equal(result.data.items.find((item) => item.subject_id === "s1").kinds.exam, 1);
 });
