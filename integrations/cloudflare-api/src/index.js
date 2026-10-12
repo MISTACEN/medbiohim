@@ -133,6 +133,12 @@ export default {
         schedule_source: schedule.ok ? "supabase_rest" : "unavailable",
         homeworks: homeworks.ok ? homeworks.data.items : [],
         tests: tests.ok ? tests.data.items : [],
+        stats: {
+          upcoming_lessons: schedule.ok ? schedule.data.items.filter((item) => !item.is_cancelled && String(item.date || "") >= String(schedule.data.from || "")).length : null,
+          pending_homeworks: homeworks.ok ? homeworks.data.items.filter((item) => !["done", "submitted", "graded", "returned", "completed"].includes(String(item.my_status || item.status || ""))).length : null,
+          completed_homeworks: homeworks.ok ? homeworks.data.items.filter((item) => ["done", "submitted", "graded", "returned", "completed"].includes(String(item.my_status || item.status || ""))).length : null,
+          available_tests: tests.ok ? tests.data.items.length : null,
+        },
         degraded: degradedSources.length > 0,
         degraded_sources: [...new Set(degradedSources)],
         service_notice: degradedSources.length ? "Часть данных главной страницы временно недоступна. Показаны только подтверждённые данные." : null,
