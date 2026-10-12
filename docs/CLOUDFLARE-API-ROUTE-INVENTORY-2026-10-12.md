@@ -1,3 +1,12 @@
+## API route migration — Pass 17 (2026-10-12; deployed to isolated shadow Worker)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/lectures_rest.php` + `LectureService.php` | `GET /api/v1/lectures?subject=` | Published lecture list; public fields only, media count; includes published legacy histology lectures | Implemented and uploaded; live RLS/response parity pending |
+| `backend/config/routes/lectures_rest.php` + `LectureService.php` | `GET /api/v1/lectures/{id}` | Published lecture detail only; draft/rejected content is not returned | Implemented and uploaded; live HTTP smoke test pending |
+
+Worker deployment ID: `a9bee33805dc4e4da75d729c96f90b93`. Lecture reads use the caller JWT and anon key. Legacy histology rows are filtered to `is_published=true`.
+
 ## API route migration — Pass 16 (2026-10-12; deployed to isolated shadow Worker)
 
 | PHP source | Route | Contract / safety | Shadow status |
