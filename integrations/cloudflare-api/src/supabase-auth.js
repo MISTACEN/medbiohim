@@ -1415,3 +1415,102 @@ export async function getSupabaseLecture(request, lectureId, env, fetcher = fetc
   const lecture = result.data.items.find((row) => String(row.id || "") === id);
   return lecture ? { ok: true, data: { lecture } } : failure(404, "NOT_FOUND", "Лекция не найдена или ещё не опубликована");
 }
+
+
+/** Subject catalog + curriculum document, using only the caller's RLS scope. */
+export async function getSupabaseSubjectCatalog(request, env, fetcher = fetch) {
+  const subjectResult = await listSupabaseSubjects(request, env, {}, fetcher);
+  if (!subjectResult.ok) return subjectResult;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+    const endpoint = new URL("/rest/v1/site_content", base);
+    endpoint.searchParams.set("select", "key,payload");
+    endpoint.searchParams.set("key", "eq.curriculum");
+    endpoint.searchParams.set("limit", "1");
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Curriculum read failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid curriculum response");
+    const curriculum = rows[0]?.payload && typeof rows[0].payload === "object"
+      ? rows[0].payload
+      : { items: subjectResult.data.items };
+    return { ok: true, data: { items: subjectResult.data.items, tools: [], program: null, semester_label: null, curriculum } };
+  } catch {
+    return failure(503, "CURRICULUM_UNAVAILABLE", "Учебный план временно недоступен");
+  }
+}
+
+/** List subject-plan JSON documents without exposing other site_content keys. */
+export async function listSupabaseSubjectPlans(request, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+    const endpoint = new URL("/rest/v1/site_content", base);
+    endpoint.searchParams.set("select", "key,payload");
+    endpoint.searchParams.set("key", "like.subject_plan:*");
+    endpoint.searchParams.set("limit", "500");
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Subject plan list failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid subject plan list");
+    const plans = {};
+    for (const row of rows) {
+      if (typeof row.key === "string" && row.key.startsWith("subject_plan:") && row.payload && typeof row.payload === "object") {
+        plans[row.key] = row.payload;
+      }
+    }
+    return { ok: true, data: { plans } };
+  } catch {
+    return failure(503, "SUBJECT_PLANS_UNAVAILABLE", "Учебные планы предметов временно недоступны");
+  }
+}
+
+export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch) {
+  const normalized = String(slug || "").trim();
+  if (!/^[a-z0-9][a-z0-9_-]{0,100}$/i.test(normalized)) return failure(422, "VALIDATION_ERROR", "Invalid subject slug");
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+    const endpoint = new URL("/rest/v1/site_content", base);
+    endpoint.searchParams.set("select", "payload");
+    endpoint.searchParams.set("key", "eq.subject_plan:" + normalized);
+    endpoint.searchParams.set("limit", "1");
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Subject plan read failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid subject plan response");
+    const plan = rows[0]?.payload && typeof rows[0].payload === "object" ? rows[0].payload : null;
+    return { ok: true, data: { plan, schedule_count: 0, schedule_sample: [], available: plan !== null } };
+  } catch {
+    return failure(503, "SUBJECT_PLAN_UNAVAILABLE", "Учебный план предмета временно недоступен");
+  }
+}
