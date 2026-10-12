@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseProfileBundle, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseProfileBundle, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -443,4 +443,75 @@ test("profile bundle falls back to minimal identity when optional RLS profile qu
   assert.deepEqual(result.data.roles, []);
   assert.deepEqual(result.data.groups, []);
   assert.equal(calls, 4);
+});
+
+
+test("search requires authentication and returns an empty contract for a blank query", async () => {
+  let calls = 0;
+  const result = await searchSupabaseContent(request("Bearer valid-user-token"), configured, { q: "   " }, async (url, init) => {
+    calls += 1;
+    assert.equal(String(url), "https://project-id.supabase.co/auth/v1/user");
+    assert.equal(init.headers.authorization, "Bearer valid-user-token");
+    return new Response(JSON.stringify({ id: "user-123", email: "student@example.com" }), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data, { query: "", total: 0, items: [], facets: { subjects: [], types: {} } });
+  assert.equal(calls, 1);
+});
+
+test("search queries only caller-scoped published questions and normalizes facets", async () => {
+  const calls = [];
+  const result = await searchSupabaseContent(request("Bearer valid-user-token"), configured, {
+    q: "mitosis", type: "question", limit: "10", subject_slug: "histology",
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    calls.push({ parsed, init });
+    if (parsed.pathname === "/auth/v1/user") {
+      return new Response(JSON.stringify({ id: "user-123", email: "student@example.com" }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }
+    assert.equal(init.headers.authorization, "Bearer valid-user-token");
+    assert.equal(init.headers.apikey, configured.SUPABASE_ANON_KEY);
+    if (parsed.pathname === "/rest/v1/subjects") {
+      assert.equal(parsed.searchParams.get("is_active"), "eq.true");
+      return new Response(JSON.stringify([{ id: "subject-1", name: "Гистология", slug: "histology", description: "" }]), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }
+    if (parsed.pathname === "/rest/v1/questions") {
+      assert.equal(parsed.searchParams.get("is_published"), "eq.true");
+      assert.equal(parsed.searchParams.get("archived_at"), "is.null");
+      return new Response(JSON.stringify([
+        { id: "q1", subject_id: "subject-1", topic: "Клеточный цикл", text: "Что такое mitosis?", answer: "Деление клетки" },
+        { id: "q2", subject_id: "subject-2", topic: "Другой предмет", text: "Mitosis unrelated subject", answer: "private" },
+      ]), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    throw new Error("Unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.total, 1);
+  assert.equal(result.data.items[0].id, "q-q1");
+  assert.equal(result.data.items[0].answer, "Деление клетки");
+  assert.equal(result.data.items[0].href, "/subjects/histology?tab=practice");
+  assert.deepEqual(result.data.facets.subjects, [{ subject: "Гистология", subject_slug: "histology", count: 1 }]);
+  assert.deepEqual(result.data.facets.types, { question: 1 });
+  assert.equal(calls.length, 3);
+});
+
+test("search rejects invalid type and maps Supabase RLS failures to a generic service error", async () => {
+  const invalid = await searchSupabaseContent(request("Bearer valid-user-token"), configured, { q: "test", type: "admin" }, async () =>
+    new Response(JSON.stringify({ id: "user-123" }), { status: 200, headers: { "content-type": "application/json" } })
+  );
+  assert.equal(invalid.status, 422);
+  const denied = await searchSupabaseContent(request("Bearer valid-user-token"), configured, { q: "test", type: "subject" }, async (url) => {
+    if (String(url).endsWith("/auth/v1/user")) {
+      return new Response(JSON.stringify({ id: "user-123" }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response("RLS details must not leak", { status: 403 });
+  });
+  assert.equal(denied.status, 503);
+  assert.equal(denied.message, "Поиск временно недоступен");
 });
