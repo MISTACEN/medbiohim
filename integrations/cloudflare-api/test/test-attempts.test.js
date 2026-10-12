@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getSupabaseBankProgress, getSupabaseTestDetail, listSupabaseMyAttempts } from "../src/test-attempts.js";
+import { getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts } from "../src/test-attempts.js";
 
 const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
 const groupId = "11111111-1111-4111-8111-111111111111";
@@ -44,6 +44,19 @@ test("test detail exposes visible question text and option labels without correc
   assert.deepEqual(result.data.questions[0].options, [{ label: "A" }, { label: "B" }]);
   assert.equal("answer" in result.data.questions[0], false);
   assert.equal("correct" in result.data.questions[0].options[0], false);
+});
+
+test("full-bank detail shows answers and correct options only on the dedicated bank route", async () => {
+  const result = await getSupabaseTestBankDetail(makeRequest("/tests/" + testId + "/bank?group_id=" + groupId), env, testId, groupId, baseMock((url) => {
+    if (url.pathname === "/rest/v1/tests") return new Response(JSON.stringify([{ id: testId, title: "Тест", subject_id: subjectId, is_published: true }]), { status: 200 });
+    if (url.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify(membershipRow()), { status: 200 });
+    if (url.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: subjectId, name: "Биохимия", specialty_slug: "mbh", is_active: true }]), { status: 200 });
+    if (url.pathname === "/rest/v1/test_questions") return new Response(JSON.stringify([{ test_id: testId, question_id: questionId, order_index: 0, questions: question }]), { status: 200 });
+    throw new Error("unexpected path " + url.pathname);
+  }));
+  assert.equal(result.ok, true);
+  assert.equal(result.data.questions[0].answer, "A");
+  assert.equal(result.data.questions[0].options[0].correct, true);
 });
 
 test("attempt history is limited to the authenticated user's selected group and safe fields", async () => {
