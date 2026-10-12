@@ -464,3 +464,16 @@ test("dedicated test bank detail is authenticated and read-only", async () => {
   assert.equal(wrongMethod.status, 405);
   assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
 });
+
+
+test("test detail view=bank route remains authenticated and read-only", async () => {
+  const response = await worker.fetch(request("/api/v1/tests/22222222-2222-4222-8222-222222222222?view=bank"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+  const wrongMethod = await worker.fetch(request("/api/v1/tests/22222222-2222-4222-8222-222222222222?view=bank", { method: "POST" }), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
+});
