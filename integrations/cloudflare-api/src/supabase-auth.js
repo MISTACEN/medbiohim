@@ -683,3 +683,75 @@ export async function searchSupabaseContent(request, env, options = {}, fetcher 
       : failure(503, "SEARCH_ERROR", "Поиск временно недоступен");
   }
 }
+
+export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const id = String(subjectId || "").trim();
+  if (!id || id.length > 128 || /[\\/?#]/.test(id)) {
+    return failure(422, "VALIDATION_ERROR", "A valid subject id is required");
+  }
+  const authorization = request.headers.get("authorization") || "";
+  const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  async function rows(table, query) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Supabase REST read failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Supabase REST returned an invalid collection");
+    return payload;
+  }
+
+  let subjects;
+  let modules;
+  try {
+    subjects = await rows("subjects", {
+      select: "id,slug,name,specialty_slug,course_number,semester,control_type,lecture_hours,practice_hours,self_study_hours,total_hours,credits,is_active",
+      id: "eq." + id,
+      limit: "1",
+    });
+    if (!subjects.length) return failure(404, "NOT_FOUND", "Subject not found");
+    try {
+      modules = await rows("modules", {
+        select: "id,title,sort_order",
+        subject_id: "eq." + id,
+        order: "sort_order.asc.nullslast,title.asc",
+      });
+    } catch {
+      // The current PHP REST fallback uses order_index while the SQL repository
+      // uses sort_order. Support either deployed schema without relaxing RLS.
+      modules = await rows("modules", {
+        select: "id,title,order_index",
+        subject_id: "eq." + id,
+        order: "order_index.asc.nullslast,title.asc",
+      });
+      modules = modules.map((module) => ({
+        id: module.id ?? null,
+        title: module.title ?? "",
+        sort_order: module.order_index ?? null,
+      }));
+    }
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Subject data is temporarily unavailable");
+  }
+  return { ok: true, data: { subject: subjects[0], modules } };
+}
