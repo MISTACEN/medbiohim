@@ -1144,6 +1144,10 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
   } catch {
     return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
   }
+  const visibleSubjectsResult = await listSupabaseSubjects(request, env, {}, fetcher);
+  if (!visibleSubjectsResult.ok) return visibleSubjectsResult;
+  const visibleSubjectIds = new Set(visibleSubjectsResult.data.items.map((subject) => String(subject.id || "")).filter(Boolean));
+
   try {
     const endpoint = new URL("/rest/v1/tests", base);
     endpoint.searchParams.set("select", "id,subject_id,module_id,topic_id,title,time_limit_sec,max_attempts,is_published,created_at,archived_at,source_key,order_index,subjects(name),modules(title,order_index),topics(title,order_index)");
@@ -1163,8 +1167,14 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Test catalog query failed");
-    const items = await response.json();
-    if (!Array.isArray(items)) throw new Error("Invalid test catalog response");
+    const databaseItems = await response.json();
+    if (!Array.isArray(databaseItems)) throw new Error("Invalid test catalog response");
+    // Match the PHP SpecialtyAccess policy: global tests are visible, subject-bound
+    // tests require that the caller can see that subject through active memberships.
+    const items = databaseItems.filter((item) => {
+      const subjectId = String(item.subject_id || "").trim();
+      return !subjectId || visibleSubjectIds.has(subjectId);
+    });
     if (!items.length) return { ok: true, data: { items: [], count: 0 } };
     const linksEndpoint = new URL("/rest/v1/test_questions", base);
     linksEndpoint.searchParams.set("select", "test_id,order_index");
