@@ -85,7 +85,7 @@ function homeworkStatus(row: DashRow): string {
 
 function homeworkPending(row: DashRow): boolean {
   const status = homeworkStatus(row);
-  return !["submitted", "graded", "returned", "done", "completed"].includes(status);
+  return !["submitted", "graded", "done", "сдано", "оценено"].includes(status);
 }
 
 function subjectHref(row: DashRow): string | null {
