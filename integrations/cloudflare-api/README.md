@@ -6,8 +6,11 @@ The existing PHP API on SpaceWeb remains the current backend. The Worker is depl
 
 ### Current verification gate — 2026-10-13 (supersedes older pass notes below)
 
-- Full Worker unit suite: **124/124 passing** in the current local test run.
+- Full Worker unit suite: **126/126 passing** from an isolated workspace assembled from the exact current `main` source and tests.
 - The active shadow Worker includes all six source modules, the safe Supabase Auth diagnostics, the request-body reader fix, and the fail-closed test-attempt write gate.
+- `npm run build` passed on the same source workspace using Wrangler `4.149.0 deploy --dry-run`; it recognized both rate-limit bindings and emitted a 205.01 KiB bundle (30.89 KiB gzip). The latest Cloudflare Workers Build (commit `7245d0c21e00af2c922ae9cf4317bacf0d26b03d`) completed successfully, and the active deployment is 100% on version `b7b84bbe-34ec-4043-9ffb-f08894abe261`.
+- Cloudflare telemetry from earlier failed auth probes shows HTTPS enabled and the configured hostname matching the expected Supabase project, but the upstream fetch threw `TypeError` with a sanitized `redirect` category. That narrows the investigation beyond a mistyped project host, but does not establish the exact root cause or prove the anon key is valid.
+- A fresh HTTP smoke attempt from the current isolated test environment was denied by Cloudflare edge with error `1010` before the Worker route ran. Treat this as a limitation of this test origin, not a Worker HTTP status. No fresh live route status is claimed in this pass.
 - **Login and registration are intentionally disabled** unless `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED="true"`. A live probe of 18 sequential synthetic login attempts did not produce HTTP 429, so the configured native limiter cannot yet be considered verified. The committed Wrangler default is `"false"`; do not change it until enforcement is reproducibly demonstrated.
 - Shadow health returns HTTP 200. Login and registration currently return HTTP 503 `RATE_LIMIT_ENFORCEMENT_UNVERIFIED`; test-attempt start/save/finish return HTTP 503 `TEST_ATTEMPT_SECURITY_NOT_READY`.
 - The Vercel homepage returns HTTP 200, but production `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN` because the legacy SpaceWeb API origin is HTTP. Production has **not** been switched to this incomplete Worker.
