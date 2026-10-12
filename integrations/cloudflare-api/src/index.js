@@ -117,7 +117,7 @@ export default {
       const [homeworks, schedule, tests, cms] = await Promise.all([
         listSupabaseHomeworks(request, env, { group_id: params.get("group_id") || "", all_groups: true }),
         listSupabaseSchedule(request, env, { group_id: params.get("group_id") || "", from: params.get("from") || "", to: params.get("to") || "", all_groups: true }),
-        listSupabasePublishedTests(request, env, { limit: "20" }),
+        listSupabasePublishedTests(request, env, { limit: "200" }),
         getSupabaseSiteContent(request, env),
       ]);
       const degradedSources = [];
