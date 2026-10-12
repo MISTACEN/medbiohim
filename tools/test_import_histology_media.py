@@ -68,7 +68,7 @@ class HistologyMediaImporterTests(unittest.TestCase):
             self.assertEqual((out / "histology/electronograms/images/mitohondrii.png").read_bytes(), b"em-bytes")
             self.assertEqual((out / "histology/em/mitohondrii.png").read_bytes(), b"em-bytes")
             self.assertTrue((out / "histology/electronograms/docx-captions.json").exists())
-            self.assertTrue((out / "histology/histology-media-manifest.json").exists())
+            self.assertTrue((out / "histology-media-manifest.json").exists())
             self.assertGreaterEqual(counts["duplicates"], 1)
 
     def test_conflicting_normalized_paths_fail_instead_of_overwriting(self):
