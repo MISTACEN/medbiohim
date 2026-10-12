@@ -135,3 +135,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added authenticated `GET /api/v1/subjects/{id}` using the caller's Supabase JWT and public anon key; no service-role key or SpaceWeb proxy is used.
 - Queries `subjects` and `modules` under the caller's grants/RLS. It supports both known module ordering columns (`sort_order` and `order_index`) because the PHP repository and REST fallback currently differ.
 - Missing subjects return 404; denied/unavailable reads return a generic 503. The helper and route regression tests are authored; full execution and actual Supabase RLS/table compatibility still need confirmation.
+
+## API route migration — Pass 13 (authenticated subject catalog)
+
+- Added `GET /api/v1/subjects?course=&semester=` using the caller's verified Supabase Bearer token and public anon key; no service-role key is used.
+- The Worker reads active group memberships first and filters specialty-scoped subjects against group `specialty_slug`; `histology` is included for MBH groups to match the PHP `SpecialtyAccess` rule. General subjects without a specialty remain visible.
+- Course and semester filters are validated and bounded to the schema's expected ranges. If membership/RLS checks fail, the route returns a generic 503 instead of falling back to an unrestricted catalog.
+- Added route auth/method tests and helper tests for specialty filtering, filter validation, caller-JWT forwarding, and fail-closed membership errors.
+- **Not yet accepted for cutover:** GitHub Actions has been triggering but the latest runs are failing with job metadata showing no steps and no downloadable logs. A real successful Node test run is still required. Live RLS relationship behavior must also be verified before switching frontend traffic.
