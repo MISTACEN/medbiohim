@@ -1,3 +1,15 @@
+## Rate-limit configuration added — 2026-10-13
+
+- 🟢 Updated `integrations/cloudflare-api/wrangler.toml` on `main` to declare Cloudflare native rate-limit bindings matching the existing Worker code: `AUTH_LOGIN_LIMITER` = 5 requests/IP/minute and `AUTH_REGISTER_LIMITER` = 3 requests/IP/minute. Namespace IDs are separate (`1001`, `1002`); thresholds are conservative initial values.
+- 🟢 Parsed the exact TOML configuration with Python `tomllib`; both bindings and thresholds validated.
+- 🟢 Re-ran isolated API failover tests in the sandbox: **9 passed, 0 failed**.
+- 🟡 GitHub Actions did start workflows for commit `9b2a0abb0f7917b817e0ac6ed61f876501d2269c`, but package and smoke jobs again failed before any steps with `runner_id=0`, empty runner name, and `steps=[]`. This is not evidence of a test assertion failure; CI runner provisioning remains unresolved.
+- 🔴 The config is committed but has **not yet been deployed** to Cloudflare. The active Worker will still lack these bindings until a successful Wrangler/Cloudflare Builds deployment is confirmed.
+- 🔴 Invalid-token auth smoke test still needs investigation: live Worker returned `502 AUTH_UPSTREAM_ERROR`. A request to update the deployed public Supabase anon-key binding was blocked by the tool safety layer, so no secret/config value was changed.
+- 🔒 Production Vercel mode remains unchanged; SpaceWeb HTTP fallback remains guarded. No Supabase schema/RLS or production traffic was changed.
+
+**Next:** resolve CI runner provisioning and complete a Wrangler validation/build for the entire Worker; deploy to the shadow Worker only, then re-test health, 401 invalid-token behavior, CORS, rate-limit 429 behavior, and read-only Supabase routes. Do not switch Vercel Production until all checks pass.
+
 ## Live Worker reconciliation — follow-up verification, 2026-10-13
 
 - 🟢 Re-read the active Cloudflare script bundle through the Cloudflare API without exposing secret values. The live bundle is exactly **two modules**: `src/index.js` and `src/supabase-auth.js` (about 101.8 KB multipart payload).
