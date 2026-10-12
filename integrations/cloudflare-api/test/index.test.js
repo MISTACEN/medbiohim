@@ -365,3 +365,20 @@ test("admin schedule editor requires authentication for reads and writes", async
   }), { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" });
   assert.equal(put.status, 401);
 });
+
+
+test("progress and question-bank routes are authenticated and read-only", async () => {
+  for (const path of ["/api/v1/progress", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects"]) {
+    const response = await worker.fetch(request(path), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    assert.equal(response.status, 401, path);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED", path);
+  }
+  for (const path of ["/api/v1/progress", "/api/v1/tests", "/api/v1/questions"]) {
+    const response = await worker.fetch(request(path, { method: "POST" }), {});
+    assert.equal(response.status, 405, path);
+    assert.equal(response.headers.get("allow"), "GET, OPTIONS", path);
+  }
+});
