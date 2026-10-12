@@ -225,3 +225,13 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Read-only Supabase audit: 33 tests / 32 published; 855 questions / 660 published and active; 854 test-question links; 876 exam questions / 776 published. All test links point to published active questions; no published active question was found without a test link. One unpublished test with 67 linked questions remains unpublished intentionally.
 - Regression tests authored but not run. No schema/data edits, Worker deployment, frontend cutover or GitHub Actions changes.
 - The test-taking lifecycle remains a blocker for full cutover: test detail, start attempt, answer writes/grading, finish, history and grading retry routes still need migration.
+
+
+## Progress + test/question bank — Pass 20 (source-only, 2026-10-12)
+
+- Added authenticated `GET /api/v1/progress` with selected-group attempt history and homework completion, plus a UI correction to avoid displaying missing averages/no activity as real zeroes.
+- Published test catalog restores frontend fields for subject/module/topic, linked-question count and optional source files, and filters subject-bound tests by subjects visible to the active group/specialty.
+- Added safe read routes `GET /api/v1/tests/{uuid}` and `GET /api/v1/my/attempts`. Test detail strips answer text and per-option correct flags from its response; attempt history excludes `question_snapshot`.
+- **Test attempt write routes are intentionally disabled.** A live privilege check confirmed authenticated clients can select `test_attempts.question_snapshot` and `questions.answer/options` directly. A private answer store / guarded database RPC design must be implemented before start/save/finish can be migrated safely. AI semantic grading/regrade is also not migrated.
+- Regression tests were authored but not executed; GitHub Actions were left untouched and the connected shell could not clone GitHub due unavailable network.
+- No Supabase grants/policies were modified, no Worker deployment occurred and the frontend remains on PHP/SpaceWeb.
