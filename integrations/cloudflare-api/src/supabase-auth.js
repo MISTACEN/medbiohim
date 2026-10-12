@@ -1214,7 +1214,7 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
     endpoint.searchParams.set("user_id", "eq." + identity.user.id);
     endpoint.searchParams.set("order", "started_at.desc");
     endpoint.searchParams.set("limit", "50");
-    if (groupId) endpoint.searchParams.set("group_id", "eq." + groupId);
+    endpoint.searchParams.set("group_id", "eq." + effectiveGroupId);
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
@@ -1233,7 +1233,7 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
     const hwDone = homeworks.filter((row) => doneStatuses.has(String(row.my_status || row.status || "").toLowerCase())).length;
     const finishedStatuses = new Set(["submitted", "finished", "completed", "graded"]);
     const finished = attempts.filter((row) => finishedStatuses.has(String(row.status || "").toLowerCase())).length;
-    const scores = attempts.map((row) => Number(row.percent ?? row.score)).filter(Number.isFinite);
+    const scores = attempts.map((row) => Number(row.score)).filter(Number.isFinite);
     const hwPercent = homeworks.length ? Math.round(hwDone / homeworks.length * 100) : 0;
     const parts = [hwPercent];
     if (attempts.length) parts.push(Math.round(finished / attempts.length * 100));
