@@ -920,6 +920,109 @@ export async function listSupabaseGroups(request, env, fetcher = fetch) {
 }
 
 /**
+ * Read one subject's gradebook/reference curriculum rows after enforcing the same
+ * specialty access rules as PHP SpecialtyAccess::canAccessSubject().
+ * Every query uses the caller JWT and anon key so database grants/RLS remain active.
+ */
+export async function getSupabaseSubjectGradebook(request, subjectId, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
+  const id = String(subjectId || "").trim();
+  if (!id || id.length > 128 || /[\\/?#]/.test(id)) {
+    return failure(422, "VALIDATION_ERROR", "A valid subject id is required");
+  }
+  const authorization = request.headers.get("authorization") || "";
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  async function rows(table, query) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
+    let response;
+    try {
+      response = await fetcher(endpoint.toString(), {
+        method: "GET",
+        headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      });
+    } catch {
+      throw new Error("Supabase REST read failed");
+    }
+    if (response.status >= 300 && response.status < 400) throw new Error("Supabase REST redirect refused");
+    if (!response.ok) throw new Error("Supabase REST read failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Supabase REST returned an invalid collection");
+    return payload;
+  }
+
+  let subject;
+  try {
+    const subjects = await rows("subjects", {
+      select: "id,slug,specialty_slug,is_active",
+      id: "eq." + id,
+      is_active: "eq.true",
+      limit: "1",
+    });
+    subject = subjects[0] || null;
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Subject access could not be verified");
+  }
+  if (!subject) {
+    // PHP canAccessSubject() returns false for missing/inactive subjects and the
+    // existing route maps that to FORBIDDEN rather than revealing existence.
+    return failure(403, "FORBIDDEN", "Этот предмет недоступен для вашей специальности");
+  }
+
+  const subjectSlug = String(subject.slug || "").trim();
+  const specialtySlug = String(subject.specialty_slug || "").trim();
+  const requiredSpecialty = subjectSlug === "histology" || specialtySlug === "mbh" ? "mbh" : specialtySlug;
+  if (requiredSpecialty) {
+    let memberships;
+    try {
+      memberships = await rows("group_memberships", {
+        select: "group_id,groups(specialty_slug,is_active)",
+        user_id: "eq." + identity.user.id,
+        is_active: "eq.true",
+      });
+    } catch {
+      return failure(503, "DB_UNAVAILABLE", "Subject access could not be verified");
+    }
+    const canAccess = memberships.some((membership) => {
+      const raw = membership?.groups;
+      const group = Array.isArray(raw) ? raw[0] : raw;
+      return Boolean(group) && group.is_active !== false &&
+        String(group.specialty_slug || "").trim() === requiredSpecialty;
+    });
+    if (!canAccess) {
+      return failure(403, "FORBIDDEN", "Этот предмет недоступен для вашей специальности");
+    }
+  }
+
+  try {
+    const items = await rows("subject_gradebook_entries", {
+      subject_id: "eq." + id,
+      select: "id,subject_id,display_name,hours,credits,control_form,hours_scope,source_note,source_file",
+    });
+    return { ok: true, data: { items } };
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Не удалось загрузить данные для зачётки");
+  }
+}
+
+/**
  * List active subjects for the authenticated student.
  * Uses only the caller JWT and public anon key; group-derived specialty access
  * is checked before specialty-scoped subjects are returned. Any access-check
