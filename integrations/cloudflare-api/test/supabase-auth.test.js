@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseProfileBundle, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -378,4 +378,69 @@ test("registration hides Supabase account errors and maps throttling safely", as
     new Response("limited", { status: 429 })
   );
   assert.equal(limited.status, 429);
+});
+
+
+test("profile bundle uses caller JWT and returns only caller-scoped profile, roles and active groups", async () => {
+  const calls = [];
+  const result = await getSupabaseProfileBundle(request("Bearer valid-user-token"), configured, async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (String(url).endsWith("/auth/v1/user")) {
+      return new Response(JSON.stringify({ id: "user-123", email: "student@example.com" }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }
+    const parsed = new URL(String(url));
+    assert.equal(init.headers.apikey, configured.SUPABASE_ANON_KEY);
+    assert.equal(init.headers.authorization, "Bearer valid-user-token");
+    assert.equal(init.redirect, "error");
+    if (parsed.pathname === "/rest/v1/users") {
+      assert.equal(parsed.searchParams.get("id"), "eq.user-123");
+      return new Response(JSON.stringify([{
+        id: "user-123", full_name: "Student", email: "student@example.com",
+        avatar_url: null, course_number: 2, semester: 3,
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (parsed.pathname === "/rest/v1/user_roles") {
+      assert.equal(parsed.searchParams.get("user_id"), "eq.user-123");
+      return new Response(JSON.stringify([{ roles: { code: "student" } }]), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      assert.equal(parsed.searchParams.get("user_id"), "eq.user-123");
+      return new Response(JSON.stringify([{
+        group_id: "group-1", role_in_group: "student", is_active: true,
+        groups: { id: "group-1", code: "MBH-201", name: "МБХ-201", course_number: 2, admission_year: 2025, is_active: true },
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    throw new Error("Unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.user.id, "user-123");
+  assert.equal(result.data.user.group_code, "MBH-201");
+  assert.equal(result.data.course, 2);
+  assert.equal(result.data.semester, 3);
+  assert.deepEqual(result.data.roles, ["student"]);
+  assert.equal(result.data.groups.length, 1);
+  assert.equal(calls.length, 4);
+});
+
+test("profile bundle falls back to minimal identity when optional RLS profile queries are unavailable", async () => {
+  let calls = 0;
+  const result = await getSupabaseProfileBundle(request("Bearer valid-user-token"), configured, async (url) => {
+    calls += 1;
+    if (String(url).endsWith("/auth/v1/user")) {
+      return new Response(JSON.stringify({ id: "user-123", email: "student@example.com" }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response("RLS denied", { status: 403 });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.user.id, "user-123");
+  assert.equal(result.data.user.email, "student@example.com");
+  assert.deepEqual(result.data.roles, []);
+  assert.deepEqual(result.data.groups, []);
+  assert.equal(calls, 4);
 });
