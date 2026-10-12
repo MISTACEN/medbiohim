@@ -1056,3 +1056,45 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
     return failure(503, "HOMEWORK_UNAVAILABLE", "Задания временно недоступны");
   }
 }
+
+
+/** Published test catalog only; never returns question answer keys or attempts. */
+export async function listSupabasePublishedTests(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+  }
+  try {
+    const endpoint = new URL("/rest/v1/tests", base);
+    endpoint.searchParams.set("select", "id,subject_id,module_id,topic_id,title,time_limit_sec,max_attempts,is_published,created_at,archived_at,source_key,order_index");
+    endpoint.searchParams.set("is_published", "eq.true");
+    endpoint.searchParams.set("archived_at", "is.null");
+    endpoint.searchParams.set("order", "order_index.asc.nullslast,title.asc");
+    endpoint.searchParams.set("limit", String(Math.max(1, Math.min(200, Number(filters.limit) || 50))));
+    const subjectId = String(filters.subject_id || "").trim();
+    if (subjectId) {
+      if (subjectId.length > 128 || /[\/?#]/.test(subjectId)) return failure(422, "VALIDATION_ERROR", "Invalid subject id");
+      endpoint.searchParams.set("subject_id", "eq." + subjectId);
+    }
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Test catalog query failed");
+    const items = await response.json();
+    if (!Array.isArray(items)) throw new Error("Invalid test catalog response");
+    return { ok: true, data: { items, count: items.length } };
+  } catch {
+    return failure(503, "TESTS_UNAVAILABLE", "Каталог тестов временно недоступен");
+  }
+}
