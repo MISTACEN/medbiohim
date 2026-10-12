@@ -134,6 +134,7 @@ export default {
       if (!schedule.ok) degradedSources.push("schedule");
       if (!tests.ok) degradedSources.push("tests");
       if (!cms.ok) degradedSources.push("site", "announcements");
+      const localClock = apiLocalClock();
       const data = {
         profile: profile.data,
         site: cms.ok ? cms.data.site : { title: "Медбиохим" },
@@ -143,7 +144,7 @@ export default {
         homeworks: homeworks.ok ? homeworks.data.items : [],
         tests: tests.ok ? tests.data.items : [],
         stats: {
-          upcoming_lessons: schedule.ok ? schedule.data.items.filter((item) => { const clock = apiLocalClock(); const date = String(item.date || ""); const end = String(item.end_time || "23:59").slice(0, 5); return !item.is_cancelled && (date > clock.date || (date === clock.date && end >= clock.time)); }).length : null,
+          upcoming_lessons: schedule.ok ? schedule.data.items.filter((item) => { const date = String(item.date || ""); const end = String(item.end_time || "23:59").slice(0, 5); return !item.is_cancelled && (date > localClock.date || (date === localClock.date && end >= localClock.time)); }).length : null,
           pending_homeworks: homeworks.ok ? homeworks.data.items.filter((item) => !["done", "submitted", "graded", "returned", "completed"].includes(String(item.my_status || item.status || ""))).length : null,
           completed_homeworks: homeworks.ok ? homeworks.data.items.filter((item) => ["done", "submitted", "graded", "returned", "completed"].includes(String(item.my_status || item.status || ""))).length : null,
           available_tests: tests.ok ? tests.data.items.length : null,
