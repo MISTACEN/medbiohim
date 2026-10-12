@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseProfileBundle, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseProfileBundle, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -630,4 +630,51 @@ test("subject detail returns 404 for missing subjects and 503 when RLS denies re
     return new Response("denied", { status: 403 });
   });
   assert.equal(denied.status, 503);
+});
+
+
+test("schedule read is restricted to active memberships and joins schedule metadata", async () => {
+  const seen = [];
+  const result = await listSupabaseSchedule(request("Bearer valid-user-token"), configured, {
+    from: "2026-10-12", to: "2026-10-20", group_id: "group-1",
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    seen.push({ path: parsed.pathname, query: parsed.search, authorization: init.headers.authorization });
+    if (parsed.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (parsed.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", name: "МБХ-201", course_number: 2 } }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/schedules") return new Response(JSON.stringify([{ id: "schedule-1", group_id: "group-1", semester: 3, academic_year: "2026/2027" }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/schedule_entries") return new Response(JSON.stringify([{ id: "entry-1", schedule_id: "schedule-1", subject_id: "subject-1", date: "2026-10-13", start_time: "09:00:00", end_time: "10:30:00", subject_name: "Гистология" }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: "subject-1", name: "Гистология", slug: "histology", color_hex: "#123456" }]), { status: 200 });
+    return new Response(JSON.stringify([]), { status: 200 });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.items.length, 1);
+  assert.equal(result.data.items[0].subject, "Гистология");
+  assert.equal(result.data.items[0].group_id, "group-1");
+  assert.ok(seen.every((item) => item.authorization === "Bearer valid-user-token"));
+  assert.match(seen.find((item) => item.path === "/rest/v1/schedules").query, /group_id=in/);
+});
+
+test("schedule read rejects a group outside the caller's active memberships", async () => {
+  const result = await listSupabaseSchedule(request("Bearer valid-user-token"), configured, { group_id: "other-group" }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (String(url).includes("/rest/v1/group_memberships")) return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", name: "Group 1" } }]), { status: 200 });
+    throw new Error("The helper should reject before querying schedules");
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+  assert.equal(result.code, "GROUP_ACCESS_DENIED");
+});
+
+test("published test catalog never requests question answers or user attempts", async () => {
+  const result = await listSupabasePublishedTests(request("Bearer valid-user-token"), configured, { limit: "10" }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    assert.equal(parsed.pathname, "/rest/v1/tests");
+    assert.ok(!parsed.searchParams.get("select").includes("answer"));
+    assert.ok(!parsed.searchParams.get("select").includes("attempt"));
+    return new Response(JSON.stringify([{ id: "test-1", title: "Тест", is_published: true }]), { status: 200 });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.items[0].id, "test-1");
 });
