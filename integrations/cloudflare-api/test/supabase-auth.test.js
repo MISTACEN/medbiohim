@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -783,4 +783,31 @@ test("lecture detail only returns a published matching lecture", async () => {
   });
   assert.equal(result.ok, true);
   assert.equal(result.data.lecture.title, "Кровь");
+});
+
+
+test("subject plan catalog only returns site_content subject_plan keys", async () => {
+  const result = await listSupabaseSubjectPlans(request("Bearer valid-user-token"), configured, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    assert.equal(parsed.pathname, "/rest/v1/site_content");
+    assert.equal(parsed.searchParams.get("key"), "like.subject_plan:*");
+    return new Response(JSON.stringify([
+      { key: "subject_plan:histology", payload: { subject: "Гистология" } },
+      { key: "site", payload: { title: "Not a plan" } },
+    ]), { status: 200 });
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(Object.keys(result.data.plans), ["subject_plan:histology"]);
+});
+
+test("subject plan endpoint represents a missing plan as unavailable, not an error", async () => {
+  const result = await getSupabaseSubjectPlan(request("Bearer valid-user-token"), "histology", configured, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    return new Response(JSON.stringify([]), { status: 200 });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.available, false);
+  assert.equal(result.data.plan, null);
+  assert.equal(result.data.schedule_count, 0);
 });
