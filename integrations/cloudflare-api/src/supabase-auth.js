@@ -824,11 +824,14 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
       return failure(403, "GROUP_ACCESS_DENIED", "You do not belong to the requested group");
     }
     const allowedSpecialties = new Set();
+    const allowedCourses = new Set();
     for (const membership of activeMemberships) {
       const raw = membership?.groups;
       const group = Array.isArray(raw) ? raw[0] : raw;
       const slug = String(group?.specialty_slug || "").trim().toLowerCase();
       if (slug) allowedSpecialties.add(slug);
+      const groupCourse = Number(group?.course_number);
+      if (group?.course_number != null && Number.isInteger(groupCourse)) allowedCourses.add(groupCourse);
     }
     // Histology is part of the MBH specialty in the PHP SpecialtyAccess policy.
     if (allowedSpecialties.has("mbh")) allowedSpecialties.add("histology");
@@ -844,7 +847,10 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
     const subjects = await rows("subjects", query);
     const items = subjects.filter((subject) => {
       const specialty = String(subject?.specialty_slug || "").trim().toLowerCase();
-      return !specialty || allowedSpecialties.has(specialty);
+      if (specialty && !allowedSpecialties.has(specialty)) return false;
+      if (requestedGroup && allowedCourses.size === 1 && subject.course_number != null &&
+          !allowedCourses.has(Number(subject.course_number))) return false;
+      return true;
     });
     return { ok: true, data: { items } };
   } catch {
