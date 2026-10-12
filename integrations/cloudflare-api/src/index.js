@@ -1,4 +1,4 @@
-import { getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -188,6 +188,43 @@ export default {
       const selectedGroup = result.data.groups.find((group) => group.group_id === requestedGroup)
         || (result.data.groups.length === 1 ? result.data.groups[0] : null);
       return withCors(success({ items: result.data.items, group: selectedGroup }), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/lectures`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseLectures(request, env, url.searchParams.get("subject") || "");
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      const items = result.data.items.map((row) => ({
+        id: row.id ?? null,
+        title: row.title ?? "",
+        subject: row.subject ?? "",
+        subject_slug: row.subject_slug ?? "",
+        topic: row.topic ?? "",
+        lesson_type: row.lesson_type ?? "lecture",
+        summary: row.summary ?? "",
+        published_at: row.published_at ?? null,
+        media_count: Array.isArray(row.media) ? row.media.length : 0,
+      }));
+      return withCors(success({ items, count: items.length }), origin);
+    }
+
+    const lectureMatch = new RegExp("^" + API_PREFIX + "/lectures/([^/]+)$").exec(pathname);
+    if (lectureMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let lectureId;
+      try { lectureId = decodeURIComponent(lectureMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid lecture id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseLecture(request, lectureId, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
     }
 
     if (pathname === `${API_PREFIX}/questions/subjects`) {
