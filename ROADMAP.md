@@ -2710,3 +2710,10 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 GitHub commit status for build-script commit `5f23331d35ee7b7038862a6c90148987f7d9c844` reports Vercel success only; it does not confirm Cloudflare Workers Builds. Live health responses also cannot prove the latest source bundle was deployed.
 - 🔴 Need Cloudflare Builds log for a run after `5f23331d` showing successful `npm run build` and `npx wrangler deploy`; then inspect deployed module list and re-run auth/rate-limit tests.
 - 🔒 No production route, Vercel environment, Supabase schema/RLS, or secret was changed. Production cutover remains blocked.
+
+## Cloudflare runtime follow-up — 2026-10-13
+
+- Confirmed active Worker has both native rate-limit bindings and all six expected source modules; previous two-module deployment drift is resolved for the currently deployed bundle.
+- Smoke tests: health 200, blocked CORS 403, unmigrated route 501, empty login/register 422.
+- Invalid bearer still returns 502 from Supabase Auth instead of expected 401. Added safe internal error-name/network-cause logging in commit `4074659aa0e0a5261175358e63d22c7c8b6c801a`; deployment of this diagnostic change is not yet confirmed.
+- Rate limiting is provisioned, but the quick test did not demonstrate 429; perform a controlled test after deployment and inspect runtime logs. Do not switch production until authentication and limits are verified.
