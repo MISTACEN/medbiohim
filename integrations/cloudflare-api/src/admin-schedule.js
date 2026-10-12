@@ -66,7 +66,7 @@ export async function getSupabaseAdminSchedule(request, env, groupId, semester, 
     const data = await res.json(); if (!Array.isArray(data)) throw new Error("invalid response"); return data;
   }
   try {
-    const filters = { group_id: "eq." + groupId, select: "id,group_id,semester,academic_year,academic_year_id,version,is_active,created_at", order: "version.desc,created_at.desc", limit: "100" };
+    const filters = { group_id: "eq." + groupId, is_active: "eq.true", select: "id,group_id,semester,academic_year,academic_year_id,version,is_active,created_at", order: "version.desc,created_at.desc", limit: "100" };
     filters.semester = sem === null ? "is.null" : "eq." + sem;
     const schedules = await rows("schedules", filters);
     const schedule = schedules[0] || null;
