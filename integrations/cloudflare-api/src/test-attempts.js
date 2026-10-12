@@ -180,6 +180,26 @@ async function verifySubjectForGroup(call, subjectId, group) {
       !(groupSpecialty === "mbh" && subjectSpecialty === "histology")) {
     return fail(403, "FORBIDDEN", "Этот тест недоступен для вашей специальности");
   }
+  const groupCourse = Number(group.course_number);
+  const subjectCourse = Number(subject.course_number);
+  if (group.course_number != null && subject.course_number != null &&
+      Number.isFinite(groupCourse) && Number.isFinite(subjectCourse) && groupCourse !== subjectCourse) {
+    const schedules = await call("schedules", {
+      select: "id",
+      group_id: "eq." + group.id,
+      is_active: "eq.true",
+      limit: "100",
+    });
+    const scheduleIds = schedules.map((row) => String(row.id || "")).filter(uuid);
+    if (!scheduleIds.length) return fail(403, "INVALID_SUBJECT_CONTEXT", "Предмет не относится к курсу выбранной группы");
+    const matchingEntries = await call("schedule_entries", {
+      select: "id",
+      subject_id: "eq." + subjectId,
+      schedule_id: "in.(" + scheduleIds.join(",") + ")",
+      limit: "1",
+    });
+    if (!matchingEntries.length) return fail(403, "INVALID_SUBJECT_CONTEXT", "Предмет не относится к курсу выбранной группы");
+  }
   return { ok: true, subject };
 }
 
