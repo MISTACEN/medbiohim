@@ -8,3 +8,15 @@ workers_dev = true
 [vars]
 APP_ENV = "shadow"
 MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
+
+# Cloudflare native rate limiting. Keys are client IPs in src/index.js.
+# Keep thresholds conservative until real traffic is observed.
+[[ratelimits]]
+name = "AUTH_LOGIN_LIMITER"
+namespace_id = "1001"
+simple = { limit = 5, period = 60 }
+
+[[ratelimits]]
+name = "AUTH_REGISTER_LIMITER"
+namespace_id = "1002"
+simple = { limit = 3, period = 60 }
