@@ -100,7 +100,10 @@ BEGIN
      WHERE s.id = v_test.subject_id
      LIMIT 1;
 
-    IF NOT FOUND OR v_subject.is_active = false THEN
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('ok', false, 'status', 404, 'code', 'SUBJECT_NOT_FOUND', 'message', 'Предмет не найден или недоступен');
+    END IF;
+    IF v_subject.is_active = false THEN
       RETURN jsonb_build_object('ok', false, 'status', 404, 'code', 'SUBJECT_NOT_FOUND', 'message', 'Предмет не найден или недоступен');
     END IF;
 
