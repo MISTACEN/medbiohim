@@ -1,3 +1,17 @@
+## Latest state reconciliation — 2026-10-13 (supersedes older conflicting status entries)
+
+- 🟢 Re-queried Cloudflare API for the live `medbiohim-api-shadow` script and settings. The returned bundle contains all six expected modules/markers: `index.js`, `supabase-auth.js`, `schedule-mutations.js`, `admin-schedule.js`, `test-attempts.js`, and `test-catalog.js`. This supersedes earlier entries claiming only two modules were deployed.
+- 🟢 Workers Builds configuration is present and enabled for GitHub repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`, build command `npm run build`, deploy command `npx wrangler deploy`. This supersedes earlier entries saying the build connection was absent. Build configuration being present does not alone prove the latest commit's build/deploy passed.
+- 🟢 Live Worker settings include `AUTH_LOGIN_LIMITER` and `AUTH_REGISTER_LIMITER` rate-limit bindings, plus the two Supabase secret binding names. Secret values were not read.
+- 🔒 `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED` remains `false` in tracked Wrangler configuration. Login and registration stay fail-closed until real HTTP 429 enforcement is demonstrated. The earlier 18-attempt probe did not yield 429; do not treat the bindings' presence as proof of enforcement.
+- 🔒 Test-attempt start/save/finish remain blocked by `TEST_ATTEMPT_SECURITY_NOT_READY` until private answer-snapshot storage and guarded scoring are implemented and verified.
+- 🟡 This environment's outbound DNS lookup for the workers.dev hostname failed during this pass, so no fresh live HTTP response codes are claimed here. The active script bundle/settings were verified through Cloudflare API instead.
+- 🔴 Production remains on legacy mode: do not change Vercel environment variables, production API routing, Supabase RLS/schema, DNS, or Telegram webhook. The Vercel production API previously returned `503 INSECURE_BACKEND_ORIGIN`; Vercel project-scope access and full route parity remain blockers.
+
+**Next actions:** obtain a reproducible isolated rate-limit test against a disposable/shadow target without exposing login/registration; diagnose the invalid-bearer `502 AUTH_UPSTREAM_ERROR` via safe upstream status/code diagnostics; run the full Worker suite against the exact current source and verify the latest Cloudflare build record; then resume authenticated read/RLS and frontend route-contract checks. No production cutover until every gate passes.
+
+---
+
 ## Wrangler validation and deployment gate — 2026-10-13
 
 - 🟢 Ran Wrangler `4.149.0 deploy --dry-run` against a minimal isolated fixture using the committed TOML binding syntax. Wrangler recognized both `AUTH_LOGIN_LIMITER` (5 requests/60s) and `AUTH_REGISTER_LIMITER` (3 requests/60s). This validates the config schema and binding declaration, **not** the full application bundle.
