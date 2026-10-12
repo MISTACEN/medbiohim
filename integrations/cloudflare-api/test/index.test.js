@@ -77,6 +77,21 @@ test("POST /api/v1/subjects list is rejected with an explicit allowed method", a
   assert.equal(response.headers.get("allow"), "GET, OPTIONS");
 });
 
+test("GET /api/v1/subjects/:id/gradebook requires a verified bearer token", async () => {
+  const response = await worker.fetch(request("/api/v1/subjects/subject-1/gradebook"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+});
+
+test("POST /api/v1/subjects/:id/gradebook is explicitly read-only", async () => {
+  const response = await worker.fetch(request("/api/v1/subjects/subject-1/gradebook", { method: "POST" }), {});
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+});
+
 test("GET /api/v1/subjects/:id requires a bearer token", async () => {
   const response = await worker.fetch(request("/api/v1/subjects/subject-1"), {});
   assert.equal(response.status, 401);
