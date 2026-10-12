@@ -1,3 +1,14 @@
+## API route migration — Pass 14 (2026-10-12; deployed to isolated shadow Worker)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/platform.php` | `GET /api/v1/dashboard` | Authenticated aggregate of profile, upcoming schedule, group homework and published test catalog; partial-data indicator is explicit | Implemented and uploaded to `medbiohim-api-shadow`; HTTP smoke test and CI tests still pending |
+| `backend/config/routes/platform.php` / schedule services | `GET /api/v1/schedule?from=&to=&group_id=` | Caller JWT; active group membership checked before schedules; schedule entries and subject metadata read through RLS | Implemented and uploaded; verify PostgREST filters/embedding and real-user response |
+| `backend/config/routes/homework.php` | `GET /api/v1/homeworks?group_id=` | Active group membership required; reads own completion/submission state only | Implemented and uploaded; live RLS/response parity still pending |
+| `backend/config/routes/tests.php` | `GET /api/v1/tests?subject_id=&limit=` | Published, non-archived catalog only; does not return answer keys or user attempts | Implemented and uploaded; live schema and contract comparison still pending |
+
+The Worker was redeployed on 2026-10-12 with deployment ID `13a6d8bf91f94f10b546b8eff139ae5e`. Supabase URL and anon key secrets were confirmed present after upload. No production frontend switch was made. The dashboard currently marks `site` and `announcements` as degraded because their CMS contract is not yet migrated; it does not fabricate that content.
+
 ## API route migration — Pass 13 (2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
