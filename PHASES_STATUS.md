@@ -1591,3 +1591,11 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟢 Added helper tests for blank queries, caller-scoped published question search, facets, invalid type and generic RLS failure; route tests cover auth/method guards.
 - 🟡 Tests are authored but the full suite has not been confirmed by successful CI. Live RLS and table/column compatibility must be verified before cutover.
 - 🔒 Production remains on SpaceWeb; no API URL, DNS, Supabase policy, Worker deployment or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 11
+
+- 🟢 Added PHP-compatible `GET /api/v1/me` alias for the authenticated profile bundle.
+- 🟢 Added a regression test confirming the alias requires authentication.
+- 🟡 Live RLS/table relationship compatibility remains unverified; the Worker is not deployed and SpaceWeb remains production.
