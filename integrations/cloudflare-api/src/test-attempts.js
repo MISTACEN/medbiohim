@@ -77,6 +77,8 @@ function publicQuestion(q, completed = false) {
     topic_id: q.topic_id ?? null,
     module_name: q.module_name ?? null,
     topic_name: q.topic_name ?? null,
+    module_title: q.module_name ?? null,
+    topic_title: q.topic_name ?? null,
     allow_multiple: correctCount > 1,
   };
   if (completed) result.answer = q.answer ?? null;
