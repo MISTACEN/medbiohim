@@ -1,3 +1,13 @@
+## Live Worker reconciliation — follow-up verification, 2026-10-13
+
+- 🟢 Re-read the active Cloudflare script bundle through the Cloudflare API without exposing secret values. The live bundle is exactly **two modules**: `src/index.js` and `src/supabase-auth.js` (about 101.8 KB multipart payload).
+- 🔴 GitHub `main` currently has **six Worker source modules**: `index.js`, `supabase-auth.js`, `schedule-mutations.js`, `admin-schedule.js`, `test-attempts.js`, and `test-catalog.js`. The last four are absent from the deployed bundle, confirming source/deployment drift.
+- 🟡 Active Worker settings show the names `SUPABASE_URL` and `SUPABASE_ANON_KEY` as secret bindings, but their values were not read. The same settings do not show `AUTH_LOGIN_LIMITER` or `AUTH_REGISTER_LIMITER`; therefore login/register are expected to remain fail-closed with 503 until limiters are provisioned.
+- 🔴 Auth smoke check remains unresolved: an invalid bearer to `GET /api/v1/subjects` returns 502 `AUTH_UPSTREAM_ERROR`, not 401. Because secret values and upstream response details were not inspected, do not assume whether the cause is the key, endpoint, or network. Re-test after controlled deploy/config verification.
+- 🔒 No live Worker bundle, secret, Vercel environment, Supabase schema/RLS, DNS, Telegram webhook, or production route was changed in this verification. Vercel API runtime error lookup returned 403 (project access not available through that connector), so no runtime-log conclusion is claimed.
+
+**Next safe action:** configure rate-limit bindings in the tracked Wrangler configuration using the documented current syntax; validate with Wrangler dry-run/build and unit tests; then deploy the complete `main` source to the shadow Worker through the connected Cloudflare Builds/Wrangler path while preserving secret bindings. Verify the deployment's module list, health, CORS, auth (401 for invalid token), login/register limiter behavior, and read-only Supabase RLS before any Vercel Preview switch. Keep Production unchanged.
+
 ## First live migration test pass — 2026-10-13
 
 ### Verified with real HTTP requests
