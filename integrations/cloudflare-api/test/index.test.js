@@ -418,3 +418,20 @@ test("test attempt writes fail closed until answer snapshots have private storag
     assert.equal((await response.json()).error.code, "TEST_ATTEMPT_SECURITY_NOT_READY", path);
   }
 });
+
+
+test("test curriculum map and chemistry master routes require authentication", async () => {
+  for (const path of ["/api/v1/tests/curriculum-map", "/api/v1/tests/chemistry-master"]) {
+    const response = await worker.fetch(request(path), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    assert.equal(response.status, 401, path);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED", path);
+  }
+  for (const path of ["/api/v1/tests/curriculum-map", "/api/v1/tests/chemistry-master"]) {
+    const response = await worker.fetch(request(path, { method: "POST" }), {});
+    assert.equal(response.status, 405, path);
+    assert.equal(response.headers.get("allow"), "GET, OPTIONS", path);
+  }
+});
