@@ -113,9 +113,7 @@ async function makeRestClient(request, env, fetcher) {
     return fail(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
   }
 
-  async function call(table, params = {}, init = {}) {
-    const endpoint = new URL("/rest/v1/" + table, base);
-    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+  async function requestJson(endpoint, init = {}) {
     const response = await fetcher(endpoint.toString(), {
       ...init,
       headers: {
@@ -128,18 +126,34 @@ async function makeRestClient(request, env, fetcher) {
       redirect: "error",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
+    let payload = null;
+    try { payload = await response.json(); } catch {}
     if (!response.ok) {
       const error = new Error("Supabase REST request failed");
       error.status = response.status;
       throw error;
     }
-    if (response.status === 204) return [];
-    const payload = await response.json();
+    return payload;
+  }
+
+  async function call(table, params = {}, init = {}) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    const payload = await requestJson(endpoint, init);
+    if (payload === null && init.method === "HEAD") return [];
     if (!Array.isArray(payload)) throw new Error("Invalid Supabase collection response");
     return payload;
   }
 
-  return { ok: true, identity, call };
+  async function rpc(name, args = {}) {
+    if (!/^medbiohim_(start_test_attempt|save_test_answer|finish_test_attempt)$/.test(name)) {
+      throw new Error("Unsupported test RPC");
+    }
+    const endpoint = new URL("/rest/v1/rpc/" + name, base);
+    return requestJson(endpoint, { method: "POST", body: JSON.stringify(args) });
+  }
+
+  return { ok: true, identity, call, rpc };
 }
 
 async function resolveGroup(call, userId, requestedGroupId) {
@@ -295,6 +309,67 @@ export async function listSupabaseMyAttempts(request, env, filters = {}, fetcher
   }
 }
 
+
+
+export async function startSupabaseTestAttempt(request, env, testId, groupId = "", fetcher = fetch) {
+  const client = await makeRestClient(request, env, fetcher);
+  if (!client.ok) return client;
+  const id = String(testId || "");
+  const group = String(groupId || "").trim();
+  if (!uuid(id) || (group && !uuid(group))) return fail(422, "VALIDATION_ERROR", "Некорректный ID теста или группы");
+  try {
+    const result = await client.rpc("medbiohim_start_test_attempt", { p_test_id: id, p_group_id: group || null });
+    if (!result || typeof result !== "object") return fail(503, "ATTEMPT_START_UNAVAILABLE", "Не удалось начать тест");
+    if (result.ok === false) return fail(Number(result.status) || 503, String(result.code || "ATTEMPT_START_UNAVAILABLE"), String(result.message || "Не удалось начать тест"), result.details && typeof result.details === "object" ? { details: result.details } : {});
+    if (result.ok !== true || !result.data?.attempt?.id) return fail(503, "ATTEMPT_START_UNAVAILABLE", "Сервис вернул некорректный ответ");
+    return result;
+  } catch (error) {
+    return publicAttemptErrors(error, "ATTEMPT_START_UNAVAILABLE", "Не удалось начать тест");
+  }
+}
+
+export async function saveSupabaseTestAnswer(request, env, attemptId, input, fetcher = fetch) {
+  const client = await makeRestClient(request, env, fetcher);
+  if (!client.ok) return client;
+  const id = String(attemptId || "");
+  if (!uuid(id) || !input || typeof input !== "object" || Array.isArray(input) || !uuid(input.question_id)) {
+    return fail(422, "VALIDATION_ERROR", "Нужен корректный ID попытки и question_id");
+  }
+  if (input.answer_text != null && typeof input.answer_text !== "string") {
+    return fail(422, "VALIDATION_ERROR", "answer_text должен быть строкой или null");
+  }
+  const answerText = input.answer_text == null ? null : input.answer_text;
+  if (answerText !== null && answerText.length > 20000) return fail(413, "PAYLOAD_TOO_LARGE", "Ответ слишком длинный");
+  try {
+    const result = await client.rpc("medbiohim_save_test_answer", {
+      p_attempt_id: id,
+      p_question_id: String(input.question_id),
+      p_answer_text: answerText,
+    });
+    if (!result || typeof result !== "object") return fail(503, "ANSWER_SAVE_ERROR", "Не удалось сохранить ответ");
+    if (result.ok === false) return fail(Number(result.status) || 503, String(result.code || "ANSWER_SAVE_ERROR"), String(result.message || "Не удалось сохранить ответ"));
+    if (result.ok !== true || !result.data?.answer) return fail(503, "ANSWER_SAVE_ERROR", "Сервис вернул некорректный ответ");
+    return result;
+  } catch (error) {
+    return publicAttemptErrors(error, "ANSWER_SAVE_ERROR", "Не удалось сохранить ответ");
+  }
+}
+
+export async function finishSupabaseTestAttempt(request, env, attemptId, fetcher = fetch) {
+  const client = await makeRestClient(request, env, fetcher);
+  if (!client.ok) return client;
+  const id = String(attemptId || "");
+  if (!uuid(id)) return fail(422, "VALIDATION_ERROR", "Некорректный ID попытки");
+  try {
+    const result = await client.rpc("medbiohim_finish_test_attempt", { p_attempt_id: id });
+    if (!result || typeof result !== "object") return fail(503, "ATTEMPT_FINISH_UNAVAILABLE", "Не удалось завершить попытку");
+    if (result.ok === false) return fail(Number(result.status) || 503, String(result.code || "ATTEMPT_FINISH_UNAVAILABLE"), String(result.message || "Не удалось завершить попытку"));
+    if (result.ok !== true || !result.data?.attempt?.id) return fail(503, "ATTEMPT_FINISH_UNAVAILABLE", "Сервис вернул некорректный ответ");
+    return result;
+  } catch (error) {
+    return publicAttemptErrors(error, "ATTEMPT_FINISH_UNAVAILABLE", "Не удалось завершить попытку");
+  }
+}
 
 export async function getSupabaseBankProgress(request, env, testId, groupId = "", fetcher = fetch) {
   const client = await makeRestClient(request, env, fetcher);
