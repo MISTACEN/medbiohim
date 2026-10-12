@@ -382,3 +382,39 @@ test("progress and question-bank routes are authenticated and read-only", async 
     assert.equal(response.headers.get("allow"), "GET, OPTIONS", path);
   }
 });
+
+
+test("test detail and attempt history routes require authentication", async () => {
+  for (const path of [
+    "/api/v1/tests/22222222-2222-4222-8222-222222222222",
+    "/api/v1/my/attempts?group_id=11111111-1111-4111-8111-111111111111",
+  ]) {
+    const response = await worker.fetch(request(path), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    assert.equal(response.status, 401, path);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED", path);
+  }
+});
+
+test("test attempt writes fail closed until answer snapshots have private storage", async () => {
+  const attemptId = "33333333-3333-4333-8333-333333333333";
+  const paths = [
+    ["/api/v1/tests/22222222-2222-4222-8222-222222222222/start", "POST", "{}"],
+    ["/api/v1/tests/attempts/" + attemptId + "/answers", "POST", JSON.stringify({ question_id: "55555555-5555-4555-8555-555555555555", answer_text: "A" })],
+    ["/api/v1/tests/attempts/" + attemptId + "/finish", "POST", "{}"],
+  ];
+  for (const [path, method, body] of paths) {
+    const response = await worker.fetch(request(path, {
+      method,
+      headers: { authorization: "Bearer valid-user-token", "content-type": "application/json" },
+      body,
+    }), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    assert.equal(response.status, 503, path);
+    assert.equal((await response.json()).error.code, "TEST_ATTEMPT_SECURITY_NOT_READY", path);
+  }
+});
