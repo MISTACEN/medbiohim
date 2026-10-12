@@ -1158,7 +1158,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
   } catch {
     return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
   }
-  const visibleSubjectsResult = await listSupabaseSubjects(request, env, {}, fetcher);
+  const visibleSubjectsResult = await listSupabaseSubjects(request, env, { group_id: String(filters.group_id || "").trim() }, fetcher);
   if (!visibleSubjectsResult.ok) return visibleSubjectsResult;
   const visibleSubjectIds = new Set(visibleSubjectsResult.data.items.map((subject) => String(subject.id || "")).filter(Boolean));
 
