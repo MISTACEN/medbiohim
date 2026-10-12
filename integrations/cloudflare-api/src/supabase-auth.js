@@ -1172,6 +1172,65 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
 }
 
 
+/** Real progress aggregates from the authenticated user's homework and test attempts. */
+export async function getSupabaseProgress(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const subjectId = String(filters.subject_id || "").trim();
+  const groupId = String(filters.group_id || "").trim();
+  if (subjectId.length > 128 || /[\\/?#]/.test(subjectId) || groupId.length > 128 || /[\\/?#]/.test(groupId)) {
+    return failure(422, "VALIDATION_ERROR", "Invalid subject or group filter");
+  }
+  const homeworkResult = await listSupabaseHomeworks(request, env, groupId ? { group_id: groupId } : {}, fetcher);
+  if (!homeworkResult.ok) return homeworkResult;
+  const homeworks = homeworkResult.data.items.filter((row) => !subjectId || String(row.subject_id || "") === subjectId);
+  const token = /^Bearer\\s+(\\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try { base = new URL(baseUrl); if (base.protocol !== "https:" || !anonKey) throw new Error("config"); }
+  catch { return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key"); }
+  try {
+    const endpoint = new URL("/rest/v1/test_attempts", base);
+    endpoint.searchParams.set("select", "id,test_id,status,score,max_score,percent,started_at,finished_at,group_id,tests(title,subject_id)");
+    endpoint.searchParams.set("user_id", "eq." + identity.user.id);
+    endpoint.searchParams.set("order", "started_at.desc");
+    endpoint.searchParams.set("limit", "50");
+    if (groupId) endpoint.searchParams.set("group_id", "eq." + groupId);
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Attempt history query failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid attempt history");
+    const attempts = rows.filter((row) => !subjectId || String((Array.isArray(row.tests) ? row.tests[0] : row.tests)?.subject_id || "") === subjectId)
+      .map((row) => {
+        const test = Array.isArray(row.tests) ? row.tests[0] : row.tests;
+        return { id: row.id, test_id: row.test_id, status: row.status, score: row.score ?? null, max_score: row.max_score ?? null, percent: row.percent ?? null, started_at: row.started_at ?? null, finished_at: row.finished_at ?? null, group_id: row.group_id ?? null, test_title: test?.title || "", subject_id: test?.subject_id || null };
+      });
+    const doneStatuses = new Set(["submitted", "graded", "done", "сдано", "оценено"]);
+    const hwDone = homeworks.filter((row) => doneStatuses.has(String(row.my_status || row.status || "").toLowerCase())).length;
+    const finishedStatuses = new Set(["submitted", "finished", "completed", "graded"]);
+    const finished = attempts.filter((row) => finishedStatuses.has(String(row.status || "").toLowerCase())).length;
+    const scores = attempts.map((row) => Number(row.percent ?? row.score)).filter(Number.isFinite);
+    const hwPercent = homeworks.length ? Math.round(hwDone / homeworks.length * 100) : 0;
+    const parts = [hwPercent];
+    if (attempts.length) parts.push(Math.round(finished / attempts.length * 100));
+    const overall = Math.round(parts.reduce((sum, value) => sum + value, 0) / parts.length);
+    return { ok: true, data: {
+      overall_pct: overall,
+      homework: { total: homeworks.length, done: hwDone, percent: hwPercent, items: homeworks },
+      tests: { attempts: attempts.length, finished, avg_score: scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length * 10) / 10 : null, items: attempts },
+      source: "supabase",
+    } };
+  } catch {
+    return failure(503, "PROGRESS_UNAVAILABLE", "Прогресс временно недоступен");
+  }
+}
+
 /** Read public-for-students CMS documents used by the dashboard. */
 export async function getSupabaseSiteContent(request, env, fetcher = fetch) {
   const identity = await authenticateSupabaseRequest(request, env, fetcher);
