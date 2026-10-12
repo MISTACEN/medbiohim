@@ -1,3 +1,9 @@
+## API route migration — Pass 11 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/domain_rest.php` | `GET /api/v1/me` | Alias of the authenticated profile bundle; bearer auth is enforced before profile queries | Implemented as alias to `/api/v1/auth/me`; regression test added; not deployed |
+
 ## Migrated API route — Pass 10 (2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
