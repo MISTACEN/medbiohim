@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -748,4 +748,39 @@ test("question bank subject summary counts all published rows by subject and kin
   assert.equal(result.ok, true);
   assert.equal(result.data.items.find((item) => item.subject_id === "s1").count, 2);
   assert.equal(result.data.items.find((item) => item.subject_id === "s1").kinds.exam, 1);
+});
+
+
+test("published lectures include student-visible CMS lectures and published legacy histology lectures", async () => {
+  const result = await listSupabaseLectures(request("Bearer valid-user-token"), configured, "histology", async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith("/site_content")) return new Response(JSON.stringify([{ payload: { items: [
+      { id: "lecture-1", title: "Кровь", subject_slug: "histology", status: "published", body_md: "Контент" },
+      { id: "draft-1", title: "Черновик", subject_slug: "histology", status: "draft" },
+    ] } }]), { status: 200 });
+    if (parsed.pathname.endsWith("/histology_lectures")) return new Response(JSON.stringify([
+      { id: "legacy-1", title: "Электроннограммы", subject_slug: "histology", kind: "EM", is_published: true, body_markdown: "Текст" },
+    ]), { status: 200 });
+    throw new Error("Unexpected table");
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.items.length, 2);
+  assert.ok(result.data.items.some((row) => row.id === "lecture-1"));
+  assert.ok(result.data.items.some((row) => row.id === "histology-legacy-1"));
+  assert.ok(!result.data.items.some((row) => row.id === "draft-1"));
+});
+
+test("lecture detail only returns a published matching lecture", async () => {
+  const result = await getSupabaseLecture(request("Bearer valid-user-token"), "lecture-1", configured, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith("/site_content")) return new Response(JSON.stringify([{ payload: { items: [
+      { id: "lecture-1", title: "Кровь", subject_slug: "histology", status: "published" },
+    ] } }]), { status: 200 });
+    if (parsed.pathname.endsWith("/histology_lectures")) return new Response(JSON.stringify([]), { status: 200 });
+    throw new Error("Unexpected table");
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.lecture.title, "Кровь");
 });
