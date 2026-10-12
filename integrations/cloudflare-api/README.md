@@ -178,4 +178,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added `GET /api/v1/questions` with subject/slug/kind/type/topic/text filters, bounded pagination, and optional full answers. By default, long answers are returned as a short preview; the caller must explicitly request `include_answer=true` to receive the full answer.
 - Added `GET /api/v1/questions/subjects` for subject/kind counts.
 - Reads are limited to published `exam_questions` rows by existing RLS. No service-role key, unpublished rows, or write operations were introduced.
-- Deployed as Worker deployment `94a6ffc92a0741e1a7c1a7e559d989bd`. Node tests were added, but GitHub Actions continues to fail before exposing any job steps/logs, so test success is not yet confirmed.
+- Deployed as Worker deployment `a9bee33805dc4e4da75d729c96f90b93`. Node tests were added, but GitHub Actions continues to fail before exposing any job steps/logs, so test success is not yet confirmed.
+
+
+## Published lectures — Pass 17
+
+- Added `GET /api/v1/lectures?subject=` and `GET /api/v1/lectures/{id}` using the existing `site_content(key=lectures)` document and published `histology_lectures` rows.
+- Only published lectures are exposed. The list response matches the PHP public projection; detail returns the full published lecture document.
+- Deployment ID: `a9bee33805dc4e4da75d729c96f90b93`. Actual authenticated HTTP smoke tests and Node CI remain pending.
