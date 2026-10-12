@@ -1,3 +1,17 @@
+## Exact-source verification pass — 2026-10-13
+
+- 🟢 Retrieved the current `main` versions of all Worker source modules, all six test files, `package.json`, and `wrangler.toml` through GitHub and staged them in a disposable Node box for verification. This pass used the current source SHAs from `main`, rather than the older mixed test tree noted in previous history.
+- 🟢 `npm test`: **135 tests passed, 0 failed** against the retrieved Worker source.
+- 🟢 `npm run build`: Wrangler 4.149.0 dry-run passed; upload estimate 212.79 KiB (31.50 KiB gzip). Output confirms the two native rate-limit bindings and the default `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=false` setting.
+- 🟢 Cloudflare Workers Builds history now shows the latest documentation commit `7245d0c21e00af2c922ae9cf4317bacf0d26b03d` completed with outcome `success`. This verifies the build for that commit, not a production cutover.
+- 🟡 An outbound live probe initiated from the Cloudflare management execution environment returned 403 for every requested worker path; this environment-level response did not provide a usable Worker HTTP status/body, so it is not counted as an application smoke-test result.
+- 🔒 Auth rate limiting remains unverified: do not set `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=true`. The binding configuration and passing mock tests are not substitutes for a reproducible live 429.
+- 🔒 Test-attempt writes remain blocked pending private answer snapshots and guarded scoring. Production remains on legacy mode; no Vercel production variables were changed.
+
+**Next:** diagnose the native limiter's real-world threshold behavior in a controlled shadow environment; review frontend-to-Worker route parity; fix the Vercel project/team scope and legacy HTTPS health blocker before any migration cutover.
+
+---
+
 ## Frontend API parity pass — authenticated groups read, 2026-10-13
 
 - 🟢 Migrated and deployed GET /api/v1/groups for the frontend listGroups() consumer. Uses Supabase Auth plus caller JWT/anon-key REST read and RLS, no service-role key; the group filter/order mirrors the PHP repository (active or NULL is_active, course then code).
