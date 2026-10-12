@@ -1607,3 +1607,15 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟢 Added authenticated `GET /api/v1/subjects/{id}` with caller-JWT/anon-key Supabase REST reads for subject details and modules.
 - 🟢 Added helper tests for authentication, subject ID validation, response shape, missing subjects and RLS-denied reads; route tests cover auth and method handling.
 - 🟡 Full test run and live Supabase RLS/schema behavior are not yet verified. No deployment or production cutover occurred.
+
+
+## Cloudflare backend migration — full product scope (2026-10-12)
+
+- 🟡 Cloudflare shadow Worker `medbiohim-api-shadow` is deployed and connected to the existing Supabase project using only `SUPABASE_URL` + `SUPABASE_ANON_KEY`; the service-role key is not used. SpaceWeb PHP remains the active backend.
+- 🟡 Added read routes for dashboard aggregation, schedule ranges, group homework, and published test catalog; added route guards/tests. Source uploaded to the shadow Worker, but external HTTP smoke tests and GitHub Actions execution are still unverified.
+- ⬜ Dashboard CMS site settings/announcements and full response parity.
+- ⬜ Schedule mutations: create/update/cancel lessons, attendance states, calendar/week/month/semester parity, and group/subject color behavior.
+- ⬜ Homework mutations and submissions, completion tracking, photo/file attachments, private media permissions and storage integration.
+- ⬜ Remaining read/write routes: modules/materials/lectures, full question bank and test attempts, trainer feed/media, progress/SRS, academic plan, calculators, community, settings, presence, AI, Telegram admin, imports and admin panels.
+- 🔒 Preserve the existing UI and its translucent Atlas viewer; this is a backend migration, not a redesign. No production frontend switch until tests, RLS, PHP contract parity, and file/media authorization are verified.
+- Next pass: resolve GitHub Actions execution, run Node tests, validate schedule PostgREST filters against real authenticated users, and then implement schedule/homework writes only after confirming safe RLS policies.
