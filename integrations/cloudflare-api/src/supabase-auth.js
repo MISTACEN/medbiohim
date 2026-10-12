@@ -893,14 +893,14 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
   const requestedGroup = String(filters.group_id || "").trim();
   try {
     const memberships = await rows("group_memberships", {
-      select: "group_id,groups(id,name,course_number,specialty_slug)",
+      select: "group_id,groups(id,name,code,course_number,admission_year,academic_program_name,specialty_slug,is_active)",
       user_id: "eq." + identity.user.id,
       is_active: "eq.true",
       limit: "100",
     });
     const groups = memberships.map((row) => {
       const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
-      return { group_id: String(row.group_id || group?.id || ""), group: group || null };
+      const groupId = String(row.group_id || group?.id || "");\n      return { group_id: groupId, group: group ? { ...group, group_id: groupId, group_name: group.name || "" } : null };
     }).filter((row) => row.group_id);
     if (!groups.length) return failure(422, "NO_GROUP", "Для расписания нужна активная учебная группа");
     const selectedGroups = requestedGroup ? groups.filter((row) => row.group_id === requestedGroup) : groups;
@@ -993,7 +993,7 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
 
   try {
     const memberships = await rows("group_memberships", {
-      select: "group_id,groups(id,name,course_number)",
+      select: "group_id,groups(id,name,code,course_number,admission_year,academic_program_name,specialty_slug,is_active)",
       user_id: "eq." + identity.user.id,
       is_active: "eq.true",
       limit: "100",
@@ -1015,7 +1015,7 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       limit: "500",
     });
     if (!homeworks.length) {
-      const groups = memberships.map((row) => Array.isArray(row.groups) ? row.groups[0] : row.groups).filter(Boolean);
+      const groups = memberships.map((row) => { const group = Array.isArray(row.groups) ? row.groups[0] : row.groups; return group ? { ...group, group_id: String(row.group_id || group.id || ""), group_name: group.name || "" } : null; }).filter(Boolean);
       return { ok: true, data: { items: [], groups } };
     }
     const ids = homeworks.map((row) => String(row.id)).filter(Boolean);
