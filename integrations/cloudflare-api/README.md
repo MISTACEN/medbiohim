@@ -4,20 +4,30 @@
 
 The existing PHP API on SpaceWeb remains the current backend. The Worker is deployed in isolation for gradual migration and is not wired into the frontend or production custom domain.
 
+### Current verification gate — 2026-10-13 (supersedes older pass notes below)
+
+- Full Worker unit suite: **124/124 passing** in the current local test run.
+- The active shadow Worker includes all six source modules, the safe Supabase Auth diagnostics, the request-body reader fix, and the fail-closed test-attempt write gate.
+- **Login and registration are intentionally disabled** unless `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED="true"`. A live probe of 18 sequential synthetic login attempts did not produce HTTP 429, so the configured native limiter cannot yet be considered verified. The committed Wrangler default is `"false"`; do not change it until enforcement is reproducibly demonstrated.
+- Shadow health returns HTTP 200. Login and registration currently return HTTP 503 `RATE_LIMIT_ENFORCEMENT_UNVERIFIED`; test-attempt start/save/finish return HTTP 503 `TEST_ATTEMPT_SECURITY_NOT_READY`.
+- The Vercel homepage returns HTTP 200, but production `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN` because the legacy SpaceWeb API origin is HTTP. Production has **not** been switched to this incomplete Worker.
+- Cloudflare Workers Builds is connected to GitHub `main` at `integrations/cloudflare-api`; recent builds completed successfully. The Vercel connector currently cannot access the known project scope, so no production environment variables have been changed.
+
+
 - Worker name: `medbiohim-api-shadow`
 - Runtime: Cloudflare Workers JavaScript modules
-- Implemented shadow routes include `GET /api/v1`, `GET /api/v1/ping`, `GET /api/v1/dashboard`, `GET /api/v1/schedule`, `GET /api/v1/homeworks`, `GET /api/v1/tests`, subject catalog/detail, search, profile, and the currently implemented auth endpoints. Check the route inventory for precise cutover gates.
+- Implemented shadow routes include `GET /api/v1`, `GET /api/v1/ping`, dashboard/schedule/homework/test catalogs, subject catalog/detail, search and profile. Auth handlers exist but login/registration are currently disabled by the explicit rate-limit verification gate; see the current verification block above.
 - `GET /health` and `GET /api/v1/health` are shadow diagnostics, not yet contract-compatible ports of the PHP `HealthChecker`.
 - Unmigrated `/api/v1/*` routes return `501 ROUTE_NOT_MIGRATED`
 - The Worker itself does not proxy/fallback to SpaceWeb. A separate, opt-in Vercel same-origin proxy mode (`MEDBIOHIM_CF_FIRST=true`) can try this Worker first and use SpaceWeb only for explicitly safe fallback cases. It is disabled unless configured and requires an HTTPS `SPACEWEB_API_ORIGIN`; generic failed writes are not retried.
-- The current deployed Worker bundle does not yet match all modules in GitHub `main` (the Cloudflare content API currently reports only `src/index.js` and `src/supabase-auth.js`). Do not enable the Vercel Preview flag until the complete source bundle has been tested and deployed.
+- The active Worker bundle has been verified to include all six expected source modules. Keep production routing disabled until live RLS/contract parity, write gates, rate-limit enforcement, and Vercel configuration access are resolved.
 - No secrets, service-role keys, database credentials, or user tokens belong in this directory or in `wrangler.toml`.
 
 ## Migration progress — Pass 1
 
 - `GET /api/v1` and `GET /api/v1/ping` mirror the current PHP success-envelope fields and are covered by contract tests.
 - The ping clock is emitted as an ISO-8601 UTC timestamp; the `env` value deliberately identifies the shadow environment.
-- The Worker is deployed but has not been smoke-tested from a permitted external runtime and is not receiving application traffic. No frontend API base URL or production route was changed.
+- The Worker has been smoke-tested externally but is not receiving production application traffic. No frontend API base URL or production route was changed.
 
 ## Authentication groundwork — Pass 2
 
