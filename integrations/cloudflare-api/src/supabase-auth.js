@@ -4,7 +4,7 @@ function failure(status, code, message) {
   return { ok: false, status, code, message };
 }
 
-function logAuthFetchFailure(operation, error) {
+function logAuthFetchFailure(operation, error, env) {
   const cause = error && typeof error === "object" ? error.cause : undefined;
   const outerMessage = error instanceof Error ? error.message : "";
   const causeMessage = cause instanceof Error ? cause.message : "";
@@ -27,6 +27,20 @@ function logAuthFetchFailure(operation, error) {
     reasonCategory = "other";
   }
 
+  const configuredUrl = String(env?.SUPABASE_URL || "").trim();
+  let configuredUrlIsHttps = false;
+  let configuredHostMatchesExpectedProject = false;
+  let configuredHostIsSupabaseDomain = false;
+  try {
+    const parsedConfiguredUrl = new URL(configuredUrl);
+    configuredUrlIsHttps = parsedConfiguredUrl.protocol === "https:";
+    configuredHostMatchesExpectedProject =
+      parsedConfiguredUrl.hostname === "gnobvyjywtqbdfeejxmf.supabase.co";
+    configuredHostIsSupabaseDomain = parsedConfiguredUrl.hostname.endsWith(".supabase.co");
+  } catch {
+    // Leave booleans false; do not log the malformed configured value.
+  }
+
   // Never log the URL, raw error message, credentials, token, or response body.
   console.warn("supabase_auth_upstream_fetch_failed", {
     operation,
@@ -35,6 +49,9 @@ function logAuthFetchFailure(operation, error) {
     causeName: cause instanceof Error ? cause.name : undefined,
     causeCode: typeof cause?.code === "string" ? cause.code : undefined,
     reasonCategory,
+    configuredUrlIsHttps,
+    configuredHostIsSupabaseDomain,
+    configuredHostMatchesExpectedProject,
   });
 }
 
@@ -79,7 +96,7 @@ export async function authenticateSupabaseRequest(request, env, fetcher = fetch)
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    logAuthFetchFailure("authenticate", error);
+    logAuthFetchFailure("authenticate", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
@@ -150,7 +167,7 @@ export async function logoutSupabaseSession(accessToken, env, fetcher = fetch) {
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    logAuthFetchFailure("logout", error);
+    logAuthFetchFailure("logout", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
@@ -198,7 +215,7 @@ export async function refreshSupabaseSession(refreshToken, env, fetcher = fetch)
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    logAuthFetchFailure("refresh", error);
+    logAuthFetchFailure("refresh", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 400 || response.status === 401 || response.status === 403) {
@@ -279,7 +296,7 @@ export async function recoverSupabasePassword(email, env, fetcher = fetch) {
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    logAuthFetchFailure("recover", error);
+    logAuthFetchFailure("recover", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 429) {
@@ -328,7 +345,7 @@ export async function loginSupabaseUser(email, password, env, fetcher = fetch) {
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    logAuthFetchFailure("login", error);
+    logAuthFetchFailure("login", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 400 || response.status === 401 || response.status === 403) {
@@ -409,7 +426,7 @@ export async function registerSupabaseUser(email, password, fullName, env, fetch
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
-    logAuthFetchFailure("register", error);
+    logAuthFetchFailure("register", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
   if (response.status === 429) {
