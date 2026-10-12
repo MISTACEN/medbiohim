@@ -1,3 +1,10 @@
+## Migrated API route — Pass 10 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/search_rest.php` + `SearchService.php` | `GET /api/v1/search` | Requires authenticated bearer token; searches published questions, exam questions, trainer cards, subjects and optional plans; query/type/subject filters; response includes items and facets | Worker helper/route/tests added; not deployed |
+
+The Worker sends the caller JWT plus anon key to Supabase REST and relies on database grants/RLS. Verify the live policies permit the intended student's published question-bank search while preventing access to private or unpublished content. Compare results against PHP fixtures before cutover.
 ## Migrated auth route — Pass 8 (read-only profile bundle; 2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
