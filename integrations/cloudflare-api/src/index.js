@@ -471,7 +471,9 @@ export default {
       if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
       let testId;
       try { testId = decodeURIComponent(testDetailMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid test id" }, requestId: crypto.randomUUID() }, 422), origin); }
-      const result = await getSupabaseTestDetail(request, env, testId, url.searchParams.get("group_id") || "");
+      const result = url.searchParams.get("view") === "bank"
+        ? await getSupabaseTestBankDetail(request, env, testId, url.searchParams.get("group_id") || "")
+        : await getSupabaseTestDetail(request, env, testId, url.searchParams.get("group_id") || "");
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
