@@ -1,4 +1,4 @@
-import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -188,6 +188,18 @@ export default {
       const selectedGroup = result.data.groups.find((group) => group.group_id === requestedGroup)
         || (result.data.groups.length === 1 ? result.data.groups[0] : null);
       return withCors(success({ items: result.data.items, group: selectedGroup }), origin);
+    }
+
+    const homeworkProgressMatch = new RegExp("^" + API_PREFIX + "/homeworks/([^/]+)/progress$").exec(pathname);
+    if (homeworkProgressMatch) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      const parsed = await readJsonLimited(request, 8192);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, parsed.tooLarge ? 413 : 400), origin);
+      let homeworkId;
+      try { homeworkId = decodeURIComponent(homeworkProgressMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid homework id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await setSupabaseHomeworkProgress(request, homeworkId, parsed.value.done, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
     }
 
     if (pathname === `${API_PREFIX}/subjects-catalog`) {
