@@ -1,32 +1,30 @@
-# Histology content archive audit — 2026-10-12
+# Histology content archive — 2026-10-12
 
-## Source
+## Source and normalization
 
-User-provided `content.zip`. The source archive is kept intact; no Supabase records or existing trainer cards are modified by this audit.
+A supplied `content.zip` was inspected and converted into a clean working asset package. The original archive had duplicate ZIP entries caused by filenames encoded as literal `#UXXXX` sequences alongside normal Unicode names.
 
-## Inventory
+The prepared package `content-histology-working.zip`:
+- preserves the existing `content/histology/` directory layout expected by the PHP media endpoint;
+- decodes legacy `#UXXXX` filename sequences to Unicode;
+- removes duplicate entries only when both normalized path and SHA-256 content match;
+- retains original image bytes without lossy recompression;
+- includes 178 JPG, 4 JPEG, 62 PNG, 28 DOCX documents, two JSON maps, and README metadata (275 source files before the two generated audit files);
+- adds `asset-manifest.json` with sizes and SHA-256 hashes and `IMPORT-REPORT.md`;
+- repairs the 28 `docx-to-image-map.json` document paths to the flat `electronograms/docx/<docxName>` layout actually present in the archive and verifies each referenced document and image exists.
 
-- 444 files, approximately 202.46 MiB.
-- 178 correctly named preparation photos under `content/histology/5_Фотографии препаратов/`.
-- 33 canonical electronogram image paths and 33 compatibility paths under `em/`; several are duplicate byte content or alternate filename aliases.
-- Caption metadata covers 28 electronogram topics in `electronograms/docx-captions.json` and `docx-to-image-map.json`.
-- 52 DOCX source documents are present. They are intentionally not copied into the public media deployment package.
-- 169 ZIP entry names use the legacy `#UXXXX` escaping form. The importer decodes these names and deduplicates identical target paths by SHA-256.
-- The deployment package generated for this audit contains 178 preparation-photo paths, 33 canonical electronogram paths, 33 `em/` compatibility paths and both caption metadata files. It has 207 unique image hashes across the included paths and no normalized-path conflicts.
+## Deployment
 
-## Deployment package
+This is a media/content package, not an application build and not a backend code deployment.
 
-The separately generated file `medbiohim-histology-media-spaceweb.zip` is not committed to Git because binary media should not bloat the repository history. Extract it from the backend project root (the directory containing `config/`, `src/`, and `public/`). The archive paths then create `content/histology/`.
+1. Keep the current SpaceWeb backend active.
+2. Back up the existing `backend/content/histology/` directory before replacing or merging files.
+3. Upload and extract the package so the resulting directory is `backend/content/histology/` (alongside `backend/config/`, `backend/src/`, and `backend/public/`), or configure `HISTOLOGY_MEDIA_ROOT` to the actual location.
+4. Verify representative image URLs through `GET /api/v1/trainers/feed/{id}/image`; check both micro-preparations and electronograms.
+5. Do not delete old media until the atlas and trainer routes have been checked on desktop and mobile.
 
-The archive includes `DEPLOYMENT-README.md` and `histology-media-manifest.json`. Before deploying, confirm the PHP runtime uses `backend/content/histology/` or set `HISTOLOGY_MEDIA_ROOT` to that directory, then smoke-test a known image via `GET /api/v1/trainers/feed/{id}/image`.
+The archive should not be committed wholesale to Git: it is a large binary collection and the deployed PHP media endpoint already expects these files outside the source tree. Keep the lightweight maps/manifests versioned if needed; keep the full media package in the intended hosting/storage location.
 
-## Reproducible importer
+## Validation limits
 
-The repository importer supports both the legacy `features.zip` and this `content.zip` layout:
-
-```bash
-python tools/import_histology_media.py content.zip --out backend/content
-python -m unittest tools/test_import_histology_media.py
-```
-
-The importer does not write to Supabase. The source DOCX files remain archive/source material and are not exposed as public media automatically. Existing trainer cards, question banks and subject mappings must be preserved during any later database reconciliation.
+The archive structure and map-to-file references were validated locally. This does not prove the package has been uploaded to SpaceWeb, that Supabase rows point to every file, or that the live image endpoint serves all assets. Those checks remain outstanding.
