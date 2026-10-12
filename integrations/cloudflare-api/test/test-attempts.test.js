@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts } from "../src/test-attempts.js";
+import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "../src/test-attempts.js";
 
 const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
 const groupId = "11111111-1111-4111-8111-111111111111";
@@ -104,4 +104,31 @@ test("bank progress counts published questions and selected-group sequential res
   assert.equal(result.data.completed, true);
   assert.equal(result.data.session.group_id, groupId);
   assert.equal("question_snapshot" in result.data.session, false);
+});
+
+
+test("test attempt start, answer save, and finish remain fail-closed without private snapshots", async () => {
+  let fetchCalls = 0;
+  const forbiddenFetch = async () => {
+    fetchCalls += 1;
+    throw new Error("upstream must not be called while writes are disabled");
+  };
+  const request = new Request("https://api-shadow.example.test/api/v1/tests/" + testId + "/start", {
+    method: "POST",
+    headers: { authorization: "Bearer test-token" },
+  });
+  const results = await Promise.all([
+    startSupabaseTestAttempt(request, env, testId, groupId, forbiddenFetch),
+    saveSupabaseTestAnswer(request, env, "33333333-3333-4333-8333-333333333333", {
+      question_id: questionId,
+      answer_text: "Ответ",
+    }, forbiddenFetch),
+    finishSupabaseTestAttempt(request, env, "33333333-3333-4333-8333-333333333333", forbiddenFetch),
+  ]);
+  for (const result of results) {
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 503);
+    assert.equal(result.code, "TEST_ATTEMPT_SECURITY_NOT_READY");
+  }
+  assert.equal(fetchCalls, 0);
 });
