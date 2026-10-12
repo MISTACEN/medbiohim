@@ -1914,3 +1914,14 @@ Production remains on the existing configuration until the HTTPS fallback origin
 - 🟢 After that automatic build, the active Worker bundle was confirmed to contain the fail-closed attempt-write gate, direct one-shot request-body reader (no cloned-stream cancel stall), and safe Auth redirect diagnostics. Runtime settings retained both native rate-limit bindings and `observability.logs.invocation_logs=false`.
 - 🟡 Automatic build/deploy is now verified at least through the latest observed commit. Continue checking new source commits on `main`; do not use the earlier incorrect API lookup as evidence that automation is absent.
 - 🔒 Production Vercel routing remains unchanged. This resolves the Cloudflare build-pipeline verification item only; it does not clear the separate production API 503, live read/write validation, or rate-limit 429 verification blockers.
+
+
+## Rate-limit enforcement probe and auth fail-closed guard — 2026-10-13
+
+- 🔴 Controlled live probe: 18 sequential POSTs to the shadow Worker's login endpoint using a made-up `.invalid` email and non-real password all reached Supabase Auth and returned `401 AUTH_INVALID_CREDENTIALS`; none returned HTTP 429. This does not prove the Cloudflare native rate-limit binding is broken in every colo, but it proves enforcement has **not** been demonstrated and the current login path must not be treated as protected.
+- 🟢 Added an explicit `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED` gate before both login and registration rate-limit checks. Unless the environment value is exactly `"true"`, both endpoints return HTTP 503 `RATE_LIMIT_ENFORCEMENT_UNVERIFIED` before reading credentials or calling Supabase. Wrangler config defaults this flag to `"false"`; do not flip it until a reproducible HTTP 429 test and binding behavior are understood.
+- 🟢 Updated route tests to require the explicit flag for limiter behavior. Full Worker suite after this change: **124/124 passed, 0 failed**.
+- 🟢 Live shadow smoke after the automatic build picked up the new commit: health HTTP 200; login HTTP 503 with `RATE_LIMIT_ENFORCEMENT_UNVERIFIED`; registration HTTP 503 with the same code. The registration probe used a synthetic `.invalid` email and was rejected before account creation.
+- 🟢 Confirmed the active Worker bundle includes the new auth gate, the fail-closed test-attempt write gate, the direct request-body reader, and safe auth diagnostics.
+- 🔴 Production still has a separate API outage: `https://medbiohim.vercel.app/` returns HTTP 200, but `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN`. Production was deliberately not switched to the incomplete shadow API.
+- 🟡 Vercel management connector currently denies access to environment/deployment listing for the known project scope (404/403). No production environment variables were changed; proceed with the available GitHub/Cloudflare checks and resolve Vercel scope/permissions before a safe cutover.
