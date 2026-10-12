@@ -1,3 +1,13 @@
+## SpaceWeb exit plan — Cloudflare + Supabase only (2026-10-13)
+
+- Decision: SpaceWeb is not a required fallback because its HTTP-only temporary URL cannot safely carry authenticated API traffic and the paid HTTPS upgrade is intentionally out of scope.
+- Added an explicit server-side mode, `MEDBIOHIM_API_MODE=cloudflare`, to the Vercel API proxy. In this mode the proxy ignores any stale `SPACEWEB_API_ORIGIN`, forces Cloudflare-first routing, and fails closed if Cloudflare is unavailable. It does not retry ambiguous writes or leak bearer credentials to the retired HTTP origin.
+- Default remains `legacy` until the Cloudflare Worker has been reconciled with GitHub source, tested against real Supabase RLS/auth, and accepted for the routes being moved. This commit alone does not switch production traffic.
+- Target architecture: Vercel frontend/API gateway → Cloudflare Worker → Supabase. Cloudflare R2 is not assumed available; file/media storage must be migrated separately to an already-provisioned secure storage backend (existing private B2 is a candidate after its server-side bindings and access controls are verified).
+- Cutover gates: deploy exact multi-module Worker source; prove auth, dashboard, schedule, subject catalog, tests and writes route contracts; confirm student/admin RLS; confirm upload/media paths; test 503/timeout behavior; verify Vercel env vars in Preview first; then Production. If a route is not migrated, show an explicit unavailable response rather than silently falling back to SpaceWeb.
+- No Supabase migration, RLS change, Telegram webhook change, DNS change, or Vercel environment change is included in this code commit.
+- Required Vercel variables for the eventual Cloudflare-only Preview test: `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN=https://medbiohim-api-shadow.ryazansev3.workers.dev/api/v1` (verify the exact deployed workers.dev hostname before setting it). Do not set these until the Worker deployment and smoke tests are confirmed.
+
 ## Cloudflare failover hardening — 2026-10-13 (continued)
 
 - Fixed a missing server-side `isCanonicalAdminRequest()` verifier in the Vercel API proxy. Without this helper, the admin transport-diagnostics path could not compile. It validates the bearer token with Supabase Auth and checks `user_roles → roles.code` using the caller JWT/RLS; metadata supplied by the client is not trusted.
