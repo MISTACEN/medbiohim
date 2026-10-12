@@ -220,3 +220,17 @@ Before implementing a route in Workers, add a row to this worksheet (or an equiv
 - Added regression cases for successful own-user write and rejection when the caller is not an active member of the homework's group.
 - Commits: `ff6f9b8` helper, `10e1c71` route, `30dd5a7` tests, `c696600` Bearer parsing correction.
 - **Not deployed to Cloudflare yet.** GitHub Actions runs for commit `30dd5a7` failed in about four seconds with no steps/logs; the current CI allocation issue remains unresolved. The latest Bearer parsing correction is newer than those runs, so it has not been validated by CI. Do not route production traffic to this endpoint until CI executes and Supabase staging verifies the `homework_progress` upsert/RLS behavior.
+
+
+## Dashboard + schedule write routes — source-only pass (2026-10-12)
+
+| Method / route | Source handler | Auth / authorization | Status |
+|---|---|---|---|
+| `GET /api/v1/dashboard` | `src/index.js` aggregate | Authenticated caller JWT; profile, group homework, schedule, published tests and CMS remain RLS-scoped | Summary counts added; live role-specific responses not smoke-tested |
+| `GET /api/v1/admin/schedule?group_id=&semester=` | `src/admin-schedule.js` | Supabase Auth + RLS; manager roles can read schedule versions; student must not be granted editor access | Source-only, tests authored |
+| `PUT /api/v1/admin/schedule` | `src/admin-schedule.js` | Caller JWT; schedule/schedule_entries RLS remains authoritative | Creates a new inactive version, writes entries, activates after insert, then deactivates prior active version; source-only |
+| `POST /api/v1/schedule/entries` | `src/schedule-mutations.js` | Caller JWT + RLS manager policy | Source-only; validated entry insert |
+| `PATCH /api/v1/schedule/entries/{id}` | `src/schedule-mutations.js` | Caller JWT + RLS manager policy | Source-only; validated allowlisted field updates |
+| `DELETE /api/v1/schedule/entries/{id}` | `src/schedule-mutations.js` | Caller JWT + RLS manager policy | Source-only; sets `is_cancelled=true` to retain linked homework/history |
+
+Important gate: the versioned admin save path matches the existing PHP contract more closely than direct row mutation. Granular entry routes are auxiliary and should not be wired into the UI until the product decides whether an individual edit must always create a new immutable schedule version. No Supabase policy was broadened. No Worker deployment, production API switch or Actions workflow change was made. Tests are authored but not executed.
