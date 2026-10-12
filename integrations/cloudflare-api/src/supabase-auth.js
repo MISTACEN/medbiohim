@@ -44,7 +44,14 @@ export async function authenticateSupabaseRequest(request, env, fetcher = fetch)
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
+    // Keep credentials, request URLs, and upstream response bodies out of logs.
+    // The error name/cause code is enough to distinguish timeout/network failures.
+    console.warn("supabase_auth_upstream_fetch_failed", {
+      operation: "authenticate",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      causeCode: typeof error?.cause?.code === "string" ? error.cause.code : undefined,
+    });
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
