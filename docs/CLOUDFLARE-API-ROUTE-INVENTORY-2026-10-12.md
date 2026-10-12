@@ -5,7 +5,7 @@
 | `backend/src/Support/ContentStore.php` | Dashboard site + announcements via `GET /api/v1/dashboard` | Reads `site_content` keys `site` and `announcements` using caller JWT; uses the student-visible RLS policy; default site fields only when a document is absent | Implemented; actual role-specific RLS response still needs live authenticated smoke test |
 | `backend/src/Repositories/ScheduleRepository.php::calendarMeta` | `GET /api/v1/schedule/meta?course=&semester=` | Bounded course/semester filters; calendar periods and subject duration rules | Implemented and uploaded; schema/RLS contract test added |
 
-Worker deployment ID: `757168a6312f4b1b9dc7dbc143f1d4bf`. The deployed source includes schedule latest-version selection and PHP-compatible group-selection errors for schedule/homework reads. External HTTP smoke tests and Actions execution remain unverified.
+Worker deployment ID: `5d9195d3f9494e3997541699795269d9`. The deployed source includes schedule latest-version selection, PHP-compatible group-selection errors, schedule calendar metadata, and dashboard site/announcement reads. External HTTP smoke tests and Actions execution remain unverified.
 
 ## API route migration — Pass 14 (2026-10-12; deployed to isolated shadow Worker)
 
