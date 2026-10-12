@@ -1096,7 +1096,7 @@ export async function setSupabaseHomeworkProgress(request, homeworkId, done, env
   const id = String(homeworkId || "").trim();
   if (!id || id.length > 128 || /[\\/?#]/.test(id)) return failure(422, "VALIDATION_ERROR", "Invalid homework id");
   if (typeof done !== "boolean") return failure(422, "VALIDATION_ERROR", "done must be a boolean");
-  const token = /^Bearer\\s+(\\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
   const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
   let base;
