@@ -1858,3 +1858,13 @@ Production remains on the existing configuration until the HTTPS fallback origin
 - Smoke tests: health 200, blocked CORS 403, unmigrated route 501, empty login/register 422.
 - Invalid bearer still returns 502 from Supabase Auth instead of expected 401. Added safe internal error-name/network-cause logging in commit `4074659aa0e0a5261175358e63d22c7c8b6c801a`; deployment of this diagnostic change is not yet confirmed.
 - Rate limiting is provisioned, but the quick test did not demonstrate 429; perform a controlled test after deployment and inspect runtime logs. Do not switch production until authentication and limits are verified.
+
+
+## Runtime diagnosis continuation — 2026-10-13
+
+- 🟢 Re-checked the live Worker bundle after commit `4074659a`: the safe auth-fetch diagnostic marker is now present, along with all six expected modules. This supersedes the earlier note that deployment was unconfirmed.
+- 🔴 Live HTTPS smoke tests still return HTTP 502 `AUTH_UPSTREAM_ERROR` for both an invalid bearer on a protected read and a login attempt with deliberately fake credentials. The login test does not create an account. Root cause is not yet established; do not assume the Supabase URL or key is wrong without diagnostic evidence.
+- 🟡 Cloudflare Observability telemetry query returned zero events, and Worker settings reported `logpush=false` with no tail consumers. Therefore the diagnostic log was not yet available through the queried telemetry path.
+- 🟡 Added `[observability]` with `enabled = true` and full head sampling to `integrations/cloudflare-api/wrangler.toml` in commit `961e2b8ee3b08e1b992982b0d83847a7b7497c49`. This is a config change intended to make safe runtime logs queryable; deployment and actual log visibility still need confirmation.
+- 🔴 Next: confirm Cloudflare Workers Build and deployment after `961e2b8`; re-check settings and query logs for `supabase_auth_upstream_fetch_failed`; identify the network cause without reading or logging secret values. Then re-run auth and rate-limit checks.
+- 🔒 Production routing and Vercel environment remain unchanged. Do not enable Cloudflare-first production traffic until auth, required read/write paths, and rate limits pass.
