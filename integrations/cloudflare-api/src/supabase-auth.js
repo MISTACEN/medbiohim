@@ -900,7 +900,8 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
     });
     const groups = memberships.map((row) => {
       const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
-      const groupId = String(row.group_id || group?.id || "");\n      return { group_id: groupId, group: group ? { ...group, group_id: groupId, group_name: group.name || "" } : null };
+      const groupId = String(row.group_id || group?.id || "");
+      return { group_id: groupId, group: group ? { ...group, group_id: groupId, group_name: group.name || "" } : null };
     }).filter((row) => row.group_id);
     if (!groups.length) return failure(422, "NO_GROUP", "Для расписания нужна активная учебная группа");
     const selectedGroups = requestedGroup ? groups.filter((row) => row.group_id === requestedGroup) : groups;
