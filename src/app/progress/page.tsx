@@ -53,15 +53,13 @@ export default function ProgressPage() {
     };
   }, [authLoading, user?.groupId]);
 
-  const overall = data?.overall_pct ?? 0;
-  const hw = data?.homework ?? { total: 0, done: 0, percent: 0 };
-  const tests = data?.tests ?? { attempts: 0, finished: 0, avg_score: null };
-  const hwPct = hw.percent ?? (hw.total ? Math.round((hw.done / hw.total) * 100) : 0);
-  const testPct =
-    tests.attempts > 0
-      ? Math.round(((tests.finished ?? 0) / tests.attempts) * 100)
-      : 0;
-  const avg = tests.avg_score != null ? Math.round(Number(tests.avg_score)) : 0;
+  const hw = data?.homework;
+  const tests = data?.tests;
+  const overall = data?.overall_pct ?? null;
+  const hasProgressData = Boolean(data && !data.degraded && !data.service_notice && overall !== null && hw && tests);
+  const hwPct = hw?.percent ?? (hw && hw.total ? Math.round((hw.done / hw.total) * 100) : 0);
+  const testPct = tests && tests.attempts > 0 ? Math.round(((tests.finished ?? 0) / tests.attempts) * 100) : 0;
+  const avg = tests?.avg_score != null ? Math.round(Number(tests.avg_score)) : null;
 
   return (
     <div className="space-y-6">
@@ -91,28 +89,32 @@ export default function ProgressPage() {
         </div>
       )}
 
-      {data && !data.degraded && !data.service_notice && (
+      {hasProgressData && hw && tests && overall !== null && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="card flex flex-col items-center justify-center py-6">
             <RadialProgress value={overall} label="общий" />
           </div>
           <div className="card flex flex-col items-center justify-center py-6">
-            <RadialProgress value={avg} label="балл" color="#10B981" />
-            <p className="mt-2 text-xs text-slate-500">среднее по тестам</p>
+            {avg !== null ? <RadialProgress value={avg} label="балл" color="#10B981" /> : <div className="text-3xl font-bold text-slate-400">—</div>}
+            <p className="mt-2 text-xs text-slate-500">{avg !== null ? "среднее по тестам" : "пока нет оценённых попыток"}</p>
           </div>
           <div className="card flex flex-col items-center justify-center py-6">
-            <RadialProgress value={testPct} label="тесты" color="#6366F1" />
+            {tests.attempts > 0 ? <RadialProgress value={testPct} label="тесты" color="#6366F1" /> : <div className="text-3xl font-bold text-slate-400">—</div>}
             <p className="mt-2 text-xs text-slate-500">
               {tests.finished ?? 0}/{tests.attempts} завершено
             </p>
           </div>
           <div className="card flex flex-col items-center justify-center py-6">
-            <RadialProgress value={hwPct} label="ДЗ" color="#F59E0B" />
+            {hw.total > 0 ? <RadialProgress value={hwPct} label="ДЗ" color="#F59E0B" /> : <div className="text-3xl font-bold text-slate-400">—</div>}
             <p className="mt-2 text-xs text-slate-500">
-              {hw.done}/{hw.total} сдано
+              {hw.total > 0 ? String(hw.done) + "/" + String(hw.total) + " сдано" : "пока нет заданий"}
             </p>
           </div>
         </div>
+      )}
+
+      {!loading && data && !data.degraded && !data.service_notice && !hasProgressData && (
+        <div className="card text-sm text-slate-500">Пока недостаточно данных для расчёта прогресса.</div>
       )}
 
       <div className="card flex items-start gap-3">
@@ -120,8 +122,7 @@ export default function ProgressPage() {
         <div>
           <div className="font-semibold">Как считается</div>
           <p className="mt-1 text-sm text-slate-500">
-            Общий прогресс — среднее по домашним заданиям и тестам. Данные с backend;
-            при сбое показывается ограниченный режим.
+            Общий показатель повторяет расчёт backend: выполнение домашних заданий и доля завершённых попыток тестирования. При отсутствии попыток или заданий соответствующая карточка показывает прочерк, а при ошибке API значения не подменяются нулями.
           </p>
         </div>
       </div>
