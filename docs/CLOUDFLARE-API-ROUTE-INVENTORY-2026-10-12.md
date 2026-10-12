@@ -1,3 +1,13 @@
+## API route migration — Pass 19: curriculum read alias (2026-10-13)
+
+| PHP source | Route | Contract / safety | Status |
+|---|---|---|---|
+| `backend/config/routes/platform.php` + `ContentStore::listCurriculum()` | `GET /api/v1/curriculum` | Authenticated read-only list of subjects; returns `{items:[...]}`; uses caller JWT, active-group/specialty filtering and existing RLS-aware subject helper. Does not depend on optional `site_content.curriculum` document. | Implemented on `main`; unit tests cover missing bearer token and reject non-GET methods. Awaiting current Cloudflare auto-build/deployment confirmation and a valid-user response/RLS acceptance test. |
+
+This route is deliberately narrower than `GET /api/v1/subjects-catalog`: PHP's `ContentStore::listCurriculum()` returns the subject list, while the catalog route includes additional tools/program/curriculum metadata. Do not substitute one response shape for the other.
+
+---
+
 # Current cutover gate and frontend caller audit — 2026-10-13
 
 > **Current-state correction:** this document contains historical pass notes, some of which say the Worker is not deployed. Those statements are stale. The isolated `medbiohim-api-shadow` Worker is deployed; it is not receiving production frontend traffic. The frontend remains on legacy mode and no production cutover is authorized.
