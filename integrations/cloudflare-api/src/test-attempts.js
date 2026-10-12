@@ -1,6 +1,14 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 
 const TIMEOUT_MS = 5000;
+// Writes stay disabled until answer snapshots and scoring are protected by a private
+// storage/RPC boundary; authenticated clients must not be able to read answer keys.
+const ATTEMPT_WRITES_PRIVATE_STORAGE_READY = false;
+const ATTEMPT_WRITES_DISABLED = () => fail(
+  503,
+  "TEST_ATTEMPT_SECURITY_NOT_READY",
+  "Попытки тестов временно отключены до настройки приватного хранения снимков вопросов."
+);
 const SAFE_ATTEMPT_FIELDS = "id,test_id,user_id,status,score,max_score,percent,started_at,finished_at,group_id,session_id,context_version";
 const fail = (status, code, message) => ({ ok: false, status, code, message });
 const uuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
@@ -312,6 +320,7 @@ export async function listSupabaseMyAttempts(request, env, filters = {}, fetcher
 
 
 export async function startSupabaseTestAttempt(request, env, testId, groupId = "", fetcher = fetch) {
+  if (!ATTEMPT_WRITES_PRIVATE_STORAGE_READY) return ATTEMPT_WRITES_DISABLED();
   const client = await makeRestClient(request, env, fetcher);
   if (!client.ok) return client;
   const id = String(testId || "");
@@ -329,6 +338,7 @@ export async function startSupabaseTestAttempt(request, env, testId, groupId = "
 }
 
 export async function saveSupabaseTestAnswer(request, env, attemptId, input, fetcher = fetch) {
+  if (!ATTEMPT_WRITES_PRIVATE_STORAGE_READY) return ATTEMPT_WRITES_DISABLED();
   const client = await makeRestClient(request, env, fetcher);
   if (!client.ok) return client;
   const id = String(attemptId || "");
@@ -356,6 +366,7 @@ export async function saveSupabaseTestAnswer(request, env, attemptId, input, fet
 }
 
 export async function finishSupabaseTestAttempt(request, env, attemptId, fetcher = fetch) {
+  if (!ATTEMPT_WRITES_PRIVATE_STORAGE_READY) return ATTEMPT_WRITES_DISABLED();
   const client = await makeRestClient(request, env, fetcher);
   if (!client.ok) return client;
   const id = String(attemptId || "");
