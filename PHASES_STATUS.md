@@ -1,3 +1,18 @@
+## Cloudflare ZIP review + Cloudflare-first preview test mode — 2026-10-12
+
+- 🟢 Added opt-in Vercel proxy mode `MEDBIOHIM_CF_FIRST=true` with server-only `CLOUDFLARE_API_ORIGIN`; default remains off. It tries Cloudflare first and allows guarded SpaceWeb fallback only over HTTPS.
+- 🟢 Admin-only route diagnostics were added to `src/lib/api.ts` and `src/app/admin/tools/page.tsx`. The server verifies the caller JWT and canonical `user_roles → roles.code` relationship before sending transport headers; an ordinary authenticated user cannot request/see those headers.
+- 🟢 Safe fallback for `POST /api/v1/files/upload` was added only for the explicit `STORAGE_NOT_CONFIGURED` pre-write guard. Generic/ambiguous write errors are not retried automatically.
+- 🟢 Uploaded ZIP tests ran locally under Node 22.16.0: **58/58 passed** (archive status file's 56/56 count is outdated).
+- 🔴 ZIP integration is not approved as a production replacement. Live Supabase schema confirms `public.user_roles` has `user_id` and `role_id` only and joins `public.roles.code`; ZIP modules in domain/files/homework/presence use `select=role` and need correction.
+- 🔴 Cloudflare API reports R2 is not enabled on the account (error 10042). `FILES_BUCKET` cannot be assumed present; ZIP upload/download is not ready. No R2 enablement or bucket migration was performed.
+- 🟡 Histogram/source-media binary routes are deliberately tagged SpaceWeb-only; auth rate-limit bindings are still required; the optional academic RPC SQL has not been applied or approved.
+- 🔴 The active deployed Worker bundle is behind GitHub source (only `src/index.js` and `src/supabase-auth.js` were returned by Cloudflare). Public HTTP smoke-test access failed from the current environment, and Actions remains historically blocked before steps; live behavior is unverified.
+- 🔒 No Vercel variables were changed, Preview did not get switched to Cloudflare-first mode, and no Production URL/DNS/API route/Supabase policy/SQL/Telegram webhook changed.
+- Report: [Cloudflare ZIP review and failover test mode](docs/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). Deployment drift report: [Cloudflare shadow deployment reconciliation](docs/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
+
+Next: fix ZIP role queries, add Worker router-level tests, reconcile the Worker upload bundle, verify Wrangler dry-run/build and external HTTP smoke, then activate Preview-only failover. Keep Production unchanged until auth, reads/writes, media, RLS, and rollback tests pass.
+
 
 ## Cloudflare shadow deployment reconciliation — 2026-10-12
 
