@@ -235,3 +235,12 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - **Test attempt write routes are intentionally disabled.** A live privilege check confirmed authenticated clients can select `test_attempts.question_snapshot` and `questions.answer/options` directly. A private answer store / guarded database RPC design must be implemented before start/save/finish can be migrated safely. AI semantic grading/regrade is also not migrated.
 - Regression tests were authored but not executed; GitHub Actions were left untouched and the connected shell could not clone GitHub due unavailable network.
 - No Supabase grants/policies were modified, no Worker deployment occurred and the frontend remains on PHP/SpaceWeb.
+
+
+## Test catalog completeness — Pass 21 (source-only, 2026-10-12)
+
+- Added `GET /api/v1/tests/curriculum-map` returning the selected group’s visible subjects, modules, topics, scheduled topic dates, published question/test counts and unclassified question totals.
+- Added `GET /api/v1/tests/chemistry-master`, reading the existing authenticated-only chemistry JSON document and preserving the frontend's `items` + `pagination` response contract. Live content contains 436 items for version `2026-10-07-v1`.
+- Added `GET /api/v1/tests/{id}/bank-progress`, limited to the selected active group and the caller's own sequential session/results, without selecting a snapshot.
+- Helper and route tests were authored. Static parse checks succeeded for 12 changed JS source/test files; the Node test runner was not executed.
+- Attempt start/save/finish remain explicitly disabled until database-owned RPCs and grants prevent clients from writing authoritative attempt scores/status. No live schema/grant changes, Worker deployment, frontend switch or GitHub Actions modifications were made.
