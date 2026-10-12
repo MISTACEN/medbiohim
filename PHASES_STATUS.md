@@ -1,3 +1,13 @@
+## API migration — Pass 19: authenticated curriculum read — 2026-10-13
+
+- 🟢 Added `GET /api/v1/curriculum` to the Cloudflare Worker. It mirrors PHP `ContentStore::listCurriculum()` by returning `{items}` from the existing caller-JWT/RLS-aware subject-list helper. It does not require the optional `site_content.curriculum` JSON document, so a missing CMS document cannot make this route fail unlike the broader subject catalog.
+- 🟢 Added the route to the authenticated GET contract tests and method-guard tests.
+- 🟢 Exact-source verification after the change: `npm test` **136 passed, 0 failed**; Wrangler 4.149.0 `npm run build` dry-run passed (213.39 KiB, 31.53 KiB gzip). Bindings show login/registration limiter enforcement still defaulted off.
+- 🟡 Not yet confirmed: Cloudflare's auto-build/deployment for this latest source commit, and real authenticated RLS/response comparison. No live data result is claimed.
+- 🔒 No production routing change. Auth login/registration and test-attempt writes remain fail-closed. Do not treat mock limiter tests as a live 429 proof.
+
+---
+
 ## Frontend route-parity audit — 2026-10-13
 
 - 🟢 Re-read current `src/lib/api.ts` and Worker router from `main`; recorded a prioritized caller-family gap matrix in `docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`. It explicitly corrects stale historical statements that the shadow Worker is not deployed, and keeps production cutover prohibited.
