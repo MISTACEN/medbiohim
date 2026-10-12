@@ -160,6 +160,14 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added authenticated read routes for the dashboard aggregate, schedule range, group homeworks, and published test catalog. Reads use the caller JWT and Supabase anon key; RLS remains in force.
 - Schedule queries are restricted to active memberships and selected date ranges; a requested group outside the user's memberships returns 403.
 - Homework completion and submission status are fetched only for the current user. Published test catalog excludes archived/unpublished rows and does not expose answer keys or attempts.
-- Dashboard returns an explicit degraded-source list until site configuration and announcements are migrated; it does not claim the whole homepage is complete.
+- Dashboard returns an explicit degraded-source list when any underlying RLS-protected data source is unavailable; site settings and announcements now read from `site_content` under the caller JWT.
 - Deployed these routes to the isolated shadow Worker. External HTTP smoke testing is still blocked from the current tool runtime; GitHub Actions execution and live authenticated responses are not yet confirmed.
 - Next: verify route tests and live RLS/PostgREST query behavior; then migrate CMS announcements/site data, schedule writes and attendance, homework create/update/submission/attachments, and the remaining PHP routes in contract-tested passes.
+
+
+## Schedule metadata + CMS follow-up — Pass 15
+
+- Added `GET /api/v1/schedule/meta?course=&semester=` backed by `academic_calendar_periods` and `subject_schedule_rules`.
+- Dashboard now requests `site_content` keys `site` and `announcements` through the caller JWT. Existing RLS may return unavailable for users who do not satisfy the database's student policy; the dashboard surfaces this as degraded rather than bypassing RLS.
+- Schedule reads select the latest active schedule version per group/semester and preserve PHP's explicit group selection rule when a student belongs to multiple groups.
+- Deployed as Worker deployment `757168a6312f4b1b9dc7dbc143f1d4bf`; external HTTP smoke tests and Actions remain unverified.
