@@ -755,3 +755,85 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
   }
   return { ok: true, data: { subject: subjects[0], modules } };
 }
+
+
+/**
+ * List active subjects for the authenticated student.
+ * Uses only the caller JWT and public anon key; group-derived specialty access
+ * is checked before specialty-scoped subjects are returned. Any access-check
+ * failure is fail-closed rather than returning the full catalog.
+ */
+export async function listSupabaseSubjects(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
+  const authorization = request.headers.get("authorization") || "";
+  const match = /^Bearer\\s+(\\S+)$/i.exec(authorization);
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  async function rows(table, query) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Supabase REST read failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Supabase REST returned an invalid collection");
+    return payload;
+  }
+
+  const course = String(filters.course ?? "").trim();
+  const semester = String(filters.semester ?? "").trim();
+  if ((course && !/^[1-6]$/.test(course)) || (semester && !/^(?:[1-9]|1[0-2])$/.test(semester))) {
+    return failure(422, "VALIDATION_ERROR", "course or semester filter is invalid");
+  }
+
+  try {
+    const memberships = await rows("group_memberships", {
+      select: "groups(specialty_slug)",
+      user_id: "eq." + identity.user.id,
+      is_active: "eq.true",
+    });
+    const allowedSpecialties = new Set();
+    for (const membership of memberships) {
+      const raw = membership?.groups;
+      const group = Array.isArray(raw) ? raw[0] : raw;
+      const slug = String(group?.specialty_slug || "").trim().toLowerCase();
+      if (slug) allowedSpecialties.add(slug);
+    }
+    // Histology is part of the MBH specialty in the PHP SpecialtyAccess policy.
+    if (allowedSpecialties.has("mbh")) allowedSpecialties.add("histology");
+
+    const query = {
+      select: "id,code,name,short_name,description,course_number,semester,control_type,lecture_hours,practice_hours,self_study_hours,total_hours,credits,slug,specialty_slug,color_hex,is_active",
+      is_active: "eq.true",
+      order: "name.asc",
+      limit: "500",
+    };
+    if (course) query.course_number = "eq." + course;
+    if (semester) query.semester = "eq." + semester;
+    const subjects = await rows("subjects", query);
+    const items = subjects.filter((subject) => {
+      const specialty = String(subject?.specialty_slug || "").trim().toLowerCase();
+      return !specialty || allowedSpecialties.has(specialty);
+    });
+    return { ok: true, data: { items } };
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Subject list is temporarily unavailable");
+  }
+}
