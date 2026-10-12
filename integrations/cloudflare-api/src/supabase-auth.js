@@ -861,6 +861,65 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
 
 
 /**
+ * List active groups visible to the authenticated caller through Supabase grants/RLS.
+ * Mirrors the PHP list contract without a service-role credential. Any denied or
+ * malformed REST response is fail-closed; never fall back to an unrestricted list.
+ */
+export async function listSupabaseGroups(request, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
+  const authorization = request.headers.get("authorization") || "";
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  const endpoint = new URL("/rest/v1/groups", base);
+  endpoint.searchParams.set("select", "id,code,name,course_number,admission_year,is_active");
+  // Preserve the PHP repository's COALESCE(is_active, true) behavior.
+  endpoint.searchParams.set("or", "(is_active.eq.true,is_active.is.null)");
+  endpoint.searchParams.set("order", "course_number.asc.nullslast,code.asc");
+
+  let response;
+  try {
+    response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Groups are temporarily unavailable");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    return failure(503, "DB_UNAVAILABLE", "Groups are temporarily unavailable");
+  }
+  if (!response.ok) {
+    return failure(503, "DB_UNAVAILABLE", "Groups are temporarily unavailable");
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    return failure(503, "DB_UNAVAILABLE", "Groups are temporarily unavailable");
+  }
+  if (!Array.isArray(payload)) {
+    return failure(503, "DB_UNAVAILABLE", "Groups are temporarily unavailable");
+  }
+  return { ok: true, data: { items: payload } };
+}
+
+/**
  * List active subjects for the authenticated student.
  * Uses only the caller JWT and public anon key; group-derived specialty access
  * is checked before specialty-scoped subjects are returned. Any access-check
