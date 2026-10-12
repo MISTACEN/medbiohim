@@ -234,3 +234,17 @@ Before implementing a route in Workers, add a row to this worksheet (or an equiv
 | `DELETE /api/v1/schedule/entries/{id}` | `src/schedule-mutations.js` | Caller JWT + RLS manager policy | Source-only; sets `is_cancelled=true` to retain linked homework/history |
 
 Important gate: the versioned admin save path matches the existing PHP contract more closely than direct row mutation. Granular entry routes are auxiliary and should not be wired into the UI until the product decides whether an individual edit must always create a new immutable schedule version. No Supabase policy was broadened. No Worker deployment, production API switch or Actions workflow change was made. Tests are authored but not executed.
+
+
+## Progress + test/question catalog pass — source-only (2026-10-12)
+
+| Method / route | Contract | Status |
+|---|---|---|
+| `GET /api/v1/progress?subject_id=&group_id=` | Aggregates authenticated user's homework completion and test attempts, optionally scoped to subject/group; mirrors PHP fields `overall_pct`, `homework`, `tests` | Implemented in source; tests authored, not run |
+| `GET /api/v1/tests?subject_id=&limit=` | Published test catalog plus `subject_name` and `questions_count` derived from `test_questions`; no answer keys | Implemented in source; live caller-RLS check pending |
+| `GET /api/v1/questions?...` | Existing published `exam_questions` bank; paginated filters; full answers only with explicit `include_answer=1` | Source exists; test catalog data audit performed |
+| `GET /api/v1/questions/subjects` | Existing subject/kind counts for published exam questions | Source exists; live caller-RLS check pending |
+
+Live read-only data audit: 33 tests (32 published), 855 `questions` (660 published and not archived), 854 `test_questions` links, 876 `exam_questions` (776 published). No links to unpublished/archived question rows and no published non-archived `questions` rows lacking a link were found. The unpublished 67-question embryology test was not published automatically.
+
+Important: interactive test routes (`/tests/{id}`, attempt start/save/finish, attempt history, grading retry) remain unmigrated. No production cutover or Worker deployment was done.
