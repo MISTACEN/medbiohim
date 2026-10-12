@@ -422,7 +422,7 @@ export default {
     }
 
     const testDetailMatch = new RegExp("^" + API_PREFIX + "/tests/([^/]+)$").exec(pathname);
-    if (testDetailMatch) {
+    if (testDetailMatch && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(testDetailMatch[1])) {
       if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
       let testId;
       try { testId = decodeURIComponent(testDetailMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid test id" }, requestId: crypto.randomUUID() }, 422), origin); }
