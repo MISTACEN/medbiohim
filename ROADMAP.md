@@ -2433,3 +2433,14 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 The new importer tests still need a confirmed CI or local run; GitHub runner allocation has previously failed before any step.
 - 🔒 No Supabase data, trainer-card records, DNS, frontend API base URL or live SpaceWeb files were changed by this archive preparation.
 - 📄 Details: `docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md`.
+
+
+
+## Cloudflare API migration — Pass 8 (profile bundle)
+
+- 🟢 Added `GET /api/v1/auth/me` to the Worker with Supabase Auth token verification and caller-JWT PostgREST reads for the profile, role assignments and active group memberships.
+- 🟢 Response shape includes PHP-compatible `user`, `roles`, `groups`, `current_group`, `course` and `semester` fields; no service-role key is used.
+- 🟢 Added helper and route tests for user-scoped filters, response normalization, missing token and method handling. Cloudflare API suite now contains 50 authored Node test cases; importer suite contains 6 Python test cases.
+- 🟡 Tests are authored but not yet verified by a successful full run.
+- 🟡 Before cutover, validate live RLS permissions and PostgREST relationship names. Login/register DB profile writes and default student-role assignment remain unported.
+- 🔒 Production remains on SpaceWeb; no DNS, frontend API base URL, Supabase policies or Telegram webhook changed.
