@@ -411,3 +411,114 @@ export async function registerSupabaseUser(email, password, fullName, env, fetch
     },
   };
 }
+
+/**
+ * Read the caller's profile bundle using their own JWT + the public anon key.
+ * No service-role credential is accepted or used. Each table query remains
+ * subject to Supabase grants and RLS; unavailable optional profile data falls
+ * back to the PHP handler's minimal identity bundle.
+ */
+export async function getSupabaseProfileBundle(request, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
+  const authorization = request.headers.get("authorization") || "";
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  async function rows(table, query) {
+    try {
+      const endpoint = new URL("/rest/v1/" + table, base);
+      for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
+      const response = await fetcher(endpoint.toString(), {
+        method: "GET",
+        headers: {
+          apikey: anonKey,
+          authorization: "Bearer " + token,
+          accept: "application/json",
+        },
+        redirect: "error",
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      });
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return Array.isArray(payload) ? payload : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const profileRows = await rows("users", {
+    select: "id,full_name,email,avatar_url,course_number,semester",
+    id: "eq." + identity.user.id,
+    limit: "1",
+  });
+  const profile = profileRows?.[0] || null;
+  const roleRows = await rows("user_roles", {
+    select: "roles(code)",
+    user_id: "eq." + identity.user.id,
+  });
+  const roles = (roleRows || [])
+    .map((item) => Array.isArray(item.roles) ? item.roles[0]?.code : item.roles?.code)
+    .filter((code) => typeof code === "string" && code.trim() !== "");
+
+  const membershipRows = await rows("group_memberships", {
+    select: "group_id,role_in_group,is_active,groups(id,code,name,course_number,admission_year,is_active)",
+    user_id: "eq." + identity.user.id,
+    is_active: "eq.true",
+  });
+  const groups = (membershipRows || []).flatMap((membership) => {
+    const groupValue = membership && membership.groups;
+    const group = Array.isArray(groupValue) ? groupValue[0] : groupValue;
+    if (!group || group.is_active === false) return [];
+    return [{
+      id: group.id ?? membership.group_id ?? null,
+      code: group.code ?? null,
+      name: group.name ?? null,
+      course_number: group.course_number ?? null,
+      admission_year: group.admission_year ?? null,
+      role_in_group: membership.role_in_group ?? null,
+      is_active: membership.is_active === true,
+    }];
+  });
+
+  const course = profile?.course_number == null ? null : Number(profile.course_number);
+  const semester = profile?.semester == null ? null : Number(profile.semester);
+  const currentGroup = groups.find((group) =>
+    course !== null && group.course_number != null && Number(group.course_number) === course
+  ) || groups[0] || null;
+
+  const user = {
+    id: identity.user.id,
+    full_name: typeof profile?.full_name === "string" ? profile.full_name : null,
+    email: typeof profile?.email === "string" ? profile.email : identity.user.email,
+    avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+    group_id: currentGroup?.id ?? null,
+    group_name: currentGroup?.name ?? null,
+    group_code: currentGroup?.code ?? null,
+    course_number: Number.isFinite(course) ? course : null,
+    semester: Number.isFinite(semester) ? semester : null,
+  };
+  return {
+    ok: true,
+    data: {
+      user,
+      roles,
+      groups,
+      current_group: currentGroup,
+      course: user.course_number,
+      semester: user.semester,
+    },
+  };
+}
