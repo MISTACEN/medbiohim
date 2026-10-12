@@ -1,3 +1,17 @@
+## Native rate-limit runtime proof + live shadow smoke — 2026-10-13
+
+- 🟢 Rechecked the deployed main shadow Worker over HTTPS from an allowed test client: GET /api/v1/health → 200; unauthenticated GET /api/v1/schedule → 401; GET /api/v1/subjects with a deliberately invalid Bearer token → 401 UNAUTHORIZED. The earlier 502 AUTH_UPSTREAM_ERROR is no longer reproduced by the live invalid-token path.
+- 🟢 Reproducibly exercised Cloudflare native rate-limit bindings in a temporary Worker that contained no Supabase credentials and did not call auth or create users. The binding configuration used the same login namespace (1001, 5/60s) and registration namespace (1002, 3/60s) as the main Worker. In 100 login probe requests, 10 returned 429; in 100 registration probe requests, 31 returned 429. Test requests reached Cloudflare locations EWR and IAD. This proves the bindings do produce a denied result/HTTP 429 at runtime, but the distribution across locations means the observed behavior must not be described as a strict global cap of exactly 5/3 requests.
+- 🟢 Removed the temporary probe Worker and disabled/removed its workers.dev subdomain after testing. No temporary public probe endpoint remains.
+- 🔒 Main Worker setting AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED deliberately remains false; auth routes still return 503. Rate-limit primitive verification does not make login/registration route parity ready: registration lacks PHP-compatible profile creation/default student-role assignment, and live valid-session/profile/RLS contract checks still need acceptance. Do not enable those routes yet.
+- 🔒 Test-attempt start/save/finish remain blocked with 503 TEST_ATTEMPT_SECURITY_NOT_READY until private answer snapshots and guarded scoring are implemented and verified.
+- 🟢 Current-source verification remains: Cloudflare Worker tests 126/126, frontend API failover tests 9/9, Wrangler 4.149.0 deploy --dry-run passes. Latest Cloudflare source bundle contains all six expected Worker modules. These local/source checks are not GitHub Actions results.
+- 🔴 Production still has not switched to Cloudflare-only mode. Do not change Vercel Production settings, Supabase schema/RLS, custom domains, DNS, or Telegram webhook until authenticated reads, write authorization, route contract parity, and rollback checks pass.
+
+**Next:** continue safe valid-session and read-only RLS acceptance for dashboard/schedule/subjects, map frontend API route coverage, and test the Vercel proxy in a separate Preview environment once its Vercel project scope is accessible. Leave the main auth gate false until the missing login/register contract and acceptance checks are complete.
+
+---
+
 ## Full current-source verification and auth telemetry diagnosis — 2026-10-13
 
 - 🟢 Fetched every current file under `integrations/cloudflare-api/src` and `test`, plus `package.json` and `wrangler.toml`, from GitHub `main` into a temporary isolated workspace. Ran `npm test`: **126 passed, 0 failed** (Node.js v25.9.0). This replaces older 124/124 results.
