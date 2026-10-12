@@ -1202,7 +1202,7 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
   const homeworkResult = await listSupabaseHomeworks(request, env, groupId ? { group_id: groupId } : {}, fetcher);
   if (!homeworkResult.ok) return homeworkResult;
   const homeworks = homeworkResult.data.items.filter((row) => !subjectId || String(row.subject_id || "") === subjectId);
-  const token = /^Bearer\\s+(\\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
   const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
   let base;
