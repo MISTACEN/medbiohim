@@ -52,8 +52,8 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 
 test("GET /api/v1/search requires a valid Supabase Bearer token", async () => {
   const response = await worker.fetch(request("/api/v1/search?q=mitosis"), {});
-  assert.equal(response.status, 503);
-  assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
 });
 
 test("POST /api/v1/search is rejected with an explicit allowed method", async () => {
