@@ -599,6 +599,13 @@ export default {
           requestId: crypto.randomUUID(),
         }, 405, { allow: "POST, OPTIONS" }), origin);
       }
+      if (env.AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED !== "true") {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMIT_ENFORCEMENT_UNVERIFIED", message: "Authentication is temporarily unavailable until rate-limit enforcement is verified" },
+          requestId: crypto.randomUUID(),
+        }, 503), origin);
+      }
       if (!env.AUTH_REGISTER_LIMITER || typeof env.AUTH_REGISTER_LIMITER.limit !== "function") {
         return withCors(json({
           ok: false,
@@ -663,6 +670,13 @@ export default {
       }
       // Login must not be exposed until a real Cloudflare Rate Limiting binding
       // is configured; a per-isolate in-memory counter is not a safe substitute.
+      if (env.AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED !== "true") {
+        return withCors(json({
+          ok: false,
+          error: { code: "RATE_LIMIT_ENFORCEMENT_UNVERIFIED", message: "Authentication is temporarily unavailable until rate-limit enforcement is verified" },
+          requestId: crypto.randomUUID(),
+        }, 503), origin);
+      }
       if (!env.AUTH_LOGIN_LIMITER || typeof env.AUTH_LOGIN_LIMITER.limit !== "function") {
         return withCors(json({
           ok: false,
