@@ -50,6 +50,21 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 });
 
 
+test("GET /api/v1/groups requires a verified bearer token", async () => {
+  const response = await worker.fetch(request("/api/v1/groups"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+});
+
+test("POST /api/v1/groups is explicitly read-only on the shadow migration route", async () => {
+  const response = await worker.fetch(request("/api/v1/groups", { method: "POST" }), {});
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+});
+
 test("GET /api/v1/subjects requires a bearer token", async () => {
   const response = await worker.fetch(request("/api/v1/subjects"), {});
   assert.equal(response.status, 401);
