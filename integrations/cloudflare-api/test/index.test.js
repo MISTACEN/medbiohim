@@ -300,3 +300,24 @@ test("CORS allows the configured frontend origin", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://medbiohim.vercel.app");
 });
+
+
+for (const path of ["/api/v1/dashboard", "/api/v1/schedule", "/api/v1/homeworks", "/api/v1/tests"]) {
+  test(`GET ${path} requires a valid Supabase bearer token`, async () => {
+    const response = await worker.fetch(request(path), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    assert.equal(response.status, 401);
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.equal(body.error.code, "UNAUTHORIZED");
+  });
+}
+
+test("schedule and dashboard read routes reject writes rather than silently accepting them", async () => {
+  for (const path of ["/api/v1/dashboard", "/api/v1/schedule", "/api/v1/homeworks", "/api/v1/tests"]) {
+    const response = await worker.fetch(request(path, { method: "POST" }), {});
+    assert.equal(response.status, 405, path);
+  }
+});
