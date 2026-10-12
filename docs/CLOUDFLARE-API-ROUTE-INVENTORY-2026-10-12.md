@@ -1,3 +1,13 @@
+## API route migration — Pass 18 (2026-10-12; deployed to isolated shadow Worker)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/plans_rest.php` | `GET /api/v1/subjects-catalog` | Active subject catalog filtered by group-derived specialty; curriculum document read under caller RLS | Implemented and uploaded; live role-specific RLS test pending |
+| `backend/config/routes/plans_rest.php` | `GET /api/v1/subject-plans` | Reads only `site_content` keys matching `subject_plan:*` | Implemented and uploaded; live RLS test pending |
+| `backend/config/routes/plans_rest.php` | `GET /api/v1/subject-plans/{slug}` | Missing plan returns `available:false`; schedule sample is scoped to active group membership rather than global service-role reads | Implemented and uploaded; live schedule/plan parity pending |
+
+Worker deployment ID: `8b8dc6a79d0b4ea294fba7f799d24c66`. Subject-plan schedule sampling deliberately avoids the PHP legacy global schedule read; it uses the caller JWT and only returns data visible to the user's active groups.
+
 ## API route migration — Pass 17 (2026-10-12; deployed to isolated shadow Worker)
 
 | PHP source | Route | Contract / safety | Shadow status |
