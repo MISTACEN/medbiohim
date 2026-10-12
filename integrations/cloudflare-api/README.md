@@ -123,3 +123,9 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Supports published questions, exam questions, trainer cards, subjects, and optional subject-plan content. Results include snippets, scoring, answer availability, and facets to match the PHP `SearchService` response shape.
 - Search returns a generic 503 if required Supabase reads are denied or unavailable; plan content is optional. Live RLS/table/column compatibility still needs staging verification.
 - Tests have been added but are not yet confirmed by a successful full Node/GitHub Actions run.
+
+## API route migration — Pass 11
+
+- Added the PHP-compatible `GET /api/v1/me` alias, routed through the same bearer-authenticated profile bundle as `GET /api/v1/auth/me`.
+- Added a regression test proving the alias does not bypass authentication.
+- This is a compatibility alias only; live RLS and profile relationship behavior still need staging verification.
