@@ -2763,3 +2763,13 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Runtime enforcement of rate limits is still not demonstrated by a controlled HTTP 429 test; the correct native bindings and thresholds exist, but do not mark the limiter phase fully verified.
 - 🔴 Production integration is still blocked: Vercel homepage returns 200, while `/api/v1/health` returns 503 `INSECURE_BACKEND_ORIGIN` because the production API route still rejects the legacy HTTP SpaceWeb origin. The GitHub-to-Cloudflare automatic build configuration remains unconfirmed; current shadow deployment was performed directly after local source and tests were checked.
 - 🔒 No production Vercel routing/environment, Supabase schema/grants, or Telegram webhook was changed. Do not enable `MEDBIOHIM_API_MODE=cloudflare` until live read paths, approved write paths, rate-limit enforcement, and the automated release process are verified.
+
+
+## Correction: Cloudflare Workers Builds automation verified — 2026-10-13
+
+- 🟢 Resolved the earlier API lookup ambiguity: Cloudflare's Builds API expects the Worker's system tag `3f7f446562fe43bdb19164b283d5a924`, not the script name `medbiohim-api-shadow`. The prior HTTP 12040 / empty-trigger result came from querying with the wrong identifier; it did not mean the dashboard build setup was absent.
+- 🟢 Read the existing build configuration by the correct tag. It points to GitHub `MISTACEN/medbiohim`, branch `main`, root directory `integrations/cloudflare-api`, build command `npm run build`, deploy command `npx wrangler deploy`, with automatic builds enabled.
+- 🟢 Confirmed Cloudflare Build runs reporting outcome `success` for commits `cf1ca28`, `d16e1c5`, `3ccd640`, `1facb9b`, `71c97af`, and `63525d6`. The latest checked build (`74ff2673-95bf-4384-8bf3-4fb1e75341b0`, commit `63525d6`) completed with outcome success; its logs did not contain the earlier `Missing script: "build"` error or failure markers.
+- 🟢 After that automatic build, the active Worker bundle was confirmed to contain the fail-closed attempt-write gate, direct one-shot request-body reader (no cloned-stream cancel stall), and safe Auth redirect diagnostics. Runtime settings retained both native rate-limit bindings and `observability.logs.invocation_logs=false`.
+- 🟡 Automatic build/deploy is now verified at least through the latest observed commit. Continue checking new source commits on `main`; do not use the earlier incorrect API lookup as evidence that automation is absent.
+- 🔒 Production Vercel routing remains unchanged. This resolves the Cloudflare build-pipeline verification item only; it does not clear the separate production API 503, live read/write validation, or rate-limit 429 verification blockers.
