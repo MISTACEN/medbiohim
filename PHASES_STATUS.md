@@ -1,3 +1,17 @@
+## Full current-source verification and auth telemetry diagnosis — 2026-10-13
+
+- 🟢 Fetched every current file under `integrations/cloudflare-api/src` and `test`, plus `package.json` and `wrangler.toml`, from GitHub `main` into a temporary isolated workspace. Ran `npm test`: **126 passed, 0 failed** (Node.js v25.9.0). This replaces older 124/124 results.
+- 🟢 Ran `npm run build` in the same workspace. Wrangler `4.149.0 deploy --dry-run` passed, included all source modules, and recognized `AUTH_LOGIN_LIMITER` (5/60s) and `AUTH_REGISTER_LIMITER` (3/60s). Bundle: 205.01 KiB / 30.89 KiB gzip. It was a dry-run compilation, not by itself a deployment.
+- 🟢 Cloudflare API confirms Workers Builds connected to `MISTACEN/medbiohim`, branch `main`, root `integrations/cloudflare-api`, with `npm run build` and `npx wrangler deploy`. The latest code-containing build inspected (commit `7245d0c21e00af2c922ae9cf4317bacf0d26b03d`) succeeded; active deployment is 100% on version `b7b84bbe-34ec-4043-9ffb-f08894abe261`. The active bundle has all six expected modules/markers.
+- 🟢 Worker settings confirm both native rate-limit bindings are present and `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=false`. The switch is intentionally false; presence of bindings and a dry run do not prove live 429 enforcement.
+- 🟡 Read-only Cloudflare telemetry for earlier auth attempts records `TypeError` during upstream fetch with sanitized category `redirect`; the configured URL was HTTPS and the hostname matched `gnobvyjywtqbdfeejxmf.supabase.co`. This rules out a simple project-host typo as an explanation, but does not determine the exact cause and does not validate the anon key. Never log raw errors, credentials, token values, or response bodies.
+- 🔴 Fresh public HTTP smoke requests from the current isolated test environment were blocked at Cloudflare edge with error 1010 before reaching the Worker. Therefore no new health/auth endpoint status can be claimed from this pass; use a permitted test origin or Cloudflare telemetry after a controlled attempt.
+- 🔒 No secret values were read, no Supabase schema/RLS was changed, and no Vercel Production variables or production traffic routing were changed. Login/registration and test-attempt writes remain fail-closed; Production remains on legacy mode.
+
+**Next safe pass:** (1) diagnose the upstream redirect-category failure without logging raw exception detail; (2) run a controlled 429 verification from an allowed test origin while the auth gate remains fail-closed by default; (3) verify live read-only Supabase/RLS routes using an authorized test session; (4) repeat Worker route-contract and frontend proxy acceptance; only then consider Preview, never Production first.
+
+---
+
 ## Latest state reconciliation — 2026-10-13 (supersedes older conflicting status entries)
 
 - 🟢 Re-queried Cloudflare API for the live `medbiohim-api-shadow` script and settings. The returned bundle contains all six expected modules/markers: `index.js`, `supabase-auth.js`, `schedule-mutations.js`, `admin-schedule.js`, `test-attempts.js`, and `test-catalog.js`. This supersedes earlier entries claiming only two modules were deployed.
