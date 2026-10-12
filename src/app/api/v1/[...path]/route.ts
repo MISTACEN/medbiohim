@@ -4,11 +4,15 @@ import { isHttpsOrigin, shouldFallbackFromCloudflare } from "@/lib/api-failover.
 /** API proxy. Existing backend remains the primary source; trainer endpoints have a
  * Supabase compatibility fallback because older SpaceWeb deployments may not expose
  * /trainers/feed yet. */
-const configuredOrigin = process.env.SPACEWEB_API_ORIGIN;
+// "cloudflare" is a deliberate no-SpaceWeb mode: the old PHP origin is ignored
+// even if a stale environment variable remains configured. Cloudflare failure then
+// fails closed; it never silently forwards credentials to the retired HTTP host.
+const API_MODE = process.env.MEDBIOHIM_API_MODE === "cloudflare" ? "cloudflare" : "legacy";
+const configuredOrigin = API_MODE === "cloudflare" ? undefined : process.env.SPACEWEB_API_ORIGIN;
 const UPSTREAM = configuredOrigin?.replace(/\/$/, "");
 const cloudflareOrigin = process.env.CLOUDFLARE_API_ORIGIN;
 const CLOUDFLARE_UPSTREAM = cloudflareOrigin?.replace(/\/$/, "");
-const CLOUDFLARE_FIRST_ENABLED = process.env.MEDBIOHIM_CF_FIRST === "true";
+const CLOUDFLARE_FIRST_ENABLED = API_MODE === "cloudflare" || process.env.MEDBIOHIM_CF_FIRST === "true";
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gnobvyjywtqbdfeejxmf.supabase.co").replace(/\/$/, "");
 // The anon key is public by design, but its configured value must stay in environment variables.
 // Do not commit test or production key material to the repository.
