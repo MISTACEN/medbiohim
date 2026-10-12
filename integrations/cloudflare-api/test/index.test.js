@@ -247,7 +247,7 @@ test("logout route fails closed when Supabase configuration is absent", async ()
 });
 
 test("unmigrated API routes are not proxied to the current PHP origin", async () => {
-  const response = await worker.fetch(request("/api/v1/auth/me"), {
+  const response = await worker.fetch(request("/api/v1/unmigrated-example"), {
     APP_ENV: "shadow",
     SPACEWEB_API_URL: "http://example.invalid",
   });
