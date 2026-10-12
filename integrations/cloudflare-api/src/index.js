@@ -129,7 +129,7 @@ export default {
       return withCors(success(result.data), origin);
     }
 
-    if (pathname === `${API_PREFIX}/auth/me`) {
+    if (pathname === `${API_PREFIX}/auth/me` || pathname === `${API_PREFIX}/me`) {
       if (request.method !== "GET") {
         return withCors(json({
           ok: false,
