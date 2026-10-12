@@ -1,3 +1,43 @@
+# Current cutover gate and frontend caller audit — 2026-10-13
+
+> **Current-state correction:** this document contains historical pass notes, some of which say the Worker is not deployed. Those statements are stale. The isolated `medbiohim-api-shadow` Worker is deployed; it is not receiving production frontend traffic. The frontend remains on legacy mode and no production cutover is authorized.
+
+## Verification from current `main`
+
+- `src/lib/api.ts` SHA: `79f7808d10c6a4803ffc9f421d5d088bb1321ebd`.
+- Worker router `integrations/cloudflare-api/src/index.js` SHA: `f7b8c10c83b3ccad5a61071abf8908781f10e612`.
+- Current Worker test suite on those fetched source files: **135 passed, 0 failed**; Wrangler 4.149.0 dry-run passed. This is the count from this reproducible source snapshot. Historical entries reporting 139 tests refer to another source snapshot and should not be merged into this result.
+- Cloudflare Builds reports the latest docs commit `7245d0c21e00af2c922ae9cf4317bacf0d26b03d` as successful. The later documentation commits also need to finish their own auto-builds before being called verified.
+- Auth login/registration are fail-closed while `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=false`; test attempt start/save/finish are fail-closed pending private answer snapshots and guarded scoring.
+
+## Frontend callers confirmed by static scan
+
+The frontend API client has substantially more routes than the currently implemented Worker router. The following are **not a complete route-by-route parity proof**; they are confirmed caller families that must remain blockers until matched to each exact frontend method, HTTP verb, payload, response shape, authorization policy, and DB policy.
+
+| Priority | Frontend caller family | Examples from `src/lib/api.ts` | Required safety/contract work |
+|---|---|---|---|
+| P0 | Authentication/session | `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/recover`, `/auth/logout` | Prove live rate limiting; profile/default-role sync; token lifecycle; generic errors; never trust client role metadata |
+| P0 | Preparation/test attempts | `/tests/{id}/start`, `/tests/attempts/{id}/answers`, `/tests/attempts/{id}/finish`, preparation start/save/finish/regrade | Private answer snapshots, server-side scoring, ownership/group scope, idempotency, no answer-key leakage |
+| P1 | Homework/planner/attendance | `/homeworks`, `/homeworks/{id}/progress`, `/homeworks/{id}/submit`, `/planner`, `/attendance/{id}` | Active group membership, caller ownership, attachments, status semantics and write/RLS parity |
+| P1 | Media/files | `/files/upload`, `/files/{id}`, `/materials`, `/trainers/feed`, `/trainers/feed/{id}`, `/trainers/feed/answer` | Private storage, signed access, path normalization, upload limits and source-key fallback behavior |
+| P1 | Student content/search | `/questions/mini-quiz`, `/questions/mini-quiz/check`, `/questions/{id}/report`, `/community/posts`, `/notes`, `/favorites`, `/tickets` | Published-content filtering, correct-answer protection, per-user state, abuse limits and group privacy |
+| P1 | Academic state | `/academic/state`, `/academic/sync`, `/academic/ai-plan`, `/curriculum`, `/lesson-plan`, `/tickets/generate` | Verify schemas, provider-secret isolation, bounded writes, caller scope and fallback contracts |
+| P2 | Settings and presence | `/settings`, Telegram account linking, `/presence/heartbeat`, `/admin/presence` | User ownership, consent/privacy and edge rate limits |
+| P2 | Group/subject writes | `POST/PATCH/DELETE /groups`, `POST/PATCH/DELETE /subjects` | Admin-only canonical roles, no self-privilege escalation, transactional constraints and audit trail |
+| P3 | Administrative APIs | `/admin/database/*`, `/admin/db/*`, `/admin/content/*`, `/admin/users/*`, `/admin/telegram/*`, `/admin/questions/*`, `/admin/schedule/*` | Keep blocked until all admin routes have explicit role guards, SQL restrictions, audit trail and no client-controlled arbitrary query execution |
+
+## Safe sequencing
+
+1. Keep production routing unchanged and preserve both fail-closed gates.
+2. Verify limiter behavior in a controlled shadow-only setup with reproducible 429 evidence; do not infer success from binding presence or mocks.
+3. Complete one read-only frontend contract at a time, starting with non-sensitive catalog/read routes; compare exact PHP and Worker response fixtures and validate real caller-JWT RLS.
+4. Only then migrate narrow student-owned writes (homework progress/notes/favorites) with ownership and idempotency tests.
+5. Implement test-attempt writes only after the answer snapshot and grading model is secured.
+6. Leave admin DB, file upload, Telegram webhook, and arbitrary content imports for later, with explicit least-privilege designs.
+7. Cut over Vercel only after the legacy HTTPS-origin blocker is removed and all production health, route parity, auth, RLS, and rollback checks pass.
+
+---
+
 ## Frontend-to-Worker parity snapshot and groups route — 2026-10-13
 
 - 🟢 Added and deployed authenticated GET /api/v1/groups, used by frontend listGroups(). It selects id/code/name/course_number/admission_year/is_active, treats NULL is_active as active to mirror GroupRepository::listActive(), orders by course_number then code, uses only caller JWT + anon key, and fails closed if Supabase Auth/RLS/query response fails. No service-role credential or write operation is used.
