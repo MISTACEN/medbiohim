@@ -143,3 +143,13 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Course and semester filters are validated and bounded to the schema's expected ranges. If membership/RLS checks fail, the route returns a generic 503 instead of falling back to an unrestricted catalog.
 - Added route auth/method tests and helper tests for specialty filtering, filter validation, caller-JWT forwarding, and fail-closed membership errors.
 - **Not yet accepted for cutover:** GitHub Actions has been triggering but the latest runs are failing with job metadata showing no steps and no downloadable logs. A real successful Node test run is still required. Live RLS relationship behavior must also be verified before switching frontend traffic.
+
+
+## Deployment record — 2026-10-12
+
+- Deployed the current Worker source to the isolated Cloudflare Worker `medbiohim-api-shadow` in the account's `workers.dev` namespace. This is a shadow/staging deployment; no production custom domain or frontend cutover was configured.
+- Worker deployment ID: `58191d671d7c4717a563af08726d1812`; entry point `index.js`; module upload included `src/index.js` and `src/supabase-auth.js`.
+- Configured Worker secrets `SUPABASE_URL` and `SUPABASE_ANON_KEY` from the connected Supabase project. The service-role key is not configured or used.
+- Health and API routes were deployed, but an external HTTP smoke test could not be completed from the connected tool runtime because outbound requests to the `workers.dev` host were blocked by that runtime. Treat endpoint reachability and live authenticated Supabase reads as **not yet verified**.
+- Login and registration remain fail-closed unless real Cloudflare rate-limiting bindings are configured. This is intentional, not a deployment failure.
+- Do not switch production traffic until smoke tests, Node tests, RLS relationship checks, and the remaining PHP route migration are verified.
