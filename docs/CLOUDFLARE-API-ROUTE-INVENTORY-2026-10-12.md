@@ -1,3 +1,11 @@
+## API route migration — Pass 13 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/domain.php` | `GET /api/v1/subjects?course=&semester=` | Bearer-authenticated catalog; caller JWT + anon key; active group membership determines specialty access; MBH membership also grants histology; bounded course/semester filters | Worker helper/route and regression tests added; not deployed; live RLS relationship and specialty-policy parity remain to be verified |
+
+The route fails closed with a generic 503 if membership access cannot be checked. It does not use a service-role key. CI acceptance is blocked until GitHub Actions executes actual test steps and produces a successful run.
+
 ## API route migration — Pass 12 (2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
