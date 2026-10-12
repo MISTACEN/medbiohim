@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -612,6 +612,86 @@ test("search rejects invalid type and maps Supabase RLS failures to a generic se
   assert.equal(denied.message, "Поиск временно недоступен");
 });
 
+
+test("gradebook helper checks the same active specialty access rules and reads rows with the caller JWT", async () => {
+  const seen = [];
+  const req = new Request("https://worker.example/api/v1/subjects/subject-1/gradebook", {
+    headers: { authorization: "Bearer valid-token" },
+  });
+  const result = await getSupabaseSubjectGradebook(req, "subject-1", configured, async (url, init) => {
+    const parsed = new URL(String(url));
+    seen.push({ parsed, authorization: init.headers.authorization, apikey: init.headers.apikey });
+    if (parsed.pathname === "/auth/v1/user") {
+      return new Response(JSON.stringify({ id: "user-1", email: "student@example.com" }), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/subjects") {
+      assert.equal(parsed.searchParams.get("id"), "eq.subject-1");
+      assert.equal(parsed.searchParams.get("is_active"), "eq.true");
+      return new Response(JSON.stringify([{ id: "subject-1", slug: "histology", specialty_slug: "histology", is_active: true }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      assert.equal(parsed.searchParams.get("user_id"), "eq.user-1");
+      assert.equal(parsed.searchParams.get("is_active"), "eq.true");
+      return new Response(JSON.stringify([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/subject_gradebook_entries") {
+      assert.equal(parsed.searchParams.get("subject_id"), "eq.subject-1");
+      assert.equal(parsed.searchParams.get("select"), "id,subject_id,display_name,hours,credits,control_form,hours_scope,source_note,source_file");
+      return new Response(JSON.stringify([{ id: "row-1", subject_id: "subject-1", display_name: "Основной курс" }]), { status: 200 });
+    }
+    throw new Error("unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.items, [{ id: "row-1", subject_id: "subject-1", display_name: "Основной курс" }]);
+  assert.equal(seen.length, 4);
+  assert.ok(seen.every((call) => call.authorization === "Bearer valid-token"));
+  assert.ok(seen.every((call) => call.apikey === configured.SUPABASE_ANON_KEY));
+});
+
+test("gradebook helper forbids unrelated specialty and does not query gradebook rows", async () => {
+  const req = new Request("https://worker.example/api/v1/subjects/subject-1/gradebook", {
+    headers: { authorization: "Bearer valid-token" },
+  });
+  let entriesRead = false;
+  const result = await getSupabaseSubjectGradebook(req, "subject-1", configured, async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (parsed.pathname === "/rest/v1/subjects") {
+      return new Response(JSON.stringify([{ id: "subject-1", slug: "nursing-subject", specialty_slug: "nursing", is_active: true }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      return new Response(JSON.stringify([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/subject_gradebook_entries") entriesRead = true;
+    return new Response(JSON.stringify([]), { status: 200 });
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+  assert.equal(result.code, "FORBIDDEN");
+  assert.equal(entriesRead, false);
+});
+
+test("gradebook helper fails closed when subject or membership reads are denied", async () => {
+  const req = new Request("https://worker.example/api/v1/subjects/subject-1/gradebook", {
+    headers: { authorization: "Bearer valid-token" },
+  });
+  const subjectDenied = await getSupabaseSubjectGradebook(req, "subject-1", configured, async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    return new Response("denied", { status: 403 });
+  });
+  assert.equal(subjectDenied.status, 503);
+  assert.equal(subjectDenied.code, "DB_UNAVAILABLE");
+
+  const membershipDenied = await getSupabaseSubjectGradebook(req, "subject-1", configured, async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (parsed.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: "subject-1", slug: "histology", specialty_slug: "histology", is_active: true }]), { status: 200 });
+    return new Response("denied", { status: 403 });
+  });
+  assert.equal(membershipDenied.status, 503);
+  assert.equal(membershipDenied.code, "DB_UNAVAILABLE");
+});
 
 test("subject detail requires an authenticated caller and validates the subject id", async () => {
   const request = new Request("https://worker.example/api/v1/subjects/subject-1");
