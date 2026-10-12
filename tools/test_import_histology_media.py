@@ -67,7 +67,7 @@ class HistologyMediaImporterTests(unittest.TestCase):
             self.assertEqual((out / "histology/5_Фотографии препаратов/раздел/Почка.jpg").read_bytes(), b"photo-bytes")
             self.assertEqual((out / "histology/electronograms/images/mitohondrii.png").read_bytes(), b"em-bytes")
             self.assertEqual((out / "histology/em/mitohondrii.png").read_bytes(), b"em-bytes")
-            self.assertTrue((out / "histology/docx-captions.json").exists())
+            self.assertTrue((out / "histology/electronograms/docx-captions.json").exists())
             self.assertTrue((out / "histology/histology-media-manifest.json").exists())
             self.assertGreaterEqual(counts["duplicates"], 1)
 
