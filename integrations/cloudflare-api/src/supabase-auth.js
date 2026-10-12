@@ -1307,7 +1307,9 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
     const hwPercent = homeworks.length ? Math.round(hwDone / homeworks.length * 100) : 0;
     const parts = [hwPercent];
     if (attempts.length) parts.push(Math.round(finished / attempts.length * 100));
-    const overall = Math.round(parts.reduce((sum, value) => sum + value, 0) / parts.length);
+    const overall = homeworks.length || attempts.length
+      ? Math.round(parts.reduce((sum, value) => sum + value, 0) / parts.length)
+      : null;
     return { ok: true, data: {
       overall_pct: overall,
       homework: { total: homeworks.length, done: hwDone, percent: hwPercent, items: homeworks },
