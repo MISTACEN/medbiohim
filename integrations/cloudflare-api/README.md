@@ -129,3 +129,9 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added the PHP-compatible `GET /api/v1/me` alias, routed through the same bearer-authenticated profile bundle as `GET /api/v1/auth/me`.
 - Added a regression test proving the alias does not bypass authentication.
 - This is a compatibility alias only; live RLS and profile relationship behavior still need staging verification.
+
+## API route migration — Pass 12
+
+- Added authenticated `GET /api/v1/subjects/{id}` using the caller's Supabase JWT and public anon key; no service-role key or SpaceWeb proxy is used.
+- Queries `subjects` and `modules` under the caller's grants/RLS. It supports both known module ordering columns (`sort_order` and `order_index`) because the PHP repository and REST fallback currently differ.
+- Missing subjects return 404; denied/unavailable reads return a generic 503. The helper and route regression tests are authored; full execution and actual Supabase RLS/table compatibility still need confirmation.
