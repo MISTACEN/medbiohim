@@ -2455,3 +2455,13 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟢 Added `docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md` with safe SpaceWeb extraction instructions and validation limits.
 - 🟡 The cleaned media archive is prepared for download but has not been uploaded to SpaceWeb or switched into production.
 - 🔒 SpaceWeb remains active. No production API URL, DNS, Supabase policy, Cloudflare deployment, or Telegram webhook was changed.
+
+
+
+## Cloudflare API migration — Pass 10 (authenticated search)
+
+- 🟢 Added `GET /api/v1/search` to Worker source, supporting `q/query`, limit, subject and type filters, ranked results and facets.
+- 🟢 Uses the authenticated caller JWT plus Supabase anon key for REST queries; no service-role key and no proxy to SpaceWeb.
+- 🟢 Added helper tests for blank queries, caller-scoped published question search, facets, invalid type and generic RLS failure; route tests cover auth/method guards.
+- 🟡 Tests are authored but the full suite has not been confirmed by successful CI. Live RLS and table/column compatibility must be verified before cutover.
+- 🔒 Production remains on SpaceWeb; no API URL, DNS, Supabase policy, Worker deployment or Telegram webhook changed.
