@@ -1,3 +1,34 @@
+## First live migration test pass — 2026-10-13
+
+### Verified with real HTTP requests
+- `https://medbiohim.vercel.app/` returned HTTP 200.
+- Active Worker `https://medbiohim-api-shadow.ryazansevegor.workers.dev/health` and `/api/v1/health` returned HTTP 200 and explicitly reported `mode=shadow`, `role=migration-scaffold`, `productionTrafficEnabled=false`.
+- Worker `GET /api/v1/schedule` without a bearer token returned 401 `UNAUTHORIZED` as expected.
+- Worker `POST /api/v1/schedule` returned 405 `METHOD_NOT_ALLOWED`.
+- Worker preflight with an unapproved origin returned 403 `ORIGIN_NOT_ALLOWED`.
+- Worker unknown API route returned 501 `ROUTE_NOT_MIGRATED`.
+- The active Worker currently returns 503 `RATE_LIMIT_NOT_CONFIGURED` for both `POST /api/v1/auth/login` and `POST /api/v1/auth/register`. Login/registration are therefore not ready for cutover until real rate-limit bindings are configured.
+- Worker `GET /api/v1/subjects` with a deliberately invalid bearer token returned 502 `AUTH_UPSTREAM_ERROR`, rather than expected 401. This requires investigation of the live Worker Supabase Auth upstream/configuration before authenticated API acceptance.
+- Vercel `GET /api/v1/health` returned 503 `INSECURE_BACKEND_ORIGIN`. Production is still on legacy mode and the current configured SpaceWeb origin appears to be HTTP; Vercel environment inventory access did not succeed during this pass, so the exact variable value is not independently confirmed. Do not set Cloudflare-only Production mode until Preview acceptance is complete.
+- A direct Supabase Auth health probe reached the known Supabase host and returned 401 because the probe intentionally supplied no API key; this only confirms host reachability, not Worker credentials.
+
+### Local tests
+- Isolated Node.js run of `test/api-failover.test.mjs`: **9 passed, 0 failed**.
+- This test was run against the fetched current proxy/test/helper files in an isolated temporary workspace, not against the full checked-out repository.
+
+### CI / deployment status
+- Latest inspected GitHub Actions run for code checks failed before steps started: jobs had `runner_id=0`, blank runner name and empty `steps`. The smoke workflow showed the same pattern. This is a runner/Actions execution blocker, not a demonstrated test assertion failure.
+- Vercel deployment status API was inaccessible (403) in this pass; an existing deployment check had a successful Vercel status, and the live homepage responds 200. No claim that all frontend build or browser smoke tests passed.
+- No production environment variables, database migrations, RLS policies, storage bindings, Telegram settings, or live Worker source were changed as part of this test pass.
+
+### Cutover blockers (must pass before production switch)
+1. Inspect/fix live Worker Supabase Auth behavior: invalid bearer must return 401, not 502.
+2. Provision and verify real Cloudflare login/registration rate limiting, then test valid and invalid auth safely.
+3. Deploy the exact current GitHub Worker source and verify module parity (live Worker reports migration scaffold and is not the production API).
+4. Test authenticated dashboard/schedule/homework/subjects/tests using a safe test account and verify RLS.
+5. Configure Cloudflare-only mode in Vercel Preview and test no SpaceWeb dependency; keep Production unchanged until all required routes and media/storage paths pass.
+6. Restore GitHub Actions runner execution and obtain actual completed job steps.
+
 ## SpaceWeb exit plan — Cloudflare + Supabase only (2026-10-13)
 
 - Decision: SpaceWeb is not a required fallback because its HTTP-only temporary URL cannot safely carry authenticated API traffic and the paid HTTPS upgrade is intentionally out of scope.
