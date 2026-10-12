@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
  * /trainers/feed yet. */
 const configuredOrigin = process.env.SPACEWEB_API_ORIGIN;
 const UPSTREAM = configuredOrigin?.replace(/\/$/, "");
+const cloudflareOrigin = process.env.CLOUDFLARE_API_ORIGIN;
+const CLOUDFLARE_UPSTREAM = cloudflareOrigin?.replace(/\/$/, "");
+const CLOUDFLARE_FIRST_ENABLED = process.env.MEDBIOHIM_CF_FIRST === "true";
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gnobvyjywtqbdfeejxmf.supabase.co").replace(/\/$/, "");
 // The anon key is public by design, but its configured value must stay in environment variables.
 // Do not commit test or production key material to the repository.
@@ -16,6 +19,110 @@ export const runtime = "nodejs";
 function bearer(req: NextRequest) {
   const value = req.headers.get("authorization") || "";
   return value.startsWith("Bearer ") ? value.slice(7).trim() : "";
+}
+
+function isHttpsOrigin(value: string | undefined): boolean {
+  try {
+    return Boolean(value) && new URL(value as string).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+async function isCanonicalAdminRequest(req: NextRequest): Promise<boolean> {
+  const token = bearer(req);
+  if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+
+  try {
+    const base = new URL(SUPABASE_URL);
+    if (base.protocol !== "https:") return false;
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    };
+    const auth = await fetch(new URL("/auth/v1/user", base), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!auth.ok) return false;
+    const user = await auth.json() as { id?: unknown };
+    if (typeof user?.id !== "string" || !user.id) return false;
+
+    // Resolve the canonical database role through the caller JWT and RLS.
+    // Never trust user_metadata or a client-supplied role for diagnostics.
+    const rolesUrl = new URL("/rest/v1/user_roles", base);
+    rolesUrl.searchParams.set("select", "roles(code)");
+    rolesUrl.searchParams.set("user_id", `eq.${user.id}`);
+    rolesUrl.searchParams.set("limit", "25");
+    const rolesResponse = await fetch(rolesUrl, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!rolesResponse.ok) return false;
+    const rows = await rolesResponse.json();
+    if (!Array.isArray(rows)) return false;
+    return rows.some((row: any) => {
+      const related = Array.isArray(row?.roles) ? row.roles : row?.roles ? [row.roles] : [];
+      return related.some((role: any) => String(role?.code || "").toLowerCase() === "admin");
+    });
+  } catch {
+    // Diagnostics fail closed. A role-query failure hides the indicator but
+    // does not change the API response or grant any additional permission.
+    return false;
+  }
+}
+
+async function withTransportDiagnostics(req: NextRequest, response: Response, source: string): Promise<Response> {
+  if (req.headers.get("x-mbh-transport-diagnostics") !== "1") return response;
+  if (!(await isCanonicalAdminRequest(req))) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set("x-mbh-transport-source", source);
+  headers.set("x-mbh-transport-fallback", source === "spaceweb-fallback" || source === "compatibility-fallback" ? "true" : "false");
+  return new NextResponse(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function responseErrorCode(response: Response): Promise<string> {
+  try {
+    const body = await response.clone().json();
+    return String(body?.error?.code || body?.code || "");
+  } catch {
+    return "";
+  }
+}
+
+async function shouldFallbackFromCloudflare(req: NextRequest, response: Response): Promise<boolean> {
+  const code = await responseErrorCode(response);
+  // An explicit, side-effect-free 501 is safe to send to the legacy backend
+  // for any method: this Worker route did not execute.
+  if (response.status === 501 && code === "ROUTE_NOT_MIGRATED") return true;
+
+  const method = req.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    return response.status >= 500 && response.status !== 501;
+  }
+
+  // These codes are emitted by preflight guards before an Auth operation occurs.
+  // Do not retry arbitrary failed writes: the upstream may have committed before
+  // the connection failed, and repeating them can create duplicate state changes.
+  const path = new URL(req.url).pathname.replace(/\/+$/, "");
+  const authPreflight = new Set([
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/recover",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/logout",
+  ]);
+  return response.status === 503 &&
+    authPreflight.has(path) &&
+    ["AUTH_NOT_CONFIGURED", "RATE_LIMIT_NOT_CONFIGURED", "RATE_LIMIT_UNAVAILABLE"].includes(code);
 }
 
 function jwtSubject(token: string) {
@@ -229,21 +336,31 @@ async function trainerFallback(req: NextRequest, pathParts: string[]) {
 
 async function proxy(req: NextRequest, pathParts: string[]) {
   const sub = pathParts.join("/");
+  const url = new URL(req.url);
 
-  if (!UPSTREAM) {
+  if (!CLOUDFLARE_FIRST_ENABLED && !UPSTREAM) {
     return NextResponse.json(
       { ok: false, error: { code: "BACKEND_NOT_CONFIGURED", message: "SPACEWEB_API_ORIGIN is not configured on this deployment." } },
       { status: 503 }
     );
   }
+  if (CLOUDFLARE_FIRST_ENABLED) {
+    if (!CLOUDFLARE_UPSTREAM || !isHttpsOrigin(CLOUDFLARE_UPSTREAM) ||
+        !new URL(CLOUDFLARE_UPSTREAM).pathname.replace(/\/$/, "").endsWith("/api/v1")) {
+      const invalid = NextResponse.json(
+        { ok: false, error: { code: "CLOUDFLARE_NOT_CONFIGURED", message: "CLOUDFLARE_API_ORIGIN must be a valid HTTPS API base ending in /api/v1." } },
+        { status: 503 }
+      );
+      return withTransportDiagnostics(req, invalid, "cloudflare-unavailable");
+    }
+  }
 
-  const url = new URL(req.url);
-  const targets = [
+  const spacewebTargets = UPSTREAM ? [
     `${UPSTREAM}/${sub}${url.search}`,
     ...(UPSTREAM.endsWith("/api/v1")
       ? [`${UPSTREAM.slice(0, -"/api/v1".length)}/public/api/v1/${sub}${url.search}`]
       : []),
-  ];
+  ] : [];
 
   const headers = new Headers();
   for (const h of ["content-type", "authorization", "accept", "x-request-id"]) {
@@ -252,24 +369,80 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   }
   if (!headers.has("accept")) headers.set("accept", "application/json");
 
-  const init: RequestInit = { method: req.method, headers, redirect: "manual", cache: "no-store" };
+  let bodyBuffer: ArrayBuffer | null = null;
   if (req.method !== "GET" && req.method !== "HEAD") {
-    const body = await req.arrayBuffer();
-    if (body.byteLength) init.body = body;
+    bodyBuffer = await req.arrayBuffer();
+  }
+  const makeInit = (signal?: AbortSignal): RequestInit => ({
+    method: req.method,
+    headers,
+    redirect: "manual",
+    cache: "no-store",
+    ...(bodyBuffer && bodyBuffer.byteLength ? { body: bodyBuffer.slice(0) } : {}),
+    ...(signal ? { signal } : {}),
+  });
+
+  async function fetchSpacewebTargets() {
+    let response: Response | null = null;
+    let error: unknown = null;
+    for (let i = 0; i < spacewebTargets.length; i += 1) {
+      try {
+        const candidate = await fetch(spacewebTargets[i], makeInit());
+        if (candidate.status !== 404 || i === spacewebTargets.length - 1 || req.method !== "GET") {
+          response = candidate;
+          break;
+        }
+      } catch (e) {
+        error = e;
+      }
+    }
+    return { response, error };
   }
 
   let upstream: Response | null = null;
   let lastError: unknown = null;
-  for (let i = 0; i < targets.length; i += 1) {
+  let source = "spaceweb";
+
+  if (CLOUDFLARE_FIRST_ENABLED) {
+    source = "cloudflare";
     try {
-      const candidate = await fetch(targets[i], init);
-      if (candidate.status !== 404 || i === targets.length - 1 || req.method !== "GET") {
-        upstream = candidate;
-        break;
+      const cloudflareResponse = await fetch(
+        `${CLOUDFLARE_UPSTREAM}/${sub}${url.search}`,
+        makeInit(AbortSignal.timeout(8000))
+      );
+      const useFallback = await shouldFallbackFromCloudflare(req, cloudflareResponse);
+      // Never send bearer tokens or private request bodies to a plaintext origin.
+      if (useFallback && UPSTREAM && isHttpsOrigin(UPSTREAM)) {
+        source = "spaceweb-fallback";
+        const fallback = await fetchSpacewebTargets();
+        upstream = fallback.response;
+        lastError = fallback.error;
+      } else {
+        upstream = cloudflareResponse;
       }
-    } catch (e) {
-      lastError = e;
+    } catch (error) {
+      lastError = error;
+      const safeRead = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
+      if (safeRead && UPSTREAM && isHttpsOrigin(UPSTREAM)) {
+        source = "spaceweb-fallback";
+        const fallback = await fetchSpacewebTargets();
+        upstream = fallback.response;
+        lastError = fallback.error || lastError;
+      } else {
+        source = "cloudflare-unavailable";
+      }
     }
+  } else {
+    if (!UPSTREAM) {
+      return NextResponse.json(
+        { ok: false, error: { code: "BACKEND_NOT_CONFIGURED", message: "SPACEWEB_API_ORIGIN is not configured on this deployment." } },
+        { status: 503 }
+      );
+    }
+    source = "spaceweb";
+    const primary = await fetchSpacewebTargets();
+    upstream = primary.response;
+    lastError = primary.error;
   }
 
   // The old backend may not have trainer routes yet. Feed data itself is already
@@ -277,11 +450,15 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   // the working schedule/auth backend.
   if (upstream?.status === 404 && sub.startsWith("trainers/feed")) {
     const fallback = await trainerFallback(req, pathParts);
-    if (fallback) return fallback;
+    if (fallback) return withTransportDiagnostics(req, fallback, "compatibility-fallback");
   }
 
   if (!upstream) {
-    return NextResponse.json({ ok: false, error: { code: "UPSTREAM", message: "Backend is temporarily unavailable" }, requestId: "proxy" }, { status: 502 });
+    const failed = NextResponse.json(
+      { ok: false, error: { code: "UPSTREAM", message: "Backend is temporarily unavailable" }, requestId: "proxy" },
+      { status: 502 }
+    );
+    return withTransportDiagnostics(req, failed, source);
   }
 
   let buf = await upstream.arrayBuffer();
@@ -320,7 +497,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const rid = upstream.headers.get("x-request-id");
   if (rid) out.headers.set("x-request-id", rid);
   out.headers.set("x-medbiohim-proxy", "direct");
-  return out;
+  return withTransportDiagnostics(req, out, source);
 }
 
 type Ctx = { params: Promise<{ path: string[] }> };
