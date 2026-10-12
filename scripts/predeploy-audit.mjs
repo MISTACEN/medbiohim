@@ -304,6 +304,40 @@ if (existsSync(platformPath)) {
 if (exposedDebugRoutes.length) fail("production debug endpoints remain: " + exposedDebugRoutes.join(", "));
 else pass("no unauthenticated production debug routes");
 
+const cloudflareWorkerRoot = join(root, "integrations/cloudflare-api");
+const cloudflareWorkerEntry = join(cloudflareWorkerRoot, "src/index.js");
+if (existsSync(cloudflareWorkerEntry)) {
+  const workerSource = await readFile(cloudflareWorkerEntry, "utf8");
+  const importPattern = /^import\\s+.+?\\s+from\\s+["'](\\.[^"']+)["'];?\\s*$/gm;
+  const missingWorkerImports = [];
+  for (const match of workerSource.matchAll(importPattern)) {
+    const specifier = match[1];
+    const candidates = [specifier, specifier + ".js", join(specifier, "index.js")];
+    if (!candidates.some((candidate) => existsSync(join(cloudflareWorkerRoot, "src", candidate)))) {
+      missingWorkerImports.push(specifier);
+    }
+  }
+  if (missingWorkerImports.length) {
+    fail("Cloudflare Worker imports missing from source bundle: " + missingWorkerImports.join(", "));
+  } else {
+    pass("Cloudflare Worker entry imports resolve to checked-in source modules");
+  }
+  const workerPackage = join(cloudflareWorkerRoot, "package.json");
+  const workerTests = join(cloudflareWorkerRoot, "test/index.test.js");
+  if (existsSync(workerPackage) && existsSync(workerTests)) {
+    const packageText = await readFile(workerPackage, "utf8");
+    if (packageText.includes('"test"') && packageText.includes('node --test')) {
+      pass("Cloudflare Worker has a Node test command and router tests");
+    } else {
+      fail("Cloudflare Worker package is missing its node test command");
+    }
+  } else {
+    fail("Cloudflare Worker package or router test entry is missing");
+  }
+} else {
+  fail("Cloudflare Worker entry module is missing");
+}
+
 const routeFiles = (await walk(join(root, "backend/config/routes"))).filter((p) => extname(p) === ".php");
 const routeRegistry = new Map();
 let duplicateRouteFound = false;
