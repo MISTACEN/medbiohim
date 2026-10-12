@@ -120,9 +120,19 @@ async function shouldFallbackFromCloudflare(req: NextRequest, response: Response
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
   ]);
-  return response.status === 503 &&
-    authPreflight.has(path) &&
-    ["AUTH_NOT_CONFIGURED", "RATE_LIMIT_NOT_CONFIGURED", "RATE_LIMIT_UNAVAILABLE"].includes(code);
+  if (response.status !== 503) return false;
+
+  // Explicit configuration gates return before an operation begins, so the
+  // legacy backend can safely serve these requests when the feature is not
+  // configured on the shadow Worker. Never retry generic mutation failures.
+  if (authPreflight.has(path) &&
+      ["AUTH_NOT_CONFIGURED", "RATE_LIMIT_NOT_CONFIGURED", "RATE_LIMIT_UNAVAILABLE"].includes(code)) {
+    return true;
+  }
+  if (path === "/api/v1/files/upload" && code === "STORAGE_NOT_CONFIGURED") {
+    return true;
+  }
+  return false;
 }
 
 function jwtSubject(token: string) {
