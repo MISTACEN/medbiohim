@@ -902,7 +902,7 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
       const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
       const groupId = String(row.group_id || group?.id || "");
       return { group_id: groupId, group: group ? { ...group, group_id: groupId, group_name: group.name || "" } : null };
-    }).filter((row) => row.group_id);
+    }).filter((row) => row.group_id && row.group && row.group.is_active !== false);
     if (!groups.length) return failure(422, "NO_GROUP", "Для расписания нужна активная учебная группа");
     const selectedGroups = requestedGroup ? groups.filter((row) => row.group_id === requestedGroup) : groups;
     if (requestedGroup && !selectedGroups.length) {
@@ -999,7 +999,11 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       is_active: "eq.true",
       limit: "100",
     });
-    const groupIds = [...new Set(memberships.map((row) => String(row.group_id || "")).filter(Boolean))];
+    const activeMemberships = memberships.filter((row) => {
+      const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
+      return Boolean(group) && group.is_active !== false && Boolean(row.group_id);
+    });
+    const groupIds = [...new Set(activeMemberships.map((row) => String(row.group_id || "")).filter(Boolean))];
     if (!groupIds.length) return failure(422, "NO_GROUP", "Для заданий нужна активная учебная группа");
     const requestedGroup = String(filters.group_id || "").trim();
     if (requestedGroup && !groupIds.includes(requestedGroup)) {
@@ -1016,7 +1020,7 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       limit: "500",
     });
     if (!homeworks.length) {
-      const groups = memberships.map((row) => { const group = Array.isArray(row.groups) ? row.groups[0] : row.groups; return group ? { ...group, group_id: String(row.group_id || group.id || ""), group_name: group.name || "" } : null; }).filter(Boolean);
+      const groups = activeMemberships.map((row) => { const group = Array.isArray(row.groups) ? row.groups[0] : row.groups; return group ? { ...group, group_id: String(row.group_id || group.id || ""), group_name: group.name || "" } : null; }).filter(Boolean);
       return { ok: true, data: { items: [], groups } };
     }
     const ids = homeworks.map((row) => String(row.id)).filter(Boolean);
