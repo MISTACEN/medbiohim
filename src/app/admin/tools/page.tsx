@@ -36,6 +36,22 @@ export default function AdminToolsPage() {
   const [validation, setValidation] = useState<any>(null);
   const [validating, setValidating] = useState(false);
   const [presence, setPresence] = useState<any[]>([]);
+  const [transport, setTransport] = useState<{ source: string; fallback: boolean; path: string; at: number } | null>(null);
+
+  useEffect(() => {
+    const onTransport = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string; fallback?: boolean; path?: string; at?: number }>).detail;
+      if (!detail || typeof detail.source !== "string") return;
+      setTransport({
+        source: detail.source,
+        fallback: Boolean(detail.fallback),
+        path: typeof detail.path === "string" ? detail.path : "",
+        at: typeof detail.at === "number" ? detail.at : Date.now(),
+      });
+    };
+    window.addEventListener("mbh:api-transport", onTransport);
+    return () => window.removeEventListener("mbh:api-transport", onTransport);
+  }, []);
 
   async function load() {
     setRefreshing(true);
@@ -102,6 +118,22 @@ export default function AdminToolsPage() {
           Обновить
         </button><button type="button" className="btn-secondary" disabled={validating} onClick={() => void validateContent()}>{validating ? "Проверяю…" : "Проверить контент"}</button></div>
       </header>
+
+      {transport && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-xs text-slate-600" role="status" aria-live="polite">
+          <span className="font-semibold text-slate-800">Маршрут API</span>
+          <span className="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-700">
+            {transport.source === "cloudflare" ? "Cloudflare Worker" :
+              transport.source === "spaceweb" ? "SpaceWeb PHP" :
+              transport.source === "spaceweb-fallback" ? "Аварийный SpaceWeb fallback" :
+              transport.source === "compatibility-fallback" ? "Совместимый fallback" :
+              "Cloudflare недоступен"}
+          </span>
+          {transport.fallback && <span className="font-medium text-amber-700">Основной запрос не обслужен Cloudflare; использован резервный маршрут.</span>}
+          <span className="text-slate-500">Последний запрос: <code>{transport.path}</code></span>
+          <span className="text-slate-400">{new Date(transport.at).toLocaleTimeString()}</span>
+        </div>
+      )}
 
       {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {validation && <div className={"rounded-xl border px-4 py-3 text-sm " + (validation.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900")}><div className="font-semibold">{validation.ok ? "Целостность контента в норме" : "Найдены проблемы: " + validation.count}</div><div className="mt-1 text-xs opacity-80">Проверено: тесты {validation.checked?.tests ?? "—"}, вопросы {validation.checked?.questions ?? "—"}, связи {validation.checked?.test_questions ?? "—"}, карточки {validation.checked?.trainer_cards ?? "—"}, материалы {validation.checked?.materials ?? "—"}, exam_questions {validation.checked?.exam_questions ?? "—"}.</div>{!validation.ok&&<pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(validation.issues || [],null,2)}</pre>}</div>}
