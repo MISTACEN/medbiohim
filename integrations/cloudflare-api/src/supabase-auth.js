@@ -1509,7 +1509,18 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
     const rows = await response.json();
     if (!Array.isArray(rows)) throw new Error("Invalid subject plan response");
     const plan = rows[0]?.payload && typeof rows[0].payload === "object" ? rows[0].payload : null;
-    return { ok: true, data: { plan, schedule_count: 0, schedule_sample: [], available: plan !== null } };
+    if (plan === null) return { ok: true, data: { plan: null, schedule_count: 0, schedule_sample: [], available: false } };
+    const scheduleResult = await listSupabaseSchedule(request, env, {
+      from: "2000-01-01",
+      to: "2100-12-31",
+      all_groups: true,
+    }, fetcher);
+    if (!scheduleResult.ok) {
+      return { ok: true, data: { plan, schedule_count: null, schedule_sample: [], available: true, schedule_available: false } };
+    }
+    const subjectName = String(plan.subject || "");
+    const schedule = scheduleResult.data.items.filter((row) => String(row.subject_name || row.subject || "") === subjectName);
+    return { ok: true, data: { plan, schedule_count: schedule.length, schedule_sample: schedule.slice(0, 5), available: true, schedule_available: true } };
   } catch {
     return failure(503, "SUBJECT_PLAN_UNAVAILABLE", "Учебный план предмета временно недоступен");
   }
