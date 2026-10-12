@@ -1,3 +1,14 @@
+## Frontend-to-Worker parity snapshot and groups route — 2026-10-13
+
+- 🟢 Added and deployed authenticated GET /api/v1/groups, used by frontend listGroups(). It selects id/code/name/course_number/admission_year/is_active, treats NULL is_active as active to mirror GroupRepository::listActive(), orders by course_number then code, uses only caller JWT + anon key, and fails closed if Supabase Auth/RLS/query response fails. No service-role credential or write operation is used.
+- 🟢 Verified the deployed shadow route's contract boundary over HTTPS: GET /api/v1/groups without a Bearer token returns 401 UNAUTHORIZED; POST /api/v1/groups returns 405 and Allow: GET, OPTIONS.
+- 🟢 Exact current Worker source and tests: npm test 139/139; npm run build / Wrangler 4.149.0 deploy --dry-run passed (207.60 KiB, 31.07 KiB gzip). Cloudflare Workers Build for commit 6ea5331126d0dcb5b64817f39bfc9b80ea90088a succeeded and deployed shadow.
+- 🟡 No valid student's/admin's JWT was available for a real group-list data/RLS acceptance run in this pass. The live 401/405 checks prove only auth and method routing, not that all intended group rows are visible under current Supabase grants/RLS.
+- 🔴 Static frontend caller review of src/lib/api.ts, content-api.ts, features-api.ts and settings-api.ts found substantial Cloudflare-only cutover gaps still outstanding: group creation/edit/deletion; files/upload/download; community posts; settings and Telegram account linking; presence; planner/attendance; homework create/submit; mini-quiz/check/question reports; trainer feed/answer; preparation-session start/save/finish/review/regrading; tickets/materials/lesson-plan; academic state/sync/AI plan; notes/favorites; subject gradebook; and the administrative APIs. Exact methods/response shapes must be inventoried and implemented in separate passes; this list is a family summary, not proof of the full call graph.
+- 🔒 The attempt start/save/finish handlers remain blocked with 503 TEST_ATTEMPT_SECURITY_NOT_READY, and login/registration remain blocked with 503 RATE_LIMIT_ENFORCEMENT_UNVERIFIED. Do not enable those flows or change Vercel Production routing until the gaps above and role/RLS checks pass.
+
+---
+
 ## API route migration — Pass 18 (2026-10-12; deployed to isolated shadow Worker)
 
 | PHP source | Route | Contract / safety | Shadow status |
