@@ -1293,7 +1293,7 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
     const hwDone = homeworks.filter((row) => doneStatuses.has(String(row.my_status || row.status || "").toLowerCase())).length;
     const finishedStatuses = new Set(["submitted", "finished", "completed", "graded"]);
     const finished = attempts.filter((row) => finishedStatuses.has(String(row.status || "").toLowerCase())).length;
-    const scores = attempts.map((row) => Number(row.score)).filter(Number.isFinite);
+    const scores = attempts.map((row) => row.score).filter((value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value))).map(Number);
     const hwPercent = homeworks.length ? Math.round(hwDone / homeworks.length * 100) : 0;
     const parts = [hwPercent];
     if (attempts.length) parts.push(Math.round(finished / attempts.length * 100));
