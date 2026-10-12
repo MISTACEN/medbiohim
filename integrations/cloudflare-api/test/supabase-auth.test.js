@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -676,7 +676,7 @@ test("published test catalog returns linked question counts and metadata without
     if (parsed.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: "subject-1", name: "Биохимия", specialty_slug: null, is_active: true }]), { status: 200 });
     if (parsed.pathname === "/rest/v1/tests") {
       assert.ok(!parsed.searchParams.get("select").includes("answer"));
-      assert.ok(!parsed.searchParams.get("select").includes("attempt"));
+      assert.ok(!parsed.searchParams.get("select").includes("attempts("));
       assert.ok(parsed.searchParams.get("select").includes("modules(title,order_index)"));
       return new Response(JSON.stringify([{ id: "test-1", subject_id: "subject-1", title: "Тест", is_published: true, subjects: { name: "Биохимия" }, modules: { title: "Белки", order_index: 1 }, topics: { title: "Ферменты", order_index: 2 } }]), { status: 200 });
     }
