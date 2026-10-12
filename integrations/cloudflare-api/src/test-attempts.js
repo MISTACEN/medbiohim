@@ -204,7 +204,7 @@ async function loadTestQuestions(call, testId) {
   return snapshotFromRows(links);
 }
 
-export async function getSupabaseTestDetail(request, env, testId, groupId = "", fetcher = fetch) {
+export async function getSupabaseTestDetail(request, env, testId, groupId = "", fetcher = fetch, includeAnswers = false) {
   const client = await makeRestClient(request, env, fetcher);
   if (!client.ok) return client;
   try {
@@ -228,11 +228,16 @@ export async function getSupabaseTestDetail(request, env, testId, groupId = "", 
       created_at: loaded.test.created_at ?? null,
       questions_count: questions.length,
     };
-    return { ok: true, data: { test, questions: questions.map((question) => publicQuestion(question, false)), group: groupResult.group, source: "supabase" } };
+    return { ok: true, data: { test, questions: questions.map((question) => publicQuestion(question, includeAnswers)), group: groupResult.group, source: "supabase" } };
   } catch (error) {
     return publicAttemptErrors(error, "TEST_UNAVAILABLE", "Тест временно недоступен");
   }
 }
+
+export async function getSupabaseTestBankDetail(request, env, testId, groupId = "", fetcher = fetch) {
+  return getSupabaseTestDetail(request, env, testId, groupId, fetcher, true);
+}
+
 
 export async function listSupabaseMyAttempts(request, env, filters = {}, fetcher = fetch) {
   const client = await makeRestClient(request, env, fetcher);
