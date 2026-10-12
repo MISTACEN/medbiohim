@@ -103,6 +103,36 @@ export default {
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
+    const subjectDetailMatch = new RegExp("^" + API_PREFIX + "/subjects/([^/]+)$").exec(pathname);
+    if (subjectDetailMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let subjectId;
+      try {
+        subjectId = decodeURIComponent(subjectDetailMatch[1]);
+      } catch {
+        return withCors(json({
+          ok: false,
+          error: { code: "VALIDATION_ERROR", message: "Invalid subject id" },
+          requestId: crypto.randomUUID(),
+        }, 422), origin);
+      }
+      const result = await getSupabaseSubjectDetail(request, subjectId, env);
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
     if (pathname === `${API_PREFIX}/search`) {
       if (request.method !== "GET") {
         return withCors(json({
