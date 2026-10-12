@@ -202,3 +202,11 @@ Before implementing a route in Workers, add a row to this worksheet (or an equiv
 - Do not expose answer keys or private trainer data while migrating search/media endpoints.
 - Do not apply database migrations or change live Supabase policies as a side effect of creating the Worker scaffold.
 - No production DNS, webhook, frontend API URL, or Worker route changes during the preparation phase.
+
+
+## Latest deployment + auth parsing correction — 2026-10-12 04:51 UTC
+
+- The shadow Worker is deployed (it is not production traffic): latest active deployment `c056a5cf-1214-4967-ae1f-45cea21a792c`, version `24482903-49ad-423a-8688-93a8702ea267`.
+- The uploaded source includes the fix in `getSupabaseSubjectDetail()` and `listSupabaseSubjects()`: both malformed Bearer regexes now correctly extract the caller JWT before PostgREST calls. See `docs/CLOUDFLARE-SUBJECT-BEARER-FIX-2026-10-12.md`.
+- Cloudflare settings were re-read after upload and both Supabase secrets remained configured. No service-role key, frontend base URL, DNS, or Telegram webhook was changed.
+- Some earlier rows above saying “not deployed” are historical snapshots from before this upload; the current deployment state is recorded here. The route-level live RLS/schema behavior and authenticated HTTP smoke tests are still **unverified**. GitHub Actions remains blocked before steps.
