@@ -73,6 +73,12 @@ test("GET /api/v1/auth/me requires a valid Supabase Bearer token", async () => {
   assert.equal(calls, 0);
 });
 
+test("GET /api/v1/me is a PHP-compatible alias for the authenticated profile bundle", async () => {
+  const response = await worker.fetch(request("/api/v1/me"), {});
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+});
+
 test("POST /api/v1/auth/me is rejected with an explicit allowed method", async () => {
   const response = await worker.fetch(request("/api/v1/auth/me", { method: "POST" }), {});
   assert.equal(response.status, 405);
