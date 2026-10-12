@@ -1,3 +1,11 @@
+## Migrated auth route — Pass 8 (read-only profile bundle; 2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/auth.php` + `UserRepository::profileBundle()` | `GET /api/v1/auth/me` | Validates bearer token with Supabase Auth; reads caller-scoped profile, role and active group memberships through PostgREST using anon key + caller JWT; no service-role key | Helper/route/tests added; live RLS/relationship behavior still needs validation |
+
+The Worker returns the PHP bundle keys `user`, `roles`, `groups`, `current_group`, `course`, and `semester`. Optional profile queries fail back to a minimal identity bundle, matching the PHP route's final fallback shape. Before cutover, confirm actual grants/RLS and PostgREST relationship embedding against staging/live schema. Do not use service-role credentials to make this route pass.
+
 ## Migrated auth route — Pass 7 (partial; 2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
