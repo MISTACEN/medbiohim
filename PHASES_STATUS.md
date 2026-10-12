@@ -1619,3 +1619,18 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟡 Published exam-question bank GET + subject summary, published lecture list/detail, subject catalog and subject-plan reads are implemented; ⬜ remaining routes: modules/materials, mini-quiz and test attempts, trainer feed/media, progress/SRS, academic plan, calculators, community, settings, presence, AI, Telegram admin, imports and admin panels.
 - 🔒 Preserve the existing UI and its translucent Atlas viewer; this is a backend migration, not a redesign. No production frontend switch until tests, RLS, PHP contract parity, and file/media authorization are verified.
 - Next pass: resolve GitHub Actions execution, run Node tests, validate schedule PostgREST filters against real authenticated users, and then implement schedule/homework writes only after confirming safe RLS policies.
+
+
+## Dashboard + schedule migration pass — 2026-10-12
+
+| Work item | Status | Evidence / gate |
+|---|---|---|
+| Dashboard nearest-lesson selection | 🟢 source fixed | Keeps ongoing/upcoming classes today; falls forward to the next day after today's classes end |
+| Dashboard pending homework count | 🟢 source fixed | `returned` and `completed` are not treated as pending |
+| Dashboard API data count | 🟢 source fixed | Published-test list raised from 20 to 200; explicit dashboard summary counts added |
+| Schedule weekday labels | 🟢 source fixed | Double-escaped date regex corrected |
+| Cloudflare versioned admin schedule read/save | 🟡 source + tests authored | `GET/PUT /api/v1/admin/schedule`; caller JWT and RLS; version staged inactive and activated after entries insert |
+| Cloudflare individual schedule entry mutations | 🟡 source + tests authored | Create/PATCH/soft-cancel endpoints; not deployed |
+| Node tests | 🟡 authored, not run | GitHub Actions explicitly left untouched; local execution unavailable in current tool runtime |
+| Live API/Cloudflare smoke test | ⬜ pending | No deployment or production frontend cutover in this pass |
+| Real authenticated editor test | ⬜ pending | Must verify a manager-role account can save and a student is denied |
