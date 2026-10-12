@@ -109,14 +109,14 @@ test("POST /api/v1/auth/me is rejected with an explicit allowed method", async (
   assert.equal(response.headers.get("allow"), "GET, OPTIONS");
 });
 
-test("POST /api/v1/auth/register fails closed until a Cloudflare rate limiter is configured", async () => {
+test("POST /api/v1/auth/register fails closed until rate-limit enforcement is verified", async () => {
   const response = await worker.fetch(request("/api/v1/auth/register", {
     method: "POST",
     headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.11" },
     body: JSON.stringify({ email: "student@example.com", password: "password123", full_name: "Student" }),
   }), {});
   assert.equal(response.status, 503);
-  assert.equal((await response.json()).error.code, "RATE_LIMIT_NOT_CONFIGURED");
+  assert.equal((await response.json()).error.code, "RATE_LIMIT_ENFORCEMENT_UNVERIFIED");
 });
 
 test("registration rejects attempts denied by the Cloudflare rate limiter before auth", async () => {
@@ -126,6 +126,7 @@ test("registration rejects attempts denied by the Cloudflare rate limiter before
     headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.11" },
     body: JSON.stringify({ email: "student@example.com", password: "password123", full_name: "Student" }),
   }), {
+    AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED: "true",
     AUTH_REGISTER_LIMITER: { limit: async ({ key }) => { calls += 1; assert.equal(key, "203.0.113.11"); return { success: false }; } },
   });
   assert.equal(response.status, 429);
@@ -133,7 +134,7 @@ test("registration rejects attempts denied by the Cloudflare rate limiter before
   assert.equal(calls, 1);
 });
 
-test("POST /api/v1/auth/login fails closed until a Cloudflare rate limiter is configured", async () => {
+test("POST /api/v1/auth/login fails closed until rate-limit enforcement is verified", async () => {
   const response = await worker.fetch(request("/api/v1/auth/login", {
     method: "POST",
     headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
@@ -150,6 +151,7 @@ test("login rejects attempts denied by the Cloudflare rate limiter before auth",
     headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
     body: JSON.stringify({ email: "student@example.com", password: "password123" }),
   }), {
+    AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED: "true",
     AUTH_LOGIN_LIMITER: { limit: async ({ key }) => { calls += 1; assert.equal(key, "203.0.113.10"); return { success: false }; } },
   });
   assert.equal(response.status, 429);
