@@ -1061,7 +1061,7 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
         my_submission: submission,
       };
     });
-    const groups = memberships.map((row) => Array.isArray(row.groups) ? row.groups[0] : row.groups).filter(Boolean);
+    const groups = activeMemberships.map((row) => { const group = Array.isArray(row.groups) ? row.groups[0] : row.groups; return group ? { ...group, group_id: String(row.group_id || group.id || ""), group_name: group.name || "" } : null; }).filter(Boolean);
     return { ok: true, data: { items, groups } };
   } catch {
     return failure(503, "HOMEWORK_UNAVAILABLE", "Задания временно недоступны");
