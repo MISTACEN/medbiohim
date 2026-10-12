@@ -913,12 +913,20 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
     }
 
     const groupIds = selectedGroups.map((row) => row.group_id);
-    const schedules = await rows("schedules", {
-      select: "id,group_id,semester,academic_year,academic_year_id,is_active",
+    const allSchedules = await rows("schedules", {
+      select: "id,group_id,semester,academic_year,academic_year_id,is_active,version,created_at",
       group_id: "in.(" + groupIds.join(",") + ")",
       is_active: "eq.true",
-      limit: "200",
+      limit: "500",
     });
+    const latestByGroupSemester = new Map();
+    for (const schedule of allSchedules.sort((a, b) =>
+      Number(b.version || 0) - Number(a.version || 0)
+      || String(b.created_at || "").localeCompare(String(a.created_at || "")))) {
+      const key = String(schedule.group_id || "") + ":" + String(schedule.semester ?? "");
+      if (!latestByGroupSemester.has(key)) latestByGroupSemester.set(key, schedule);
+    }
+    const schedules = [...latestByGroupSemester.values()];
     if (!schedules.length) return { ok: true, data: { items: [], groups: selectedGroups.map((row) => row.group), from, to } };
     const scheduleIds = schedules.map((row) => String(row.id)).filter(Boolean);
     const entries = await rows("schedule_entries", {
@@ -944,15 +952,28 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
     const items = entries.map((entry) => {
       const schedule = scheduleMap.get(String(entry.schedule_id)) || {};
       const subject = subjectMap.get(String(entry.subject_id || "")) || {};
+      const group = groupMap.get(String(schedule.group_id || "")) || null;
+      const dateValue = String(entry.date || "");
+      let weekdayShort = "";
+      if (/^\\d{4}-\\d{2}-\\d{2}$/.test(dateValue)) {
+        weekdayShort = new Date(dateValue + "T12:00:00Z").toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
+      }
       return {
         ...entry,
         subject: subject.name || entry.subject_name || "",
+        subject_name: subject.name || entry.subject_name || "",
         subject_slug: subject.slug || "",
         color_hex: subject.color_hex || null,
         group_id: schedule.group_id || null,
-        group: groupMap.get(String(schedule.group_id || "")) || null,
+        group_name: group?.group_name || group?.name || "",
+        group_code: group?.code || "",
+        course_number: group?.course_number ?? null,
+        group,
         semester: schedule.semester ?? null,
         academic_year: schedule.academic_year ?? null,
+        academic_year_id: schedule.academic_year_id ?? null,
+        version: schedule.version ?? null,
+        weekday_short: weekdayShort,
       };
     });
     return { ok: true, data: { items, groups: selectedGroups.map((row) => row.group), from, to } };
