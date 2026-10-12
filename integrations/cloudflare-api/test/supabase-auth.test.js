@@ -515,3 +515,67 @@ test("search rejects invalid type and maps Supabase RLS failures to a generic se
   assert.equal(denied.status, 503);
   assert.equal(denied.message, "Поиск временно недоступен");
 });
+
+
+test("subject detail requires an authenticated caller and validates the subject id", async () => {
+  const request = new Request("https://worker.example/api/v1/subjects/subject-1");
+  const unauthenticated = await getSupabaseSubjectDetail(request, "subject-1", configured, async () => {
+    throw new Error("should not be called");
+  });
+  assert.equal(unauthenticated.status, 401);
+  const invalid = await getSupabaseSubjectDetail(
+    new Request("https://worker.example/api/v1/subjects/subject-1", { headers: { authorization: "Bearer valid-token" } }),
+    "../users",
+    configured,
+    async () => new Response(JSON.stringify({ id: "user-1", email: "student@example.com" }), { status: 200 })
+  );
+  assert.equal(invalid.status, 422);
+});
+
+test("subject detail queries only with the caller JWT and returns the PHP-compatible subject/modules shape", async () => {
+  const calls = [];
+  const request = new Request("https://worker.example/api/v1/subjects/subject-1", {
+    headers: { authorization: "Bearer valid-token" },
+  });
+  const result = await getSupabaseSubjectDetail(request, "subject-1", configured, async (url, init) => {
+    const parsed = new URL(url);
+    calls.push({ url: parsed, init });
+    if (parsed.pathname === "/auth/v1/user") {
+      return new Response(JSON.stringify({ id: "user-1", email: "student@example.com" }), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/subjects") {
+      return new Response(JSON.stringify([{ id: "subject-1", name: "Histology", is_active: true }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/modules") {
+      return new Response(JSON.stringify([{ id: "module-1", title: "Cell", sort_order: 1 }]), { status: 200 });
+    }
+    throw new Error("unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.subject.name, "Histology");
+  assert.deepEqual(result.data.modules, [{ id: "module-1", title: "Cell", sort_order: 1 }]);
+  const restCalls = calls.filter((call) => call.url.pathname.startsWith("/rest/v1/"));
+  assert.equal(restCalls.length, 2);
+  for (const call of restCalls) {
+    assert.equal(call.init.headers.authorization, "Bearer valid-token");
+    assert.equal(call.init.headers.apikey, configured.SUPABASE_ANON_KEY);
+  }
+});
+
+test("subject detail returns 404 for missing subjects and 503 when RLS denies reads", async () => {
+  const request = new Request("https://worker.example/api/v1/subjects/subject-1", {
+    headers: { authorization: "Bearer valid-token" },
+  });
+  const missing = await getSupabaseSubjectDetail(request, "subject-1", configured, async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    return new Response("[]", { status: 200 });
+  });
+  assert.equal(missing.status, 404);
+  const denied = await getSupabaseSubjectDetail(request, "subject-1", configured, async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    return new Response("denied", { status: 403 });
+  });
+  assert.equal(denied.status, 503);
+});
