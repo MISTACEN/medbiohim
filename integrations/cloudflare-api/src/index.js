@@ -1,4 +1,4 @@
-import { getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -188,6 +188,40 @@ export default {
       const selectedGroup = result.data.groups.find((group) => group.group_id === requestedGroup)
         || (result.data.groups.length === 1 ? result.data.groups[0] : null);
       return withCors(success({ items: result.data.items, group: selectedGroup }), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/questions/subjects`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseQuestionSubjects(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/questions`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const params = url.searchParams;
+      const result = await listSupabaseExamQuestions(request, env, {
+        subject: params.get("subject") || "",
+        subject_slug: params.get("subject_slug") || "",
+        subject_id: params.get("subject_id") || "",
+        kind: params.has("kind") ? params.get("kind") : "ticket",
+        type: params.get("type") || "",
+        topic: params.get("topic") || "",
+        q: params.get("q") || "",
+        limit: params.get("limit") || "50",
+        offset: params.get("offset") || "0",
+        include_answer: params.get("include_answer") || "",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
     }
 
     if (pathname === `${API_PREFIX}/tests`) {
