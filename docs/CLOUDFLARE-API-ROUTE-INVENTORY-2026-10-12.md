@@ -210,3 +210,13 @@ Before implementing a route in Workers, add a row to this worksheet (or an equiv
 - The uploaded source includes the fix in `getSupabaseSubjectDetail()` and `listSupabaseSubjects()`: both malformed Bearer regexes now correctly extract the caller JWT before PostgREST calls. See `docs/CLOUDFLARE-SUBJECT-BEARER-FIX-2026-10-12.md`.
 - Cloudflare settings were re-read after upload and both Supabase secrets remained configured. No service-role key, frontend base URL, DNS, or Telegram webhook was changed.
 - Some earlier rows above saying “not deployed” are historical snapshots from before this upload; the current deployment state is recorded here. The route-level live RLS/schema behavior and authenticated HTTP smoke tests are still **unverified**. GitHub Actions remains blocked before steps.
+
+
+## Write migration — homework progress (2026-10-12)
+
+- Added a shadow-only handler for `POST /api/v1/homeworks/{id}/progress` in `integrations/cloudflare-api/src/index.js`.
+- The helper validates the caller with Supabase Auth, loads the homework under the caller JWT/RLS, checks active membership in that homework's group, then upserts only the caller's `homework_progress` row. It does not accept a client-supplied user ID and does not use a service-role key.
+- Request body: JSON object with boolean `done`. The body is capped at 8 KiB. Invalid methods and malformed bodies fail closed.
+- Added regression cases for successful own-user write and rejection when the caller is not an active member of the homework's group.
+- Commits: `ff6f9b8` helper, `10e1c71` route, `30dd5a7` tests, `c696600` Bearer parsing correction.
+- **Not deployed to Cloudflare yet.** GitHub Actions runs for commit `30dd5a7` failed in about four seconds with no steps/logs; the current CI allocation issue remains unresolved. The latest Bearer parsing correction is newer than those runs, so it has not been validated by CI. Do not route production traffic to this endpoint until CI executes and Supabase staging verifies the `homework_progress` upsert/RLS behavior.
