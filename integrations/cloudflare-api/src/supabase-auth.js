@@ -522,3 +522,163 @@ export async function getSupabaseProfileBundle(request, env, fetcher = fetch) {
     },
   };
 }
+
+export async function searchSupabaseContent(request, env, options = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
+  const query = String(options.q ?? "").trim();
+  const limit = Math.max(1, Math.min(100, Number.parseInt(String(options.limit ?? "30"), 10) || 30));
+  const subjectSlug = String(options.subject_slug ?? "").trim() || null;
+  const subjectId = String(options.subject_id ?? "").trim() || null;
+  const type = String(options.type ?? "").trim() || null;
+  const needle = query.toLocaleLowerCase();
+  if (!query) {
+    return { ok: true, data: { query: "", total: 0, items: [], facets: { subjects: [], types: {} } } };
+  }
+  if (query.length > 200 || (type && !["question", "ticket", "trainer", "subject", "plan"].includes(type))) {
+    return failure(422, "VALIDATION_ERROR", "Invalid search query or type");
+  }
+
+  const authorization = request.headers.get("authorization") || "";
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+  const token = match?.[1] || "";
+  let base;
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  try {
+    base = new URL(String(env.SUPABASE_URL || "").trim());
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  async function rows(table, params) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    let response;
+    try {
+      response = await fetcher(endpoint.toString(), {
+        method: "GET",
+        headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+        redirect: "error",
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      });
+    } catch {
+      throw new Error("SEARCH_UPSTREAM_ERROR");
+    }
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error("SEARCH_ACCESS_DENIED");
+      throw new Error("SEARCH_UPSTREAM_ERROR");
+    }
+    const payload = await response.json().catch(() => null);
+    if (!Array.isArray(payload)) throw new Error("SEARCH_UPSTREAM_ERROR");
+    return payload;
+  }
+
+  const matchesSubject = (slug, rowId) => subjectId !== null
+    ? String(rowId ?? "") === subjectId
+    : subjectSlug === null || String(slug ?? "") === subjectSlug;
+  const score = (title, topic) => {
+    const t = String(title || "").toLocaleLowerCase();
+    const p = String(topic || "").toLocaleLowerCase();
+    let value = 1;
+    if (t === needle) value += 5;
+    if (t.startsWith(needle)) value += 2.5;
+    if (t.includes(needle)) value += 1.5;
+    if (p && p.includes(needle)) value += 0.8;
+    return Math.round(value * 10000) / 10000;
+  };
+  const hit = (id, title, snippet, subject, slug, topic, itemType, hasAnswer, itemScore, href, answer = null) => ({
+    id, title: String(title || "").slice(0, 140),
+    snippet: String(snippet || "").replace(/\s+/gu, " ").slice(0, 280),
+    subject, subject_slug: slug, topic, type: itemType, score: itemScore, has_answer: hasAnswer,
+    answer: answer && String(answer).trim() ? String(answer).trim().slice(0, 5000) : null, href,
+  });
+
+  try {
+    const subjects = await rows("subjects", { is_active: "eq.true", select: "id,name,slug,description", order: "name.asc", limit: 500 });
+    const subjectById = new Map(subjects.map((s) => [String(s.id ?? ""), s]));
+    const hits = [];
+
+    if (!type || type === "question") {
+      const data = await rows("questions", { is_published: "eq.true", archived_at: "is.null", select: "id,subject_id,topic,text,answer", order: "created_at.desc", limit: 1000 });
+      for (const row of data) {
+        const subject = subjectById.get(String(row.subject_id ?? "")) || {};
+        const slug = String(subject.slug ?? "");
+        if (!matchesSubject(slug, row.subject_id)) continue;
+        const title = String(row.text ?? "").trim();
+        const topic = String(row.topic ?? "").trim();
+        if (!(title + " " + topic).toLocaleLowerCase().includes(needle)) continue;
+        hits.push(hit("q-" + row.id, title, title, subject.name || "Без предмета", slug, topic, "question", Boolean(row.answer), score(title, topic), slug ? "/subjects/" + encodeURIComponent(slug) + "?tab=practice" : "/practice", String(row.answer ?? "").trim()));
+      }
+    }
+    if (!type || type === "ticket") {
+      const data = await rows("exam_questions", { is_published: "eq.true", select: "id,subject_id,subject_name,subject_slug,topic,text,answer", order: "created_at.desc", limit: 1000 });
+      for (const row of data) {
+        const slug = String(row.subject_slug ?? "").trim();
+        if (!matchesSubject(slug, row.subject_id)) continue;
+        const title = String(row.text ?? "").trim();
+        const topic = String(row.topic ?? "").trim();
+        if (!(title + " " + topic + " " + String(row.subject_name ?? "")).toLocaleLowerCase().includes(needle)) continue;
+        hits.push(hit("t-" + row.id, title, title, row.subject_name || "Без предмета", slug, topic, "ticket", Boolean(row.answer), score(title, topic), slug ? "/subjects/" + encodeURIComponent(slug) + "?tab=tickets" : "/tickets", String(row.answer ?? "").trim()));
+      }
+    }
+    if (!type || type === "trainer") {
+      const data = await rows("trainer_feed_cards", { is_published: "eq.true", select: "id,subject_id,subject_slug,specialty_slug,preparation,question,tags", order: "created_at.desc", limit: 1000 });
+      for (const row of data) {
+        const slug = String(row.subject_slug ?? "").trim();
+        if (!matchesSubject(slug, row.subject_id) || (slug === "histology" && String(row.specialty_slug || "mbh") !== "mbh")) continue;
+        const prep = row.preparation && typeof row.preparation === "object" ? row.preparation : {};
+        const q = row.question && typeof row.question === "object" ? row.question : {};
+        const tags = Array.isArray(row.tags) ? row.tags.map(String) : [];
+        const title = String(prep.name || q.prompt || "Тренажёр").trim();
+        const topic = tags.join(", ");
+        if (!(title + " " + String(q.prompt || "") + " " + topic).toLocaleLowerCase().includes(needle)) continue;
+        hits.push(hit("r-" + row.id, title, String(q.prompt || title).trim(), slug === "histology" ? "Гистология, цитология" : (slug || "Тренажёр"), slug, topic, "trainer", false, score(title, topic), slug ? "/trainers/feed/" + encodeURIComponent(slug) : "/trainers"));
+      }
+    }
+    if (!type || type === "subject") {
+      for (const subject of subjects) {
+        const name = String(subject.name ?? "").trim();
+        const slug = String(subject.slug ?? "").trim();
+        if (!matchesSubject(slug, subject.id) || !(name + " " + String(subject.description ?? "")).toLocaleLowerCase().includes(needle)) continue;
+        hits.push(hit("s-" + subject.id, name, subject.description || name, name, slug, "", "subject", false, Math.round((score(name, "") + 0.2) * 10000) / 10000, "/subjects/" + encodeURIComponent(String(subject.id))));
+      }
+    }
+    if (!type || type === "plan") {
+      try {
+        const plans = await rows("site_content", { key: "like.subject_plan:*", select: "key,payload", limit: 500 });
+        for (const row of plans) {
+          const payload = row.payload && typeof row.payload === "object" ? row.payload : {};
+          const slug = String(payload.subject_slug || String(row.key || "").replace(/^subject_plan:/, "")).trim();
+          if (!matchesSubject(slug, payload.subject_id)) continue;
+          const subjectName = String(payload.subject || slug).trim();
+          if (!(subjectName + " " + JSON.stringify(payload)).toLocaleLowerCase().includes(needle)) continue;
+          hits.push(hit("p-" + slug, subjectName + " · Учебный план", "Учебный план предмета " + subjectName, subjectName, slug, "", "plan", false, score(subjectName, ""), slug ? "/subjects/" + encodeURIComponent(slug) + "?tab=plan" : "/subjects"));
+        }
+      } catch {
+        // Like the PHP implementation, plan content is optional for search availability.
+      }
+    }
+    hits.sort((a, b) => b.score - a.score);
+    const items = hits.slice(0, limit);
+    const subjectFacet = new Map();
+    const typeFacet = {};
+    for (const item of items) {
+      if (item.subject_slug) {
+        const old = subjectFacet.get(item.subject_slug) || { subject: item.subject, subject_slug: item.subject_slug, count: 0 };
+        old.count += 1;
+        subjectFacet.set(item.subject_slug, old);
+      }
+      typeFacet[item.type] = (typeFacet[item.type] || 0) + 1;
+    }
+    return { ok: true, data: { query, total: items.length, items, facets: { subjects: [...subjectFacet.values()], types: typeFacet } } };
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    return code === "SEARCH_ACCESS_DENIED"
+      ? failure(503, "SEARCH_ERROR", "Поиск временно недоступен")
+      : failure(503, "SEARCH_ERROR", "Поиск временно недоступен");
+  }
+}
