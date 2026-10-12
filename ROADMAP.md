@@ -1,3 +1,13 @@
+## Cloudflare failover hardening — 2026-10-13 (continued)
+
+- Fixed a missing server-side `isCanonicalAdminRequest()` verifier in the Vercel API proxy. Without this helper, the admin transport-diagnostics path could not compile. It validates the bearer token with Supabase Auth and checks `user_roles → roles.code` using the caller JWT/RLS; metadata supplied by the client is not trusted.
+- Added a hard HTTPS guard for `SPACEWEB_API_ORIGIN`. The proxy now refuses a plaintext HTTP backend origin instead of forwarding bearer tokens or private payloads to it.
+- Added a regression test that checks the admin-only diagnostics contract and the HTTPS guard. The change is in commit `075a666ebcfd4ce4a25f4d8d272a6dd18c75552d`; the guard fix is in `1a7a2ffc65cfd6b0e073bad351a9a24752af02ff`.
+- The Vercel Preview flag `MEDBIOHIM_CF_FIRST` remains off unless explicitly configured. No environment variables or production aliases were changed.
+- The active Cloudflare Worker remains behind the latest GitHub source. Its live bundle still needs a controlled full-module redeploy; do not claim source/deployment parity or cut over production until smoke checks pass.
+- Verification caveat: the GitHub combined commit status endpoint returned no statuses for the test commit at the time of review; this is not proof that CI passed. Continue to inspect the actual workflow jobs/logs.
+- Next: ensure the new Node test itself passes, confirm GitHub Actions actually allocates runners, run `npm run test:api-failover`, `cd integrations/cloudflare-api && npm test`, typecheck/build, and then test the shadow Worker over HTTPS. Only after that enable the Preview flag and test as student/admin accounts.
+
 ## Cloudflare ZIP review + Cloudflare-first preview test mode — 2026-10-12 (updated)
 
 - 🟢 Cloudflare-first proxy mode and admin-only transport diagnostics are implemented in source. `MEDBIOHIM_CF_FIRST` defaults to off; no Vercel Preview or Production environment variables have been changed.
