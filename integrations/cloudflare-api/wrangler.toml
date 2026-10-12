@@ -8,6 +8,13 @@ workers_dev = true
 enabled = true
 head_sampling_rate = 1
 
+[observability.logs]
+enabled = true
+invocation_logs = false
+head_sampling_rate = 1
+persist = true
+destinations = ["cloudflare"]
+
 # Deliberately isolated from production. This Worker is a shadow scaffold:
 # it does not replace the SpaceWeb PHP API and does not proxy requests to it.
 [vars]
