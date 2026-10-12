@@ -74,7 +74,7 @@ test("schedule entry delete cancels the row rather than breaking history links",
     new Request("https://worker.example/api/v1/schedule/entries/" + entryId, { headers: { authorization: "Bearer valid-token" } }),
     configured, "delete", entryId, null,
     mockedFetch((url, init) => {
-      if (url.pathname === "/rest/v1/schedule_entries" && init.method === "GET") return new Response(JSON.stringify([{ id: entryId, schedule_id: scheduleId }]), { status: 200 });
+      if (url.pathname === "/rest/v1/schedule_entries" && !init.method) return new Response(JSON.stringify([{ id: entryId, schedule_id: scheduleId }]), { status: 200 });
       if (url.pathname === "/rest/v1/schedules") return new Response(JSON.stringify([{ id: scheduleId, is_active: true }]), { status: 200 });
       if (url.pathname === "/rest/v1/schedule_entries" && init.method === "PATCH") {
         assert.deepEqual(JSON.parse(init.body), { is_cancelled: true });
