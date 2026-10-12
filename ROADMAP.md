@@ -2422,3 +2422,14 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Not contract-complete: PHP also creates a DB profile and assigns the default student role. This remains blocked on RLS/database write strategy review.
 - 🟡 Test cases are authored but not verified by a successful full Node/GitHub Actions run.
 - 🔒 Production stays on SpaceWeb; no frontend URL, DNS, database policy or Telegram webhook changed.
+
+
+## Histology archive integration — 2026-10-12
+
+- 🟢 Audited the user-provided `content.zip`: 444 entries (~202.46 MiB), 178 preparation-photo paths, 33 canonical electronogram paths, 33 legacy `em/` paths, 28 caption-map topics and 52 DOCX source documents.
+- 🟢 Updated `tools/import_histology_media.py` to accept both legacy `features.zip` and the uploaded `content.zip` layout, decode legacy `#UXXXX` filenames, preserve canonical and compatibility paths, emit a SHA-256 manifest, and reject conflicting normalized paths.
+- 🟢 Added `tools/test_import_histology_media.py` with path normalization, traversal rejection, duplicate, alias and conflict cases; connected these tests to the optional-integrations GitHub Actions workflow.
+- 🟢 Generated a separate SpaceWeb media deployment archive with 178 photos, 33 canonical electronogram paths, 33 `em/` aliases and the 28-topic caption maps. Binary assets are intentionally not committed to Git.
+- 🟡 The new importer tests still need a confirmed CI or local run; GitHub runner allocation has previously failed before any step.
+- 🔒 No Supabase data, trainer-card records, DNS, frontend API base URL or live SpaceWeb files were changed by this archive preparation.
+- 📄 Details: `docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md`.
