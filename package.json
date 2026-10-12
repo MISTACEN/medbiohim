@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "predeploy:audit": "node scripts/predeploy-audit.mjs"
+    "predeploy:audit": "node scripts/predeploy-audit.mjs",
+    "test:api-failover": "node --test test/api-failover.test.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",
