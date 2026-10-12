@@ -693,6 +693,37 @@ test("published test catalog returns linked question counts and metadata without
 });
 
 
+test("published tests are filtered by the caller's active group specialties", async () => {
+  const result = await listSupabasePublishedTests(request("Bearer valid-user-token"), configured, { limit: "20" }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", specialty_slug: "mbh", is_active: true } }]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/subjects") {
+      return new Response(JSON.stringify([
+        { id: "subject-mbh", name: "Биохимия", specialty_slug: "mbh", is_active: true },
+        { id: "subject-histology", name: "Гистология", specialty_slug: "histology", is_active: true },
+        { id: "subject-other", name: "Чужой предмет", specialty_slug: "nursing", is_active: true },
+      ]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/tests") {
+      return new Response(JSON.stringify([
+        { id: "test-mbh", subject_id: "subject-mbh", title: "МБХ" },
+        { id: "test-other", subject_id: "subject-other", title: "Чужой тест" },
+        { id: "test-global", subject_id: null, title: "Общий тест" },
+      ]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/test_questions") {
+      assert.equal(parsed.searchParams.get("test_id"), "in.(test-mbh,test-global)");
+      return new Response(JSON.stringify([{ test_id: "test-mbh", order_index: 0 }]), { status: 200 });
+    }
+    throw new Error("unexpected path " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.items.map((item) => item.id), ["test-mbh", "test-global"]);
+});
+
 test("dashboard CMS read returns site defaults plus saved announcements", async () => {
   const result = await getSupabaseSiteContent(request("Bearer valid-user-token"), configured, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
