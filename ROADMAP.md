@@ -2493,3 +2493,17 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Published exam-question bank GET + subject summary, published lecture list/detail, subject catalog and subject-plan reads are implemented; ⬜ remaining routes: modules/materials, mini-quiz and test attempts, trainer feed/media, progress/SRS, academic plan, calculators, community, settings, presence, AI, Telegram admin, imports and admin panels.
 - 🔒 Preserve the existing UI and its translucent Atlas viewer; this is a backend migration, not a redesign. No production frontend switch until tests, RLS, PHP contract parity, and file/media authorization are verified.
 - Next pass: resolve GitHub Actions execution, run Node tests, validate schedule PostgREST filters against real authenticated users, and then implement schedule/homework writes only after confirming safe RLS policies.
+
+
+## Cloudflare API — Dashboard + schedule mutation pass (2026-10-12)
+
+- 🟢 Dashboard frontend: fixed the “Ближайшее занятие” selector so it shows lessons that are still in progress/upcoming today; if today's lessons have all ended, it now shows the next future date instead of stale past lessons.
+- 🟢 Dashboard frontend: returned/completed homework statuses are no longer counted as active/pending tasks.
+- 🟢 Dashboard API source: the published-test list used by the dashboard is raised from 20 to the current endpoint cap of 200, matching the live catalog size rather than silently truncating after 20.
+- 🟢 Dashboard API source: adds explicit summary counts for upcoming lessons, pending/completed homework and available tests; each unavailable source remains `null`/degraded rather than inventing zeroes.
+- 🟢 Fixed a double-escaped date regex that prevented schedule entries from receiving the weekday label.
+- 🟢 Added source-only Cloudflare API routes for the versioned schedule editor: `GET /api/v1/admin/schedule?group_id=&semester=` and `PUT /api/v1/admin/schedule`. Save creates a new inactive schedule version, inserts the full entry set, activates it only after the entries are written, then deactivates the previous active version. It uses the caller JWT/anon key and the existing RLS manager policies; no service-role key.
+- 🟢 Added granular schedule entry source routes: `POST /api/v1/schedule/entries`, `PATCH /api/v1/schedule/entries/{id}`, `DELETE /api/v1/schedule/entries/{id}`. Delete is a soft cancellation to preserve homework/history references. These routes remain guarded by Supabase RLS and are source-only.
+- 🟡 Added Node tests for schedule versioning and granular mutation authorization/validation. **Not executed in this environment**; GitHub Actions were deliberately not touched per current instruction.
+- 🔒 No Supabase schema/RLS changes, production API base URL switch, or Cloudflare deployment was performed in this pass. Existing PHP/SpaceWeb API remains active.
+- ⬜ Before deployment: run `npm test` locally/when a runner is available; confirm the live manager-role/RLS behavior; test partial-failure recovery and schedule-version activation; compare the admin editor payload with the actual PHP UI. Then upload all three Worker modules and smoke-test shadow endpoints.
