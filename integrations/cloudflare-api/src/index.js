@@ -170,7 +170,10 @@ export default {
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
-      return withCors(success(result.data), origin);
+      const requestedGroup = url.searchParams.get("group_id") || "";
+      const selectedGroup = result.data.groups.find((group) => group.group_id === requestedGroup)
+        || (result.data.groups.length === 1 ? result.data.groups[0] : null);
+      return withCors(success({ items: result.data.items, group: selectedGroup }), origin);
     }
 
     if (pathname === `${API_PREFIX}/tests`) {
