@@ -1665,3 +1665,20 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 | AI semantic grading/regrade | ⬜ Not migrated | Keep distinct from deterministic MCQ/exact-match fallback |
 | Runtime tests | 🟡 Authored, not executed | Clone blocked by unavailable network; GitHub Actions intentionally untouched |
 | Shadow deployment / frontend cutover | ⬜ Not performed | Current PHP/SpaceWeb backend remains active |
+
+
+## Progress + tests/question bank — update 2026-10-12
+
+| Work item | Status | Notes |
+|---|---|---|
+| Dashboard next lesson + homework counts | 🟢 Source fixed | Skips already-ended lessons; returned homework remains requiring student follow-up |
+| Progress aggregates and UI | 🟡 Source + tests authored | Caller/group-scoped homeworks and attempts; no fake zero metric when average/activity is absent |
+| Published test catalog | 🟢 Source updated | Filters subject-bound tests by caller-visible subjects; adds subject/module/topic/source metadata and linked-question counts |
+| Test detail `GET /tests/{uuid}` | 🟡 Source + tests authored | Removes correct-choice flags and answer text from its response |
+| Curriculum map `GET /tests/curriculum-map` | 🟡 Source + tests authored | Group, course/specialty, modules/topics, published question/test counts, planned dates |
+| Chemistry bank `GET /tests/chemistry-master` | 🟡 Source + tests authored | Live document read, kind/formula/search filters and pagination; live document contains 436 entries |
+| Full-bank progress `GET /tests/{id}/bank-progress` | 🟡 Source + tests authored | Published-question total and own sequential session/result summary |
+| Attempt history `GET /my/attempts` | 🟡 Source + tests authored | Own-user and active-group scope; safe projection excludes question snapshot |
+| Test attempt start/save/finish | 🔒 Not enabled on Worker | Needs narrow RPCs / grants to prevent clients changing score/status and to keep snapshots out of the exposed REST projection |
+| Node tests and end-to-end runtime | 🟡 Not run | 12 JS modules/tests passed static syntax parsing only; no npm test / live HTTP confirmation |
+| Worker deployment and frontend cutover | ⬜ Not performed | Existing PHP/SpaceWeb backend remains production |
