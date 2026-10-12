@@ -63,3 +63,13 @@ test("falls back to SpaceWeb when shared-homework attachments are explicitly uns
   assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/homeworks"), res(503, "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED")), true);
   assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/homeworks"), res(503, "DB_UNAVAILABLE")), false);
 });
+
+
+test("Cloudflare-only mode is explicit and ignores the retired SpaceWeb origin", async () => {
+  const fs = await import("node:fs/promises");
+  const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
+  assert.match(route, /process\.env\.MEDBIOHIM_API_MODE === "cloudflare"/);
+  assert.match(route, /API_MODE === "cloudflare" \? undefined : process\.env\.SPACEWEB_API_ORIGIN/);
+  assert.match(route, /API_MODE === "cloudflare" \|\| process\.env\.MEDBIOHIM_CF_FIRST === "true"/);
+  assert.match(route, /if \(safeRead && UPSTREAM && isHttpsOrigin\(UPSTREAM\)\)/);
+});
