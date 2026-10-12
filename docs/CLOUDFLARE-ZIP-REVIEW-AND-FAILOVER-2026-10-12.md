@@ -47,3 +47,14 @@ The uploaded `medbiohim-cloudflare-api.zip` is useful as a feature-rich candidat
 - Added 7 router-level tests and updated `CUTOVER.md`/review notes to mark the archive **not cutover-ready** while R2, rate limiting, live RLS and deployment-bundle mismatches remain.
 - This is a corrected downloadable candidate package, not proof the same files are deployed or fully merged into `integrations/cloudflare-api` on GitHub.
 - Latest GitHub Actions inspection: all four recent workflows on commit `31cbdf6929bdf04778ac6361dd0ff555c830f0f0` failed before any steps; the inspected jobs had `runner_id=0`, no runner name and an empty steps array. The workflow has been extended to run the Worker suite once runners execute, but no successful CI result exists yet.
+
+
+## Follow-up hardening — 2026-10-13
+
+- The Vercel proxy was refactored to import `isHttpsOrigin` and `shouldFallbackFromCloudflare` from `src/lib/api-failover.mjs`, but the admin diagnostic helper `isCanonicalAdminRequest` had not been restored in the route file. That left a compile-time/runtime build blocker. The server-side helper has now been restored; it validates the caller token with Supabase Auth and resolves the admin role using `user_roles → roles.code` with the caller JWT and RLS.
+- Added a hard HTTPS-only guard for `SPACEWEB_API_ORIGIN` before any request is forwarded. A plaintext origin now fails closed with `INSECURE_BACKEND_ORIGIN`, rather than sending bearer tokens or private request payloads over HTTP.
+- Added regression coverage to `test/api-failover.test.mjs` for the server-side role check and HTTPS guard. This test has been committed but is **not yet reported as executed successfully**; the repository's recent combined-status lookup returned no statuses.
+- Updated `integrations/cloudflare-api/README.md` to distinguish the Worker itself (which does not proxy to SpaceWeb) from the optional Vercel proxy fallback.
+- Direct inspection of the Cloudflare API confirms the active `medbiohim-api-shadow` bundle contains only `src/index.js` and `src/supabase-auth.js`, whereas current GitHub `main` imports additional modules such as schedule mutations, admin schedule and test-attempt handlers. A full source/bundle parity deployment is still required.
+- Attempts to smoke-test `https://medbiohim-api-shadow.ryazansevegor.workers.dev` from the connected execution environment are blocked by that environment's outbound-request policy (403 “requests ... are not allowed”). This is not evidence that the Worker itself returns 403 to users.
+- No Worker deployment, R2 change, Vercel environment-variable change, production alias change, or Supabase schema/policy change was made.
