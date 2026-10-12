@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseProfileBundle, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseProfileBundle, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -11,6 +11,58 @@ const configured = {
   SUPABASE_URL: "https://project-id.supabase.co",
   SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
 };
+
+test("subjects list uses the caller JWT and filters specialty-scoped subjects by active group", async () => {
+  const seen = [];
+  const result = await listSupabaseSubjects(request("Bearer valid-user-token"), configured, { course: "2", semester: "3" }, async (url, init) => {
+    seen.push({ url: String(url), authorization: init.headers.authorization });
+    if (String(url).includes("/auth/v1/user")) {
+      return new Response(JSON.stringify({ id: "user-1", email: "student@example.com" }), { status: 200 });
+    }
+    if (String(url).includes("/rest/v1/group_memberships")) {
+      return new Response(JSON.stringify([{ groups: { specialty_slug: "mbh" } }]), { status: 200 });
+    }
+    if (String(url).includes("/rest/v1/subjects")) {
+      const parsed = new URL(String(url));
+      assert.equal(parsed.searchParams.get("course_number"), "eq.2");
+      assert.equal(parsed.searchParams.get("semester"), "eq.3");
+      return new Response(JSON.stringify([
+        { id: "1", slug: "histology", specialty_slug: "histology", name: "Гистология" },
+        { id: "2", slug: "anatomy", specialty_slug: "mbh", name: "Анатомия" },
+        { id: "3", slug: "other", specialty_slug: "nursing", name: "Другой профиль" },
+        { id: "4", slug: "general", specialty_slug: null, name: "Общий предмет" },
+      ]), { status: 200 });
+    }
+    throw new Error("unexpected endpoint");
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.items.map((item) => item.id), ["1", "2", "4"]);
+  assert.equal(seen.length, 3);
+  assert.ok(seen.every((call) => call.authorization === "Bearer valid-user-token"));
+});
+
+test("subjects list fails closed when the membership/RLS access check is unavailable", async () => {
+  let calls = 0;
+  const result = await listSupabaseSubjects(request("Bearer valid-user-token"), configured, {}, async (url) => {
+    calls += 1;
+    if (String(url).includes("/auth/v1/user")) {
+      return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    }
+    return new Response("denied", { status: 403 });
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "DB_UNAVAILABLE");
+  assert.equal(calls, 2);
+});
+
+test("subjects list rejects invalid course and semester filters", async () => {
+  const result = await listSupabaseSubjects(request("Bearer valid-user-token"), configured, { course: "99" }, async () =>
+    new Response(JSON.stringify({ id: "user-1" }), { status: 200 }));
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
+  assert.equal(result.code, "VALIDATION_ERROR");
+});
 
 test("authentication requires a Bearer header and never calls upstream without it", async () => {
   let calls = 0;
