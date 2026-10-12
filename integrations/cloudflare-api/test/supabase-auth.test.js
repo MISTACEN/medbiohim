@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -666,17 +666,22 @@ test("schedule read rejects a group outside the caller's active memberships", as
   assert.equal(result.code, "GROUP_ACCESS_DENIED");
 });
 
-test("published test catalog never requests question answers or user attempts", async () => {
+test("published test catalog returns linked question counts without answer keys or attempts", async () => {
   const result = await listSupabasePublishedTests(request("Bearer valid-user-token"), configured, { limit: "10" }, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
     const parsed = new URL(String(url));
-    assert.equal(parsed.pathname, "/rest/v1/tests");
-    assert.ok(!parsed.searchParams.get("select").includes("answer"));
-    assert.ok(!parsed.searchParams.get("select").includes("attempt"));
-    return new Response(JSON.stringify([{ id: "test-1", title: "Тест", is_published: true }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/tests") {
+      assert.ok(!parsed.searchParams.get("select").includes("answer"));
+      assert.ok(!parsed.searchParams.get("select").includes("attempt"));
+      return new Response(JSON.stringify([{ id: "test-1", title: "Тест", is_published: true }]), { status: 200 });
+    }
+    assert.equal(parsed.pathname, "/rest/v1/test_questions");
+    assert.equal(parsed.searchParams.get("test_id"), "in.(test-1)");
+    return new Response(JSON.stringify([{ test_id: "test-1", order_index: 0 }, { test_id: "test-1", order_index: 1 }]), { status: 200 });
   });
   assert.equal(result.ok, true);
   assert.equal(result.data.items[0].id, "test-1");
+  assert.equal(result.data.items[0].question_count, 2);
 });
 
 
@@ -847,4 +852,39 @@ test("homework progress refuses a homework outside the caller's active group", a
   });
   assert.equal(result.ok, false);
   assert.equal(result.status, 403);
+});
+
+
+test("progress combines caller-scoped homework and test attempts without fabricating a degraded zero", async () => {
+  let attemptQuery = "";
+  const result = await getSupabaseProgress(request("Bearer valid-user-token"), configured, { group_id: "group-1" }, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", name: "МБХ-201", is_active: true } }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/homeworks") return new Response(JSON.stringify([
+      { id: "hw-1", group_id: "group-1", subject_id: "subject-1", title: "Задание", subjects: { name: "Гистология" } },
+      { id: "hw-2", group_id: "group-1", subject_id: "subject-1", title: "Задание 2", subjects: { name: "Гистология" } },
+    ]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/homework_progress") return new Response(JSON.stringify([{ homework_id: "hw-1", completed: true, submitted_at: "2026-10-12T09:00:00Z" }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/homework_submissions") return new Response("[]", { status: 200 });
+    if (parsed.pathname === "/rest/v1/test_attempts") {
+      attemptQuery = parsed.search;
+      assert.equal(parsed.searchParams.get("user_id"), "eq.user-1");
+      assert.equal(parsed.searchParams.get("group_id"), "eq.group-1");
+      return new Response(JSON.stringify([
+        { id: "attempt-1", test_id: "test-1", status: "finished", percent: 80, tests: { title: "Тест", subject_id: "subject-1" } },
+        { id: "attempt-2", test_id: "test-1", status: "in_progress", percent: null, tests: { title: "Тест", subject_id: "subject-1" } },
+      ]), { status: 200 });
+    }
+    throw new Error("unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.homework.total, 2);
+  assert.equal(result.data.homework.done, 1);
+  assert.equal(result.data.homework.percent, 50);
+  assert.equal(result.data.tests.attempts, 2);
+  assert.equal(result.data.tests.finished, 1);
+  assert.equal(result.data.tests.avg_score, 80);
+  assert.equal(result.data.overall_pct, 50);
+  assert.ok(attemptQuery);
 });
