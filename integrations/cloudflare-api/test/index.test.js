@@ -435,3 +435,18 @@ test("test curriculum map and chemistry master routes require authentication", a
     assert.equal(response.headers.get("allow"), "GET, OPTIONS", path);
   }
 });
+
+
+test("test bank progress route requires auth and is read-only", async () => {
+  const path = "/api/v1/tests/22222222-2222-4222-8222-222222222222/bank-progress";
+  const unauthenticated = await worker.fetch(request(path), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(unauthenticated.status, 401);
+  assert.equal((await unauthenticated.json()).error.code, "UNAUTHORIZED");
+
+  const wrongMethod = await worker.fetch(request(path, { method: "POST" }), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
+});
