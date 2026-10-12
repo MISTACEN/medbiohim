@@ -1570,3 +1570,14 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 - 🟡 Tests are authored but not yet verified by a successful full run.
 - 🟡 Before cutover, validate live RLS permissions and PostgREST relationship names. Login/register DB profile writes and default student-role assignment remain unported.
 - 🔒 Production remains on SpaceWeb; no DNS, frontend API base URL, Supabase policies or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 9 and content archive (2026-10-12)
+
+- 🟢 Confirmed the Worker source includes `GET /api/v1/auth/me` and a Supabase REST profile-bundle helper. It validates the caller's Supabase token, uses the caller JWT plus anon key (no service-role key), filters data by the authenticated user, and returns user/roles/groups/course/semester fields.
+- 🟡 Live RLS behavior and PostgREST embedded relationship names still need staging verification; tests are authored but the full suite has not been confirmed by a successful CI run.
+- 🟢 Inspected the uploaded `content.zip` and produced a normalized asset package with Unicode filenames, duplicate-entry removal, a SHA-256 manifest, and repaired document-to-image map paths.
+- 🟢 Added `docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md` with safe SpaceWeb extraction instructions and validation limits.
+- 🟡 The cleaned media archive is prepared for download but has not been uploaded to SpaceWeb or switched into production.
+- 🔒 SpaceWeb remains active. No production API URL, DNS, Supabase policy, Cloudflare deployment, or Telegram webhook was changed.
