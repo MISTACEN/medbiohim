@@ -231,7 +231,7 @@ export default function DashboardPage() {
 
   const { today: khToday, hm: khHm } = khNowParts();
   const todaySchedule = scheduleSorted.filter((row) => str(row, "date") === khToday);
-  const todayRemainingSchedule = todaySchedule.filter((row) => (str(row, "start_time", "startTime").slice(0, 5) || "00:00") >= khHm);
+  const todayRemainingSchedule = todaySchedule.filter((row) => (str(row, "end_time", "endTime").slice(0, 5) || str(row, "start_time", "startTime").slice(0, 5) || "00:00") >= khHm);
   const nextFutureDate = scheduleSorted.map((row) => str(row, "date")).find((date) => date > khToday) || null;
   const futureSchedule = nextFutureDate ? scheduleSorted.filter((row) => str(row, "date") === nextFutureDate) : [];
   const dashboardSchedule = todayRemainingSchedule.length > 0 ? todayRemainingSchedule : futureSchedule;
