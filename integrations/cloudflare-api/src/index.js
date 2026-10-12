@@ -272,6 +272,19 @@ export default {
       return withCors(success(result.data), origin);
     }
 
+    if (pathname === `${API_PREFIX}/curriculum`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      // PHP ContentStore::listCurriculum() returns the authenticated subject list.
+      // Keep this route independent from the optional CMS curriculum document.
+      const result = await listSupabaseSubjects(request, env, {});
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success({ items: result.data.items }), origin);
+    }
+
     if (pathname === `${API_PREFIX}/subjects-catalog`) {
       if (request.method !== "GET") {
         return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
