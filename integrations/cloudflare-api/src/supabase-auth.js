@@ -4,6 +4,28 @@ function failure(status, code, message) {
   return { ok: false, status, code, message };
 }
 
+function logAuthRedirect(operation, response, endpoint) {
+  const location = response.headers.get("location");
+  let target = null;
+  try {
+    if (location) target = new URL(location, endpoint);
+  } catch {
+    // Do not include raw Location values in logs.
+  }
+  console.warn("supabase_auth_unexpected_redirect", {
+    operation,
+    status: response.status,
+    hasLocation: Boolean(location),
+    targetIsHttps: target ? target.protocol === "https:" : false,
+    targetSameOrigin: target ? target.origin === endpoint.origin : false,
+    targetIsSupabaseDomain: target ? target.hostname.endsWith(".supabase.co") : false,
+    targetMatchesExpectedProject: target ? target.hostname === "gnobvyjywtqbdfeejxmf.supabase.co" : false,
+    targetPathCategory: !target ? "unknown" :
+      target.pathname.startsWith("/auth/v1/") ? "auth" :
+      target.pathname === "/" ? "root" : "other",
+  });
+}
+
 function logAuthFetchFailure(operation, error, env) {
   const cause = error && typeof error === "object" ? error.cause : undefined;
   const outerMessage = error instanceof Error ? error.message : "";
@@ -92,7 +114,7 @@ export async function authenticateSupabaseRequest(request, env, fetcher = fetch)
         authorization: "Bearer " + match[1],
         accept: "application/json",
       },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
@@ -100,6 +122,10 @@ export async function authenticateSupabaseRequest(request, env, fetcher = fetch)
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
+  if (response.status >= 300 && response.status < 400) {
+    logAuthRedirect("authenticateSupabaseRequest", response, endpoint);
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
+  }
   if (response.status === 401 || response.status === 403) {
     return failure(401, "UNAUTHORIZED", "Invalid or expired access token");
   }
@@ -163,7 +189,7 @@ export async function logoutSupabaseSession(accessToken, env, fetcher = fetch) {
         authorization: "Bearer " + token,
         accept: "application/json",
       },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
@@ -171,6 +197,10 @@ export async function logoutSupabaseSession(accessToken, env, fetcher = fetch) {
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
   }
 
+  if (response.status >= 300 && response.status < 400) {
+    logAuthRedirect("logoutSupabaseSession", response, endpoint);
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
+  }
   if (response.status === 401 || response.status === 403) {
     return failure(401, "UNAUTHORIZED", "Invalid or expired access token");
   }
@@ -211,12 +241,16 @@ export async function refreshSupabaseSession(refreshToken, env, fetcher = fetch)
         accept: "application/json",
       },
       body: JSON.stringify({ refresh_token: token }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
     logAuthFetchFailure("refresh", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    logAuthRedirect("refreshSupabaseSession", response, endpoint);
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
   }
   if (response.status === 400 || response.status === 401 || response.status === 403) {
     return failure(401, "AUTH_REFRESH_FAILED", "Could not refresh session");
@@ -292,12 +326,16 @@ export async function recoverSupabasePassword(email, env, fetcher = fetch) {
         accept: "application/json",
       },
       body: JSON.stringify({ email: address }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
     logAuthFetchFailure("recover", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    logAuthRedirect("recoverSupabasePassword", response, endpoint);
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
   }
   if (response.status === 429) {
     return failure(429, "RATE_LIMITED", "Too many recovery requests. Try again later.");
@@ -341,12 +379,16 @@ export async function loginSupabaseUser(email, password, env, fetcher = fetch) {
         accept: "application/json",
       },
       body: JSON.stringify({ email: address, password: secret }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
     logAuthFetchFailure("login", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    logAuthRedirect("loginSupabaseUser", response, endpoint);
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
   }
   if (response.status === 400 || response.status === 401 || response.status === 403) {
     return failure(401, "AUTH_INVALID_CREDENTIALS", "Invalid credentials");
@@ -422,12 +464,16 @@ export async function registerSupabaseUser(email, password, fullName, env, fetch
         accept: "application/json",
       },
       body: JSON.stringify({ email: address, password: secret, data: { full_name: name, name } }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
   } catch (error) {
     logAuthFetchFailure("register", error, env);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Could not reach Supabase Auth");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    logAuthRedirect("registerSupabaseUser", response, endpoint);
+    return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
   }
   if (response.status === 429) {
     return failure(429, "RATE_LIMITED", "Too many registration attempts. Try again later.");
@@ -505,7 +551,7 @@ export async function getSupabaseProfileBundle(request, env, fetcher = fetch) {
           authorization: "Bearer " + token,
           accept: "application/json",
         },
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       });
       if (!response.ok) return null;
@@ -620,7 +666,7 @@ export async function searchSupabaseContent(request, env, options = {}, fetcher 
       response = await fetcher(endpoint.toString(), {
         method: "GET",
         headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       });
     } catch {
@@ -769,7 +815,7 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Supabase REST read failed");
@@ -845,7 +891,7 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Supabase REST read failed");
@@ -953,7 +999,7 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Schedule query failed");
@@ -1081,7 +1127,7 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Homework query failed");
@@ -1182,7 +1228,7 @@ export async function setSupabaseHomeworkProgress(request, homeworkId, done, env
   async function call(table, params, init = {}) {
     const endpoint = new URL("/rest/v1/" + table, base);
     for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
-    return fetcher(endpoint.toString(), { ...init, headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json", ...(init.body ? { "content-type": "application/json", prefer: "resolution=merge-duplicates,return=representation" } : {}), ...(init.headers || {}) }, redirect: "error", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS) });
+    return fetcher(endpoint.toString(), { ...init, headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json", ...(init.body ? { "content-type": "application/json", prefer: "resolution=merge-duplicates,return=representation" } : {}), ...(init.headers || {}) }, redirect: "manual", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS) });
   }
   try {
     const hr = await call("homeworks", { select: "id,group_id", id: "eq." + id, limit: "1" });
@@ -1240,7 +1286,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Test catalog query failed");
@@ -1261,7 +1307,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
     const linksResponse = await fetcher(linksEndpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!linksResponse.ok) throw new Error("Test-question links query failed");
@@ -1280,7 +1326,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
         const sourceResponse = await fetcher(sourceEndpoint.toString(), {
           method: "GET",
           headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-          redirect: "error",
+          redirect: "manual",
           signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
         });
         if (sourceResponse.ok) {
@@ -1301,7 +1347,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
         const fileResponse = await fetcher(fileEndpoint.toString(), {
           method: "GET",
           headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-          redirect: "error",
+          redirect: "manual",
           signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
         });
         if (fileResponse.ok) {
@@ -1365,7 +1411,7 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Attempt history query failed");
@@ -1419,7 +1465,7 @@ export async function getSupabaseSiteContent(request, env, fetcher = fetch) {
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("CMS read failed");
@@ -1461,7 +1507,7 @@ export async function getSupabaseScheduleMeta(request, env, filters = {}, fetche
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Calendar metadata read failed");
@@ -1521,7 +1567,7 @@ export async function listSupabaseExamQuestions(request, env, filters = {}, fetc
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Question bank read failed");
@@ -1574,7 +1620,7 @@ export async function listSupabaseQuestionSubjects(request, env, fetcher = fetch
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Question bank summary read failed");
@@ -1616,7 +1662,7 @@ export async function listSupabaseLectures(request, env, subjectSlug = "", fetch
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Lecture read failed");
@@ -1700,7 +1746,7 @@ export async function getSupabaseSubjectCatalog(request, env, fetcher = fetch) {
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Curriculum read failed");
@@ -1732,7 +1778,7 @@ export async function listSupabaseSubjectPlans(request, env, fetcher = fetch) {
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Subject plan list failed");
@@ -1768,7 +1814,7 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Subject plan read failed");
