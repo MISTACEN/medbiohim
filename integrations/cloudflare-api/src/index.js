@@ -1,4 +1,4 @@
-import { getSupabaseProfileBundle, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseProfileBundle, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -103,6 +103,29 @@ export default {
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
+    if (pathname === `${API_PREFIX}/subjects`) {
+      if (request.method !== "GET") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const params = url.searchParams;
+      const result = await listSupabaseSubjects(request, env, {
+        course: params.get("course") ?? "",
+        semester: params.get("semester") ?? "",
+      });
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
     const subjectDetailMatch = new RegExp("^" + API_PREFIX + "/subjects/([^/]+)$").exec(pathname);
     if (subjectDetailMatch) {
       if (request.method !== "GET") {
