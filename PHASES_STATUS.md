@@ -1682,3 +1682,8 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 | Test attempt start/save/finish | 🔒 Not enabled on Worker | Needs narrow RPCs / grants to prevent clients changing score/status and to keep snapshots out of the exposed REST projection |
 | Node tests and end-to-end runtime | 🟡 Not run | 12 JS modules/tests passed static syntax parsing only; no npm test / live HTTP confirmation |
 | Worker deployment and frontend cutover | ⬜ Not performed | Existing PHP/SpaceWeb backend remains production |
+
+
+| Test bank response contract | 🟡 Source updated | Bank screen uses `getTestBank` with `view=bank`; ordinary test detail remains sanitized. Production PHP path is preserved; Cloudflare query dispatch is source-only |
+| Test catalog group/course scope | 🟡 Source + test authored | Selected group is validated as an active membership; group specialty and course filter subject-bound tests |
+| Static JS syntax check | 🟢 | 12 Worker/test JS files parsed; Node tests and HTTP smoke are still not executed |
