@@ -1165,7 +1165,25 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
     if (!response.ok) throw new Error("Test catalog query failed");
     const items = await response.json();
     if (!Array.isArray(items)) throw new Error("Invalid test catalog response");
-    return { ok: true, data: { items, count: items.length } };
+    if (!items.length) return { ok: true, data: { items: [], count: 0 } };
+    const linksEndpoint = new URL("/rest/v1/test_questions", base);
+    linksEndpoint.searchParams.set("select", "test_id,order_index");
+    linksEndpoint.searchParams.set("test_id", "in.(" + items.map((item) => String(item.id)).filter(Boolean).join(",") + ")");
+    linksEndpoint.searchParams.set("order", "test_id.asc,order_index.asc");
+    linksEndpoint.searchParams.set("limit", "10000");
+    const linksResponse = await fetcher(linksEndpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!linksResponse.ok) throw new Error("Test-question links query failed");
+    const links = await linksResponse.json();
+    if (!Array.isArray(links)) throw new Error("Invalid test-question links response");
+    const counts = new Map();
+    for (const link of links) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
+    const enriched = items.map((item) => ({ ...item, question_count: counts.get(String(item.id)) || 0 }));
+    return { ok: true, data: { items: enriched, count: enriched.length } };
   } catch {
     return failure(503, "TESTS_UNAVAILABLE", "Каталог тестов временно недоступен");
   }
