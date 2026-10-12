@@ -1739,7 +1739,7 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 ## Cloudflare candidate archive — review pass (2026-10-13)
 
 - [x] Corrected candidate role queries to use `roles(code)` for homework grading, presence, group/domain authorization and file role checks.
-- [x] Candidate archive tests: **58/58 passed locally** on Node 22 after the correction.
+- [x] Candidate archive tests: **59/59 passed locally** on Node 22 after the correction.
 - [x] Static syntax parse for candidate `src/*.js` and `test/*.js`: passed.
 - [ ] Candidate source modules merged into `main`: not yet done.
 - [ ] GitHub Actions runner execution restored: blocked; workflows fail before any steps/runner name are recorded and logs are unavailable.
