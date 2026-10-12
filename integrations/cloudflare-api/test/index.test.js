@@ -50,6 +50,23 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 });
 
 
+test("GET /api/v1/auth/me requires a valid Supabase Bearer token", async () => {
+  let calls = 0;
+  const response = await worker.fetch(request("/api/v1/auth/me"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+  assert.equal(calls, 0);
+});
+
+test("POST /api/v1/auth/me is rejected with an explicit allowed method", async () => {
+  const response = await worker.fetch(request("/api/v1/auth/me", { method: "POST" }), {});
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+});
+
 test("POST /api/v1/auth/register fails closed until a Cloudflare rate limiter is configured", async () => {
   const response = await worker.fetch(request("/api/v1/auth/register", {
     method: "POST",
