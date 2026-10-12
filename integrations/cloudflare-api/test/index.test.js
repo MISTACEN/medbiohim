@@ -302,7 +302,7 @@ test("CORS allows the configured frontend origin", async () => {
 });
 
 
-for (const path of ["/api/v1/dashboard", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/subjects-catalog", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
+for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/subjects-catalog", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
   test(`GET ${path} requires a valid Supabase bearer token`, async () => {
     const response = await worker.fetch(request(path), {
       SUPABASE_URL: "https://project-id.supabase.co",
@@ -349,4 +349,19 @@ test("schedule entry update and delete routes require supported methods and vali
     body: JSON.stringify({ room: "304" }),
   }), { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" });
   assert.equal(unauthenticated.status, 401);
+});
+
+
+test("admin schedule editor requires authentication for reads and writes", async () => {
+  const get = await worker.fetch(request("/api/v1/admin/schedule?group_id=11111111-1111-4111-8111-111111111111&semester=3"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(get.status, 401);
+  const put = await worker.fetch(request("/api/v1/admin/schedule", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ group_id: "11111111-1111-4111-8111-111111111111", semester: 3, entries: [] }),
+  }), { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" });
+  assert.equal(put.status, 401);
 });
