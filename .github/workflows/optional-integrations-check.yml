@@ -8,6 +8,9 @@ on:
       - "integrations/telegram-bot/**"
       - "integrations/telegram-bot-cloudflare/**"
       - "integrations/cloudflare-api/**"
+      - "tools/import_histology_media.py"
+      - "tools/test_import_histology_media.py"
+      - "docs/histology-mbh-import-plan.md"
       - ".github/workflows/optional-integrations-check.yml"
   pull_request:
     branches: [main, beta]
@@ -39,6 +42,8 @@ jobs:
       - name: Test Cloudflare API migration scaffold
         working-directory: integrations/cloudflare-api
         run: npm test
+      - name: Test histology media archive importer
+        run: python -m unittest tools/test_import_histology_media.py
       - name: Validate extension JavaScript syntax
         run: |
           node --check integrations/browser-extension/popup.js
