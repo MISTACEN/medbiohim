@@ -321,3 +321,32 @@ test("schedule and dashboard read routes reject writes rather than silently acce
     assert.equal(response.status, 405, path);
   }
 });
+
+
+test("schedule create route requires auth and rejects non-POST methods", async () => {
+  const unauthenticated = await worker.fetch(request("/api/v1/schedule/entries", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  }), { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" });
+  assert.equal(unauthenticated.status, 401);
+  assert.equal((await unauthenticated.json()).error.code, "UNAUTHORIZED");
+
+  const wrongMethod = await worker.fetch(request("/api/v1/schedule/entries"), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "POST, OPTIONS");
+});
+
+test("schedule entry update and delete routes require supported methods and valid auth", async () => {
+  const path = "/api/v1/schedule/entries/22222222-2222-4222-8222-222222222222";
+  const wrongMethod = await worker.fetch(request(path), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "PATCH, DELETE, OPTIONS");
+
+  const unauthenticated = await worker.fetch(request(path, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ room: "304" }),
+  }), { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" });
+  assert.equal(unauthenticated.status, 401);
+});
