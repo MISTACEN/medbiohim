@@ -9,7 +9,8 @@ The existing PHP API on SpaceWeb remains the current backend. The Worker is depl
 - Implemented shadow routes include `GET /api/v1`, `GET /api/v1/ping`, `GET /api/v1/dashboard`, `GET /api/v1/schedule`, `GET /api/v1/homeworks`, `GET /api/v1/tests`, subject catalog/detail, search, profile, and the currently implemented auth endpoints. Check the route inventory for precise cutover gates.
 - `GET /health` and `GET /api/v1/health` are shadow diagnostics, not yet contract-compatible ports of the PHP `HealthChecker`.
 - Unmigrated `/api/v1/*` routes return `501 ROUTE_NOT_MIGRATED`
-- No proxy/fallback to SpaceWeb is implemented. This is intentional because the currently checked SpaceWeb HTTPS endpoint fails certificate verification and redirects to HTTP.
+- The Worker itself does not proxy/fallback to SpaceWeb. A separate, opt-in Vercel same-origin proxy mode (`MEDBIOHIM_CF_FIRST=true`) can try this Worker first and use SpaceWeb only for explicitly safe fallback cases. It is disabled unless configured and requires an HTTPS `SPACEWEB_API_ORIGIN`; generic failed writes are not retried.
+- The current deployed Worker bundle does not yet match all modules in GitHub `main` (the Cloudflare content API currently reports only `src/index.js` and `src/supabase-auth.js`). Do not enable the Vercel Preview flag until the complete source bundle has been tested and deployed.
 - No secrets, service-role keys, database credentials, or user tokens belong in this directory or in `wrangler.toml`.
 
 ## Migration progress — Pass 1
