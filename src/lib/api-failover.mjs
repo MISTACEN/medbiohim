@@ -46,7 +46,9 @@ export async function shouldFallbackFromCloudflare(request, response) {
       ["AUTH_NOT_CONFIGURED", "RATE_LIMIT_NOT_CONFIGURED", "RATE_LIMIT_UNAVAILABLE"].includes(code)) {
     return true;
   }
-  // This route returns before writing the body or DB metadata if no R2
-  // binding exists. All other upload failures remain non-retryable.
-  return path === "/api/v1/files/upload" && code === "STORAGE_NOT_CONFIGURED";
+  // These exact guards return before the handler mutates state, so the
+  // legacy PHP backend can safely handle the request.
+  if (path === "/api/v1/files/upload" && code === "STORAGE_NOT_CONFIGURED") return true;
+  if (path === "/api/v1/homeworks" && code === "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED") return true;
+  return false;
 }
