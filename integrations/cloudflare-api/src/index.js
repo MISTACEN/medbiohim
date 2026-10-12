@@ -1,4 +1,4 @@
-import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
+import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
@@ -523,6 +523,24 @@ export default {
           error: { code: result.code, message: result.message },
           requestId: crypto.randomUUID(),
         }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const subjectGradebookMatch = new RegExp("^" + API_PREFIX + "/subjects/([^/]+)/gradebook$").exec(pathname);
+    if (subjectGradebookMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let subjectId;
+      try {
+        subjectId = decodeURIComponent(subjectGradebookMatch[1]);
+      } catch {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid subject id" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      const result = await getSupabaseSubjectGradebook(request, subjectId, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
       return withCors(success(result.data), origin);
     }
