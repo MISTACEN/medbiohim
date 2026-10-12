@@ -186,3 +186,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added `GET /api/v1/lectures?subject=` and `GET /api/v1/lectures/{id}` using the existing `site_content(key=lectures)` document and published `histology_lectures` rows.
 - Only published lectures are exposed. The list response matches the PHP public projection; detail returns the full published lecture document.
 - Deployment ID: `a9bee33805dc4e4da75d729c96f90b93`. Actual authenticated HTTP smoke tests and Node CI remain pending.
+
+
+## Subject catalog and study plans — Pass 18
+
+- Added `GET /api/v1/subjects-catalog`, `GET /api/v1/subject-plans`, and `GET /api/v1/subject-plans/{slug}`.
+- Catalog and plan JSON use the existing Supabase `subjects` and `site_content` sources. Subject visibility is filtered by active group specialty; CMS reads continue to rely on the caller's JWT/RLS.
+- Plan schedule samples are queried only through the user's active group memberships. They do not reproduce the PHP legacy service-role read that could return global schedule rows.
+- Deployed as Worker deployment `8b8dc6a79d0b4ea294fba7f799d24c66`; live HTTP tests and CI remain unverified.
