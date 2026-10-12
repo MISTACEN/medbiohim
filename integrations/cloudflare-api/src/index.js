@@ -1,7 +1,7 @@
 import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
-import { getSupabaseBankProgress, getSupabaseTestDetail, listSupabaseMyAttempts } from "./test-attempts.js";
+import { getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
@@ -443,6 +443,16 @@ export default {
     if (startTestMatch) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       return withCors(json({ ok: false, error: { code: "TEST_ATTEMPT_SECURITY_NOT_READY", message: "Запуск теста ждёт переноса эталонных ответов в закрытое хранилище." }, requestId: crypto.randomUUID() }, 503), origin);
+    }
+
+    const testBankMatch = new RegExp("^" + API_PREFIX + "/tests/([^/]+)/bank$").exec(pathname);
+    if (testBankMatch) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      let testId;
+      try { testId = decodeURIComponent(testBankMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid test id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseTestBankDetail(request, env, testId, url.searchParams.get("group_id") || "");
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
     }
 
     const bankProgressMatch = new RegExp("^" + API_PREFIX + "/tests/([^/]+)/bank-progress$").exec(pathname);
