@@ -20,7 +20,7 @@ test("subjects list uses the caller JWT and filters specialty-scoped subjects by
       return new Response(JSON.stringify({ id: "user-1", email: "student@example.com" }), { status: 200 });
     }
     if (String(url).includes("/rest/v1/group_memberships")) {
-      return new Response(JSON.stringify([{ groups: { specialty_slug: "mbh" } }]), { status: 200 });
+      return new Response(JSON.stringify([{ group_id: "11111111-1111-4111-8111-111111111111", groups: { specialty_slug: "mbh", is_active: true } }]), { status: 200 });
     }
     if (String(url).includes("/rest/v1/subjects")) {
       const parsed = new URL(String(url));
@@ -693,37 +693,44 @@ test("published test catalog returns linked question counts and metadata without
 });
 
 
-test("published tests are filtered by the caller's active group specialties", async () => {
-  const result = await listSupabasePublishedTests(request("Bearer valid-user-token"), configured, { limit: "20" }, async (url) => {
+test("published tests are filtered by the selected active group's specialties", async () => {
+  const groupId = "11111111-1111-4111-8111-111111111111";
+  const subjectMbh = "22222222-2222-4222-8222-222222222222";
+  const subjectHistology = "33333333-3333-4333-8333-333333333333";
+  const subjectOther = "44444444-4444-4444-8444-444444444444";
+  const testMbh = "55555555-5555-4555-8555-555555555555";
+  const testOther = "66666666-6666-4666-8666-666666666666";
+  const testGlobal = "77777777-7777-4777-8777-777777777777";
+  const result = await listSupabasePublishedTests(request("Bearer valid-user-token"), configured, { limit: "20", group_id: groupId }, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
     const parsed = new URL(String(url));
     if (parsed.pathname === "/rest/v1/group_memberships") {
-      return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", specialty_slug: "mbh", is_active: true } }]), { status: 200 });
+      assert.equal(parsed.searchParams.get("group_id"), "eq." + groupId);
+      return new Response(JSON.stringify([{ group_id: groupId, groups: { id: groupId, specialty_slug: "mbh", is_active: true } }]), { status: 200 });
     }
     if (parsed.pathname === "/rest/v1/subjects") {
       return new Response(JSON.stringify([
-        { id: "subject-mbh", name: "Биохимия", specialty_slug: "mbh", is_active: true },
-        { id: "subject-histology", name: "Гистология", specialty_slug: "histology", is_active: true },
-        { id: "subject-other", name: "Чужой предмет", specialty_slug: "nursing", is_active: true },
+        { id: subjectMbh, name: "Биохимия", specialty_slug: "mbh", is_active: true },
+        { id: subjectHistology, name: "Гистология", specialty_slug: "histology", is_active: true },
+        { id: subjectOther, name: "Чужой предмет", specialty_slug: "nursing", is_active: true },
       ]), { status: 200 });
     }
     if (parsed.pathname === "/rest/v1/tests") {
       return new Response(JSON.stringify([
-        { id: "test-mbh", subject_id: "subject-mbh", title: "МБХ" },
-        { id: "test-other", subject_id: "subject-other", title: "Чужой тест" },
-        { id: "test-global", subject_id: null, title: "Общий тест" },
+        { id: testMbh, subject_id: subjectMbh, title: "МБХ" },
+        { id: testOther, subject_id: subjectOther, title: "Чужой тест" },
+        { id: testGlobal, subject_id: null, title: "Общий тест" },
       ]), { status: 200 });
     }
     if (parsed.pathname === "/rest/v1/test_questions") {
-      assert.equal(parsed.searchParams.get("test_id"), "in.(test-mbh,test-global)");
-      return new Response(JSON.stringify([{ test_id: "test-mbh", order_index: 0 }]), { status: 200 });
+      assert.equal(parsed.searchParams.get("test_id"), "in.(" + testMbh + "," + testGlobal + ")");
+      return new Response(JSON.stringify([{ test_id: testMbh, order_index: 0 }]), { status: 200 });
     }
     throw new Error("unexpected path " + parsed.pathname);
   });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.data.items.map((item) => item.id), ["test-mbh", "test-global"]);
+  assert.deepEqual(result.data.items.map((item) => item.id), [testMbh, testGlobal]);
 });
-
 test("dashboard CMS read returns site defaults plus saved announcements", async () => {
   const result = await getSupabaseSiteContent(request("Bearer valid-user-token"), configured, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
