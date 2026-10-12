@@ -171,3 +171,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Dashboard now requests `site_content` keys `site` and `announcements` through the caller JWT. Existing RLS may return unavailable for users who do not satisfy the database's student policy; the dashboard surfaces this as degraded rather than bypassing RLS.
 - Schedule reads select the latest active schedule version per group/semester and preserve PHP's explicit group selection rule when a student belongs to multiple groups.
 - Deployed as Worker deployment `5d9195d3f9494e3997541699795269d9`; external HTTP smoke tests and Actions remain unverified.
+
+
+## Published question bank — Pass 16
+
+- Added `GET /api/v1/questions` with subject/slug/kind/type/topic/text filters, bounded pagination, and optional full answers. By default, long answers are returned as a short preview; the caller must explicitly request `include_answer=true` to receive the full answer.
+- Added `GET /api/v1/questions/subjects` for subject/kind counts.
+- Reads are limited to published `exam_questions` rows by existing RLS. No service-role key, unpublished rows, or write operations were introduced.
+- Deployed as Worker deployment `94a6ffc92a0741e1a7c1a7e559d989bd`. Node tests were added, but GitHub Actions continues to fail before exposing any job steps/logs, so test success is not yet confirmed.
