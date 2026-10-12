@@ -1750,3 +1750,15 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 
 The downloadable review ZIP contains the role fixes plus a corrected status/cutover note. The local unit tests use mocked responses and do not substitute for live integration testing.
 
+## Cloudflare deployment request — preflight (2026-10-13)
+
+- [x] Inspected Cloudflare account and Worker list; `medbiohim-api-shadow` is deployed but bundle contains only `src/index.js` and `src/supabase-auth.js`.
+- [x] Inspected Vercel environment-variable names/targets without exposing secret values.
+- [ ] Full candidate Worker deployment: blocked; candidate modules are only in the reviewed ZIP, not tracked under `integrations/cloudflare-api/src/` in GitHub `main`.
+- [ ] Cloudflare-first + SpaceWeb fallback: blocked; `CLOUDFLARE_API_ORIGIN` and `MEDBIOHIM_CF_FIRST` are absent, and `SPACEWEB_API_ORIGIN` is configured as an empty value in all targets.
+- [ ] Verified HTTPS SpaceWeb origin: blocked; only known host is `ryazansev3.temp.swtest.ru` via historical HTTP URL. Current proxy correctly refuses insecure HTTP upstreams.
+- [ ] R2 bucket/binding: blocked because R2 is not enabled in the Cloudflare account. Auth rate-limit bindings are also absent from the shadow Worker.
+- [x] No deployment/cutover/env changes made; current production routing was left untouched.
+
+Production remains on the existing configuration until the HTTPS fallback origin and complete Worker bundle are available and tested.
+

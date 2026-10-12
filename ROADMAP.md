@@ -2612,3 +2612,12 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 
 **Next order:** restore GitHub Actions runner execution; reconcile each candidate query with live schema/RLS in read-only mode; decide how to resolve the R2 blocker or remove R2 dependency from an initial migration slice; review the academic-state SQL; then stage and smoke-test the complete Worker. `MEDBIOHIM_CF_FIRST` remains off.
 
+## Cutover preflight — 2026-10-13 (deployment request)
+
+- 🔴 **Production/Preview failover is not safe to enable yet:** the Vercel project currently has no `CLOUDFLARE_API_ORIGIN` or `MEDBIOHIM_CF_FIRST` variable, and `SPACEWEB_API_ORIGIN` exists but has an empty value in Production, Preview, and Development.
+- 🔴 The only previously recorded SpaceWeb endpoint is `http://ryazansev3.temp.swtest.ru/api/v1` (HTTP). The proxy now intentionally rejects non-HTTPS upstreams before forwarding bearer credentials. Do not bypass this guard or send authenticated traffic over plaintext HTTP. A working HTTPS SpaceWeb origin is required for fallback.
+- 🔴 The live `medbiohim-api-shadow` still contains only `src/index.js` and `src/supabase-auth.js`; the reviewed ZIP's additional modules are not in GitHub `main` and therefore cannot be deployed from the repository as a complete Worker bundle yet. R2 is also unavailable and auth rate-limit bindings are not configured.
+- 🔒 No Cloudflare Worker source was replaced, no Vercel environment variable or production alias was changed, and no traffic cutover was performed in response to this request. This avoids routing students to a partial Worker with a non-working SpaceWeb fallback.
+
+**Unblock sequence:** (1) make the reviewed ZIP modules available as tracked repository source; (2) deploy them to the shadow Worker without R2-dependent uploads enabled; (3) configure required secrets and rate-limit bindings; (4) supply/verify the actual HTTPS SpaceWeb API origin; (5) configure Cloudflare-first only in Preview and verify read, auth, write, and failover behavior; (6) enable Production only after successful checks and a rollback path.
+

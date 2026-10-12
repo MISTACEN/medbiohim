@@ -58,3 +58,8 @@ The uploaded `medbiohim-cloudflare-api.zip` is useful as a feature-rich candidat
 - Direct inspection of the Cloudflare API confirms the active `medbiohim-api-shadow` bundle contains only `src/index.js` and `src/supabase-auth.js`, whereas current GitHub `main` imports additional modules such as schedule mutations, admin schedule and test-attempt handlers. A full source/bundle parity deployment is still required.
 - Attempts to smoke-test `https://medbiohim-api-shadow.ryazansevegor.workers.dev` from the connected execution environment are blocked by that environment's outbound-request policy (403 “requests ... are not allowed”). This is not evidence that the Worker itself returns 403 to users.
 - No Worker deployment, R2 change, Vercel environment-variable change, production alias change, or Supabase schema/policy change was made.
+
+## Deployment request preflight — 2026-10-13
+
+Cloudflare and Vercel were inspected read-only. The live shadow Worker has only `src/index.js` and `src/supabase-auth.js`; the reviewed ZIP's extra modules are not tracked in the repository. Vercel has no Cloudflare-first flag/origin, and `SPACEWEB_API_ORIGIN` is empty for all deployment targets. The only known SpaceWeb API origin is the historical HTTP URL `http://ryazansev3.temp.swtest.ru/api/v1`, which cannot be used for authenticated failover because the proxy requires HTTPS. R2 remains unavailable and rate-limit bindings are missing. No Worker source, environment variables, DNS, or production traffic was changed. Next steps: track the candidate modules, deploy/test the shadow Worker, establish a working HTTPS SpaceWeb origin, then test Preview failover before production cutover.
+
