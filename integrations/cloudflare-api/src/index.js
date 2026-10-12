@@ -5,6 +5,14 @@ import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
 
+function apiLocalClock() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Vladivostok", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date()).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
 function json(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -135,7 +143,7 @@ export default {
         homeworks: homeworks.ok ? homeworks.data.items : [],
         tests: tests.ok ? tests.data.items : [],
         stats: {
-          upcoming_lessons: schedule.ok ? schedule.data.items.filter((item) => !item.is_cancelled && String(item.date || "") >= String(schedule.data.from || "")).length : null,
+          upcoming_lessons: schedule.ok ? schedule.data.items.filter((item) => { const clock = apiLocalClock(); const date = String(item.date || ""); const end = String(item.end_time || "23:59").slice(0, 5); return !item.is_cancelled && (date > clock.date || (date === clock.date && end >= clock.time)); }).length : null,
           pending_homeworks: homeworks.ok ? homeworks.data.items.filter((item) => !["done", "submitted", "graded", "returned", "completed"].includes(String(item.my_status || item.status || ""))).length : null,
           completed_homeworks: homeworks.ok ? homeworks.data.items.filter((item) => ["done", "submitted", "graded", "returned", "completed"].includes(String(item.my_status || item.status || ""))).length : null,
           available_tests: tests.ok ? tests.data.items.length : null,
