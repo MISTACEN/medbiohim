@@ -1634,3 +1634,19 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 | Node tests | 🟡 authored, not run | GitHub Actions explicitly left untouched; local execution unavailable in current tool runtime |
 | Live API/Cloudflare smoke test | ⬜ pending | No deployment or production frontend cutover in this pass |
 | Real authenticated editor test | ⬜ pending | Must verify a manager-role account can save and a student is denied |
+
+
+## Progress + test/question catalog migration pass — 2026-10-12
+
+| Work item | Status | Evidence / gate |
+|---|---|---|
+| Cloudflare `GET /api/v1/progress` | 🟡 source + tests authored | Caller JWT; group/subject scope; homework + attempt aggregation; not runtime-tested |
+| Progress failure behavior | 🟢 source | Upstream/RLS failure is an error, not a fabricated `0%` success |
+| Test catalog `questions_count` | 🟢 source | Joins `test_questions`; response field matches current UI |
+| Test catalog subject name | 🟢 source | Returns `subject_name` via subject relation |
+| Question bank read routes | 🟢 existing source reviewed | Published `exam_questions`, pagination/filtering, answer inclusion explicit |
+| Live test/question counts | 🟢 read-only audit | tests 33/32 published; questions 855/660 published-active; test_questions 854; exam_questions 876/776 published |
+| Broken links to unpublished/archived questions | 🟢 read-only audit | 0 found among `test_questions` links |
+| Published unlinked `questions` | 🟢 read-only audit | 0 found in current query |
+| Interactive test attempts / grading | ⬜ pending | Detail/start/save/finish/history/retry routes not migrated |
+| Test execution and Worker deployment | ⬜ pending | No tests run; no deploy; Actions untouched |
