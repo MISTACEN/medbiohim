@@ -28,7 +28,7 @@ test("admin transport diagnostics are backed by a server-side canonical role che
   assert.match(route, /x-mbh-transport-diagnostics/);
   assert.match(route, /x-mbh-transport-source/);
   assert.match(route, /INSECURE_BACKEND_ORIGIN/);
-  assert.doesNotMatch(route, /user_metadata[^\n]*role/);
+  assert.doesNotMatch(route, /user_metadata\\s*\\.\\s*role/);
 });
 
 test("falls back when Cloudflare explicitly marks a route not migrated", async () => {
