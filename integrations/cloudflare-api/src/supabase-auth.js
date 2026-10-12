@@ -1168,3 +1168,52 @@ export async function getSupabaseSiteContent(request, env, fetcher = fetch) {
     return failure(503, "CMS_UNAVAILABLE", "Содержимое главной страницы временно недоступно");
   }
 }
+
+
+/** Calendar metadata used by week/month/semester schedule views. */
+export async function getSupabaseScheduleMeta(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+  }
+  const course = String(filters.course ?? "").trim();
+  const semester = String(filters.semester ?? "").trim();
+  if ((course && !/^[1-6]$/.test(course)) || (semester && !/^(?:[1-9]|1[0-2])$/.test(semester))) {
+    return failure(422, "VALIDATION_ERROR", "course or semester filter is invalid");
+  }
+  async function rows(table, params) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Calendar metadata read failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Invalid calendar metadata response");
+    return payload;
+  }
+  try {
+    const periodQuery = { select: "id,title,type,start_date,end_date,notes,is_current,course_number,semester", order: "start_date.asc,end_date.asc.nullslast,title.asc", limit: "500" };
+    const rulesQuery = { select: "id,subject_id,subject_name,academic_hours,notes,course_number,semester", order: "subject_name.asc", limit: "500" };
+    if (course) { periodQuery.course_number = "eq." + course; rulesQuery.course_number = "eq." + course; }
+    if (semester) { periodQuery.semester = "eq." + semester; rulesQuery.semester = "eq." + semester; }
+    const [periods, durationRules] = await Promise.all([
+      rows("academic_calendar_periods", periodQuery),
+      rows("subject_schedule_rules", rulesQuery),
+    ]);
+    return { ok: true, data: { periods, duration_rules: durationRules } };
+  } catch {
+    return failure(503, "SCHEDULE_META_UNAVAILABLE", "Метаданные учебного календаря временно недоступны");
+  }
+}
