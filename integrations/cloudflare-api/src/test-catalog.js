@@ -90,7 +90,7 @@ export async function getSupabaseTestCurriculumMap(request, env, filters = {}, f
       order: "name.asc",
       limit: "500",
     };
-    if (group.course_number != null) subjectQuery.course_number = "in.(null," + String(group.course_number) + ")";
+    if (group.course_number != null) subjectQuery.or = "(course_number.is.null,course_number.eq." + String(group.course_number) + ")";
     if (subjectId) subjectQuery.id = "eq." + subjectId;
     const subjectRows = (await client.rows("subjects", subjectQuery)).filter((row) => visibleForGroup(row, group));
     if (subjectId && !subjectRows.some((row) => String(row.id) === subjectId)) {
@@ -177,7 +177,6 @@ export async function getSupabaseTestCurriculumMap(request, env, filters = {}, f
       const key = String(row.subject_id || "");
       unclassifiedBySubject.set(key, (unclassifiedBySubject.get(key) || 0) + 1);
     }
-    const moduleById = new Map(moduleRows.map((row) => [String(row.id), row]));
     const topicsByModule = new Map();
     for (const row of topicRows) {
       const key = String(row.module_id || "");
