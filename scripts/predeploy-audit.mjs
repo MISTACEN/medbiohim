@@ -256,6 +256,14 @@ if (existsSync(proxyPathForHeaders)) {
   } else {
     fail("transport diagnostics may be exposed without canonical admin verification");
   }
+
+  if (text.includes('path === "/api/v1/files/upload" && code === "STORAGE_NOT_CONFIGURED"') &&
+      text.includes('shouldFallbackFromCloudflare') &&
+      text.includes('Never retry generic mutation failures')) {
+    pass("file upload can fall back only for an explicit pre-write storage configuration gate");
+  } else {
+    fail("file upload fallback is not restricted to a known pre-write failure");
+  }
 }
 
 const malformedImports = [];
