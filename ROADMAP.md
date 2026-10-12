@@ -6,7 +6,7 @@
 - Target architecture: Vercel frontend/API gateway → Cloudflare Worker → Supabase. Cloudflare R2 is not assumed available; file/media storage must be migrated separately to an already-provisioned secure storage backend (existing private B2 is a candidate after its server-side bindings and access controls are verified).
 - Cutover gates: deploy exact multi-module Worker source; prove auth, dashboard, schedule, subject catalog, tests and writes route contracts; confirm student/admin RLS; confirm upload/media paths; test 503/timeout behavior; verify Vercel env vars in Preview first; then Production. If a route is not migrated, show an explicit unavailable response rather than silently falling back to SpaceWeb.
 - No Supabase migration, RLS change, Telegram webhook change, DNS change, or Vercel environment change is included in this code commit.
-- Required Vercel variables for the eventual Cloudflare-only Preview test: `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN=https://medbiohim-api-shadow.ryazansev3.workers.dev/api/v1` (verify the exact deployed workers.dev hostname before setting it). Do not set these until the Worker deployment and smoke tests are confirmed.
+- Required Vercel variables for the eventual Cloudflare-only Preview test: `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN=https://medbiohim-api-shadow.ryazansevegor.workers.dev/api/v1` (verify the exact deployed workers.dev hostname before setting it). Do not set these until the Worker deployment and smoke tests are confirmed.
 
 ## Cloudflare failover hardening — 2026-10-13 (continued)
 
