@@ -19,6 +19,18 @@ test("only HTTPS SpaceWeb origins are eligible for credentialed failover", () =>
   assert.equal(isHttpsOrigin(undefined), false);
 });
 
+test("admin transport diagnostics are backed by a server-side canonical role check", async () => {
+  const fs = await import("node:fs/promises");
+  const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
+  assert.match(route, /async function isCanonicalAdminRequest\(req: NextRequest\)/);
+  assert.match(route, /auth\/v1\/user/);
+  assert.match(route, /select", "roles\(code\)"/);
+  assert.match(route, /x-mbh-transport-diagnostics/);
+  assert.match(route, /x-mbh-transport-source/);
+  assert.match(route, /INSECURE_BACKEND_ORIGIN/);
+  assert.doesNotMatch(route, /user_metadata[^\n]*role/);
+});
+
 test("falls back when Cloudflare explicitly marks a route not migrated", async () => {
   assert.equal(await shouldFallbackFromCloudflare(req("POST"), res(501, "ROUTE_NOT_MIGRATED")), true);
 });
