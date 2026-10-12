@@ -865,7 +865,7 @@ test("homework progress refuses a homework outside the caller's active group", a
 
 test("progress combines caller-scoped homework and test attempts without fabricating a degraded zero", async () => {
   let attemptQuery = "";
-  const result = await getSupabaseProgress(request("Bearer valid-user-token"), configured, { group_id: "group-1" }, async (url) => {
+  const result = await getSupabaseProgress(request("Bearer valid-user-token"), configured, {}, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
     const parsed = new URL(String(url));
     if (parsed.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", name: "МБХ-201", is_active: true } }]), { status: 200 });
