@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectDetail, getSupabaseSubjectCatalog, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "../src/supabase-auth.js";
 
 function request(authorization) {
   const headers = authorization ? { authorization } : {};
@@ -11,6 +11,48 @@ const configured = {
   SUPABASE_URL: "https://project-id.supabase.co",
   SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
 };
+
+test("groups list uses the caller JWT, returns only active-or-null groups and preserves PHP ordering", async () => {
+  const calls = [];
+  const result = await listSupabaseGroups(request("Bearer valid-user-token"), configured, async (url, init) => {
+    const parsed = new URL(String(url));
+    calls.push({ parsed, authorization: init.headers.authorization, apikey: init.headers.apikey });
+    if (parsed.pathname === "/auth/v1/user") {
+      return new Response(JSON.stringify({ id: "user-1", email: "student@example.com" }), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/groups") {
+      assert.equal(parsed.searchParams.get("select"), "id,code,name,course_number,admission_year,is_active");
+      assert.equal(parsed.searchParams.get("or"), "(is_active.eq.true,is_active.is.null)");
+      assert.equal(parsed.searchParams.get("order"), "course_number.asc.nullslast,code.asc");
+      return new Response(JSON.stringify([
+        { id: "group-1", code: "MBH-201", name: "МБХ-201", course_number: 2, is_active: true },
+        { id: "group-2", code: "LEGACY", name: "Legacy active", course_number: null, is_active: null },
+      ]), { status: 200 });
+    }
+    throw new Error("unexpected endpoint");
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.items.map((group) => group.id), ["group-1", "group-2"]);
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.authorization === "Bearer valid-user-token"));
+  assert.ok(calls.every((call) => call.apikey === configured.SUPABASE_ANON_KEY));
+});
+
+test("groups list fails closed when the caller's RLS does not permit reading groups", async () => {
+  let calls = 0;
+  const result = await listSupabaseGroups(request("Bearer valid-user-token"), configured, async (url) => {
+    calls += 1;
+    if (String(url).includes("/auth/v1/user")) {
+      return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    }
+    return new Response("denied", { status: 403 });
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "DB_UNAVAILABLE");
+  assert.equal(calls, 2);
+});
 
 test("subjects list uses the caller JWT and filters specialty-scoped subjects by active group", async () => {
   const seen = [];
