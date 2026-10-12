@@ -115,3 +115,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Response shape mirrors the PHP `UserRepository::profileBundle()` keys: `user`, `roles`, `groups`, `current_group`, `course`, `semester`.
 - Added helper and route tests for own-user filtering, role/group normalization, missing token and method handling. Full execution remains unverified until a CI/local run succeeds.
 - Follow-up: validate actual live RLS behavior and embedded PostgREST relationship names before production cutover. Existing PHP login/register still performs DB-backed profile creation/default student-role assignment; that write path remains intentionally blocked until its safe strategy is migrated.
+
+## API route migration — Pass 10 (authenticated search)
+
+- Added `GET /api/v1/search` with `q`/ `query`, `limit`, `subject_slug`, `subject_id`, and `type` filters.
+- Search validates the Supabase bearer token, then uses the caller's JWT and anon key for REST queries. It does not use a service-role key and does not proxy to SpaceWeb.
+- Supports published questions, exam questions, trainer cards, subjects, and optional subject-plan content. Results include snippets, scoring, answer availability, and facets to match the PHP `SearchService` response shape.
+- Search returns a generic 503 if required Supabase reads are denied or unavailable; plan content is optional. Live RLS/table/column compatibility still needs staging verification.
+- Tests have been added but are not yet confirmed by a successful full Node/GitHub Actions run.
