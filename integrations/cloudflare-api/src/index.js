@@ -1,4 +1,4 @@
-import { getSupabaseProfileBundle, getSupabaseSubjectDetail, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseProfileBundle, getSupabaseSubjectDetail, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -100,6 +100,83 @@ export default {
         role: "migration-scaffold",
         productionTrafficEnabled: false,
       }), origin);
+    }
+
+    // Homepage/dashboard: authenticated, partial-data-safe read model. Content CMS
+    // announcements remain a separately tracked migration item.
+    if (pathname === `${API_PREFIX}/dashboard`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const profile = await getSupabaseProfileBundle(request, env);
+      if (!profile.ok) {
+        return withCors(json({ ok: false, error: { code: profile.code, message: profile.message }, requestId: crypto.randomUUID() }, profile.status), origin);
+      }
+      const params = url.searchParams;
+      const [homeworks, schedule, tests] = await Promise.all([
+        listSupabaseHomeworks(request, env, { group_id: params.get("group_id") || "" }),
+        listSupabaseSchedule(request, env, { group_id: params.get("group_id") || "", from: params.get("from") || "", to: params.get("to") || "" }),
+        listSupabasePublishedTests(request, env, { limit: "20" }),
+      ]);
+      const degradedSources = [];
+      if (!homeworks.ok) degradedSources.push("homeworks");
+      if (!schedule.ok) degradedSources.push("schedule");
+      if (!tests.ok) degradedSources.push("tests");
+      degradedSources.push("site", "announcements");
+      const data = {
+        profile: profile.data,
+        site: { title: "Медбиохим" },
+        announcements: [],
+        schedule: schedule.ok ? schedule.data.items : [],
+        schedule_source: schedule.ok ? "supabase_rest" : "unavailable",
+        homeworks: homeworks.ok ? homeworks.data.items : [],
+        tests: tests.ok ? tests.data.items : [],
+        degraded: degradedSources.length > 0,
+        degraded_sources: [...new Set(degradedSources)],
+        service_notice: "Часть данных главной страницы ещё переносится. Недоступные источники не заменяются выдуманными данными.",
+      };
+      return withCors(success(data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/schedule`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const params = url.searchParams;
+      const result = await listSupabaseSchedule(request, env, {
+        group_id: params.get("group_id") || "",
+        from: params.get("from") || "",
+        to: params.get("to") || "",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/homeworks`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseHomeworks(request, env, { group_id: url.searchParams.get("group_id") || "" });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/tests`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabasePublishedTests(request, env, {
+        subject_id: url.searchParams.get("subject_id") || "",
+        limit: url.searchParams.get("limit") || "50",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
