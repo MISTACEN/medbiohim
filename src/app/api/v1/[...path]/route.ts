@@ -22,6 +22,55 @@ function bearer(req: NextRequest) {
   return value.startsWith("Bearer ") ? value.slice(7).trim() : "";
 }
 
+async function isCanonicalAdminRequest(req: NextRequest): Promise<boolean> {
+  const token = bearer(req);
+  if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+
+  try {
+    const base = new URL(SUPABASE_URL);
+    if (base.protocol !== "https:") return false;
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    };
+    const auth = await fetch(new URL("/auth/v1/user", base), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!auth.ok) return false;
+    const user = await auth.json() as { id?: unknown };
+    if (typeof user?.id !== "string" || !user.id) return false;
+
+    // Role is resolved through the caller's JWT and existing FK relation.
+    // Never trust user_metadata, app-supplied role fields, or query parameters.
+    const rolesUrl = new URL("/rest/v1/user_roles", base);
+    rolesUrl.searchParams.set("select", "roles(code)");
+    rolesUrl.searchParams.set("user_id", `eq.${user.id}`);
+    rolesUrl.searchParams.set("limit", "25");
+    const rolesResponse = await fetch(rolesUrl, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!rolesResponse.ok) return false;
+    const rows = await rolesResponse.json();
+    if (!Array.isArray(rows)) return false;
+    return rows.some((row: any) => {
+      const related = Array.isArray(row?.roles) ? row.roles : row?.roles ? [row.roles] : [];
+      return related.some((role: any) => String(role?.code || "").toLowerCase() === "admin");
+    });
+  } catch {
+    // Hide diagnostics on any verification failure; never grant access by fallback.
+    return false;
+  }
+}
+
 async function withTransportDiagnostics(req: NextRequest, response: Response, source: string): Promise<Response> {
   if (req.headers.get("x-mbh-transport-diagnostics") !== "1") return response;
   if (!(await isCanonicalAdminRequest(req))) return response;
@@ -42,6 +91,14 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       { status: 503 }
     );
   }
+  // Never forward bearer credentials to a plaintext upstream, even in legacy mode.
+  if (UPSTREAM && !isHttpsOrigin(UPSTREAM)) {
+    return NextResponse.json(
+      { ok: false, error: { code: "INSECURE_BACKEND_ORIGIN", message: "SPACEWEB_API_ORIGIN must use HTTPS." } },
+      { status: 503 }
+    );
+  }
+
   if (CLOUDFLARE_FIRST_ENABLED) {
     if (!CLOUDFLARE_UPSTREAM || !isHttpsOrigin(CLOUDFLARE_UPSTREAM) ||
         !new URL(CLOUDFLARE_UPSTREAM).pathname.replace(/\/$/, "").endsWith("/api/v1")) {
