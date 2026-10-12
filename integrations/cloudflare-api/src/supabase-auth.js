@@ -1328,3 +1328,90 @@ export async function listSupabaseQuestionSubjects(request, env, fetcher = fetch
     return failure(503, "DB_UNAVAILABLE", "Каталог вопросов временно недоступен");
   }
 }
+
+
+/** Published lectures from the site_content document plus legacy histology lectures. */
+export async function listSupabaseLectures(request, env, subjectSlug = "", fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+  } catch {
+    return failure(503, "LECTURES_NOT_CONFIGURED", "Лекции временно недоступны");
+  }
+  async function rows(path, params) {
+    const endpoint = new URL("/rest/v1/" + path, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Lecture read failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Invalid lecture response");
+    return payload;
+  }
+  try {
+    const documents = await rows("site_content", { key: "eq.lectures", select: "payload", limit: "1" });
+    const payload = documents[0]?.payload;
+    let items = payload && Array.isArray(payload.items) ? payload.items.filter((row) => row && typeof row === "object" && row.status === "published") : [];
+    if (subjectSlug) items = items.filter((row) => String(row.subject_slug || "") === subjectSlug);
+    if (!subjectSlug || subjectSlug === "histology") {
+      const legacy = await rows("histology_lectures", {
+        select: "id,title,subject_slug,kind,prep_names,linked_prep_ids,body_markdown,description_algorithm_ref,is_published,created_at,updated_at",
+        subject_slug: "eq.histology",
+        is_published: "eq.true",
+        order: "title.asc",
+        limit: "1000",
+      });
+      for (const row of legacy) {
+        items.push({
+          id: "histology-" + String(row.id),
+          title: String(row.title || ""),
+          subject: "Гистология, цитология",
+          subject_slug: "histology",
+          topic: String(row.kind || "Гистология"),
+          body_md: String(row.body_markdown || ""),
+          summary: Array.isArray(row.prep_names) && row.prep_names.length ? "Связанные препараты: " + row.prep_names.join(", ") : "",
+          media: [],
+          sources: [],
+          status: "published",
+          published_at: row.created_at || null,
+          created_at: row.created_at || null,
+          updated_at: row.updated_at || null,
+          linked_prep_ids: row.linked_prep_ids || [],
+          description_algorithm_ref: row.description_algorithm_ref || null,
+        });
+      }
+    }
+    items.sort((a, b) => {
+      const currentA = a.subject_slug === "histology" && a.curriculum?.scope === "current";
+      const currentB = b.subject_slug === "histology" && b.curriculum?.scope === "current";
+      if (currentA || currentB) {
+        const orderA = Number.isFinite(Number(a.curriculum?.order_index)) ? Number(a.curriculum.order_index) : Number.MAX_SAFE_INTEGER;
+        const orderB = Number.isFinite(Number(b.curriculum?.order_index)) ? Number(b.curriculum.order_index) : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+      }
+      return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
+    });
+    return { ok: true, data: { items } };
+  } catch {
+    return failure(503, "LECTURES_UNAVAILABLE", "Лекции временно недоступны");
+  }
+}
+
+export async function getSupabaseLecture(request, lectureId, env, fetcher = fetch) {
+  const id = String(lectureId || "").trim();
+  if (!id || id.length > 128 || /[\/?#]/.test(id)) return failure(422, "VALIDATION_ERROR", "Invalid lecture id");
+  const result = await listSupabaseLectures(request, env, "", fetcher);
+  if (!result.ok) return result;
+  const lecture = result.data.items.find((row) => String(row.id || "") === id);
+  return lecture ? { ok: true, data: { lecture } } : failure(404, "NOT_FOUND", "Лекция не найдена или ещё не опубликована");
+}
