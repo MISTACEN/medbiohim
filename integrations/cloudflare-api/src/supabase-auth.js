@@ -1146,7 +1146,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
   }
   try {
     const endpoint = new URL("/rest/v1/tests", base);
-    endpoint.searchParams.set("select", "id,subject_id,module_id,topic_id,title,time_limit_sec,max_attempts,is_published,created_at,archived_at,source_key,order_index");
+    endpoint.searchParams.set("select", "id,subject_id,module_id,topic_id,title,time_limit_sec,max_attempts,is_published,created_at,archived_at,source_key,order_index,subjects(name)");
     endpoint.searchParams.set("is_published", "eq.true");
     endpoint.searchParams.set("archived_at", "is.null");
     endpoint.searchParams.set("order", "order_index.asc.nullslast,title.asc");
@@ -1182,7 +1182,7 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
     if (!Array.isArray(links)) throw new Error("Invalid test-question links response");
     const counts = new Map();
     for (const link of links) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
-    const enriched = items.map((item) => ({ ...item, question_count: counts.get(String(item.id)) || 0 }));
+    const enriched = items.map((item) => { const subject = Array.isArray(item.subjects) ? item.subjects[0] : item.subjects; return { ...item, subject_name: subject?.name || "", questions_count: counts.get(String(item.id)) || 0 }; });
     return { ok: true, data: { items: enriched, count: enriched.length } };
   } catch {
     return failure(503, "TESTS_UNAVAILABLE", "Каталог тестов временно недоступен");
