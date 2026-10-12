@@ -837,3 +837,222 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
     return failure(503, "DB_UNAVAILABLE", "Subject list is temporarily unavailable");
   }
 }
+
+
+function apiDate(value, fallback) {
+  const candidate = String(value ?? "").trim();
+  return candidate && /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : fallback;
+}
+
+function apiToday(offsetDays = 0) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Read the student's schedule from the existing Supabase schedules /
+ * schedule_entries tables. Membership is resolved with the caller JWT first;
+ * all subsequent reads continue to use that JWT so RLS remains authoritative.
+ */
+export async function listSupabaseSchedule(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const match = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "");
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+  }
+
+  async function rows(table, params) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Schedule query failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Invalid schedule response");
+    return payload;
+  }
+
+  const from = apiDate(filters.from, apiToday());
+  const to = apiDate(filters.to, apiToday(42));
+  if (from > to || from < "2000-01-01" || to > "2100-12-31") {
+    return failure(422, "VALIDATION_ERROR", "Schedule date range is invalid");
+  }
+  const requestedGroup = String(filters.group_id || "").trim();
+  try {
+    const memberships = await rows("group_memberships", {
+      select: "group_id,groups(id,name,course_number,specialty_slug)",
+      user_id: "eq." + identity.user.id,
+      is_active: "eq.true",
+      limit: "100",
+    });
+    const groups = memberships.map((row) => {
+      const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
+      return { group_id: String(row.group_id || group?.id || ""), group: group || null };
+    }).filter((row) => row.group_id);
+    const selectedGroups = requestedGroup ? groups.filter((row) => row.group_id === requestedGroup) : groups;
+    if (requestedGroup && !selectedGroups.length) {
+      return failure(403, "GROUP_ACCESS_DENIED", "You do not have access to this group's schedule");
+    }
+    if (!selectedGroups.length) return { ok: true, data: { items: [], groups: [], from, to } };
+
+    const groupIds = selectedGroups.map((row) => row.group_id);
+    const schedules = await rows("schedules", {
+      select: "id,group_id,semester,academic_year,academic_year_id,is_active",
+      group_id: "in.(" + groupIds.join(",") + ")",
+      is_active: "eq.true",
+      limit: "200",
+    });
+    if (!schedules.length) return { ok: true, data: { items: [], groups: selectedGroups.map((row) => row.group), from, to } };
+    const scheduleIds = schedules.map((row) => String(row.id)).filter(Boolean);
+    const entries = await rows("schedule_entries", {
+      select: "id,schedule_id,subject_id,date,start_time,end_time,type,room,building,notes,is_cancelled,subject_name,sort_order,session_id,event_kind,is_makeup,source,teacher,academic_hours,week_parity,recurrence_group,parent_entry_id,source_detail,breaks",
+      schedule_id: "in.(" + scheduleIds.join(",") + ")",
+      date: "gte." + from,
+      and: "(date.lte." + to + ")",
+      order: "date.asc,start_time.asc,sort_order.asc",
+      limit: "1000",
+    });
+    const subjectIds = [...new Set(entries.map((row) => String(row.subject_id || "")).filter(Boolean))];
+    let subjectMap = new Map();
+    if (subjectIds.length) {
+      const subjects = await rows("subjects", {
+        select: "id,name,slug,color_hex",
+        id: "in.(" + subjectIds.join(",") + ")",
+        limit: "500",
+      });
+      subjectMap = new Map(subjects.map((row) => [String(row.id), row]));
+    }
+    const scheduleMap = new Map(schedules.map((row) => [String(row.id), row]));
+    const groupMap = new Map(selectedGroups.map((row) => [row.group_id, row.group]));
+    const items = entries.map((entry) => {
+      const schedule = scheduleMap.get(String(entry.schedule_id)) || {};
+      const subject = subjectMap.get(String(entry.subject_id || "")) || {};
+      return {
+        ...entry,
+        subject: subject.name || entry.subject_name || "",
+        subject_slug: subject.slug || "",
+        color_hex: subject.color_hex || null,
+        group_id: schedule.group_id || null,
+        group: groupMap.get(String(schedule.group_id || "")) || null,
+        semester: schedule.semester ?? null,
+        academic_year: schedule.academic_year ?? null,
+      };
+    });
+    return { ok: true, data: { items, groups: selectedGroups.map((row) => row.group), from, to } };
+  } catch {
+    return failure(503, "SCHEDULE_UNAVAILABLE", "Расписание временно недоступно");
+  }
+}
+
+/** Read group-scoped homework plus only the current user's progress/submissions. */
+export async function listSupabaseHomeworks(request, env, filters = {}, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const match = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "");
+  const token = match?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try {
+    base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+  }
+
+  async function rows(table, params) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("Homework query failed");
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Invalid homework response");
+    return payload;
+  }
+
+  try {
+    const memberships = await rows("group_memberships", {
+      select: "group_id,groups(id,name,course_number)",
+      user_id: "eq." + identity.user.id,
+      is_active: "eq.true",
+      limit: "100",
+    });
+    const groupIds = [...new Set(memberships.map((row) => String(row.group_id || "")).filter(Boolean))];
+    if (!groupIds.length) return { ok: true, data: { items: [], groups: [] } };
+    const requestedGroup = String(filters.group_id || "").trim();
+    if (requestedGroup && !groupIds.includes(requestedGroup)) {
+      return failure(403, "GROUP_ACCESS_DENIED", "You do not have access to this group's homework");
+    }
+    const scopedGroups = requestedGroup ? [requestedGroup] : groupIds;
+    const homeworks = await rows("homeworks", {
+      select: "id,group_id,subject_id,title,description,due_at,due_date,status,created_by,created_by_role,created_at,schedule_entry_id,subjects(name,slug,color_hex)",
+      group_id: "in.(" + scopedGroups.join(",") + ")",
+      order: "due_date.asc.nullslast,due_at.asc.nullslast,created_at.desc",
+      limit: "500",
+    });
+    if (!homeworks.length) {
+      const groups = memberships.map((row) => Array.isArray(row.groups) ? row.groups[0] : row.groups).filter(Boolean);
+      return { ok: true, data: { items: [], groups } };
+    }
+    const ids = homeworks.map((row) => String(row.id)).filter(Boolean);
+    const [progress, submissions] = await Promise.all([
+      rows("homework_progress", {
+        select: "homework_id,completed,answer_text,file_id,submitted_at",
+        user_id: "eq." + identity.user.id,
+        homework_id: "in.(" + ids.join(",") + ")",
+        limit: "500",
+      }),
+      rows("homework_submissions", {
+        select: "id,homework_id,status,grade,teacher_comment,submitted_at,file_id,text_answer",
+        user_id: "eq." + identity.user.id,
+        homework_id: "in.(" + ids.join(",") + ")",
+        limit: "500",
+      }),
+    ]);
+    const progressMap = new Map(progress.map((row) => [String(row.homework_id), row]));
+    const submissionMap = new Map(submissions.map((row) => [String(row.homework_id), row]));
+    const items = homeworks.map((row) => {
+      const subject = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
+      const mine = progressMap.get(String(row.id)) || {};
+      const submission = submissionMap.get(String(row.id)) || null;
+      return {
+        ...row,
+        subject: subject?.name || "",
+        subject_slug: subject?.slug || "",
+        color_hex: subject?.color_hex || null,
+        my_completed: mine.completed === true,
+        completed_at: mine.submitted_at || null,
+        submission_status: submission?.status || null,
+        submission_id: submission?.id || null,
+        grade: submission?.grade ?? null,
+        my_status: ["submitted", "graded", "returned"].includes(String(submission?.status || ""))
+          ? submission.status
+          : (mine.completed === true ? "done" : "pending"),
+        my_status_source: submission ? "submission" : (mine.completed === true ? "progress" : "none"),
+        my_submission: submission,
+      };
+    });
+    const groups = memberships.map((row) => Array.isArray(row.groups) ? row.groups[0] : row.groups).filter(Boolean);
+    return { ok: true, data: { items, groups } };
+  } catch {
+    return failure(503, "HOMEWORK_UNAVAILABLE", "Задания временно недоступны");
+  }
+}
