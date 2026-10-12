@@ -1,3 +1,9 @@
+## API route migration — Pass 12 (2026-10-12)
+
+| PHP source | Route | Contract / safety | Shadow status |
+|---|---|---|---|
+| `backend/config/routes/domain_rest.php` | `GET /api/v1/subjects/{id}` | Bearer-authenticated subject detail and modules; uses caller JWT + anon key; handles known `sort_order` / `order_index` schema variation; no service-role key | Worker implementation and helper/route tests added; not deployed; live RLS/schema compatibility unverified |
+
 ## API route migration — Pass 11 (2026-10-12)
 
 | PHP source | Route | Contract / safety | Shadow status |
