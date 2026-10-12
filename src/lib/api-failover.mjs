@@ -34,7 +34,7 @@ export async function shouldFallbackFromCloudflare(request, response) {
 
   // These explicit configuration guards return before any Auth operation.
   if (response.status !== 503) return false;
-  const path = new URL(request.url).pathname.replace(/\\/+$/, "");
+  const path = new URL(request.url).pathname.replace(/\/+$/, "");
   const authPreflight = new Set([
     "/api/v1/auth/login",
     "/api/v1/auth/register",
