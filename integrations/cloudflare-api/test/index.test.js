@@ -50,6 +50,18 @@ test("metadata routes normalize trailing slash and reject non-GET methods like t
 });
 
 
+test("GET /api/v1/subjects requires a bearer token", async () => {
+  const response = await worker.fetch(request("/api/v1/subjects"), {});
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+});
+
+test("POST /api/v1/subjects list is rejected with an explicit allowed method", async () => {
+  const response = await worker.fetch(request("/api/v1/subjects", { method: "POST" }), {});
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+});
+
 test("GET /api/v1/subjects/:id requires a bearer token", async () => {
   const response = await worker.fetch(request("/api/v1/subjects/subject-1"), {});
   assert.equal(response.status, 401);
