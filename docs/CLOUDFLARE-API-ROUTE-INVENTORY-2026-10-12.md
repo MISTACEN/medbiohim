@@ -265,3 +265,20 @@ Important: interactive test routes (`/tests/{id}`, attempt start/save/finish, at
 Live privilege check on 2026-10-12: `authenticated` has SELECT privilege on `public.test_attempts.question_snapshot`, `public.questions.answer`, and `public.questions.options`. The corresponding RLS policies allow reading the user's own attempt / published questions, so sanitizing the Worker HTTP response alone is not enough to secure answer snapshots. No grant/policy changes were made because dependent PHP and REST paths need a coordinated migration. Do not deploy test-write handlers until a private snapshot table and narrowly scoped RPCs (or an equivalent server-side boundary) are reviewed and regression-tested.
 
 No GitHub Actions change, Worker deployment, production API switch, or Supabase DDL change was made in this pass. AI semantic regrading remains a separate gap.
+
+
+## Tests / question-bank read follow-up — source-only (2026-10-12)
+
+| Method / route | Contract / safety | Status |
+|---|---|---|
+| `GET /api/v1/tests/curriculum-map?subject_id=&group_id=` | Requires active group membership; subject compatibility is checked against group course/specialty; outputs published topic/test/question counts, schedule date and unclassified-question totals | Source + tests authored; not deployed |
+| `GET /api/v1/tests/chemistry-master?page=&limit=&kind=&formula=&q=` | Reads only document `subject_slug=chemistry_organic_physical`, `version=2026-10-07-v1`; bounded filtering and pagination under caller JWT | Source + tests authored; live row is 436 items; not deployed |
+| `GET /api/v1/tests/{id}/bank-progress?group_id=` | Published linked-question total plus own user's latest sequential-preparation session/results for the selected active group; no snapshot returned | Source + tests authored; not deployed |
+| `GET /api/v1/tests/{uuid}` | Published test detail, strips answer/correct-choice fields from the response | Source + tests authored; not deployed |
+| `GET /api/v1/my/attempts?subject_id=&group_id=` | Own attempts with group/specialty scope; excludes `question_snapshot` from projection | Source + tests authored; not deployed |
+| `GET /api/v1/progress?subject_id=&group_id=` | Homework totals + own test attempts for resolved group | Source + tests authored; not deployed |
+| `POST /api/v1/tests/{id}/start`, answer-save, finish | The current Worker returns `TEST_ATTEMPT_SECURITY_NOT_READY`; direct table DML permits caller-managed attempt score/status under current grants/RLS, so these routes must remain blocked until narrow, ownership-checked RPCs and grants are applied/tested | Deliberately not enabled |
+
+Live schema observations (2026-10-12): public tests total 33; 32 published, zero published+archived. The chemistry master is one authenticated-read row with 436 content items. Existing authenticated RLS allows a user's own test-attempt row to be read; current grants also permit direct writes to that row, including score/status fields, so a worker-only check would not prevent client-side tampering. No Supabase DDL/grants were changed in this pass.
+
+Static JavaScript syntax compilation of the changed Worker source/test files returned OK for 12 files. This is not equivalent to running `npm test`; actual tests, authenticated HTTP smoke, Worker deploy and frontend cutover remain unverified. GitHub Actions were left untouched.
