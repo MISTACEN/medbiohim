@@ -111,7 +111,7 @@ test("valid access token is checked by Supabase and only canonical identity is r
   assert.equal(calledUrl, "https://project-id.supabase.co/auth/v1/user");
   assert.equal(calledInit.headers.apikey, configured.SUPABASE_ANON_KEY);
   assert.equal(calledInit.headers.authorization, "Bearer valid-user-token");
-  assert.equal(calledInit.redirect, "error");
+  assert.equal(calledInit.redirect, "manual");
   assert.equal(result.ok, true);
   assert.deepEqual(result.user, { id: "user-123", email: "student@example.com" });
   assert.equal("role" in result.user, false);
@@ -177,7 +177,7 @@ test("logout sends the caller token and anon key to the configured Supabase endp
   assert.equal(calledInit.method, "POST");
   assert.equal(calledInit.headers.apikey, configured.SUPABASE_ANON_KEY);
   assert.equal(calledInit.headers.authorization, "Bearer caller-access-token");
-  assert.equal(calledInit.redirect, "error");
+  assert.equal(calledInit.redirect, "manual");
 });
 
 test("logout maps expired tokens to 401 and upstream/network failures to generic errors", async () => {
@@ -243,7 +243,7 @@ test("refresh exchanges the token and normalizes session without trusting user_m
   assert.equal(calledInit.headers.apikey, configured.SUPABASE_ANON_KEY);
   assert.equal(calledInit.headers.authorization, "Bearer " + configured.SUPABASE_ANON_KEY);
   assert.deepEqual(JSON.parse(calledInit.body), { refresh_token: "old-refresh-token" });
-  assert.equal(calledInit.redirect, "error");
+  assert.equal(calledInit.redirect, "manual");
   assert.equal(result.ok, true);
   assert.equal(result.data.access_token, "new-access-token");
   assert.equal(result.data.user.full_name, "Student");
@@ -294,6 +294,7 @@ test("password recovery uses a fixed HTTPS callback and does not disclose accoun
   assert.equal(parsed.pathname, "/auth/v1/recover");
   assert.equal(parsed.searchParams.get("redirect_to"), "https://medbiohim.vercel.app/auth/callback");
   assert.equal(calledInit.method, "POST");
+  assert.equal(calledInit.redirect, "manual");
   assert.equal(calledInit.headers.apikey, configured.SUPABASE_ANON_KEY);
   assert.deepEqual(JSON.parse(calledInit.body), { email: "student@example.com" });
   assert.deepEqual(result, { ok: true, data: { sent: true } });
@@ -351,7 +352,7 @@ test("login exchanges credentials and returns a normalized session without trust
   });
   assert.equal(calledUrl, "https://project-id.supabase.co/auth/v1/token?grant_type=password");
   assert.equal(calledInit.method, "POST");
-  assert.equal(calledInit.redirect, "error");
+  assert.equal(calledInit.redirect, "manual");
   assert.deepEqual(JSON.parse(calledInit.body), { email: "student@example.com", password: "safe-password" });
   assert.equal(result.ok, true);
   assert.equal(result.data.user.role, "student");
@@ -408,6 +409,7 @@ test("registration sends full-name metadata and handles email-confirmation-only 
   });
   assert.equal(calledUrl, "https://project-id.supabase.co/auth/v1/signup");
   assert.equal(calledInit.method, "POST");
+  assert.equal(calledInit.redirect, "manual");
   assert.deepEqual(JSON.parse(calledInit.body), {
     email: "student@example.com",
     password: "safe-password",
@@ -974,4 +976,42 @@ test("selected-group subject catalog also filters by the active group course", a
   });
   assert.equal(result.ok, true);
   assert.deepEqual(result.data.items.map((item) => item.id), ["subject-2", "subject-general"]);
+});
+
+
+test("auth fetch rejects redirects safely without forwarding credentials", async () => {
+  let calls = 0;
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
+  let result;
+  try {
+    result = await authenticateSupabaseRequest(request("Bearer valid-user-token"), configured, async (_url, init) => {
+      calls += 1;
+      assert.equal(init.redirect, "manual");
+      return new Response(null, {
+        status: 302,
+        headers: { location: "https://redirect.example.test/not-auth" },
+      });
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(calls, 1);
+  assert.equal(result.status, 502);
+  assert.equal(result.message, "Supabase Auth returned an unexpected redirect");
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0][0], "supabase_auth_unexpected_redirect");
+  assert.deepEqual(warnings[0][1], {
+    operation: "authenticateSupabaseRequest",
+    status: 302,
+    hasLocation: true,
+    targetIsHttps: true,
+    targetSameOrigin: false,
+    targetIsSupabaseDomain: false,
+    targetMatchesExpectedProject: false,
+    targetPathCategory: "other",
+  });
+  assert.equal(JSON.stringify(warnings).includes("redirect.example.test"), false);
 });
