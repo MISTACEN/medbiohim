@@ -1,4 +1,4 @@
-import { getSupabaseProfileBundle, getSupabaseSubjectDetail, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
+import { getSupabaseProfileBundle, getSupabaseSiteContent, getSupabaseSubjectDetail, listSupabaseHomeworks, listSupabasePublishedTests, listSupabaseSchedule, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -113,27 +113,28 @@ export default {
         return withCors(json({ ok: false, error: { code: profile.code, message: profile.message }, requestId: crypto.randomUUID() }, profile.status), origin);
       }
       const params = url.searchParams;
-      const [homeworks, schedule, tests] = await Promise.all([
+      const [homeworks, schedule, tests, cms] = await Promise.all([
         listSupabaseHomeworks(request, env, { group_id: params.get("group_id") || "" }),
         listSupabaseSchedule(request, env, { group_id: params.get("group_id") || "", from: params.get("from") || "", to: params.get("to") || "" }),
         listSupabasePublishedTests(request, env, { limit: "20" }),
+        getSupabaseSiteContent(request, env),
       ]);
       const degradedSources = [];
       if (!homeworks.ok) degradedSources.push("homeworks");
       if (!schedule.ok) degradedSources.push("schedule");
       if (!tests.ok) degradedSources.push("tests");
-      degradedSources.push("site", "announcements");
+      if (!cms.ok) degradedSources.push("site", "announcements");
       const data = {
         profile: profile.data,
-        site: { title: "Медбиохим" },
-        announcements: [],
+        site: cms.ok ? cms.data.site : { title: "Медбиохим" },
+        announcements: cms.ok ? cms.data.announcements : [],
         schedule: schedule.ok ? schedule.data.items : [],
         schedule_source: schedule.ok ? "supabase_rest" : "unavailable",
         homeworks: homeworks.ok ? homeworks.data.items : [],
         tests: tests.ok ? tests.data.items : [],
         degraded: degradedSources.length > 0,
         degraded_sources: [...new Set(degradedSources)],
-        service_notice: "Часть данных главной страницы ещё переносится. Недоступные источники не заменяются выдуманными данными.",
+        service_notice: degradedSources.length ? "Часть данных главной страницы временно недоступна. Показаны только подтверждённые данные." : null,
       };
       return withCors(success(data), origin);
     }
