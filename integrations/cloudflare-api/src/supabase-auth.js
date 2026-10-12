@@ -1098,3 +1098,41 @@ export async function listSupabasePublishedTests(request, env, filters = {}, fet
     return failure(503, "TESTS_UNAVAILABLE", "Каталог тестов временно недоступен");
   }
 }
+
+
+/** Read public-for-students CMS documents used by the dashboard. */
+export async function getSupabaseSiteContent(request, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let endpoint;
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) throw new Error("config");
+    endpoint = new URL("/rest/v1/site_content", base);
+  } catch {
+    return failure(503, "CMS_NOT_CONFIGURED", "Site content is temporarily unavailable");
+  }
+  endpoint.searchParams.set("select", "key,payload");
+  endpoint.searchParams.set("key", "in.(site,announcements)");
+  try {
+    const response = await fetcher(endpoint.toString(), {
+      method: "GET",
+      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("CMS read failed");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Invalid CMS response");
+    const docs = new Map(rows.map((row) => [String(row.key || ""), row.payload && typeof row.payload === "object" ? row.payload : {}]));
+    const site = { title: "Медбиохим", subtitle: "Учебная платформа", description: "", announcement_banner: "", contacts: [], ...(docs.get("site") || {}) };
+    const rawAnnouncements = docs.get("announcements") || {};
+    const announcements = Array.isArray(rawAnnouncements.items) ? rawAnnouncements.items.slice(0, 10) : [];
+    return { ok: true, data: { site, announcements } };
+  } catch {
+    return failure(503, "CMS_UNAVAILABLE", "Содержимое главной страницы временно недоступно");
+  }
+}
