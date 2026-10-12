@@ -1,3 +1,15 @@
+## Frontend API parity pass — authenticated groups read, 2026-10-13
+
+- 🟢 Migrated and deployed GET /api/v1/groups for the frontend listGroups() consumer. Uses Supabase Auth plus caller JWT/anon-key REST read and RLS, no service-role key; the group filter/order mirrors the PHP repository (active or NULL is_active, course then code).
+- 🟢 Added unit tests for caller-JWT forwarding, result shape/filter/order, RLS-denied fail-closed behavior, route authentication and method handling. Exact current Cloudflare Worker suite: 139/139 passing; Wrangler 4.149.0 dry-run build passes. Cloudflare Workers Build commit 6ea5331126d0dcb5b64817f39bfc9b80ea90088a succeeded.
+- 🟡 Live shadow smoke: GET /api/v1/groups without a token returns 401; POST returns 405. No real-user JWT/RLS data-read acceptance has been performed.
+- 🔴 Frontend parity audit shows remaining unmigrated API families: group mutations, file/media endpoints, community, account settings/Telegram links, presence, planner/attendance, homework creation/submission, quiz/report/trainer APIs, preparation sessions/grading, tickets/materials/lesson-plan, academic planning, notes/favorites, gradebook, and admin APIs.
+- 🔒 No Vercel Production environment, Supabase schema/RLS, DNS, or Telegram webhook was changed. Login/registration and attempt mutations stay closed. Cloudflare-only cutover remains blocked until route parity and authenticated role/RLS acceptance are complete.
+
+**Next:** finish authenticated group-read/RLS validation using a safe student and admin session, then migrate the next read-only frontend route family before any new state-changing API.
+
+---
+
 ## Native rate-limit runtime proof + live shadow smoke — 2026-10-13
 
 - 🟢 Rechecked the deployed main shadow Worker over HTTPS from an allowed test client: GET /api/v1/health → 200; unauthenticated GET /api/v1/schedule → 401; GET /api/v1/subjects with a deliberately invalid Bearer token → 401 UNAUTHORIZED. The earlier 502 AUTH_UPSTREAM_ERROR is no longer reproduced by the live invalid-token path.
