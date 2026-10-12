@@ -282,3 +282,11 @@ No GitHub Actions change, Worker deployment, production API switch, or Supabase 
 Live schema observations (2026-10-12): public tests total 33; 32 published, zero published+archived. The chemistry master is one authenticated-read row with 436 content items. Existing authenticated RLS allows a user's own test-attempt row to be read; current grants also permit direct writes to that row, including score/status fields, so a worker-only check would not prevent client-side tampering. No Supabase DDL/grants were changed in this pass.
 
 Static JavaScript syntax compilation of the changed Worker source/test files returned OK for 12 files. This is not equivalent to running `npm test`; actual tests, authenticated HTTP smoke, Worker deploy and frontend cutover remain unverified. GitHub Actions were left untouched.
+
+
+## Test bank response-view and group-scope corrections — 2026-10-12 (source-only)
+
+- `GET /api/v1/tests/{uuid}` remains the safe solving/detail view: question answer text and per-option correct flags are removed.
+- `GET /api/v1/tests/{uuid}?view=bank&group_id=...` returns the full published answer-bank projection for the explicit bank screen only. The frontend's `getTestBank()` retains the existing PHP-compatible `/tests/{id}` path and adds a query flag; Cloudflare dispatches this view separately. The direct `/tests/{id}/bank` route is an alias.
+- `GET /api/v1/tests` now passes an optional selected `group_id` to the subject resolver. The selected group must be an active membership, and subject visibility is filtered by specialty and course where the selected group provides a course value.
+- No frontend API base URL switch or Worker deployment occurred; PHP remains the live API. Static JavaScript parse checks are not a substitute for `npm test` or authenticated HTTP smoke.
