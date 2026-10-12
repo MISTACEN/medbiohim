@@ -1,3 +1,17 @@
+## Cloudflare ZIP review + Cloudflare-first preview test mode — 2026-10-12 (updated)
+
+- 🟢 Cloudflare-first proxy mode and admin-only transport diagnostics are implemented in source. `MEDBIOHIM_CF_FIRST` defaults to off; no Vercel Preview or Production environment variables have been changed.
+- 🟢 Repaired the reviewed ZIP's observed Supabase schema mismatches: caller-scoped role lookup now uses `user_roles → roles(code)`; group memberships read `role_in_group` instead of the nonexistent `role` column.
+- 🟢 Added 7 router-level test cases to the reviewed candidate archive. Latest local Node.js 22.16.0 result: **65 passed, 0 failed**, with JS syntax checks passing. Downloadable candidate archive was rebuilt and ZIP integrity verified.
+- 🟡 The corrected ZIP is a reviewed candidate artifact, not yet the deployed Worker bundle and not fully merged into the checked-in `integrations/cloudflare-api` source. The active Cloudflare Worker still contains only two modules, while GitHub's entry imports additional modules.
+- 🔴 R2 is not enabled (Cloudflare error 10042), so its bucket/binding cannot be validated. Auth rate-limit bindings, live RLS tests, media delivery and the optional academic RPC migration remain unresolved.
+- 🔴 Latest Actions runs still fail before steps: run IDs `38260355983`, `38260355958`, `38260355910`, `38260355848` on commit `31cbdf6`; inspected job has `runner_id=0`, no runner name, and no steps. CI now includes the Worker router/helper suite but no green execution is claimed.
+- 🟢 New file: [Cloudflare ZIP review and failover](docs/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). The corrected candidate should not be cut over until R2/configuration prerequisites, complete bundle deployment and live contract/RLS tests pass.
+- 🔒 No production route, DNS, Vercel variable, Supabase schema/policy, SQL migration, R2 setting, or Telegram webhook changed.
+
+Next: correct/integrate the ZIP modules into the GitHub Worker source; configure safe R2 and rate limiting only after account prerequisites; reconcile and deploy the complete module bundle to shadow; restore actual Actions runner execution; run live public/authenticated smoke tests; then enable Preview-only failover. Keep Production on the current route until acceptance.
+
+
 ## Cloudflare ZIP review + Cloudflare-first preview test mode — 2026-10-12
 
 - 🟢 Added opt-in Vercel proxy mode `MEDBIOHIM_CF_FIRST=true` with server-only `CLOUDFLARE_API_ORIGIN`; default remains off. It tries Cloudflare first and allows guarded SpaceWeb fallback only over HTTPS.
