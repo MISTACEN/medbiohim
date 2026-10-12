@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BookOpenCheck, Check, ListChecks, Pencil, Play, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
-import { adminUpdateBankQuestion, getBankProgress, getTest, hasToken, me, type ApiTest } from "@/lib/api";
+import { adminUpdateBankQuestion, getBankProgress, getTestBank, hasToken, me, type ApiTest } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -77,7 +77,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
         return;
       }
       const [detail, bankProgress, meRes] = await Promise.all([
-        getTest(p.id, user?.groupId),
+        getTestBank(p.id, user?.groupId),
         getBankProgress(p.id, user?.groupId),
         me(),
       ]);
