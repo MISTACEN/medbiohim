@@ -1,4 +1,4 @@
-import { loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "./supabase-auth.js";
+import { getSupabaseProfileBundle, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser } from "./supabase-auth.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -103,6 +103,25 @@ export default {
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
+    if (pathname === `${API_PREFIX}/auth/me`) {
+      if (request.method !== "GET") {
+        return withCors(json({
+          ok: false,
+          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+          requestId: crypto.randomUUID(),
+        }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await getSupabaseProfileBundle(request, env);
+      if (!result.ok) {
+        return withCors(json({
+          ok: false,
+          error: { code: result.code, message: result.message },
+          requestId: crypto.randomUUID(),
+        }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
     if (pathname === `${API_PREFIX}/auth/register`) {
       if (request.method !== "POST") {
         return withCors(json({
