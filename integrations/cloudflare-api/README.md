@@ -215,3 +215,13 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Regression tests authored in `test/admin-schedule.test.js`, `test/schedule-mutations.test.js`, and `test/index.test.js`.
 - **Not deployed or runtime-verified.** Node tests could not be executed because the repository could not be cloned in the current network-isolated shell; GitHub Actions were left untouched as requested. The current PHP/SpaceWeb API remains active and frontend traffic has not been switched.
 - Before deploy, validate test syntax locally, compare admin payloads against the PHP editor, test real manager/student JWTs against live RLS, inspect partial-failure recovery, and upload all modules together to the shadow Worker.
+
+
+## Progress + test/question catalog — Pass 20 (source-only, 2026-10-12)
+
+- Added authenticated `GET /api/v1/progress`, aggregating homework progress and the current user's test attempts under the supplied group/subject scope. Failures are explicit and not silently converted into a successful zero.
+- Published tests now include `subject_name` and `questions_count`, computed from `test_questions` without reading question answer keys or attempt snapshots.
+- Existing question-bank routes expose published `exam_questions` with filters and pagination; full answer data requires explicit `include_answer=1`.
+- Read-only Supabase audit: 33 tests / 32 published; 855 questions / 660 published and active; 854 test-question links; 876 exam questions / 776 published. All test links point to published active questions; no published active question was found without a test link. One unpublished test with 67 linked questions remains unpublished intentionally.
+- Regression tests authored but not run. No schema/data edits, Worker deployment, frontend cutover or GitHub Actions changes.
+- The test-taking lifecycle remains a blocker for full cutover: test detail, start attempt, answer writes/grading, finish, history and grading retry routes still need migration.
