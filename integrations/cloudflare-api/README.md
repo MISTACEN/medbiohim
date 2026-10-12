@@ -107,3 +107,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - The route fails closed with 503 unless Cloudflare Rate Limiting binding `AUTH_REGISTER_LIMITER` is configured.
 - **Not contract-complete:** the PHP handler attempts DB-backed profile creation and default student-role assignment after Supabase signup. The Worker does not yet do that. Do not switch registration traffic until profile creation, default role assignment, RLS and email-confirmation behavior are migrated and tested.
 - Unit and route tests are authored; full execution remains unverified until CI or a reproducible local run succeeds.
+
+## Auth route migration — Pass 8 (read-only profile bundle)
+
+- Added `GET /api/v1/auth/me` using Supabase Auth to validate the caller's bearer token, then querying `users`, `user_roles` and active `group_memberships` with the caller JWT plus the public anon key.
+- The helper does not use a service-role key. Each REST query remains subject to Supabase grants/RLS, filters by the authenticated user ID, and falls back to a minimal identity bundle if optional profile queries are unavailable.
+- Response shape mirrors the PHP `UserRepository::profileBundle()` keys: `user`, `roles`, `groups`, `current_group`, `course`, `semester`.
+- Added helper and route tests for own-user filtering, role/group normalization, missing token and method handling. Full execution remains unverified until a CI/local run succeeds.
+- Follow-up: validate actual live RLS behavior and embedded PostgREST relationship names before production cutover. Existing PHP login/register still performs DB-backed profile creation/default student-role assignment; that write path remains intentionally blocked until its safe strategy is migrated.
