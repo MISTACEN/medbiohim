@@ -45,3 +45,9 @@ test("allows upload fallback only when the Worker returns before processing due 
   assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/files/upload"), res(503, "STORAGE_NOT_CONFIGURED")), true);
   assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/files/upload"), res(503, "DB_UNAVAILABLE")), false);
 });
+
+
+test("falls back to SpaceWeb when shared-homework attachments are explicitly unsupported before writes", async () => {
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/homeworks"), res(503, "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED")), true);
+  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/homeworks"), res(503, "DB_UNAVAILABLE")), false);
+});
