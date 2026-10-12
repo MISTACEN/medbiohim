@@ -85,7 +85,7 @@ function homeworkStatus(row: DashRow): string {
 
 function homeworkPending(row: DashRow): boolean {
   const status = homeworkStatus(row);
-  return !["submitted", "graded", "done"].includes(status);
+  return !["submitted", "graded", "returned", "done", "completed"].includes(status);
 }
 
 function subjectHref(row: DashRow): string | null {
@@ -231,10 +231,11 @@ export default function DashboardPage() {
 
   const { today: khToday, hm: khHm } = khNowParts();
   const todaySchedule = scheduleSorted.filter((row) => str(row, "date") === khToday);
+  const todayRemainingSchedule = todaySchedule.filter((row) => (str(row, "start_time", "startTime").slice(0, 5) || "00:00") >= khHm);
   const nextFutureDate = scheduleSorted.map((row) => str(row, "date")).find((date) => date > khToday) || null;
   const futureSchedule = nextFutureDate ? scheduleSorted.filter((row) => str(row, "date") === nextFutureDate) : [];
-  const dashboardSchedule = todaySchedule.length > 0 ? todaySchedule : futureSchedule;
-  const scheduleIsToday = todaySchedule.length > 0;
+  const dashboardSchedule = todayRemainingSchedule.length > 0 ? todayRemainingSchedule : futureSchedule;
+  const scheduleIsToday = todayRemainingSchedule.length > 0;
   const nextScheduleDate = dashboardSchedule[0] ? str(dashboardSchedule[0], "date") : "";
   const nextAfterNow =
     dashboardSchedule.find((row) => {
