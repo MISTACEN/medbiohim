@@ -1089,6 +1089,46 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
   }
 }
 
+/** Update only the authenticated user's progress for homework in an active group. */
+export async function setSupabaseHomeworkProgress(request, homeworkId, done, env, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+  const id = String(homeworkId || "").trim();
+  if (!id || id.length > 128 || /[\\/?#]/.test(id)) return failure(422, "VALIDATION_ERROR", "Invalid homework id");
+  if (typeof done !== "boolean") return failure(422, "VALIDATION_ERROR", "done must be a boolean");
+  const token = /^Bearer\\s+(\\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
+  try { base = new URL(baseUrl); if (base.protocol !== "https:" || !anonKey) throw new Error("config"); }
+  catch { return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key"); }
+  async function call(table, params, init = {}) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
+    return fetcher(endpoint.toString(), { ...init, headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json", ...(init.body ? { "content-type": "application/json", prefer: "resolution=merge-duplicates,return=representation" } : {}), ...(init.headers || {}) }, redirect: "error", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS) });
+  }
+  try {
+    const hr = await call("homeworks", { select: "id,group_id", id: "eq." + id, limit: "1" });
+    if (!hr.ok) throw new Error("Homework read failed");
+    const homeworks = await hr.json();
+    if (!Array.isArray(homeworks)) throw new Error("Invalid homework response");
+    const homework = homeworks[0];
+    if (!homework) return failure(404, "NOT_FOUND", "Задание не найдено или недоступно");
+    if (!homework.group_id) return failure(403, "HOMEWORK_ACCESS_DENIED", "Для этого задания нельзя изменить прогресс");
+    const mr = await call("group_memberships", { select: "group_id,groups(id,is_active)", user_id: "eq." + identity.user.id, group_id: "eq." + homework.group_id, is_active: "eq.true", limit: "1" });
+    if (!mr.ok) throw new Error("Membership read failed");
+    const memberships = await mr.json();
+    const membership = Array.isArray(memberships) ? memberships[0] : null;
+    const group = Array.isArray(membership?.groups) ? membership.groups[0] : membership?.groups;
+    if (!membership || !group || group.is_active === false) return failure(403, "HOMEWORK_ACCESS_DENIED", "Задание недоступно в вашей учебной группе");
+    const wr = await call("homework_progress", { on_conflict: "homework_id,user_id" }, { method: "POST", body: JSON.stringify([{ homework_id: id, user_id: identity.user.id, completed: done, submitted_at: done ? new Date().toISOString() : null }]) });
+    if (!wr.ok) throw new Error("Progress write failed");
+    const rows = await wr.json();
+    if (!Array.isArray(rows) || !rows[0]) throw new Error("Invalid progress response");
+    return { ok: true, data: { progress: rows[0] } };
+  } catch { return failure(503, "PROGRESS_UNAVAILABLE", "Не удалось сохранить прогресс задания"); }
+}
+
 
 /** Published test catalog only; never returns question answer keys or attempts. */
 export async function listSupabasePublishedTests(request, env, filters = {}, fetcher = fetch) {
