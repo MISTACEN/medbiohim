@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Incremental Cloudflare Workers API migration scaffold for MEDBIOHIM",
   "scripts": {
+    "build": "npx --yes wrangler@4.149.0 deploy --dry-run",
+    "deploy": "npx --yes wrangler@4.149.0 deploy",
     "test": "node --test"
   },
   "engines": {
