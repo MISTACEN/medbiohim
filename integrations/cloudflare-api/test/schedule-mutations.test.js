@@ -56,7 +56,7 @@ test("schedule entry update validates fields and uses PATCH", async () => {
     new Request("https://worker.example/api/v1/schedule/entries/" + entryId, { headers: { authorization: "Bearer valid-token" } }),
     configured, "update", entryId, { room: "Ауд. 304", date: "2026-10-16" },
     mockedFetch((url, init) => {
-      if (url.pathname === "/rest/v1/schedule_entries" && init.method === "GET") return new Response(JSON.stringify([{ id: entryId, schedule_id: scheduleId }]), { status: 200 });
+      if (url.pathname === "/rest/v1/schedule_entries" && !init.method) return new Response(JSON.stringify([{ id: entryId, schedule_id: scheduleId }]), { status: 200 });
       if (url.pathname === "/rest/v1/schedules") return new Response(JSON.stringify([{ id: scheduleId, is_active: true }]), { status: 200 });
       if (url.pathname === "/rest/v1/schedule_entries" && init.method === "PATCH") {
         assert.deepEqual(JSON.parse(init.body), { room: "Ауд. 304", date: "2026-10-16" });
