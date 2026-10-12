@@ -244,3 +244,11 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Added `GET /api/v1/tests/{id}/bank-progress`, limited to the selected active group and the caller's own sequential session/results, without selecting a snapshot.
 - Helper and route tests were authored. Static parse checks succeeded for 12 changed JS source/test files; the Node test runner was not executed.
 - Attempt start/save/finish remain explicitly disabled until database-owned RPCs and grants prevent clients from writing authoritative attempt scores/status. No live schema/grant changes, Worker deployment, frontend switch or GitHub Actions modifications were made.
+
+
+## Question bank projection and group scope — Pass 22 (source-only, 2026-10-12)
+
+- The regular `GET /api/v1/tests/{uuid}` route removes correct-choice flags and answer text from each question, appropriate for a solve/exam flow.
+- The full student bank uses `getTestBank()` → `GET /api/v1/tests/{uuid}?view=bank&group_id=...`; only this explicitly requested view includes answers/correct flags. The legacy PHP-compatible path remains unchanged on the frontend, and the Worker also exposes `GET /api/v1/tests/{uuid}/bank` as an alias.
+- Test catalog requests pass the selected group to subject visibility. Only an active group membership is accepted; subject-bound tests are filtered by specialty/course where available, and global tests remain visible.
+- The latest static parse check passed for 12 Worker/test JavaScript files. Node tests and live HTTP checks remain unexecuted; GitHub Actions were not touched and no Worker deployment occurred.
