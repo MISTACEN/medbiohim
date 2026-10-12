@@ -2693,3 +2693,9 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 
 **Unblock sequence:** (1) make the reviewed ZIP modules available as tracked repository source; (2) deploy them to the shadow Worker without R2-dependent uploads enabled; (3) configure required secrets and rate-limit bindings; (4) supply/verify the actual HTTPS SpaceWeb API origin; (5) configure Cloudflare-first only in Preview and verify read, auth, write, and failover behavior; (6) enable Production only after successful checks and a rollback path.
 
+## Cloudflare Workers Builds: fix missing build script — 2026-10-13
+
+- 🔴 Observed actual Cloudflare build log from 2026-10-12: dependency install completed with “No packages!”, then configured Build command `npm run build` failed with `Missing script: "build"`. This is a package-script mismatch, not a GitHub connection failure.
+- 🟢 Updated `integrations/cloudflare-api/package.json` on `main` (commit `5f23331d35ee7b7038862a6c90148987f7d9c844`) to add a deterministic `build` script using `npx --yes wrangler@4.149.0 deploy --dry-run`, plus a pinned Wrangler `deploy` script. This makes the configured Build command perform an actual bundle/config validation before deployment.
+- 🟡 The uploaded Cloudflare dashboard screenshot confirms the GitHub repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`, Build command `npm run build`, and Deploy command `npx wrangler deploy`. Thus GitHub is connected and Workers Builds is configured; earlier API lookup error 12040 was not sufficient to conclude the dashboard configuration was absent.
+- 🔴 A new build/deploy run after commit is still required. Do not treat the code change as a successful build or deployment until Cloudflare logs show dry-run success and deploy success. Then verify live Worker modules and smoke tests. Production Vercel routing remains unchanged.
