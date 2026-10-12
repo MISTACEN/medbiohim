@@ -872,7 +872,7 @@ test("progress combines caller-scoped homework and test attempts without fabrica
       assert.equal(parsed.searchParams.get("user_id"), "eq.user-1");
       assert.equal(parsed.searchParams.get("group_id"), "eq.group-1");
       return new Response(JSON.stringify([
-        { id: "attempt-1", test_id: "test-1", status: "finished", percent: 80, tests: { title: "Тест", subject_id: "subject-1" } },
+        { id: "attempt-1", test_id: "test-1", status: "finished", score: 80, percent: 80, tests: { title: "Тест", subject_id: "subject-1" } },
         { id: "attempt-2", test_id: "test-1", status: "in_progress", percent: null, tests: { title: "Тест", subject_id: "subject-1" } },
       ]), { status: 200 });
     }
