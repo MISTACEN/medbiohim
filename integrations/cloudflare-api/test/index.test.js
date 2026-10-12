@@ -141,7 +141,7 @@ test("POST /api/v1/auth/login fails closed until rate-limit enforcement is verif
     body: JSON.stringify({ email: "student@example.com", password: "password123" }),
   }), {});
   assert.equal(response.status, 503);
-  assert.equal((await response.json()).error.code, "RATE_LIMIT_NOT_CONFIGURED");
+  assert.equal((await response.json()).error.code, "RATE_LIMIT_ENFORCEMENT_UNVERIFIED");
 });
 
 test("login rejects attempts denied by the Cloudflare rate limiter before auth", async () => {
