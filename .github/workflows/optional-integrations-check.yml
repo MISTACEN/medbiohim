@@ -19,6 +19,10 @@ on:
       - "integrations/telegram-bot/**"
       - "integrations/telegram-bot-cloudflare/**"
       - "integrations/cloudflare-api/**"
+      - "tools/import_histology_media.py"
+      - "tools/test_import_histology_media.py"
+      - "docs/histology-mbh-import-plan.md"
+      - "docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md"
       - ".github/workflows/optional-integrations-check.yml"
   workflow_dispatch:
 
