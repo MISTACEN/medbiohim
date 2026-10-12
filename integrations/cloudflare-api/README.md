@@ -1,12 +1,12 @@
 # MEDBIOHIM Cloudflare API migration scaffold
 
-## Status: shadow-only, not production
+## Status: deployed shadow Worker; not production
 
-The existing PHP API on SpaceWeb remains the current backend. This Worker is an isolated scaffold for a gradual migration; it is not deployed or wired into the frontend by this change.
+The existing PHP API on SpaceWeb remains the current backend. The Worker is deployed in isolation for gradual migration and is not wired into the frontend or production custom domain.
 
 - Worker name: `medbiohim-api-shadow`
 - Runtime: Cloudflare Workers JavaScript modules
-- Contract-matched public PHP routes in the shadow Worker: `GET /api/v1` and `GET /api/v1/ping`; `POST /api/v1/auth/logout` is now implemented against Supabase Auth.
+- Implemented shadow routes include `GET /api/v1`, `GET /api/v1/ping`, `GET /api/v1/dashboard`, `GET /api/v1/schedule`, `GET /api/v1/homeworks`, `GET /api/v1/tests`, subject catalog/detail, search, profile, and the currently implemented auth endpoints. Check the route inventory for precise cutover gates.
 - `GET /health` and `GET /api/v1/health` are shadow diagnostics, not yet contract-compatible ports of the PHP `HealthChecker`.
 - Unmigrated `/api/v1/*` routes return `501 ROUTE_NOT_MIGRATED`
 - No proxy/fallback to SpaceWeb is implemented. This is intentional because the currently checked SpaceWeb HTTPS endpoint fails certificate verification and redirects to HTTP.
@@ -16,7 +16,7 @@ The existing PHP API on SpaceWeb remains the current backend. This Worker is an 
 
 - `GET /api/v1` and `GET /api/v1/ping` mirror the current PHP success-envelope fields and are covered by contract tests.
 - The ping clock is emitted as an ISO-8601 UTC timestamp; the `env` value deliberately identifies the shadow environment.
-- These routes have not been deployed and are not receiving application traffic. No frontend API base URL or production route was changed.
+- The Worker is deployed but has not been smoke-tested from a permitted external runtime and is not receiving application traffic. No frontend API base URL or production route was changed.
 
 ## Authentication groundwork — Pass 2
 
@@ -153,3 +153,13 @@ See [`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`](../../docs/CLOUDFLARE-
 - Health and API routes were deployed, but an external HTTP smoke test could not be completed from the connected tool runtime because outbound requests to the `workers.dev` host were blocked by that runtime. Treat endpoint reachability and live authenticated Supabase reads as **not yet verified**.
 - Login and registration remain fail-closed unless real Cloudflare rate-limiting bindings are configured. This is intentional, not a deployment failure.
 - Do not switch production traffic until smoke tests, Node tests, RLS relationship checks, and the remaining PHP route migration are verified.
+
+
+## Full dashboard and schedule migration — Pass 14
+
+- Added authenticated read routes for the dashboard aggregate, schedule range, group homeworks, and published test catalog. Reads use the caller JWT and Supabase anon key; RLS remains in force.
+- Schedule queries are restricted to active memberships and selected date ranges; a requested group outside the user's memberships returns 403.
+- Homework completion and submission status are fetched only for the current user. Published test catalog excludes archived/unpublished rows and does not expose answer keys or attempts.
+- Dashboard returns an explicit degraded-source list until site configuration and announcements are migrated; it does not claim the whole homepage is complete.
+- Deployed these routes to the isolated shadow Worker. External HTTP smoke testing is still blocked from the current tool runtime; GitHub Actions execution and live authenticated responses are not yet confirmed.
+- Next: verify route tests and live RLS/PostgREST query behavior; then migrate CMS announcements/site data, schedule writes and attendance, homework create/update/submission/attachments, and the remaining PHP routes in contract-tested passes.
