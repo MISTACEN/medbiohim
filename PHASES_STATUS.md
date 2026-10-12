@@ -1735,3 +1735,18 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 | Test bank response contract | 🟡 Source updated | Bank screen uses `getTestBank` with `view=bank`; ordinary test detail remains sanitized. Production PHP path is preserved; Cloudflare query dispatch is source-only |
 | Test catalog group/course scope | 🟡 Source + test authored | Selected group is validated as an active membership; group specialty and course filter subject-bound tests |
 | Static JS syntax check | 🟢 | 12 Worker/test JS files parsed; Node tests and HTTP smoke are still not executed |
+
+## Cloudflare candidate archive — review pass (2026-10-13)
+
+- [x] Corrected candidate role queries to use `roles(code)` for homework grading, presence, group/domain authorization and file role checks.
+- [x] Candidate archive tests: **58/58 passed locally** on Node 22 after the correction.
+- [x] Static syntax parse for candidate `src/*.js` and `test/*.js`: passed.
+- [ ] Candidate source modules merged into `main`: not yet done.
+- [ ] GitHub Actions runner execution restored: blocked; workflows fail before any steps/runner name are recorded and logs are unavailable.
+- [ ] Live Supabase RLS/PostgREST checks: not performed.
+- [ ] R2 binding and upload/download: blocked because R2 is not enabled in the connected account.
+- [ ] Academic-state SQL migration: not applied; security and remote migration history review required.
+- [ ] Cloudflare deployment / runtime smoke test / Vercel cutover: not performed. SpaceWeb remains production; `MEDBIOHIM_CF_FIRST` remains off.
+
+The downloadable review ZIP contains the role fixes plus a corrected status/cutover note. The local unit tests use mocked responses and do not substitute for live integration testing.
+

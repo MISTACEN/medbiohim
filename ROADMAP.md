@@ -2599,3 +2599,16 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟢 A direct Cloudflare `GET /api/v1/tests/{id}/bank` alias is also present. The question-bank view receives `topic_title` / `module_title` fields expected by the UI and continues using the existing dedicated `bank-progress` endpoint.
 - 🟢 Published-test visibility now passes the selected group through the subject resolver and filters by active membership, specialty, and—when a single group is selected—course. Regression fixtures use UUID group/test identifiers.
 - 🟡 Static JavaScript parsing passed for 12 Worker/test JS files after the latest edits. `npm test` was not run because this environment cannot resolve GitHub; no claim of runtime test success.
+
+## Cloudflare candidate ZIP review — 2026-10-13
+
+- 🟢 Reviewed the attached expanded Worker candidate package and corrected four authorization role lookups in the review copy: `src/homework-mutations.js`, `src/presence.js`, `src/domain.js`, and `src/files.js` now use the canonical PostgREST relation `user_roles → roles(code)`, not the nonexistent `user_roles.role` column.
+- 🟢 Re-ran the candidate archive’s complete Node test suite after the corrections: **58/58 passed on Node.js v22.16.0**. `node --check` over all candidate source and test JavaScript files also passed. These are mocked/unit tests only; they do not validate live RLS, remote PostgREST relationships, deployed Worker behavior, R2, or LLM connectivity.
+- 🟡 The corrected candidate is delivered as a review ZIP; the new candidate modules are **not yet merged into the main repository or deployed**. Keep the current main Worker and live SpaceWeb PHP backend unchanged until module-by-module integration review is complete.
+- 🔴 R2 remains unavailable in the connected Cloudflare account (previous API response: error 10042). Candidate `wrangler.toml` still declares an R2 binding and production environment, so it must not be deployed as-is.
+- 🔒 `database/20261012_public_sync_my_academic_state.sql` has not been applied. Reconcile the remote migration history, function definitions, grants, `SECURITY DEFINER` boundaries and RLS before any execution.
+- 🔴 GitHub Actions runs are being created, but recent jobs immediately finish as failures with empty runner names, zero steps, and no downloadable logs; rerunning the code-check jobs reproduces the same behavior. This is consistent with an execution/runner/account configuration problem rather than evidence of failing test assertions, but the underlying account-level cause is not exposed by the current connector. The Supabase Preview check separately reported its monthly 1,000 git-push-event limit was reached.
+- 🔒 No Worker deployment, DNS or Vercel API cutover, Supabase schema/RLS mutation, or production data write was performed.
+
+**Next order:** restore GitHub Actions runner execution; reconcile each candidate query with live schema/RLS in read-only mode; decide how to resolve the R2 blocker or remove R2 dependency from an initial migration slice; review the academic-state SQL; then stage and smoke-test the complete Worker. `MEDBIOHIM_CF_FIRST` remains off.
+
