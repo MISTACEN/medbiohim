@@ -902,11 +902,14 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
       const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
       return { group_id: String(row.group_id || group?.id || ""), group: group || null };
     }).filter((row) => row.group_id);
+    if (!groups.length) return failure(422, "NO_GROUP", "Для расписания нужна активная учебная группа");
     const selectedGroups = requestedGroup ? groups.filter((row) => row.group_id === requestedGroup) : groups;
     if (requestedGroup && !selectedGroups.length) {
       return failure(403, "GROUP_ACCESS_DENIED", "You do not have access to this group's schedule");
     }
-    if (!selectedGroups.length) return { ok: true, data: { items: [], groups: [], from, to } };
+    if (!requestedGroup && groups.length > 1 && filters.all_groups !== true) {
+      return failure(409, "GROUP_REQUIRED", "Выберите учебную группу для просмотра расписания");
+    }
 
     const groupIds = selectedGroups.map((row) => row.group_id);
     const schedules = await rows("schedules", {
@@ -996,10 +999,13 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       limit: "100",
     });
     const groupIds = [...new Set(memberships.map((row) => String(row.group_id || "")).filter(Boolean))];
-    if (!groupIds.length) return { ok: true, data: { items: [], groups: [] } };
+    if (!groupIds.length) return failure(422, "NO_GROUP", "Для заданий нужна активная учебная группа");
     const requestedGroup = String(filters.group_id || "").trim();
     if (requestedGroup && !groupIds.includes(requestedGroup)) {
       return failure(403, "GROUP_ACCESS_DENIED", "You do not have access to this group's homework");
+    }
+    if (!requestedGroup && groupIds.length > 1 && filters.all_groups !== true) {
+      return failure(409, "GROUP_REQUIRED", "Выберите учебную группу для просмотра заданий");
     }
     const scopedGroups = requestedGroup ? [requestedGroup] : groupIds;
     const homeworks = await rows("homeworks", {
