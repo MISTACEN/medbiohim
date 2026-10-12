@@ -248,3 +248,20 @@ Important gate: the versioned admin save path matches the existing PHP contract 
 Live read-only data audit: 33 tests (32 published), 855 `questions` (660 published and not archived), 854 `test_questions` links, 876 `exam_questions` (776 published). No links to unpublished/archived question rows and no published non-archived `questions` rows lacking a link were found. The unpublished 67-question embryology test was not published automatically.
 
 Important: interactive test routes (`/tests/{id}`, attempt start/save/finish, attempt history, grading retry) remain unmigrated. No production cutover or Worker deployment was done.
+
+
+## Progress + test/question bank pass — source-only (2026-10-12)
+
+| Method / route | Contract / safety | Status |
+|---|---|---|
+| `GET /api/v1/progress?subject_id=&group_id=` | Caller JWT; homework status + attempts are own-user records, attempt results scoped to the resolved active group; score average mirrors PHP's `score` field | Source + tests authored; not run/deployed |
+| `GET /api/v1/tests` | Published catalog; subject-bound tests filtered through caller-visible active subjects; question count, subject/module/topic and optional source file fields | Source updated; live RLS and optional file metadata not smoke-tested |
+| `GET /api/v1/tests/{uuid}` | Published test only; active published question content and option labels; strips option `correct` flags and answer text from the API response | Read-only source + tests authored |
+| `GET /api/v1/my/attempts?subject_id=&group_id=` | Own attempts only, selected active group, safe response projection without `question_snapshot` | Read-only source + tests authored |
+| `POST /api/v1/tests/{id}/start` | Must use a private answer snapshot; cannot use caller-readable `test_attempts.question_snapshot` | Explicitly blocked with `TEST_ATTEMPT_SECURITY_NOT_READY` |
+| `POST /api/v1/tests/attempts/{id}/answers` | Requires private snapshot access plus ownership/status checks | Explicitly blocked with `TEST_ATTEMPT_SECURITY_NOT_READY` |
+| `POST /api/v1/tests/attempts/{id}/finish` | Requires guarded, idempotent server-side scoring | Explicitly blocked with `TEST_ATTEMPT_SECURITY_NOT_READY` |
+
+Live privilege check on 2026-10-12: `authenticated` has SELECT privilege on `public.test_attempts.question_snapshot`, `public.questions.answer`, and `public.questions.options`. The corresponding RLS policies allow reading the user's own attempt / published questions, so sanitizing the Worker HTTP response alone is not enough to secure answer snapshots. No grant/policy changes were made because dependent PHP and REST paths need a coordinated migration. Do not deploy test-write handlers until a private snapshot table and narrowly scoped RPCs (or an equivalent server-side boundary) are reviewed and regression-tested.
+
+No GitHub Actions change, Worker deployment, production API switch, or Supabase DDL change was made in this pass. AI semantic regrading remains a separate gap.
