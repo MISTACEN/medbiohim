@@ -2727,3 +2727,11 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Added `[observability]` with `enabled = true` and full head sampling to `integrations/cloudflare-api/wrangler.toml` in commit `961e2b8ee3b08e1b992982b0d83847a7b7497c49`. This is a config change intended to make safe runtime logs queryable; deployment and actual log visibility still need confirmation.
 - 🔴 Next: confirm Cloudflare Workers Build and deployment after `961e2b8`; re-check settings and query logs for `supabase_auth_upstream_fetch_failed`; identify the network cause without reading or logging secret values. Then re-run auth and rate-limit checks.
 - 🔒 Production routing and Vercel environment remain unchanged. Do not enable Cloudflare-first production traffic until auth, required read/write paths, and rate limits pass.
+
+
+## Latest verification after observability config commit — 2026-10-13
+
+- 🔴 Repeated seven login requests using deliberately fake `.invalid` email addresses; all seven still returned HTTP 502 `AUTH_UPSTREAM_ERROR`, and none returned 429. No account was created. Rate limiting remains unverified and may not be enforcing the configured threshold.
+- 🟡 The live Worker settings still show `logpush=false` and no tail consumers after commit `961e2b8`; therefore the new `[observability]` config has not been confirmed active. The temporary tail session could not establish a WebSocket connection and was deleted afterward.
+- 🟡 GitHub combined status currently reports Vercel `failure` with a build-rate-limit/upgrade link for the config and docs commits. This is not evidence of a Cloudflare build result. Cloudflare's build-trigger API lookup returns no triggers for the script, despite the previously supplied dashboard screenshot showing a configured build UI; reconcile this mismatch before relying on auto-deploy.
+- 🔴 Remaining blockers are still auth upstream reachability, a proven 429 rate-limit test, and verified Cloudflare build/deploy. Production remains on its existing routing; no cutover was performed.
