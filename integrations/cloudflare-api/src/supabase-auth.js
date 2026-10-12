@@ -799,16 +799,25 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
 
   const course = String(filters.course ?? "").trim();
   const semester = String(filters.semester ?? "").trim();
+  const requestedGroup = String(filters.group_id ?? "").trim();
   if ((course && !/^[1-6]$/.test(course)) || (semester && !/^(?:[1-9]|1[0-2])$/.test(semester))) {
     return failure(422, "VALIDATION_ERROR", "course or semester filter is invalid");
   }
+  if (requestedGroup && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedGroup)) {
+    return failure(422, "VALIDATION_ERROR", "group_id must be a UUID");
+  }
 
   try {
-    const memberships = await rows("group_memberships", {
-      select: "groups(specialty_slug)",
+    const membershipQuery = {
+      select: "group_id,groups(specialty_slug,is_active,course_number)",
       user_id: "eq." + identity.user.id,
       is_active: "eq.true",
-    });
+    };
+    if (requestedGroup) membershipQuery.group_id = "eq." + requestedGroup;
+    const memberships = await rows("group_memberships", membershipQuery);
+    if (requestedGroup && !memberships.some((row) => String(row.group_id || "") === requestedGroup)) {
+      return failure(403, "GROUP_ACCESS_DENIED", "You do not belong to the requested group");
+    }
     const allowedSpecialties = new Set();
     for (const membership of memberships) {
       const raw = membership?.groups;
