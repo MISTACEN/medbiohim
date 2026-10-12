@@ -2532,3 +2532,15 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Regression tests were authored for progress totals, catalog scoping/counts, read projections, and the fail-closed attempt-write gate. They have **not been executed**: repository clone/network access was unavailable. GitHub Actions were not touched per instruction.
 - 🔒 No Supabase schema/grant change, Cloudflare deploy, or frontend API switch was made. PHP/SpaceWeb remains the active production API.
 - ⬜ Follow-up: design and test an inaccessible answer-snapshot table plus narrow database functions (or another private server-side store); then implement idempotent start/save/finish and AI regrade, compare against `TestRepository`/PHP response contracts, run the test suite, and smoke-test shadow only.
+
+
+## Progress + test and question-bank read routes — follow-up (2026-10-12)
+
+- 🟢 Added `GET /api/v1/tests/curriculum-map?subject_id=&group_id=`. It resolves an authenticated active group, filters active subjects by course/specialty compatibility, then builds module/topic trees with published question counts, published test counts, planned dates and unclassified-question counts. A missing/foreign group is not silently inferred when the user has multiple groups.
+- 🟢 Added `GET /api/v1/tests/chemistry-master?page=&limit=&kind=&formula=&q=`. It reads the live `chemistry_master_documents` JSON document under the caller JWT, filters and paginates a bounded result set, and matches the existing ChemistryMaster frontend response contract.
+- 🟢 Confirmed the live unified chemistry bank currently contains 436 items in version `2026-10-07-v1`; its RLS read policy is authenticated-only.
+- 🟢 Added `GET /api/v1/tests/{id}/bank-progress?group_id=`. It resolves group/specialty context, counts published/unarchived questions linked to the test, and reports the caller's latest sequential preparation progress in that group using safe session/result projections.
+- 🟢 Auth/method regression tests were added for the new routes and helper-level catalog/progress tests. A static JavaScript parse pass succeeded for the 12 changed Worker modules/test files.
+- 🟡 The real Node test suite has **not** been executed and no runtime HTTP smoke test is confirmed. GitHub Actions remains untouched by instruction; the shell cannot clone the repository in the current network context.
+- 🔒 Test attempt start/save/finish remain intentionally fail-closed until their write path has database-enforced score/status integrity. Existing RLS permits a user to update their own attempt row and its score/status when direct table DML grants are present. The full test runner should use narrow authenticated database RPCs and a coordinated grants strategy rather than trusting the caller-JWT table write path.
+- 🔒 No production API base URL, live Supabase grants/schema, or Cloudflare deployment was changed. PHP/SpaceWeb remains the current backend.
