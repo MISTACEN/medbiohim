@@ -811,3 +811,40 @@ test("subject plan endpoint represents a missing plan as unavailable, not an err
   assert.equal(result.data.plan, null);
   assert.equal(result.data.schedule_count, 0);
 });
+
+
+test("homework progress checks the active group and writes using the verified caller identity", async () => {
+  const { setSupabaseHomeworkProgress } = await import("../src/supabase-auth.js");
+  const calls = [];
+  const result = await setSupabaseHomeworkProgress(request("Bearer valid-user-token"), "homework-1", true, configured, async (url, init) => {
+    const parsed = new URL(url);
+    calls.push({ parsed, init });
+    if (parsed.pathname.endsWith("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-123", email: "student@example.com" }), { status: 200 });
+    if (parsed.pathname.endsWith("/rest/v1/homeworks")) return new Response(JSON.stringify([{ id: "homework-1", group_id: "group-1" }]), { status: 200 });
+    if (parsed.pathname.endsWith("/rest/v1/group_memberships")) return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", is_active: true } }]), { status: 200 });
+    if (parsed.pathname.endsWith("/rest/v1/homework_progress")) return new Response(JSON.stringify([{ homework_id: "homework-1", user_id: "user-123", completed: true }]), { status: 201 });
+    throw new Error("Unexpected upstream request");
+  });
+  assert.equal(result.ok, true);
+  const write = calls.find((call) => call.parsed.pathname.endsWith("/rest/v1/homework_progress"));
+  assert.equal(write.init.method, "POST");
+  assert.equal(write.parsed.searchParams.get("on_conflict"), "homework_id,user_id");
+  const payload = JSON.parse(write.init.body)[0];
+  assert.equal(payload.user_id, "user-123");
+  assert.equal(payload.homework_id, "homework-1");
+  assert.equal(payload.completed, true);
+  assert.equal(write.init.headers.authorization, "Bearer valid-user-token");
+});
+
+test("homework progress refuses a homework outside the caller's active group", async () => {
+  const { setSupabaseHomeworkProgress } = await import("../src/supabase-auth.js");
+  const result = await setSupabaseHomeworkProgress(request("Bearer valid-user-token"), "homework-2", false, configured, async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-123" }), { status: 200 });
+    if (parsed.pathname.endsWith("/rest/v1/homeworks")) return new Response(JSON.stringify([{ id: "homework-2", group_id: "group-other" }]), { status: 200 });
+    if (parsed.pathname.endsWith("/rest/v1/group_memberships")) return new Response(JSON.stringify([]), { status: 200 });
+    throw new Error("Unexpected upstream request");
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+});
