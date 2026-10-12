@@ -2,6 +2,7 @@ import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getS
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 import { getSupabaseTestDetail, listSupabaseMyAttempts } from "./test-attempts.js";
+import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -390,6 +391,29 @@ export default {
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/tests/curriculum-map") {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const result = await getSupabaseTestCurriculumMap(request, env, {
+        subject_id: url.searchParams.get("subject_id") || "",
+        group_id: url.searchParams.get("group_id") || "",
+      });
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/tests/chemistry-master") {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const result = await getSupabaseChemistryMaster(request, env, {
+        page: url.searchParams.get("page") || "1",
+        limit: url.searchParams.get("limit") || "20",
+        kind: url.searchParams.get("kind") || "",
+        formula: url.searchParams.get("formula") || "",
+        q: url.searchParams.get("q") || "",
+      });
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
 
