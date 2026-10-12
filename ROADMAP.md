@@ -2699,3 +2699,14 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟢 Updated `integrations/cloudflare-api/package.json` on `main` (commit `5f23331d35ee7b7038862a6c90148987f7d9c844`) to add a deterministic `build` script using `npx --yes wrangler@4.149.0 deploy --dry-run`, plus a pinned Wrangler `deploy` script. This makes the configured Build command perform an actual bundle/config validation before deployment.
 - 🟡 The uploaded Cloudflare dashboard screenshot confirms the GitHub repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`, Build command `npm run build`, and Deploy command `npx wrangler deploy`. Thus GitHub is connected and Workers Builds is configured; earlier API lookup error 12040 was not sufficient to conclude the dashboard configuration was absent.
 - 🔴 A new build/deploy run after commit is still required. Do not treat the code change as a successful build or deployment until Cloudflare logs show dry-run success and deploy success. Then verify live Worker modules and smoke tests. Production Vercel routing remains unchanged.
+
+## Post-fix runtime smoke check — 2026-10-13
+
+- 🟢 Live Worker `/health` and `/api/v1/health`: HTTP 200; response remains `mode=shadow`, `role=migration-scaffold`, `productionTrafficEnabled=false`.
+- 🟢 Disallowed CORS preflight from `https://evil.example`: HTTP 403 `ORIGIN_NOT_ALLOWED`.
+- 🟢 Unknown route: HTTP 501 `ROUTE_NOT_MIGRATED`, fails closed.
+- 🟢 Empty login and registration requests: HTTP 422 validation errors.
+- 🔴 Protected `GET /api/v1/subjects` with a deliberately invalid bearer token: HTTP 502 `AUTH_UPSTREAM_ERROR` (“Could not reach Supabase Auth”), still not the expected 401. Investigate Supabase Auth reachability/configuration without exposing secret values.
+- 🟡 GitHub commit status for build-script commit `5f23331d35ee7b7038862a6c90148987f7d9c844` reports Vercel success only; it does not confirm Cloudflare Workers Builds. Live health responses also cannot prove the latest source bundle was deployed.
+- 🔴 Need Cloudflare Builds log for a run after `5f23331d` showing successful `npm run build` and `npx wrangler deploy`; then inspect deployed module list and re-run auth/rate-limit tests.
+- 🔒 No production route, Vercel environment, Supabase schema/RLS, or secret was changed. Production cutover remains blocked.
