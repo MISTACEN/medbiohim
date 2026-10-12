@@ -1650,3 +1650,18 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 | Published unlinked `questions` | 🟢 read-only audit | 0 found in current query |
 | Interactive test attempts / grading | ⬜ pending | Detail/start/save/finish/history/retry routes not migrated |
 | Test execution and Worker deployment | ⬜ pending | No tests run; no deploy; Actions untouched |
+
+
+## Progress + tests/question bank — 2026-10-12
+
+| Work item | Status | Notes |
+|---|---|---|
+| `GET /api/v1/progress` | 🟡 Source + tests authored | Homework and test attempt totals; active-group scoping; no live HTTP verification |
+| Progress metric UI | 🟢 Source updated | No fabricated 0% for missing test averages/no activity; degraded data is not rendered as real metrics |
+| Published test catalog | 🟢 Source + regression tests | Subject visibility filter, question counts, module/topic and optional source metadata |
+| `GET /api/v1/tests/{uuid}` | 🟡 Source + tests authored | Published questions/options only; answer keys stripped from the Worker response |
+| `GET /api/v1/my/attempts` | 🟡 Source + tests authored | Authenticated user's selected-group history; excludes snapshot projection |
+| Test attempt start/save/finish | 🔒 Intentionally blocked | Live grants permit authenticated selection of `test_attempts.question_snapshot` and `questions.answer/options`; caller-JWT writes must not be exposed until private snapshot storage/guarded RPCs are in place |
+| AI semantic grading/regrade | ⬜ Not migrated | Keep distinct from deterministic MCQ/exact-match fallback |
+| Runtime tests | 🟡 Authored, not executed | Clone blocked by unavailable network; GitHub Actions intentionally untouched |
+| Shadow deployment / frontend cutover | ⬜ Not performed | Current PHP/SpaceWeb backend remains active |
