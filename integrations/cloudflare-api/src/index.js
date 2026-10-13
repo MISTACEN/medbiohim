@@ -5,6 +5,7 @@ import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBank
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseMaterialFileUrl } from "./material-file.js";
+import { getSupabaseFileDownload, getSupabaseFileRecord } from "./file-records.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
@@ -313,6 +314,39 @@ export default {
       try { sourceId = decodeURIComponent(contentSourceMatch[1]); }
       catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid content source id" }, requestId: crypto.randomUUID() }, 422), origin); }
       const result = await getSupabaseContentSource(request, env, sourceId);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const fileDownloadMatch = new RegExp("^" + API_PREFIX + "/files/([^/]+)/download$").exec(pathname);
+    if (fileDownloadMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let fileId;
+      try { fileId = decodeURIComponent(fileDownloadMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid file id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseFileDownload(request, env, fileId);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(new Response(null, {
+        status: 302,
+        headers: { location: result.data.url, "cache-control": "private, no-store" },
+      }), origin);
+    }
+
+    const fileRecordMatch = new RegExp("^" + API_PREFIX + "/files/([^/]+)$").exec(pathname);
+    if (fileRecordMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let fileId;
+      try { fileId = decodeURIComponent(fileRecordMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid file id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseFileRecord(request, env, fileId);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
