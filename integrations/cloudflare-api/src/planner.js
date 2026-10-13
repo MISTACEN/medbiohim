@@ -220,6 +220,19 @@ export async function heartbeatSupabasePresence(request, env, fetcher = fetch) {
       : await c.rows("presence_online", { select: "*" }, { method: "POST", body: JSON.stringify(row) });
     return { ok: true, data: { presence: result[0] || row } };
   } catch (e) {
+    const cause = e && typeof e === "object" ? e.cause : undefined;
+    const failureText = [e?.name, e?.message, cause?.name, cause?.code].filter(Boolean).join(" ").toLowerCase();
+    const category = /redirect/.test(failureText) ? "redirect"
+      : /timeout|timed out|aborted/.test(failureText) ? "timeout"
+      : /enotfound|eai_again|dns|getaddrinfo/.test(failureText) ? "dns"
+      : /certificate|tls|ssl/.test(failureText) ? "tls"
+      : /fetch failed|network|socket|connect/.test(failureText) ? "connection"
+      : "upstream";
+    console.error("MEDBIOHIM_PRESENCE_FAILURE", JSON.stringify({
+      status: Number(e?.status) || 0,
+      code: String(e?.code || "UNEXPECTED_ERROR").slice(0, 40),
+      category,
+    }));
     if (e?.status === 401) return presenceFail(401, "UNAUTHORIZED", "Требуется войти в систему");
     if (e?.status === 403 || e?.status === 404) return presenceFail(503, "PRESENCE_ERROR", "Таблица presence_online недоступна под JWT/RLS");
     return presenceFail(500, "PRESENCE_ERROR", "Не удалось обновить статус присутствия");
