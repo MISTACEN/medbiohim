@@ -50,7 +50,7 @@ test("material file URL checks publication and uses the caller JWT before signin
   assert.equal(result.data.mode, "presigned");
   assert.equal(result.data.expires_in, 600);
   assert.equal(new URL(result.data.url).searchParams.get("Authorization"), "download-token");
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 6);
 });
 
 test("material file URL denies MBH materials when active specialty membership is absent", async () => {
