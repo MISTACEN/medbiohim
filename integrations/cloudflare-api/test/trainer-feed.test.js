@@ -329,3 +329,33 @@ test("trainer answer submission refuses missing tokens and never calls the gradi
   assert.equal(result.status, 401);
   assert.equal(nonAuthCalls, 0);
 });
+
+
+test("trainer answer submission rejects non-string identifiers and text without invoking RPC", async () => {
+  let rpcCalls = 0;
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
+    card_id: 123,
+    answer_text: { forged: true },
+  }, async (url) => {
+    const pathname = new URL(String(url)).pathname;
+    if (pathname === "/auth/v1/user") return response({ id: "user-1" });
+    rpcCalls += 1;
+    return response({});
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
+  assert.equal(rpcCalls, 0);
+});
+
+test("trainer answer returns a service error when the secure RPC is missing from the PostgREST schema cache", async () => {
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
+    card_id: "card-1",
+  }, async (url) => {
+    if (new URL(String(url)).pathname === "/auth/v1/user") return response({ id: "user-1" });
+    return response({ code: "PGRST202", message: "internal schema cache details" }, 404);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "TRAINER_ERROR");
+  assert.notEqual(result.message, "internal schema cache details");
+});
