@@ -1,3 +1,17 @@
+## Latest verified checkpoint — 2026-10-14 (after account/training/textbook route port)
+
+- 🟢 Cloudflare Worker build/deploy passed: commit `bd787c12cd324c66dfcf5260b5753e74b8b60f0b`, version `f27f713e-e1cc-44ad-95b3-266f64a7885c`, **276/276 tests passed**.
+- 🟢 Public `medbiohim.vercel.app/api/v1/health` returns the Worker `mode: shadow` response. This confirms Vercel's current API proxy routes to the Shadow Worker even though the Worker is labelled shadow; don't assume the PHP API is the active path.
+- 🟢 Added current frontend routes for account settings, GET training list, and histology textbook listing/private download. Public smoke checks without a bearer token return 401 rather than 501. Signed-in runtime behavior still needs E2E verification.
+- 🟢 Applied `public.user_preferences` in Supabase with RLS and owner-only CRUD policies; the repo migration filename matches applied version `20261013171940`.
+- 🟡 Private B2 textbook listing/streaming has mock-backed tests, but actual files were not found in the checked Supabase Storage or Upstash Blob inventories. Missing PDFs fail explicitly, not as empty success. Training POST/detail/answer/cancel/complete still need parity.
+- 🔴 Trainer media incident remains open: 206 published MBH cards have no `source_file_id`; `files` has only one deleted stub. Preparations use `histology-photo-…` hash keys but `preparation.imagePath` original JPEG names; electronograms use `electronograms/images/*.png`. Verify/upload real objects and finish key mapping before calling the 236 historical image 503s fixed.
+- 🟡 Five server-side AI provider secret bindings exist, but no signed-in real generation has been verified. `UPSTASH_REDIS_REST_TOKEN` and `UPSTASH_BLOB_TOKEN` remain missing from Shadow and must be added through the Cloudflare Dashboard. Redis remains metadata cache only.
+- 🟡 Supabase security advisor flags the sanitized trainer view as SECURITY DEFINER, four authenticated SECURITY DEFINER RPCs, and disabled leaked-password protection. Review grants/RLS before semantics-changing remediation.
+- 🔒 No extra branch created. No Vercel env, DNS, or custom-domain setting was changed by this pass; live Vercel health confirms the existing public API proxy is already forwarding to Shadow. Audit: [UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+---
+
 ## Verified state — 2026-10-14: AI execution + Upstash storage/cache implementation pass
 
 - 🟡 AI send endpoint has a provider execution path on `main` (Groq/Mistral/OpenRouter, region-gated Gemini and GigaChat OAuth), caller-JWT data access and fallback among configured providers. **Not verified by successful Worker Build/tests or live provider calls yet.**
