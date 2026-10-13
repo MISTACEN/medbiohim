@@ -44,6 +44,12 @@ Read-only queries against the current Supabase project found:
 - `trainer_feed_cards_public` is intentionally group/specialty scoped for histology/MBH. A service-side query without an authenticated MBH membership sees 0 rows through that view; this must not be interpreted as evidence that the underlying 206 cards were deleted.
 - Therefore, image repair requires **both** an asset/metadata migration (map each card to a real file row and ensure the object is actually present) and private B2 runtime credentials. Merely changing the Supabase anon key cannot repair these missing object links.
 
+### Auth logs and storage details
+
+- Supabase `auth_logs` aggregation for 2026-10-13 12:00–2026-10-14 12:00 UTC returned 3,438 events; the grouped results contained 3,433 status-200 events, two `bad_jwt` 403 events, one `invalid_credentials` 400 event and two login events without a status. A 14:30–14:45 UTC query returned 2,638 auth-log events, all grouped under status 200. This does not prove each Worker request reached Supabase, but it provides no evidence of a broad Auth 5xx outage during the sampled window.
+- `integrations/cloudflare-api/src/b2-download.js` uses the Backblaze B2 native API; it requires `B2_KEY_ID`, `B2_APPLICATION_KEY`, and `B2_BUCKET`. It does not use the archived Cloudflare R2 `FILES_BUCKET` binding or the S3 endpoint string. Don't add dummy key values to `wrangler.toml`.
+- The credential update was not applied; no current Cloudflare secret value was read or changed. Existing Supabase URL telemetry confirms HTTPS and expected hostname, while observed failure category was timeout, so replacing the anon key alone is not an evidenced fix.
+
 ## Next corrective gates
 
 1. Run a controlled live Supabase Auth connectivity probe from the deployed shadow Worker that reports only timing/status/reason category, never tokens, headers, raw URLs, or bodies; correlate it with Supabase Auth logs.
