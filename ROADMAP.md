@@ -1,3 +1,15 @@
+## Verified state — 2026-10-14: uploaded archive and production console log
+
+Full evidence and next gates: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+- 🟡 **Credentials not copied from the uploaded archive:** the ZIP has no populated runtime `.env`; its test URLs are fixtures, not valid project credentials. Never copy placeholders to live bindings or commit keys.
+- 🟡 **Worker credentials:** Cloudflare shadow already has `SUPABASE_URL` and `SUPABASE_ANON_KEY` binding names. Stored values were not read; secret sync was not applied. Do not treat credentials as repaired.
+- 🔴 **Browser errors reproduced in the supplied log:** 250 API error records: 247 HTTP 503 and 3 HTTP 501; 236 of those 503 responses affect trainer preparation/electronogram images. Prioritize trainer-image transport/object lookup.
+- 🔴 **Auth diagnostics:** current shadow telemetry shows `TimeoutError` during Supabase Auth validation on 2026-10-13 14:37 UTC despite an HTTPS URL matching the expected project hostname. Earlier login events were redirect-classified. Diagnose from live connectivity and Supabase Auth logs instead of swapping keys blindly.
+- 🔴 **Missing contracts:** `GET /api/v1/histology/source-materials`, `GET /api/v1/trainings`, and `GET /api/v1/settings/account` each returned 501 in the uploaded browser log.
+- 🟡 **File storage:** Cloudflare R2 is not enabled in the connected account (API error 10042). Do not assume the archived `FILES_BUCKET` binding exists. Decide whether to enable R2 or keep private Backblaze B2; these are separate systems.
+- 🔒 **Scope unchanged:** only shadow telemetry was inspected. No production traffic/DNS route, Vercel environment, Supabase schema/RLS, or production Worker was changed.
+
 ## Verified state — 2026-10-14 (AI history and calculator API deployed to shadow)
 
 - 🟢 **Admin access:** user confirmed that sign-in using the existing `@hotmail.com` account now opens the admin interface. No duplicate role assignment was made.
