@@ -297,6 +297,46 @@ export default {
       return withCors(success(result.data), origin);
     }
 
+    if (pathname === API_PREFIX + "/materials") {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const params = url.searchParams;
+      const result = await listSupabaseSubjectMaterials(request, env, {
+        subject_id: params.get("subject_id") || params.get("subjectId") || "",
+        subject_slug: params.get("subject_slug") || params.get("subjectSlug") || "",
+        type: params.get("type") || "",
+        q: params.get("q") || "",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const materialDetailMatch = new RegExp("^" + API_PREFIX + "/materials/([^/]+)$").exec(pathname);
+    if (materialDetailMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let materialId;
+      try { materialId = decodeURIComponent(materialDetailMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid material id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      if (!materialId || materialId.length > 200) {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid material id" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      const result = await listSupabaseSubjectMaterials(request, env, { material_id: materialId });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      const row = result.data.items[0];
+      if (!row) {
+        return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Material not found" }, requestId: crypto.randomUUID() }, 404), origin);
+      }
+      const { source, ...item } = row;
+      return withCors(success({ item, source: source || null }), origin);
+    }
+
     if (pathname === `${API_PREFIX}/subject-materials`) {
       if (request.method !== "GET") {
         return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
