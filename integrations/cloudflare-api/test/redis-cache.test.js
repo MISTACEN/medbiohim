@@ -13,7 +13,7 @@ test("Redis cache GET parses JSON and uses bearer auth without logging values", 
     calls.push({
       url: String(url),
       method: init.method,
-      authorization: init.headers.get("authorization"),
+      authorization: init.headers.authorization,
       body: init.body,
     });
     return new Response(JSON.stringify({ result: JSON.stringify({ items: [{ id: "card-1" }] }) }), { status: 200 });
