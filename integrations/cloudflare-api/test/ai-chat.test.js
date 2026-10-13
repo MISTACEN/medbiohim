@@ -7,6 +7,7 @@ import {
   getAiConversation,
   getAiProviderStatus,
   listAiConversations,
+  sendAiMessage,
 } from "../src/ai-chat.js";
 
 const env = {
@@ -197,4 +198,90 @@ test("AI REST operations reject missing caller tokens and insecure/unconfigured 
     listAiConversations(request(), { ...env, SUPABASE_URL: "http://project-id.supabase.co" }, userId, async () => { throw new Error("must not fetch"); }),
     (error) => error instanceof AiChatApiError && error.status === 503,
   );
+});
+
+
+test("AI message execution stores both turns under the caller identity", async () => {
+  const envWithProvider = {
+    ...env,
+    GROQ_API_KEY: "test-provider-secret",
+    GROQ_MODEL: "test-groq-model",
+    AI_CHAT_PRIMARY_PROVIDER: "groq",
+  };
+  const calls = [];
+  const result = await sendAiMessage(request(), envWithProvider, userId, conversationId, {
+    content: "Объясни гемоглобин",
+    provider: "auto",
+    subject_slug: "histology",
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    calls.push({ url: parsed, method: init.method, headers: init.headers, body: init.body });
+    if (parsed.hostname === "api.groq.com") {
+      assert.equal(parsed.pathname, "/openai/v1/chat/completions");
+      assert.equal(init.method, "POST");
+      assert.equal(init.headers.get("authorization"), "Bearer test-provider-secret");
+      const body = JSON.parse(init.body);
+      assert.equal(body.model, "test-groq-model");
+      assert.ok(body.messages.some((message) => message.role === "user" && message.content === "Объясни гемоглобин"));
+      return response({ model: "test-groq-model", choices: [{ message: { content: "Гемоглобин переносит кислород." } }] });
+    }
+    assert.equal(parsed.origin, "https://project-id.supabase.co");
+    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
+    assert.equal(init.headers.get("apikey"), env.SUPABASE_ANON_KEY);
+    if (parsed.pathname.endsWith("/ai_conversations") && init.method === "GET") {
+      assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
+      assert.equal(parsed.searchParams.get("id"), `eq.${conversationId}`);
+      return response([{ id: conversationId, user_id: userId, title: "Новый чат", provider: "auto", subject_slug: "histology" }]);
+    }
+    if (parsed.pathname.endsWith("/ai_messages") && init.method === "POST") {
+      const body = JSON.parse(init.body);
+      assert.equal(body.user_id, userId);
+      assert.equal(body.conversation_id, conversationId);
+      if (body.role === "user") return response([{ id: "message-user", ...body }], 201);
+      assert.equal(body.provider, "groq");
+      return response([{ id: "message-assistant", ...body }], 201);
+    }
+    if (parsed.pathname.endsWith("/ai_messages") && init.method === "GET") {
+      assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
+      return response([{ role: "user", content: "Объясни гемоглобин" }]);
+    }
+    if (parsed.pathname.endsWith("/ai_conversations") && init.method === "PATCH") {
+      const body = JSON.parse(init.body);
+      assert.equal(body.provider, "groq");
+      assert.equal(body.model, "test-groq-model");
+      return new Response(null, { status: 204 });
+    }
+    throw new Error("Unexpected request in test");
+  });
+  assert.equal(result.assistant_message.content, "Гемоглобин переносит кислород.");
+  assert.equal(result.assistant_message.provider, "groq");
+  assert.equal(result.conversation.provider, "groq");
+  assert.equal(calls.length, 6);
+});
+
+test("AI message execution fails closed when no provider is configured", async () => {
+  let providerCalled = false;
+  await assert.rejects(
+    sendAiMessage(request(), env, userId, conversationId, { content: "Привет" }, async (url) => {
+      const parsed = new URL(String(url));
+      if (parsed.pathname.endsWith("/ai_conversations")) {
+        return response([{ id: conversationId, user_id: userId, title: "Новый чат", provider: "auto" }]);
+      }
+      if (parsed.hostname !== "project-id.supabase.co") providerCalled = true;
+      return response([]);
+    }),
+    (error) => error instanceof AiChatApiError && error.status === 503 && error.code === "AI_NOT_CONFIGURED",
+  );
+  assert.equal(providerCalled, false);
+});
+
+test("AI message rejects empty/oversized input before making requests", async () => {
+  let called = false;
+  await assert.rejects(
+    sendAiMessage(request(), { ...env, GROQ_API_KEY: "test" }, userId, conversationId, { content: " " }, async () => {
+      called = true; return response([]);
+    }),
+    (error) => error instanceof AiChatApiError && error.status === 422,
+  );
+  assert.equal(called, false);
 });
