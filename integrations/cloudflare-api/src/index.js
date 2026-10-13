@@ -1,7 +1,6 @@
 import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
-import { getSupabasePlanner, setSupabaseAttendance } from "./planner.js";
-import { heartbeatSupabasePresence, listSupabaseAdminPresence } from "./presence.js";
+import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence } from "./planner.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
