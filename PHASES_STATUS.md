@@ -8,6 +8,17 @@
 - 🔴 Upstash Blob `medbiohim-files` is private and empty; 206 published cards still have `source_file_id IS NULL`. The latest known Worker deployment predates these commits; Vercel status remains `build-rate-limit`. No production route/DNS cutover.
 - Details: [audit report](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
 
+## Verified state — 2026-10-14: legacy secrets and storage split
+
+Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+- 🟢 Shadow Worker secret bindings saved for Supabase URL/anon key, Backblaze B2, and AI providers Groq/Gemini/GigaChat/Mistral/OpenRouter. Secret values remain out of GitHub. Supabase service-role/secret DB keys were deliberately excluded.
+- 🟡 Live AI generation and real object download remain unverified. Cloudflare's latest observed 100% shadow deployment predates the secret update; check runtime consumption before treating providers as working.
+- 🔴 206 published histology cards still have no `source_file_id`. Actual object existence in B2 is unverified. Upstash Blob is private and empty; its token is not configured.
+- 🟡 Upstash Redis `medbiohimcache` is active in `eu-west-1`; 21 `mbhdeploy:v1:*` keys were preserved. Redis REST-token setup was blocked; no Redis runtime cache is wired yet.
+- **Storage boundaries:** Supabase owns metadata/RLS, private B2 or Upstash Blob owns binary media, Redis is for metadata/cache only (not image bytes).
+- 🔒 No production Vercel API mode, DNS, Supabase schema/RLS, or production Worker cutover was changed.
+
 ## Verified state — 2026-10-14: uploaded archive and production console log
 
 Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
