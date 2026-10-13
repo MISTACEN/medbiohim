@@ -2044,3 +2044,19 @@ Production remains on the existing configuration until the HTTPS fallback origin
 - 🟡 Preview env variables `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN` are configured only for Preview. A new Vercel deployment was rejected by the API’s daily deployment quota (`api-deployments-free-per-day`; retry after 24 hours), so those env settings have not yet been exercised by a newly built Preview. Production env and routing are unchanged.
 - 🔒 No authenticated student test was created; no real credentials, Supabase schema changes, production routing changes or HTTP fallback bypass were used in these probes.
 
+
+
+## 2026-10-13 — Cloudflare Shadow migration checkpoint
+
+**Verified source/build:** \`236b12f4261e4aa523c894a1d3f131c123bc1d35\` / Build \`5c5c4227-9002-4116-8c7c-912f9f5a3bd0\` / Worker version \`d77cb3da-9ff3-46cf-8f3f-b991f9ad7709\`. The build completed successfully with **176 tests passed, 0 failed**; Wrangler dry-run and the gated Shadow deployment passed.
+
+- 🟢 **Materials reads:** \`GET /api/v1/subject-materials\`, \`GET /api/v1/materials\`, \`GET /api/v1/materials/{id}\`.
+- 🟢 **Source metadata:** \`GET /api/v1/content-sources/{id}\`; source metadata only, with specialty/group access checks. Text-keyed source IDs are supported.
+- 🟢 **Trainer reads:** \`GET /api/v1/trainers/feed\` and \`GET /api/v1/trainers/feed/{id}\` use the sanitized \`trainer_feed_cards_public\` view; answer/correctness fields are removed defensively.
+- 🟢 **Trainer answer submission:** \`POST /api/v1/trainers/feed/answer\` passes the caller token to the existing authenticated scoring RPC. It does not insert directly into the answer table.
+- 🟢 **Security and regression tests:** bearer/method guards, MBH active membership and fail-closed behavior, Unicode search, bounded validation and safe RPC error mapping.
+- 🟡 **Binary/media delivery:** still on the existing backend pending a designed private file-delivery binding. No B2/R2 signing binding or SpaceWeb filesystem is available in the Worker; \`download_url\` intentionally stays null.
+- 🟡 **Live RLS acceptance:** a real authenticated student-token smoke test remains outstanding; mocked-token tests are not proof of live membership/grants.
+- 🔒 **Production remains unchanged:** no frontend API-mode switch, Vercel Production deployment, DNS cutover, Supabase schema/RLS or credentials mutation, or Redis resource creation.
+
+See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for route-by-route contracts and acceptance blockers. Full API parity and production cutover are **not** complete.
