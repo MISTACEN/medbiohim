@@ -228,3 +228,201 @@ export async function listSupabaseAdminPresence(request, env, withinSec = 180, f
     return presenceFail(500, "PRESENCE_ERROR", "Не удалось обновить статус присутствия");
   }
 }
+
+
+export async function createSupabaseHomework(request, env, input, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  const uid = c.identity.id;
+  const body = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const title = String(body.title || "").trim();
+  const description = body.description == null ? null : String(body.description).trim();
+  const groupId = String(body.group_id || "").trim();
+  const subjectId = String(body.subject_id || "").trim();
+  const dueDate = String(body.due_date || "").trim();
+  const scheduleEntryId = String(body.schedule_entry_id || "").trim();
+  const attachments = Array.isArray(body.attachment_file_ids) ? body.attachment_file_ids : [];
+  if (!title) return fail(422, "VALIDATION_ERROR", "title is required");
+  if (title.length > 240 || (description && description.length > 20000)) return fail(422, "VALIDATION_ERROR", "Заголовок или описание слишком длинные");
+  if (!groupId || !uuid(groupId)) return fail(422, "VALIDATION_ERROR", "Для задания требуется корректный group_id");
+  if (subjectId && !uuid(subjectId)) return fail(422, "VALIDATION_ERROR", "subject_id должен быть UUID");
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return fail(422, "VALIDATION_ERROR", "due_date должен иметь формат YYYY-MM-DD");
+  if (scheduleEntryId && !uuid(scheduleEntryId)) return fail(422, "VALIDATION_ERROR", "schedule_entry_id должен быть UUID");
+  if (attachments.length > 12) return fail(422, "VALIDATION_ERROR", "Можно прикрепить не более 12 файлов");
+  if (attachments.length) return fail(503, "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED", "Загрузка вложений пока не подключена к приватному хранилищу");
+
+  try {
+    const memberships = await c.rows("group_memberships", {
+      select: "group_id,role_in_group,is_active",
+      user_id: "eq." + uid,
+      group_id: "eq." + groupId,
+      is_active: "eq.true",
+      limit: "1",
+    });
+    const membership = memberships[0];
+    if (!membership) return fail(403, "FORBIDDEN", "Нет доступа к указанной учебной группе");
+    // Live homeworks RLS permits shared homework creation by the group starosta.
+    // Do not bypass this policy or write with a service-role key.
+    if (String(membership.role_in_group || "").toLowerCase() !== "starosta") {
+      return fail(403, "HOMEWORK_CREATION_REQUIRES_STAROSTA", "Создавать общие задания для группы может староста");
+    }
+
+    let dueAt = String(body.due_at || "").trim();
+    if (!dueAt && dueDate) dueAt = dueDate + "T23:59:00";
+    if (dueAt && !Number.isFinite(Date.parse(dueAt))) return fail(422, "VALIDATION_ERROR", "due_at имеет неверный формат");
+
+    if (scheduleEntryId) {
+      const entries = await c.rows("schedule_entries", {
+        select: "id,date,subject_id,schedule_id,schedules!inner(id,group_id,is_active)",
+        id: "eq." + scheduleEntryId,
+        limit: "1",
+      });
+      const entry = entries[0];
+      const schedule = rel(entry?.schedules);
+      if (!entry || !schedule || schedule.is_active === false || String(schedule.group_id) !== groupId) {
+        return fail(422, "INVALID_LESSON_CONTEXT", "Занятие не найдено в активном расписании выбранной группы");
+      }
+      if (subjectId && entry.subject_id && String(entry.subject_id) !== subjectId) {
+        return fail(422, "INVALID_LESSON_CONTEXT", "Предмет не совпадает с выбранным занятием");
+      }
+    }
+
+    const row = {
+      title,
+      description,
+      subject_id: subjectId || null,
+      group_id: groupId,
+      schedule_entry_id: scheduleEntryId || null,
+      due_date: dueDate || null,
+      due_at: dueAt || null,
+      created_by: uid,
+      created_by_role: "starosta",
+    };
+    const saved = await c.rows("homeworks", { select: "*" }, {
+      method: "POST",
+      headers: { prefer: "return=representation" },
+      body: JSON.stringify(row),
+    });
+    if (!saved[0]) return fail(503, "DB_UNAVAILABLE", "Задание не было сохранено");
+    return { ok: true, status: 201, data: { homework: saved[0] } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав для создания задания");
+    if (error?.status === 400 || error?.status === 422) return fail(422, "VALIDATION_ERROR", "База данных отклонила параметры задания");
+    return fail(503, "DB_UNAVAILABLE", "Не удалось сохранить задание");
+  }
+}
+
+export async function submitSupabaseHomework(request, env, homeworkId, input, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  const uid = c.identity.id;
+  if (!uuid(homeworkId)) return fail(422, "VALIDATION_ERROR", "Некорректный id задания");
+  const body = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const textAnswer = body.text_answer == null ? null : String(body.text_answer);
+  const fileId = body.file_id == null || String(body.file_id).trim() === "" ? null : String(body.file_id).trim();
+  if (textAnswer && textAnswer.length > 30000) return fail(422, "VALIDATION_ERROR", "Текст ответа слишком длинный");
+  if (!textAnswer?.trim() && !fileId) return fail(422, "VALIDATION_ERROR", "Добавьте текст ответа или файл");
+
+  try {
+    const homeworkRows = await c.rows("homeworks", {
+      select: "id,group_id,subject_id,title,status,due_date",
+      id: "eq." + homeworkId,
+      limit: "1",
+    });
+    const homework = homeworkRows[0];
+    if (!homework) return fail(403, "HOMEWORK_NOT_ACCESSIBLE", "Задание недоступно в вашем учебном контексте");
+
+    if (homework.group_id) {
+      const memberships = await c.rows("group_memberships", {
+        select: "group_id",
+        user_id: "eq." + uid,
+        group_id: "eq." + String(homework.group_id),
+        is_active: "eq.true",
+        limit: "1",
+      });
+      if (!memberships.length) return fail(403, "FORBIDDEN", "Вы не состоите в группе, для которой выдано задание");
+    } else {
+      const memberRows = await c.rows("group_memberships", {
+        select: "group_id",
+        user_id: "eq." + uid,
+        is_active: "eq.true",
+        limit: "100",
+      });
+      if (!memberRows.length) return fail(422, "NO_GROUP", "Для сдачи задания требуется активная учебная группа");
+    }
+
+    if (fileId) {
+      if (!uuid(fileId)) return fail(422, "VALIDATION_ERROR", "file_id должен быть UUID");
+      const files = await c.rows("files", {
+        select: "id,uploaded_by,group_id,visibility,status",
+        id: "eq." + fileId,
+        limit: "1",
+      });
+      const file = files[0];
+      if (!file || String(file.status || "").toLowerCase() !== "active") {
+        return fail(403, "FORBIDDEN", "Файл недоступен для отправки этого задания");
+      }
+      const isOwner = String(file.uploaded_by || "") === uid;
+      const sameGroup = homework.group_id && String(file.group_id || "") === String(homework.group_id);
+      const isPublic = String(file.visibility || "").toLowerCase() === "public";
+      if (!isOwner && !sameGroup && !isPublic) return fail(403, "FORBIDDEN", "Файл принадлежит другому учебному контексту");
+    }
+
+    const existingRows = await c.rows("homework_submissions", {
+      select: "id,status,grade,teacher_comment,submitted_at",
+      homework_id: "eq." + homeworkId,
+      user_id: "eq." + uid,
+      limit: "1",
+    });
+    const existing = existingRows[0];
+    if (existing && ["submitted", "graded"].includes(String(existing.status || "").toLowerCase())) {
+      return fail(409, "SUBMISSION_LOCKED", "Работа уже сдана и ожидает проверки");
+    }
+    const now = new Date().toISOString();
+    const patch = {
+      homework_id: homeworkId,
+      user_id: uid,
+      text_answer: textAnswer,
+      file_id: fileId,
+      status: "submitted",
+      submitted_at: now,
+      updated_at: now,
+    };
+    let saved;
+    if (existing?.id) {
+      saved = await c.rows("homework_submissions", { id: "eq." + String(existing.id), user_id: "eq." + uid, select: "*" }, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+    } else {
+      saved = await c.rows("homework_submissions", { select: "*" }, {
+        method: "POST",
+        body: JSON.stringify(patch),
+      });
+    }
+    if (!saved[0]) return fail(503, "DB_UNAVAILABLE", "Не удалось сохранить ответ на задание");
+
+    // Progress is a separate optional projection; the authoritative submission is
+    // already saved. RLS still restricts the progress row to this user.
+    try {
+      await c.rows("homework_progress", {
+        on_conflict: "homework_id,user_id",
+        select: "*",
+      }, {
+        method: "POST",
+        headers: { prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify({
+          homework_id: homeworkId, user_id: uid, completed: true, answer_text: textAnswer,
+          file_id: fileId, submitted_at: now,
+        }),
+      });
+    } catch {}
+    return { ok: true, status: 201, data: { submission: saved[0] } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав для отправки задания");
+    if (error?.status === 400 || error?.status === 422) return fail(422, "VALIDATION_ERROR", "База данных отклонила ответ на задание");
+    return fail(503, "DB_UNAVAILABLE", "Не удалось отправить задание. Попробуйте позже");
+  }
+}
