@@ -5,6 +5,7 @@ import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBank
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseContentSource } from "./content-sources.js";
+import { getSupabaseTrainerCard, listSupabaseTrainerFeed } from "./trainer-feed.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -427,6 +428,39 @@ export default {
       try { lectureId = decodeURIComponent(lectureMatch[1]); }
       catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid lecture id" }, requestId: crypto.randomUUID() }, 422), origin); }
       const result = await getSupabaseLecture(request, lectureId, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === `${API_PREFIX}/trainers/feed`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const params = url.searchParams;
+      const result = await listSupabaseTrainerFeed(request, env, {
+        subject: params.get("subject") || "",
+        specialty: params.get("specialty") || "",
+        limit: params.get("limit") || "",
+        offset: params.get("offset") || "",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const trainerCardMatch = new RegExp("^" + API_PREFIX + "/trainers/feed/([^/]+)$").exec(pathname);
+    if (trainerCardMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let cardId;
+      try { cardId = decodeURIComponent(trainerCardMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid trainer card id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseTrainerCard(request, env, cardId);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
