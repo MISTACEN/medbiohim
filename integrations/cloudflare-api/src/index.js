@@ -17,6 +17,7 @@ import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcadem
 import { listSupabaseCommunityPosts, createSupabaseCommunityPost } from "./community.js";
 import { listSupabaseTicketBanks, generateSupabaseTicket } from "./tickets.js";
 import { listCalculators, getCalculator, computeCalculator, CalculatorValidationError } from "./calculators.js";
+import { AiChatApiError, getAiProviderStatus, listAiConversations, createAiConversation, getAiConversation, deleteAiConversation } from "./ai-chat.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -27,6 +28,14 @@ function apiLocalClock() {
     hour: "2-digit", minute: "2-digit", hour12: false,
   }).formatToParts(new Date()).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
+function aiChatError(error, origin) {
+  const known = error instanceof AiChatApiError;
+  const status = known ? error.status : 503;
+  const code = known ? error.code : "AI_DATA_UNAVAILABLE";
+  const message = known ? error.message : "ИИ-сервис временно недоступен";
+  return withCors(json({ ok: false, error: { code, message }, requestId: crypto.randomUUID() }, status), origin);
 }
 
 function json(body, status = 200, extraHeaders = {}) {
@@ -1003,6 +1012,63 @@ export default {
         return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Калькулятор не найден" }, requestId: crypto.randomUUID() }, 404), origin);
       }
       return withCors(success({ calculator }), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/ai/providers`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      return withCors(success(getAiProviderStatus(env)), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/ai/conversations`) {
+      if (request.method !== "GET" && request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      try {
+        if (request.method === "GET") {
+          return withCors(success(await listAiConversations(request, env, auth.user.id)), origin);
+        }
+        const parsed = await readJsonLimited(request, 16_384);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+          return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        }
+        return withCors(success(await createAiConversation(request, env, auth.user.id, parsed.value), 201), origin);
+      } catch (error) {
+        return aiChatError(error, origin);
+      }
+    }
+
+    const aiConversationMessagesMatch = new RegExp("^" + API_PREFIX + "/ai/conversations/([^/]+)/messages$").exec(pathname);
+    if (aiConversationMessagesMatch) {
+      // The LLM execution pipeline stays fail-closed until provider credential bindings,
+      // regional routing, bounded retries and per-user rate limiting are ported and verified.
+      return withCors(json({ ok: false, error: { code: "AI_EXECUTION_NOT_MIGRATED", message: "AI message execution has not been migrated yet" }, requestId: crypto.randomUUID() }, 501), origin);
+    }
+
+    const aiConversationMatch = new RegExp("^" + API_PREFIX + "/ai/conversations/([^/]+)$").exec(pathname);
+    if (aiConversationMatch) {
+      if (request.method !== "GET" && request.method !== "DELETE") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, DELETE, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      let conversationId;
+      try { conversationId = decodeURIComponent(aiConversationMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Ресурс ИИ-сервиса недоступен" }, requestId: crypto.randomUUID() }, 404), origin); }
+      try {
+        if (request.method === "GET") {
+          return withCors(success(await getAiConversation(request, env, auth.user.id, conversationId)), origin);
+        }
+        return withCors(success(await deleteAiConversation(request, env, auth.user.id, conversationId)), origin);
+      } catch (error) {
+        return aiChatError(error, origin);
+      }
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
