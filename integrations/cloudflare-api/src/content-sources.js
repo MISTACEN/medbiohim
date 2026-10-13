@@ -111,7 +111,7 @@ export async function getSupabaseContentSource(request, env, sourceId, fetcher =
     }
     const hasMbhMembership = memberships.some((membership) => {
       const group = related(membership?.groups);
-      return Boolean(group) && group.is_active !== false &&
+      return Boolean(group) && group.is_active === true &&
         String(group.specialty_slug || "").trim() === "mbh";
     });
     if (!hasMbhMembership) {
