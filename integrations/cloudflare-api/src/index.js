@@ -8,6 +8,7 @@ import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz } from "./mini-quiz.js";
+import { submitSupabaseQuestionReport } from "./question-reports.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -570,6 +571,28 @@ export default {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
       return withCors(success(result.data), origin);
+    }
+
+
+    const questionReportMatch = new RegExp("^" + API_PREFIX + "/questions/([^/]+)/report$").exec(pathname);
+    if (questionReportMatch) {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      let questionId;
+      try { questionId = decodeURIComponent(questionReportMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid question id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (!parsed.ok) {
+        const status = parsed.tooLarge ? 413 : 400;
+        const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+        return withCors(json({ ok: false, error: { code, message: parsed.tooLarge ? "Request body is too large" : "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+      }
+      const result = await submitSupabaseQuestionReport(request, env, questionId, parsed.value);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data, result.status || 200), origin);
     }
 
     if (pathname === `${API_PREFIX}/questions/subjects`) {
