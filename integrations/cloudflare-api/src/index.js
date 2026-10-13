@@ -697,8 +697,9 @@ export default {
           requestId: crypto.randomUUID(),
         }, result.status), origin);
       }
-      // DB-backed profile creation/default role assignment is intentionally
-      // deferred until the database/RLS strategy is reviewed.
+      // The live public.handle_new_user() trigger creates public.users and assigns
+      // only the student role on auth.users INSERT. Keep that DB trigger canonical;
+      // the Worker must never write user_roles or assign caller-selected roles directly.
       return withCors(success(result.data, 201), origin);
     }
 
@@ -767,8 +768,8 @@ export default {
           requestId: crypto.randomUUID(),
         }, result.status), origin);
       }
-      // DB-backed profile/role sync is intentionally not guessed here. It must
-      // be migrated with verified RLS/ownership policies before cutover.
+      // Profile and role data are read by /auth/me through caller-JWT + RLS.
+      // Login does not mutate roles; existing admin/moderator assignments stay unchanged.
       return withCors(success(result.data), origin);
     }
 
