@@ -24,7 +24,7 @@ test("GET /api/v1 preserves the PHP public metadata response contract", async ()
   assert.equal(body.data.version, "v1");
   assert.equal(body.data.build, "test-build");
   assert.equal(body.data.phase, "D");
-  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz"]);
+  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports"]);
   assert.equal(typeof body.requestId, "string");
 });
 
@@ -603,4 +603,22 @@ test("lecture mini-quiz routes enforce auth and GET/POST methods", async () => {
   const wrongCheckMethod = await worker.fetch(request("/api/v1/questions/mini-quiz/check"), {});
   assert.equal(wrongCheckMethod.status, 405);
   assert.equal(wrongCheckMethod.headers.get("allow"), "POST, OPTIONS");
+});
+
+
+test("question report route requires auth and only accepts POST", async () => {
+  const auth = await worker.fetch(request("/api/v1/questions/a94f7d20-4c6a-4f4a-8e22-731f2b8f57c1/report", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ category: "typo", message: "Typo" }),
+  }), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(auth.status, 401);
+  assert.equal((await auth.json()).error.code, "UNAUTHORIZED");
+
+  const wrongMethod = await worker.fetch(request("/api/v1/questions/a94f7d20-4c6a-4f4a-8e22-731f2b8f57c1/report"), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "POST, OPTIONS");
 });
