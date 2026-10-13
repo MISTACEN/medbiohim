@@ -9,7 +9,8 @@ Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/U
 - 🔴 **Trainer-media DB audit:** the live database has 206 published histology cards (178 preparations, 28 electronograms); all have a source key/path, but none links to `files` via `source_file_id`, while `files` contains only one row. The current signer intentionally returns `503 MEDIA_NOT_MIGRATED` in this state. Active Worker has no B2 credentials; a metadata/binary migration plus B2 secret setup is required.
 - 🔴 **501 routes:** `histology/source-materials`, `trainings`, `settings/account` need contract comparison and implementation/restore.
 - 🟡 **Storage:** R2 API says R2 must be enabled through Dashboard. The archive's Cloudflare R2 binding is not equivalent to Backblaze B2. No storage configuration was changed.
-- 🔒 **Production unchanged:** no production Vercel settings or routing, DNS, Supabase schema/RLS or production Worker was modified.
+- 🟡 **Non-secret Worker config:** `B2_BUCKET = "medbiohim-files"` was committed to `integrations/cloudflare-api/wrangler.toml` (`c0057bc9e1a1c569ba4e0f08c32aa1867dfb41de`). The resulting Cloudflare Build/deployment is not yet verified; B2 secret values were not set.
+- 🔒 **Production unchanged:** no production Vercel settings or routing, DNS, Supabase schema/RLS, Cloudflare secret values, or production Worker was modified.
 
 ## Verified state — 2026-10-14 (latest shadow rollout)
 
