@@ -4,6 +4,27 @@ const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, 
 const uuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ""));
 const rel = (v) => Array.isArray(v) ? v[0] : v;
 
+function logPresenceRestRedirect(response, endpoint, table, method) {
+  const location = response.headers.get("location");
+  let target = null;
+  try { if (location) target = new URL(location, endpoint); } catch {}
+  console.warn("MEDBIOHIM_PRESENCE_REST_REDIRECT", JSON.stringify({
+    table,
+    method,
+    status: response.status,
+    hasLocation: Boolean(location),
+    sourceHostMatchesExpectedProject: endpoint.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+    targetIsHttps: target ? target.protocol === "https:" : false,
+    targetSameOrigin: target ? target.origin === endpoint.origin : false,
+    targetIsSupabaseDomain: target ? target.hostname.endsWith(".supabase.co") : false,
+    targetMatchesExpectedProject: target ? target.hostname === "gnobvyjywtqbdfeejxmf.supabase.co" : false,
+    targetPathCategory: !target ? "unknown" :
+      target.pathname.startsWith("/auth/v1/") ? "auth" :
+      target.pathname.startsWith("/rest/v1/") ? "rest" :
+      target.pathname === "/" ? "root" : "other",
+  }));
+}
+
 async function client(request, env, fetcher) {
   const auth = await authenticateSupabaseRequest(request, env, fetcher);
   if (!auth.ok) return auth;
@@ -20,9 +41,29 @@ async function client(request, env, fetcher) {
       headers: { apikey: key, authorization: "Bearer " + token, accept: "application/json",
         ...(init.body ? { "content-type": "application/json", prefer: "return=representation" } : {}),
         ...(init.headers || {}) },
-      redirect: "error", signal: AbortSignal.timeout(7000),
+      // Do not follow a REST redirect with the caller's bearer token.
+      redirect: "manual", signal: AbortSignal.timeout(7000),
     });
-    if (!r.ok) { const e = new Error("REST failure"); e.status = r.status; throw e; }
+    if (r.status >= 300 && r.status < 400) {
+      const method = init.method || "GET";
+      logPresenceRestRedirect(r, u, table, method);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = r.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      error.method = method;
+      throw error;
+    }
+    if (!r.ok) {
+      let payload = null;
+      try { payload = await r.json(); } catch {}
+      const e = new Error("REST failure");
+      e.status = r.status;
+      e.code = typeof payload?.code === "string" ? payload.code : "REST_ERROR";
+      e.table = table;
+      e.method = init.method || "GET";
+      throw e;
+    }
     const data = await r.json(); return Array.isArray(data) ? data : [];
   }
   return { ok: true, identity: auth.user, rows };
