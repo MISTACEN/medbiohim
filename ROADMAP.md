@@ -2955,3 +2955,15 @@ Next acceptance gates:
 - A real authenticated student-token RLS test remains pending. No Vercel API-mode switch, Production/DNS cutover, Supabase schema/RLS mutation, or B2 secret creation occurred.
 
 Route-level detail and acceptance gates: \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\`. Do not describe the whole PHP API or media archive as fully migrated until those remaining gates are closed.
+
+
+## File API read routes — source pass awaiting build (2026-10-13)
+
+Added to \`main\`:
+- \`GET /api/v1/files/{id}\`: scoped file metadata, without returning storage object keys or internal B2 IDs.
+- \`GET /api/v1/files/{id}/download\`: access check plus a short-lived private B2 redirect.
+- Tests cover ownership, group privacy, specialty checks, safe metadata and route guards.
+
+The latest source commit containing these routes is \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\`. Its Cloudflare build is still queued; these routes are **not marked deployed** until the build queue runs tests, Wrangler dry-run and Shadow deployment.
+
+Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipart handling and B2 upload; move SpaceWeb-only files using a manifest + checksum verification; securely configure B2 Worker secrets; then test real-user RLS and signed URL expiry. Production stays unchanged.
