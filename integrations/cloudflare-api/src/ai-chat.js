@@ -227,3 +227,182 @@ export async function deleteAiConversation(request, env, userId, conversationId,
   }, fetcher);
   return { deleted: true };
 }
+
+
+function resolveAiCompletionProvider(env, preferredProvider) {
+  const preferred = String(preferredProvider || "auto").trim().toLowerCase();
+  const region = String(env.AI_BACKEND_REGION || "ru").trim().toLowerCase();
+  const geminiProxyReady = Boolean(env.GEMINI_VERCEL_PROXY_URL && env.GEMINI_VERCEL_PROXY_SECRET);
+  const candidates = [];
+  const add = (id, key, base, model) => {
+    const secret = String(key || "").trim();
+    if (secret) candidates.push({ id, key: secret, base, model });
+  };
+  add("groq", env.GROQ_API_KEY, "https://api.groq.com/openai/v1", env.GROQ_MODEL || "openai/gpt-oss-20b");
+  add("mistral", env.MISTRAL_API_KEY, "https://api.mistral.ai/v1", env.MISTRAL_MODEL || "mistral-small-latest");
+  if (env.OPENROUTER_API_KEY) {
+    add("openrouter", env.OPENROUTER_API_KEY, "https://openrouter.ai/api/v1", env.OPENROUTER_MODEL || "openrouter/auto");
+  }
+  if (env.GEMINI_API_KEY && (region !== "ru" || geminiProxyReady)) {
+    add("gemini", env.GEMINI_API_KEY, "https://generativelanguage.googleapis.com/v1beta/openai", env.GEMINI_MODEL || "gemini-2.5-flash");
+  }
+  if (preferred === "auto" || !preferred) {
+    const configuredDefault = String(env.AI_CHAT_PRIMARY_PROVIDER || "groq").trim().toLowerCase();
+    return candidates.find((candidate) => candidate.id === configuredDefault) || candidates[0] || null;
+  }
+  return candidates.find((candidate) => candidate.id === preferred) || null;
+}
+
+async function callAiCompletion(cfg, messages, fetcher) {
+  const endpoint = cfg.base.replace(/\\/$/, "") + "/chat/completions";
+  let response;
+  try {
+    response = await fetcher(endpoint, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer " + cfg.key,
+        "content-type": "application/json",
+        accept: "application/json",
+        ...(cfg.id === "openrouter" ? { "HTTP-Referer": "https://medbiohim.vercel.app", "X-Title": "Medbiohim" } : {}),
+      },
+      body: JSON.stringify({ model: cfg.model, temperature: 0.25, max_tokens: 2500, messages }),
+      redirect: "error",
+      signal: AbortSignal.timeout(45000),
+    });
+  } catch {
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
+  }
+  let payload = null;
+  try { payload = await response.json(); } catch { /* handled below */ }
+  if (!response.ok) {
+    if (response.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "ИИ-провайдер ограничил частоту запросов");
+    // Do not expose provider response bodies, keys, or upstream diagnostics.
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
+  }
+  const text = payload?.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) {
+    throw new AiChatApiError(502, "AI_EMPTY_RESPONSE", "ИИ-провайдер вернул пустой ответ");
+  }
+  return { content: text.trim(), provider: cfg.id, model: String(payload?.model || cfg.model) };
+}
+
+/**
+ * Runs a real provider request. Supabase rows always use the caller JWT and are
+ * explicitly scoped to that caller; provider credentials remain server-only.
+ */
+export async function sendAiMessage(request, env, userId, conversationId, input = {}, fetcher = fetch) {
+  if (!userId || typeof userId !== "string") throw new AiChatApiError(401, "UNAUTHORIZED", "Authentication required");
+  const id = uuidOr404(conversationId);
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new AiChatApiError(422, "VALIDATION_ERROR", "Некорректное тело запроса");
+  }
+  const content = typeof input.content === "string" ? input.content.trim() : "";
+  if (!content || content.length > 12000) {
+    throw new AiChatApiError(422, "VALIDATION_ERROR", "Сообщение должно содержать от 1 до 12000 символов");
+  }
+  if (env.AI_CHAT_LIMITER && typeof env.AI_CHAT_LIMITER.limit === "function") {
+    const limited = await env.AI_CHAT_LIMITER.limit({ key: "ai-chat:" + userId });
+    if (!limited?.success) throw new AiChatApiError(429, "RATE_LIMIT", "Слишком много запросов к ИИ. Подождите немного.");
+  }
+
+  const conversationParams = new URLSearchParams({
+    select: "id,user_id,title,provider,model,subject_slug,created_at,updated_at",
+    id: "eq." + id,
+    user_id: "eq." + userId,
+    limit: "1",
+  });
+  const conversations = await rest(request, env, userId, "ai_conversations", conversationParams, {}, fetcher);
+  const conversation = Array.isArray(conversations) ? conversations[0] : null;
+  if (!conversation) throw new AiChatApiError(404, "NOT_FOUND", "Ресурс ИИ-сервиса недоступен");
+
+  const subjectSlug = input.subject_slug === undefined
+    ? (conversation.subject_slug || null)
+    : validateSubjectSlug(input.subject_slug);
+  const requestedProvider = input.provider || conversation.provider || "auto";
+  const cfg = resolveAiCompletionProvider(env, requestedProvider);
+  if (!cfg) {
+    const status = getAiProviderStatus(env);
+    const chosen = String(requestedProvider).toLowerCase();
+    const known = status.providers[chosen];
+    if (known && !known.available) {
+      throw new AiChatApiError(503, "AI_PROVIDER_UNAVAILABLE", known.reason || "Выбранный ИИ-провайдер не настроен");
+    }
+    throw new AiChatApiError(503, "AI_NOT_CONFIGURED", "Не настроен доступный ИИ-провайдер");
+  }
+
+  const userRows = await rest(request, env, userId, "ai_messages", new URLSearchParams({ select: "id,role,content,provider,model,metadata,created_at" }), {
+    method: "POST",
+    body: {
+      conversation_id: id,
+      user_id: userId,
+      role: "user",
+      content,
+    },
+    prefer: "return=representation",
+  }, fetcher);
+  const userMessage = Array.isArray(userRows) ? userRows[0] : null;
+
+  const historyParams = new URLSearchParams({
+    select: "role,content,created_at",
+    conversation_id: "eq." + id,
+    user_id: "eq." + userId,
+    order: "created_at.desc",
+    limit: "40",
+  });
+  const history = await rest(request, env, userId, "ai_messages", historyParams, {}, fetcher);
+  const messages = [{
+    role: "system",
+    content: "Ты — ИИ-тьютор образовательной платформы «Медбиохим». Отвечай по-русски, понятно студенту медицинского вуза. Объясняй последовательно, различай подтверждённые факты и неопределённость. Для учебных вопросов выделяй ключевые понятия, механизм и краткий вывод. Не выдумывай источники и не подменяй клинические рекомендации.",
+  }];
+  if (subjectSlug) messages[0].content += " Текущий предмет: " + subjectSlug + ".";
+  for (const item of (Array.isArray(history) ? history : []).reverse()) {
+    const role = String(item.role || "");
+    if ((role === "user" || role === "assistant") && typeof item.content === "string") {
+      messages.push({ role, content: item.content.slice(0, 12000) });
+    }
+  }
+  // Some PostgREST deployments may not return the inserted message immediately.
+  if (!messages.some((item) => item.role === "user" && item.content === content)) {
+    messages.push({ role: "user", content });
+  }
+
+  const completion = await callAiCompletion(cfg, messages, fetcher);
+  const assistantParams = new URLSearchParams({ select: "id,role,content,provider,model,metadata,created_at" });
+  const assistantRows = await rest(request, env, userId, "ai_messages", assistantParams, {
+    method: "POST",
+    body: {
+      conversation_id: id,
+      user_id: userId,
+      role: "assistant",
+      content: completion.content,
+      provider: completion.provider,
+      model: completion.model,
+      metadata: { mode: "api" },
+    },
+    prefer: "return=representation",
+  }, fetcher);
+  const title = String(conversation.title || "Новый чат") === "Новый чат"
+    ? content.replace(/\\s+/gu, " ").slice(0, 80)
+    : conversation.title;
+  const updateParams = new URLSearchParams({ id: "eq." + id, user_id: "eq." + userId });
+  try {
+    await rest(request, env, userId, "ai_conversations", updateParams, {
+      method: "PATCH",
+      body: {
+        title,
+        provider: completion.provider,
+        model: completion.model,
+        subject_slug: subjectSlug,
+        updated_at: new Date().toISOString(),
+      },
+      prefer: "return=minimal",
+    }, fetcher);
+  } catch { /* Response is still useful if the title update is rejected by an older schema. */ }
+  return {
+    conversation: { ...conversation, title, provider: completion.provider, model: completion.model, subject_slug: subjectSlug },
+    user_message: userMessage || { role: "user", content },
+    assistant_message: (Array.isArray(assistantRows) ? assistantRows[0] : null) || {
+      role: "assistant", content: completion.content, provider: completion.provider, model: completion.model,
+    },
+  };
+}
