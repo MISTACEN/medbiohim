@@ -129,7 +129,7 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
     for (const specialty of requiredSpecialties) {
       membershipsBySpecialty.set(specialty, memberships.some((membership) => {
         const group = related(membership?.groups);
-        return Boolean(group) && group.is_active !== false &&
+        return Boolean(group) && group.is_active === true &&
           String(group.specialty_slug || "").trim() === specialty;
       }));
     }
