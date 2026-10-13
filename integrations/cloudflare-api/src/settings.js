@@ -138,7 +138,7 @@ async function savePreferences(accessToken, userId, patch, env, fetcher) {
     }, {
       method: "POST",
       headers: { prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ user_id: userId, preferences: current }),
+      body: JSON.stringify({ user_id: userId, preferences: current, updated_at: current.updated_at }),
     }, fetcher);
     return { ok: true, data: current };
   } catch (error) {
