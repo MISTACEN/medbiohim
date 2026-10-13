@@ -5,6 +5,25 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const relIdFilter = (values) => "in.(" + values.map((v) => String(v)).filter((v) => UUID.test(v)).join(",") + ")";
 const uniq = (values) => [...new Set(values.map((v) => String(v || "")).filter((v) => UUID.test(v)))];
 
+function logAcademicRestRedirect(response, endpoint) {
+  const location = response.headers.get("location");
+  let target = null;
+  try { if (location) target = new URL(location, endpoint); } catch {}
+  console.warn("MEDBIOHIM_ACADEMIC_REST_REDIRECT", JSON.stringify({
+    status: response.status,
+    hasLocation: Boolean(location),
+    sourceHostMatchesExpectedProject: endpoint.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+    targetIsHttps: target ? target.protocol === "https:" : false,
+    targetSameOrigin: target ? target.origin === endpoint.origin : false,
+    targetIsSupabaseDomain: target ? target.hostname.endsWith(".supabase.co") : false,
+    targetMatchesExpectedProject: target ? target.hostname === "gnobvyjywtqbdfeejxmf.supabase.co" : false,
+    targetPathCategory: !target ? "unknown" :
+      target.pathname.startsWith("/auth/v1/") ? "auth" :
+      target.pathname.startsWith("/rest/v1/") ? "rest" :
+      target.pathname === "/" ? "root" : "other",
+  }));
+}
+
 async function createClient(request, env, fetcher) {
   const auth = await authenticateSupabaseRequest(request, env, fetcher);
   if (!auth.ok) return auth;
@@ -31,9 +50,19 @@ async function createClient(request, env, fetcher) {
         ...(init.body != null ? { "content-type": "application/json" } : {}),
         ...(init.headers || {}),
       },
-      redirect: "error",
+      // Block redirects but inspect their safe destination metadata.
+      redirect: "manual",
       signal: AbortSignal.timeout(7000),
     });
+    if (response.status >= 300 && response.status < 400) {
+      logAcademicRestRedirect(response, url);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.resource = String(path).split("?")[0].replace(/[^a-zA-Z0-9_./-]/g, "").slice(0, 80);
+      error.category = "redirect";
+      throw error;
+    }
     const text = await response.text();
     let payload = null;
     if (text) { try { payload = JSON.parse(text); } catch { payload = null; } }
