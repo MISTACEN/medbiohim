@@ -335,7 +335,7 @@ export async function submitSupabaseTrainerAnswer(request, env, payload, fetcher
 
   const rpcPayload = {
     p_card_id: cardId,
-    p_option_id: optionId || null,
+    p_option_id: isSkipped ? null : (optionId || null),
     p_answer_text: answerText || null,
     p_is_skipped: isSkipped,
     p_time_ms: timeMs,
