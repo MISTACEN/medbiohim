@@ -24,7 +24,7 @@ test("GET /api/v1 preserves the PHP public metadata response contract", async ()
   assert.equal(body.data.version, "v1");
   assert.equal(body.data.build, "test-build");
   assert.equal(body.data.phase, "D");
-  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed"]);
+  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed, notes, favorites"]);
   assert.equal(typeof body.requestId, "string");
 });
 
@@ -334,7 +334,7 @@ test("CORS allows the configured frontend origin", async () => {
 });
 
 
-for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
+for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
   test(`GET ${path} requires a valid Supabase bearer token`, async () => {
     const response = await worker.fetch(request(path), {
       SUPABASE_URL: "https://project-id.supabase.co",
@@ -348,7 +348,7 @@ for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/sche
 }
 
 test("schedule and dashboard read routes reject writes rather than silently accepting them", async () => {
-  for (const path of ["/api/v1/dashboard", "/api/v1/schedule", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
+  for (const path of ["/api/v1/dashboard", "/api/v1/schedule", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
     const response = await worker.fetch(request(path, { method: "POST" }), {});
     assert.equal(response.status, 405, path);
   }
@@ -526,4 +526,52 @@ test("trainer answer submission requires authentication and only accepts POST", 
   const wrongMethod = await worker.fetch(request("/api/v1/trainers/feed/answer"), {});
   assert.equal(wrongMethod.status, 405);
   assert.equal(wrongMethod.headers.get("allow"), "POST, OPTIONS");
+});
+
+
+test("personal state routes enforce authentication and explicit methods", async () => {
+  const unauthNotes = await worker.fetch(request("/api/v1/notes"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(unauthNotes.status, 401);
+  assert.equal((await unauthNotes.json()).error.code, "UNAUTHORIZED");
+
+  const unsupportedNotes = await worker.fetch(request("/api/v1/notes", { method: "DELETE" }), {});
+  assert.equal(unsupportedNotes.status, 405);
+  assert.equal(unsupportedNotes.headers.get("allow"), "GET, POST, OPTIONS");
+
+  const unauthPostNote = await worker.fetch(request("/api/v1/notes", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ target_type: "question", target_id: "q-1", body: "note" }),
+  }), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(unauthPostNote.status, 401);
+
+  const unauthFavorites = await worker.fetch(request("/api/v1/favorites"), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(unauthFavorites.status, 401);
+
+  const unsupportedFavorites = await worker.fetch(request("/api/v1/favorites", { method: "POST" }), {});
+  assert.equal(unsupportedFavorites.status, 405);
+  assert.equal(unsupportedFavorites.headers.get("allow"), "GET, OPTIONS");
+
+  const unauthToggle = await worker.fetch(request("/api/v1/favorites/toggle", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ target_type: "question", target_id: "q-1" }),
+  }), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(unauthToggle.status, 401);
+
+  const wrongToggleMethod = await worker.fetch(request("/api/v1/favorites/toggle"), {});
+  assert.equal(wrongToggleMethod.status, 405);
+  assert.equal(wrongToggleMethod.headers.get("allow"), "POST, OPTIONS");
 });
