@@ -387,11 +387,22 @@ export default {
       return withCors(success({ items: result.data.items }), origin);
     }
 
-    if (pathname === `${API_PREFIX}/subjects-catalog`) {
+    if (pathname === `${API_PREFIX}/subjects-catalog` || pathname === `${API_PREFIX}/subject-catalog`) {
       if (request.method !== "GET") {
         return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
       }
       const result = await getSupabaseSubjectCatalog(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/site-content`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await getSupabaseSiteContent(request, env);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
