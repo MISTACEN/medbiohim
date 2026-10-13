@@ -8,6 +8,17 @@ This route is deliberately narrower than `GET /api/v1/subjects-catalog`: PHP's `
 
 ---
 
+## Update — subject materials read route, 2026-10-13
+
+- 🟡 Added `GET /api/v1/subject-materials` to the Cloudflare Worker on `main`, using Supabase Auth validation and caller-JWT REST reads. Filters supported: `subject_id`, `subject_slug`, `type`, and `q`; only published materials for active subjects are considered.
+- 🟡 Specialty access is checked through active group membership; Histology is explicitly mapped to specialty `mbh`. If membership cannot be verified, the route fails closed with a service error rather than returning specialty-scoped rows.
+- 🟡 The worker returns source metadata when `source_key` maps to a UUID-backed `content_sources.id`. It deliberately returns `download_url: null` because the Worker has no B2 signing binding; no fake SpaceWeb/B2 URL or insecure HTTP fallback is emitted.
+- 🟢 Added route authentication/method-guard coverage and four helper tests for caller JWT, filters/shape, specialty denial, membership-check failure, and invalid tokens.
+- 🟡 Cloudflare Workers Build for the latest source commit is queued, not yet verified. Do not call the route deployed or accepted until the latest build reports success and an authenticated read/RLS smoke test passes.
+- 🔒 No Supabase schema/RLS, Vercel Production settings, production traffic, DNS, or Redis resources were changed.
+
+---
+
 # Current cutover gate and frontend caller audit — 2026-10-13
 
 > **Current-state correction:** this document contains historical pass notes, some of which say the Worker is not deployed. Those statements are stale. The isolated `medbiohim-api-shadow` Worker is deployed; it is not receiving production frontend traffic. The frontend remains on legacy mode and no production cutover is authorized.
