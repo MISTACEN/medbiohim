@@ -1089,7 +1089,7 @@ export default {
           version: "v1",
           build,
           phase: "D",
-          endpoints: ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed"],
+          endpoints: ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed, notes, favorites"],
         }), origin);
       }
 
