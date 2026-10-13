@@ -32,7 +32,7 @@ export function mimeTypeFor(filePath) {
 
 export function safeObjectKey(key) {
   const value = String(key || "");
-  if (!value || value.startsWith("/") || value.length > 1024 || /[?#\u0000-\u001f]/u.test(value)) return false;
+  if (!value || value.includes("\\") || value.startsWith("/") || value.length > 1024 || /[?#\u0000-\u001f]/u.test(value)) return false;
   const parts = value.split("/");
   return parts.every((part) => part && part !== "." && part !== "..");
 }
