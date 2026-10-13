@@ -1,4 +1,4 @@
-import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
+import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
 import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence, createSupabaseHomework, submitSupabaseHomework, startSupabasePreparation, getSupabasePreparation, saveSupabasePreparation, finishSupabasePreparation, retrySupabasePreparationGrading, reviewSupabasePreparation } from "./planner.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
@@ -16,6 +16,7 @@ import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submit
 import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcademicState, generateSupabaseAcademicPlan } from "./academic-planning.js";
 import { listSupabaseCommunityPosts, createSupabaseCommunityPost } from "./community.js";
 import { listSupabaseTicketBanks, generateSupabaseTicket } from "./tickets.js";
+import { listCalculators, getCalculator, computeCalculator, CalculatorValidationError } from "./calculators.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -925,6 +926,83 @@ export default {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
       return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/calculators`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) {
+        return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      }
+      const items = listCalculators();
+      const categories = {};
+      for (const calculator of items) {
+        const category = String(calculator.category || "прочее");
+        if (!categories[category]) categories[category] = [];
+        categories[category].push({
+          id: calculator.id,
+          name: calculator.name,
+          category,
+          description: calculator.description || "",
+        });
+      }
+      return withCors(success({ items, categories, count: items.length }), origin);
+    }
+
+    const calculatorComputeMatch = new RegExp("^" + API_PREFIX + "/calculators/([^/]+)/compute$").exec(pathname);
+    if (calculatorComputeMatch) {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) {
+        return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      }
+      let calculatorId;
+      try { calculatorId = decodeURIComponent(calculatorComputeMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid calculator id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      if (!getCalculator(calculatorId)) {
+        return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Калькулятор не найден" }, requestId: crypto.randomUUID() }, 404), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (parsed.tooLarge) {
+        return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      }
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object") {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      const input = parsed.value.input && typeof parsed.value.input === "object" && !Array.isArray(parsed.value.input)
+        ? parsed.value.input
+        : parsed.value;
+      try {
+        return withCors(success(computeCalculator(calculatorId, input)), origin);
+      } catch (error) {
+        if (error instanceof CalculatorValidationError) {
+          return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: error.message }, requestId: crypto.randomUUID() }, 422), origin);
+        }
+        return withCors(json({ ok: false, error: { code: "CALC_ERROR", message: "Не удалось выполнить расчёт" }, requestId: crypto.randomUUID() }, 500), origin);
+      }
+    }
+
+    const calculatorDetailMatch = new RegExp("^" + API_PREFIX + "/calculators/([^/]+)$").exec(pathname);
+    if (calculatorDetailMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) {
+        return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      }
+      let calculatorId;
+      try { calculatorId = decodeURIComponent(calculatorDetailMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid calculator id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const calculator = getCalculator(calculatorId);
+      if (!calculator) {
+        return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Калькулятор не найден" }, requestId: crypto.randomUUID() }, 404), origin);
+      }
+      return withCors(success({ calculator }), origin);
     }
 
     // Explicitly migrated routes only; all other API paths fail closed below.
