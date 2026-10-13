@@ -68,7 +68,7 @@ test("falls back to SpaceWeb when shared-homework attachments are explicitly uns
 test("Cloudflare is the default API mode and ignores the retired SpaceWeb origin", async () => {
   const fs = await import("node:fs/promises");
   const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
-  assert.match(route, /process\\.env\\.MEDBIOHIM_API_MODE === "legacy" \\? "legacy" : "cloudflare"/);
+  assert.match(route, /process\.env\.MEDBIOHIM_API_MODE === "legacy" \? "legacy" : "cloudflare"/);
   assert.match(route, /API_MODE === "cloudflare" \? undefined : process\.env\.SPACEWEB_API_ORIGIN/);
   assert.ok(route.includes("https://medbiohim-api-shadow.ryazansevegor.workers.dev/api/v1"));
   assert.match(route, /API_MODE === "cloudflare" \|\| process\.env\.MEDBIOHIM_CF_FIRST === "true"/);
