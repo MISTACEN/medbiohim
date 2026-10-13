@@ -124,8 +124,8 @@ export default {
         ok: true,
         service: "medbiohim-cloudflare-api",
         mode: env.APP_ENV || "shadow",
-        role: "migration-scaffold",
-        productionTrafficEnabled: false,
+        role: env.APP_ENV === "production" ? "production-api" : "migration-scaffold",
+        productionTrafficEnabled: env.PRODUCTION_TRAFFIC_ENABLED === "true",
       }), origin);
     }
 
@@ -289,7 +289,7 @@ export default {
 
 
 
-    if (pathname === \`${API_PREFIX}/academic/state\`) {
+    if (pathname === `${API_PREFIX}/academic/state`) {
       if (request.method === "GET") {
         const result = await getSupabaseAcademicState(request, env);
         if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
@@ -305,13 +305,13 @@ export default {
       }
       return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, PUT, OPTIONS" }), origin);
     }
-    if (pathname === \`${API_PREFIX}/academic/sync\`) {
+    if (pathname === `${API_PREFIX}/academic/sync`) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       const result = await syncSupabaseAcademicState(request, env);
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
-    if (pathname === \`${API_PREFIX}/academic/ai-plan\`) {
+    if (pathname === `${API_PREFIX}/academic/ai-plan`) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       const result = await generateSupabaseAcademicPlan(request, env);
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
@@ -1263,7 +1263,7 @@ export default {
 
 
 
-    if (pathname === \`${API_PREFIX}/community/posts\`) {
+    if (pathname === `${API_PREFIX}/community/posts`) {
       if (request.method === "GET") {
         const result = await listSupabaseCommunityPosts(request, env, url.searchParams.get("group_id") || "");
         if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
@@ -1279,7 +1279,7 @@ export default {
       }
       return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
     }
-    if (pathname === \`${API_PREFIX}/tickets/generate\`) {
+    if (pathname === `${API_PREFIX}/tickets/generate`) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       const parsed = await readJsonLimited(request, 16384);
       if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
@@ -1288,7 +1288,7 @@ export default {
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
-    if (pathname === \`${API_PREFIX}/tickets\`) {
+    if (pathname === `${API_PREFIX}/tickets`) {
       if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
       const result = await listSupabaseTicketBanks(request, env);
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
@@ -1296,37 +1296,6 @@ export default {
     }
 
 
-    if (pathname === \`${API_PREFIX}/community/posts\`) {
-      if (request.method === "GET") {
-        const result = await listSupabaseCommunityPosts(request, env, url.searchParams.get("group_id") || "");
-        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
-        return withCors(success(result.data), origin);
-      }
-      if (request.method === "POST") {
-        const parsed = await readJsonLimited(request, 16384);
-        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
-        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
-        const result = await createSupabaseCommunityPost(request, env, parsed.value);
-        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
-        return withCors(success(result.data), origin);
-      }
-      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
-    }
-    if (pathname === \`${API_PREFIX}/tickets/generate\`) {
-      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
-      const parsed = await readJsonLimited(request, 16384);
-      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
-      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
-      const result = await generateSupabaseTicket(request, env, parsed.value);
-      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
-      return withCors(success(result.data), origin);
-    }
-    if (pathname === \`${API_PREFIX}/tickets\`) {
-      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
-      const result = await listSupabaseTicketBanks(request, env);
-      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
-      return withCors(success(result.data), origin);
-    }
     if (pathname === `${API_PREFIX}/presence/heartbeat`) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       const result = await heartbeatSupabasePresence(request, env);
@@ -1352,7 +1321,7 @@ export default {
           version: "v1",
           build,
           phase: "D",
-          endpoints: ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image"],
+          endpoints: ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence"],
         }), origin);
       }
 
