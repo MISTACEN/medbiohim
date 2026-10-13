@@ -1053,9 +1053,18 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      // Inspect redirects without following them or forwarding the caller token.
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
+    if (response.status >= 300 && response.status < 400) {
+      logAuthRedirect("subjects:" + table, response, base);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      throw error;
+    }
     if (!response.ok) {
       let errorPayload = null;
       try { errorPayload = await response.json(); } catch {}
