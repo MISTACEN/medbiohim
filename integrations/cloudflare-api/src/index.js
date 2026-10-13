@@ -4,6 +4,7 @@ import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
+import { getSupabaseMaterialFileUrl } from "./material-file.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
@@ -328,6 +329,21 @@ export default {
         type: params.get("type") || "",
         q: params.get("q") || "",
       });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const materialFileUrlMatch = new RegExp("^" + API_PREFIX + "/materials/([^/]+)/file-url$").exec(pathname);
+    if (materialFileUrlMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let materialId;
+      try { materialId = decodeURIComponent(materialFileUrlMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid material id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseMaterialFileUrl(request, env, materialId);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
