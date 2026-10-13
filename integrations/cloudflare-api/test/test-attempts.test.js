@@ -135,15 +135,24 @@ test("test attempt start/save/finish use the verified private RPC boundary", asy
       assert.deepEqual(JSON.parse(init.body), {
         p_attempt_id: attemptId, p_question_id: questionId, p_answer_text: "Ответ",
       });
+      // Simulate an unsafe/legacy RPC response; the Worker must redact grading fields.
       return new Response(JSON.stringify({
         ok: true,
-        data: { answer: { id: "answer-1", attempt_id: attemptId, question_id: questionId, answer_text: "Ответ", grading_status: "deterministic" } },
+        data: { answer: {
+          id: "answer-1", attempt_id: attemptId, question_id: questionId, answer_text: "Ответ",
+          is_correct: true, score: 1, grading_status: "deterministic",
+          grading_feedback: "Do not expose until the attempt is submitted",
+        } },
       }), { status: 200 });
     }),
   );
   assert.equal(saveResult.ok, true);
   assert.equal(saveResult.data.answer.attempt_id, attemptId);
-  assert.equal("correct_answer" in saveResult.data.answer, false);
+  assert.equal(saveResult.data.answer.saved, true);
+  assert.equal("is_correct" in saveResult.data.answer, false);
+  assert.equal("score" in saveResult.data.answer, false);
+  assert.equal("grading_status" in saveResult.data.answer, false);
+  assert.equal("grading_feedback" in saveResult.data.answer, false);
 
   const finishRequest = makeRequest("/tests/attempts/" + attemptId + "/finish");
   const finishResult = await finishSupabaseTestAttempt(
@@ -154,11 +163,16 @@ test("test attempt start/save/finish use the verified private RPC boundary", asy
       assert.deepEqual(JSON.parse(init.body), { p_attempt_id: attemptId });
       return new Response(JSON.stringify({
         ok: true,
-        data: { attempt: { id: attemptId, test_id: testId, status: "submitted", score: 1, max_score: 1, percent: 100 } },
+        data: {
+          attempt: { id: attemptId, test_id: testId, status: "submitted", score: 1, max_score: 1, percent: 100 },
+          answers: [{ question_id: questionId, answer_text: "Ответ", is_correct: true, score: 1, grading_status: "deterministic", feedback: "Ответ верный." }],
+        },
       }), { status: 200 });
     }),
   );
   assert.equal(finishResult.ok, true);
   assert.equal(finishResult.data.attempt.status, "submitted");
   assert.equal("question_snapshot" in finishResult.data.attempt, false);
+  assert.equal(finishResult.data.answers[0].question_id, questionId);
+  assert.equal(finishResult.data.answers[0].is_correct, true);
 });
