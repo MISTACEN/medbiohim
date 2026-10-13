@@ -4,6 +4,7 @@ import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
+import { getSupabaseContentSource } from "./content-sources.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -291,6 +292,21 @@ export default {
         return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
       }
       const result = await getSupabaseSubjectCatalog(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const contentSourceMatch = new RegExp("^" + API_PREFIX + "/content-sources/([^/]+)$").exec(pathname);
+    if (contentSourceMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let sourceId;
+      try { sourceId = decodeURIComponent(contentSourceMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid content source id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseContentSource(request, env, sourceId);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
