@@ -12,16 +12,20 @@ function logAuthRedirect(operation, response, endpoint) {
   } catch {
     // Do not include raw Location values in logs.
   }
-  console.warn("supabase_auth_unexpected_redirect", {
+  console.error("supabase_auth_unexpected_redirect", {
     operation,
     status: response.status,
     hasLocation: Boolean(location),
+    sourceIsHttps: endpoint.protocol === "https:",
+    sourceIsSupabaseDomain: endpoint.hostname.endsWith(".supabase.co"),
+    sourceMatchesExpectedProject: endpoint.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
     targetIsHttps: target ? target.protocol === "https:" : false,
     targetSameOrigin: target ? target.origin === endpoint.origin : false,
     targetIsSupabaseDomain: target ? target.hostname.endsWith(".supabase.co") : false,
     targetMatchesExpectedProject: target ? target.hostname === "gnobvyjywtqbdfeejxmf.supabase.co" : false,
     targetPathCategory: !target ? "unknown" :
       target.pathname.startsWith("/auth/v1/") ? "auth" :
+      target.pathname.startsWith("/rest/v1/") ? "rest" :
       target.pathname === "/" ? "root" : "other",
   });
 }
@@ -541,23 +545,57 @@ export async function getSupabaseProfileBundle(request, env, fetcher = fetch) {
   }
 
   async function rows(table, query) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
+    let response;
     try {
-      const endpoint = new URL("/rest/v1/" + table, base);
-      for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
-      const response = await fetcher(endpoint.toString(), {
+      response = await fetcher(endpoint.toString(), {
         method: "GET",
         headers: {
           apikey: anonKey,
           authorization: "Bearer " + token,
           accept: "application/json",
         },
-        redirect: "error",
+        // Inspect and block redirects; never forward a caller JWT to a redirect target.
+        redirect: "manual",
         signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       });
-      if (!response.ok) return null;
+    } catch (error) {
+      const message = [error?.name, error?.message, error?.cause?.code]
+        .filter(Boolean).join(" ").toLowerCase();
+      const category = /redirect/.test(message) ? "redirect"
+        : /timeout|timed out|aborted/.test(message) ? "timeout"
+        : /enotfound|eai_again|dns|getaddrinfo/.test(message) ? "dns"
+        : /certificate|tls|ssl/.test(message) ? "tls"
+        : /fetch failed|network|socket|connect/.test(message) ? "connection"
+        : "upstream";
+      console.error("MEDBIOHIM_PROFILE_REST_FETCH_ERROR", JSON.stringify({
+        table,
+        category,
+        sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      return null;
+    }
+    if (response.status >= 300 && response.status < 400) {
+      logAuthRedirect("profile:" + table, response, endpoint);
+      return null;
+    }
+    if (!response.ok) {
+      let errorPayload = null;
+      try { errorPayload = await response.json(); } catch {}
+      console.error("MEDBIOHIM_PROFILE_REST_QUERY_FAILED", JSON.stringify({
+        table,
+        status: response.status,
+        code: typeof errorPayload?.code === "string" ? errorPayload.code.slice(0, 40) : "REST_ERROR",
+        sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      return null;
+    }
+    try {
       const payload = await response.json();
       return Array.isArray(payload) ? payload : null;
     } catch {
+      console.error("MEDBIOHIM_PROFILE_REST_INVALID_JSON", JSON.stringify({ table }));
       return null;
     }
   }
@@ -812,13 +850,46 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
   async function rows(table, query) {
     const endpoint = new URL("/rest/v1/" + table, base);
     for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, value);
-    const response = await fetcher(endpoint.toString(), {
-      method: "GET",
-      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
-    });
-    if (!response.ok) throw new Error("Supabase REST read failed");
+    let response;
+    try {
+      response = await fetcher(endpoint.toString(), {
+        method: "GET",
+        headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const message = [error?.name, error?.message, error?.cause?.code].filter(Boolean).join(" ").toLowerCase();
+      const category = /redirect/.test(message) ? "redirect"
+        : /timeout|timed out|aborted/.test(message) ? "timeout"
+        : /enotfound|eai_again|dns|getaddrinfo/.test(message) ? "dns"
+        : /certificate|tls|ssl/.test(message) ? "tls" : "connection";
+      console.error("MEDBIOHIM_SUBJECT_DETAIL_FETCH_ERROR", JSON.stringify({
+        table, category, sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
+    if (response.status >= 300 && response.status < 400) {
+      logAuthRedirect("subject-detail:" + table, response, endpoint);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      throw error;
+    }
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch {}
+      const error = new Error("Supabase REST read failed");
+      error.status = response.status;
+      error.code = typeof payload?.code === "string" ? payload.code.slice(0, 40) : "REST_ERROR";
+      error.table = table;
+      console.error("MEDBIOHIM_SUBJECT_DETAIL_QUERY_FAILED", JSON.stringify({
+        table, status: error.status, code: error.code,
+        sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
     const payload = await response.json();
     if (!Array.isArray(payload)) throw new Error("Supabase REST returned an invalid collection");
     return payload;
@@ -853,7 +924,12 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
         sort_order: module.order_index ?? null,
       }));
     }
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_SUBJECT_DETAIL_FAILED", JSON.stringify({
+      table: String(error?.table || "unknown").slice(0, 50),
+      status: Number(error?.status) || 0,
+      code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+    }));
     return failure(503, "DB_UNAVAILABLE", "Subject data is temporarily unavailable");
   }
   return { ok: true, data: { subject: subjects[0], modules } };
@@ -1065,6 +1141,14 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
       error.table = table;
       throw error;
     }
+    if (response.status >= 300 && response.status < 400) {
+      logAuthRedirect("subjects:" + table, response, endpoint);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      throw error;
+    }
     if (!response.ok) {
       let errorPayload = null;
       try { errorPayload = await response.json(); } catch {}
@@ -1196,13 +1280,46 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
   async function rows(table, params) {
     const endpoint = new URL("/rest/v1/" + table, base);
     for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
-    const response = await fetcher(endpoint.toString(), {
-      method: "GET",
-      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
-    });
-    if (!response.ok) throw new Error("Schedule query failed");
+    let response;
+    try {
+      response = await fetcher(endpoint.toString(), {
+        method: "GET",
+        headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const message = [error?.name, error?.message, error?.cause?.code].filter(Boolean).join(" ").toLowerCase();
+      const category = /redirect/.test(message) ? "redirect"
+        : /timeout|timed out|aborted/.test(message) ? "timeout"
+        : /enotfound|eai_again|dns|getaddrinfo/.test(message) ? "dns"
+        : /certificate|tls|ssl/.test(message) ? "tls" : "connection";
+      console.error("MEDBIOHIM_SCHEDULE_FETCH_ERROR", JSON.stringify({
+        table, category, sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
+    if (response.status >= 300 && response.status < 400) {
+      logAuthRedirect("schedule:" + table, response, endpoint);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      throw error;
+    }
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch {}
+      const error = new Error("Schedule query failed");
+      error.status = response.status;
+      error.code = typeof payload?.code === "string" ? payload.code.slice(0, 40) : "REST_ERROR";
+      error.table = table;
+      console.error("MEDBIOHIM_SCHEDULE_QUERY_FAILED", JSON.stringify({
+        table, status: error.status, code: error.code,
+        sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
     const payload = await response.json();
     if (!Array.isArray(payload)) throw new Error("Invalid schedule response");
     return payload;
@@ -1300,7 +1417,12 @@ export async function listSupabaseSchedule(request, env, filters = {}, fetcher =
       };
     });
     return { ok: true, data: { items, groups: selectedGroups.map((row) => row.group), from, to } };
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_SCHEDULE_FAILED", JSON.stringify({
+      table: String(error?.table || "unknown").slice(0, 50),
+      status: Number(error?.status) || 0,
+      code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+    }));
     return failure(503, "SCHEDULE_UNAVAILABLE", "Расписание временно недоступно");
   }
 }
@@ -1704,13 +1826,46 @@ export async function getSupabaseScheduleMeta(request, env, filters = {}, fetche
   async function rows(table, params) {
     const endpoint = new URL("/rest/v1/" + table, base);
     for (const [key, value] of Object.entries(params)) endpoint.searchParams.set(key, String(value));
-    const response = await fetcher(endpoint.toString(), {
-      method: "GET",
-      headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
-    });
-    if (!response.ok) throw new Error("Calendar metadata read failed");
+    let response;
+    try {
+      response = await fetcher(endpoint.toString(), {
+        method: "GET",
+        headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const message = [error?.name, error?.message, error?.cause?.code].filter(Boolean).join(" ").toLowerCase();
+      const category = /redirect/.test(message) ? "redirect"
+        : /timeout|timed out|aborted/.test(message) ? "timeout"
+        : /enotfound|eai_again|dns|getaddrinfo/.test(message) ? "dns"
+        : /certificate|tls|ssl/.test(message) ? "tls" : "connection";
+      console.error("MEDBIOHIM_SCHEDULE_META_FETCH_ERROR", JSON.stringify({
+        table, category, sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
+    if (response.status >= 300 && response.status < 400) {
+      logAuthRedirect("schedule-meta:" + table, response, endpoint);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      throw error;
+    }
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch {}
+      const error = new Error("Calendar metadata read failed");
+      error.status = response.status;
+      error.code = typeof payload?.code === "string" ? payload.code.slice(0, 40) : "REST_ERROR";
+      error.table = table;
+      console.error("MEDBIOHIM_SCHEDULE_META_QUERY_FAILED", JSON.stringify({
+        table, status: error.status, code: error.code,
+        sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
     const payload = await response.json();
     if (!Array.isArray(payload)) throw new Error("Invalid calendar metadata response");
     return payload;
@@ -1725,7 +1880,12 @@ export async function getSupabaseScheduleMeta(request, env, filters = {}, fetche
       rows("subject_schedule_rules", rulesQuery),
     ]);
     return { ok: true, data: { periods, duration_rules: durationRules } };
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_SCHEDULE_META_FAILED", JSON.stringify({
+      table: String(error?.table || "unknown").slice(0, 50),
+      status: Number(error?.status) || 0,
+      code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+    }));
     return failure(503, "SCHEDULE_META_UNAVAILABLE", "Метаданные учебного календаря временно недоступны");
   }
 }
