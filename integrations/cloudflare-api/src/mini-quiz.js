@@ -105,7 +105,8 @@ async function checkSubjectAccess(reader, subjectId) {
   if (!subject || subject.is_active !== true) return failure(404, "NOT_FOUND", "Активный предмет не найден");
   const slug = String(subject.slug || "").trim().toLowerCase();
   const specialty = String(subject.specialty_slug || "").trim().toLowerCase();
-  if (!specialty) return { ok: true };
+  const requiredSpecialty = slug === "histology" ? "mbh" : specialty;
+  if (!requiredSpecialty) return { ok: true };
 
   let memberships;
   try {
@@ -121,8 +122,7 @@ async function checkSubjectAccess(reader, subjectId) {
     const group = related(membership?.groups);
     const groupSpecialty = String(group?.specialty_slug || "").trim().toLowerCase();
     if (!group || group.is_active !== true || !groupSpecialty) return false;
-    return groupSpecialty === specialty ||
-      (specialty === "mbh" && (groupSpecialty === "mbh" || slug === "histology" && groupSpecialty === "mbh"));
+    return groupSpecialty === requiredSpecialty;
   });
   if (!allowed) return failure(403, "FORBIDDEN", "Нет доступа к мини-тесту этого предмета");
   return { ok: true };
