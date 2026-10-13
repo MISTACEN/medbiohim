@@ -243,8 +243,25 @@ function getAiCompletionCandidates(env, preferredProvider) {
   if (env.OPENROUTER_API_KEY) {
     add("openrouter", env.OPENROUTER_API_KEY, "https://openrouter.ai/api/v1", env.OPENROUTER_MODEL || "openrouter/auto");
   }
+  const gigaCredentials = String(env.GIGACHAT_CREDENTIALS || env.GIGACHAT_AUTH_KEY || "").trim();
+  const gigaAccessToken = String(env.GIGACHAT_ACCESS_TOKEN || "").trim();
+  if (gigaCredentials || gigaAccessToken) {
+    candidates.push({
+      id: "gigachat",
+      key: gigaAccessToken || gigaCredentials,
+      credentials: gigaCredentials,
+      base: "https://gigachat.devices.sberbank.ru/api/v1",
+      model: env.GIGACHAT_MODEL || "GigaChat",
+      scope: env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS",
+    });
+  }
   if (env.GEMINI_API_KEY && (region !== "ru" || geminiProxyReady)) {
-    add("gemini", env.GEMINI_API_KEY, "https://generativelanguage.googleapis.com/v1beta/openai", env.GEMINI_MODEL || "gemini-2.5-flash");
+    candidates.push({
+      id: "gemini",
+      key: String(env.GEMINI_API_KEY).trim(),
+      base: "https://generativelanguage.googleapis.com/v1beta",
+      model: env.GEMINI_MODEL || "gemini-2.0-flash",
+    });
   }
   const configuredDefault = String(env.AI_CHAT_PRIMARY_PROVIDER || "groq").trim().toLowerCase();
   const first = preferred === "auto" ? configuredDefault : preferred;
@@ -253,7 +270,99 @@ function getAiCompletionCandidates(env, preferredProvider) {
   if (preferred !== "auto" && index < 0) return [];
   return candidates;
 }
+async function callGeminiCompletion(cfg, messages, fetcher) {
+  const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const contents = messages.filter((message) => message.role === "user" || message.role === "assistant").map((message) => ({
+    role: message.role === "assistant" ? "model" : "user",
+    parts: [{ text: String(message.content || "") }],
+  }));
+  const endpoint = cfg.base.replace(/\/$/, "") + "/models/" + encodeURIComponent(cfg.model) + ":generateContent";
+  let response;
+  try {
+    response = await fetcher(endpoint, {
+      method: "POST",
+      headers: { "x-goog-api-key": cfg.key, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+        contents,
+        generationConfig: { temperature: 0.25, maxOutputTokens: 2500 },
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(45000),
+    });
+  } catch {
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
+  }
+  let payload = null;
+  try { payload = await response.json(); } catch { /* handled below */ }
+  if (!response.ok) {
+    if (response.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "ИИ-провайдер ограничил частоту запросов");
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
+  }
+  const text = (payload?.candidates?.[0]?.content?.parts || []).map((part) => String(part.text || "")).join("").trim();
+  if (!text) throw new AiChatApiError(502, "AI_EMPTY_RESPONSE", "ИИ-провайдер вернул пустой ответ");
+  return { content: text, provider: cfg.id, model: cfg.model };
+}
+
+async function callGigaChatCompletion(cfg, messages, fetcher) {
+  let accessToken = String(cfg.key || "").trim();
+  if (!String(cfg.credentials || "").trim() && !accessToken) {
+    throw new AiChatApiError(503, "AI_PROVIDER_UNAVAILABLE", "GigaChat не настроен");
+  }
+  if (!String(cfg.credentials || "").trim() && accessToken) {
+    // A pre-issued access token can be used directly; credentials are never returned to the caller.
+  } else {
+    let tokenResponse;
+    try {
+      tokenResponse = await fetcher("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
+        method: "POST",
+        headers: {
+          authorization: "Basic " + String(cfg.credentials).trim(),
+          "content-type": "application/x-www-form-urlencoded",
+          "RqUID": crypto.randomUUID(),
+          accept: "application/json",
+        },
+        body: new URLSearchParams({ scope: cfg.scope || "GIGACHAT_API_PERS" }),
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
+    }
+    let tokenPayload = null;
+    try { tokenPayload = await tokenResponse.json(); } catch { /* handled below */ }
+    if (!tokenResponse.ok || typeof tokenPayload?.access_token !== "string") {
+      if (tokenResponse.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "GigaChat ограничил частоту запросов");
+      throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
+    }
+    accessToken = tokenPayload.access_token;
+  }
+  let response;
+  try {
+    response = await fetcher(cfg.base.replace(/\/$/, "") + "/chat/completions", {
+      method: "POST",
+      headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ model: cfg.model, temperature: 0.25, max_tokens: 2500, messages }),
+      redirect: "error",
+      signal: AbortSignal.timeout(45000),
+    });
+  } catch {
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
+  }
+  let payload = null;
+  try { payload = await response.json(); } catch { /* handled below */ }
+  if (!response.ok) {
+    if (response.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "GigaChat ограничил частоту запросов");
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
+  }
+  const text = payload?.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) throw new AiChatApiError(502, "AI_EMPTY_RESPONSE", "ИИ-провайдер вернул пустой ответ");
+  return { content: text.trim(), provider: cfg.id, model: String(payload?.model || cfg.model) };
+}
+
 async function callAiCompletion(cfg, messages, fetcher) {
+  if (cfg.id === "gemini") return callGeminiCompletion(cfg, messages, fetcher);
+  if (cfg.id === "gigachat") return callGigaChatCompletion(cfg, messages, fetcher);
   const endpoint = cfg.base.replace(/\/$/, "") + "/chat/completions";
   let response;
   try {
