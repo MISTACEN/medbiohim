@@ -1,3 +1,12 @@
+## Current state — 2026-10-14 (admin login confirmed; calculator API migrated)
+
+- 🟢 **Admin sign-in:** owner confirmed the `@hotmail.com` account now opens the admin interface after a hard refresh and a fresh login. The database role was already assigned correctly; no duplicate role assignment was made.
+- 🟢 **Cloudflare calculator routes:** ported the PHP `CalculatorsService` catalog and formulas into `integrations/cloudflare-api/src/calculators.js`; implemented authenticated `GET /api/v1/calculators`, `GET /api/v1/calculators/{id}`, and `POST /api/v1/calculators/{id}/compute`. Preserved the PHP-style payload shape, category groups, formula labels, validation errors and generic computation failures. All requests still validate the caller's Supabase bearer token; no service-role key or database write was added.
+- 🟢 **Verification:** Cloudflare Workers Build for main commit `f987acce68925af18cf5dee25e9185e4401a43b0` finished with outcome `success`. Its logs show the new calculator formula, catalog, authentication and method-guard tests passing; `npm run build` runs the entire Node test suite and a Wrangler `deploy --dry-run`. The worker's newest deployment is in shadow mode; this is not production cutover.
+- 🟡 **Still not migrated:** `/api/v1/ai/*` remains a route-family gap (501 `ROUTE_NOT_MIGRATED`) and needs a careful port of provider availability, per-user conversations/messages, usage limits, provider secrets and failure behavior. Do not add fake success responses or expose provider secrets.
+- 🟡 **Still under diagnosis:** prior `/subjects`, academic-state, schedule, and presence 503/500 reports need current post-fix runtime evidence. Treat old log entries as historical until correlated with the active Worker version.
+- 🔒 **Production gate unchanged:** this is an incremental shadow migration. Do not switch Vercel production traffic to Cloudflare or alter production environment variables, DNS, Supabase RLS, or credentials until authenticated real-user read/write contracts and route parity are accepted.
+
 ### Current release gate — 2026-10-13, Cloudflare Shadow verified
 
 - 🟢 **Latest confirmed Shadow build:** source commit \`4effc4e59f2e1cccad4166f4e306e218f0ee344b\`; Cloudflare Build \`d35cdff6-696c-476a-8b8a-e3e058fb4c8f\`; outcome \`success\`; Worker version \`0c4d9644-7122-4b16-92f7-3670614b0e52\`. A duplicate build for the same source also succeeded.
