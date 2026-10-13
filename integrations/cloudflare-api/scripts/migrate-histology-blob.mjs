@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 
 const SOURCE_ARCHIVE_SHA256 = "4cbd44020f675a7232fe086e8e39c9c5d4a15652be810fb37758066180432b73";
 const DEFAULT_MAX_SIZE = 15 * 1024 * 1024;
@@ -30,8 +31,8 @@ export function mimeTypeFor(filePath) {
 }
 
 export function safeObjectKey(key) {
-  const value = String(key || "").replaceAll("\\\\", "/");
-  if (!value || value.startsWith("/") || value.length > 1024 || /[?#\\u0000-\\u001f]/u.test(value)) return false;
+  const value = String(key || "");
+  if (!value || value.startsWith("/") || value.length > 1024 || /[?#\u0000-\u001f]/u.test(value)) return false;
   const parts = value.split("/");
   return parts.every((part) => part && part !== "." && part !== "..");
 }
@@ -211,7 +212,9 @@ async function main() {
   console.log(JSON.stringify({ completed: true, uploaded, skipped, total: entries.length, manifest_out: path.resolve(args.manifestOut) }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(`Migration stopped safely: ${error?.message || "unknown error"}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(`Migration stopped safely: ${error?.message || "unknown error"}`);
+    process.exitCode = 1;
+  });
+}
