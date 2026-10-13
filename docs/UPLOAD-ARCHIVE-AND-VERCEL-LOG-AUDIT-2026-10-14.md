@@ -132,3 +132,18 @@ The dominant media failure remains `GET /api/v1/trainers/feed/{id}/image` (236 H
 2. Add Redis and private Blob secrets in Shadow; verify Redis GET/SET with a harmless test key and never cache media bytes.
 3. Verify a real published MBH card's image object exists in B2 or Blob, then test signed URL issuance with an authenticated user who has MBH membership.
 4. Keep PHP/SpaceWeb as production until those checks and frontend API-parity smoke tests pass. No production domain, Vercel environment, DNS, or Supabase schema was changed during this pass.
+
+
+## Latest verification — 2026-10-14, after route restoration
+
+- Current passing Worker build: commit `bd787c12cd324c66dfcf5260b5753e74b8b60f0b`; build `02fbe186-11b9-4670-8c32-bcc81f025197`; **276 passed, 0 failed**; deployed version `f27f713e-e1cc-44ad-95b3-266f64a7885c`.
+- Public `https://medbiohim.vercel.app/api/v1/health` returned `mode: shadow`, proving the live Vercel API proxy currently forwards to the Shadow Worker. Unauthenticated calls to `/api/v1/settings/account`, `/api/v1/trainings`, and `/api/v1/histology/source-materials?folder=Учебники` returned 401 instead of the prior 501. This verifies route recognition/authentication only, not authenticated account reads, training data or textbook delivery.
+- Added the missing account-settings routes, a caller-scoped GET training list, and private B2 textbook listing/download routes, all in `main`. Added route-level tests. The training POST/detail/answer/cancel/complete routes are not yet fully ported; treat training write flows as still incomplete.
+- Applied the additive Supabase migration `20261013171940_create_user_preferences`. RLS is enabled and only owner policies were confirmed. Repo migration filename was aligned with the applied version.
+- The first PDF download test exposed a Unicode HTTP-header failure; the response now uses ASCII `filename` plus RFC 5987 `filename*` and the full suite is green. This is mock-backed test evidence; no real private PDF object has been downloaded yet.
+- Current storage inventory shows the Supabase `histology` storage bucket and private Upstash Blob bucket are empty. `public.files` contains a single deleted stub; all 206 published histology cards lack `source_file_id`. The 178 preparation cards use hash keys such as `histology-photo-…` while their `preparation.imagePath` contains original JPEG filenames; the 27 normal electronogram keys use `electronograms/images/*.png`. A deterministic upload + object-key map remains required to close the historical 236 image 503s.
+- Redis/Blob runtime credentials are still missing from Shadow: `UPSTASH_REDIS_REST_TOKEN`, `UPSTASH_BLOB_TOKEN`. The private Blob bucket remains empty; Redis remains reserved for short-lived sanitized metadata, not media bytes.
+- Server-side secret bindings exist for Groq, Gemini, GigaChat, Mistral and OpenRouter, but no authenticated live generation was possible in this pass. Do not equate the existence of binding names with working provider credentials.
+- Current Supabase security advisor results: `trainer_feed_cards_public` SECURITY DEFINER view (ERROR), four authenticated SECURITY DEFINER RPCs (WARN), and leaked-password protection disabled (WARN). The view definition explicitly strips answer-bearing keys and checks MBH membership; remediate only after reviewing underlying table privileges and RLS to avoid breaking the sanitized contract.
+- Cloudflare R2 remains disabled in the account. Vercel runtime-log connector access returned 403; no fresh signed-in browser session could be tested. No new Git branch was created.
+
