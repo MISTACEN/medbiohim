@@ -409,3 +409,39 @@ The signer only accepts B2 API/download hostnames over HTTPS, refuses redirects,
 **Operational gate:** the Cloudflare build logs for this pass list no B2 bindings among the Worker's configured bindings. Treat both B2-backed routes as implemented but **not runtime-ready** until the four B2 environment/secrets are configured securely and a live authorized-user download is verified. Never paste secret values into GitHub or project docs. The final source snapshot is now verified: commit `18e4af15e616dc213c73774ad882471ce94c959f`, build `530dd56a-a902-41b7-9879-06451f1382f5`, Worker version `0709ef4f-3d7d-474a-af27-c1198e60a1e1`; 225/225 tests passed, Wrangler dry-run passed, and Shadow deployment succeeded.
 
 Other outstanding gates remain: real student JWT/RLS smoke test, migration of SpaceWeb-only media, frontend Preview parity, and explicit Production cutover approval. See the previous verified route snapshot above for the materials/trainer read APIs.
+
+
+---
+
+## Current verified Shadow checkpoint — 2026-10-13
+
+**Latest verified source:** \`462d1d3fdb2168b05f9b7afb437acb280c29f075\`  
+**Cloudflare Build:** \`64f4be30-63ca-483f-8e62-c644f2a5e424\` — \`success\`  
+**Worker version:** \`dbc06ade-10ea-4b09-b8ca-969dfb9de6c4\`  
+**Build gate:** \`npm test\` **225 passed / 0 failed**, Wrangler dry-run passed, Shadow deploy completed.
+
+### Routes included in the successful build
+
+| Route | Status in Shadow / acceptance |
+|---|---|
+| \`GET /api/v1/subject-materials\`, \`GET /api/v1/materials\`, \`GET /api/v1/materials/{id}\` | Deployed; caller JWT/RLS; published rows and safe text search. |
+| \`GET /api/v1/content-sources/{id}\` | Deployed; metadata only; active MBH-group check for histology-linked content. |
+| \`GET /api/v1/trainers/feed\`, \`GET /api/v1/trainers/feed/{id}\`, \`POST /api/v1/trainers/feed/answer\` | Deployed; safe public view for reads and existing authenticated scoring RPC for answer submission. |
+| \`GET /api/v1/notes\`, \`POST /api/v1/notes\`, \`GET /api/v1/favorites\`, \`POST /api/v1/favorites/toggle\` | Deployed; user identity derived from the verified session; only published question targets; Histology requires active MBH membership. |
+| \`GET /api/v1/questions/mini-quiz\`, \`POST /api/v1/questions/mini-quiz/check\` | Deployed; up to 12 published questions per request, correct-option fields removed from read responses; check response exposes only score metadata. |
+| \`POST /api/v1/questions/{uuid}/report\` | Deployed; authenticated student report submission for a published question; category/message validation and duplicate-open-report guard. |
+| \`GET /api/v1/materials/{id}/file-url\` | Handler deployed, but real file delivery remains **blocked** until B2 secrets and a verified \`files.object_key\`/material mapping are configured. Fails closed with a service error rather than inventing a URL. |
+| \`GET /api/v1/trainers/feed/{id}/image\` | Handler deployed and returns a short-lived B2 redirect only if the card maps to an active file and signing is configured. SpaceWeb-only cards and missing B2 configuration remain unavailable from Worker. |
+
+### Verified runtime configuration constraints
+
+The Worker settings expose Supabase URL/anon-key secrets and the two configured auth rate-limit bindings. They do **not** contain any \`B2_*\` bindings/secrets. Do not mark private binary delivery as accepted until storage credentials, source-to-object mapping and exact-scope authorization are independently verified. The test-only mocked B2 responses validate logic, not actual access to a live object.
+
+### Still not complete / deliberately blocked
+
+- \`GET /api/v1/materials/{id}/file\` and \`GET /api/v1/histology/source-file\`: remain on the guarded PHP/SpaceWeb path; Workers cannot read SpaceWeb's local filesystem and B2 is not configured here.
+- Test-attempt mutation routes (\`POST /api/v1/tests/{id}/start\`, \`/tests/attempts/{id}/answers\`, \`/tests/attempts/{id}/finish\`) remain blocked by \`TEST_ATTEMPT_SECURITY_NOT_READY\` until a private scoring snapshot/RPC and narrow grants can be verified.
+- Real authenticated student's Supabase/RLS smoke test remains outstanding. The 225 unit/route tests do not prove the live user's membership and grants.
+- No Vercel frontend API-mode switch, Production deployment, DNS change, Supabase schema/RLS change, or secret creation was made. The only deployment is the isolated Shadow Worker.
+
+Use this checkpoint as the latest tested state. Earlier rows in this inventory retain historical context and may show stale “not deployed” notes; the build/version above is the current verified baseline for this pass.
