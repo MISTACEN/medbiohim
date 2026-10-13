@@ -208,7 +208,6 @@ export default function TestsPage() {
       );
       const saved = await Promise.all(writes);
       const failed = saved.find((x:any) => !x.ok);
-      setGrading(Object.fromEntries(saved.map((x:any, i:number) => [i, x.ok ? x.data?.answer : null])));
       if (failed) {
         setNote(failed.error?.message || "Не удалось сохранить ответы");
         setBusy(false);
@@ -221,6 +220,11 @@ export default function TestsPage() {
         return;
       }
       const attempt=finished.data.attempt;
+      const finalAnswers = Array.isArray(finished.data?.answers) ? finished.data.answers : [];
+      setGrading(Object.fromEntries(active.questions.map((q, i) => {
+        const answer = finalAnswers.find((item: any) => String(item.question_id) === q.id);
+        return [i, answer ? { ...answer, feedback: answer.feedback ?? answer.grading_feedback } : null];
+      })));
       setAttempts((prev) => [attempt, ...prev.filter((x:any) => x.id !== attempt.id)]);
       const score=Number(attempt.score||0);
       const max=Number(attempt.max_score||active.questions.length);
