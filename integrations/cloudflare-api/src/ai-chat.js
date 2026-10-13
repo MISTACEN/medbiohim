@@ -254,7 +254,7 @@ function resolveAiCompletionProvider(env, preferredProvider) {
 }
 
 async function callAiCompletion(cfg, messages, fetcher) {
-  const endpoint = cfg.base.replace(/\\/$/, "") + "/chat/completions";
+  const endpoint = cfg.base.replace(/\/$/, "") + "/chat/completions";
   let response;
   try {
     response = await fetcher(endpoint, {
@@ -382,7 +382,7 @@ export async function sendAiMessage(request, env, userId, conversationId, input 
     prefer: "return=representation",
   }, fetcher);
   const title = String(conversation.title || "Новый чат") === "Новый чат"
-    ? content.replace(/\\s+/gu, " ").slice(0, 80)
+    ? content.replace(/\s+/gu, " ").slice(0, 80)
     : conversation.title;
   const updateParams = new URLSearchParams({ id: "eq." + id, user_id: "eq." + userId });
   try {
