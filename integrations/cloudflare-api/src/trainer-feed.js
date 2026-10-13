@@ -197,9 +197,10 @@ export async function getSupabaseTrainerCard(request, env, cardId, fetcher = fet
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
   const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
   let endpoint;
   try {
-    const base = new URL(baseUrl);
+    base = new URL(baseUrl);
     if (base.protocol !== "https:" || !anonKey) {
       return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
     }
@@ -239,5 +240,42 @@ export async function getSupabaseTrainerCard(request, env, cardId, fetcher = fet
   }
   if (!rows[0]) return failure(404, "NOT_FOUND", "Trainer card not found");
 
-  return { ok: true, data: { item: normalizeCard(rows[0]) } };
+  const row = rows[0];
+  const requiresMbh = String(row.subject_slug || "").trim() === "histology" ||
+    String(row.specialty_slug || "").trim() === "mbh";
+  if (requiresMbh) {
+    const membershipsEndpoint = new URL("/rest/v1/group_memberships", base);
+    membershipsEndpoint.searchParams.set("select", "group_id,groups(specialty_slug,is_active)");
+    membershipsEndpoint.searchParams.set("user_id", "eq." + identity.user.id);
+    membershipsEndpoint.searchParams.set("is_active", "eq.true");
+    let membershipsResponse;
+    try {
+      membershipsResponse = await fetcher(membershipsEndpoint.toString(), {
+        method: "GET",
+        headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch {
+      return failure(503, "DB_UNAVAILABLE", "Доступ к карточке не удалось проверить");
+    }
+    if (membershipsResponse.status >= 300 && membershipsResponse.status < 400 || !membershipsResponse.ok) {
+      return failure(503, "DB_UNAVAILABLE", "Доступ к карточке не удалось проверить");
+    }
+    let memberships;
+    try {
+      memberships = await membershipsResponse.json();
+      if (!Array.isArray(memberships)) throw new Error("invalid result");
+    } catch {
+      return failure(503, "DB_UNAVAILABLE", "Доступ к карточке не удалось проверить");
+    }
+    const hasMbhMembership = memberships.some((membership) => {
+      const group = related(membership?.groups);
+      return Boolean(group) && group.is_active !== false &&
+        String(group.specialty_slug || "").trim() === "mbh";
+    });
+    if (!hasMbhMembership) return failure(403, "FORBIDDEN", "Карточка доступна только специальности МБХ");
+  }
+
+  return { ok: true, data: { item: normalizeCard(row) } };
 }
