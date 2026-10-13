@@ -212,11 +212,12 @@ export async function getSupabaseHistologySourceFile(request, env, options = {},
     if (upstream.status === 404) return jsonError(404, "NOT_FOUND", "Учебник не найден в хранилище");
     if (!upstream.ok || !upstream.body) return jsonError(503, "SOURCE_FILE_UNAVAILABLE", "Не удалось загрузить учебник");
     const filename = leaf.replace(/["\\\r\n]/g, "");
+    const asciiFilename = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\;]/g, "_");
     return new Response(upstream.body, {
       status: 200,
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": "inline; filename=\"" + filename + "\"",
+        "content-disposition": "inline; filename=\"" + asciiFilename + "\"; filename*=UTF-8''" + encodeURIComponent(filename),
         "cache-control": "private, max-age=900",
         "x-content-type-options": "nosniff",
         ...(upstream.headers.get("content-length") ? { "content-length": upstream.headers.get("content-length") } : {}),
