@@ -223,6 +223,11 @@ export async function getSupabaseAcademicState(request, env, fetcher = fetch) {
       },
     };
   } catch (error) {
+    console.error("MEDBIOHIM_ACADEMIC_STATE_DB_ERROR", JSON.stringify({
+      resource: String(error?.resource || "unknown").replace(/[^a-zA-Z0-9_./-]/g, "").slice(0, 80),
+      status: Number(error?.status) || 0,
+      code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+    }));
     if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
     if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав");
     return fail(503, "ACADEMIC_STATE_ERROR", "Состояние учебного плана временно недоступно");
