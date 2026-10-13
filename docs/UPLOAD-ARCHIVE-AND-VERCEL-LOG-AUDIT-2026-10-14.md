@@ -41,14 +41,14 @@ Commits on `main`:
 - `36291c25` — route `POST /api/v1/ai/conversations/{id}/messages` into the provider pipeline instead of returning the hard-coded 501.
 - `b1621f16`, `f4d786ec`, `f83e99de`, `9976fc90` — private Upstash Blob adapter dependency and a staged trainer-media path: prefer a present private Blob object, preserve Backblaze B2 fallback, and permit a published MBH card's canonical `source_key` while `source_file_id` backfill is pending.
 - `82b4b381`, `8a9242cc`, `f9644d4a`, `f9822e33` — optional user-scoped Upstash Redis cache for sanitized trainer-card metadata (15-second TTL), never image bytes or answer keys; shadow Worker config declares the Redis endpoint and AI model defaults.
-- `4609e2f3`, `aba8407d` — configured-provider fallback and regex cleanup in AI execution.
+- `4609e2f3`, `aba8407d`, `328745c1`, `943993a6` — configured-provider fallback, regex cleanup, Gemini direct API adapter, GigaChat OAuth/chat adapter, and provider tests.
 
 Important limitations:
 - These source changes are committed but **not yet verified by a successful current Worker Build/test run**. GitHub combined status for `f9822e33` reports only Vercel `failure` at the known `build-rate-limit` URL; the Cloudflare shadow deployment list still showed the earlier deployment from 2026-10-13 15:14 UTC. Do not call this a successful deployment.
 - The Upstash Blob bucket `medbiohim-files` exists and is private but currently contains **0 objects**. The required `UPSTASH_BLOB_TOKEN` is not present in the legacy `.env` file and was not set.
 - Upstash Redis `medbiohimcache` exists and is active in `eu-west-1`; its REST token is not set on the Worker. The code is fail-open until `UPSTASH_REDIS_REST_TOKEN` is added as a Worker secret.
 - The legacy `.env` contains B2 and several AI provider credentials, but an attempt to transfer secret values from the file to Cloudflare was blocked by the connected security controls. **No B2/AI/Redis secret value was changed or installed.** Add these through the Cloudflare Worker secret manager; never place them in GitHub or frontend variables.
-- Current AI execution code supports Groq, Mistral, OpenRouter and Gemini's OpenAI-compatible endpoint (Gemini remains region-gated). GigaChat status metadata exists but a GigaChat token-exchange execution adapter is still not implemented. Provider fallback is source-only until secrets are installed and live calls are tested.
+- Current AI execution source supports Groq, Mistral, OpenRouter, direct Gemini generateContent, and GigaChat OAuth + chat completions, with fallback among configured providers. Gemini remains region-gated. This is source-only until secrets are installed and live calls are tested.
 - Media migration is not complete: the private Blob bucket is empty and the database still has 206 published cards with `source_file_id IS NULL`. The source-key fallback allows a staged B2/Blob lookup, but it does not create the missing objects.
 
 ## Additional live Supabase data evidence (2026-10-14)
