@@ -139,11 +139,14 @@ test("trainer card detail is read from the safe view and returns no answer keys"
   const result = await getSupabaseTrainerCard(request("/api/v1/trainers/feed/card-1"), env, "card-1", async (url, init) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
-    assert.equal(parsed.pathname, "/rest/v1/trainer_feed_cards_public");
-    assert.equal(parsed.searchParams.get("id"), "eq.card-1");
-    assert.equal(parsed.searchParams.get("is_published"), "eq.true");
-    assert.equal(init.headers.authorization, "Bearer valid-user-token");
-    return response([card()]);
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
+      assert.equal(parsed.searchParams.get("id"), "eq.card-1");
+      assert.equal(parsed.searchParams.get("is_published"), "eq.true");
+      assert.equal(init.headers.authorization, "Bearer valid-user-token");
+      return response([card()]);
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") return response([membership("mbh", true)]);
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
   });
   assert.equal(result.ok, true);
   assert.equal(result.data.item.id, "card-1");
@@ -174,4 +177,31 @@ test("trainer card detail rejects invalid bearer credentials before reading the 
   assert.equal(result.ok, false);
   assert.equal(result.status, 401);
   assert.equal(reads, 0);
+});
+
+
+test("trainer card detail repeats the active MBH guard even when a mocked view returns a Histology row", async () => {
+  const result = await getSupabaseTrainerCard(request("/api/v1/trainers/feed/card-1"), env, "card-1", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-2" });
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") return response([card()]);
+    if (parsed.pathname === "/rest/v1/group_memberships") return response([membership("mbh", false)]);
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+  assert.equal(result.code, "FORBIDDEN");
+});
+
+test("trainer card detail fails closed when active membership cannot be verified", async () => {
+  const result = await getSupabaseTrainerCard(request("/api/v1/trainers/feed/card-1"), env, "card-1", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-2" });
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") return response([card()]);
+    if (parsed.pathname === "/rest/v1/group_memberships") return response({ message: "denied" }, 403);
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "DB_UNAVAILABLE");
 });
