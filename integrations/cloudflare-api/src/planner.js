@@ -8,7 +8,7 @@ function logPresenceRestRedirect(response, endpoint, table, method) {
   const location = response.headers.get("location");
   let target = null;
   try { if (location) target = new URL(location, endpoint); } catch {}
-  console.warn("MEDBIOHIM_PRESENCE_REST_REDIRECT", JSON.stringify({
+  console.error("MEDBIOHIM_PRESENCE_REST_REDIRECT", JSON.stringify({
     table,
     method,
     status: response.status,
@@ -214,12 +214,38 @@ async function presenceClient(request, env, fetcher) {
   async function rows(table, params = {}, init = {}) {
     const u = new URL("/rest/v1/" + table, base);
     for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
-    const r = await fetcher(u.toString(), {
-      ...init, method: init.method || "GET",
-      headers: { apikey: key, authorization: "Bearer " + token, accept: "application/json",
-        ...(init.body ? { "content-type": "application/json", prefer: "return=representation" } : {}), ...(init.headers || {}) },
-      redirect: "error", signal: AbortSignal.timeout(5000),
-    });
+    const method = init.method || "GET";
+    let r;
+    try {
+      r = await fetcher(u.toString(), {
+        ...init, method,
+        headers: { apikey: key, authorization: "Bearer " + token, accept: "application/json",
+          ...(init.body ? { "content-type": "application/json", prefer: "return=representation" } : {}), ...(init.headers || {}) },
+        // Inspect redirect responses but never follow them with the caller's bearer token.
+        redirect: "manual", signal: AbortSignal.timeout(5000),
+      });
+    } catch (error) {
+      const message = [error?.name, error?.message, error?.cause?.code].filter(Boolean).join(" ").toLowerCase();
+      const category = /redirect/.test(message) ? "redirect"
+        : /timeout|timed out|aborted/.test(message) ? "timeout"
+        : /enotfound|eai_again|dns|getaddrinfo/.test(message) ? "dns"
+        : /certificate|tls|ssl/.test(message) ? "tls"
+        : /fetch failed|network|socket|connect/.test(message) ? "connection" : "upstream";
+      console.error("MEDBIOHIM_PRESENCE_REST_FETCH_ERROR", JSON.stringify({
+        table, method, category,
+        sourceMatchesExpectedProject: base.hostname === "gnobvyjywtqbdfeejxmf.supabase.co",
+      }));
+      throw error;
+    }
+    if (r.status >= 300 && r.status < 400) {
+      logPresenceRestRedirect(r, u, table, method);
+      const error = new Error("Supabase REST redirect blocked");
+      error.status = r.status;
+      error.code = "UPSTREAM_REDIRECT";
+      error.table = table;
+      error.method = method;
+      throw error;
+    }
     if (!r.ok) {
       let errorPayload = null;
       try { errorPayload = await r.json(); } catch {}
