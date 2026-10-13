@@ -199,7 +199,7 @@ async function main() {
       cache: "no-store",
       metadata: { sha256: entry.sha256, source_archive_sha256: SOURCE_ARCHIVE_SHA256 },
       maxSize: Math.max(DEFAULT_MAX_SIZE, bytes.byteLength),
-      ...(isLarge ? { multipart: true } : { allowOverwrite: false }),
+      ...(isLarge ? { multipart: true } : (args.overwrite ? {} : { allowOverwrite: false })),
     };
     await bucket.put(entry.object_key, bytes, options);
     const verified = await bucket.info(entry.object_key);
