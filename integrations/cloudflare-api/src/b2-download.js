@@ -3,7 +3,7 @@ const TIMEOUT_MS = 5_000;
 function safeB2Url(value, kind) {
   try {
     const url = new URL(String(value || ""));
-    const hostPattern = kind === "api" ? /^api\\d+\\.backblazeb2\\.com$/ : /^f\\d+\\.backblazeb2\\.com$/;
+    const hostPattern = kind === "api" ? /^api[0-9]+[.]backblazeb2[.]com$/ : /^f[0-9]+[.]backblazeb2[.]com$/;
     if (url.protocol !== "https:" || !hostPattern.test(url.hostname)) return null;
     return url;
   } catch {
