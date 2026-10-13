@@ -1131,7 +1131,7 @@ test("auth fetch rejects redirects safely without forwarding credentials", async
     hasLocation: true,
     sourceIsHttps: true,
     sourceIsSupabaseDomain: true,
-    sourceMatchesExpectedProject: true,
+    sourceMatchesExpectedProject: false,
     targetIsHttps: true,
     targetSameOrigin: false,
     targetIsSupabaseDomain: false,
