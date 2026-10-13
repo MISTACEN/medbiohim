@@ -502,7 +502,12 @@ export default {
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
-      return withCors(success(result.data), origin);
+      // The existing frontend fetches this endpoint as a Blob. Preserve PHP's
+      // redirect contract so the browser downloads the short-lived B2 object.
+      return withCors(new Response(null, {
+        status: 302,
+        headers: { location: result.data.url, "cache-control": "private, no-store" },
+      }), origin);
     }
 
     const trainerCardMatch = new RegExp("^" + API_PREFIX + "/trainers/feed/([^/]+)$").exec(pathname);
