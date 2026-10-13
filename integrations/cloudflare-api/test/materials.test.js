@@ -28,7 +28,7 @@ function subjectRow({ slug = "chemistry", specialty_slug = null } = {}) {
 test("subject materials use caller JWT, preserve filters, and return PHP-compatible item fields", async () => {
   const calls = [];
   const result = await listSupabaseSubjectMaterials(request(), env, {
-    subject_slug: "chemistry", type: "lecture", q: "Основы",
+    subject_slug: "chemistry", type: "lecture", q: "Основы <script>",
   }, async (url, init) => {
     const parsed = new URL(String(url));
     calls.push({ parsed, authorization: init.headers.authorization, apikey: init.headers.apikey });
@@ -39,6 +39,8 @@ test("subject materials use caller JWT, preserve filters, and return PHP-compati
       assert.equal(parsed.searchParams.get("is_published"), "eq.true");
       assert.equal(parsed.searchParams.get("subjects.is_active"), "eq.true");
       assert.match(parsed.searchParams.get("or"), /Основы/);
+      assert.equal(parsed.searchParams.get("or").includes("<"), false);
+      assert.equal(parsed.searchParams.get("or").includes(">"), false);
       return response([subjectRow()]);
     }
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
@@ -95,4 +97,34 @@ test("subject materials reject invalid bearer credentials before reading rows", 
   assert.equal(result.ok, false);
   assert.equal(result.status, 401);
   assert.equal(materialReads, 0);
+});
+
+
+test("subject materials resolve UUID source metadata without fabricating download URLs", async () => {
+  const sourceId = "a94f7d20-4c6a-4f4a-8e22-731f2b8f57c1";
+  const result = await listSupabaseSubjectMaterials(request(), env, {}, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/materials") {
+      return response([{ ...subjectRow(), source_key: sourceId }]);
+    }
+    if (parsed.pathname === "/rest/v1/content_sources") {
+      assert.equal(parsed.searchParams.get("id"), "in.(" + sourceId + ")");
+      assert.equal(parsed.searchParams.get("select"), "id,source_path,original_format,mime_type");
+      assert.equal(init.headers.authorization, "Bearer valid-user-token");
+      return response([{
+        id: sourceId,
+        source_path: "content/chemistry/example.pdf",
+        original_format: "pdf",
+        mime_type: "application/pdf",
+      }]);
+    }
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.items.length, 1);
+  assert.equal(result.data.items[0].source.id, sourceId);
+  assert.equal(result.data.items[0].source.source_path, "content/chemistry/example.pdf");
+  assert.equal(result.data.items[0].source.mime_type, "application/pdf");
+  assert.equal(result.data.items[0].source.download_url, null);
 });
