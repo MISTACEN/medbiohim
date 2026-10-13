@@ -44,6 +44,7 @@ test("subject materials use caller JWT, preserve filters, and return PHP-compati
       assert.equal(parsed.searchParams.get("or").includes(">"), false);
       return response([subjectRow()]);
     }
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   });
   assert.equal(result.ok, true);
@@ -67,6 +68,7 @@ test("subject materials hide histology rows without an active MBH group membersh
     if (parsed.pathname === "/rest/v1/group_memberships") return response([
       { group_id: "group-1", groups: { specialty_slug: "chemistry", is_active: true } },
     ]);
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   });
   assert.equal(result.ok, true);
@@ -80,6 +82,7 @@ test("subject materials fail closed when membership verification is unavailable"
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
     if (parsed.pathname === "/rest/v1/materials") return response([subjectRow({ slug: "histology", specialty_slug: "mbh" })]);
     if (parsed.pathname === "/rest/v1/group_memberships") return response({ message: "RLS denied" }, 403);
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   });
   assert.equal(result.ok, false);
@@ -101,8 +104,8 @@ test("subject materials reject invalid bearer credentials before reading rows", 
 });
 
 
-test("subject materials resolve UUID source metadata without fabricating download URLs", async () => {
-  const sourceId = "a94f7d20-4c6a-4f4a-8e22-731f2b8f57c1";
+test("subject materials resolve text-keyed source metadata without fabricating download URLs", async () => {
+  const sourceId = "histology-test-derived-cytology";
   const result = await listSupabaseSubjectMaterials(request(), env, {}, async (url, init) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
@@ -120,6 +123,7 @@ test("subject materials resolve UUID source metadata without fabricating downloa
         mime_type: "application/pdf",
       }]);
     }
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   });
   assert.equal(result.ok, true);
@@ -143,6 +147,7 @@ test("GET /api/v1/materials accepts frontend camelCase filters and returns the s
       assert.match(parsed.searchParams.get("or"), /Основы/);
       return response([subjectRow()]);
     }
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   };
   try {
@@ -170,6 +175,7 @@ test("GET /api/v1/materials/:id uses an exact ID filter and returns the PHP-comp
       assert.equal(parsed.searchParams.get("id"), "eq.material-1");
       return response([subjectRow()]);
     }
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   };
   try {
@@ -193,6 +199,7 @@ test("GET /api/v1/materials/:id returns 404 when the material is unpublished or 
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
     if (parsed.pathname === "/rest/v1/materials") return response([]);
+    if (parsed.pathname === "/rest/v1/content_sources") return response([]);
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   };
   try {
