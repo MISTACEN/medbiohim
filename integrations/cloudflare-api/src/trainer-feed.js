@@ -1,4 +1,5 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
+import { getRedisJsonCache, setRedisJsonCache } from "./redis-cache.js";
 
 const TIMEOUT_MS = 5_000;
 const CARD_FIELDS = [
@@ -172,6 +173,19 @@ export async function listSupabaseTrainerFeed(request, env, filters = {}, fetche
     }
   }
 
+  const cacheKey = [
+    "medbiohim:trainer-feed",
+    identity.user.id,
+    subject || "all",
+    specialty || "all",
+    String(limit),
+    String(offset),
+  ].map((part) => encodeURIComponent(part)).join(":");
+  const cached = await getRedisJsonCache(env, cacheKey, fetcher);
+  if (cached && Array.isArray(cached.items)) {
+    return { ok: true, data: { ...cached, source: "upstash-redis" } };
+  }
+
   let items;
   try {
     items = await rows("trainer_feed_cards_public", query);
@@ -179,10 +193,10 @@ export async function listSupabaseTrainerFeed(request, env, filters = {}, fetche
     return failure(503, "TRAINER_ERROR", "Не удалось загрузить тренажёр");
   }
 
-  return {
-    ok: true,
-    data: { items: items.map(normalizeCard), limit, offset, source: "supabase_rest" },
-  };
+  const data = { items: items.map(normalizeCard), limit, offset };
+  // User-scoped short TTL; cache contains sanitized metadata only, never file bytes.
+  await setRedisJsonCache(env, cacheKey, data, 15, fetcher);
+  return { ok: true, data: { ...data, source: "supabase_rest" } };
 }
 
 export async function getSupabaseTrainerCard(request, env, cardId, fetcher = fetch) {
