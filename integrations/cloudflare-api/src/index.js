@@ -11,8 +11,7 @@ import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
-import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz } from "./mini-quiz.js";
-import { submitSupabaseQuestionReport } from "./question-reports.js";
+import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submitSupabaseQuestionReport } from "./mini-quiz.js";
 
 import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcademicState, generateSupabaseAcademicPlan } from "./academic-planning.js";
 import { listSupabaseCommunityPosts, createSupabaseCommunityPost } from "./community.js";
