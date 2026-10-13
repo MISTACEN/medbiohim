@@ -229,7 +229,7 @@ export async function deleteAiConversation(request, env, userId, conversationId,
 }
 
 
-function resolveAiCompletionProvider(env, preferredProvider) {
+function getAiCompletionCandidates(env, preferredProvider) {
   const preferred = String(preferredProvider || "auto").trim().toLowerCase();
   const region = String(env.AI_BACKEND_REGION || "ru").trim().toLowerCase();
   const geminiProxyReady = Boolean(env.GEMINI_VERCEL_PROXY_URL && env.GEMINI_VERCEL_PROXY_SECRET);
@@ -246,13 +246,13 @@ function resolveAiCompletionProvider(env, preferredProvider) {
   if (env.GEMINI_API_KEY && (region !== "ru" || geminiProxyReady)) {
     add("gemini", env.GEMINI_API_KEY, "https://generativelanguage.googleapis.com/v1beta/openai", env.GEMINI_MODEL || "gemini-2.5-flash");
   }
-  if (preferred === "auto" || !preferred) {
-    const configuredDefault = String(env.AI_CHAT_PRIMARY_PROVIDER || "groq").trim().toLowerCase();
-    return candidates.find((candidate) => candidate.id === configuredDefault) || candidates[0] || null;
-  }
-  return candidates.find((candidate) => candidate.id === preferred) || null;
+  const configuredDefault = String(env.AI_CHAT_PRIMARY_PROVIDER || "groq").trim().toLowerCase();
+  const first = preferred === "auto" ? configuredDefault : preferred;
+  const index = candidates.findIndex((candidate) => candidate.id === first);
+  if (index > 0) candidates.unshift(...candidates.splice(index, 1));
+  if (preferred !== "auto" && index < 0) return [];
+  return candidates;
 }
-
 async function callAiCompletion(cfg, messages, fetcher) {
   const endpoint = cfg.base.replace(/\/$/, "") + "/chat/completions";
   let response;
@@ -319,8 +319,8 @@ export async function sendAiMessage(request, env, userId, conversationId, input 
     ? (conversation.subject_slug || null)
     : validateSubjectSlug(input.subject_slug);
   const requestedProvider = input.provider || conversation.provider || "auto";
-  const cfg = resolveAiCompletionProvider(env, requestedProvider);
-  if (!cfg) {
+  const candidates = getAiCompletionCandidates(env, requestedProvider);
+  if (!candidates.length) {
     const status = getAiProviderStatus(env);
     const chosen = String(requestedProvider).toLowerCase();
     const known = status.providers[chosen];
@@ -366,7 +366,21 @@ export async function sendAiMessage(request, env, userId, conversationId, input 
     messages.push({ role: "user", content });
   }
 
-  const completion = await callAiCompletion(cfg, messages, fetcher);
+  let completion = null;
+  let lastProviderError = null;
+  for (const candidate of candidates) {
+    try {
+      completion = await callAiCompletion(candidate, messages, fetcher);
+      break;
+    } catch (error) {
+      lastProviderError = error;
+      // Fail over only to other configured providers; never expose upstream errors.
+    }
+  }
+  if (!completion) {
+    if (lastProviderError instanceof AiChatApiError) throw lastProviderError;
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдеры временно недоступны");
+  }
   const assistantParams = new URLSearchParams({ select: "id,role,content,provider,model,metadata,created_at" });
   const assistantRows = await rest(request, env, userId, "ai_messages", assistantParams, {
     method: "POST",
