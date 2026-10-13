@@ -430,7 +430,7 @@ test("test detail and attempt history routes require authentication", async () =
   }
 });
 
-test("test attempt writes fail closed until answer snapshots have private storage", async () => {
+test("test attempt start/save/finish routes require auth before invoking private RPCs", async () => {
   const attemptId = "33333333-3333-4333-8333-333333333333";
   const paths = [
     ["/api/v1/tests/22222222-2222-4222-8222-222222222222/start", "POST", "{}"],
@@ -440,14 +440,14 @@ test("test attempt writes fail closed until answer snapshots have private storag
   for (const [path, method, body] of paths) {
     const response = await worker.fetch(request(path, {
       method,
-      headers: { authorization: "Bearer valid-user-token", "content-type": "application/json" },
+      headers: { "content-type": "application/json" },
       body,
     }), {
       SUPABASE_URL: "https://project-id.supabase.co",
       SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
     });
-    assert.equal(response.status, 503, path);
-    assert.equal((await response.json()).error.code, "TEST_ATTEMPT_SECURITY_NOT_READY", path);
+    assert.equal(response.status, 401, path);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED", path);
   }
 });
 
