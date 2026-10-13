@@ -7,6 +7,17 @@
 - 🔴 **No production cutover:** latest known shadow deployment is still from 2026-10-13 15:14 UTC; current `main` changes are not proven deployed. Vercel check is still failing at `build-rate-limit`. 206 trainer cards still lack `source_file_id`; bucket has 0 objects.
 - Details: [uploaded archive and console-log audit](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
 
+## Verified state — 2026-10-14: legacy secrets and storage split
+
+Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+- 🟢 **Shadow Worker secret bindings saved:** Supabase URL + anon key; Backblaze B2 key ID/application key; AI keys for Groq, Gemini, GigaChat, Mistral and OpenRouter. No Supabase service-role/secret DB key was copied, and no secret value was committed.
+- 🟡 **Not yet end-to-end verified:** saved bindings do not prove AI generation or a real image download works. The latest observed 100% shadow deployment predates this configuration update; confirm the deployed runtime before relying on these secrets.
+- 🔴 **Media migration remains:** 206 published histology cards still have no `source_file_id`; all 206 have source keys, but actual object presence in B2 has not been verified. Backblaze is configured for the existing B2 path; Upstash Blob remains empty and its bucket token is not configured.
+- 🟡 **Upstash Redis:** `medbiohimcache` exists in EU and has 21 existing `mbhdeploy:v1:*` keys. Those keys were left untouched. Redis REST token could not be installed in this pass; Redis is not wired into runtime yet.
+- **Architecture rule:** Supabase = relational data/metadata/RLS; private B2 or Upstash Blob = image/document/video bytes; Redis = bounded metadata/cache only, never binary media.
+- 🔒 **Production stays on the legacy backend:** no DNS, Vercel production API mode, production Worker, or production cutover was changed.
+
 ## Verified state — 2026-10-14: uploaded archive and production console log
 
 Full evidence and next gates: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
