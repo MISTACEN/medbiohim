@@ -727,6 +727,6 @@ test("AI message generation remains explicit rather than returning a fake succes
     method: "POST",
     headers: { authorization: "Bearer valid-user-token" },
   }), {});
-  assert.equal(response.status, 501);
+  assert.equal(response.status, 503);
   assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
