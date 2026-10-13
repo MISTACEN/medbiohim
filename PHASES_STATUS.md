@@ -1,6 +1,6 @@
 ## Verified state — 2026-10-14: AI execution + Upstash storage/cache implementation pass
 
-- 🟡 AI send endpoint has a provider execution path on `main` (Groq/Mistral/OpenRouter and region-gated Gemini), caller-JWT data access and fallback among configured providers. **Not verified by successful Worker Build/tests or live provider calls yet.**
+- 🟡 AI send endpoint has a provider execution path on `main` (Groq/Mistral/OpenRouter, region-gated Gemini and GigaChat OAuth), caller-JWT data access and fallback among configured providers. **Not verified by successful Worker Build/tests or live provider calls yet.**
 - 🟡 Added private Upstash Blob adapter; trainer-image path can prefer Blob then use B2 fallback and can use canonical MBH `source_key` while metadata backfill is pending.
 - 🟡 Added optional Upstash Redis REST cache for sanitized per-user trainer metadata, TTL 15 seconds. Image bytes and answer keys are not cached.
 - 🔴 Required secrets remain uninstalled: `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, B2 keys and AI provider keys. The secret-transfer attempt was blocked by connected security controls; no secret values were changed.
