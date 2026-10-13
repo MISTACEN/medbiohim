@@ -94,7 +94,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     );
   }
   // Never forward bearer credentials to a plaintext upstream, even in legacy mode.
-  if (UPSTREAM && !isHttpsOrigin(UPSTREAM)) {
+  if (!CLOUDFLARE_FIRST_ENABLED && UPSTREAM && !isHttpsOrigin(UPSTREAM)) {
     return NextResponse.json(
       { ok: false, error: { code: "INSECURE_BACKEND_ORIGIN", message: "SPACEWEB_API_ORIGIN must use HTTPS." } },
       { status: 503 }
