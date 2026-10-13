@@ -391,3 +391,21 @@ The materials source registry contains both UUID and text identifiers (for examp
 - The frontend API mode, Vercel Preview/Production, DNS, Supabase schema/RLS, credentials and Redis resources remain unchanged. The Worker remains isolated as Shadow; this is not a production cutover or a claim of full API parity.
 
 Historical entries earlier in this file may describe earlier build counts or pending deployment states. For the current Worker, use the verified snapshot above; preserve the binary-delivery and live-user acceptance blockers until independently resolved.
+
+
+## Private B2 file delivery — implementation checkpoint (2026-10-13)
+
+The Shadow source now includes a shared B2 download-authorisation helper and two scoped endpoints:
+
+| Route | Contract | Current limitation |
+|---|---|---|
+| \`GET /api/v1/materials/{id}/file-url\` | Returns PHP-compatible \`{url, mode:"presigned", expires_in}\` only after published-material, active-subject, specialty and file-group checks. B2 download authorization is limited to 10 minutes. | Requires Worker secrets \`B2_KEY_ID\`, \`B2_APPLICATION_KEY\`, \`B2_BUCKET\`; \`B2_BUCKET_ID\` is optional if bucket discovery is allowed. Without these, returns \`503 FILE_STORAGE_NOT_CONFIGURED\`. |
+| \`GET /api/v1/trainers/feed/{id}/image\` | Reads only \`trainer_feed_cards_public\`, checks active MBH membership and active file record, then responds with a private \`302\` redirect to the short-lived B2 URL. This preserves the current frontend's Blob-fetch contract. | Only cards with \`source_file_id\` mapped to an active \`files.object_key\` can use this route. |
+| \`GET /api/v1/materials/{id}/file\` | Not migrated. | Legacy Histology files whose source exists only on SpaceWeb still require the existing authenticated PHP binary route. |
+| \`GET /api/v1/histology/source-file\` | Not migrated. | This endpoint reads the deployed SpaceWeb source-materials tree, which Workers cannot access directly. |
+
+The signer only accepts B2 API/download hostnames over HTTPS, refuses redirects, bounds the token lifetime and never accepts an object key from the request body or query. The object key is loaded from the authenticated Supabase row. No public bucket setting, Supabase service-role key, SpaceWeb HTTP fallback, B2 credential or production routing was changed.
+
+**Operational gate:** the Cloudflare build logs for this pass list no B2 bindings among the Worker's configured bindings. Treat both B2-backed routes as implemented but **not runtime-ready** until the four B2 environment/secrets are configured securely and a live authorized-user download is verified. Never paste secret values into GitHub or project docs. The most recent completed build before the final image redirect/route-metadata changes passed 225/225 tests; final verification must use the build matching the latest source commit.
+
+Other outstanding gates remain: real student JWT/RLS smoke test, migration of SpaceWeb-only media, frontend Preview parity, and explicit Production cutover approval. See the previous verified route snapshot above for the materials/trainer read APIs.
