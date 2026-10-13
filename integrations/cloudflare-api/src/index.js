@@ -5,7 +5,7 @@ import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBank
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseContentSource } from "./content-sources.js";
-import { getSupabaseTrainerCard, listSupabaseTrainerFeed } from "./trainer-feed.js";
+import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -450,6 +450,24 @@ export default {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
       return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === `${API_PREFIX}/trainers/feed/answer`) {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (!parsed.ok) {
+        const status = parsed.tooLarge ? 413 : 400;
+        const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+        return withCors(json({ ok: false, error: { code, message: parsed.tooLarge ? "Request body is too large" : "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+      }
+      const result = await submitSupabaseTrainerAnswer(request, env, parsed.value);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data, result.status || 201), origin);
     }
 
     const trainerCardMatch = new RegExp("^" + API_PREFIX + "/trainers/feed/([^/]+)$").exec(pathname);
