@@ -73,9 +73,9 @@ test("conversation listing uses only the caller JWT and explicit owner filtering
     assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
     assert.equal(parsed.searchParams.get("order"), "updated_at.desc");
     assert.equal(parsed.searchParams.get("limit"), "100");
-    assert.equal(init.headers.authorization, "Bearer valid-user-token");
-    assert.equal(init.headers.apikey, env.SUPABASE_ANON_KEY);
-    assert.notEqual(init.headers.authorization, "Bearer service_role");
+    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
+    assert.equal(init.headers.get("apikey"), env.SUPABASE_ANON_KEY);
+    assert.notEqual(init.headers.get("authorization"), "Bearer service_role");
     return response([{ id: conversationId, user_id: userId, title: "Test", provider: "auto" }]);
   });
   assert.equal(called, true);
@@ -94,8 +94,8 @@ test("creating a conversation passes caller identity, normalized provider and sa
     const parsed = new URL(String(url));
     assert.equal(parsed.pathname, "/rest/v1/ai_conversations");
     assert.equal(init.method, "POST");
-    assert.equal(init.headers.authorization, "Bearer valid-user-token");
-    assert.match(init.headers.prefer, /return=representation/);
+    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
+    assert.match(init.headers.get("prefer"), /return=representation/);
     const row = JSON.parse(init.body);
     assert.deepEqual(row, {
       user_id: userId,
@@ -140,7 +140,7 @@ test("conversation detail is filtered by user and messages are not fetched for a
   let calls = 0;
   const result = await getAiConversation(request(), env, userId, conversationId, async (url, init) => {
     calls += 1;
-    assert.equal(init.headers.authorization, "Bearer valid-user-token");
+    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
     const parsed = new URL(String(url));
     assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
     if (parsed.pathname.endsWith("/ai_conversations")) {
@@ -176,8 +176,8 @@ test("conversation deletion is owner-filtered and fails closed on redirects", as
     assert.equal(parsed.pathname, "/rest/v1/ai_conversations");
     assert.equal(parsed.searchParams.get("id"), `eq.${conversationId}`);
     assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
-    assert.equal(init.headers.authorization, "Bearer valid-user-token");
-    assert.match(init.headers.prefer, /return=minimal/);
+    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
+    assert.match(init.headers.get("prefer"), /return=minimal/);
     return new Response(null, { status: 204 });
   });
   assert.deepEqual(deleted, { deleted: true });
