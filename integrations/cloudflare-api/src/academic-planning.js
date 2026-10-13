@@ -223,10 +223,19 @@ export async function getSupabaseAcademicState(request, env, fetcher = fetch) {
       },
     };
   } catch (error) {
+    const cause = error && typeof error === "object" ? error.cause : undefined;
+    const failureText = [error?.name, error?.message, cause?.name, cause?.code].filter(Boolean).join(" ").toLowerCase();
+    const category = /redirect/.test(failureText) ? "redirect"
+      : /timeout|timed out|aborted/.test(failureText) ? "timeout"
+      : /enotfound|eai_again|dns|getaddrinfo/.test(failureText) ? "dns"
+      : /certificate|tls|ssl/.test(failureText) ? "tls"
+      : /fetch failed|network|socket|connect/.test(failureText) ? "connection"
+      : "upstream";
     console.error("MEDBIOHIM_ACADEMIC_STATE_DB_ERROR", JSON.stringify({
       resource: String(error?.resource || "unknown").replace(/[^a-zA-Z0-9_./-]/g, "").slice(0, 80),
       status: Number(error?.status) || 0,
       code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+      category,
     }));
     if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
     if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав");
