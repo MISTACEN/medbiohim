@@ -1,9 +1,10 @@
 const TIMEOUT_MS = 5_000;
 
-function safeB2Url(value) {
+function safeB2Url(value, kind) {
   try {
     const url = new URL(String(value || ""));
-    if (url.protocol !== "https:" || !url.hostname.endsWith(".backblazeb2.com")) return null;
+    const hostPattern = kind === "api" ? /^api\\d+\\.backblazeb2\\.com$/ : /^f\\d+\\.backblazeb2\\.com$/;
+    if (url.protocol !== "https:" || !hostPattern.test(url.hostname)) return null;
     return url;
   } catch {
     return null;
@@ -43,8 +44,8 @@ export async function createB2DownloadUrl(env, objectKey, validSeconds = 600, fe
       method: "GET",
       headers: { authorization: "Basic " + basic, accept: "application/json" },
     });
-    const apiUrl = safeB2Url(auth.apiUrl);
-    const downloadUrl = safeB2Url(auth.downloadUrl);
+    const apiUrl = safeB2Url(auth.apiUrl, "api");
+    const downloadUrl = safeB2Url(auth.downloadUrl, "download");
     if (!apiUrl || !downloadUrl || !auth.authorizationToken || !auth.accountId) throw new Error("Invalid B2 authorization response");
 
     let bucketId = bucketIdEnv;
