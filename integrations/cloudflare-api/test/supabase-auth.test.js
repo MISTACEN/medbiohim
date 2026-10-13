@@ -499,9 +499,12 @@ test("profile bundle uses caller JWT and returns only caller-scoped profile, rol
     }
     if (parsed.pathname === "/rest/v1/user_roles") {
       assert.equal(parsed.searchParams.get("user_id"), "eq.user-123");
-      return new Response(JSON.stringify([{ roles: { code: "student" } }]), {
-        status: 200, headers: { "content-type": "application/json" },
-      });
+      // The database may return student before admin; the API must normalize primary-role order.
+      return new Response(JSON.stringify([
+        { roles: { code: "student" } },
+        { roles: { code: "admin" } },
+        { roles: { code: "moderator" } },
+      ]), { status: 200, headers: { "content-type": "application/json" } });
     }
     if (parsed.pathname === "/rest/v1/group_memberships") {
       assert.equal(parsed.searchParams.get("user_id"), "eq.user-123");
@@ -517,7 +520,7 @@ test("profile bundle uses caller JWT and returns only caller-scoped profile, rol
   assert.equal(result.data.user.group_code, "MBH-201");
   assert.equal(result.data.course, 2);
   assert.equal(result.data.semester, 3);
-  assert.deepEqual(result.data.roles, ["student"]);
+  assert.deepEqual(result.data.roles, ["admin", "moderator", "student"]);
   assert.equal(result.data.groups.length, 1);
   assert.equal(calls.length, 4);
 });
