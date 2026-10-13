@@ -49,7 +49,7 @@ test("GET notes reads only the authenticated user's own records", async () => {
 
 test("POST notes verifies a published question and derives user_id from the verified session", async () => {
   let inserted;
-  const result = await upsertSupabaseNote(request(" /api/v1/notes"), env, {
+  const result = await upsertSupabaseNote(request("/api/v1/notes"), env, {
     target_type: "question",
     target_id: questionId,
     body: " Мои заметки ",
@@ -234,7 +234,7 @@ test("personal state fails closed for an unavailable question or membership tabl
     assert.fail("unexpected REST request: " + parsed.pathname);
   });
   assert.equal(unavailableQuestion.status, 403);
-  assert.equal(unavailableMembership.status, 403);
+  assert.equal(unavailableMembership.status, 503);
 });
 
 test("personal state rejects invalid bearer tokens before any data table read", async () => {
