@@ -185,7 +185,6 @@ export async function getSupabaseAcademicState(request, env, fetcher = fetch) {
         select: "id,subject_id,subject_name,date,start_time,end_time,type,event_kind,is_makeup,room,building,notes,session_id,schedule_id",
         schedule_id: relIdFilter(scheduleIds),
         date: "gte." + from,
-        is_cancelled: "eq.false",
         or: "(is_cancelled.is.null,is_cancelled.eq.false)",
         order: "date.asc,start_time.asc",
         limit: "120",
