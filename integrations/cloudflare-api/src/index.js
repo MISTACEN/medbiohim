@@ -11,6 +11,7 @@ import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
 import { changeSupabasePassword, getSupabaseAccountSettings, getSupabaseTelegramStatus, saveSupabasePreferences, startSupabaseIdentityLink, startSupabaseTelegramLink, unlinkSupabaseIdentity, unlinkSupabaseTelegram, updateSupabaseProfile } from "./settings.js";
+import { listSupabaseTrainings } from "./trainings.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submitSupabaseQuestionReport } from "./mini-quiz.js";
 
@@ -555,6 +556,15 @@ export default {
     if (pathname === `${API_PREFIX}/settings/telegram/unlink`) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       const result = await unlinkSupabaseTelegram(request, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === `${API_PREFIX}/trainings`) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const status = new URL(request.url).searchParams.get("status") || "";
+      const result = await listSupabaseTrainings(request, env, { status });
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
