@@ -2903,3 +2903,23 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟡 Preview env variables `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN` are configured only for Preview. A new Vercel deployment was rejected by the API’s daily deployment quota (`api-deployments-free-per-day`; retry after 24 hours), so those env settings have not yet been exercised by a newly built Preview. Production env and routing are unchanged.
 - 🔒 No authenticated student test was created; no real credentials, Supabase schema changes, production routing changes or HTTP fallback bypass were used in these probes.
 
+
+
+## Cloudflare migration — verified Shadow pass (2026-10-13)
+
+**Verified:** commit \`236b12f4261e4aa523c894a1d3f131c123bc1d35\`; Cloudflare build \`5c5c4227-9002-4116-8c7c-912f9f5a3bd0\`; Worker version \`d77cb3da-9ff3-46cf-8f3f-b991f9ad7709\`. \`npm test\` passed **176/176**, Wrangler dry-run passed and the test-gated Shadow deployment completed.
+
+Implemented in this pass:
+- Materials listing/detail: \`GET /api/v1/subject-materials\`, \`GET /api/v1/materials\`, \`GET /api/v1/materials/{id}\`.
+- Source metadata with MBH checks: \`GET /api/v1/content-sources/{id}\`.
+- Trainer feed/detail from the sanitized \`trainer_feed_cards_public\` view: \`GET /api/v1/trainers/feed\`, \`GET /api/v1/trainers/feed/{id}\`.
+- Trainer answer submission through existing secure \`submit_trainer_feed_answer\` RPC: \`POST /api/v1/trainers/feed/answer\`.
+- Cyrillic/Unicode search sanitization, text-keyed source lookups, bounded batch source resolution and explicit active-MBH-group checks.
+- Authentication/method guards, access-denial/fail-closed behavior, hidden answer-key tests and RPC error mapping.
+
+Remaining blockers are intentionally not marked complete:
+1. Physical file/media routes are not migrated: \`/materials/{id}/file-url\`, \`/materials/{id}/file\`, \`/trainers/feed/{id}/image\`, and \`/histology/source-file\`. Worker does not yet have private B2/R2 signing/access bindings or the SpaceWeb filesystem path; no fabricated download URLs or HTTP fallback.
+2. Valid-student live Supabase/RLS smoke testing remains pending; unit tests with a mocked identity cannot prove the live user's grants and memberships.
+3. Vercel frontend API-mode change, Preview verification and Production cutover remain separate gates. No production routing, DNS, Supabase schema/RLS, credential, or Redis changes were made in this pass.
+
+Source-of-truth details and route-by-route status are in \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\`. This pass is a verified increment, not full PHP/Worker API parity.
