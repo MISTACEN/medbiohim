@@ -241,7 +241,7 @@ test("trainer answer submission uses the existing secure RPC and the caller JWT"
   });
 });
 
-test("skipped trainer answer passes no option and does not return an explanation", async () => {
+test("skipped trainer answer clears the option and does not return an explanation", async () => {
   let rpcPayload;
   const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
     card_id: "card-1",
@@ -262,7 +262,7 @@ test("skipped trainer answer passes no option and does not return an explanation
   assert.equal(result.ok, true);
   assert.equal(result.data.correct, null);
   assert.equal(result.data.explanation, null);
-  assert.equal(rpcPayload.p_option_id, "a");
+  assert.equal(rpcPayload.p_option_id, null);
   assert.equal(rpcPayload.p_is_skipped, true);
   assert.equal(rpcPayload.p_time_ms, 0);
 });
