@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getSupabaseTrainerCard, listSupabaseTrainerFeed } from "../src/trainer-feed.js";
+import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "../src/trainer-feed.js";
 
 const env = {
   SUPABASE_URL: "https://project-id.supabase.co",
@@ -204,4 +204,128 @@ test("trainer card detail fails closed when active membership cannot be verified
   assert.equal(result.ok, false);
   assert.equal(result.status, 503);
   assert.equal(result.code, "DB_UNAVAILABLE");
+});
+
+
+test("trainer answer submission uses the existing secure RPC and the caller JWT", async () => {
+  let rpcRequest;
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
+    card_id: "card-1",
+    option_id: "a",
+    answer_text: "",
+    time_ms: 4_000_000,
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    assert.equal(parsed.pathname, "/rest/v1/rpc/submit_trainer_feed_answer");
+    rpcRequest = { init, payload: JSON.parse(init.body) };
+    return response({
+      answer: { id: "answer-1", card_id: "card-1", option_id: "a", is_correct: true },
+      correct: true,
+      explanation: "Correct after submission",
+    });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 201);
+  assert.equal(result.data.correct, true);
+  assert.equal(result.data.explanation, "Correct after submission");
+  assert.equal(rpcRequest.init.method, "POST");
+  assert.equal(rpcRequest.init.headers.authorization, "Bearer valid-user-token");
+  assert.equal(rpcRequest.init.headers.apikey, env.SUPABASE_ANON_KEY);
+  assert.deepEqual(rpcRequest.payload, {
+    p_card_id: "card-1",
+    p_option_id: "a",
+    p_answer_text: null,
+    p_is_skipped: false,
+    p_time_ms: 3_600_000,
+  });
+});
+
+test("skipped trainer answer passes no option and does not return an explanation", async () => {
+  let rpcPayload;
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
+    card_id: "card-1",
+    option_id: "a",
+    is_skipped: true,
+    time_ms: -5,
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    assert.equal(parsed.pathname, "/rest/v1/rpc/submit_trainer_feed_answer");
+    rpcPayload = JSON.parse(init.body);
+    return response({
+      answer: { id: "answer-2", card_id: "card-1", option_id: null, is_skipped: true },
+      correct: null,
+      explanation: "should not be shown",
+    });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.correct, null);
+  assert.equal(result.data.explanation, null);
+  assert.equal(rpcPayload.p_option_id, "a");
+  assert.equal(rpcPayload.p_is_skipped, true);
+  assert.equal(rpcPayload.p_time_ms, 0);
+});
+
+test("trainer answer submission rejects malformed fields before calling the grading RPC", async () => {
+  let rpcCalls = 0;
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
+    card_id: "card-1",
+    is_skipped: "false",
+  }, async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/rpc/submit_trainer_feed_answer") rpcCalls += 1;
+    return response([]);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
+  assert.equal(result.code, "VALIDATION_ERROR");
+  assert.equal(rpcCalls, 0);
+});
+
+test("trainer answer RPC maps missing cards to 404 without exposing database errors", async () => {
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, {
+    card_id: "missing-card", option_id: "a",
+  }, async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    return response({ code: "P0002", message: "raw internal error" }, 404);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "NOT_FOUND");
+  assert.notEqual(result.message, "raw internal error");
+});
+
+test("trainer answer RPC maps membership denial to 403 and invalid options to 422", async (t) => {
+  await t.test("membership denial", async () => {
+    const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, { card_id: "card-1" }, async (url) => {
+      if (new URL(String(url)).pathname === "/auth/v1/user") return response({ id: "user-1" });
+      return response({ code: "42501", message: "raw internal error" }, 403);
+    });
+    assert.equal(result.status, 403);
+    assert.equal(result.code, "FORBIDDEN");
+  });
+  await t.test("invalid option", async () => {
+    const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer"), env, { card_id: "card-1", option_id: "bad" }, async (url) => {
+      if (new URL(String(url)).pathname === "/auth/v1/user") return response({ id: "user-1" });
+      return response({ code: "22023", message: "raw internal error" }, 400);
+    });
+    assert.equal(result.status, 422);
+    assert.equal(result.code, "VALIDATION_ERROR");
+  });
+});
+
+test("trainer answer submission refuses missing tokens and never calls the grading RPC", async () => {
+  let nonAuthCalls = 0;
+  const result = await submitSupabaseTrainerAnswer(request("/api/v1/trainers/feed/answer", ""), env, { card_id: "card-1" }, async (url) => {
+    const pathname = new URL(String(url)).pathname;
+    if (pathname === "/auth/v1/user") return response({ message: "invalid token" }, 401);
+    nonAuthCalls += 1;
+    return response({});
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 401);
+  assert.equal(nonAuthCalls, 0);
 });
