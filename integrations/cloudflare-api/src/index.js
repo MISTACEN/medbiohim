@@ -12,6 +12,7 @@ import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerA
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
 import { changeSupabasePassword, getSupabaseAccountSettings, getSupabaseTelegramStatus, saveSupabasePreferences, startSupabaseIdentityLink, startSupabaseTelegramLink, unlinkSupabaseIdentity, unlinkSupabaseTelegram, updateSupabaseProfile } from "./settings.js";
 import { listSupabaseTrainings } from "./trainings.js";
+import { getSupabaseHistologySourceFile, listSupabaseHistologySourceMaterials } from "./histology-source-materials.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submitSupabaseQuestionReport } from "./mini-quiz.js";
 
@@ -567,6 +568,22 @@ export default {
       const result = await listSupabaseTrainings(request, env, { status });
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === `${API_PREFIX}/histology/source-materials`) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const folder = new URL(request.url).searchParams.get("folder") || "Учебники";
+      const result = await listSupabaseHistologySourceMaterials(request, env, { folder });
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/histology/source-file`) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const path = new URL(request.url).searchParams.get("path") || "";
+      const response = await getSupabaseHistologySourceFile(request, env, { path });
+      return withCors(response, origin);
     }
 
     const materialFileUrlMatch = new RegExp("^" + API_PREFIX + "/materials/([^/]+)/file-url$").exec(pathname);
