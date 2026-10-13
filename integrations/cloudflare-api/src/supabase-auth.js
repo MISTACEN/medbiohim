@@ -1134,10 +1134,19 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
     });
     return { ok: true, data: { items } };
   } catch (error) {
+    const cause = error && typeof error === "object" ? error.cause : undefined;
+    const failureText = [error?.name, error?.message, cause?.name, cause?.code].filter(Boolean).join(" ").toLowerCase();
+    const category = /redirect/.test(failureText) ? "redirect"
+      : /timeout|timed out|aborted/.test(failureText) ? "timeout"
+      : /enotfound|eai_again|dns|getaddrinfo/.test(failureText) ? "dns"
+      : /certificate|tls|ssl/.test(failureText) ? "tls"
+      : /fetch failed|network|socket|connect/.test(failureText) ? "connection"
+      : "upstream";
     console.error("MEDBIOHIM_SUBJECTS_DB_ERROR", JSON.stringify({
       table: error?.table || "unknown",
       status: Number(error?.status) || 0,
       code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+      category,
     }));
     return failure(503, "DB_UNAVAILABLE", "Subject list is temporarily unavailable");
   }
