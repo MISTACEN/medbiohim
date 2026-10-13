@@ -20,6 +20,7 @@ destinations = ["cloudflare"]
 [vars]
 APP_ENV = "shadow"
 MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
+B2_BUCKET = "medbiohim-files" # Non-secret bucket name; B2 credentials stay in Worker secrets.
 AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED = "true"
 
 # Cloudflare native rate limiting. Keys are client IPs in src/index.js.
