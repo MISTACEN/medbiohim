@@ -179,7 +179,21 @@ async function presenceClient(request, env, fetcher) {
         ...(init.body ? { "content-type": "application/json", prefer: "return=representation" } : {}), ...(init.headers || {}) },
       redirect: "error", signal: AbortSignal.timeout(5000),
     });
-    if (!r.ok) { const e = new Error("REST failure"); e.status = r.status; throw e; }
+    if (!r.ok) {
+      let errorPayload = null;
+      try { errorPayload = await r.json(); } catch {}
+      const error = new Error("REST failure");
+      error.status = r.status;
+      error.code = typeof errorPayload?.code === "string"
+        ? errorPayload.code
+        : typeof errorPayload?.error === "string" ? errorPayload.error : "REST_ERROR";
+      error.table = table;
+      error.method = init.method || "GET";
+      console.error("MEDBIOHIM_PRESENCE_DB_ERROR", JSON.stringify({
+        table: error.table, method: error.method, status: error.status, code: error.code,
+      }));
+      throw error;
+    }
     const data = await r.json(); return Array.isArray(data) ? data : [];
   }
   return { ok: true, identity: auth.user, rows };
