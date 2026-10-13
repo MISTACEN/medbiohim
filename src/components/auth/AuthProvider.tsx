@@ -69,15 +69,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         current_group?: { id: string; name: string; code?: string; course_number?: number; role_in_group?: "student" | "starosta" } | null;
       };
       const u = data.user || {};
-      const roles = data.roles || [];
-      const groups = data.groups || [];
+      const roles = Array.isArray(data.roles)
+        ? [...new Set(data.roles.map((role) => String(role || "").trim().toLowerCase()).filter(Boolean))]
+        : [];
+      const groups = Array.isArray(data.groups) ? data.groups : [];
       const primary = data.current_group || groups[0];
+      const primaryRole = roles.includes("admin")
+        ? "admin"
+        : roles.includes("moderator")
+          ? "moderator"
+          : roles[0] || "student";
       setUser({
         id: String(u.id || ""),
         name: String(u.full_name || u.name || u.email || "Пользователь"),
         email: String(u.email || ""),
-        // Privileged roles must not be hidden by a lower-priority role's array order.
-        role: roles.includes("admin") ? "admin" : roles.includes("moderator") ? "moderator" : roles[0] || "student",
+        // A canonical privileged role must take precedence over student, regardless of array order.
+        role: primaryRole,
         roles,
         groupId: primary?.id,
         groupName: primary?.name || primary?.code,
