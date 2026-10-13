@@ -279,3 +279,108 @@ export async function getSupabaseTrainerCard(request, env, cardId, fetcher = fet
 
   return { ok: true, data: { item: normalizeCard(row) } };
 }
+
+
+export async function submitSupabaseTrainerAnswer(request, env, payload, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return failure(422, "VALIDATION_ERROR", "Answer payload must be a JSON object");
+  }
+  const cardId = String(payload.card_id || "").trim();
+  const optionId = String(payload.option_id || "").trim();
+  const answerText = String(payload.answer_text || "").trim();
+  const isSkipped = payload.is_skipped === undefined ? false : payload.is_skipped;
+  if (!cardId || cardId.length > 200 || !/^[A-Za-z0-9_-]+$/.test(cardId)) {
+    return failure(422, "VALIDATION_ERROR", "card_id required");
+  }
+  if (optionId.length > 200 || answerText.length > 5_000) {
+    return failure(422, "VALIDATION_ERROR", "Answer fields are too long");
+  }
+  if (typeof isSkipped !== "boolean") {
+    return failure(422, "VALIDATION_ERROR", "is_skipped must be a boolean");
+  }
+  let timeMs = null;
+  if (payload.time_ms !== undefined && payload.time_ms !== null && payload.time_ms !== "") {
+    const numericTime = Number(payload.time_ms);
+    if (!Number.isFinite(numericTime)) {
+      return failure(422, "VALIDATION_ERROR", "time_ms must be a number");
+    }
+    timeMs = Math.max(0, Math.min(3_600_000, Math.trunc(numericTime)));
+  }
+
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
+  const baseUrl = String(env.SUPABASE_URL || "").trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let endpoint;
+  try {
+    const base = new URL(baseUrl);
+    if (base.protocol !== "https:" || !anonKey) {
+      return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+    }
+    endpoint = new URL("/rest/v1/rpc/submit_trainer_feed_answer", base);
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase URL is invalid");
+  }
+
+  const rpcPayload = {
+    p_card_id: cardId,
+    p_option_id: optionId || null,
+    p_answer_text: answerText || null,
+    p_is_skipped: isSkipped,
+    p_time_ms: timeMs,
+  };
+  let response;
+  try {
+    response = await fetcher(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: "Bearer " + token,
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(rpcPayload),
+      redirect: "manual",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    return failure(503, "TRAINER_ERROR", "Тренажёр временно недоступен");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    return failure(503, "TRAINER_ERROR", "Тренажёр временно недоступен");
+  }
+
+  let result = null;
+  try { result = await response.json(); } catch { /* mapped below */ }
+  if (!response.ok) {
+    const databaseCode = String(result?.code || "");
+    if (response.status === 401) return failure(401, "UNAUTHORIZED", "Недействительная или истёкшая сессия");
+    if (response.status === 403 || databaseCode === "42501") {
+      return failure(403, "FORBIDDEN", "Нет доступа к этой карточке тренажёра");
+    }
+    if (response.status === 404 || databaseCode === "P0002") {
+      return failure(404, "NOT_FOUND", "Trainer card not found");
+    }
+    if (databaseCode === "22023" || databaseCode === "22P02") {
+      return failure(422, "VALIDATION_ERROR", "Ответ не соответствует формату карточки");
+    }
+    return failure(503, "TRAINER_ERROR", "Не удалось сохранить ответ");
+  }
+  if (!result || typeof result !== "object" || Array.isArray(result) || !("answer" in result)) {
+    return failure(502, "TRAINER_ERROR", "Сервис проверки ответа вернул некорректный результат");
+  }
+
+  // Correctness/explanation are returned only after the answer has been submitted
+  // and graded by the existing authenticated Supabase RPC.
+  return {
+    ok: true,
+    status: 201,
+    data: {
+      answer: result.answer,
+      correct: result.correct ?? null,
+      explanation: isSkipped ? null : (result.explanation ?? null),
+    },
+  };
+}
