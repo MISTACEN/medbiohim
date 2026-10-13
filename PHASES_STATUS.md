@@ -1,3 +1,13 @@
+## Verified state — 2026-10-14 (latest shadow rollout)
+
+- 🟢 **Admin login:** user confirmed admin UI access works on the account with the existing admin assignment.
+- 🟢 **Calculator route family:** the 8-calculator PHP catalog/formulas are implemented in the Worker with authentication, payload bounds, validation, and tests.
+- 🟢 **AI history/metadata family:** provider status and conversation list/create/detail/delete routes are implemented with verified bearer auth, caller JWT, owner filters and RLS; the provider CHECK constraint and migration filename are reconciled with the live applied migration.
+- 🟢 **Verification:** Workers Build for `7db8224aa6dab6ea538f5995e0566be69fbc8265` passed and deployed Worker version `0f2871b2-abeb-4e38-940f-a5d1225b816b` at 100% of `medbiohim-api-shadow`.
+- 🟡 **AI message execution:** intentionally not migrated; POST returns a non-success 501 after authentication because provider-secret bindings, routing/fallback, rate limiting and real-provider E2E remain unverified.
+- 🟡 **Schedule/subjects/academic state/presence and trainer image timeout:** not yet closed. Review fresh telemetry from the current Worker version; old events must not be represented as current errors.
+- 🔒 **Shadow only:** production still uses the existing production path. No production API cutover was performed in this phase.
+
 ## Latest verified state — 2026-10-14
 
 - 🟢 **Admin access fixed and owner-confirmed:** the `@hotmail.com` account now enters the admin interface. The existing DB role assignment was retained; no extra admin role or self-service role-write path was added.
