@@ -1,3 +1,12 @@
+## Latest verified state — 2026-10-14
+
+- 🟢 **Admin access fixed and owner-confirmed:** the `@hotmail.com` account now enters the admin interface. The existing DB role assignment was retained; no extra admin role or self-service role-write path was added.
+- 🟢 **Calculators migrated in Cloudflare shadow:** catalog, detail, and compute handlers are present; the implementation mirrors the PHP calculator service (8 calculator types), preserves response structure, requires a verified bearer token, caps JSON payloads, validates inputs, and keeps calculation results stateless.
+- 🟢 **Build validation:** Workers Build for commit `f987acce68925af18cf5dee25e9185e4401a43b0` completed successfully. Build logs show calculator tests and route auth/method-guard tests passing. Wrangler dry-run is part of the configured build.
+- 🟡 **AI routes remain unmigrated:** `/api/v1/ai/providers` and conversation routes still need full contract/security porting; a 501 from the shadow Worker means the route has not been migrated, not that Supabase necessarily failed.
+- 🟡 **Other API failures remain open:** re-check fresh logs for subjects, academic state, schedule and presence to separate RLS/data-shape issues from redirects/upstream/network errors. Do not assume earlier failures are fixed solely because diagnostic logging changed.
+- 🔒 Production remains on the legacy/SpaceWeb path. Shadow verification is not acceptance of production traffic, and no Supabase RLS/schema, production routing, DNS or production environment was changed in this pass.
+
 ### Current release gate — 2026-10-13, Cloudflare Shadow verified
 
 - 🟢 **Latest confirmed Shadow build:** source commit \`4effc4e59f2e1cccad4166f4e306e218f0ee344b\`; Cloudflare Build \`d35cdff6-696c-476a-8b8a-e3e058fb4c8f\`; outcome \`success\`; Worker version \`0c4d9644-7122-4b16-92f7-3670614b0e52\`. A duplicate build for the same source also succeeded.
