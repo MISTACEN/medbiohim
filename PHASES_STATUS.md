@@ -2087,3 +2087,12 @@ See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for the route contract
 - 🔒 **Production untouched:** no Vercel API-mode switch, DNS/Production cutover, Supabase schema/RLS change, or storage-secret creation.
 
 This checkpoint verifies the stated Worker build only; full API parity and full media migration are not complete. See the route inventory for the exact remaining acceptance criteria.
+
+
+## File API read pass — 2026-10-13
+
+- 🟡 \`GET /api/v1/files/{id}\`: source added with safe metadata and owner/group/public visibility checks.
+- 🟡 \`GET /api/v1/files/{id}/download\`: source added with a 10-minute private B2 URL and access checks.
+- 🟢 Tests added for metadata redaction, non-member denial, MBH specialty membership, B2 signing and route guards.
+- 🟡 **Build not yet verified:** latest code commit \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\` remains queued. Do not count these routes as deployed until the build succeeds.
+- 🔒 File upload, SpaceWeb-only media and B2 secret provisioning remain open; Production is unchanged.
