@@ -91,18 +91,24 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
     return failure(503, "MATERIALS_UNAVAILABLE", "Учебные материалы временно недоступны");
   }
 
-  const sourceIds = [...new Set(items.map((item) => String(item.source_key || "")).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)))];
+  // Source IDs are text in the live content registry: in addition to UUIDs,
+  // Histology uses stable keys such as "histology-test-derived-cytology".
+  // Batch safe identifiers so the REST URL stays bounded and never interpolates paths.
+  const sourceIds = [...new Set(items.map((item) => String(item.source_key || "")).filter(
+    (id) => id.length <= 200 && /^[A-Za-z0-9_-]+$/.test(id),
+  ))];
   const sourcesById = new Map();
-  if (sourceIds.length) {
-    try {
+  try {
+    for (let start = 0; start < sourceIds.length; start += 50) {
+      const batch = sourceIds.slice(start, start + 50);
       const sourceRows = await rows("content_sources", {
         select: "id,source_path,original_format,mime_type",
-        id: "in.(" + sourceIds.join(",") + ")",
+        id: "in.(" + batch.join(",") + ")",
       });
       for (const source of sourceRows) sourcesById.set(String(source.id), source);
-    } catch {
-      return failure(503, "MATERIALS_UNAVAILABLE", "Метаданные файлов временно недоступны");
     }
+  } catch {
+    return failure(503, "MATERIALS_UNAVAILABLE", "Метаданные файлов временно недоступны");
   }
 
   const membershipsBySpecialty = new Map();
