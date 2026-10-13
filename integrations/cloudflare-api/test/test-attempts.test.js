@@ -107,28 +107,58 @@ test("bank progress counts published questions and selected-group sequential res
 });
 
 
-test("test attempt start, answer save, and finish remain fail-closed without private snapshots", async () => {
-  let fetchCalls = 0;
-  const forbiddenFetch = async () => {
-    fetchCalls += 1;
-    throw new Error("upstream must not be called while writes are disabled");
-  };
-  const request = new Request("https://api-shadow.example.test/api/v1/tests/" + testId + "/start", {
-    method: "POST",
-    headers: { authorization: "Bearer test-token" },
-  });
-  const results = await Promise.all([
-    startSupabaseTestAttempt(request, env, testId, groupId, forbiddenFetch),
-    saveSupabaseTestAnswer(request, env, "33333333-3333-4333-8333-333333333333", {
-      question_id: questionId,
-      answer_text: "Ответ",
-    }, forbiddenFetch),
-    finishSupabaseTestAttempt(request, env, "33333333-3333-4333-8333-333333333333", forbiddenFetch),
-  ]);
-  for (const result of results) {
-    assert.equal(result.ok, false);
-    assert.equal(result.status, 503);
-    assert.equal(result.code, "TEST_ATTEMPT_SECURITY_NOT_READY");
-  }
-  assert.equal(fetchCalls, 0);
+test("test attempt start/save/finish use the verified private RPC boundary", async () => {
+  const attemptId = "33333333-3333-4333-8333-333333333333";
+  const startRequest = makeRequest("/tests/" + testId + "/start");
+  const startResult = await startSupabaseTestAttempt(
+    startRequest, env, testId, groupId,
+    baseMock((url, init) => {
+      assert.equal(url.pathname, "/rest/v1/rpc/medbiohim_start_test_attempt");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(init.body), { p_test_id: testId, p_group_id: groupId });
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { attempt: { id: attemptId, test_id: testId, status: "in_progress", source: "db" } },
+      }), { status: 200 });
+    }),
+  );
+  assert.equal(startResult.ok, true);
+  assert.equal(startResult.data.attempt.id, attemptId);
+  assert.equal("question_snapshot" in startResult.data.attempt, false);
+
+  const saveRequest = makeRequest("/tests/attempts/" + attemptId + "/answers");
+  const saveResult = await saveSupabaseTestAnswer(
+    saveRequest, env, attemptId, { question_id: questionId, answer_text: "Ответ" },
+    baseMock((url, init) => {
+      assert.equal(url.pathname, "/rest/v1/rpc/medbiohim_save_test_answer");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(init.body), {
+        p_attempt_id: attemptId, p_question_id: questionId, p_answer_text: "Ответ",
+      });
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { answer: { id: "answer-1", attempt_id: attemptId, question_id: questionId, answer_text: "Ответ", grading_status: "deterministic" } },
+      }), { status: 200 });
+    }),
+  );
+  assert.equal(saveResult.ok, true);
+  assert.equal(saveResult.data.answer.attempt_id, attemptId);
+  assert.equal("correct_answer" in saveResult.data.answer, false);
+
+  const finishRequest = makeRequest("/tests/attempts/" + attemptId + "/finish");
+  const finishResult = await finishSupabaseTestAttempt(
+    finishRequest, env, attemptId,
+    baseMock((url, init) => {
+      assert.equal(url.pathname, "/rest/v1/rpc/medbiohim_finish_test_attempt");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(init.body), { p_attempt_id: attemptId });
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { attempt: { id: attemptId, test_id: testId, status: "submitted", score: 1, max_score: 1, percent: 100 } },
+      }), { status: 200 });
+    }),
+  );
+  assert.equal(finishResult.ok, true);
+  assert.equal(finishResult.data.attempt.status, "submitted");
+  assert.equal("question_snapshot" in finishResult.data.attempt, false);
 });
