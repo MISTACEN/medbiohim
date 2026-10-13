@@ -14,6 +14,7 @@ $migrationScript = Join-Path $PSScriptRoot "migrate-histology-blob.mjs"
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("medbiohim-histology-" + [guid]::NewGuid().ToString("N"))
 $extractRoot = Join-Path $tempRoot "extract"
 $manifestPath = Join-Path (Get-Location).Path "medbiohim-histology-blob-manifest.json"
+$tokenWasSetByScript = $false
 
 try {
   New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
@@ -30,20 +31,21 @@ try {
     $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try {
       $env:UPSTASH_BLOB_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+      $tokenWasSetByScript = $true
     } finally {
       [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
       $secure.Dispose()
     }
   }
 
-  $args = @($migrationScript, $sourceRoot, "--manifest-out", $manifestPath)
-  if ($DryRun) { $args += "--dry-run" }
-  if ($Overwrite) { $args += "--overwrite" }
-  if ($Limit -gt 0) { $args += @("--limit", "$Limit") }
+  $nodeArgs = @($migrationScript, $sourceRoot, "--manifest-out", $manifestPath)
+  if ($DryRun) { $nodeArgs += "--dry-run" }
+  if ($Overwrite) { $nodeArgs += "--overwrite" }
+  if ($Limit -gt 0) { $nodeArgs += @("--limit", "$Limit") }
 
   Push-Location $repoRoot
   try {
-    & node @args
+    & node @nodeArgs
     if ($LASTEXITCODE -ne 0) {
       throw "Migration utility exited with code $LASTEXITCODE."
     }
@@ -51,7 +53,8 @@ try {
     Pop-Location
   }
 } finally {
-  Remove-Item Env:UPSTASH_BLOB_TOKEN -ErrorAction SilentlyContinue
+  $env:UPSTASH_BLOB_TOKEN = $null
+  if ($tokenWasSetByScript) { Remove-Item Env:UPSTASH_BLOB_TOKEN -ErrorAction SilentlyContinue }
   if (Test-Path -LiteralPath $tempRoot) {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force
   }
