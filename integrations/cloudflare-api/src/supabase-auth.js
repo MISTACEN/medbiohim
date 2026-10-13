@@ -610,9 +610,13 @@ export async function getSupabaseProfileBundle(request, env, fetcher = fetch) {
     select: "roles(code)",
     user_id: "eq." + identity.user.id,
   });
+  const rolePriority = { admin: 0, moderator: 1, teacher: 2, student: 3 };
   const roles = (roleRows || [])
     .map((item) => Array.isArray(item.roles) ? item.roles[0]?.code : item.roles?.code)
-    .filter((code) => typeof code === "string" && code.trim() !== "");
+    .filter((code) => typeof code === "string" && code.trim() !== "")
+    .map((code) => code.trim().toLowerCase())
+    // Keep the PHP-compatible primary role predictable for clients using roles[0].
+    .sort((a, b) => (rolePriority[a] ?? 4) - (rolePriority[b] ?? 4));
 
   const membershipRows = await rows("group_memberships", {
     select: "group_id,role_in_group,is_active,groups(id,code,name,course_number,admission_year,is_active)",
