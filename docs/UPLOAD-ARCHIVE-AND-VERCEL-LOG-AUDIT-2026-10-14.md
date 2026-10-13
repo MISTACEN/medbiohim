@@ -45,6 +45,7 @@ Commits on `main`:
 
 Important limitations:
 - These source changes are committed but **not yet verified by a successful current Worker Build/test run**. GitHub combined status for `f9822e33` reports only Vercel `failure` at the known `build-rate-limit` URL; the Cloudflare shadow deployment list still showed the earlier deployment from 2026-10-13 15:14 UTC. Do not call this a successful deployment.
+- - 🔴 **Current shadow Worker secret inventory:** the Cloudflare API lists only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. No `B2_KEY_ID`, `B2_APPLICATION_KEY`, `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, or AI provider secret is configured.
 - The Upstash Blob bucket `medbiohim-files` exists and is private but currently contains **0 objects**. The required `UPSTASH_BLOB_TOKEN` is not present in the legacy `.env` file and was not set.
 - Upstash Redis `medbiohimcache` exists and is active in `eu-west-1`; its REST token is not set on the Worker. The code is fail-open until `UPSTASH_REDIS_REST_TOKEN` is added as a Worker secret.
 - The legacy `.env` contains B2 and several AI provider credentials, but an attempt to transfer secret values from the file to Cloudflare was blocked by the connected security controls. **No B2/AI/Redis secret value was changed or installed.** Add these through the Cloudflare Worker secret manager; never place them in GitHub or frontend variables.
