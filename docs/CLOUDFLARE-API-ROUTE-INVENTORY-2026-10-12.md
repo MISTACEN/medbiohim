@@ -445,3 +445,16 @@ The Worker settings expose Supabase URL/anon-key secrets and the two configured 
 - No Vercel frontend API-mode switch, Production deployment, DNS change, Supabase schema/RLS change, or secret creation was made. The only deployment is the isolated Shadow Worker.
 
 Use this checkpoint as the latest tested state. Earlier rows in this inventory retain historical context and may show stale “not deployed” notes; the build/version above is the current verified baseline for this pass.
+
+
+## File record/download read routes — next source pass (2026-10-13)
+
+Added on \`main\` in source commits \`461e4f189e7bd9c849509082a99dbcac5d80788a\` and \`f7a5350427ac46c7c5e12d9da493ed3f593fe739\`:
+
+- \`GET /api/v1/files/{id}\`: checks caller identity, file visibility/ownership/active group membership and specialty scope; returns safe metadata without \`object_key\`, B2 file ID or SHA-256.
+- \`GET /api/v1/files/{id}/download\`: repeats the access checks and returns a short-lived B2 redirect only for an object key loaded from the database.
+- Regression tests cover owner access, group-private denial, MBH membership, bounded B2 URLs, hidden storage metadata, malformed IDs and route method/auth guards.
+
+**Status: source committed, deployment not yet verified.** Cloudflare Builds for latest source commit \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\` remain queued behind the existing build queue. Do not count these two routes as deployed until that exact source (or a descendant containing it) completes \`npm test\`, Wrangler dry-run and Shadow deployment.
+
+Still not migrated: \`POST /api/v1/files/upload\`, \`GET /api/v1/materials/{id}/file\`, and \`GET /api/v1/histology/source-file\`. Upload needs a bounded multipart parser plus private B2 upload and safe metadata insert; SpaceWeb-only files need a controlled copy/hash inventory before the Worker can serve them. B2 secrets are not configured in the Worker, so B2-backed routes fail closed until securely provisioned.
