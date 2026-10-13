@@ -24,7 +24,7 @@ test("GET /api/v1 preserves the PHP public metadata response contract", async ()
   assert.equal(body.data.version, "v1");
   assert.equal(body.data.build, "test-build");
   assert.equal(body.data.phase, "D");
-  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image"]);
+  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence"]);
   assert.equal(typeof body.requestId, "string");
 });
 
@@ -334,7 +334,7 @@ test("CORS allows the configured frontend origin", async () => {
 });
 
 
-for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/questions/mini-quiz", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
+for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/questions/mini-quiz", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
   test(`GET ${path} requires a valid Supabase bearer token`, async () => {
     const response = await worker.fetch(request(path), {
       SUPABASE_URL: "https://project-id.supabase.co",
@@ -354,6 +354,30 @@ test("schedule and dashboard read routes reject writes rather than silently acce
   }
 });
 
+
+test("homework creation route validates JSON and requires authentication", async () => {
+  const malformed = await worker.fetch(request("/api/v1/homeworks", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{",
+  }), {});
+  assert.equal(malformed.status, 422);
+  assert.equal((await malformed.json()).error.code, "VALIDATION_ERROR");
+
+  const unauthenticated = await worker.fetch(request("/api/v1/homeworks", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "Проверка задания",
+      group_id: "11111111-1111-4111-8111-111111111111",
+    }),
+  }), {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  });
+  assert.equal(unauthenticated.status, 401);
+  assert.equal((await unauthenticated.json()).error.code, "UNAUTHORIZED");
+});
 
 test("schedule create route requires auth and rejects non-POST methods", async () => {
   const unauthenticated = await worker.fetch(request("/api/v1/schedule/entries", {
