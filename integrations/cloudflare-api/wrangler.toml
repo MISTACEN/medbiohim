@@ -20,6 +20,13 @@ destinations = ["cloudflare"]
 [vars]
 APP_ENV = "shadow"
 MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
+AI_CHAT_PRIMARY_PROVIDER = "groq"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+MISTRAL_MODEL = "mistral-small-latest"
+OPENROUTER_MODEL = "google/gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.0-flash"
+GIGACHAT_MODEL = "GigaChat"
+UPSTASH_REDIS_REST_URL = "https://rare-oyster-230342.upstash.io"
 B2_BUCKET = "medbiohim-files" # Non-secret bucket name; B2 credentials stay in Worker secrets.
 AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED = "true"
 
@@ -34,3 +41,11 @@ simple = { limit = 5, period = 60 }
 name = "AUTH_REGISTER_LIMITER"
 namespace_id = "1002"
 simple = { limit = 3, period = 60 }
+
+# Required Worker secrets — add through Cloudflare Dashboard/Wrangler, never commit values:
+# B2_KEY_ID, B2_APPLICATION_KEY
+# UPSTASH_BLOB_TOKEN, UPSTASH_REDIS_REST_TOKEN
+# GROQ_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY
+# GEMINI_API_KEY (region-gated), GIGACHAT_CREDENTIALS (or GIGACHAT_AUTH_KEY)
+# SUPABASE_URL and SUPABASE_ANON_KEY are already provisioned.
+# Never configure service-role keys, DB passwords, or AI secrets in frontend variables.
