@@ -76,7 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: String(u.id || ""),
         name: String(u.full_name || u.name || u.email || "Пользователь"),
         email: String(u.email || ""),
-        role: roles[0] || "student",
+        // Privileged roles must not be hidden by a lower-priority role's array order.
+        role: roles.includes("admin") ? "admin" : roles.includes("moderator") ? "moderator" : roles[0] || "student",
         roles,
         groupId: primary?.id,
         groupName: primary?.name || primary?.code,
