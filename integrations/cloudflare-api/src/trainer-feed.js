@@ -132,7 +132,7 @@ export async function listSupabaseTrainerFeed(request, env, filters = {}, fetche
     }
     const hasMbhMembership = memberships.some((membership) => {
       const group = related(membership?.groups);
-      return Boolean(group) && group.is_active !== false &&
+      return Boolean(group) && group.is_active === true &&
         String(group.specialty_slug || "").trim() === "mbh";
     });
     if (!hasMbhMembership) {
@@ -161,7 +161,7 @@ export async function listSupabaseTrainerFeed(request, env, filters = {}, fetche
       });
       const hasMbhMembership = membershipResult.some((membership) => {
         const group = related(membership?.groups);
-        return Boolean(group) && group.is_active !== false &&
+        return Boolean(group) && group.is_active === true &&
           String(group.specialty_slug || "").trim() === "mbh";
       });
       if (!hasMbhMembership) {
@@ -271,7 +271,7 @@ export async function getSupabaseTrainerCard(request, env, cardId, fetcher = fet
     }
     const hasMbhMembership = memberships.some((membership) => {
       const group = related(membership?.groups);
-      return Boolean(group) && group.is_active !== false &&
+      return Boolean(group) && group.is_active === true &&
         String(group.specialty_slug || "").trim() === "mbh";
     });
     if (!hasMbhMembership) return failure(403, "FORBIDDEN", "Карточка доступна только специальности МБХ");
