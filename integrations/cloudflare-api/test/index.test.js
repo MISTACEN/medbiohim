@@ -24,7 +24,7 @@ test("GET /api/v1 preserves the PHP public metadata response contract", async ()
   assert.equal(body.data.version, "v1");
   assert.equal(body.data.build, "test-build");
   assert.equal(body.data.phase, "D");
-  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence"]);
+  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence, ai, calculators"]);
   assert.equal(typeof body.requestId, "string");
 });
 
@@ -334,7 +334,7 @@ test("CORS allows the configured frontend origin", async () => {
 });
 
 
-for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/questions/mini-quiz", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-catalog", "/api/v1/site-content", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology", "/api/v1/calculators", "/api/v1/calculators/bmi"]) {
+for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/questions/mini-quiz", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-catalog", "/api/v1/site-content", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology", "/api/v1/calculators", "/api/v1/calculators/bmi", "/api/v1/ai/providers", "/api/v1/ai/conversations", "/api/v1/ai/conversations/33333333-3333-4333-8333-333333333333"]) {
   test(`GET ${path} requires a valid Supabase bearer token`, async () => {
     const response = await worker.fetch(request(path), {
       SUPABASE_URL: "https://project-id.supabase.co",
@@ -692,4 +692,41 @@ test("file metadata and download routes require authentication and GET", async (
     assert.equal(wrongMethod.status, 405);
     assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
   }
+});
+
+
+test("AI provider and conversation routes enforce authentication and method allowlists", async () => {
+  const env = {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  };
+
+  const providerPost = await worker.fetch(request("/api/v1/ai/providers", { method: "POST" }), env);
+  assert.equal(providerPost.status, 405);
+  assert.equal(providerPost.headers.get("allow"), "GET, OPTIONS");
+
+  const conversationPut = await worker.fetch(request("/api/v1/ai/conversations", { method: "PUT" }), env);
+  assert.equal(conversationPut.status, 405);
+  assert.equal(conversationPut.headers.get("allow"), "GET, POST, OPTIONS");
+
+  const conversationPatch = await worker.fetch(request("/api/v1/ai/conversations/33333333-3333-4333-8333-333333333333", { method: "PATCH" }), env);
+  assert.equal(conversationPatch.status, 405);
+  assert.equal(conversationPatch.headers.get("allow"), "GET, DELETE, OPTIONS");
+
+  const messageGet = await worker.fetch(request("/api/v1/ai/conversations/33333333-3333-4333-8333-333333333333/messages"), env);
+  assert.equal(messageGet.status, 405);
+  assert.equal(messageGet.headers.get("allow"), "POST, OPTIONS");
+
+  const messagePostUnauthenticated = await worker.fetch(request("/api/v1/ai/conversations/33333333-3333-4333-8333-333333333333/messages", { method: "POST" }), env);
+  assert.equal(messagePostUnauthenticated.status, 401);
+  assert.equal((await messagePostUnauthenticated.json()).error.code, "UNAUTHORIZED");
+});
+
+test("AI message generation remains explicit rather than returning a fake successful answer", async () => {
+  const response = await worker.fetch(request("/api/v1/ai/conversations/33333333-3333-4333-8333-333333333333/messages", {
+    method: "POST",
+    headers: { authorization: "Bearer valid-user-token" },
+  }), {});
+  assert.equal(response.status, 501);
+  assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
