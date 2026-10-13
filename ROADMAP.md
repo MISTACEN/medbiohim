@@ -2934,7 +2934,7 @@ The Worker source now contains a shared private B2 URL signer and scoped route h
 
 **Not yet runtime-ready:** the Cloudflare build output lists no B2 secrets/bindings. Configure \`B2_KEY_ID\`, \`B2_APPLICATION_KEY\`, and \`B2_BUCKET\` as Worker secrets/variables, with optional \`B2_BUCKET_ID\`; do not put secret values in the repository. Without the required values, endpoints fail closed with a 503. The existing SpaceWeb-only Histology paths are still not available from Workers; \`/materials/{id}/file\` and \`/histology/source-file\` remain on the guarded PHP backend.
 
-The previous build for the material-file and trainer-image handlers passed **225/225 tests**, Wrangler dry-run and Shadow deployment. A later small fix changed the image endpoint to preserve its existing 302/binary-fetch contract and added endpoint metadata; final build verification must match the latest commit before claiming that fix deployed.
+The final Shadow source snapshot is verified: commit `18e4af15e616dc213c73774ad882471ce94c959f`, build `530dd56a-a902-41b7-9879-06451f1382f5`, Worker version `0709ef4f-3d7d-474a-af27-c1198e60a1e1`. All **225/225 tests passed**, Wrangler dry-run passed, and the image endpoint's 302/binary-fetch contract is included in the deployed code.
 
 Next acceptance gates:
 1. Verify the latest source/build/test result and Worker version.
