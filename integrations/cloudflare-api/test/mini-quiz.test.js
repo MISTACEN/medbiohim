@@ -154,7 +154,7 @@ test("mini-quiz returns not found for inactive subjects and fails closed when sp
 
 test("POST mini-quiz check returns only score metadata, not correct options or answer text", async () => {
   const result = await checkSupabaseLectureMiniQuizAnswer(request("/api/v1/questions/mini-quiz/check"), env, {
-    question_id: questionId, subject_id: subjectId, selected_indexes: [1, 0, 1],
+    question_id: questionId, subject_id: subjectId, selected_indexes: [1, 1],
   }, async (url, init) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
@@ -171,7 +171,7 @@ test("POST mini-quiz check returns only score metadata, not correct options or a
   assert.equal(result.ok, true);
   assert.deepEqual(result.data, {
     correct: true,
-    selected_count: 2,
+    selected_count: 1,
     required_count: 1,
     question_type: "mcq",
   });
