@@ -52,6 +52,11 @@ test("provider status mirrors configured flags without exposing secret values", 
   assert.equal(status.providers.groq.configured, true);
   assert.equal(status.providers.groq.available, true);
   assert.equal(status.providers.groq.model, "test-model");
+  assert.equal(status.providers.openai.configured, false);
+  const openai = getAiProviderStatus({ OPENAI_API_KEY: "secret-openai-value", OPENAI_MODEL: "gpt-4.1-mini" });
+  assert.equal(openai.providers.openai.available, true);
+  assert.equal(openai.providers.openai.model, "gpt-4.1-mini");
+  assert.equal(JSON.stringify(openai).includes("secret-openai-value"), false);
   assert.equal(status.providers.gemini.configured, true);
   assert.equal(status.providers.gemini.available, false);
   assert.match(status.providers.gemini.reason, /региона backend/);
@@ -264,6 +269,45 @@ test("AI message execution stores both turns under the caller identity", async (
   assert.equal(result.assistant_message.provider, "groq");
   assert.equal(result.conversation.provider, "groq");
   assert.equal(calls.length, 6);
+});
+
+
+test("OpenAI adapter uses server-side API key and the configured model", async () => {
+  const openaiEnv = {
+    ...env,
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-4.1-mini",
+    AI_CHAT_PRIMARY_PROVIDER: "openai",
+  };
+  const result = await sendAiMessage(request(), openaiEnv, userId, conversationId, {
+    content: "Объясни гемоглобин",
+    provider: "openai",
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.hostname === "api.openai.com") {
+      assert.equal(parsed.pathname, "/v1/chat/completions");
+      assert.equal(header(init, "authorization"), "Bearer test-openai-key");
+      const body = JSON.parse(init.body);
+      assert.equal(body.model, "gpt-4.1-mini");
+      assert.ok(body.messages.some((message) => message.role === "user" && message.content === "Объясни гемоглобин"));
+      return response({ model: "gpt-4.1-mini", choices: [{ message: { content: "Гемоглобин переносит кислород." } }] });
+    }
+    assert.equal(parsed.origin, "https://project-id.supabase.co");
+    if (parsed.pathname.endsWith("/ai_conversations") && init.method === "GET") {
+      return response([{ id: conversationId, user_id: userId, title: "Новый чат", provider: "openai" }]);
+    }
+    if (parsed.pathname.endsWith("/ai_messages") && init.method === "GET") {
+      return response([{ role: "user", content: "Объясни гемоглобин" }]);
+    }
+    if (parsed.pathname.endsWith("/ai_messages") && init.method === "POST") {
+      const body = JSON.parse(init.body);
+      return response([{ id: body.role === "user" ? "u1" : "a1", ...body }], 201);
+    }
+    if (parsed.pathname.endsWith("/ai_conversations") && init.method === "PATCH") return new Response(null, { status: 204 });
+    assert.fail("Unexpected request: " + parsed.pathname);
+  });
+  assert.equal(result.assistant_message.provider, "openai");
+  assert.match(result.assistant_message.content, /переносит кислород/);
 });
 
 test("AI message execution fails closed when no provider is configured", async () => {
