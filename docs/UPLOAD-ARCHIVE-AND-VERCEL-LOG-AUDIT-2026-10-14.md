@@ -4,6 +4,13 @@ Date: 2026-10-14 (UTC)
 Repository: `MISTACEN/medbiohim`
 Environment examined: production browser console export + Cloudflare shadow telemetry. This is an evidence report, not production acceptance.
 
+## Legacy PHP backend is the current frontend contract baseline
+
+The user confirms the older PHP backend is the version on which the latest frontend works best. Treat it as the **behavioral/API-contract baseline**, not as disposable legacy code:
+- Preserve the current frontend and its existing response shapes, authentication/session behavior, status codes, media URLs, and study flows.
+- Migrate route families one at a time into Cloudflare shadow, comparing old PHP responses with the new Worker on representative authenticated cases.
+- Keep the current PHP/SpaceWeb API as production until each route family passes parity tests and media access/RLS is verified. Do not perform a bulk backend replacement or production cutover just because secrets are now configured.
+
 ## Uploaded archive
 
 - The uploaded `medbiohim-cloudflare-api(2).zip` is an older Cloudflare Worker scaffold. It contains source/tests and a Wrangler config, but no `.env` or populated runtime secret file.
