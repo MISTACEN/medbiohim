@@ -489,7 +489,7 @@ test("profile bundle uses caller JWT and returns only caller-scoped profile, rol
     const parsed = new URL(String(url));
     assert.equal(init.headers.apikey, configured.SUPABASE_ANON_KEY);
     assert.equal(init.headers.authorization, "Bearer valid-user-token");
-    assert.equal(init.redirect, "error");
+    assert.equal(init.redirect, "manual");
     if (parsed.pathname === "/rest/v1/users") {
       assert.equal(parsed.searchParams.get("id"), "eq.user-123");
       return new Response(JSON.stringify([{
@@ -1104,8 +1104,8 @@ test("selected-group subject catalog also filters by the active group course", a
 test("auth fetch rejects redirects safely without forwarding credentials", async () => {
   let calls = 0;
   const warnings = [];
-  const originalWarn = console.warn;
-  console.warn = (...args) => warnings.push(args);
+  const originalError = console.error;
+  console.error = (...args) => warnings.push(args);
   let result;
   try {
     result = await authenticateSupabaseRequest(request("Bearer valid-user-token"), configured, async (_url, init) => {
@@ -1117,7 +1117,7 @@ test("auth fetch rejects redirects safely without forwarding credentials", async
       });
     });
   } finally {
-    console.warn = originalWarn;
+    console.error = originalError;
   }
 
   assert.equal(calls, 1);
@@ -1129,6 +1129,9 @@ test("auth fetch rejects redirects safely without forwarding credentials", async
     operation: "authenticateSupabaseRequest",
     status: 302,
     hasLocation: true,
+    sourceIsHttps: true,
+    sourceIsSupabaseDomain: true,
+    sourceMatchesExpectedProject: true,
     targetIsHttps: true,
     targetSameOrigin: false,
     targetIsSupabaseDomain: false,
