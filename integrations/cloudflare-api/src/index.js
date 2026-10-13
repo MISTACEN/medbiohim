@@ -15,6 +15,10 @@ import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upser
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz } from "./mini-quiz.js";
 import { submitSupabaseQuestionReport } from "./question-reports.js";
 
+import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcademicState, generateSupabaseAcademicPlan } from "./academic-planning.js";
+import { listSupabaseCommunityPosts, createSupabaseCommunityPost } from "./community.js";
+import { listSupabaseTicketBanks, generateSupabaseTicket } from "./tickets.js";
+
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
 
@@ -283,6 +287,36 @@ export default {
       return withCors(success(result.data), origin);
     }
 
+
+
+    if (pathname === \`${API_PREFIX}/academic/state\`) {
+      if (request.method === "GET") {
+        const result = await getSupabaseAcademicState(request, env);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "PUT") {
+        const parsed = await readJsonLimited(request, 16384);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        const result = await saveSupabaseAcademicState(request, env, parsed.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, PUT, OPTIONS" }), origin);
+    }
+    if (pathname === \`${API_PREFIX}/academic/sync\`) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      const result = await syncSupabaseAcademicState(request, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+    if (pathname === \`${API_PREFIX}/academic/ai-plan\`) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      const result = await generateSupabaseAcademicPlan(request, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
 
     if (pathname === `${API_PREFIX}/planner`) {
       if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
@@ -1228,6 +1262,71 @@ export default {
     }
 
 
+
+    if (pathname === \`${API_PREFIX}/community/posts\`) {
+      if (request.method === "GET") {
+        const result = await listSupabaseCommunityPosts(request, env, url.searchParams.get("group_id") || "");
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "POST") {
+        const parsed = await readJsonLimited(request, 16384);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        const result = await createSupabaseCommunityPost(request, env, parsed.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
+    }
+    if (pathname === \`${API_PREFIX}/tickets/generate\`) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      const parsed = await readJsonLimited(request, 16384);
+      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      const result = await generateSupabaseTicket(request, env, parsed.value);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+    if (pathname === \`${API_PREFIX}/tickets\`) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const result = await listSupabaseTicketBanks(request, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === \`${API_PREFIX}/community/posts\`) {
+      if (request.method === "GET") {
+        const result = await listSupabaseCommunityPosts(request, env, url.searchParams.get("group_id") || "");
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "POST") {
+        const parsed = await readJsonLimited(request, 16384);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        const result = await createSupabaseCommunityPost(request, env, parsed.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
+    }
+    if (pathname === \`${API_PREFIX}/tickets/generate\`) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      const parsed = await readJsonLimited(request, 16384);
+      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      const result = await generateSupabaseTicket(request, env, parsed.value);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+    if (pathname === \`${API_PREFIX}/tickets\`) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const result = await listSupabaseTicketBanks(request, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
     if (pathname === `${API_PREFIX}/presence/heartbeat`) {
       if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
       const result = await heartbeatSupabasePresence(request, env);
