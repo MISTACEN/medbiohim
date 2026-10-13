@@ -285,3 +285,72 @@ test("AI message rejects empty/oversized input before making requests", async ()
   );
   assert.equal(called, false);
 });
+
+
+test("Gemini adapter uses the API-key header and maps chat history to generateContent", async () => {
+  const geminiEnv = {
+    ...env,
+    GEMINI_API_KEY: "test-gemini-key",
+    GEMINI_MODEL: "gemini-2.0-flash",
+    AI_BACKEND_REGION: "eu",
+    AI_CHAT_PRIMARY_PROVIDER: "gemini",
+  };
+  const result = await sendAiMessage(request(), geminiEnv, userId, conversationId, { content: "Что такое гемоглобин?", provider: "auto" }, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.hostname === "generativelanguage.googleapis.com") {
+      assert.equal(parsed.pathname, "/v1beta/models/gemini-2.0-flash:generateContent");
+      assert.equal(init.headers.get("x-goog-api-key"), "test-gemini-key");
+      const body = JSON.parse(init.body);
+      assert.ok(body.contents.some((item) => item.role === "user" && item.parts[0].text === "Что такое гемоглобин?"));
+      return response({ candidates: [{ content: { parts: [{ text: "Белок эритроцитов, переносящий кислород." }] } }] });
+    }
+    const dataUrl = parsed.pathname;
+    assert.equal(parsed.origin, "https://project-id.supabase.co");
+    if (dataUrl.endsWith("/ai_conversations") && init.method === "GET") return response([{ id: conversationId, user_id: userId, title: "Новый чат", provider: "auto" }]);
+    if (dataUrl.endsWith("/ai_messages") && init.method === "GET") return response([{ role: "user", content: "Что такое гемоглобин?" }]);
+    if (dataUrl.endsWith("/ai_messages") && init.method === "POST") {
+      const body = JSON.parse(init.body);
+      return response([{ id: body.role === "user" ? "u1" : "a1", ...body }], 201);
+    }
+    if (dataUrl.endsWith("/ai_conversations") && init.method === "PATCH") return new Response(null, { status: 204 });
+    assert.fail("Unexpected request: " + parsed.pathname);
+  });
+  assert.equal(result.assistant_message.provider, "gemini");
+  assert.match(result.assistant_message.content, /переносящий кислород/);
+});
+
+test("GigaChat adapter exchanges OAuth credentials without exposing them to the browser", async () => {
+  const gigaEnv = {
+    ...env,
+    GIGACHAT_CREDENTIALS: "test-basic-credentials",
+    GIGACHAT_SCOPE: "GIGACHAT_API_PERS",
+    GIGACHAT_MODEL: "GigaChat",
+    AI_CHAT_PRIMARY_PROVIDER: "gigachat",
+  };
+  const result = await sendAiMessage(request(), gigaEnv, userId, conversationId, { content: "Объясни гемоглобин", provider: "auto" }, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.hostname === "ngw.devices.sberbank.ru") {
+      assert.equal(parsed.pathname, "/api/v2/oauth");
+      assert.equal(init.headers.get("authorization"), "Basic test-basic-credentials");
+      assert.ok(init.headers.get("RqUID"));
+      assert.equal(String(init.body), "scope=GIGACHAT_API_PERS");
+      return response({ access_token: "test-access-token" });
+    }
+    if (parsed.hostname === "gigachat.devices.sberbank.ru") {
+      assert.equal(parsed.pathname, "/api/v1/chat/completions");
+      assert.equal(init.headers.get("authorization"), "Bearer test-access-token");
+      return response({ model: "GigaChat", choices: [{ message: { content: "Гемоглобин переносит кислород." } }] });
+    }
+    assert.equal(parsed.origin, "https://project-id.supabase.co");
+    if (parsed.pathname.endsWith("/ai_conversations") && init.method === "GET") return response([{ id: conversationId, user_id: userId, title: "Новый чат", provider: "auto" }]);
+    if (parsed.pathname.endsWith("/ai_messages") && init.method === "GET") return response([{ role: "user", content: "Объясни гемоглобин" }]);
+    if (parsed.pathname.endsWith("/ai_messages") && init.method === "POST") {
+      const body = JSON.parse(init.body);
+      return response([{ id: body.role === "user" ? "u1" : "a1", ...body }], 201);
+    }
+    if (parsed.pathname.endsWith("/ai_conversations") && init.method === "PATCH") return new Response(null, { status: 204 });
+    assert.fail("Unexpected request: " + parsed.pathname);
+  });
+  assert.equal(result.assistant_message.provider, "gigachat");
+  assert.match(result.assistant_message.content, /переносит кислород/);
+});
