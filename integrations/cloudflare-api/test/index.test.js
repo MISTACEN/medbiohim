@@ -24,7 +24,7 @@ test("GET /api/v1 preserves the PHP public metadata response contract", async ()
   assert.equal(body.data.version, "v1");
   assert.equal(body.data.build, "test-build");
   assert.equal(body.data.phase, "D");
-  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files"]);
+  assert.deepEqual(body.data.endpoints, ["auth, me, groups, subjects, tests, homeworks, files, materials, content-sources, trainer-feed"]);
   assert.equal(typeof body.requestId, "string");
 });
 
