@@ -21,6 +21,7 @@ destinations = ["cloudflare"]
 APP_ENV = "shadow"
 MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
 AI_CHAT_PRIMARY_PROVIDER = "groq"
+OPENAI_MODEL = "gpt-4.1-mini"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 MISTRAL_MODEL = "mistral-small-latest"
 OPENROUTER_MODEL = "google/gemini-2.5-flash"
@@ -45,7 +46,7 @@ simple = { limit = 3, period = 60 }
 # Required Worker secrets — add through Cloudflare Dashboard/Wrangler, never commit values:
 # B2_KEY_ID, B2_APPLICATION_KEY
 # UPSTASH_BLOB_TOKEN, UPSTASH_REDIS_REST_TOKEN
-# GROQ_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY
+# OPENAI_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY
 # GEMINI_API_KEY (region-gated), GIGACHAT_CREDENTIALS (or GIGACHAT_AUTH_KEY)
 # SUPABASE_URL and SUPABASE_ANON_KEY are already provisioned.
 # Never configure service-role keys, DB passwords, or AI secrets in frontend variables.
