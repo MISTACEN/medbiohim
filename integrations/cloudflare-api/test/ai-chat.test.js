@@ -46,7 +46,7 @@ test("provider status mirrors configured flags without exposing secret values", 
   assert.equal(status.providers.groq.model, "test-model");
   assert.equal(status.providers.gemini.configured, true);
   assert.equal(status.providers.gemini.available, false);
-  assert.match(status.providers.gemini.reason, /регион backend/);
+  assert.match(status.providers.gemini.reason, /региона backend/);
   assert.equal(status.providers.openrouter.configured, false, "OpenRouter needs a model as well as a key");
   assert.equal(JSON.stringify(status).includes("secret-groq-value"), false);
 });
