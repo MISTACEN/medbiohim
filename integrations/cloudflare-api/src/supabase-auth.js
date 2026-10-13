@@ -1056,9 +1056,24 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Supabase REST read failed");
+    if (!response.ok) {
+      let errorPayload = null;
+      try { errorPayload = await response.json(); } catch {}
+      const error = new Error("Supabase REST read failed");
+      error.status = response.status;
+      error.code = typeof errorPayload?.code === "string"
+        ? errorPayload.code
+        : typeof errorPayload?.error === "string" ? errorPayload.error : "REST_ERROR";
+      error.table = table;
+      throw error;
+    }
     const payload = await response.json();
-    if (!Array.isArray(payload)) throw new Error("Supabase REST returned an invalid collection");
+    if (!Array.isArray(payload)) {
+      const error = new Error("Supabase REST returned an invalid collection");
+      error.table = table;
+      error.code = "INVALID_COLLECTION";
+      throw error;
+    }
     return payload;
   }
 
@@ -1118,7 +1133,12 @@ export async function listSupabaseSubjects(request, env, filters = {}, fetcher =
       return true;
     });
     return { ok: true, data: { items } };
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_SUBJECTS_DB_ERROR", JSON.stringify({
+      table: error?.table || "unknown",
+      status: Number(error?.status) || 0,
+      code: String(error?.code || "UNEXPECTED_ERROR").slice(0, 40),
+    }));
     return failure(503, "DB_UNAVAILABLE", "Subject list is temporarily unavailable");
   }
 }
