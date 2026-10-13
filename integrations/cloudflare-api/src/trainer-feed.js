@@ -288,7 +288,16 @@ export async function submitSupabaseTrainerAnswer(request, env, payload, fetcher
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return failure(422, "VALIDATION_ERROR", "Answer payload must be a JSON object");
   }
-  const cardId = String(payload.card_id || "").trim();
+  if (typeof payload.card_id !== "string") {
+    return failure(422, "VALIDATION_ERROR", "card_id required");
+  }
+  if (payload.option_id !== undefined && payload.option_id !== null && typeof payload.option_id !== "string") {
+    return failure(422, "VALIDATION_ERROR", "option_id must be a string");
+  }
+  if (payload.answer_text !== undefined && payload.answer_text !== null && typeof payload.answer_text !== "string") {
+    return failure(422, "VALIDATION_ERROR", "answer_text must be a string");
+  }
+  const cardId = payload.card_id.trim();
   const optionId = String(payload.option_id || "").trim();
   const answerText = String(payload.answer_text || "").trim();
   const isSkipped = payload.is_skipped === undefined ? false : payload.is_skipped;
@@ -360,7 +369,10 @@ export async function submitSupabaseTrainerAnswer(request, env, payload, fetcher
     if (response.status === 403 || databaseCode === "42501") {
       return failure(403, "FORBIDDEN", "Нет доступа к этой карточке тренажёра");
     }
-    if (response.status === 404 || databaseCode === "P0002") {
+    if (databaseCode === "PGRST202" || databaseCode.startsWith("PGRST")) {
+      return failure(503, "TRAINER_ERROR", "Сервис проверки ответа временно недоступен");
+    }
+    if (databaseCode === "P0002" || (response.status === 404 && !databaseCode)) {
       return failure(404, "NOT_FOUND", "Trainer card not found");
     }
     if (databaseCode === "22023" || databaseCode === "22P02") {
