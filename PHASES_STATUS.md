@@ -3,7 +3,7 @@
 - 🟡 AI send endpoint has a provider execution path on `main` (Groq/Mistral/OpenRouter, region-gated Gemini and GigaChat OAuth), caller-JWT data access and fallback among configured providers. **Not verified by successful Worker Build/tests or live provider calls yet.**
 - 🟡 Added private Upstash Blob adapter; trainer-image path can prefer Blob then use B2 fallback and can use canonical MBH `source_key` while metadata backfill is pending.
 - 🟡 Added optional Upstash Redis REST cache for sanitized per-user trainer metadata, TTL 15 seconds. Image bytes and answer keys are not cached.
-- 🔴 - 🔴 **Current shadow Worker secret inventory:** the Cloudflare API lists only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. No `B2_KEY_ID`, `B2_APPLICATION_KEY`, `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, or AI provider secret is configured.
+- 🔴 **Current shadow Worker secret inventory:** the Cloudflare API lists only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. No `B2_KEY_ID`, `B2_APPLICATION_KEY`, `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, or AI provider secret is configured.
 - 🔴 **Required secrets remain uninstalled**: `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, B2 keys and AI provider keys. The secret-transfer attempt was blocked by connected security controls; no secret values were changed.
 - 🔴 Upstash Blob `medbiohim-files` is private and empty; 206 published cards still have `source_file_id IS NULL`. The latest known Worker deployment predates these commits; Vercel status remains `build-rate-limit`. No production route/DNS cutover.
 - Details: [audit report](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
