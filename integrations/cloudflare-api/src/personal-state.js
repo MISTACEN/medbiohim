@@ -115,8 +115,8 @@ async function requireQuestionAccess(client, request, env, targetId, identity, f
         user_id: "eq." + identity.user.id,
         is_active: "eq.true",
       });
-    } catch (error) {
-      return restFailure(error, "DB_UNAVAILABLE", "Доступ к вопросу не удалось проверить");
+    } catch {
+      return failure(503, "DB_UNAVAILABLE", "Доступ к вопросу не удалось проверить");
     }
     const allowed = memberships.some((membership) => {
       const group = Array.isArray(membership?.groups) ? membership.groups[0] : membership?.groups;
