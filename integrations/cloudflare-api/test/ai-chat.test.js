@@ -24,6 +24,13 @@ function request(path = "/api/v1/ai/conversations", token = "valid-user-token") 
   });
 }
 
+function header(init, name) {
+  const headers = init?.headers;
+  if (headers instanceof Headers) return headers.get(name);
+  const key = Object.keys(headers || {}).find((candidate) => candidate.toLowerCase() === name.toLowerCase());
+  return key ? headers[key] : null;
+}
+
 function response(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -74,9 +81,9 @@ test("conversation listing uses only the caller JWT and explicit owner filtering
     assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
     assert.equal(parsed.searchParams.get("order"), "updated_at.desc");
     assert.equal(parsed.searchParams.get("limit"), "100");
-    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
-    assert.equal(init.headers.get("apikey"), env.SUPABASE_ANON_KEY);
-    assert.notEqual(init.headers.get("authorization"), "Bearer service_role");
+    assert.equal(header(init, "authorization"), "Bearer valid-user-token");
+    assert.equal(header(init, "apikey"), env.SUPABASE_ANON_KEY);
+    assert.notEqual(header(init, "authorization"), "Bearer service_role");
     return response([{ id: conversationId, user_id: userId, title: "Test", provider: "auto" }]);
   });
   assert.equal(called, true);
@@ -95,8 +102,8 @@ test("creating a conversation passes caller identity, normalized provider and sa
     const parsed = new URL(String(url));
     assert.equal(parsed.pathname, "/rest/v1/ai_conversations");
     assert.equal(init.method, "POST");
-    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
-    assert.match(init.headers.get("prefer"), /return=representation/);
+    assert.equal(header(init, "authorization"), "Bearer valid-user-token");
+    assert.match(header(init, "prefer"), /return=representation/);
     const row = JSON.parse(init.body);
     assert.deepEqual(row, {
       user_id: userId,
@@ -141,7 +148,7 @@ test("conversation detail is filtered by user and messages are not fetched for a
   let calls = 0;
   const result = await getAiConversation(request(), env, userId, conversationId, async (url, init) => {
     calls += 1;
-    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
+    assert.equal(header(init, "authorization"), "Bearer valid-user-token");
     const parsed = new URL(String(url));
     assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
     if (parsed.pathname.endsWith("/ai_conversations")) {
@@ -177,8 +184,8 @@ test("conversation deletion is owner-filtered and fails closed on redirects", as
     assert.equal(parsed.pathname, "/rest/v1/ai_conversations");
     assert.equal(parsed.searchParams.get("id"), `eq.${conversationId}`);
     assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
-    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
-    assert.match(init.headers.get("prefer"), /return=minimal/);
+    assert.equal(header(init, "authorization"), "Bearer valid-user-token");
+    assert.match(header(init, "prefer"), /return=minimal/);
     return new Response(null, { status: 204 });
   });
   assert.deepEqual(deleted, { deleted: true });
@@ -219,15 +226,15 @@ test("AI message execution stores both turns under the caller identity", async (
     if (parsed.hostname === "api.groq.com") {
       assert.equal(parsed.pathname, "/openai/v1/chat/completions");
       assert.equal(init.method, "POST");
-      assert.equal(init.headers.get("authorization"), "Bearer test-provider-secret");
+      assert.equal(header(init, "authorization"), "Bearer test-provider-secret");
       const body = JSON.parse(init.body);
       assert.equal(body.model, "test-groq-model");
       assert.ok(body.messages.some((message) => message.role === "user" && message.content === "Объясни гемоглобин"));
       return response({ model: "test-groq-model", choices: [{ message: { content: "Гемоглобин переносит кислород." } }] });
     }
     assert.equal(parsed.origin, "https://project-id.supabase.co");
-    assert.equal(init.headers.get("authorization"), "Bearer valid-user-token");
-    assert.equal(init.headers.get("apikey"), env.SUPABASE_ANON_KEY);
+    assert.equal(header(init, "authorization"), "Bearer valid-user-token");
+    assert.equal(header(init, "apikey"), env.SUPABASE_ANON_KEY);
     if (parsed.pathname.endsWith("/ai_conversations") && init.method === "GET") {
       assert.equal(parsed.searchParams.get("user_id"), `eq.${userId}`);
       assert.equal(parsed.searchParams.get("id"), `eq.${conversationId}`);
@@ -299,7 +306,7 @@ test("Gemini adapter uses the API-key header and maps chat history to generateCo
     const parsed = new URL(String(url));
     if (parsed.hostname === "generativelanguage.googleapis.com") {
       assert.equal(parsed.pathname, "/v1beta/models/gemini-2.0-flash:generateContent");
-      assert.equal(init.headers.get("x-goog-api-key"), "test-gemini-key");
+      assert.equal(header(init, "x-goog-api-key"), "test-gemini-key");
       const body = JSON.parse(init.body);
       assert.ok(body.contents.some((item) => item.role === "user" && item.parts[0].text === "Что такое гемоглобин?"));
       return response({ candidates: [{ content: { parts: [{ text: "Белок эритроцитов, переносящий кислород." }] } }] });
@@ -331,14 +338,14 @@ test("GigaChat adapter exchanges OAuth credentials without exposing them to the 
     const parsed = new URL(String(url));
     if (parsed.hostname === "ngw.devices.sberbank.ru") {
       assert.equal(parsed.pathname, "/api/v2/oauth");
-      assert.equal(init.headers.get("authorization"), "Basic test-basic-credentials");
-      assert.ok(init.headers.get("RqUID"));
+      assert.equal(header(init, "authorization"), "Basic test-basic-credentials");
+      assert.ok(header(init, "RqUID"));
       assert.equal(String(init.body), "scope=GIGACHAT_API_PERS");
       return response({ access_token: "test-access-token" });
     }
     if (parsed.hostname === "gigachat.devices.sberbank.ru") {
       assert.equal(parsed.pathname, "/api/v1/chat/completions");
-      assert.equal(init.headers.get("authorization"), "Bearer test-access-token");
+      assert.equal(header(init, "authorization"), "Bearer test-access-token");
       return response({ model: "GigaChat", choices: [{ message: { content: "Гемоглобин переносит кислород." } }] });
     }
     assert.equal(parsed.origin, "https://project-id.supabase.co");
