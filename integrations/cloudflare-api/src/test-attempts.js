@@ -360,7 +360,20 @@ export async function saveSupabaseTestAnswer(request, env, attemptId, input, fet
     if (!result || typeof result !== "object") return fail(503, "ANSWER_SAVE_ERROR", "Не удалось сохранить ответ");
     if (result.ok === false) return fail(Number(result.status) || 503, String(result.code || "ANSWER_SAVE_ERROR"), String(result.message || "Не удалось сохранить ответ"));
     if (result.ok !== true || !result.data?.answer) return fail(503, "ANSWER_SAVE_ERROR", "Сервис вернул некорректный ответ");
-    return result;
+    // Defense in depth: only acknowledge persistence while an attempt is in progress.
+    // Correctness and feedback are returned only by the finish RPC after submission.
+    return {
+      ok: true,
+      data: {
+        answer: {
+          id: result.data.answer.id ?? null,
+          attempt_id: id,
+          question_id: String(input.question_id),
+          answer_text: answerText,
+          saved: true,
+        },
+      },
+    };
   } catch (error) {
     return publicAttemptErrors(error, "ANSWER_SAVE_ERROR", "Не удалось сохранить ответ");
   }
