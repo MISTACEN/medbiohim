@@ -2069,7 +2069,7 @@ See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for route-by-route con
 - 🟢 **B2 signer tests:** HTTPS/host validation, redirect refusal, bounded expiry, object-key validation and missing-secret behavior are covered in tests.
 - 🟡 **B2 runtime configuration:** build logs show no B2 binding in the Worker. Configure \`B2_KEY_ID\`, \`B2_APPLICATION_KEY\`, \`B2_BUCKET\` (and optionally \`B2_BUCKET_ID\`) through Cloudflare secrets/variables; do not commit credentials. Until then, file URL requests fail closed with 503.
 - 🟡 **SpaceWeb-only files:** \`/api/v1/materials/{id}/file\` and \`/api/v1/histology/source-file\` remain on the guarded PHP backend because their source files live on SpaceWeb. Do not claim all media has migrated.
-- 🟡 **Final source build:** the prior completed build passed 225/225 tests and deployed Shadow. The subsequent image-redirect fix and metadata test need a successful build against the latest commit before the final version ID is considered verified.
+- 🟢 **Final source build:** commit `18e4af15e616dc213c73774ad882471ce94c959f`, build `530dd56a-a902-41b7-9879-06451f1382f5`, Worker version `0709ef4f-3d7d-474a-af27-c1198e60a1e1`; **225/225 tests passed**, Wrangler dry-run passed, and Shadow deployment succeeded. The trainer image route preserves the 302/binary-fetch contract.
 - 🔒 **Production:** unchanged; no Vercel API-mode switch, DNS change, Supabase schema/RLS mutation or credential values were committed.
 
 See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for the route contract and exact remaining acceptance gates.
