@@ -1,6 +1,6 @@
 import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
-import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence } from "./planner.js";
+import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence, createSupabaseHomework, submitSupabaseHomework } from "./planner.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
@@ -260,17 +260,32 @@ export default {
     }
 
     if (pathname === `${API_PREFIX}/homeworks`) {
-      if (request.method !== "GET") {
-        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      if (request.method === "POST") {
+        const parsed = await readJsonLimited(request, 32768);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        const result = await createSupabaseHomework(request, env, parsed.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data, result.status || 201), origin);
       }
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
       const result = await listSupabaseHomeworks(request, env, { group_id: url.searchParams.get("group_id") || "" });
-      if (!result.ok) {
-        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
-      }
-      const requestedGroup = url.searchParams.get("group_id") || "";
-      const selectedGroup = result.data.groups.find((group) => group.group_id === requestedGroup)
-        || (result.data.groups.length === 1 ? result.data.groups[0] : null);
-      return withCors(success({ items: result.data.items, group: selectedGroup }), origin);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+
+    const homeworkSubmitMatch = new RegExp("^" + API_PREFIX + "/homeworks/([^/]+)/submit$").exec(pathname);
+    if (homeworkSubmitMatch) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      let homeworkId;
+      try { homeworkId = decodeURIComponent(homeworkSubmitMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid homework id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const parsed = await readJsonLimited(request, 32768);
+      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      const result = await submitSupabaseHomework(request, env, homeworkId, parsed.value);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data, result.status || 201), origin);
     }
 
     const homeworkProgressMatch = new RegExp("^" + API_PREFIX + "/homeworks/([^/]+)/progress$").exec(pathname);
