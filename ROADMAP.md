@@ -2872,3 +2872,20 @@ Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGIST
 - 🟢 Confirmed the active Worker bundle includes the new auth gate, the fail-closed test-attempt write gate, the direct request-body reader, and safe auth diagnostics.
 - 🔴 Production still has a separate API outage: `https://medbiohim.vercel.app/` returns HTTP 200, but `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN`. Production was deliberately not switched to the incomplete shadow API.
 - 🟡 Vercel management connector currently denies access to environment/deployment listing for the known project scope (404/403). No production environment variables were changed; proceed with the available GitHub/Cloudflare checks and resolve Vercel scope/permissions before a safe cutover.
+
+
+## Current live progress — RPC-backed attempts enabled, 2026-10-13
+
+
+
+- 🟢 Cloudflare Workers Builds auto-deployed current `main` commit `1aa040eab6af990e63aa81365606a0def4480cd8`. Build `c9b324ff-c6f5-4cfc-a61b-5fae2febc3c6` outcome `success`; deployment `481e1a26-3121-4723-8e30-5a84623c7571` serves version `7da54e49-70cf-4f50-89f7-6c50c5c005b3` at 100%.
+- 🟢 Auth rate limit enforcement flag is active `true`; live shadow route probes confirmed login throttling (six malformed body probes → 422, then 429) and registration throttling (four malformed body probes → 422, then 429). The probes carried no passwords, created no accounts, and were checked against the exact configured namespaces (login 1001, 5/60s; registration 1002, 3/60s). Cloudflare’s distributed limiter can permit small overshoot between locations; this is not a strict global counter.
+- 🟢 Verified the live Supabase migration `secure_test_attempt_rpc_20261012` exists (version `20261012062330`). Its three `SECURITY DEFINER` RPCs exist with fixed `search_path=pg_catalog, public, pg_temp`. SQL privilege checks confirmed `authenticated` can execute start/save/finish, `anon` cannot; authenticated users cannot read `test_attempts.question_snapshot`; anon cannot select attempts or answers; RLS has owner-only policies.
+- 🟢 Enabled test attempt start/save/finish in `src/test-attempts.js` only after the live migration, grants and RLS had been checked. These operations call `medbiohim_start_test_attempt`, `medbiohim_save_test_answer` and `medbiohim_finish_test_attempt` RPCs; the Worker does not accept client-supplied score/status or directly write private snapshots.
+- 🟢 Targeted unit tests for test-bank and attempt routes: **5/5 passed**, including an RPC contract test verifying exact function names, arguments and that returned public objects do not contain `question_snapshot` or answer keys.
+- 🟢 Live unauthenticated probes for test-attempt start, answer save and finish all return HTTP 401, so removal of the maintenance gate did not permit anonymous writes. A full end-to-end start/answer/finish with a real student JWT has not yet been executed.
+- 🟡 Score logic is now handled by the database RPC. AI semantic grading/regrade and PHP-compatible profile/default-student-role creation at registration remain separate integration tasks.
+- 🔴 Vercel homepage still responds HTTP 200, but production `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN` because production remains in legacy mode against the old HTTP SpaceWeb origin. SpaceWeb HTTPS is unavailable; the target is Cloudflare-only.
+- 🟡 Preview env variables `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN` are configured only for Preview. A new Vercel deployment was rejected by the API’s daily deployment quota (`api-deployments-free-per-day`; retry after 24 hours), so those env settings have not yet been exercised by a newly built Preview. Production env and routing are unchanged.
+- 🔒 No authenticated student test was created; no real credentials, Supabase schema changes, production routing changes or HTTP fallback bypass were used in these probes.
+
