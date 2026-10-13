@@ -34,6 +34,16 @@ The uploaded log contains 250 API-request error records:
 - Vercel environment values could not be verified via the connected project scope during this audit. No Vercel variables, DNS, production routes, or production traffic were changed.
 - A runtime secret synchronization was not applied in this pass. Keep credential values out of GitHub and browser bundles; if re-entering secrets manually, use only the project's intended publishable/legacy anon key for `SUPABASE_ANON_KEY`, never a service-role/secret key.
 
+## Additional live Supabase data evidence (2026-10-14)
+
+Read-only queries against the current Supabase project found:
+- 206 published `trainer_feed_cards`: **178 preparation cards + 28 electronogram cards**.
+- All 206 have a non-empty `source_key` and a path in `preparation`, but **all 206 have `source_file_id IS NULL`**.
+- `public.files` currently contains just 1 row, not a complete media manifest for these cards.
+- `trainer-file.js` returns HTTP 503 `MEDIA_NOT_MIGRATED` when the published card has no `source_file_id`. If one is added, the signing helper still requires `B2_KEY_ID`, `B2_APPLICATION_KEY`, and `B2_BUCKET`; no B2 key bindings were present in the active Worker settings.
+- `trainer_feed_cards_public` is intentionally group/specialty scoped for histology/MBH. A service-side query without an authenticated MBH membership sees 0 rows through that view; this must not be interpreted as evidence that the underlying 206 cards were deleted.
+- Therefore, image repair requires **both** an asset/metadata migration (map each card to a real file row and ensure the object is actually present) and private B2 runtime credentials. Merely changing the Supabase anon key cannot repair these missing object links.
+
 ## Next corrective gates
 
 1. Run a controlled live Supabase Auth connectivity probe from the deployed shadow Worker that reports only timing/status/reason category, never tokens, headers, raw URLs, or bodies; correlate it with Supabase Auth logs.
