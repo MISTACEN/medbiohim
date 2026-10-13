@@ -1,3 +1,15 @@
+## Verified state — 2026-10-14: uploaded archive and production console log
+
+Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+- 🟢 **Archive test run:** 58 tests passed, 0 failed. The ZIP contains no populated runtime `.env` or usable test provider credentials; test Supabase URLs are fixtures. Do not replace the current Worker code with the older archive wholesale.
+- 🟡 **Secret bindings:** `SUPABASE_URL` and `SUPABASE_ANON_KEY` exist on `medbiohim-api-shadow`, but secret values were not read and no credential synchronization was applied.
+- 🔴 **Production browser log:** 247 × 503 and 3 × 501 records. 236 × 503 are trainer image requests. Remaining 503s affect progress, subjects catalog, search, subject plan, tickets, lectures and tests.
+- 🔴 **Shadow Auth telemetry:** 2026-10-13 14:37 UTC captured Supabase Auth fetch timeout (configured project host and HTTPS checks passed); older login events were redirect-classified. Root cause remains open pending a controlled runtime probe and Supabase Auth log correlation.
+- 🔴 **501 routes:** `histology/source-materials`, `trainings`, `settings/account` need contract comparison and implementation/restore.
+- 🟡 **Storage:** R2 API says R2 must be enabled through Dashboard. The archive's Cloudflare R2 binding is not equivalent to Backblaze B2. No storage configuration was changed.
+- 🔒 **Production unchanged:** no production Vercel settings or routing, DNS, Supabase schema/RLS or production Worker was modified.
+
 ## Verified state — 2026-10-14 (latest shadow rollout)
 
 - 🟢 **Admin login:** user confirmed admin UI access works on the account with the existing admin assignment.
