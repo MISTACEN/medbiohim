@@ -2073,3 +2073,17 @@ See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for route-by-route con
 - 🔒 **Production:** unchanged; no Vercel API-mode switch, DNS change, Supabase schema/RLS mutation or credential values were committed.
 
 See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for the route contract and exact remaining acceptance gates.
+
+
+## Verified checkpoint — 2026-10-13 (latest successful Shadow build)
+
+**Build:** \`64f4be30-63ca-483f-8e62-c644f2a5e424\` · **source:** \`462d1d3fdb2168b05f9b7afb437acb280c29f075\` · **Worker version:** \`dbc06ade-10ea-4b09-b8ca-969dfb9de6c4\`. Gate result: **225 pass / 0 fail**, Wrangler dry-run passed, Shadow deployment succeeded.
+
+- 🟢 **Deployed and test-gated:** material list/detail/source metadata; trainer feed/detail/answer grading; personal notes/favorites; lecture mini-quiz; published-question reports.
+- 🟡 **Private media handlers deployed, media delivery not accepted:** \`/materials/{id}/file-url\` and \`/trainers/feed/{id}/image\` require verified B2 credentials and live file/object mappings. Cloudflare settings currently expose **no \`B2_*\` bindings/secrets**, so don't claim working downloads.
+- 🟡 **Legacy binary sources:** \`/materials/{id}/file\` and \`/histology/source-file\` remain on the guarded PHP/SpaceWeb backend.
+- 🔒 **Test-attempt writes:** start/answer/finish are deliberately blocked pending a private question snapshot and narrow scoring RPC/grants.
+- 🟡 **Live RLS acceptance:** no real student bearer-token smoke test was run; the unit suite used mocked requests.
+- 🔒 **Production untouched:** no Vercel API-mode switch, DNS/Production cutover, Supabase schema/RLS change, or storage-secret creation.
+
+This checkpoint verifies the stated Worker build only; full API parity and full media migration are not complete. See the route inventory for the exact remaining acceptance criteria.
