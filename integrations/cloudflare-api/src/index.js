@@ -6,6 +6,7 @@ import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test
 import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
+import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -479,6 +480,59 @@ export default {
       try { cardId = decodeURIComponent(trainerCardMatch[1]); }
       catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid trainer card id" }, requestId: crypto.randomUUID() }, 422), origin); }
       const result = await getSupabaseTrainerCard(request, env, cardId);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === API_PREFIX + "/notes") {
+      if (request.method === "GET") {
+        const result = await listSupabaseNotes(request, env);
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "POST") {
+        const parsed = await readJsonLimited(request, 16_384);
+        if (!parsed.ok) {
+          const status = parsed.tooLarge ? 413 : 400;
+          const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+          return withCors(json({ ok: false, error: { code, message: parsed.tooLarge ? "Request body is too large" : "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+        }
+        const result = await upsertSupabaseNote(request, env, parsed.value);
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data, result.status || 201), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
+    }
+
+    if (pathname === API_PREFIX + "/favorites") {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseFavorites(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/favorites/toggle") {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (!parsed.ok) {
+        const status = parsed.tooLarge ? 413 : 400;
+        const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+        return withCors(json({ ok: false, error: { code, message: parsed.tooLarge ? "Request body is too large" : "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+      }
+      const result = await toggleSupabaseFavorite(request, env, parsed.value);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
