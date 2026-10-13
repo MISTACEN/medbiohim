@@ -77,7 +77,7 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
   if (subjectSlug) materialQuery["subjects.slug"] = "eq." + subjectSlug;
   if (type) materialQuery.type = "eq." + type;
   if (queryText) {
-    const escaped = queryText.replace(/[^\\p{L}\\p{N}\\s_-]/gu, " ");
+    const escaped = queryText.replace(/[^\p{L}\p{N}\s_-]/gu, " ");
     materialQuery.or = "(title.ilike.*" + escaped + "*,content_html.ilike.*" + escaped + "*)";
   }
 
