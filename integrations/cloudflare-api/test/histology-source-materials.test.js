@@ -95,7 +95,7 @@ test("textbook file delivery streams a private B2 PDF after checking membership"
   const response = await getSupabaseHistologySourceFile(request(objectKey), env, { path: objectKey }, fetcher);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("content-type"), "application/pdf");
-  assert.match(response.headers.get("content-disposition"), /Атлас.pdf/);
+  assert.match(response.headers.get("content-disposition"), /filename\*=UTF-8\x27\x27%D0%90/);
   assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [37, 80, 68, 70, 45]);
 });
 
