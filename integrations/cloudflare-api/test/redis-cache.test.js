@@ -9,7 +9,7 @@ const env = {
 
 test("Redis cache GET parses JSON and uses bearer auth without logging values", async () => {
   const value = await getRedisJsonCache(env, "medbiohim:trainer-feed:user-1:histology:mbh:30:0", async (url, init) => {
-    assert.equal(String(url), "https://example.upstash.io/");
+    assert.equal(new URL(String(url)).href, "https://example.upstash.io/");
     assert.equal(init.method, "POST");
     assert.equal(init.headers.get("authorization"), "Bearer test-only-token");
     assert.deepEqual(JSON.parse(init.body), ["GET", "medbiohim:trainer-feed:user-1:histology:mbh:30:0"]);
