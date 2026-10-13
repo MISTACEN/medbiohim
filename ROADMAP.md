@@ -9,7 +9,8 @@ Full evidence and next gates: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-
 - 🔴 **Trainer media evidence from live Supabase:** 206 published cards (178 preparations, 28 electronograms) have `source_key` and a preparation image path, but all 206 have `source_file_id IS NULL`; `public.files` has only 1 row. `trainer-file.js` consequently returns `503 MEDIA_NOT_MIGRATED` before it can sign a download. The active Worker also lacks `B2_KEY_ID`, `B2_APPLICATION_KEY`, and `B2_BUCKET`; actual files + mapping + B2 runtime config are all required, not just an anon key.
 - 🔴 **Missing contracts:** `GET /api/v1/histology/source-materials`, `GET /api/v1/trainings`, and `GET /api/v1/settings/account` each returned 501 in the uploaded browser log.
 - 🟡 **File storage:** Cloudflare R2 is not enabled in the connected account (API error 10042). Do not assume the archived `FILES_BUCKET` binding exists. Decide whether to enable R2 or keep private Backblaze B2; these are separate systems.
-- 🔒 **Scope unchanged:** only shadow telemetry was inspected. No production traffic/DNS route, Vercel environment, Supabase schema/RLS, or production Worker was changed.
+- 🟡 **Non-secret config prepared:** added `B2_BUCKET = "medbiohim-files"` to `integrations/cloudflare-api/wrangler.toml` (commit `c0057bc9e1a1c569ba4e0f08c32aa1867dfb41de`). Cloudflare Build/deployment after this commit is **not yet verified**; no live B2 credentials were added.
+- 🔒 **Scope:** shadow telemetry and read-only Supabase metadata were inspected. No production traffic/DNS route, Vercel environment, Supabase schema/RLS, Cloudflare secret value, or production Worker was changed.
 
 ## Verified state — 2026-10-14 (AI history and calculator API deployed to shadow)
 
