@@ -334,7 +334,7 @@ test("CORS allows the configured frontend origin", async () => {
 });
 
 
-for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/questions/mini-quiz", "/api/v1/questions/mini-quiz/check", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
+for (const path of ["/api/v1/dashboard", "/api/v1/admin/schedule", "/api/v1/schedule", "/api/v1/schedule/meta", "/api/v1/homeworks", "/api/v1/tests", "/api/v1/questions", "/api/v1/questions/subjects", "/api/v1/questions/mini-quiz", "/api/v1/lectures", "/api/v1/lectures/lecture-1", "/api/v1/curriculum", "/api/v1/subjects-catalog", "/api/v1/subject-materials", "/api/v1/materials", "/api/v1/materials/material-1", "/api/v1/content-sources/source-1", "/api/v1/trainers/feed", "/api/v1/trainers/feed/card-1", "/api/v1/favorites", "/api/v1/subject-plans", "/api/v1/subject-plans/histology"]) {
   test(`GET ${path} requires a valid Supabase bearer token`, async () => {
     const response = await worker.fetch(request(path), {
       SUPABASE_URL: "https://project-id.supabase.co",
