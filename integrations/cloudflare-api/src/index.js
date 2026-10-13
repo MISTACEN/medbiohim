@@ -1568,7 +1568,7 @@ export default {
           version: "v1",
           build,
           phase: "D",
-          endpoints: ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence"],
+          endpoints: ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence, ai, calculators"],
         }), origin);
       }
 
