@@ -2942,3 +2942,16 @@ Next acceptance gates:
 3. Run a live student JWT/RLS smoke test; mocked identity tests are not enough.
 4. Migrate the remaining SpaceWeb-only Histology files using a controlled inventory/copy/hash check, then add a guarded Worker delivery path.
 5. Verify Vercel Preview with API mode explicitly set to Shadow; only consider Production after separate approval.
+
+
+## Latest verified Cloudflare pass — 2026-10-13
+
+- **Shadow build verified:** source \`462d1d3fdb2168b05f9b7afb437acb280c29f075\`; Build \`64f4be30-63ca-483f-8e62-c644f2a5e424\`; Worker version \`dbc06ade-10ea-4b09-b8ca-969dfb9de6c4\`.
+- **Quality gate:** 225 tests passed, 0 failed; Wrangler dry-run and test-gated Shadow deployment succeeded.
+- Migrated in the verified build: materials list/detail and source metadata; safe trainer list/detail and scoring RPC; personal notes/favorites; lecture mini-quiz read/check; published-question report submission; private material file URL and trainer-image route code.
+- The two file-delivery routes are code-complete only at the handler level. Worker runtime configuration has Supabase and auth-rate-limit bindings, but **no \`B2_*\` secrets**. Binary access therefore remains blocked until credentials and real source-file/object-key mappings are provisioned and checked.
+- Keep \`/api/v1/materials/{id}/file\` and \`/api/v1/histology/source-file\` on the existing guarded backend for now; these depend on private binary delivery and/or SpaceWeb filesystem content.
+- Keep test-attempt start/save/finish blocked until private snapshot and narrow server-side scoring RPC/grants are resolved.
+- A real authenticated student-token RLS test remains pending. No Vercel API-mode switch, Production/DNS cutover, Supabase schema/RLS mutation, or B2 secret creation occurred.
+
+Route-level detail and acceptance gates: \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\`. Do not describe the whole PHP API or media archive as fully migrated until those remaining gates are closed.
