@@ -1,6 +1,6 @@
 import { getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
-import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence, createSupabaseHomework, submitSupabaseHomework } from "./planner.js";
+import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence, createSupabaseHomework, submitSupabaseHomework, startSupabasePreparation, getSupabasePreparation, saveSupabasePreparation, finishSupabasePreparation, retrySupabasePreparationGrading, reviewSupabasePreparation } from "./planner.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
@@ -349,6 +349,29 @@ export default {
       const result = await setSupabaseAttendance(request, env, entryId, parsed.value);
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
+    }
+
+
+    if (pathname === `${API_PREFIX}/lesson-plan`) {
+      if (request.method !== "GET") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      const requestedSlug = String(url.searchParams.get("subject_slug") || "").trim();
+      const requestedSubject = String(url.searchParams.get("subject") || "").trim();
+      let slug = requestedSlug;
+      if (!slug && requestedSubject) {
+        const plansResult = await listSupabaseSubjectPlans(request, env);
+        if (!plansResult.ok) return withCors(json({ ok: false, error: { code: plansResult.code, message: plansResult.message }, requestId: crypto.randomUUID() }, plansResult.status), origin);
+        const candidates = plansResult.data?.items || plansResult.data?.plans || [];
+        const match = Array.isArray(candidates) ? candidates.find((item) => String(item?.subject || item?.name || "").trim().toLocaleLowerCase("ru") === requestedSubject.toLocaleLowerCase("ru")) : null;
+        slug = String(match?.subject_slug || match?.slug || "").trim();
+      }
+      if (!slug) return withCors(success({ lesson: null, weeks: [], plan_meta: null }), origin);
+      const planResult = await getSupabaseSubjectPlan(request, slug, env);
+      if (!planResult.ok) return withCors(json({ ok: false, error: { code: planResult.code, message: planResult.message }, requestId: crypto.randomUUID() }, planResult.status), origin);
+      const plan = planResult.data?.plan || null;
+      const weeks = Array.isArray(plan?.weeks) ? plan.weeks : [];
+      const requestedDate = String(url.searchParams.get("date") || "").trim();
+      const lesson = requestedDate ? weeks.find((item) => String(item?.date || "") === requestedDate) || null : null;
+      return withCors(success({ lesson, weeks, plan_meta: plan ? { subject: plan.subject || null, subject_slug: plan.subject_slug || slug, control: plan.control || null, semester: plan.semester || null } : null }), origin);
     }
 
     if (pathname === `${API_PREFIX}/curriculum`) {
@@ -1275,6 +1298,57 @@ export default {
     }
 
 
+
+
+    const prepStartMatch = new RegExp("^" + API_PREFIX + "/tests/([^/]+)/preparation/start$").exec(pathname);
+    if (prepStartMatch) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      let testId; try { testId = decodeURIComponent(prepStartMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid test id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const parsed = await readJsonLimited(request, 16384);
+      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      const result = await startSupabasePreparation(request, env, testId, parsed.value);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message, ...(result.details ? { details: result.details } : {}) }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data, result.status || 200), origin);
+    }
+
+    const prepActionMatch = new RegExp("^" + API_PREFIX + "/tests/preparation/([^/]+)/(finish|retry-grading|ai-review)$").exec(pathname);
+    if (prepActionMatch) {
+      let sessionId; try { sessionId = decodeURIComponent(prepActionMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid session id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const action = prepActionMatch[2];
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      let payload = {};
+      if (action !== "finish") {
+        const parsed = await readJsonLimited(request, 16384);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        payload = parsed.value;
+      }
+      const result = action === "finish" ? await finishSupabasePreparation(request, env, sessionId)
+        : action === "retry-grading" ? await retrySupabasePreparationGrading(request, env, sessionId, String(payload.question_id || ""))
+        : await reviewSupabasePreparation(request, env, sessionId);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data, result.status || 200), origin);
+    }
+
+    const prepSessionMatch = new RegExp("^" + API_PREFIX + "/tests/preparation/([^/]+)$").exec(pathname);
+    if (prepSessionMatch) {
+      let sessionId; try { sessionId = decodeURIComponent(prepSessionMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid session id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      if (request.method === "GET") {
+        const result = await getSupabasePreparation(request, env, sessionId);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "PATCH") {
+        const parsed = await readJsonLimited(request, 32768);
+        if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+        const result = await saveSupabasePreparation(request, env, sessionId, parsed.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, PATCH, OPTIONS" }), origin);
+    }
 
     if (pathname === `${API_PREFIX}/community/posts`) {
       if (request.method === "GET") {
