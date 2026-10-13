@@ -2060,3 +2060,16 @@ Production remains on the existing configuration until the HTTPS fallback origin
 - 🔒 **Production remains unchanged:** no frontend API-mode switch, Vercel Production deployment, DNS cutover, Supabase schema/RLS or credentials mutation, or Redis resource creation.
 
 See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for route-by-route contracts and acceptance blockers. Full API parity and production cutover are **not** complete.
+
+
+## 2026-10-13 — private media route implementation
+
+- 🟡 **Material file URL:** Worker route now validates published material, active subject, specialty/group access and active file record before signing a 10-minute B2 download URL.
+- 🟡 **Trainer image URL:** Worker route reads the safe public trainer view only, checks active MBH membership and returns a 302 to the signed URL to preserve the frontend's Blob contract.
+- 🟢 **B2 signer tests:** HTTPS/host validation, redirect refusal, bounded expiry, object-key validation and missing-secret behavior are covered in tests.
+- 🟡 **B2 runtime configuration:** build logs show no B2 binding in the Worker. Configure \`B2_KEY_ID\`, \`B2_APPLICATION_KEY\`, \`B2_BUCKET\` (and optionally \`B2_BUCKET_ID\`) through Cloudflare secrets/variables; do not commit credentials. Until then, file URL requests fail closed with 503.
+- 🟡 **SpaceWeb-only files:** \`/api/v1/materials/{id}/file\` and \`/api/v1/histology/source-file\` remain on the guarded PHP backend because their source files live on SpaceWeb. Do not claim all media has migrated.
+- 🟡 **Final source build:** the prior completed build passed 225/225 tests and deployed Shadow. The subsequent image-redirect fix and metadata test need a successful build against the latest commit before the final version ID is considered verified.
+- 🔒 **Production:** unchanged; no Vercel API-mode switch, DNS change, Supabase schema/RLS mutation or credential values were committed.
+
+See \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\` for the route contract and exact remaining acceptance gates.
