@@ -17,7 +17,7 @@ import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcadem
 import { listSupabaseCommunityPosts, createSupabaseCommunityPost } from "./community.js";
 import { listSupabaseTicketBanks, generateSupabaseTicket } from "./tickets.js";
 import { listCalculators, getCalculator, computeCalculator, CalculatorValidationError } from "./calculators.js";
-import { AiChatApiError, getAiProviderStatus, listAiConversations, createAiConversation, getAiConversation, deleteAiConversation } from "./ai-chat.js";
+import { AiChatApiError, getAiProviderStatus, listAiConversations, createAiConversation, getAiConversation, deleteAiConversation, sendAiMessage } from "./ai-chat.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -1051,9 +1051,20 @@ export default {
       }
       const auth = await authenticateSupabaseRequest(request, env);
       if (!auth.ok) return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
-      // The LLM execution pipeline stays fail-closed until provider credential bindings,
-      // regional routing, bounded retries and per-user rate limiting are ported and verified.
-      return withCors(json({ ok: false, error: { code: "AI_EXECUTION_NOT_MIGRATED", message: "AI message execution has not been migrated yet" }, requestId: crypto.randomUUID() }, 501), origin);
+      let conversationId;
+      try { conversationId = decodeURIComponent(aiConversationMessagesMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Ресурс ИИ-сервиса недоступен" }, requestId: crypto.randomUUID() }, 404), origin); }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      try {
+        const result = await sendAiMessage(request, env, auth.user.id, conversationId, parsed.value);
+        return withCors(success(result), origin);
+      } catch (error) {
+        return aiChatError(error, origin);
+      }
     }
 
     const aiConversationMatch = new RegExp("^" + API_PREFIX + "/ai/conversations/([^/]+)$").exec(pathname);
