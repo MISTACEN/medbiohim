@@ -59,12 +59,15 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
   const subjectSlug = String(filters.subject_slug || "").trim();
   const type = String(filters.type || "").trim();
   const queryText = String(filters.q || "").trim();
-  if ([subjectId, subjectSlug, type, queryText].some((value) => value.length > 200)) {
-    return failure(422, "VALIDATION_ERROR", "Material filters are too long");
+  if ([subjectId, subjectSlug, type, queryText].some((value) => value.length > 200) ||
+      (subjectId && !/^[A-Za-z0-9_-]+$/.test(subjectId)) ||
+      (subjectSlug && !/^[A-Za-z0-9_-]+$/.test(subjectSlug)) ||
+      (type && !/^[A-Za-z0-9_-]+$/.test(type))) {
+    return failure(422, "VALIDATION_ERROR", "Material filters are invalid or too long");
   }
 
   const materialQuery = {
-    select: "id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects!inner(name,slug,specialty_slug,is_active),content_sources(id,source_path,original_format,mime_type),modules(title),topics(title)",
+    select: "id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects!inner(name,slug,specialty_slug,is_active),modules(title),topics(title)",
     is_published: "eq.true",
     "subjects.is_active": "eq.true",
     order: "subject_id.asc,order_index.asc.nullslast,title.asc",
@@ -74,7 +77,7 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
   if (subjectSlug) materialQuery["subjects.slug"] = "eq." + subjectSlug;
   if (type) materialQuery.type = "eq." + type;
   if (queryText) {
-    const escaped = queryText.replace(/[,*()]/g, " ");
+    const escaped = queryText.replace(/[^\\p{L}\\p{N}\\s_-]/gu, " ");
     materialQuery.or = "(title.ilike.*" + escaped + "*,content_html.ilike.*" + escaped + "*)";
   }
 
@@ -83,6 +86,20 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
     items = await rows("materials", materialQuery);
   } catch {
     return failure(503, "MATERIALS_UNAVAILABLE", "Учебные материалы временно недоступны");
+  }
+
+  const sourceIds = [...new Set(items.map((item) => String(item.source_key || "")).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)))];
+  const sourcesById = new Map();
+  if (sourceIds.length) {
+    try {
+      const sourceRows = await rows("content_sources", {
+        select: "id,source_path,original_format,mime_type",
+        id: "in.(" + sourceIds.join(",") + ")",
+      });
+      for (const source of sourceRows) sourcesById.set(String(source.id), source);
+    } catch {
+      return failure(503, "MATERIALS_UNAVAILABLE", "Метаданные файлов временно недоступны");
+    }
   }
 
   const membershipsBySpecialty = new Map();
@@ -123,7 +140,7 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
     return !required || membershipsBySpecialty.get(required) === true;
   }).map((item) => {
     const subject = related(item.subjects) || {};
-    const source = related(item.content_sources) || {};
+    const source = sourcesById.get(String(item.source_key || "")) || {};
     const module = related(item.modules) || {};
     const topic = related(item.topics) || {};
     return {
