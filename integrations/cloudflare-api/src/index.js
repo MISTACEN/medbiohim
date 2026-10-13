@@ -1046,6 +1046,11 @@ export default {
 
     const aiConversationMessagesMatch = new RegExp("^" + API_PREFIX + "/ai/conversations/([^/]+)/messages$").exec(pathname);
     if (aiConversationMessagesMatch) {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
       // The LLM execution pipeline stays fail-closed until provider credential bindings,
       // regional routing, bounded retries and per-user rate limiting are ported and verified.
       return withCors(json({ ok: false, error: { code: "AI_EXECUTION_NOT_MIGRATED", message: "AI message execution has not been migrated yet" }, requestId: crypto.randomUUID() }, 501), origin);
