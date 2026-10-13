@@ -362,3 +362,32 @@ Static JavaScript syntax compilation of the changed Worker source/test files ret
 - `GET /api/v1/tests/{uuid}?view=bank&group_id=...` returns the full published answer-bank projection for the explicit bank screen only. The frontend's `getTestBank()` retains the existing PHP-compatible `/tests/{id}` path and adds a query flag; Cloudflare dispatches this view separately. The direct `/tests/{id}/bank` route is an alias.
 - `GET /api/v1/tests` now passes an optional selected `group_id` to the subject resolver. The selected group must be an active membership, and subject visibility is filtered by specialty and course where the selected group provides a course value.
 - No frontend API base URL switch or Worker deployment occurred; PHP remains the live API. Static JavaScript parse checks are not a substitute for `npm test` or authenticated HTTP smoke.
+
+
+---
+
+## Verified Shadow migration pass — 2026-10-13
+
+**Verification snapshot:** source commit \`236b12f4261e4aa523c894a1d3f131c123bc1d35\`; Cloudflare Build \`5c5c4227-9002-4116-8c7c-912f9f5a3bd0\`; Worker version \`d77cb3da-9ff3-46cf-8f3f-b991f9ad7709\`. Build outcome: success. \`npm test\`: **176 passed, 0 failed**. Wrangler dry-run and the gated Shadow deployment both succeeded.
+
+### Routes now implemented in the isolated Worker
+
+| Route | Contract and access control | State |
+|---|---|---|
+| \`GET /api/v1/subject-materials\` | Published materials in active subjects; \`subject_id\`, \`subject_slug\`, \`type\`, \`q\`; caller JWT + anon key; MBH specialty/group check for Histology. | Shadow deployed; unit/route-guard tests pass |
+| \`GET /api/v1/materials\` | Frontend camelCase/snake_case subject filters and text search; PHP-compatible \`{items, source}\` response; published rows only. | Shadow deployed; contract tests pass |
+| \`GET /api/v1/materials/{id}\` | Exact material ID and published-row filter; detail envelope \`{item, source}\`; missing/hidden material maps to 404. | Shadow deployed; contract tests pass |
+| \`GET /api/v1/content-sources/{id}\` | Source metadata only; linked-material/source-path checks and active MBH membership enforcement; failures to establish scope fail closed. | Shadow deployed; security tests pass |
+| \`GET /api/v1/trainers/feed\` | Reads only \`trainer_feed_cards_public\`, never the answer-bearing base table; published list, bounded pagination, specialty filtering, defensive removal of grading fields. | Shadow deployed; security tests pass |
+| \`GET /api/v1/trainers/feed/{id}\` | Published safe-view detail; repeats explicit active MBH membership check for Histology/MBH rows. | Shadow deployed; security tests pass |
+| \`POST /api/v1/trainers/feed/answer\` | Validates a bounded JSON body and calls existing \`submit_trainer_feed_answer\` RPC with caller JWT; no direct client-originated table writes or client-supplied correctness score. | Shadow deployed; RPC-contract/error-mapping tests pass |
+
+The materials source registry contains both UUID and text identifiers (for example \`histology-test-derived-cytology\`). Material source lookup now supports safe text keys in bounded batches. Search sanitization preserves Cyrillic/Unicode letters and numbers. Membership checks require \`groups.is_active = true\`; missing/ambiguous membership data is not treated as active access.
+
+### Acceptance still outstanding
+
+- **Binary/media delivery is not migrated.** Keep the following routes on the existing guarded backend until private delivery is deliberately designed and verified: \`GET /api/v1/materials/{id}/file-url\`, \`GET /api/v1/materials/{id}/file\`, \`GET /api/v1/trainers/feed/{id}/image\`, and \`GET /api/v1/histology/source-file\`. The Worker has no private B2/R2 signing binding or access to SpaceWeb's local filesystem. Responses deliberately use \`download_url: null\`; do not manufacture URLs or add an HTTP fallback.
+- A **valid student's authenticated live RLS smoke test** has not been performed in this pass because no student bearer token was supplied. Passing mocked caller-JWT tests does not substitute for that runtime acceptance.
+- The frontend API mode, Vercel Preview/Production, DNS, Supabase schema/RLS, credentials and Redis resources remain unchanged. The Worker remains isolated as Shadow; this is not a production cutover or a claim of full API parity.
+
+Historical entries earlier in this file may describe earlier build counts or pending deployment states. For the current Worker, use the verified snapshot above; preserve the binary-delivery and live-user acceptance blockers until independently resolved.
