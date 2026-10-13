@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { listSupabaseSubjectMaterials } from "../src/materials.js";
+import worker from "../src/index.js";
 
 const env = {
   SUPABASE_URL: "https://project-id.supabase.co",
   SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
 };
-function request(authorization = "Bearer valid-user-token") {
-  return new Request("https://api-shadow.example.test/api/v1/subject-materials", {
+function request(authorization = "Bearer valid-user-token", path = "/api/v1/subject-materials") {
+  return new Request("https://api-shadow.example.test" + path, {
     headers: authorization ? { authorization } : {},
   });
 }
@@ -46,7 +47,7 @@ test("subject materials use caller JWT, preserve filters, and return PHP-compati
     assert.fail("unexpected REST endpoint: " + parsed.pathname);
   });
   assert.equal(result.ok, true);
-  assert.equal(result.data.source, "supabase_rest");
+  assert.equal(result.data.source, "supabase");
   assert.equal(result.data.items.length, 1);
   assert.equal(result.data.items[0].subject_slug, "chemistry");
   assert.equal(result.data.items[0].module_title, "Модуль 1");
@@ -127,4 +128,78 @@ test("subject materials resolve UUID source metadata without fabricating downloa
   assert.equal(result.data.items[0].source.source_path, "content/chemistry/example.pdf");
   assert.equal(result.data.items[0].source.mime_type, "application/pdf");
   assert.equal(result.data.items[0].source.download_url, null);
+});
+
+
+test("GET /api/v1/materials accepts frontend camelCase filters and returns the standard envelope", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    const parsed = new URL(String(url));
+    calls.push(parsed);
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/materials") {
+      assert.equal(parsed.searchParams.get("subjects.slug"), "eq.chemistry");
+      assert.match(parsed.searchParams.get("or"), /Основы/);
+      return response([subjectRow()]);
+    }
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
+  };
+  try {
+    const result = await worker.fetch(request("Bearer valid-user-token", "/api/v1/materials?subjectSlug=chemistry&q=Основы"), env);
+    assert.equal(result.status, 200);
+    const body = await result.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.source, "supabase");
+    assert.equal(body.data.items.length, 1);
+    assert.equal(body.data.items[0].subject_slug, "chemistry");
+    assert.equal(calls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("GET /api/v1/materials/:id uses an exact ID filter and returns the PHP-compatible detail shape", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    calls.push(parsed);
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/materials") {
+      assert.equal(parsed.searchParams.get("id"), "eq.material-1");
+      return response([subjectRow()]);
+    }
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
+  };
+  try {
+    const result = await worker.fetch(request("Bearer valid-user-token", "/api/v1/materials/material-1"), env);
+    assert.equal(result.status, 200);
+    const body = await result.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.item.id, "material-1");
+    assert.equal(body.data.item.source, undefined);
+    assert.equal(body.data.source.key, "source-1");
+    assert.equal(body.data.source.download_url, null);
+    assert.equal(calls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("GET /api/v1/materials/:id returns 404 when the material is unpublished or absent", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/materials") return response([]);
+    assert.fail("unexpected REST endpoint: " + parsed.pathname);
+  };
+  try {
+    const result = await worker.fetch(request("Bearer valid-user-token", "/api/v1/materials/missing"), env);
+    assert.equal(result.status, 404);
+    assert.equal((await result.json()).error.code, "NOT_FOUND");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
