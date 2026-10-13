@@ -57,11 +57,13 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
 
   const subjectId = String(filters.subject_id || "").trim();
   const subjectSlug = String(filters.subject_slug || "").trim();
+  const materialId = String(filters.material_id || "").trim();
   const type = String(filters.type || "").trim();
   const queryText = String(filters.q || "").trim();
-  if ([subjectId, subjectSlug, type, queryText].some((value) => value.length > 200) ||
+  if ([subjectId, subjectSlug, materialId, type, queryText].some((value) => value.length > 200) ||
       (subjectId && !/^[A-Za-z0-9_-]+$/.test(subjectId)) ||
       (subjectSlug && !/^[A-Za-z0-9_-]+$/.test(subjectSlug)) ||
+      (materialId && !/^[A-Za-z0-9_-]+$/.test(materialId)) ||
       (type && !/^[A-Za-z0-9_-]+$/.test(type))) {
     return failure(422, "VALIDATION_ERROR", "Material filters are invalid or too long");
   }
@@ -74,6 +76,7 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
     limit: "500",
   };
   if (subjectId) materialQuery.subject_id = "eq." + subjectId;
+  if (materialId) materialQuery.id = "eq." + materialId;
   if (subjectSlug) materialQuery["subjects.slug"] = "eq." + subjectSlug;
   if (type) materialQuery.type = "eq." + type;
   if (queryText) {
@@ -178,5 +181,5 @@ export async function listSupabaseSubjectMaterials(request, env, filters = {}, f
     };
   });
 
-  return { ok: true, data: { items: visible, source: "supabase_rest" } };
+  return { ok: true, data: { items: visible, source: "supabase" } };
 }
