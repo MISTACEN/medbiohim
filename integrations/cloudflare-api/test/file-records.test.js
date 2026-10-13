@@ -20,7 +20,7 @@ function response(value, status = 200) {
 }
 
 test("file metadata returns only safe fields after owner access check", async () => {
-  const result = await getSupabaseFileRecord(request(), env, "file-1", async (url, init) => {
+  const result = await getSupabaseFileRecord(request(), { SUPABASE_URL: env.SUPABASE_URL, SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY }, "file-1", async (url, init) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
     if (parsed.pathname === "/rest/v1/files") {
