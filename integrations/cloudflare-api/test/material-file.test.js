@@ -87,7 +87,7 @@ test("material file URL fails closed when B2 signing secrets are not configured"
 
 test("material file URL rejects invalid IDs and never accepts user-supplied object keys", async () => {
   let calls = 0;
-  const result = await getSupabaseMaterialFileUrl(request(), env, "../secret", async () => { calls += 1; return response({ id: "user-1" }); });
+  const result = await getSupabaseMaterialFileUrl(request(), env, "../secret", async (url) => { calls += 1; assert.equal(new URL(String(url)).pathname, "/auth/v1/user"); return response({ id: "user-1" }); });
   assert.equal(result.status, 422);
-  assert.equal(calls, 0);
+  assert.equal(calls, 1);
 });
