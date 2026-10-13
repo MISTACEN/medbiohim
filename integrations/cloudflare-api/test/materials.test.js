@@ -158,7 +158,7 @@ test("GET /api/v1/materials accepts frontend camelCase filters and returns the s
     assert.equal(body.data.source, "supabase");
     assert.equal(body.data.items.length, 1);
     assert.equal(body.data.items[0].subject_slug, "chemistry");
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -187,7 +187,7 @@ test("GET /api/v1/materials/:id uses an exact ID filter and returns the PHP-comp
     assert.equal(body.data.item.source, undefined);
     assert.equal(body.data.source.key, "source-1");
     assert.equal(body.data.source.download_url, null);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
   } finally {
     globalThis.fetch = originalFetch;
   }
