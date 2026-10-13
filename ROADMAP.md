@@ -2923,3 +2923,22 @@ Remaining blockers are intentionally not marked complete:
 3. Vercel frontend API-mode change, Preview verification and Production cutover remain separate gates. No production routing, DNS, Supabase schema/RLS, credential, or Redis changes were made in this pass.
 
 Source-of-truth details and route-by-route status are in \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\`. This pass is a verified increment, not full PHP/Worker API parity.
+
+
+## Private media delivery — next Cloudflare increment (2026-10-13)
+
+The Worker source now contains a shared private B2 URL signer and scoped route handlers:
+- \`GET /api/v1/materials/{id}/file-url\`: checks published material, active subject, specialty and active group membership before returning a 10-minute B2 URL.
+- \`GET /api/v1/trainers/feed/{id}/image\`: reads only the safe published trainer view, checks MBH membership and active file mapping, then returns a 302 redirect to the short-lived URL so the existing frontend can fetch the image as a Blob.
+- B2 URL construction uses HTTPS-only Backblaze host validation, refuses redirects, clamps URL lifetime and never accepts an object key from the user.
+
+**Not yet runtime-ready:** the Cloudflare build output lists no B2 secrets/bindings. Configure \`B2_KEY_ID\`, \`B2_APPLICATION_KEY\`, and \`B2_BUCKET\` as Worker secrets/variables, with optional \`B2_BUCKET_ID\`; do not put secret values in the repository. Without the required values, endpoints fail closed with a 503. The existing SpaceWeb-only Histology paths are still not available from Workers; \`/materials/{id}/file\` and \`/histology/source-file\` remain on the guarded PHP backend.
+
+The previous build for the material-file and trainer-image handlers passed **225/225 tests**, Wrangler dry-run and Shadow deployment. A later small fix changed the image endpoint to preserve its existing 302/binary-fetch contract and added endpoint metadata; final build verification must match the latest commit before claiming that fix deployed.
+
+Next acceptance gates:
+1. Verify the latest source/build/test result and Worker version.
+2. Securely configure B2 bindings, then test a real authorized file URL and confirm expiry/denial behavior.
+3. Run a live student JWT/RLS smoke test; mocked identity tests are not enough.
+4. Migrate the remaining SpaceWeb-only Histology files using a controlled inventory/copy/hash check, then add a guarded Worker delivery path.
+5. Verify Vercel Preview with API mode explicitly set to Shadow; only consider Production after separate approval.
