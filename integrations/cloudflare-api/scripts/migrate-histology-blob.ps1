@@ -14,7 +14,7 @@ $migrationScript = Join-Path $PSScriptRoot "migrate-histology-blob.mjs"
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("medbiohim-histology-" + [guid]::NewGuid().ToString("N"))
 $extractRoot = Join-Path $tempRoot "extract"
 $manifestPath = Join-Path (Get-Location).Path "medbiohim-histology-blob-manifest.json"
-$tokenWasSetByScript = $false
+$originalBlobToken = $env:UPSTASH_BLOB_TOKEN
 
 try {
   New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
@@ -31,7 +31,7 @@ try {
     $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try {
       $env:UPSTASH_BLOB_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-      $tokenWasSetByScript = $true
+      
     } finally {
       [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
       $secure.Dispose()
@@ -53,8 +53,7 @@ try {
     Pop-Location
   }
 } finally {
-  $env:UPSTASH_BLOB_TOKEN = $null
-  if ($tokenWasSetByScript) { Remove-Item Env:UPSTASH_BLOB_TOKEN -ErrorAction SilentlyContinue }
+  $env:UPSTASH_BLOB_TOKEN = $originalBlobToken
   if (Test-Path -LiteralPath $tempRoot) {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force
   }
