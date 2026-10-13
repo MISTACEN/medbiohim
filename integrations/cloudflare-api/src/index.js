@@ -7,6 +7,7 @@ import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseMaterialFileUrl } from "./material-file.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
+import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz } from "./mini-quiz.js";
 import { submitSupabaseQuestionReport } from "./question-reports.js";
@@ -487,6 +488,21 @@ export default {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
       return withCors(success(result.data, result.status || 201), origin);
+    }
+
+    const trainerImageMatch = new RegExp("^" + API_PREFIX + "/trainers/feed/([^/]+)/image$").exec(pathname);
+    if (trainerImageMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let cardId;
+      try { cardId = decodeURIComponent(trainerImageMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid trainer card id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await getSupabaseTrainerImageUrl(request, env, cardId);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
     }
 
     const trainerCardMatch = new RegExp("^" + API_PREFIX + "/trainers/feed/([^/]+)$").exec(pathname);
