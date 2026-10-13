@@ -1,9 +1,10 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 
 const TIMEOUT_MS = 5000;
-// Writes stay disabled until answer snapshots and scoring are protected by a private
-// storage/RPC boundary; authenticated clients must not be able to read answer keys.
-const ATTEMPT_WRITES_PRIVATE_STORAGE_READY = false;
+// The live Supabase migration, SECURITY DEFINER RPCs, authenticated-only EXECUTE
+// grants, RLS ownership policies, and column-level denial for question_snapshot
+// were verified read-only on 2026-10-13 before enabling these RPC-backed writes.
+const ATTEMPT_WRITES_PRIVATE_STORAGE_READY = true;
 const ATTEMPT_WRITES_DISABLED = () => fail(
   503,
   "TEST_ATTEMPT_SECURITY_NOT_READY",
