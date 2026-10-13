@@ -100,3 +100,35 @@ The legacy file's Supabase URL was checked to match project ref `gnobvyjywtqbdfe
 4. Port or restore the three 501 route contracts (`histology/source-materials`, `trainings`, `settings/account`) only after comparing the PHP contract and current UI caller.
 5. Enable/configure Cloudflare R2 only if that storage is intentionally selected. Otherwise wire the existing private Backblaze B2 configuration with server-only secrets and a verified signed-download path.
 6. Repeat the browser smoke test and update this report only when live requests return verified expected responses.
+
+
+## Follow-up verification — 2026-10-14
+
+### Worker build repaired
+
+- Fixed the Redis REST cache test to inspect the plain-object `fetch` headers correctly and moved assertions outside the fail-open cache wrapper, so a test assertion cannot be mistaken for an upstream Redis outage.
+- Main commit: `0b276721a20d80d623f414421dd83e5ea25dc4d8` (`test: read Redis auth from fetch init headers`).
+- Cloudflare Build command completed successfully: **265 tests passed, 0 failed**; Wrangler dry-run succeeded; the Worker deploy command also succeeded.
+- Shadow Worker `medbiohim-api-shadow` is deployed at 100% on version `1354ec51-762a-4434-b557-26e33af9d602`. This is still the isolated Shadow Worker, not a production API cutover.
+- The user-uploaded old Worker archive independently passes **58 tests, 0 failed**. It remains a comparison/reference archive, not a replacement for newer `main`.
+
+### Current storage and secret inventory (names/status only)
+
+- Supabase project `gnobvyjywtqbdfeejxmf` is active in `eu-west-1`. Its Storage bucket `histology` is public with a 100 MiB per-file limit; audit its policies and object inventory before reusing it for any content that should be private.
+- Upstash Redis `medbiohimcache` is active in `eu-west-1`; existing keys were not changed. The Worker contains a short-lived metadata-only cache; it explicitly excludes file bytes, raw tokens, and answer keys.
+- Private Upstash Blob bucket `medbiohim-files` exists but is currently empty. Do not claim that histology images were copied there.
+- Cloudflare Shadow has server-side AI secret bindings for `GROQ_API_KEY`, `MISTRAL_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, and `GIGACHAT_CREDENTIALS`, plus B2 and Supabase credentials. This confirms the binding names exist, not that every provider's live API key is valid or that a paid/external inference succeeds.
+- Shadow Worker is missing `UPSTASH_REDIS_REST_TOKEN` and `UPSTASH_BLOB_TOKEN`. A secure credential transfer through the connector was blocked, so these must be added directly in Cloudflare Dashboard → Workers & Pages → `medbiohim-api-shadow` → Settings → Variables and Secrets. Do not commit them or place them in `NEXT_PUBLIC_*` variables.
+
+### Compatibility gaps still open
+
+The latest frontend's settings client calls `GET /api/v1/settings/account`, but the current Worker `src/index.js` does not register that route. The uploaded browser log also contains 501 responses for `GET /api/v1/trainings` and `GET /api/v1/histology/source-materials?folder=Учебники`; neither route is implemented in the current Worker. They must be migrated from the legacy backend contract and tested before any production routing change.
+
+The dominant media failure remains `GET /api/v1/trainers/feed/{id}/image` (236 HTTP 503 responses in the uploaded log). The Worker has a staged private Blob → Backblaze B2 fallback, but neither remote object existence nor an authenticated production-like image read has yet been verified. Fixing build and deployment alone does not close the media incident.
+
+### Next execution order
+
+1. Add the missing legacy-compatible account-settings route and tests; then port the other legacy endpoints with their original response shape and authorization rules.
+2. Add Redis and private Blob secrets in Shadow; verify Redis GET/SET with a harmless test key and never cache media bytes.
+3. Verify a real published MBH card's image object exists in B2 or Blob, then test signed URL issuance with an authenticated user who has MBH membership.
+4. Keep PHP/SpaceWeb as production until those checks and frontend API-parity smoke tests pass. No production domain, Vercel environment, DNS, or Supabase schema was changed during this pass.
