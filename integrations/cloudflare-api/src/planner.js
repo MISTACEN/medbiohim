@@ -426,3 +426,306 @@ export async function submitSupabaseHomework(request, env, homeworkId, input, fe
     return fail(503, "DB_UNAVAILABLE", "Не удалось отправить задание. Попробуйте позже");
   }
 }
+
+
+function parsePreparationIds(value) {
+  if (Array.isArray(value)) return value.map(String).filter(uuid);
+  if (typeof value !== "string") return [];
+  const raw = value.trim();
+  if (!raw || raw === "{}") return [];
+  if (raw.startsWith("[")) { try { const data = JSON.parse(raw); return Array.isArray(data) ? data.map(String).filter(uuid) : []; } catch {} }
+  const inner = raw.startsWith("{") && raw.endsWith("}") ? raw.slice(1, -1) : raw;
+  return inner ? inner.split(",").map((v) => v.trim().replace(/^"|"$/g, "")).filter(uuid) : [];
+}
+function parsePreparationJson(value, fallback) {
+  if (value == null) return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") { try { return JSON.parse(value); } catch {} }
+  return fallback;
+}
+function normalizedAnswer(value) {
+  return String(value ?? "").normalize("NFKC").trim().toLocaleLowerCase("ru")
+    .replace(/ё/g, "е").replace(/[.,;:!?{}"'()]/g, "").replace(/\s+/g, " ");
+}
+function gradePreparationAnswer(snapshot, given) {
+  const answer = String(snapshot?.answer ?? "").trim();
+  const options = parsePreparationJson(snapshot?.options, []);
+  const correctOptions = Array.isArray(options)
+    ? options.filter((option) => option && typeof option === "object" && option.correct === true).map((option) => normalizedAnswer(option.label))
+    : [];
+  const normalizedGiven = normalizedAnswer(given);
+  if (!answer && correctOptions.length === 0) {
+    return { is_correct: null, score: null, grading_status: "pending", grading_source: "rule_engine", confidence: null, feedback: "Для этого ответа нужна ручная или AI-проверка.", model: null, graded_at: null };
+  }
+  let correct = false;
+  if (correctOptions.length) {
+    const parsed = parsePreparationJson(given, null);
+    let supplied = Array.isArray(parsed) ? parsed.map(normalizedAnswer).filter(Boolean) : normalizedGiven ? normalizedGiven.split(/\s*(?:,|;|\|)\s*/).filter(Boolean) : [];
+    supplied = [...new Set(supplied)].sort();
+    const expected = [...new Set(correctOptions)].sort();
+    correct = supplied.length === expected.length && supplied.every((v, i) => v === expected[i]);
+  } else correct = normalizedGiven === normalizedAnswer(answer);
+  const now = new Date().toISOString();
+  return {
+    is_correct: correct, score: correct ? 100 : 0, grading_status: "deterministic",
+    grading_source: "rule_engine", confidence: 0.99,
+    feedback: correct ? "Ответ совпадает с эталоном." : "Ответ отличается от эталона; сравните его с правильным ответом после завершения теста.",
+    model: null, graded_at: now,
+  };
+}
+function publicPreparationQuestion(snapshot, completed) {
+  const opts = parsePreparationJson(snapshot?.options, []);
+  let correctCount = 0;
+  const options = Array.isArray(opts) ? opts.map((option) => {
+    if (option && typeof option === "object") {
+      if (option.correct === true) correctCount++;
+      const out = { label: String(option.label ?? "") };
+      if (completed) out.correct = option.correct === true;
+      return out;
+    }
+    return { label: String(option) };
+  }) : [];
+  const out = {
+    id: String(snapshot?.id || ""), body: String(snapshot?.text ?? snapshot?.body ?? ""),
+    text: String(snapshot?.text ?? snapshot?.body ?? ""), options, type: String(snapshot?.type || "open"),
+    subject_id: snapshot?.subject_id ?? null, module_id: snapshot?.module_id ?? null,
+    topic_id: snapshot?.topic_id ?? null, module_name: snapshot?.module_name ?? null,
+    topic_name: snapshot?.topic_name ?? null, allow_multiple: correctCount > 1,
+  };
+  if (completed) out.answer = snapshot?.answer ?? null;
+  return out;
+}
+async function getPreparationSession(c, sessionId) {
+  if (!uuid(sessionId)) return null;
+  const rows = await c.rows("test_preparation_sessions", {
+    select: "*", id: "eq." + sessionId, user_id: "eq." + c.identity.id, limit: "1",
+  });
+  return rows[0] || null;
+}
+
+export async function startSupabasePreparation(request, env, testId, input = {}, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  if (!uuid(testId)) return fail(422, "VALIDATION_ERROR", "Некорректный id теста");
+  const body = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const requestedMode = String(body.mode || "full");
+  const mode = requestedMode === "sequential" ? "sequential" : requestedMode === "count" ? "count" : "full";
+  const questionLimit = mode === "count" ? Math.max(1, Math.min(200, Number.parseInt(String(body.question_limit ?? 10), 10) || 10)) : null;
+  try {
+    const tests = await c.rows("tests", { select: "id,title,subject_id,is_published", id: "eq." + testId, is_published: "eq.true", limit: "1" });
+    if (!tests[0]) return fail(404, "NOT_FOUND", "Тест не найден или не опубликован");
+    const groupResult = await groupFor(c.rows, c.identity.id, String(body.group_id || ""));
+    if (!groupResult.ok) return groupResult;
+    const groupId = groupResult.group.group_id;
+    const links = await c.rows("test_questions", { select: "question_id,order_index", test_id: "eq." + testId, order: "order_index.asc,question_id.asc", limit: "1000" });
+    let ids = links.map((row) => String(row.question_id || "")).filter(uuid);
+    if (mode !== "sequential") {
+      for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    }
+    if (questionLimit != null) ids = ids.slice(0, questionLimit);
+    if (!ids.length) return fail(422, "NO_QUESTIONS", "В тесте нет опубликованных вопросов");
+    const questions = await c.rows("questions", { select: "id,subject_id,module_id,topic_id,type,text,answer,options", id: "in.(" + ids.join(",") + ")", is_published: "eq.true", archived_at: "is.null", limit: "1000" });
+    const questionById = new Map(questions.map((q) => [String(q.id), q]));
+    ids = ids.filter((id) => questionById.has(id));
+    if (!ids.length) return fail(422, "NO_QUESTIONS", "В тесте нет доступных опубликованных вопросов");
+    const records = ids.map((id) => questionById.get(id));
+    const moduleIds = [...new Set(records.map((q) => String(q.module_id || "")).filter(uuid))];
+    const topicIds = [...new Set(records.map((q) => String(q.topic_id || "")).filter(uuid))];
+    const [modules, topics] = await Promise.all([
+      moduleIds.length ? c.rows("modules", { select: "id,title", id: "in.(" + moduleIds.join(",") + ")", limit: "500" }) : [],
+      topicIds.length ? c.rows("topics", { select: "id,title", id: "in.(" + topicIds.join(",") + ")", limit: "500" }) : [],
+    ]);
+    const moduleNames = new Map(modules.map((row) => [String(row.id), row.title]));
+    const topicNames = new Map(topics.map((row) => [String(row.id), row.title]));
+    const snapshot = ids.map((id) => {
+      const q = questionById.get(id);
+      return { id, subject_id: q.subject_id ?? null, module_id: q.module_id ?? null, topic_id: q.topic_id ?? null,
+        type: q.type ?? "open", text: q.text ?? "", answer: q.answer ?? null, options: parsePreparationJson(q.options, []),
+        module_name: moduleNames.get(String(q.module_id || "")) ?? null, topic_name: topicNames.get(String(q.topic_id || "")) ?? null };
+    });
+    const existingRows = await c.rows("test_preparation_sessions", { select: "*", user_id: "eq." + c.identity.id,
+      test_id: "eq." + testId, status: "eq.in_progress", order: "started_at.desc.nullslast", limit: "1" });
+    const existing = existingRows[0];
+    if (existing && existing.group_id && String(existing.group_id) !== groupId) return fail(409, "CONTEXT_CHANGED", "Сессия подготовки относится к другой учебной группе");
+    if (existing && String(existing.mode || "") === mode) {
+      const safe = { ...existing, question_ids: parsePreparationIds(existing.question_ids) };
+      delete safe.question_snapshot;
+      return { ok: true, data: { session: safe, resumed: true } };
+    }
+    if (existing?.id) await c.rows("test_preparation_sessions", { id: "eq." + String(existing.id), user_id: "eq." + c.identity.id }, {
+      method: "PATCH", body: JSON.stringify({ status: "abandoned", last_saved_at: new Date().toISOString() }),
+    });
+    const now = new Date().toISOString();
+    const created = await c.rows("test_preparation_sessions", { select: "*" }, { method: "POST", body: JSON.stringify({
+      user_id: c.identity.id, test_id: testId, mode, question_limit: questionLimit, question_ids: ids,
+      current_index: 0, status: "in_progress", started_at: now, last_saved_at: now, group_id: groupId, question_snapshot: snapshot,
+    }) });
+    if (!created[0]) return fail(503, "PREPARATION_ERROR", "Не удалось создать сессию подготовки");
+    const safe = { ...created[0], question_ids: parsePreparationIds(created[0].question_ids) };
+    delete safe.question_snapshot;
+    return { ok: true, status: 201, data: { session: safe, question_ids: ids } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав на этот тест");
+    return fail(503, "PREPARATION_ERROR", "Подготовка к тесту временно недоступна");
+  }
+}
+
+export async function getSupabasePreparation(request, env, sessionId, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  try {
+    const session = await getPreparationSession(c, sessionId);
+    if (!session) return fail(404, "NOT_FOUND", "Сессия подготовки не найдена");
+    const testRows = await c.rows("tests", { select: "title", id: "eq." + String(session.test_id), limit: "1" });
+    const ids = parsePreparationIds(session.question_ids);
+    const snapshot = parsePreparationJson(session.question_snapshot, []);
+    const byId = new Map((Array.isArray(snapshot) ? snapshot : []).filter((q) => q && q.id).map((q) => [String(q.id), q]));
+    const answers = await c.rows("test_preparation_results", { select: "question_id,answer_text,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at,is_correct,score,answered_at",
+      session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id, limit: "1000" });
+    const completed = String(session.status) === "completed";
+    const questions = ids.map((id) => byId.get(id)).filter(Boolean).map((q) => publicPreparationQuestion(q, completed));
+    const safe = { ...session, question_ids: ids, test_title: testRows[0]?.title ?? null };
+    delete safe.question_snapshot;
+    return { ok: true, data: { session: safe, questions, answers } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    return fail(503, "PREPARATION_ERROR", "Подготовка к тесту временно недоступна");
+  }
+}
+
+export async function saveSupabasePreparation(request, env, sessionId, input, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  const body = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  try {
+    const session = await getPreparationSession(c, sessionId);
+    if (!session || String(session.status) !== "in_progress") return fail(404, "NOT_FOUND", "Активная сессия не найдена");
+    const ids = parsePreparationIds(session.question_ids);
+    const current = Math.max(0, Math.min(ids.length ? ids.length - 1 : 0, Number.parseInt(String(body.current_index ?? session.current_index ?? 0), 10) || 0));
+    let grading = null;
+    if (body.question_id != null) {
+      const questionId = String(body.question_id);
+      if (!uuid(questionId) || !ids.includes(questionId)) return fail(422, "QUESTION_NOT_IN_SESSION", "Вопрос не входит в эту сессию");
+      const snapshot = parsePreparationJson(session.question_snapshot, []);
+      const q = Array.isArray(snapshot) ? snapshot.find((item) => String(item?.id) === questionId) : null;
+      if (!q) return fail(422, "QUESTION_NOT_IN_SESSION", "Вопрос не входит в эту сессию");
+      const answerText = body.answer_text == null ? null : String(body.answer_text);
+      const grade = gradePreparationAnswer(q, answerText);
+      const now = new Date().toISOString();
+      const saved = await c.rows("test_preparation_results", { on_conflict: "session_id,question_id", select: "*" }, {
+        method: "POST", headers: { prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify({ session_id: String(session.id), user_id: c.identity.id, test_id: String(session.test_id),
+          question_id: questionId, answer_text: answerText, is_correct: grade.is_correct, score: grade.score,
+          answer_snapshot: { type: q.type || "open", answer: q.answer ?? null, options: q.options ?? [] },
+          grading_status: grade.grading_status, grading_source: grade.grading_source, grading_confidence: grade.confidence,
+          grading_feedback: grade.feedback, grading_model: grade.model, graded_at: grade.graded_at, answered_at: now }),
+      });
+      if (!saved[0]) return fail(503, "SAVE_ERROR", "Не удалось сохранить ответ");
+      grading = { ...grade, question_id: questionId };
+    }
+    const updated = await c.rows("test_preparation_sessions", { id: "eq." + String(session.id), user_id: "eq." + c.identity.id, select: "*" }, {
+      method: "PATCH", body: JSON.stringify({ current_index: current, last_saved_at: new Date().toISOString() }),
+    });
+    const safe = updated[0] || { ...session, current_index: current };
+    delete safe.question_snapshot;
+    safe.question_ids = ids;
+    return { ok: true, data: { session: safe, grading } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав для сохранения ответа");
+    return fail(503, "SAVE_ERROR", "Не удалось сохранить ответ");
+  }
+}
+
+export async function finishSupabasePreparation(request, env, sessionId, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  try {
+    const session = await getPreparationSession(c, sessionId);
+    if (!session || String(session.status) !== "in_progress") return fail(404, "INVALID_TRANSITION", "Сессию можно завершить только из состояния in_progress");
+    const ids = parsePreparationIds(session.question_ids);
+    const snapshot = parsePreparationJson(session.question_snapshot, []);
+    const byId = new Map((Array.isArray(snapshot) ? snapshot : []).filter((q) => q && q.id).map((q) => [String(q.id), q]));
+    const results = await c.rows("test_preparation_results", { select: "question_id,answer_text,is_correct,score,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at",
+      session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id, limit: "1000" });
+    const byQuestion = new Map(results.map((r) => [String(r.question_id), r]));
+    let correct = 0, unresolved = 0;
+    const topics = new Map();
+    for (const id of ids) {
+      const q = byId.get(id) || {}, row = byQuestion.get(id);
+      if (row && row.is_correct === true) correct++;
+      if (row && ["pending", "error"].includes(String(row.grading_status || ""))) unresolved++;
+      const topicId = String(q.topic_id || "unknown");
+      if (!topics.has(topicId)) topics.set(topicId, { topic_id: q.topic_id ?? null, topic_name: String(q.topic_name || "Без темы"), total: 0, correct: 0 });
+      const topic = topics.get(topicId); topic.total++; if (row && row.is_correct === true) topic.correct++;
+    }
+    for (const topic of topics.values()) topic.percent = topic.total ? Math.round(topic.correct / topic.total * 10000) / 100 : 0;
+    const total = ids.length, answered = results.length, now = new Date().toISOString();
+    const updated = await c.rows("test_preparation_sessions", { id: "eq." + String(session.id), user_id: "eq." + c.identity.id, select: "*" }, {
+      method: "PATCH", body: JSON.stringify({ status: "completed", completed_at: now, last_saved_at: now, current_index: total }),
+    });
+    const safe = updated[0] || { ...session, status: "completed", completed_at: now, current_index: total };
+    safe.question_ids = ids; delete safe.question_snapshot;
+    return { ok: true, data: { session: safe,
+      stats: { total, answered, correct, wrong: Math.max(0, answered - correct - unresolved), unresolved: Math.min(answered, unresolved),
+        unanswered: Math.max(0, total - answered), percent: total ? Math.round(correct / total * 10000) / 100 : 0, topics: [...topics.values()] },
+      errors: results } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    return fail(503, "FINISH_ERROR", "Не удалось завершить подготовку");
+  }
+}
+
+export async function retrySupabasePreparationGrading(request, env, sessionId, questionId = "", fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  try {
+    const session = await getPreparationSession(c, sessionId);
+    if (!session) return fail(404, "NOT_FOUND", "Сессия подготовки не найдена");
+    const ids = parsePreparationIds(session.question_ids);
+    if (questionId && !ids.includes(questionId)) return fail(422, "QUESTION_NOT_IN_SESSION", "Вопрос не входит в эту сессию");
+    const snapshot = parsePreparationJson(session.question_snapshot, []);
+    const byId = new Map((Array.isArray(snapshot) ? snapshot : []).filter((q) => q && q.id).map((q) => [String(q.id), q]));
+    const params = { select: "question_id,answer_text", session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id, grading_status: "in.(pending,error)", limit: "1000" };
+    if (questionId) params.question_id = "eq." + questionId;
+    const pending = await c.rows("test_preparation_results", params);
+    const items = [];
+    for (const row of pending) {
+      const q = byId.get(String(row.question_id));
+      if (!q) continue;
+      const grade = gradePreparationAnswer(q, row.answer_text);
+      const updated = await c.rows("test_preparation_results", {
+        session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id,
+        question_id: "eq." + String(row.question_id), select: "*",
+      }, { method: "PATCH", body: JSON.stringify({ is_correct: grade.is_correct, score: grade.score,
+        grading_status: grade.grading_status, grading_source: grade.grading_source, grading_confidence: grade.confidence,
+        grading_feedback: grade.feedback, grading_model: grade.model, graded_at: grade.graded_at }) });
+      if (updated[0]) items.push(updated[0]);
+    }
+    return { ok: true, data: { items, retried: items.length } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    return fail(503, "GRADING_RETRY_ERROR", "Не удалось повторно проверить ответы");
+  }
+}
+
+export async function reviewSupabasePreparation(request, env, sessionId, fetcher = fetch) {
+  const c = await client(request, env, fetcher);
+  if (!c.ok) return c;
+  try {
+    const session = await getPreparationSession(c, sessionId);
+    if (!session || String(session.status) !== "completed") return fail(404, "NOT_FOUND", "Завершённая сессия подготовки не найдена");
+    const rows = await c.rows("test_preparation_results", { select: "question_id,answer_text,is_correct,score,grading_status,grading_feedback",
+      session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id, order: "answered_at.asc", limit: "1000" });
+    const incorrect = rows.filter((row) => row.is_correct === false), unresolved = rows.filter((row) => ["pending", "error"].includes(String(row.grading_status || "")));
+    const review = { summary: "Разбор сформирован автоматически по сохранённым результатам. Семантический AI-разбор в Worker пока не подключён.",
+      generated_by: "rule_engine", answered: rows.length, incorrect: incorrect.length, unresolved: unresolved.length,
+      items: [...incorrect, ...unresolved].map((row) => ({ question_id: row.question_id, is_correct: row.is_correct,
+        grading_status: row.grading_status, feedback: row.grading_feedback || (row.is_correct === false ? "Сверьте ответ с эталоном." : "Требуется ручная проверка.") })) };
+    return { ok: true, data: { review, model: null } };
+  } catch (error) {
+    if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+    return fail(503, "AI_REVIEW_ERROR", "Разбор подготовки временно недоступен");
+  }
+}
