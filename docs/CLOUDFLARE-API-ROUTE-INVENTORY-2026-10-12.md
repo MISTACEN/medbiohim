@@ -1,3 +1,18 @@
+# Current verified Cloudflare Worker status — 2026-10-13
+
+**Latest confirmed source:** \`4effc4e59f2e1cccad4166f4e306e218f0ee344b\`  
+**Build:** \`d35cdff6-696c-476a-8b8a-e3e058fb4c8f\` — \`success\`  
+**Worker version:** \`0c4d9644-7122-4b16-92f7-3670614b0e52\`  
+**Gate:** 231/231 tests passed, Wrangler dry-run passed, Shadow deployment completed.
+
+The file API read routes \`GET /api/v1/files/{id}\` and \`GET /api/v1/files/{id}/download\` are included in the successful source build. The tests verify safe metadata, owner/group/specialty checks, route guards and bounded signing behavior. This is source/build verification; because Worker runtime settings contain no \`B2_*\` bindings/secrets, a real download is not yet accepted and the handler must fail closed.
+
+**Test attempt routes are enabled, not blocked.** Live read-only Supabase checks confirmed migration \`secure_test_answer_review_20261013\` is applied and the three narrow authenticated RPCs (\`medbiohim_start_test_attempt\`, \`medbiohim_save_test_answer\`, \`medbiohim_finish_test_attempt\`) exist with SECURITY DEFINER and authenticated execution. They replace direct table writes and keep grading data unavailable until finish/submission. A real student-token smoke test was not performed.
+
+Still open: \`POST /api/v1/files/upload\`, SpaceWeb-only \`GET /api/v1/materials/{id}/file\` and \`GET /api/v1/histology/source-file\`, secure B2 secret provisioning, live file/object mapping validation, valid-user RLS/media smoke tests, and frontend Preview/browser parity. Production/DNS/frontend cutover remains untouched. Older “queued / pending build” notes below are historical and superseded by this successful build.
+
+---
+
 ## API route migration — Pass 19: curriculum read alias (2026-10-13)
 
 | PHP source | Route | Contract / safety | Status |
