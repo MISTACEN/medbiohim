@@ -637,3 +637,18 @@ test("material file URL requires authentication and only accepts GET", async () 
   assert.equal(wrongMethod.status, 405);
   assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
 });
+
+
+test("trainer image route requires authentication and only accepts GET", async () => {
+  const env = {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  };
+  const unauthenticated = await worker.fetch(request("/api/v1/trainers/feed/card-1/image"), env);
+  assert.equal(unauthenticated.status, 401);
+  assert.equal((await unauthenticated.json()).error.code, "UNAUTHORIZED");
+
+  const wrongMethod = await worker.fetch(request("/api/v1/trainers/feed/card-1/image", { method: "POST" }), env);
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
+});
