@@ -68,6 +68,23 @@ Read-only queries against the current Supabase project found:
 - `integrations/cloudflare-api/src/b2-download.js` uses the Backblaze B2 native API; it requires `B2_KEY_ID`, `B2_APPLICATION_KEY`, and `B2_BUCKET`. It does not use the archived Cloudflare R2 `FILES_BUCKET` binding or the S3 endpoint string. Don't add dummy key values to `wrangler.toml`.
 - The credential update was not applied; no current Cloudflare secret value was read or changed. Existing Supabase URL telemetry confirms HTTPS and expected hostname, while observed failure category was timeout, so replacing the anon key alone is not an evidenced fix.
 
+## Shadow secrets configured from the uploaded legacy `.env` (2026-10-14)
+
+The legacy file's Supabase URL was checked to match project ref `gnobvyjywtqbdfeejxmf`. The following names were saved as **Cloudflare Worker secrets on `medbiohim-api-shadow`**, without committing secret values to GitHub:
+
+- Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY` (anon/public role only; the service-role/secret DB keys were deliberately not copied).
+- Backblaze B2: `B2_KEY_ID`, `B2_APPLICATION_KEY`; `B2_BUCKET=medbiohim-files` is a non-secret setting.
+- AI: `GROQ_API_KEY`, `GEMINI_API_KEY`, `GIGACHAT_CREDENTIALS`, `MISTRAL_API_KEY`, `OPENROUTER_API_KEY`. Default provider in the Worker source is Groq.
+- Cloudflare API confirmed the named secret bindings were present after the update. This confirms secret storage/configuration only; a live authenticated AI generation and a real object download have **not** yet passed end-to-end smoke tests. Do not claim all provider credentials are valid until those tests succeed.
+- The uploaded `.env` is treated as a legacy/test configuration. Rotate all provider and storage credentials before public production, and remove old copies from any public/accessible archive. No service-role key, database password, Firebase key or admin bootstrap secret was copied to the Worker.
+
+## Upstash status
+
+- Existing private Blob bucket `medbiohim-files` is empty. The Worker source has a private Blob adapter and `@upstash/blob` dependency, but `UPSTASH_BLOB_TOKEN` is not configured because the connected Blob tool does not expose the bucket token. Therefore image bytes have **not** been migrated to Upstash Blob.
+- Existing Upstash Redis database `medbiohimcache` is active in `eu-west-1`; its 21 existing keys are under `mbhdeploy:v1:*` and appear to be deployment-source/cache artifacts. They were left untouched.
+- Redis must not store image bytes. Intended split: Supabase stores metadata, RLS, relationships and study data; Upstash Blob (or existing private B2) stores image/document/video bytes; Redis is for bounded metadata/cache/counters only. Redis REST-token setup was blocked by the security system in this pass, so Redis is **not yet wired into runtime code**.
+- Cloudflare's active deployment list still showed the prior 100% shadow deployment created 2026-10-13 15:46 UTC. New secret bindings are saved at script settings, but deployment/runtime consumption has not yet been proven with live calls.
+
 ## Next corrective gates
 
 1. Run a controlled live Supabase Auth connectivity probe from the deployed shadow Worker that reports only timing/status/reason category, never tokens, headers, raw URLs, or bodies; correlate it with Supabase Auth logs.
