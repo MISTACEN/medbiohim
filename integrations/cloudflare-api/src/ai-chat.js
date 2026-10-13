@@ -3,7 +3,7 @@
  * All database REST calls use the caller's JWT (never service_role) so Supabase RLS
  * remains the authority for conversation/message ownership.
  */
-const SUPPORTED_PROVIDERS = ["auto", "groq", "gigachat", "gemini", "mistral", "openrouter"];
+const SUPPORTED_PROVIDERS = ["auto", "openai", "groq", "gigachat", "gemini", "mistral", "openrouter"];
 
 export class AiChatApiError extends Error {
   constructor(status, code, message) {
@@ -40,6 +40,12 @@ export function getAiProviderStatus(env = {}) {
   const proxyReady = Boolean(env.GEMINI_VERCEL_PROXY_URL && env.GEMINI_VERCEL_PROXY_SECRET);
   const geminiBlocked = region === "ru" && !proxyReady;
   const providers = {
+    openai: {
+      configured: Boolean(env.OPENAI_API_KEY),
+      model: env.OPENAI_MODEL || "gpt-4.1-mini",
+      available: Boolean(env.OPENAI_API_KEY),
+      reason: null,
+    },
     groq: {
       configured: Boolean(env.GROQ_API_KEY),
       model: env.GROQ_MODEL || "openai/gpt-oss-20b",
@@ -238,6 +244,7 @@ function getAiCompletionCandidates(env, preferredProvider) {
     const secret = String(key || "").trim();
     if (secret) candidates.push({ id, key: secret, base, model });
   };
+  add("openai", env.OPENAI_API_KEY, "https://api.openai.com/v1", env.OPENAI_MODEL || "gpt-4.1-mini");
   add("groq", env.GROQ_API_KEY, "https://api.groq.com/openai/v1", env.GROQ_MODEL || "openai/gpt-oss-20b");
   add("mistral", env.MISTRAL_API_KEY, "https://api.mistral.ai/v1", env.MISTRAL_MODEL || "mistral-small-latest");
   if (env.OPENROUTER_API_KEY) {
