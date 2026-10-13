@@ -40,7 +40,8 @@ async function createClient(request, env, fetcher) {
     if (!response.ok) {
       const error = new Error("Supabase REST request failed");
       error.status = response.status;
-      error.code = payload?.code || payload?.error || "";
+      error.code = payload?.code || payload?.error || "REST_ERROR";
+      error.resource = String(path).split("?")[0].replace(/[^a-zA-Z0-9_./-]/g, "").slice(0, 80);
       throw error;
     }
     return payload;
