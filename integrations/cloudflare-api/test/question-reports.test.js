@@ -77,7 +77,8 @@ test("question report inserts caller-owned report with valid category and no tru
   assert.equal(result.status, 201);
   assert.equal(result.data.duplicate, false);
   assert.equal(result.data.item.reporter_user_id, "user-1");
-  assert.equal(inserted.reporter_user_id, undefined);
+  assert.equal(inserted.reporter_user_id, "user-1");
+  assert.notEqual(inserted.reporter_user_id, "attacker-id");
   assert.equal(inserted.message, "Опечатка");
 });
 
