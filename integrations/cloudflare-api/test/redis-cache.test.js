@@ -8,16 +8,23 @@ const env = {
 };
 
 test("Redis cache GET parses JSON and uses bearer auth without logging values", async () => {
+  const calls = [];
   const value = await getRedisJsonCache(env, "medbiohim:trainer-feed:user-1:histology:mbh:30:0", async (url, init) => {
-    assert.equal(new URL(String(url)).href, "https://example.upstash.io/");
-    assert.equal(init.method, "POST");
-    assert.equal(init.headers.get("authorization"), "Bearer test-only-token");
-    assert.deepEqual(JSON.parse(init.body), ["GET", "medbiohim:trainer-feed:user-1:histology:mbh:30:0"]);
+    calls.push({
+      url: String(url),
+      method: init.method,
+      authorization: init.headers.get("authorization"),
+      body: init.body,
+    });
     return new Response(JSON.stringify({ result: JSON.stringify({ items: [{ id: "card-1" }] }) }), { status: 200 });
   });
+  assert.equal(calls.length, 1);
+  assert.equal(new URL(calls[0].url).origin, "https://example.upstash.io");
+  assert.equal(calls[0].method, "POST");
+  assert.equal(calls[0].authorization, "Bearer test-only-token");
+  assert.deepEqual(JSON.parse(calls[0].body), ["GET", "medbiohim:trainer-feed:user-1:histology:mbh:30:0"]);
   assert.deepEqual(value, { items: [{ id: "card-1" }] });
 });
-
 test("Redis cache SET applies bounded TTL and ignores unavailable cache", async () => {
   const result = await setRedisJsonCache(env, "medbiohim:trainer-feed:user-1:all:all:30:0", { items: [] }, 1000, async (_url, init) => {
     assert.deepEqual(JSON.parse(init.body), ["SET", "medbiohim:trainer-feed:user-1:all:all:30:0", JSON.stringify({ items: [] }), "EX", "60"]);
