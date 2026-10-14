@@ -1,6 +1,6 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { listSupabaseTrainerFeed } from "./trainer-feed.js";
-import { generateAiCompletion, getAiProviderStatus, AiChatApiError } from "./ai-chat.js";
+import { generateAiCompletion, getAiProviderStatus } from "./ai-chat.js";
 
 const TIMEOUT_MS = 7_000;
 const MAX_QUESTION = 2_000;
@@ -231,7 +231,7 @@ async function loadChunks(client, request, env, subjectSlug, fetcher) {
   // JWT and RLS are used; missing table/permission does not disable other sources.
   try {
     const plans = await client.rows("site_content", {
-      key: "like.subject_plan:*",
+      key: "like.subject_plan:%",
       select: "key,payload",
       limit: "500",
     });
