@@ -2185,3 +2185,12 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟢 Tests added for metadata redaction, non-member denial, MBH specialty membership, B2 signing and route guards.
 - 🟡 **Build not yet verified:** latest code commit \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\` remains queued. Do not count these routes as deployed until the build succeeds.
 - 🔒 File upload, SpaceWeb-only media and B2 secret provisioning remain open; Production is unchanged.
+
+
+## Histology media hookup — 2026-10-14
+
+- 🟢 Uploaded-object inventory: 358 Blob keys; extension counts match the 357-entry histology archive plus one folder marker.
+- 🟢 Code committed to `main`: trainer-photo alias resolution, `content_sources.source_path` → private Blob material lookup, private Blob textbook list/download, and strict allow-listing for streamed signed-download hosts.
+- 🟡 Tests added for photo alias resolution and private Blob documents; CI/build execution is not yet confirmed.
+- 🟡 One ambiguous filename mapping remains: `photos/5. Эмалевый орган.jpg` has no exact archive basename.
+- 🔴 Live Worker connection remains blocked until `UPSTASH_BLOB_TOKEN` is added to `medbiohim-api-shadow` through Cloudflare Dashboard. No secret was copied to Git/chat and no production cutover was made.
