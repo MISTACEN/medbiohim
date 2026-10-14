@@ -795,3 +795,33 @@ test("binary material route requires authentication and only accepts GET", async
   assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
 });
 
+test("legacy Tutor routes preserve PHP paths, methods and unauthenticated denial", async () => {
+  const env = {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  };
+  const getPaths = ["/api/v1/tutor/meta", "/api/v1/tutor/subjects"];
+  for (const path of getPaths) {
+    const unauthenticated = await worker.fetch(request(path), env);
+    assert.equal(unauthenticated.status, 401, path);
+    assert.equal((await unauthenticated.json()).error.code, "UNAUTHORIZED");
+
+    const wrongMethod = await worker.fetch(request(path, { method: "POST" }), {});
+    assert.equal(wrongMethod.status, 405, path);
+    assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
+  }
+
+  const ask = request("/api/v1/tutor/ask", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question: "Как работает эритроцит?" }),
+  });
+  const unauthenticatedAsk = await worker.fetch(ask, env);
+  assert.equal(unauthenticatedAsk.status, 401);
+  assert.equal((await unauthenticatedAsk.json()).error.code, "UNAUTHORIZED");
+
+  const wrongAskMethod = await worker.fetch(request("/api/v1/tutor/ask"), {});
+  assert.equal(wrongAskMethod.status, 405);
+  assert.equal(wrongAskMethod.headers.get("allow"), "POST, OPTIONS");
+});
+
