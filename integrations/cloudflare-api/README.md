@@ -9,11 +9,11 @@
 - No Production Vercel/DNS routing was changed and no archive secrets were committed or installed.
 
 
-## Status: deployed shadow Worker; not production
+## Status: deployed Shadow Worker; migration is not complete
 
-The existing PHP API on SpaceWeb remains the current backend. The Worker is deployed in isolation for gradual migration and is not wired into the frontend or production custom domain.
+The existing PHP API remains the behavioral-compatibility baseline, but the latest audit observed that `https://medbiohim.vercel.app/api/v1/health` returns the Worker `mode: shadow` response. Therefore, do **not** assume all current API traffic still reaches PHP. The Worker is still a shadow/migration target with incomplete route and media parity; no intentional Production cutover was performed in this pass. Verify each route's actual response before relying on the legacy backend or enabling more traffic.
 
-### Current release gate — 2026-10-13, Cloudflare Shadow verified
+### Historical release gate — 2026-10-13, Cloudflare Shadow verified
 
 - 🟢 **Latest confirmed Shadow build:** source commit \`4effc4e59f2e1cccad4166f4e306e218f0ee344b\`; Cloudflare Build \`d35cdff6-696c-476a-8b8a-e3e058fb4c8f\`; outcome \`success\`; Worker version \`0c4d9644-7122-4b16-92f7-3670614b0e52\`. A duplicate build for the same source also succeeded.
 - 🟢 **Worker gate:** \`npm test\` **231 passed, 0 failed**; Wrangler 4.149.0 dry-run passed; Shadow deployment completed. This is the current checked source count; older roadmap entries with 134/135/225 tests are historical snapshots.
