@@ -11,6 +11,13 @@ The user confirms the older PHP backend is the version on which the latest front
 - Migrate route families one at a time into Cloudflare shadow, comparing old PHP responses with the new Worker on representative authenticated cases.
 - Keep the current PHP/SpaceWeb API as production until each route family passes parity tests and media access/RLS is verified. Do not perform a bulk backend replacement or production cutover just because secrets are now configured.
 
+## Additional legacy PHP archive — follow-up review
+
+- The user also supplied `public_html-31.zip` (149,011,784 bytes), distinct from `medbiohim-cloudflare-api(2).zip`. It is the legacy PHP backend archive and is the behavior/API compatibility source of truth alongside the deployed PHP backend.
+- The archive has been materialized into the working-file service, but local container execution currently returns a runtime `ClientError` even for simple `ls` commands. ZIP listing/extraction and PHP source inspection therefore have **not** been completed in this pass. Do not claim that credentials, routes or files were extracted from it.
+- Current repo source review confirms `integrations/cloudflare-api/src/trainer-file.js` uses authenticated caller-JWT Supabase reads and has a private Blob-first/B2 fallback path; `src/b2-download.js` validates HTTPS B2 API/download hosts, validates object keys and produces bounded short-lived download authorization. This is a source review only; live B2 credentials, object inventory, and signed-download delivery still need runtime verification.
+- Next archive-transfer pass: extract and inventory `public_html-31.zip`; identify PHP routes, response contracts, auth/session rules, SQL/RLS assumptions, media paths and provider integrations; compare each route family to the Worker; port missing behavior with parity tests; separately identify test credentials and never commit them. Keep the existing PHP backend intact and do not switch production routing until authenticated parity tests pass.
+
 ## Uploaded archive
 
 - The uploaded `medbiohim-cloudflare-api(2).zip` is an older Cloudflare Worker scaffold. It contains source/tests and a Wrangler config, but no `.env` or populated runtime secret file.
