@@ -1,8 +1,8 @@
-## Storage decision — 2026-10-14
+## Storage architecture — 2026-10-14
 
-The chosen architecture is fixed to three services: Supabase for relational data and RLS; private Upstash Blob bucket `medbiohim-files` for binary media; Upstash Redis `medbiohimcache` for short-lived metadata cache only. No additional storage service is being added.
+Four services have distinct roles: Supabase is the relational source of truth and enforces RLS; private Upstash Blob bucket `medbiohim-files` is the primary application delivery store for active binary media; Backblaze B2 is retained as the existing large-archive/original-source store and migration fallback; Upstash Redis `medbiohimcache` is only a short-lived metadata cache. Do not add Cloudflare R2 or another storage provider unless the user changes this decision again.
 
-The Worker source has Blob and Redis adapters and a Blob-first/B2-fallback trainer image path. Live readiness remains blocked: Blob bucket was last observed empty; Worker secrets `UPSTASH_BLOB_TOKEN` and `UPSTASH_REDIS_REST_TOKEN` are not confirmed installed; 206 MBH trainer cards still require verified object/key mapping; no signed-in real AI generation or end-to-end media/RLS acceptance is confirmed. Do not enable production cutover on the basis of source code or mock tests alone.
+The Worker source has Blob and Redis adapters and a Blob-first/B2-fallback trainer image path. Live readiness remains blocked: Blob bucket was last observed empty; Worker secrets `UPSTASH_BLOB_TOKEN` and `UPSTASH_REDIS_REST_TOKEN` are not confirmed installed; B2 credentials/bucket contents and end-to-end signing must be verified without exposing secret values; 206 MBH trainer cards still require verified object/key mapping; no signed-in real AI generation or end-to-end media/RLS acceptance is confirmed. Do not enable production cutover on the basis of source code or mock tests alone.
 
 A temporary Upstash Box test environment was created, but its repository clone failed because authenticated GitHub credentials were unavailable inside that box. No production settings, keys, schema, or traffic routing were changed in that attempt.
 
