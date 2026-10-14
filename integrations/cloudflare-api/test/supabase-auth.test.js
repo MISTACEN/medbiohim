@@ -979,6 +979,44 @@ test("subject plan catalog only returns site_content subject_plan keys", async (
   assert.deepEqual(Object.keys(result.data.plans), ["subject_plan:histology"]);
 });
 
+test("subject plan is generated from live curriculum rows when no JSON plan exists", async () => {
+  const subjectId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const groupId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const result = await getSupabaseSubjectPlan(request("Bearer valid-user-token"), "histology", configured, async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (url.pathname === "/rest/v1/site_content") return new Response(JSON.stringify([]), { status: 200 });
+    if (url.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{
+      group_id: groupId,
+      groups: { id: groupId, is_active: true, specialty_slug: "mbh", course_number: 2 },
+      is_active: true,
+    }]), { status: 200 });
+    if (url.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{
+      id: subjectId, slug: "histology", name: "Гистология, цитология", specialty_slug: "mbh",
+      course_number: 2, semester: 3, control_type: "Зачёт", lecture_hours: 36,
+      practice_hours: 57, self_study_hours: 51, total_hours: 144, credits: 4, is_active: true,
+    }]), { status: 200 });
+    if (url.pathname === "/rest/v1/users") return new Response(JSON.stringify([{ course_number: 2, semester: 3 }]), { status: 200 });
+    if (url.pathname === "/rest/v1/curriculum_items") return new Response(JSON.stringify([
+      { id: "item-1", subject_id: subjectId, item_type: "lecture", title: "Клетка и клеточный цикл", planned_date: "2026-10-12", order_index: 1, is_required: true, metadata: { calendar_week: 4 } },
+      { id: "item-2", subject_id: subjectId, item_type: "practice", title: "Микроскопия эпителия", planned_date: "2026-10-12", order_index: 2, is_required: true, metadata: { calendar_week: 4 } },
+    ]), { status: 200 });
+    if (url.pathname === "/rest/v1/schedules") return new Response(JSON.stringify([]), { status: 200 });
+    throw new Error("unexpected path " + url.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.available, true);
+  assert.equal(result.data.source, "supabase_curriculum_and_schedule");
+  assert.equal(result.data.plan.subject, "Гистология, цитология");
+  assert.equal(result.data.plan.weeks.length, 1);
+  assert.equal(result.data.plan.weeks[0].date, "2026-10-12");
+  assert.equal(result.data.plan.weeks[0].week, 4);
+  assert.equal(result.data.plan.weeks[0].lecture, "Клетка и клеточный цикл");
+  assert.equal(result.data.plan.weeks[0].practice, "Микроскопия эпителия");
+  assert.equal(result.data.plan.weeks[0].items.length, 2);
+  assert.equal(result.data.schedule_available, true);
+});
+
 test("subject plan endpoint represents a missing plan as unavailable, not an error", async () => {
   const result = await getSupabaseSubjectPlan(request("Bearer valid-user-token"), "histology", configured, async (url) => {
     if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
