@@ -11,12 +11,20 @@ The user confirms the older PHP backend is the version on which the latest front
 - Migrate route families one at a time into Cloudflare shadow, comparing old PHP responses with the new Worker on representative authenticated cases.
 - Keep the current PHP/SpaceWeb API as production until each route family passes parity tests and media access/RLS is verified. Do not perform a bulk backend replacement or production cutover just because secrets are now configured.
 
-## Additional legacy PHP archive — follow-up review
+## Legacy PHP archive reviewed — 2026-10-14
 
-- The user also supplied `public_html-31.zip` (149,011,784 bytes), distinct from `medbiohim-cloudflare-api(2).zip`. It is the legacy PHP backend archive and is the behavior/API compatibility source of truth alongside the deployed PHP backend.
-- The archive has been materialized into the working-file service, but local container execution currently returns a runtime `ClientError` even for simple `ls` commands. ZIP listing/extraction and PHP source inspection therefore have **not** been completed in this pass. Do not claim that credentials, routes or files were extracted from it.
-- Current repo source review confirms `integrations/cloudflare-api/src/trainer-file.js` uses authenticated caller-JWT Supabase reads and has a private Blob-first/B2 fallback path; `src/b2-download.js` validates HTTPS B2 API/download hosts, validates object keys and produces bounded short-lived download authorization. This is a source review only; live B2 credentials, object inventory, and signed-download delivery still need runtime verification.
-- Next archive-transfer pass: extract and inventory `public_html-31.zip`; identify PHP routes, response contracts, auth/session rules, SQL/RLS assumptions, media paths and provider integrations; compare each route family to the Worker; port missing behavior with parity tests; separately identify test credentials and never commit them. Keep the existing PHP backend intact and do not switch production routing until authenticated parity tests pass.
+- Newly uploaded `public_html-31(1).zip` integrity check passed; archive SHA-256: `3697cc5ba99b6cbc0c157cd40614cbf4b807227d77e6364f21f5dcf18c264b68`; 1,088 ZIP entries and 162,345,152 uncompressed bytes.
+- PHP syntax lint ran on all 192 PHP entries (100 root copy + 92 `spaceweb_upload` copy): 191 passed, 1 failed. Root `src/Repositories/HomeworkRepository.php:22` contains a single-quoted PHP string around SQL that itself contains `'Asia/Vladivostok'`; the equivalent deployed-folder copy is older and lacks the due_date expression. Do not deploy the broken root file as-is.
+- Root and `spaceweb_upload` copies are not identical; route registries and per-file route declarations differ. Preserve the currently working SpaceWeb contract and reconcile route-by-route rather than replacing one tree with the other.
+- Ported the PHP `SrsService.php` contract into Worker `src/srs.js` and wired the seven route/method combinations under `/api/v1/srs`. Changes: `5556e238` (service), `5fdd07ab` (tests), `83dfdc07` (routes), `ff55f60b` (test-fixture correction). First Worker build found one test-fixture mistake (287 pass / 1 fail); the test was corrected and the new build is queued. Do not mark this port verified until that build succeeds.
+- Archive `.env` exists; its values were intentionally not printed or copied. Test/runtime credentials have not been installed by this archive inspection.
+- Production PHP/frontend and routing remain unchanged. Next ports must compare input validation, response shape/status, ownership/RLS and error behavior against the archive before completion.
+
+---
+
+## Worker route audit note
+
+The current Worker source also has an explicit private Blob-first/B2 fallback media path. This remains source-level evidence only; live B2 credentials, object inventory and signed-download delivery must be verified without disclosing values. Production PHP/frontend and routing remain unchanged.
 
 ## Uploaded archive
 
