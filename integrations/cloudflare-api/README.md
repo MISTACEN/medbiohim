@@ -1,5 +1,14 @@
 # MEDBIOHIM Cloudflare API migration scaffold
 
+## Latest archive port — 2026-10-14
+
+- Cloudflare Build `67d6a594-2b6b-4474-bbef-c63e87e0714e` deployed Shadow Worker version `d0e5d5cd-637e-4fb0-a866-c551c1b941ba` from `bc3b6aef2371f352395fb704099d86bec9295276`.
+- Current build gate: **297 passed, 0 failed**; Wrangler dry-run and deploy command succeeded.
+- Added caller-scoped spaced-repetition endpoints and the authenticated, streamed `GET /api/v1/materials/{id}/file` compatibility route. Real-user Supabase/RLS acceptance and physical-file availability remain unverified; the file route is gated on B2 access and valid metadata/object mappings.
+- The old `public_html-31(1).zip` was ZIP-verified. Of its 192 PHP entries, 191 pass PHP syntax lint; one root-copy defect is documented in ROADMAP.md and PHASES_STATUS.md. Root/deployed copies are divergent and must not be swapped wholesale.
+- No Production Vercel/DNS routing was changed and no archive secrets were committed or installed.
+
+
 ## Status: deployed shadow Worker; not production
 
 The existing PHP API on SpaceWeb remains the current backend. The Worker is deployed in isolation for gradual migration and is not wired into the frontend or production custom domain.
