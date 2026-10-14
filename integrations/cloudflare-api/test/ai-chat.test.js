@@ -6,6 +6,7 @@ import {
   deleteAiConversation,
   getAiConversation,
   getAiProviderStatus,
+  generateAiCompletion,
   listAiConversations,
   sendAiMessage,
 } from "../src/ai-chat.js";
@@ -405,3 +406,70 @@ test("GigaChat adapter exchanges OAuth credentials without exposing them to the 
   assert.equal(result.assistant_message.provider, "gigachat");
   assert.match(result.assistant_message.content, /переносит кислород/);
 });
+
+test("stateless grounded completion uses configured provider without a conversation write", async () => {
+  const result = await generateAiCompletion({
+    AI_CHAT_PRIMARY_PROVIDER: "groq",
+    GROQ_API_KEY: "test-only-groq-key",
+    GROQ_MODEL: "test-model",
+  }, [
+    { role: "system", content: "Only use supplied context." },
+    { role: "user", content: "Explain the topic from context." },
+  ], "auto", async (url, init) => {
+    const parsed = new URL(String(url));
+    assert.equal(parsed.toString(), "https://api.groq.com/openai/v1/chat/completions");
+    assert.equal(header(init, "authorization"), "Bearer test-only-groq-key");
+    const body = JSON.parse(init.body);
+    assert.equal(body.model, "test-model");
+    assert.equal(body.messages.length, 2);
+    return response({ choices: [{ message: { content: "A grounded answer." } }], model: "test-model" });
+  });
+  assert.deepEqual(result, {
+    content: "A grounded answer.",
+    provider: "groq",
+    model: "test-model",
+  });
+});
+
+test("stateless grounded completion fails over without exposing provider diagnostics", async () => {
+  const calls = [];
+  const result = await generateAiCompletion({
+    AI_CHAT_PRIMARY_PROVIDER: "groq",
+    GROQ_API_KEY: "test-only-groq-key",
+    OPENAI_API_KEY: "test-only-openai-key",
+  }, [{ role: "user", content: "Context-grounded question." }], "auto", async (url, init) => {
+    const parsed = new URL(String(url));
+    calls.push(parsed.hostname);
+    if (parsed.hostname === "api.groq.com") {
+      return response({ error: { message: "private upstream diagnostic" } }, 500);
+    }
+    assert.equal(parsed.hostname, "api.openai.com");
+    assert.equal(header(init, "authorization"), "Bearer test-only-openai-key");
+    return response({ choices: [{ message: { content: "Fallback answer." } }], model: "gpt-4.1-mini" });
+  });
+  assert.deepEqual(calls, ["api.groq.com", "api.openai.com"]);
+  assert.equal(result.provider, "openai");
+  assert.equal(result.content, "Fallback answer.");
+});
+
+test("stateless grounded completion refuses malformed prompts and does not expose configured keys", async () => {
+  let calls = 0;
+  await assert.rejects(
+    generateAiCompletion({ GROQ_API_KEY: "test-only-key" }, [{ role: "tool", content: "bad role" }], "auto", async () => {
+      calls += 1;
+      throw new Error("must not call provider");
+    }),
+    (error) => error instanceof AiChatApiError && error.code === "VALIDATION_ERROR",
+  );
+  assert.equal(calls, 0);
+  await assert.rejects(
+    generateAiCompletion({}, [{ role: "user", content: "question" }], "auto", async () => {
+      calls += 1;
+      throw new Error("must not call provider");
+    }),
+    (error) => error instanceof AiChatApiError && error.code === "AI_NOT_CONFIGURED"
+      && !error.message.includes("test-only-key"),
+  );
+  assert.equal(calls, 0);
+});
+
