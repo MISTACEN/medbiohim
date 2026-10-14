@@ -121,7 +121,7 @@ test("Histology material resolves content_sources.source_path to a private Blob 
     if (parsed.pathname === "/rest/v1/content_sources") {
       return response([{
         id: "histology-photo-7cf9385e8aa33a70d62cbe7da3048b35",
-        source_path: "photos/5_Фотографии препаратов/стом. гистология/1.Дентин и цемент.jpg",
+        source_path: "photos/1.Дентин и цемент.jpg",
         file_id: null,
         mime_type: "image/jpeg",
       }]);
