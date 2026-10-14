@@ -1,10 +1,13 @@
-## Legacy PHP archive follow-up — 2026-10-14
+## Legacy PHP archive reviewed — 2026-10-14
 
-- `public_html-31.zip` (149,011,784 bytes) is the separate old PHP backend archive; it is not the older Cloudflare scaffold ZIP.
-- File materialization succeeded, but the local execution container returned `ClientError` for even basic file listing, so extraction/source inventory is **blocked and not claimed complete**.
-- Current Worker source review: authenticated Supabase reads + private Blob-first/B2 fallback exist in `trainer-file.js`; B2 URL/key validation and short-lived download auth exist in `b2-download.js`. Live B2 credentials/files and signed delivery remain unverified.
-- Next: extract archive, inventory PHP routes/contracts/auth/media/provider use, then port missing behavior route-by-route with parity tests. Preserve PHP and avoid production cutover until signed-in acceptance passes.
-- Detailed handoff: [legacy archive and Vercel audit](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+- Newly uploaded `public_html-31(1).zip` integrity check passed; archive SHA-256: `3697cc5ba99b6cbc0c157cd40614cbf4b807227d77e6364f21f5dcf18c264b68`; 1,088 ZIP entries and 162,345,152 uncompressed bytes.
+- PHP syntax lint ran on all 192 PHP entries (100 root copy + 92 `spaceweb_upload` copy): 191 passed, 1 failed. Root `src/Repositories/HomeworkRepository.php:22` contains a single-quoted PHP string around SQL that itself contains `'Asia/Vladivostok'`; the equivalent deployed-folder copy is older and lacks the due_date expression. Do not deploy the broken root file as-is.
+- Root and `spaceweb_upload` copies are not identical; route registries and per-file route declarations differ. Preserve the currently working SpaceWeb contract and reconcile route-by-route rather than replacing one tree with the other.
+- Ported the PHP `SrsService.php` contract into Worker `src/srs.js` and wired the seven route/method combinations under `/api/v1/srs`. Changes: `5556e238` (service), `5fdd07ab` (tests), `83dfdc07` (routes), `ff55f60b` (test-fixture correction). First Worker build found one test-fixture mistake (287 pass / 1 fail); the test was corrected and the new build is queued. Do not mark this port verified until that build succeeds.
+- Archive `.env` exists; its values were intentionally not printed or copied. Test/runtime credentials have not been installed by this archive inspection.
+- Production PHP/frontend and routing remain unchanged. Next ports must compare input validation, response shape/status, ownership/RLS and error behavior against the archive before completion.
+
+---
 
 ## Storage architecture — 2026-10-14
 
