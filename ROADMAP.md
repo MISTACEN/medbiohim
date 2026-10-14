@@ -1,12 +1,13 @@
-## Storage decision and current execution checkpoint — 2026-10-14
+## Storage architecture and current execution checkpoint — 2026-10-14
 
-The storage architecture is intentionally limited to these three services; do not add Cloudflare R2 or another storage provider unless the user later changes this decision:
+The storage architecture now includes four services, with separate responsibilities. Do not add Cloudflare R2 or another storage provider unless the user changes this decision again:
 
 - **Supabase** — relational source of truth: accounts, authorization/RLS, metadata, application records and relationships.
-- **Upstash Blob (private bucket `medbiohim-files`)** — binary files: histology photographs, electronograms, lecture media and documents. Never make course files public just to simplify delivery.
-- **Upstash Redis (`medbiohimcache`, EU) ** — short-lived cache only. Current Worker code scopes trainer-feed cache keys by user and filters, TTL is 15 seconds, and cache failures are fail-open. Never cache file bytes, credentials or answer keys.
+- **Upstash Blob (private bucket `medbiohim-files`)** — primary application delivery store for active binary media: histology photographs, electronograms, lecture media and documents. Never make course files public just to simplify delivery.
+- **Backblaze B2 (bucket `medbiohim-files`, existing legacy configuration to verify)** — large archive/original-source store and migration fallback. Keep B2 support until files are reconciled and verified; do not delete or overwrite source archives. Decide which assets should remain B2-only versus be copied to Blob based on real inventory, size and access requirements.
+- **Upstash Redis (`medbiohimcache`, EU)** — short-lived cache only. Current Worker code scopes trainer-feed cache keys by user and filters, TTL is 15 seconds, and cache failures are fail-open. Never cache file bytes, credentials or answer keys.
 
-Current source includes `src/blob-storage.js`, `src/redis-cache.js`, and `src/trainer-file.js`: the trainer image handler checks the private Blob object and falls back to the legacy B2 signer during migration. This is source-level integration, not proof that Blob delivery is live.
+Current source includes `src/blob-storage.js`, `src/redis-cache.js`, and `src/trainer-file.js`: the trainer image handler checks private Blob objects and falls back to the B2 signer during migration. This is source-level integration, not proof that either provider's live media delivery is fully validated.
 
 **Outstanding execution gates (not done):**
 1. Shadow Worker still needs `UPSTASH_BLOB_TOKEN` and `UPSTASH_REDIS_REST_TOKEN` securely installed; do not place either value in Git or public frontend variables.
