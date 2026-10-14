@@ -6,6 +6,7 @@ import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBank
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseMaterialFileUrl } from "./material-file.js";
+import { streamSupabaseMaterialFile } from "./material-binary.js";
 import { getSupabaseFileDownload, getSupabaseFileRecord } from "./file-records.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
@@ -585,6 +586,21 @@ export default {
       const path = new URL(request.url).searchParams.get("path") || "";
       const response = await getSupabaseHistologySourceFile(request, env, { path });
       return withCors(response, origin);
+    }
+
+    const materialFileStreamMatch = new RegExp("^" + API_PREFIX + "/materials/([^/]+)/file$").exec(pathname);
+    if (materialFileStreamMatch) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      let materialId;
+      try { materialId = decodeURIComponent(materialFileStreamMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid material id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await streamSupabaseMaterialFile(request, env, materialId);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(result.response, origin);
     }
 
     const materialFileUrlMatch = new RegExp("^" + API_PREFIX + "/materials/([^/]+)/file-url$").exec(pathname);
