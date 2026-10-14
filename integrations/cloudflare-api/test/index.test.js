@@ -730,3 +730,54 @@ test("AI message generation remains explicit rather than returning a fake succes
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
+
+test("SRS routes preserve legacy method contracts and require verified caller identity", async () => {
+  const env = {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  };
+  const cardId = "33333333-3333-4333-8333-333333333333";
+  const jsonPost = (path, body) => request(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const readPaths = [
+    "/api/v1/srs/summary",
+    "/api/v1/srs/due",
+    "/api/v1/srs/cards",
+  ];
+  for (const path of readPaths) {
+    const response = await worker.fetch(request(path), env);
+    assert.equal(response.status, 401, path);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED", path);
+  }
+
+  const writes = [
+    jsonPost("/api/v1/srs/ensure", { count: 2 }),
+    jsonPost("/api/v1/srs/cards", { front: "Question", back: "Answer" }),
+    jsonPost("/api/v1/srs/review", { card_id: cardId, rating: 3 }),
+    request("/api/v1/srs/cards/" + cardId, { method: "DELETE" }),
+  ];
+  for (const requestValue of writes) {
+    const response = await worker.fetch(requestValue, env);
+    assert.equal(response.status, 401);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED");
+  }
+
+  const wrongMethods = [
+    [request("/api/v1/srs/summary", { method: "POST" }), "GET, OPTIONS"],
+    [request("/api/v1/srs/ensure"), "POST, OPTIONS"],
+    [request("/api/v1/srs/due", { method: "POST" }), "GET, OPTIONS"],
+    [request("/api/v1/srs/cards", { method: "DELETE" }), "GET, POST, OPTIONS"],
+    [request("/api/v1/srs/review"), "POST, OPTIONS"],
+    [request("/api/v1/srs/cards/" + cardId, { method: "POST" }), "DELETE, OPTIONS"],
+  ];
+  for (const [requestValue, allow] of wrongMethods) {
+    const response = await worker.fetch(requestValue, {});
+    assert.equal(response.status, 405);
+    assert.equal(response.headers.get("allow"), allow);
+  }
+});
+
