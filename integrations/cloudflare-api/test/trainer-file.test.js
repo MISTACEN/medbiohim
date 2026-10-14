@@ -25,7 +25,7 @@ test("trainer image URL reads only the safe published view and signs its active 
     const parsed = new URL(String(url));
     calls.push({ parsed, init });
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
-    if (parsed.pathname === "/rest/v1/trainer_feed_cards") {
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
       assert.equal(init.headers.authorization, "Bearer valid-user-token");
       return response([{ id: "card-1", subject_slug: "chemistry", specialty_slug: null, source_file_id: "file-1", source_key: "trainer/cards/card-1.png", is_published: true }]);
     }
@@ -51,7 +51,7 @@ test("trainer image URL denies MBH media without active specialty membership", a
   const result = await getSupabaseTrainerImageUrl(request(), env, "card-1", async (url) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
-    if (parsed.pathname === "/rest/v1/trainer_feed_cards") return response([{ id: "card-1", subject_slug: "histology", specialty_slug: "mbh", source_file_id: "file-1", source_key: "histology/image.png", is_published: true }]);
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") return response([{ id: "card-1", subject_slug: "histology", specialty_slug: "mbh", source_file_id: "file-1", source_key: "histology/image.png", is_published: true }]);
     if (parsed.pathname === "/rest/v1/files") return response([{ id: "file-1", object_key: "histology/image.png", group_id: null, status: "active" }]);
     if (parsed.pathname === "/rest/v1/group_memberships") return response([]);
     if (parsed.hostname.endsWith(".backblazeb2.com")) b2Calls += 1;
@@ -66,7 +66,7 @@ test("trainer image URL can use the published histology source key during file-t
   const result = await getSupabaseTrainerImageUrl(request(), env, "card-1", async (url, init) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
-    if (parsed.pathname === "/rest/v1/trainer_feed_cards") {
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
       return response([{ id: "card-1", subject_slug: "histology", specialty_slug: "mbh", source_file_id: null, source_key: "electronograms/images/test.png", is_published: true }]);
     }
     if (parsed.pathname === "/rest/v1/group_memberships") {
@@ -106,7 +106,7 @@ test("trainer image URL prefers a private Upstash Blob object when it exists", a
   const result = await getSupabaseTrainerImageUrl(request(), envWithBlob, "card-1", async (url) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
-    if (parsed.pathname === "/rest/v1/trainer_feed_cards") {
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
       return response([{ id: "card-1", subject_slug: "histology", specialty_slug: "mbh", source_file_id: null, source_key: "electronograms/images/test.png", is_published: true }]);
     }
     if (parsed.pathname === "/rest/v1/group_memberships") {
@@ -148,7 +148,7 @@ test("trainer image URL resolves legacy preparation hash keys to uploaded archiv
   const result = await getSupabaseTrainerImageUrl(request(), envWithBlob, "card-prep-1", async (url) => {
     const parsed = new URL(String(url));
     if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
-    if (parsed.pathname === "/rest/v1/trainer_feed_cards") {
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
       return response([{
         id: "card-prep-1",
         mode_set: "preparation",
