@@ -148,20 +148,38 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
 
     const storage = await getFileStorage(env);
     if (storage && typeof storage.head === "function" && typeof storage.signedReadUrl === "function") {
-      // For preparation cards whose DB key is a legacy hash and whose imagePath
-      // is only a basename, one prefix listing avoids several failed HEAD requests.
+      // Prefer an exact canonical key or a known archive alias before searching
+      // by basename; otherwise duplicate filenames in different folders can
+      // silently display the wrong micropreparation.
+      try {
+        for (const candidateKey of candidateKeys) {
+          const info = await storage.head(candidateKey);
+          if (!info) continue;
+          const signed = await storage.signedReadUrl(candidateKey, { expiresIn: "5m" });
+          if (signed?.url) {
+            return {
+              ok: true,
+              data: { url: signed.url, mode: "upstash-blob", expires_in: 300, card_id: id },
+            };
+          }
+        }
+      } catch {
+        // Continue to the archive basename resolver and legacy B2 provider.
+      }
+
+      // Basename matching is a last resort and must be unambiguous.
       if (card.mode_set === "preparation" && typeof storage.list === "function") {
         const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
         const basename = String(preparation.imagePath || preparation.imageUrl || "").replace(/\\/g, "/").split("/").pop() || "";
         if (basename) {
           try {
             const page = await storage.list({ prefix: "5_Фотографии препаратов/", limit: 1000 });
-            const match = (Array.isArray(page?.blobs) ? page.blobs : []).find((blob) => {
+            const matches = (Array.isArray(page?.blobs) ? page.blobs : []).filter((blob) => {
               const key = safeObjectKey(blob?.path);
               return key && key.startsWith("5_Фотографии препаратов/") && key.split("/").pop() === basename;
             });
-            if (match) {
-              const signed = await storage.signedReadUrl(match.path, { expiresIn: "5m" });
+            if (matches.length === 1) {
+              const signed = await storage.signedReadUrl(matches[0].path, { expiresIn: "5m" });
               if (signed?.url) {
                 return {
                   ok: true,
