@@ -85,6 +85,58 @@ test("material file URL fails closed when B2 signing secrets are not configured"
   assert.equal(result.code, "FILE_STORAGE_NOT_CONFIGURED");
 });
 
+test("Histology material resolves content_sources.source_path to a private Blob object", async () => {
+  const expectedKey = "5_Фотографии препаратов/стом. гистология/1.Дентин и цемент.jpg";
+  const checked = [];
+  const envWithBlob = {
+    ...env,
+    UPSTASH_BLOB_TOKEN: "test-only-token",
+    FILE_STORAGE: {
+      async head(key) {
+        checked.push(key);
+        return key === expectedKey ? { size: 123, httpMetadata: { contentType: "image/jpeg" } } : null;
+      },
+      async signedReadUrl(key, options) {
+        assert.equal(key, expectedKey);
+        assert.equal(options.expiresIn, "5m");
+        return { url: "https://b52abdc10f9f4caba34db7acf38f7e80.r2.cloudflarestorage.com/signed" };
+      },
+    },
+  };
+  const result = await getSupabaseMaterialFileUrl(request(), envWithBlob, "histology-material-1", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/materials") {
+      return response([{
+        id: "histology-material-1",
+        subject_id: "histology-subject",
+        file_id: null,
+        source_key: "histology-photo-7cf9385e8aa33a70d62cbe7da3048b35",
+        is_published: true,
+      }]);
+    }
+    if (parsed.pathname === "/rest/v1/subjects") {
+      return response([{ id: "histology-subject", slug: "histology", specialty_slug: "mbh", is_active: true }]);
+    }
+    if (parsed.pathname === "/rest/v1/content_sources") {
+      return response([{
+        id: "histology-photo-7cf9385e8aa33a70d62cbe7da3048b35",
+        source_path: "photos/5_Фотографии препаратов/стом. гистология/1.Дентин и цемент.jpg",
+        file_id: null,
+        mime_type: "image/jpeg",
+      }]);
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      return response([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]);
+    }
+    assert.fail("Unexpected endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.mode, "upstash-blob");
+  assert.equal(result.data.url, "https://b52abdc10f9f4caba34db7acf38f7e80.r2.cloudflarestorage.com/signed");
+  assert.ok(checked.includes(expectedKey));
+});
+
 test("material file URL rejects invalid IDs and never accepts user-supplied object keys", async () => {
   let calls = 0;
   const result = await getSupabaseMaterialFileUrl(request(), env, "../secret", async (url) => { calls += 1; assert.equal(new URL(String(url)).pathname, "/auth/v1/user"); return response({ id: "user-1" }); });
