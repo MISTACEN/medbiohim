@@ -2209,3 +2209,13 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - Live-schema transactional smoke passed for create → get hidden snapshot → answer → get review → complete → create → cancel → list. The transaction was rolled back, so smoke sessions are not retained.
 - Latest Worker source/deployment checkpoint at time of verification: commit `8fc117fd8f74f3848bcc110fe3477a5430dd244e`, build `4dfae369-a941-44e3-b05a-8ab0ec258e3f`, **328 tests passed / 0 failed**, Wrangler dry-run and Shadow deployment succeeded; Worker version `50b913a6-9002-46c8-9d2c-eb489e7fcc57`.
 - Remaining gate before calling the whole user flow accepted: a signed-in browser/API smoke with a real student bearer JWT. The SQL transaction smoke sets a test claim and is not a substitute for that HTTP/Auth test. Vercel reports `build-rate-limit`; frontend production deployment and routing cutover are not confirmed.
+
+
+## 2026-10-15 — Training lifecycle hardening and verification follow-up
+
+- 🟢 Applied Supabase migration `secure_histology_training_lifecycle_reconcile_20261015` to reconcile the committed SQL source with the live database; the completion RPC persists `trainings.score`.
+- 🟢 Rechecked all six RPC grants: `authenticated` can execute them; `anon` cannot. Direct grants on `trainings` and `training_answers` remain revoked.
+- 🟢 Live Supabase lifecycle smoke passed: create, get (no answer-key leak before response), answer/skip, complete, list history, create and cancel. The two temporary smoke sessions and their answer rows were explicitly removed afterward.
+- 🟢 Added regression tests for malformed session IDs and non-object creation preferences; Cloudflare build `c8b8e66e-e43c-49f8-a5b8-1b199ff0315c` completed with **330 pass / 0 fail**, Wrangler dry-run passed, and Shadow deployment `52d04056-7a83-471f-ad37-4cee4599c598` serves Worker version `5ba30477-dd73-4b37-a466-9b52d8be6931` at 100%.
+- 🟡 Remaining acceptance gate for this feature: a browser/API request using a real signed-in student JWT has not been run end-to-end. The database smoke set JWT claim context inside PostgreSQL and does not prove the frontend's real bearer token and Worker-to-Supabase HTTP path.
+- 🔒 Production routing remains unchanged; Vercel still reports `build-rate-limit`. Do not treat the feature as production-accepted until the real JWT HTTP smoke succeeds.
