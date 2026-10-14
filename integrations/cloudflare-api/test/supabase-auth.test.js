@@ -760,7 +760,7 @@ test("subject detail requires an authenticated caller and validates the subject 
   assert.equal(invalid.status, 422);
 });
 
-test("subject detail queries only with the caller JWT and returns the PHP-compatible subject/modules shape", async () => {
+test("subject detail queries modules and curriculum topics with the caller JWT", async () => {
   const calls = [];
   const request = new Request("https://worker.example/api/v1/subjects/subject-1", {
     headers: { authorization: "Bearer valid-token" },
@@ -777,13 +777,28 @@ test("subject detail queries only with the caller JWT and returns the PHP-compat
     if (parsed.pathname === "/rest/v1/modules") {
       return new Response(JSON.stringify([{ id: "module-1", title: "Cell", sort_order: 1 }]), { status: 200 });
     }
+    if (parsed.pathname === "/rest/v1/topics") {
+      assert.match(parsed.searchParams.get("module_id") || "", /module-1/);
+      return new Response(JSON.stringify([
+        { id: "topic-1", module_id: "module-1", title: "Cell membrane", order_index: 1 },
+        { id: "topic-2", module_id: "module-1", title: "Cell cycle", order_index: 2 },
+      ]), { status: 200 });
+    }
     throw new Error("unexpected endpoint " + parsed.pathname);
   });
   assert.equal(result.ok, true);
   assert.equal(result.data.subject.name, "Histology");
-  assert.deepEqual(result.data.modules, [{ id: "module-1", title: "Cell", sort_order: 1 }]);
+  assert.deepEqual(result.data.modules, [{
+    id: "module-1",
+    title: "Cell",
+    sort_order: 1,
+    topics: [
+      { id: "topic-1", title: "Cell membrane", order_index: 1 },
+      { id: "topic-2", title: "Cell cycle", order_index: 2 },
+    ],
+  }]);
   const restCalls = calls.filter((call) => call.url.pathname.startsWith("/rest/v1/"));
-  assert.equal(restCalls.length, 2);
+  assert.equal(restCalls.length, 3);
   for (const call of restCalls) {
     assert.equal(call.init.headers.authorization, "Bearer valid-token");
     assert.equal(call.init.headers.apikey, configured.SUPABASE_ANON_KEY);
