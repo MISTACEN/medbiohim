@@ -171,3 +171,26 @@ test("unavailable or malformed RPC replies fail closed", async () => {
   assert.equal(upstream.status, 503);
   assert.doesNotMatch(upstream.message, /database secret diagnostic/i);
 });
+
+
+test("all lifecycle actions reject invalid session IDs before calling Supabase", async () => {
+  let calls = 0;
+  const fetcher = async () => { calls += 1; return okJson({}); };
+  const badGet = await getSupabaseTraining(request(), env, "not-a-uuid", fetcher);
+  const badComplete = await completeSupabaseTraining(request(), env, "../someone-else", fetcher);
+  const badCancel = await cancelSupabaseTraining(request(), env, " ", fetcher);
+  const badAnswer = await answerSupabaseTrainingQuestion(request(), env, "bad-id", { order: 0, user_answer: "x" }, fetcher);
+  assert.deepEqual([badGet.status, badComplete.status, badCancel.status, badAnswer.status], [422, 422, 422, 422]);
+  assert.equal(calls, 0);
+});
+
+test("training creation rejects non-object preferences before authentication or upstream access", async () => {
+  let calls = 0;
+  const fetcher = async () => { calls += 1; return okJson({}); };
+  for (const input of [null, [], "preparation", 12]) {
+    const result = await createSupabaseTraining(request(), env, input, fetcher);
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 422);
+  }
+  assert.equal(calls, 0);
+});
