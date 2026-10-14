@@ -749,13 +749,31 @@ export async function searchSupabaseContent(request, env, options = {}, fetcher 
     const hits = [];
 
     if (!type || type === "question") {
-      const data = await rows("questions", { is_published: "eq.true", archived_at: "is.null", select: "id,subject_id,topic,text,answer", order: "created_at.desc", limit: 1000 });
+      // questions has topic_id, not a denormalized topic column. Resolve topic
+      // labels separately so this read matches the live Supabase schema.
+      const data = await rows("questions", { is_published: "eq.true", archived_at: "is.null", select: "id,subject_id,topic_id,text,answer", order: "created_at.desc", limit: 1000 });
+      const topicIds = [...new Set(data.map((row) => String(row.topic_id || "")).filter((id) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      ))];
+      const topicById = new Map();
+      if (topicIds.length) {
+        try {
+          const topicRows = await rows("topics", {
+            select: "id,title",
+            id: "in.(" + topicIds.join(",") + ")",
+            limit: String(Math.min(1000, topicIds.length)),
+          });
+          for (const topicRow of topicRows) topicById.set(String(topicRow.id), String(topicRow.title || ""));
+        } catch {
+          // Question text remains searchable even if optional topic labels are not visible.
+        }
+      }
       for (const row of data) {
         const subject = subjectById.get(String(row.subject_id ?? "")) || {};
         const slug = String(subject.slug ?? "");
         if (!matchesSubject(slug, row.subject_id)) continue;
         const title = String(row.text ?? "").trim();
-        const topic = String(row.topic ?? "").trim();
+        const topic = String(topicById.get(String(row.topic_id ?? "")) || "").trim();
         if (!(title + " " + topic).toLocaleLowerCase().includes(needle)) continue;
         hits.push(hit("q-" + row.id, title, title, subject.name || "Без предмета", slug, topic, "question", Boolean(row.answer), score(title, topic), slug ? "/subjects/" + encodeURIComponent(slug) + "?tab=practice" : "/practice", String(row.answer ?? "").trim()));
       }
