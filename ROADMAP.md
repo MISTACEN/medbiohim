@@ -3103,3 +3103,14 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - Live-schema transactional smoke passed for create → get hidden snapshot → answer → get review → complete → create → cancel → list. The transaction was rolled back, so smoke sessions are not retained.
 - Latest Worker source/deployment checkpoint at time of verification: commit `8fc117fd8f74f3848bcc110fe3477a5430dd244e`, build `4dfae369-a941-44e3-b05a-8ab0ec258e3f`, **328 tests passed / 0 failed**, Wrangler dry-run and Shadow deployment succeeded; Worker version `50b913a6-9002-46c8-9d2c-eb489e7fcc57`.
 - Remaining gate before calling the whole user flow accepted: a signed-in browser/API smoke with a real student bearer JWT. The SQL transaction smoke sets a test claim and is not a substitute for that HTTP/Auth test. Vercel reports `build-rate-limit`; frontend production deployment and routing cutover are not confirmed.
+
+## 2026-10-15 — тренажёры: финальная сверка canonical RPC
+
+Технический контур тренажёров гистологии готов в Shadow Worker и Supabase; production API пока остаётся на PHP/SpaceWeb.
+
+- Worker использует единственный канонический контракт RPC: `histology_training_list`, `histology_training_create`, `histology_training_get`, `histology_training_answer`, `histology_training_complete`, `histology_training_cancel`. Запросы сессий не читают/пишут защищённые таблицы напрямую; Bearer проверяется Supabase Auth и затем передаётся в RPC.
+- Удалены временные дубли RPC из прохода по миграции `remove_duplicate_histology_training_rpc`. У канонических RPC `SECURITY DEFINER`, владелец `postgres`, EXECUTE разрешён `authenticated` и запрещён `anon`. У ролей `anon` и `authenticated` нет прямых table grants на `trainings` и `training_answers`.
+- Откатываемый smoke на live-схеме подтвердил создание и чтение сессии, отсутствие answer keys до ответа, раскрытие review после ответа, отказ в чтении чужой сессии, завершение с сохранением `trainings.score`, выдачу оценки в истории и отмену другой сессии. Временные записи транзакцией откатились.
+- Cloudflare Build `31ae9afd-1466-4e12-ad13-bf2132a6d829`, commit `adda422197b70912a5cca3cc159bb0f9809b1e5d`: **330 тестов пройдены, 0 ошибок**, Wrangler dry-run и Shadow deploy завершены. Версия `88d4a621-31e1-4f10-ad10-6246f6ffad4e` распределена на 100%.
+- Непройденный последний acceptance gate — HTTP smoke с реальным подписанным студенческим JWT из браузера. SQL smoke с тестовым claim внутри транзакции не доказывает передачу реального bearer через все слои.
+- Production routing не менялся: реальный сайт продолжает использовать PHP/SpaceWeb; переключение на Cloudflare — отдельный финальный этап после проверки реального JWT и всех страниц.
