@@ -403,6 +403,50 @@ async function callAiCompletion(cfg, messages, fetcher) {
 }
 
 /**
+ * Stateless completion for server-side grounded workflows (e.g. legacy Tutor/RAG).
+ * It reuses the same configured-provider order and safe fallback behavior as chat
+ * without writing conversations or messages to Supabase.
+ */
+export async function generateAiCompletion(env = {}, messages = [], preferredProvider = "auto", fetcher = fetch) {
+  if (!Array.isArray(messages) || messages.length < 1 || messages.length > 24) {
+    throw new AiChatApiError(422, "VALIDATION_ERROR", "Некорректный контекст для ИИ");
+  }
+  const safeMessages = [];
+  for (const entry of messages) {
+    if (!entry || typeof entry !== "object" || !["system", "user", "assistant"].includes(entry.role)
+      || typeof entry.content !== "string" || !entry.content.trim()) {
+      throw new AiChatApiError(422, "VALIDATION_ERROR", "Некорректное сообщение в контексте ИИ");
+    }
+    safeMessages.push({
+      role: entry.role,
+      content: entry.content.slice(0, 12_000),
+    });
+  }
+
+  const candidates = getAiCompletionCandidates(env, preferredProvider);
+  if (!candidates.length) {
+    const status = getAiProviderStatus(env);
+    const preferred = String(preferredProvider || "auto").trim().toLowerCase();
+    const known = status.providers?.[preferred];
+    if (preferred !== "auto" && known && !known.available) {
+      throw new AiChatApiError(503, "AI_PROVIDER_UNAVAILABLE", known.reason || "Выбранный ИИ-провайдер не настроен");
+    }
+    throw new AiChatApiError(503, "AI_NOT_CONFIGURED", "Не настроен доступный ИИ-провайдер");
+  }
+
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      return await callAiCompletion(candidate, safeMessages, fetcher);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError instanceof AiChatApiError) throw lastError;
+  throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдеры временно недоступны");
+}
+
+/**
  * Runs a real provider request. Supabase rows always use the caller JWT and are
  * explicitly scoped to that caller; provider credentials remain server-only.
  */
