@@ -14,6 +14,7 @@ import { changeSupabasePassword, getSupabaseAccountSettings, getSupabaseTelegram
 import { listSupabaseTrainings } from "./trainings.js";
 import { getSupabaseHistologySourceFile, listSupabaseHistologySourceMaterials } from "./histology-source-materials.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
+import { addSrsCard, deleteSrsCard, ensureSrsDeck, getSrsSummary, listSrsCards, listSrsDueCards, reviewSrsCard } from "./srs.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submitSupabaseQuestionReport } from "./mini-quiz.js";
 
 import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcademicState, generateSupabaseAcademicPlan } from "./academic-planning.js";
@@ -828,6 +829,109 @@ export default {
       return withCors(success(result.data), origin);
     }
 
+
+    if (pathname === API_PREFIX + "/srs/summary") {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await getSrsSummary(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/srs/ensure") {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+        const status = parsed.tooLarge ? 413 : 422;
+        const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+        return withCors(json({ ok: false, error: { code, message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+      }
+      const result = await ensureSrsDeck(request, env, parsed.value);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/srs/due") {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSrsDueCards(request, env, {
+        limit: url.searchParams.get("limit") || "",
+        subject_slug: url.searchParams.get("subject_slug") || "",
+        scope: url.searchParams.get("scope") || "",
+      });
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/srs/cards") {
+      if (request.method === "GET") {
+        const result = await listSrsCards(request, env, {
+          limit: url.searchParams.get("limit") || "",
+          subject_slug: url.searchParams.get("subject_slug") || "",
+          scope: url.searchParams.get("scope") || "",
+        });
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "POST") {
+        const parsed = await readJsonLimited(request, 32_768);
+        if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+          const status = parsed.tooLarge ? 413 : 422;
+          const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+          return withCors(json({ ok: false, error: { code, message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+        }
+        const result = await addSrsCard(request, env, parsed.value);
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data, result.status || 201), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
+    }
+
+    if (pathname === API_PREFIX + "/srs/review") {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const parsed = await readJsonLimited(request, 16_384);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+        const status = parsed.tooLarge ? 413 : 422;
+        const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+        return withCors(json({ ok: false, error: { code, message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+      }
+      const result = await reviewSrsCard(request, env, parsed.value);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    const srsCardMatch = new RegExp("^" + API_PREFIX + "/srs/cards/([^/]+)$").exec(pathname);
+    if (srsCardMatch) {
+      if (request.method !== "DELETE") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "DELETE, OPTIONS" }), origin);
+      }
+      let cardId;
+      try { cardId = decodeURIComponent(srsCardMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid card id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const result = await deleteSrsCard(request, env, cardId);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
 
     if (pathname === API_PREFIX + "/questions/mini-quiz") {
       if (request.method !== "GET") {
