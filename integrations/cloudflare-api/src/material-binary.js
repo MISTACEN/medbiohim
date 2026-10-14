@@ -6,7 +6,7 @@ const failure = (status, code, message) => ({ ok: false, status, code, message }
 /**
  * PHP-compatible authenticated binary route. Authorization and object-key
  * resolution stay in material-file.js; this handler only streams the resolved
- * private B2 object. It never accepts a URL or object key from the caller.
+ * private B2 or Upstash Blob object. It never accepts a URL or object key from the caller.
  */
 export async function streamSupabaseMaterialFile(request, env, materialId, fetcher = fetch) {
   const range = request.headers.get("range") || "";
@@ -20,8 +20,10 @@ export async function streamSupabaseMaterialFile(request, env, materialId, fetch
   let target;
   try {
     target = new URL(String(signed.data?.url || ""));
-    if (target.protocol !== "https:" || !/^f\d+[.]backblazeb2[.]com$/i.test(target.hostname)) {
-      throw new Error("Unexpected B2 download host");
+    const allowedB2 = /^f\\d+[.]backblazeb2[.]com$/i.test(target.hostname);
+    const allowedBlob = /^[a-f0-9]{32}[.]r2[.]cloudflarestorage[.]com$/i.test(target.hostname);
+    if (target.protocol !== "https:" || (!allowedB2 && !allowedBlob)) {
+      throw new Error("Unexpected private media download host");
     }
   } catch {
     return failure(503, "FILE_STORAGE_UNAVAILABLE", "Приватный файл временно недоступен");
