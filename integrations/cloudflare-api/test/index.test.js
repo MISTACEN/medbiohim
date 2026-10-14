@@ -781,3 +781,17 @@ test("SRS routes preserve legacy method contracts and require verified caller id
   }
 });
 
+test("binary material route requires authentication and only accepts GET", async () => {
+  const env = {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  };
+  const unauthenticated = await worker.fetch(request("/api/v1/materials/material-1/file"), env);
+  assert.equal(unauthenticated.status, 401);
+  assert.equal((await unauthenticated.json()).error.code, "UNAUTHORIZED");
+
+  const wrongMethod = await worker.fetch(request("/api/v1/materials/material-1/file", { method: "POST" }), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
+});
+
