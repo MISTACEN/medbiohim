@@ -1,69 +1,56 @@
-# Статус проекта — 2026-10-14
+# MEDBIOHIM — актуальный статус
 
-Краткий актуальный статус. История pass-отчётов не дублируется.
+Дата проверки: 2026-10-15 (UTC).
 
-## Production
+## Архитектура и границы
 
-| Компонент | Состояние |
-|-----------|-----------|
-| Frontend (Vercel) | Работает, origin → SpaceWeb |
-| SpaceWeb PHP API | Основной backend |
-| Supabase | SoT, Auth, RLS |
-| Cloudflare API Worker | Shadow only, **не** production traffic |
-| Telegram | PHP/Node path; Cloudflare Worker — прототип |
+| Компонент | Текущее состояние |
+|---|---|
+| Frontend | Next.js на Vercel; production deployment ограничен квотой Vercel, поэтому новый frontend commit нельзя считать опубликованным без deployment evidence |
+| Production API | Старый PHP API на SpaceWeb — сохранён как контрактный эталон |
+| Cloudflare API | Worker `medbiohim-api-shadow`; поэтапная миграция, не считать production cutover завершённым |
+| Supabase | Источник истины для Auth, предметных данных, прогресса и RLS |
+| Private media | Архив гистологии загружен в Upstash Blob; `UPSTASH_BLOB_TOKEN` присутствует в Cloudflare secret bindings (значение не читалось) |
 
-## Cloudflare migration
+## Последняя подтверждённая сборка Cloudflare
 
-Уже на shadow Worker (по последним отчётам в репо):
+- Последний проверенный исходный коммит: `cd19c3a1d7b313f648a6775ff88b66078fb44c49`.
+- Cloudflare Workers Build: `6e843f9e-14f5-4cee-a029-298e9651cf7a`.
+- Результат: **319 тестов пройдены, 0 ошибок**; Wrangler `deploy --dry-run` завершился успешно, Build выполнил deploy-команду.
+- Это подтверждает сборку и развёртывание Shadow Worker, но не заменяет проверку всех маршрутов с реальным JWT студента и сравнением ответов с PHP.
 
-- Health / ping-подобные
-- Auth me / profile aliases
-- Groups list (GET)
-- Subjects list / detail (read)
-- Dashboard, schedule, homeworks (read)
-- Tests catalog (read)
-- Questions bank (read)
-- Lectures (read)
-- Search (read)
-- Subjects-catalog, subject-plans
-- Curriculum alias
-- Subject-materials (read, без download_url без B2)
-- Files read/download (source; runtime B2 secrets могут отсутствовать)
+## Обработчики Cloudflare, подключённые в исходнике
 
-**Намеренно заблокировано (fail-closed):**
+- Главная: dashboard/profile, расписание, задания и статистика.
+- Поиск и каталог предметов: subjects, subjects-catalog, search, subject plans.
+- Учебные данные: curriculum, lectures, materials, subject-materials, tickets, questions, test catalog, progress.
+- Тесты: просмотр банка/теста и попытки; операции попыток используют защищённые RPC.
+- Гистология: trainer feed, изображения, мини-тесты, жалобы, файлы/источники, приватный список учебников и потоковая выдача PDF.
+- Другие разделы: community posts, academic state/planner, attendance, calculators, chemistry resolver, tutor, AI conversations, SRS, notes/favorites, settings/account и presence.
 
-- Login / register — пока rate-limit enforcement не верифицирован
-- Test attempt start / save / finish — пока нет secure answer snapshots + guarded scoring на Worker
+Наличие маршрута не означает, что все данные доступны в production: каждый контракт требует живой проверки авторизации/RLS, реальных записей и формы ответа.
 
-**Ещё на SpaceWeb (критичные пробелы для cutover):**
+## Что исправлено в текущем проходе
 
-- Files upload, materials file, histology source-file (физические media)
-- Homework create / submit / grade
-- Test attempts (write path)
-- Preparation sessions
-- Trainer feed answer + image
-- Admin API целиком
-- Settings, presence, Telegram link
-- Community, notes, favorites, SRS, calculators, AI chat
+- Подключён `GET /api/v1/settings/account`, который отсутствовал в основном обработчике Worker.
+- Добавлены регрессионные проверки на авторизацию и методы для `/trainings`, `/histology/source-materials`, `/histology/source-file` и `/settings/account`.
+- Убраны дублирующие обработчики после проверки, что маршруты тренировок и источников гистологии уже существуют выше по файлу.
+- Shadow build после этих изменений: **319/319 тестов**, dry-run и deploy-команда успешны.
 
-Детальный чеклист: [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md).
+## Оставшиеся блокеры пользовательских страниц
 
-## Известные блокеры
+1. **Тренажёры/микропрепараты:** Worker пока реализует список `GET /trainings`, но создание тренировки (`POST /trainings`), получение конкретной сессии, сохранение ответа, завершение и отмена ещё не портированы в Worker. Поэтому полноценный поток тренировки нельзя считать готовым.
+2. **Атлас и изображения:** секрет Upstash настроен, архив в Blob; нужно проверить фактические подписи/выдачу изображений на всех 206 карточках и разрешить неоднозначное имя `photos/5. Эмалевый орган.jpg` без автоматического назначения неверного файла.
+3. **Учебные планы:** Worker строит план из опубликованного `site_content`, `curriculum_items` и расписания. Для предметов без этих записей API честно возвращает `available:false`; нужно сверить фактическую наполненность данных и добавить недостающие подтверждённые темы/модули, не придумывая даты.
+4. **Тесты:** сборка покрывает контрактные unit-тесты; полный реальный проход студенческого сценария (начать → отвечать → завершить → увидеть результат/прогресс) ещё требует live acceptance.
+5. **Синхронизация страниц:** нужно пройти каждый frontend API-вызов и сверить его с Worker-роутом, формой ответа, RLS и существующими данными. Приоритет — главная, поиск, расписание, предметы/планы, тесты, материалы, атлас/тренажёры, прогресс.
+6. **Vercel:** в GitHub статусах наблюдался отказ deployment по квоте `build-rate-limit`. Не считать последние изменения frontend опубликованными, пока не появится успешный Vercel deployment.
+7. **Production cutover:** не переключать трафик с PHP на Cloudflare массово, пока не пройдены живые проверки с валидным студенческим JWT, контракты, media delivery и план отката.
 
-1. **GitHub Actions** — jobs часто падают до allocation steps (runner). Локальные/Worker тесты ≠ CI green.
-2. **Least-privilege DB migration** — committed, **не applied** на live Supabase без явного решения.
-3. **B2 secrets** на Worker — нужны для реального download; без них fail-closed.
-4. **Cutover** — не делать, пока student-facing parity + smoke с реальным JWT не пройдены.
+## Принципы миграции
 
-## Следующие шаги (порядок)
-
-1. Держать production на SpaceWeb.
-2. Добивать read-only parity + live RLS smoke (валидный student JWT).
-3. Узкие student-owned writes (homework progress, notes) после ownership/idempotency тестов.
-4. Test attempts — только после snapshot/scoring модели на Worker.
-5. Files/media + admin — позже, с явным least-privilege дизайном.
-6. Vercel origin cutover — последним шагом, с rollback-планом.
-
-## Baseline rollback
-
-Технический baseline (не независимая prod-проверка): см. историю коммитов / предыдущие notes в `docs/history` после архивации.
+- Supabase остаётся источником истины; не дублировать учебные данные в Worker.
+- Upstash Blob — для приватных бинарных файлов; Redis — только для кэша, не для канонических материалов.
+- Использовать JWT вызывающего пользователя и действующие RLS; не применять service-role обходы.
+- Не повторять неоднозначные записи через fallback; только явно безопасные read-only запросы могут иметь резервный путь.
+- Сохранять текущий frontend/API-контракт, пока не доказана совместимость новой реализации.
