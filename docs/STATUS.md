@@ -24,7 +24,7 @@
 
 ### Supabase
 
-Миграция `secure_histology_training_lifecycle_rpc_20261015` применена к live-проекту. Добавлены RPC:
+Миграции `secure_histology_training_lifecycle_rpc_20261015` и `persist_histology_training_score_20261015` применены к live-проекту; процент завершения сохраняется в `trainings.score` и доступен в истории. Добавлены RPC:
 
 - `histology_training_create(p_input)`
 - `histology_training_list(p_status)`
