@@ -152,7 +152,7 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
       // is only a basename, one prefix listing avoids several failed HEAD requests.
       if (card.mode_set === "preparation" && typeof storage.list === "function") {
         const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
-        const basename = String(preparation.imagePath || preparation.imageUrl || "").replace(/\\\\/g, "/").split("/").pop() || "";
+        const basename = String(preparation.imagePath || preparation.imageUrl || "").replace(/\\/g, "/").split("/").pop() || "";
         if (basename) {
           try {
             const page = await storage.list({ prefix: "5_Фотографии препаратов/", limit: 1000 });
