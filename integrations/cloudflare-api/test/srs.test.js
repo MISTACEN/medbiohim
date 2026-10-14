@@ -267,8 +267,10 @@ test("delete requires a valid UUID and deletes with explicit user scope", async 
   assert.deepEqual(result.data, { deleted: true });
   assert.equal(deleted, true);
 
-  const invalid = await deleteSrsCard(request(), env, "not-a-uuid", async () => {
-    throw new Error("invalid id must not reach database");
+  const invalid = await deleteSrsCard(request(), env, "not-a-uuid", async (input) => {
+    const url = new URL(String(input));
+    if (authUser(url)) return response({ id: userId });
+    throw new Error("invalid id must not reach the database");
   });
   assert.equal(invalid.ok, false);
   assert.equal(invalid.status, 422);
