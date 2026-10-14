@@ -2289,15 +2289,17 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
     } catch {
       // Older installations may not expose optional profile fields; group data is enough.
     }
-    const groupCourse = activeGroups.find((group) => Number.isInteger(Number(group.course_number)))?.course_number;
-    const preferredCourse = Number(profile?.course_number ?? groupCourse);
-    const preferredSemester = Number(profile?.semester);
+    const groupCourse = activeGroups.find((group) => group.course_number != null && String(group.course_number).trim() !== "")?.course_number;
+    const profileCourse = profile?.course_number == null || String(profile.course_number).trim() === "" ? null : Number(profile.course_number);
+    const groupCourseNumber = groupCourse == null ? null : Number(groupCourse);
+    const preferredCourse = Number.isFinite(profileCourse) ? profileCourse : (Number.isFinite(groupCourseNumber) ? groupCourseNumber : null);
+    const preferredSemester = profile?.semester == null || String(profile.semester).trim() === "" ? null : Number(profile.semester);
     const scoreSubject = (subject) => {
       let score = 0;
       const course = Number(subject.course_number);
       const semester = Number(subject.semester);
-      if (Number.isFinite(preferredCourse) && subject.course_number != null) score += course === preferredCourse ? 8 : -4;
-      if (Number.isFinite(preferredSemester) && subject.semester != null) score += semester === preferredSemester ? 4 : -2;
+      if (preferredCourse !== null && subject.course_number != null) score += course === preferredCourse ? 8 : -4;
+      if (preferredSemester !== null && Number.isFinite(preferredSemester) && subject.semester != null) score += semester === preferredSemester ? 4 : -2;
       return score;
     };
     visibleSubjects.sort((a, b) => scoreSubject(b) - scoreSubject(a));
@@ -2325,7 +2327,7 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
       : [];
 
     const buckets = new Map();
-    const safeDate = (value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(String(value || "")) ? String(value) : "";
+    const safeDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : "";
     const ensureBucket = (key, date = null, metadata = {}) => {
       if (!buckets.has(key)) {
         buckets.set(key, {
@@ -2344,7 +2346,7 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
     const append = (bucket, field, text) => {
       const value = String(text || "").trim();
       if (!value) return;
-      bucket[field] = bucket[field] ? bucket[field] + "\\n" + value : value;
+      bucket[field] = bucket[field] ? bucket[field] + "\n" + value : value;
     };
 
     for (const [index, item] of curriculumItems.entries()) {
