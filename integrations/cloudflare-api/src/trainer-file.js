@@ -63,7 +63,7 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
     // source_key is the legacy canonical object path and permits staged migration
     // without inventing fake public.files rows for files that have not been copied.
     const cards = await rows("trainer_feed_cards", {
-      select: "id,subject_slug,specialty_slug,source_file_id,source_key,is_published",
+      select: "id,subject_slug,specialty_slug,source_file_id,source_key,preparation,is_published",
       id: "eq." + id,
       is_published: "eq.true",
       limit: "1",
@@ -109,22 +109,50 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
       }
     }
 
-    // Existing histology cards already carry a canonical source_key. Use it only
-    // for the published MBH corpus, never for arbitrary non-member/group files.
-    let objectKey = safeObjectKey(file?.object_key);
-    if (!objectKey && requiredSpecialty === "mbh" && !card.source_file_id) {
-      objectKey = safeObjectKey(card.source_key);
-    }
+    // Uploaded histology files preserve their original relative paths. The database
+    // still contains legacy hash keys for preparation photos, so resolve those keys
+    // against the source filename without changing the Supabase content rows.
+    const objectKey = safeObjectKey(file?.object_key) ||
+      (requiredSpecialty === "mbh" && !card.source_file_id ? safeObjectKey(card.source_key) : "");
     if (!objectKey) {
       return failure(503, "MEDIA_NOT_MIGRATED", "Оригинал изображения ещё не подключён к приватному хранилищу");
+    }
+
+    const candidateKeys = [objectKey];
+    const addCandidate = (value) => {
+      const key = safeObjectKey(value);
+      if (key && !candidateKeys.includes(key)) candidateKeys.push(key);
+    };
+
+    // Only published MBH corpus cards with no user-uploaded file reference may
+    // use archive aliases. Group/user files stay strictly bound to files.object_key.
+    if (requiredSpecialty === "mbh" && !card.source_file_id) {
+      const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
+      const imagePath = String(preparation.imagePath || "").trim();
+      const imageUrl = String(preparation.imageUrl || "").trim();
+      const cleanLegacyPath = (value) => value.replace(/^\/+/, "").replace(/^content\/histology\//, "");
+      addCandidate(cleanLegacyPath(imagePath));
+      addCandidate(cleanLegacyPath(imageUrl));
+
+      const imagePathBase = cleanLegacyPath(imagePath || imageUrl).split("/").pop() || "";
+      if (imagePathBase && !imagePathBase.includes("..")) {
+        addCandidate("electronograms/images/" + imagePathBase);
+        addCandidate("em/" + imagePathBase);
+        for (const folder of [
+          "5_Фотографии препаратов/стом. гистология/",
+          "5_Фотографии препаратов/цитология, эмбриология и общая гистология/",
+          "5_Фотографии препаратов/частная гистология/",
+        ]) addCandidate(folder + imagePathBase);
+      }
     }
 
     const storage = await getFileStorage(env);
     if (storage && typeof storage.head === "function" && typeof storage.signedReadUrl === "function") {
       try {
-        const info = await storage.head(objectKey);
-        if (info) {
-          const signed = await storage.signedReadUrl(objectKey, { expiresIn: "5m" });
+        for (const candidateKey of candidateKeys) {
+          const info = await storage.head(candidateKey);
+          if (!info) continue;
+          const signed = await storage.signedReadUrl(candidateKey, { expiresIn: "5m" });
           if (signed?.url) {
             return {
               ok: true,
@@ -133,18 +161,22 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
           }
         }
       } catch {
-        // Keep the old B2 path available during the controlled storage migration.
+        // Keep the legacy B2 path available if Blob is not configured or reachable.
       }
     }
 
-    const signed = await createB2DownloadUrl(env, objectKey, 600, fetcher);
-    if (!signed.ok) {
-      return failure(503, "MEDIA_NOT_MIGRATED", "Файл пока отсутствует в подключённом приватном хранилище");
+    // Keep the historical B2 fallback during migration. The canonical DB key is
+    // tried first; if it is a legacy hash, try the imagePath-derived aliases too.
+    for (const candidateKey of candidateKeys) {
+      const signed = await createB2DownloadUrl(env, candidateKey, 600, fetcher);
+      if (signed.ok) {
+        return {
+          ok: true,
+          data: { url: signed.url, mode: "presigned", expires_in: signed.expires_in, card_id: id },
+        };
+      }
     }
-    return {
-      ok: true,
-      data: { url: signed.url, mode: "presigned", expires_in: signed.expires_in, card_id: id },
-    };
+    return failure(503, "MEDIA_NOT_MIGRATED", "Файл пока отсутствует в подключённом приватном хранилище");
   } catch (error) {
     if (error?.status === 401) return failure(401, "UNAUTHORIZED", "Требуется войти в систему");
     if (error?.status === 403) return failure(403, "FORBIDDEN", "Тренажёр недоступен");
