@@ -123,11 +123,17 @@ test("trainer image URL prefers a private Upstash Blob object when it exists", a
 
 test("trainer image URL resolves legacy preparation hash keys to uploaded archive paths", async () => {
   const checked = [];
+  let listed = false;
   const expectedKey = "5_Фотографии препаратов/цитология, эмбриология и общая гистология/4.Эпителий. Многорядный эпителий.jpg";
   const envWithBlob = {
     ...env,
     UPSTASH_BLOB_TOKEN: "test-only-token",
     FILE_STORAGE: {
+      async list({ prefix }) {
+        listed = true;
+        assert.equal(prefix, "5_Фотографии препаратов/");
+        return { blobs: [{ path: expectedKey, size: 123 }], cursor: null };
+      },
       async head(key) {
         checked.push(key);
         return key === expectedKey ? { size: 123, httpMetadata: { contentType: "image/jpeg" } } : null;
@@ -145,6 +151,7 @@ test("trainer image URL resolves legacy preparation hash keys to uploaded archiv
     if (parsed.pathname === "/rest/v1/trainer_feed_cards") {
       return response([{
         id: "card-prep-1",
+        mode_set: "preparation",
         subject_slug: "histology",
         specialty_slug: "mbh",
         source_file_id: null,
@@ -161,7 +168,8 @@ test("trainer image URL resolves legacy preparation hash keys to uploaded archiv
   assert.equal(result.ok, true);
   assert.equal(result.data.mode, "upstash-blob");
   assert.equal(result.data.url, "https://blob.example.test/preparation-photo");
-  assert.ok(checked.includes(expectedKey));
+  assert.equal(listed, true);
+  assert.equal(checked.length, 0);
 });
 
 test("trainer image URL rejects malformed card IDs before database access", async () => {
