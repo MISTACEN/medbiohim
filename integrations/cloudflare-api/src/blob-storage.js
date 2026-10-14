@@ -55,6 +55,21 @@ export async function getFileStorage(env = {}) {
         throw error;
       }
     },
+    async list(options = {}) {
+      const page = await bucket.list({
+        prefix: String(options.prefix || ""),
+        limit: Math.max(1, Math.min(1000, Number(options.limit) || 100)),
+        ...(options.cursor ? { cursor: String(options.cursor) } : {}),
+      });
+      return {
+        blobs: (Array.isArray(page.blobs) ? page.blobs : []).map((blob) => ({
+          path: String(blob.path || ""),
+          size: Number(blob.size) || 0,
+          uploadedAt: blob.uploadedAt || null,
+        })),
+        cursor: page.cursor || null,
+      };
+    },
     async signedReadUrl(key, options = {}) {
       const result = await bucket.signedReadUrl(String(key), { expiresIn: options.expiresIn || "5m" });
       return { url: result.url, expiresAt: result.expiresAt };
