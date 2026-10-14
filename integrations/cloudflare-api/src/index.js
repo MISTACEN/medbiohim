@@ -1364,6 +1364,43 @@ export default {
       }
     }
 
+    // Student training history: list only the authenticated caller's sessions.
+    if (pathname === `${API_PREFIX}/trainings`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseTrainings(request, env, { status: url.searchParams.get("status") || "" });
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+    // Histology source textbooks are served only after the module verifies MBH membership.
+    if (pathname === `${API_PREFIX}/histology/source-materials`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseHistologySourceMaterials(request, env, { folder: url.searchParams.get("folder") || "Учебники" });
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/histology/source-file`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const response = await getSupabaseHistologySourceFile(request, env, { path: url.searchParams.get("path") || "" });
+      return withCors(response, origin);
+    }
+
+    if (pathname === `${API_PREFIX}/settings/account`) {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await getSupabaseAccountSettings(request, env);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
     // Explicitly migrated routes only; all other API paths fail closed below.
     if (pathname === `${API_PREFIX}/subjects`) {
       if (request.method !== "GET") {
