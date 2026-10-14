@@ -184,6 +184,9 @@ test("trainer image URL rejects malformed card IDs before database access", asyn
 test("trainer image URL refuses ambiguous preparation basenames instead of choosing a random file", async () => {
   const envWithBlob = {
     ...env,
+    B2_KEY_ID: "",
+    B2_APPLICATION_KEY: "",
+    B2_BUCKET: "",
     UPSTASH_BLOB_TOKEN: "test-only-token",
     FILE_STORAGE: {
       async head() { return null; },
