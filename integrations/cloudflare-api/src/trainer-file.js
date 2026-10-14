@@ -63,7 +63,7 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
     // source_key is the legacy canonical object path and permits staged migration
     // without inventing fake public.files rows for files that have not been copied.
     const cards = await rows("trainer_feed_cards", {
-      select: "id,subject_slug,specialty_slug,source_file_id,source_key,preparation,is_published",
+      select: "id,subject_slug,specialty_slug,mode_set,source_file_id,source_key,preparation,is_published",
       id: "eq." + id,
       is_published: "eq.true",
       limit: "1",
@@ -148,6 +148,32 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
 
     const storage = await getFileStorage(env);
     if (storage && typeof storage.head === "function" && typeof storage.signedReadUrl === "function") {
+      // For preparation cards whose DB key is a legacy hash and whose imagePath
+      // is only a basename, one prefix listing avoids several failed HEAD requests.
+      if (card.mode_set === "preparation" && typeof storage.list === "function") {
+        const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
+        const basename = String(preparation.imagePath || preparation.imageUrl || "").replace(/\\\\/g, "/").split("/").pop() || "";
+        if (basename) {
+          try {
+            const page = await storage.list({ prefix: "5_Фотографии препаратов/", limit: 1000 });
+            const match = (Array.isArray(page?.blobs) ? page.blobs : []).find((blob) => {
+              const key = safeObjectKey(blob?.path);
+              return key && key.startsWith("5_Фотографии препаратов/") && key.split("/").pop() === basename;
+            });
+            if (match) {
+              const signed = await storage.signedReadUrl(match.path, { expiresIn: "5m" });
+              if (signed?.url) {
+                return {
+                  ok: true,
+                  data: { url: signed.url, mode: "upstash-blob", expires_in: 300, card_id: id },
+                };
+              }
+            }
+          } catch {
+            // Fall through to exact-key checks and the legacy B2 provider.
+          }
+        }
+      }
       try {
         for (const candidateKey of candidateKeys) {
           const info = await storage.head(candidateKey);
