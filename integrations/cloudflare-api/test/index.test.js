@@ -825,3 +825,16 @@ test("legacy Tutor routes preserve PHP paths, methods and unauthenticated denial
   assert.equal(wrongAskMethod.headers.get("allow"), "POST, OPTIONS");
 });
 
+
+test("Cloudflare chemistry resolver is wired and rejects blank queries before upstream access", async () => {
+  const response = await worker.fetch(request("/api/v1/chemistry/resolve"), {});
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.equal(body.query, "");
+  assert.equal(body.molecule, null);
+  assert.match(body.error, /1–500/);
+
+  const wrongMethod = await worker.fetch(request("/api/v1/chemistry/resolve", { method: "POST" }), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
+});

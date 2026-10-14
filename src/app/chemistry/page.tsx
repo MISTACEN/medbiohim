@@ -34,7 +34,7 @@ export default function ChemistryPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/chemistry/resolve?query=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/v1/chemistry/resolve?query=${encodeURIComponent(query)}`);
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || "Не удалось найти вещество");
       if (!data.molecule) throw new Error("Вещество не найдено");

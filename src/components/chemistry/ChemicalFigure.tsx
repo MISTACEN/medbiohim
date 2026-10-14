@@ -55,7 +55,7 @@ export function ChemicalFigure({ spec, className }: Props) {
         if (spec.cid != null && !spec.query && !spec.smiles) {
           q = spec.name || String(spec.cid);
         }
-        const res = await fetch(`/api/chemistry/resolve?query=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/v1/chemistry/resolve?query=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (!res.ok || data.error || !data.molecule) {
           throw new Error(data.error || "structure not found");

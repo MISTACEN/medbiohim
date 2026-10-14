@@ -24,6 +24,7 @@ import { listSupabaseCommunityPosts, createSupabaseCommunityPost } from "./commu
 import { listSupabaseTicketBanks, generateSupabaseTicket } from "./tickets.js";
 import { listCalculators, getCalculator, computeCalculator, CalculatorValidationError } from "./calculators.js";
 import { AiChatApiError, getAiProviderStatus, listAiConversations, createAiConversation, getAiConversation, deleteAiConversation, sendAiMessage } from "./ai-chat.js";
+import { resolveChemicalCompound } from "./chemistry-resolver.js";
 
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
 const API_PREFIX = "/api/v1";
@@ -141,6 +142,15 @@ export default {
         role: env.APP_ENV === "production" ? "production-api" : "migration-scaffold",
         productionTrafficEnabled: env.PRODUCTION_TRAFFIC_ENABLED === "true",
       }), origin);
+    }
+
+    // Public compound metadata only; route chemistry UI traffic through this Worker.
+    if (pathname === `${API_PREFIX}/chemistry/resolve`) {
+      if (request.method !== "GET") {
+        return withCors(json({ query: "", molecule: null, error: "Method not allowed" }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await resolveChemicalCompound(url.searchParams.get("query") || "");
+      return withCors(json(result.body, result.status, { "cache-control": result.status === 200 ? "public, max-age=300, s-maxage=3600" : "no-store" }), origin);
     }
 
     // Homepage/dashboard: authenticated, partial-data-safe read model. Content CMS
