@@ -163,6 +163,7 @@ export async function getSupabaseMaterialFileUrl(request, env, materialId, fetch
       }
     }
 
+    let lastSigningFailure = null;
     for (const key of candidateKeys) {
       const signed = await createB2DownloadUrl(env, key, 600, fetcher);
       if (signed.ok) {
@@ -176,8 +177,9 @@ export async function getSupabaseMaterialFileUrl(request, env, materialId, fetch
           },
         };
       }
+      lastSigningFailure = signed;
     }
-    return failure(503, "FILE_UNAVAILABLE", "Файл материала не найден в подключённых приватных хранилищах");
+    return lastSigningFailure || failure(503, "FILE_UNAVAILABLE", "Файл материала не найден в подключённых приватных хранилищах");
   } catch {
     return failure(503, "FILE_URL_UNAVAILABLE", "Не удалось проверить доступ к файлу материала");
   }
