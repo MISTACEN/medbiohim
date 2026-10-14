@@ -1,5 +1,6 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { createB2DownloadUrl } from "./b2-download.js";
+import { getFileStorage } from "./blob-storage.js";
 
 const TIMEOUT_MS = 8000;
 const FOLDER = "Учебники";
@@ -101,6 +102,31 @@ async function listPdfPrefix(auth, prefix, fetcher) {
   });
 }
 
+async function listBlobPdfPrefix(storage, prefix) {
+  const files = [];
+  let cursor = null;
+  let pages = 0;
+  do {
+    const page = await storage.list({ prefix, limit: 1000, ...(cursor ? { cursor } : {}) });
+    for (const blob of Array.isArray(page?.blobs) ? page.blobs : []) {
+      const key = safeKey(blob?.path);
+      if (!key || !key.startsWith(prefix)) continue;
+      const name = key.slice(prefix.length);
+      if (!validPdfName(name) || name.includes("/")) continue;
+      files.push({
+        name,
+        path: key,
+        mime_type: "application/pdf",
+        size_bytes: Math.max(0, Number(blob.size) || 0),
+        updated_at: blob.uploadedAt ? new Date(blob.uploadedAt).toISOString() : null,
+      });
+    }
+    cursor = page?.cursor || null;
+    pages += 1;
+  } while (cursor && pages < 10);
+  return files;
+}
+
 async function authorizeMbh(request, env, fetcher) {
   const identity = await authenticateSupabaseRequest(request, env, fetcher);
   if (!identity.ok) return identity;
@@ -142,6 +168,28 @@ async function authorizeMbh(request, env, fetcher) {
 async function readAuthorizedFiles(request, env, fetcher) {
   const access = await authorizeMbh(request, env, fetcher);
   if (!access.ok) return access;
+
+  const storage = await getFileStorage(env);
+  if (storage && typeof storage.list === "function") {
+    try {
+      const groups = await Promise.all(PREFIXES.map((prefix) => listBlobPdfPrefix(storage, prefix)));
+      const seen = new Set();
+      const files = [];
+      for (const group of groups) {
+        for (const file of group) {
+          const key = file.path.toLocaleLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          files.push(file);
+        }
+      }
+      files.sort((a, b) => a.name.localeCompare(b.name, "ru", { sensitivity: "base", numeric: true }));
+      if (files.length) return { ok: true, storage: "upstash-blob", files };
+    } catch {
+      // Keep the legacy B2 listing as a fallback while storage credentials roll out.
+    }
+  }
+
   const auth = await b2Auth(env, fetcher);
   if (!auth.ok) return auth;
   try {
@@ -150,7 +198,7 @@ async function readAuthorizedFiles(request, env, fetcher) {
     const files = [];
     for (const group of groups) {
       for (const file of group) {
-        const key = file.name.toLocaleLowerCase();
+        const key = file.path.toLocaleLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
         files.push(file);
@@ -158,9 +206,9 @@ async function readAuthorizedFiles(request, env, fetcher) {
     }
     files.sort((a, b) => a.name.localeCompare(b.name, "ru", { sensitivity: "base", numeric: true }));
     if (!files.length) return failure(503, "SOURCE_NOT_MIGRATED", "PDF учебников не найдены в подключённом хранилище; каталог SpaceWeb ещё не перенесён");
-    return { ok: true, auth, files };
+    return { ok: true, storage: "backblaze-b2", auth, files };
   } catch (error) {
-    console.error("MEDBIOHIM_HISTOLOGY_B2_LIST_FAILED", JSON.stringify({
+    console.error("MEDBIOHIM_HISTOLOGY_SOURCE_LIST_FAILED", JSON.stringify({
       category: error?.status === 401 || error?.status === 403 ? "credentials_or_bucket_scope" : error?.name === "TimeoutError" ? "timeout" : "upstream",
       status: Number.isFinite(error?.status) ? error.status : null,
     }));
@@ -178,7 +226,7 @@ export async function listSupabaseHistologySourceMaterials(request, env, options
     data: {
       items: result.files.map(({ name, path, mime_type, size_bytes, updated_at }) => ({ name, path, mime_type, size_bytes, updated_at })),
       folder: FOLDER,
-      source: "backblaze-b2",
+      source: result.storage,
       status: "ready",
     },
   };
@@ -205,10 +253,27 @@ export async function getSupabaseHistologySourceFile(request, env, options = {},
   if (!item && supplied === legacyPath) item = result.files.find((file) => file.name === leaf);
   if (!item) return jsonError(404, "NOT_FOUND", "Учебник не найден в подключённом хранилище");
 
-  const signed = await createB2DownloadUrl(env, item.path, 600, fetcher);
-  if (!signed.ok) return jsonError(signed.status || 503, signed.code || "SOURCE_FILE_UNAVAILABLE", signed.message || "Не удалось загрузить учебник");
+  let downloadUrl = "";
+  if (result.storage === "upstash-blob") {
+    try {
+      const storage = await getFileStorage(env);
+      const signed = await storage?.signedReadUrl?.(item.path, { expiresIn: "5m" });
+      const target = new URL(String(signed?.url || ""));
+      if (target.protocol !== "https:" || !/^[a-f0-9]{32}[.]r2[.]cloudflarestorage[.]com$/i.test(target.hostname)) {
+        throw new Error("Unexpected private Blob host");
+      }
+      downloadUrl = target.toString();
+    } catch {
+      return jsonError(503, "SOURCE_FILE_UNAVAILABLE", "Не удалось подписать приватный файл учебника");
+    }
+  } else {
+    const signed = await createB2DownloadUrl(env, item.path, 600, fetcher);
+    if (!signed.ok) return jsonError(signed.status || 503, signed.code || "SOURCE_FILE_UNAVAILABLE", signed.message || "Не удалось загрузить учебник");
+    downloadUrl = signed.url;
+  }
+
   try {
-    const upstream = await fetcher(signed.url, { method: "GET", redirect: "error", signal: AbortSignal.timeout(30_000) });
+    const upstream = await fetcher(downloadUrl, { method: "GET", redirect: "error", signal: AbortSignal.timeout(30_000) });
     if (upstream.status === 404) return jsonError(404, "NOT_FOUND", "Учебник не найден в хранилище");
     if (!upstream.ok || !upstream.body) return jsonError(503, "SOURCE_FILE_UNAVAILABLE", "Не удалось загрузить учебник");
     const filename = leaf.replace(/["\\\r\n]/g, "");
@@ -224,7 +289,7 @@ export async function getSupabaseHistologySourceFile(request, env, options = {},
       },
     });
   } catch (error) {
-    console.error("MEDBIOHIM_HISTOLOGY_B2_DOWNLOAD_FAILED", JSON.stringify({ category: error?.name === "TimeoutError" ? "timeout" : "upstream" }));
+    console.error("MEDBIOHIM_HISTOLOGY_SOURCE_DOWNLOAD_FAILED", JSON.stringify({ category: error?.name === "TimeoutError" ? "timeout" : "upstream" }));
     return jsonError(503, "SOURCE_FILE_UNAVAILABLE", "Не удалось загрузить учебник");
   }
 }
