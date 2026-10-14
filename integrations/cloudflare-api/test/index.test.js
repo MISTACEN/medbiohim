@@ -838,3 +838,33 @@ test("Cloudflare chemistry resolver is wired and rejects blank queries before up
   assert.equal(wrongMethod.status, 405);
   assert.equal(wrongMethod.headers.get("allow"), "GET, OPTIONS");
 });
+
+
+test("Cloudflare wires training history, histology source materials and account settings", async () => {
+  const env = {
+    SUPABASE_URL: "https://project-id.supabase.co",
+    SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+  };
+  for (const path of [
+    "/api/v1/trainings",
+    "/api/v1/histology/source-materials?folder=%D0%A3%D1%87%D0%B5%D0%B1%D0%BD%D0%B8%D0%BA%D0%B8",
+    "/api/v1/settings/account",
+    "/api/v1/histology/source-file?path=Учебники%2Ftest.pdf",
+  ]) {
+    const response = await worker.fetch(request(path), env);
+    assert.equal(response.status, 401, path);
+    const body = await response.json();
+    assert.equal(body.ok, false, path);
+    assert.equal(body.error.code, "UNAUTHORIZED", path);
+  }
+  for (const [path, allow] of [
+    ["/api/v1/trainings", "GET, OPTIONS"],
+    ["/api/v1/histology/source-materials", "GET, OPTIONS"],
+    ["/api/v1/histology/source-file", "GET, OPTIONS"],
+    ["/api/v1/settings/account", "GET, OPTIONS"],
+  ]) {
+    const response = await worker.fetch(request(path, { method: "POST" }), env);
+    assert.equal(response.status, 405, path);
+    assert.equal(response.headers.get("allow"), allow, path);
+  }
+});
