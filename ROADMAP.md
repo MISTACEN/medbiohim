@@ -1,3 +1,23 @@
+## Storage decision and current execution checkpoint — 2026-10-14
+
+The storage architecture is intentionally limited to these three services; do not add Cloudflare R2 or another storage provider unless the user later changes this decision:
+
+- **Supabase** — relational source of truth: accounts, authorization/RLS, metadata, application records and relationships.
+- **Upstash Blob (private bucket `medbiohim-files`)** — binary files: histology photographs, electronograms, lecture media and documents. Never make course files public just to simplify delivery.
+- **Upstash Redis (`medbiohimcache`, EU) ** — short-lived cache only. Current Worker code scopes trainer-feed cache keys by user and filters, TTL is 15 seconds, and cache failures are fail-open. Never cache file bytes, credentials or answer keys.
+
+Current source includes `src/blob-storage.js`, `src/redis-cache.js`, and `src/trainer-file.js`: the trainer image handler checks the private Blob object and falls back to the legacy B2 signer during migration. This is source-level integration, not proof that Blob delivery is live.
+
+**Outstanding execution gates (not done):**
+1. Shadow Worker still needs `UPSTASH_BLOB_TOKEN` and `UPSTASH_REDIS_REST_TOKEN` securely installed; do not place either value in Git or public frontend variables.
+2. The private Blob bucket was last verified empty. The 357-entry histology archive has not been bulk-uploaded, and 206 published MBH trainer cards still need verified object-key mapping/source-file metadata reconciliation.
+3. Five AI provider secret names were present in a prior inventory, but no signed-in live generation was verified; `OPENAI_API_KEY` is not confirmed installed.
+4. No production routing cutover. Preserve the current frontend + legacy PHP backend until shadow API routes, media delivery and RLS pass authenticated acceptance tests.
+
+**Execution environment note:** a fresh temporary Upstash Box was created for a test attempt, but the GitHub clone failed because the box had no authenticated GitHub credentials; no files or production resources were changed by that attempt. Continue via authenticated GitHub/Cloudflare tooling or provision the required secrets through the Cloudflare dashboard. Never invent values or claim a test/deploy that did not run.
+
+---
+
 ## Latest verified checkpoint — 2026-10-14 (after account/training/textbook route port)
 
 - 🟢 Cloudflare Worker build/deploy passed: commit `bd787c12cd324c66dfcf5260b5753e74b8b60f0b`, version `f27f713e-e1cc-44ad-95b3-266f64a7885c`, **276/276 tests passed**.
