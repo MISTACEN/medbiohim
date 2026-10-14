@@ -287,7 +287,7 @@ BEGIN
       CASE WHEN pg_catalog.cardinality(v_card_ids) > 0 THEN pg_catalog.array_position(v_card_ids, c.id) END NULLS LAST,
       CASE WHEN pg_catalog.cardinality(v_card_ids) = 0 THEN pg_catalog.random() END NULLS FIRST
     LIMIT v_limit
-  ) AS selected;
+  ) AS c;
 
   IF pg_catalog.cardinality(v_card_ids) > 0 AND pg_catalog.cardinality(v_selected_ids) <> pg_catalog.cardinality(v_card_ids) THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 422, 'code', 'CARD_SELECTION_UNAVAILABLE', 'message', 'Часть выбранных карточек больше недоступна; обновите атлас');
