@@ -169,7 +169,8 @@ test("trainer image URL resolves legacy preparation hash keys to uploaded archiv
   assert.equal(result.data.mode, "upstash-blob");
   assert.equal(result.data.url, "https://blob.example.test/preparation-photo");
   assert.equal(listed, true);
-  assert.equal(checked.length, 0);
+  assert.ok(checked.length > 0);
+  assert.equal(checked.includes(expectedKey), false);
 });
 
 test("trainer image URL rejects malformed card IDs before database access", async () => {
@@ -177,4 +178,51 @@ test("trainer image URL rejects malformed card IDs before database access", asyn
   const result = await getSupabaseTrainerImageUrl(request(), env, "../secret", async (url) => { calls += 1; assert.equal(new URL(String(url)).pathname, "/auth/v1/user"); return response({ id: "user-1" }); });
   assert.equal(result.status, 422);
   assert.equal(calls, 1);
+});
+
+
+test("trainer image URL refuses ambiguous preparation basenames instead of choosing a random file", async () => {
+  const envWithBlob = {
+    ...env,
+    UPSTASH_BLOB_TOKEN: "test-only-token",
+    FILE_STORAGE: {
+      async head() { return null; },
+      async list() {
+        return { blobs: [
+          { path: "5_Фотографии препаратов/стом. гистология/эпителий.jpg", size: 100 },
+          { path: "5_Фотографии препаратов/частная гистология/эпителий.jpg", size: 200 },
+        ], cursor: null };
+      },
+      async signedReadUrl() { assert.fail("ambiguous basename must not be signed"); },
+    },
+  };
+  const result = await getSupabaseTrainerImageUrl(request(), envWithBlob, "card-ambiguous", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
+      return response([{
+        id: "card-ambiguous", mode_set: "preparation", subject_slug: "histology",
+        specialty_slug: "mbh", source_file_id: null, source_key: "histology-photo-ambiguous",
+        preparation: { imagePath: "эпителий.jpg" }, is_published: true,
+      }]);
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      return response([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]);
+    }
+    if (parsed.hostname.endsWith(".backblazeb2.com")) {
+      return response({ apiUrl: "https://api004.backblazeb2.com", downloadUrl: "https://f004.backblazeb2.com", authorizationToken: "account-token", accountId: "account-id" });
+    }
+    if (parsed.pathname === "/b2api/v2/b2_authorize_account") {
+      return response({ apiUrl: "https://api004.backblazeb2.com", downloadUrl: "https://f004.backblazeb2.com", authorizationToken: "account-token", accountId: "account-id" });
+    }
+    if (parsed.pathname === "/b2api/v2/b2_list_buckets") {
+      return response({ buckets: [{ bucketName: "medbiohim-files", bucketId: "bucket-id-test" }] });
+    }
+    if (parsed.pathname === "/b2api/v2/b2_get_download_authorization") {
+      return response({ authorizationToken: "download-token" });
+    }
+    assert.fail("Unexpected endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "MEDIA_NOT_MIGRATED");
 });
