@@ -608,6 +608,47 @@ test("search queries only caller-scoped published questions and normalizes facet
   assert.equal(calls.length, 4);
 });
 
+test("trainer search reads the sanitized public feed view, never the base table", async () => {
+  const paths = [];
+  const result = await searchSupabaseContent(request("Bearer valid-user-token"), configured, {
+    q: "эритроцит",
+    type: "trainer",
+    subject_slug: "histology",
+  }, async (url, init) => {
+    const parsed = new URL(String(url));
+    paths.push(parsed.pathname);
+    if (parsed.pathname === "/auth/v1/user") {
+      return new Response(JSON.stringify({ id: "user-123", email: "student@example.com" }), { status: 200 });
+    }
+    assert.equal(init.headers.authorization, "Bearer valid-user-token");
+    if (parsed.pathname === "/rest/v1/subjects") {
+      return new Response(JSON.stringify([
+        { id: "subject-1", name: "Гистология", slug: "histology", description: "" },
+      ]), { status: 200 });
+    }
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") {
+      return new Response(JSON.stringify([{
+        id: "card-1",
+        subject_id: "subject-1",
+        subject_slug: "histology",
+        specialty_slug: "mbh",
+        preparation: { name: "Эритроцит" },
+        question: { prompt: "Определите форменные элементы крови" },
+        tags: ["кровь"],
+        is_published: true,
+        created_at: "2026-10-14T00:00:00Z",
+      }]), { status: 200 });
+    }
+    throw new Error("Unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.total, 1);
+  assert.equal(result.data.items[0].title, "Эритроцит");
+  assert.equal(result.data.items[0].href, "/trainers/feed/histology");
+  assert.ok(paths.includes("/rest/v1/trainer_feed_cards_public"));
+  assert.ok(!paths.includes("/rest/v1/trainer_feed_cards"));
+});
+
 test("search rejects invalid type and maps Supabase RLS failures to a generic service error", async () => {
   const invalid = await searchSupabaseContent(request("Bearer valid-user-token"), configured, { q: "test", type: "admin" }, async () =>
     new Response(JSON.stringify({ id: "user-123" }), { status: 200, headers: { "content-type": "application/json" } })
