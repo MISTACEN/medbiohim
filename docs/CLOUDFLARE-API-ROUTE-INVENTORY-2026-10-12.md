@@ -473,3 +473,17 @@ Added on \`main\` in source commits \`461e4f189e7bd9c849509082a99dbcac5d80788a\`
 **Status: source committed, deployment not yet verified.** Cloudflare Builds for latest source commit \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\` remain queued behind the existing build queue. Do not count these two routes as deployed until that exact source (or a descendant containing it) completes \`npm test\`, Wrangler dry-run and Shadow deployment.
 
 Still not migrated: \`POST /api/v1/files/upload\`, \`GET /api/v1/materials/{id}/file\`, and \`GET /api/v1/histology/source-file\`. Upload needs a bounded multipart parser plus private B2 upload and safe metadata insert; SpaceWeb-only files need a controlled copy/hash inventory before the Worker can serve them. B2 secrets are not configured in the Worker, so B2-backed routes fail closed until securely provisioned.
+
+
+## Verified training lifecycle on Cloudflare + live Supabase — 2026-10-15
+
+**Implementation status: complete in the isolated Shadow Worker; Production routing remains unchanged.**
+
+- Applied live Supabase migration `secure_histology_training_lifecycle_rpc_20261015` and committed the source migration `database/migrations/20261015120000_secure_histology_training_lifecycle.sql`.
+- Added owner-bound `SECURITY DEFINER` RPCs for create, list, get, answer, complete and cancel. Every RPC derives the owner from `auth.uid()`, requires active MBH membership and is executable by `authenticated` only; `anon`/`PUBLIC` have no execute privilege.
+- Verified `authenticated` has no direct SELECT/INSERT on `public.trainings` or `public.training_answers`. Do not restore table grants as a workaround.
+- Snapshots remain private in database tables. The get RPC strips correctness fields and (when required by the session label mode) preparation names/captions for unanswered cards; review data appears only after answer/skip. Correctness is computed server-side, not trusted from the request.
+- Worker routes are now connected: `GET/POST /api/v1/trainings`, `GET /api/v1/trainings/{id}`, `POST /answer`, `POST /complete`, `POST /cancel`. Frontend create payload now carries selected layout mode.
+- Live-schema transactional smoke passed for create → get hidden snapshot → answer → get review → complete → create → cancel → list. The transaction was rolled back, so smoke sessions are not retained.
+- Latest Worker source/deployment checkpoint at time of verification: commit `8fc117fd8f74f3848bcc110fe3477a5430dd244e`, build `4dfae369-a941-44e3-b05a-8ab0ec258e3f`, **328 tests passed / 0 failed**, Wrangler dry-run and Shadow deployment succeeded; Worker version `50b913a6-9002-46c8-9d2c-eb489e7fcc57`.
+- Remaining gate before calling the whole user flow accepted: a signed-in browser/API smoke with a real student bearer JWT. The SQL transaction smoke sets a test claim and is not a substitute for that HTTP/Auth test. Vercel reports `build-rate-limit`; frontend production deployment and routing cutover are not confirmed.
