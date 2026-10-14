@@ -1,106 +1,35 @@
-## Актуальная точка продолжения — 2026-10-10
+# Документация MEDBIOHIM
 
-- [Pass 65–73: права workflow, исправление YAML и диагностика GitHub Actions](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) — последние коммиты, реальные результаты запусков, блокер runner allocation и точное ТЗ для продолжения.
+## Актуальные документы
 
-# MEDBIOHIM documentation
+| Документ | Назначение |
+|----------|------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура (Vercel + SpaceWeb + Supabase + Cloudflare) |
+| [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md) | **Полный инвентарь PHP API** — сверка с Cloudflare |
+| [STATUS.md](STATUS.md) | Текущий статус, блокеры, cutover gates |
+| [../BRANCHES.md](../BRANCHES.md) | Правила веток main / spaceweb-backend / beta |
+| [ACTIVE-EXPERIMENTS.md](ACTIVE-EXPERIMENTS.md) | Что крутится на beta |
+| [platform-concept-medbiohim.md](platform-concept-medbiohim.md) | Учебная концепция (предмет → разделы) |
+| [../backend/MODULE-INTEGRATION.md](../backend/MODULE-INTEGRATION.md) | Паттерн добавления модулей в PHP |
+| [chemical-engine.md](chemical-engine.md) | Chemical engine (PubChem и т.д.) |
+| [dev-notes.md](dev-notes.md) | Технические правила разработки |
 
-## Главные документы
+## Интеграции
 
-| Документ | Назначение | Статус |
-|---|---|---|
-| [../ROADMAP.md](../ROADMAP.md) | Единый порядок работ | ✅ актуальный |
-| [../PHASES_STATUS.md](../PHASES_STATUS.md) | Текущее состояние фаз | ✅ актуальный |
-| [GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md](GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) | Единый checklist для GitHub Actions, API, security, media и UI | 🟡 используется |
-| [SECURITY-FIX-2026-10-10-PASS45.md](SECURITY-FIX-2026-10-10-PASS45.md) | Рекурсивная очистка ответов тренажёра | 🟡 source-only до deployment verification |
-| [RELIABILITY-FIX-2026-10-10-PASS46.md](RELIABILITY-FIX-2026-10-10-PASS46.md) | Изоляция API cache для malformed JWT | 🟡 source-only до deployment verification |
-| [SECURITY-FIX-2026-10-10-PASS47.md](SECURITY-FIX-2026-10-10-PASS47.md) | Изоляция приватных media/cache по пользователю | 🟡 source-only до deployment verification |
-| [SECURITY-FIX-2026-10-10-PASS48.md](SECURITY-FIX-2026-10-10-PASS48.md) | MBH-доступ к материалам гистологии в viewer | 🟡 source-only до deployment verification |
-| [SECURITY-FIX-2026-10-10-PASS49.md](SECURITY-FIX-2026-10-10-PASS49.md) | Единая проверка MBH-доступа во всех material/file routes | 🟡 source-only до deployment verification |
-| [SECURITY-FIX-2026-10-10-PASS50.md](SECURITY-FIX-2026-10-10-PASS50.md) | MBH-доступ к предметам, журналу оценок и учебному контексту | 🟡 source-only до deployment verification |
-| [API-PROXY-HARDENING-2026-10-10-PASS53.md](API-PROXY-HARDENING-2026-10-10-PASS53.md) | PHP-first trainer fallback, no-store для приватных изображений, generic 502 | 🟡 source-only; CI/runtime blocked |
-| [DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md](DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md) | Исторический отчёт Pass 54: тесты ↔ вопросы и пустые ответы | 🟡 data audit complete; no DB changes |
-| [DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md](DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md) | Объединённый аудит данных и прав public-schema; migration committed but not applied | 🟡 staging review required |
-| [BRANCHES.md](../BRANCHES.md) | main / beta rules | ✅ актуальный |
-| [ACTIVE-EXPERIMENTS.md](ACTIVE-EXPERIMENTS.md) | Что находится в beta | ✅ актуальный |
-| [platform-concept-medbiohim.md](platform-concept-medbiohim.md) | Общая архитектурная идея | ✅ актуальный |
-| [subject-content-matrix.md](subject-content-matrix.md) | Матрица предметов | 🟡 поддерживается |
-| [dev-notes.md](dev-notes.md) | Технические правила разработки | ✅ справочный |
+- [../integrations/browser-extension/README.md](../integrations/browser-extension/README.md)
+- [../integrations/telegram-bot/README.md](../integrations/telegram-bot/README.md)
+- [../integrations/cloudflare-api/](../integrations/cloudflare-api/) — Worker API (shadow)
+- [../integrations/telegram-bot-cloudflare/](../integrations/telegram-bot-cloudflare/) — Telegram Worker
 
-## Content / migration
+## История / аудиты
 
-Основные живые источники:
-- `database/migrations/`
-- `docs/histology-sql-exam-questions-uuid/`
-- `docs/histology-sql-tickets/`
-- `docs/20260928_sync_histology_em_captions.sql`
-- `docs/20260928_dedupe_histology_em_cards.sql`
+Старые pass-отчёты (`*-PASSXX-*.md`, `CONTINUATION-HANDOFF-*`, длинные CI/security notes)
+оставлены в `docs/` временно. Их можно перемещать в `docs/history/` без потери истории Git.
 
-## Optional integrations
+Они **не** являются текущим планом. Актуальный статус — только в [STATUS.md](STATUS.md).
 
-- [../integrations/browser-extension/README.md](../integrations/browser-extension/README.md) — Chrome/Edge quick-access MVP
-- [../integrations/telegram-bot/README.md](../integrations/telegram-bot/README.md) — Telegram public-command webhook MVP
-- [../.github/ISSUE_TEMPLATE/bug_report.yml](../.github/ISSUE_TEMPLATE/bug_report.yml) — bug report form
+## Как пользоваться инвентарём SpaceWeb
 
-## Deployment / infrastructure
-
-- [EM-DEPLOY-20261001.md](EM-DEPLOY-20261001.md)
-- [SPACEWEB-TRAININGS-AND-SESSIONS.md](SPACEWEB-TRAININGS-AND-SESSIONS.md)
-- [SPACEWEB-BOOLEAN-FIX.md](SPACEWEB-BOOLEAN-FIX.md)
-- [SYNC_STAMP.md](../SYNC_STAMP.md)
-
-## Chemistry
-
-- [CHEMISTRY-CORE-PLAN.md](CHEMISTRY-CORE-PLAN.md)
-- [CHEMISTRY-EMBEDS.md](CHEMISTRY-EMBEDS.md)
-- [DEPLOY-CHEMISTRY.md](DEPLOY-CHEMISTRY.md)
-- [DEPLOY-ORGANIC-CHEMISTRY.md](DEPLOY-ORGANIC-CHEMISTRY.md)
-- [chemical-engine.md](chemical-engine.md)
-- [ai-topology.md](ai-topology.md)
-
-## Historical / recovery notes
-
-Historical recovery notes are useful only when debugging an old incident.  
-Они не являются текущим планом и не должны дублировать ROADMAP/PHASES_STATUS.
-
-- [DEEP-AUDIT-3-2026-10-04.md](DEEP-AUDIT-3-2026-10-04.md) — третий глубокий проход по скрытым unfinished/legacy следам и live data integrity
-
-- [HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md](HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md) — общие отработки по гистологии: сохранённые записи Supabase, расписание и незакрытые проверки охвата групп/UI
-
-
-- [Pass 55 — CI + Histology media traceability workstream](CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md): Actions runner diagnosis and read-only electronogram path audit.
-- Read-only query: `../database/audits/20261010_electronogram_asset_traceability.sql`.
-
-
-- [Pass 56 — database least-privilege and quality-gate reconciliation](DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md): effective PostgreSQL privileges, unapplied mitigation, and correction of stale CI status.
-- Read-only post-migration verification: `../database/audits/20261010_public_table_privilege_verification.sql`.
-
-## Latest workstream report — 2026-10-10
-
-- [Pass 57: CI runner retry + DB privilege migration preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md) — latest retry still has no workflow steps/logs; default ACL/role membership reviewed read-only; migration not applied.
-
-## Latest source audit — 2026-10-10
-
-- [Pass 58: release-gate source audit](RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md) — missing lockfile, no effective ESLint rules, TypeScript build override, FTPS certificate verification disabled, rollback gap; no production changes.
-
-
-## Latest reports — 2026-10-10
-- [Pass 59 — Actions runner reconciliation](CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md): latest-head workflow evidence, unverified checks, and safe next steps.
-
-
-- [Pass 60 — CI documentation-only filters](CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md): workflow path filters that reduce redundant jobs from docs-only changes; not a CI recovery claim.
-
-
-- [Pass 61 — Actions job log diagnostics](CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md): empty step arrays and missing log blobs, plus owner-side investigation checklist.
-
-
-- [Pass 62 — Vercel runtime observability](VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md): current production alias is READY; runtime log API access remains blocked.
-
-- [Pre-deploy audit/status reconciliation — 2026-10-10](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md): adds a conservative warning for ESLint configs with no recognizable rules/presets and records release blockers; no CI success claimed.
-
-- [Pass 64 — archive security and pass inventory](ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md): env-file exclusions, archive pre-upload guards, latest CI failures, and count of historical pass reports/open workstreams.
-
-
-Latest continuation handoff (2026-10-10, Pass 65–77): [`CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md). CI remains unverified because GitHub Actions jobs fail before steps; do not interpret committed workflow hardening as a successful test run.
-
-
-Pass 78 adds an account preferences regression test; see [`CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md). CI is still blocked before steps, so test execution remains unverified.
+1. Открой [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md).
+2. Для каждого маршрута смотри колонку **Cloudflare**.
+3. Цель cutover: все student-facing маршруты = ✅, admin — по приоритету.

@@ -1,207 +1,79 @@
-## Branching and backend migration policy — 2026-10-12
-
-The user-approved working model is now:
-
-- **`spaceweb-backend`** — compatibility/maintenance line for the existing PHP API on SpaceWeb. Use this branch for urgent fixes required to keep the currently deployed backend working. Do not assume this branch is a deployable backup until its PHP checks and deployment state are verified.
-- **`main`** — forward migration line. Continue converting backend functionality to Cloudflare Workers/TypeScript/JavaScript in small, tested passes. Preserve the current frontend and production SpaceWeb API connection until each migrated route is verified and a cutover is explicitly approved.
-- **Cloudflare API project:** `integrations/cloudflare-api/`. **Telegram Worker project:** `integrations/telegram-bot-cloudflare/`. They are separate Workers and must have separate Workers Builds root paths/configurations.
-- Never copy secrets into Git. Do not change DNS, Vercel API base URL, Supabase policies, or the production Telegram webhook as part of a code-only migration pass.
-- When a critical fix must reach both lines, make and verify it on the relevant branch first, then port it deliberately; do not silently merge all migration work back into `spaceweb-backend`.
-
-At branch creation, `spaceweb-backend` was created from the then-current `main` head (`dcea6b01e50a8b7246f89850798e891db3d66ec9`) to preserve a starting point before continued Cloudflare work. It is a source-control safety line, not proof of a tested production rollback.
-
-## Cloudflare Telegram Worker prototype (2026-10-11)
-
-An isolated Cloudflare Workers adapter now exists at [`integrations/telegram-bot-cloudflare/`](integrations/telegram-bot-cloudflare/README.md). It mirrors the existing public-command webhook and optional HTTPS group relay. It does not replace the current Node/Vercel bot, does not register the production webhook, and has not been deployed or connected to a real token. Test coverage is added to the optional-integrations workflow, but GitHub Actions runner availability remains a blocker, so the Worker tests are not yet CI-verified.
-
-## Current engineering status — 2026-10-10 (Pass 65–73)
-
-GitHub Actions currently fails before job steps start. Latest runs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38025017750), [smoke](https://github.com/MISTACEN/medbiohim/actions/runs/38025017788), [SpaceWeb archive](https://github.com/MISTACEN/medbiohim/actions/runs/38025017818), and [source package](https://github.com/MISTACEN/medbiohim/actions/runs/38025017740). Raw job metadata reports no runner allocation (`runner_id: 0`), no steps and no logs. A malformed YAML indentation issue in the source-package workflow has been fixed, but the job still cannot start. This is a release blocker; archive security guards are committed but not yet executed in CI. See the [continuation handoff](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) for the exact next steps.
-
-## Latest consolidated engineering workstream — 2026-10-10
-
-The project now groups related audits into domain workstreams to reduce pass/report overhead without deleting historical evidence. Current report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). A least-privilege migration is committed but **not applied** to live Supabase; no production database writes were made. CI runner and deployment/runtime checks remain open.
-
-## Полная концепция проекта
-Полное описание идеи, архитектуры, учебной логики, предметных контуров, принципов бесплатности, администрирования, безопасности и будущего развития: [docs/PROJECT-CONCEPT-AND-VISION.md](docs/PROJECT-CONCEPT-AND-VISION.md).
-
 # MEDBIOHIM
 
-## Ветки (важно)
+Образовательная платформа для медико-биологической химии и смежных дисциплин.
+
+**Стек:** Next.js (Vercel) · PHP API (SpaceWeb) · Supabase · миграция API на Cloudflare Workers.
+
+## Быстрый старт
+
+### Frontend (корень репозитория)
+
+```bash
+npm install
+cp .env.example .env.local   # заполнить NEXT_PUBLIC_* и SPACEWEB_API_ORIGIN
+npm run dev
+```
+
+- Браузер ходит на `/api/v1/*` (same-origin).
+- Vercel-прокси пересылает запросы на SpaceWeb (`SPACEWEB_API_ORIGIN`).
+
+### Backend (SpaceWeb)
+
+```bash
+cd backend
+cp .env.example .env         # DB_URL, Supabase keys, B2 и т.д.
+# Document root на хостинге: backend/public/
+```
+
+Папка `backend/data/` должна быть writable (если ещё используется).
+
+### Цепочка запросов (production сейчас)
+
+```
+Browser → Vercel /api/v1 → SpaceWeb PHP /api/v1 → Supabase
+```
+
+Параллельно идёт shadow-миграция на Cloudflare Workers (`integrations/cloudflare-api/`).
+Production-трафик на Cloudflare **не переключён**.
+
+## Ветки
 
 | Ветка | Роль |
 |-------|------|
-| **`main`** | **Прод** — source of truth, Vercel production |
-| **`beta`** | **Только тесты и эксперименты** — не деплоить как production |
-
-Подробно: **[BRANCHES.md](BRANCHES.md)** · журнал экспериментов: **[docs/ACTIVE-EXPERIMENTS.md](docs/ACTIVE-EXPERIMENTS.md)**
-
-Коммиты на `beta`: префиксы `experiment:` / `test:` / `wip:`. На `main` — только готовое к проду.
-
-## Frontend (repo root) → Vercel
-Next.js App Router.
-- Browser API base: `/api/v1`
-- Vercel server-side proxy target: `SPACEWEB_API_ORIGIN`
-- Chemistry (на main): `/chemistry`, `/api/chemistry/resolve`, `/api/chemistry/health` — см. [docs/chemical-engine.md](docs/chemical-engine.md)
-- **Strict TypeScript**: see **[docs/dev-notes.md](docs/dev-notes.md)**.
-
-## backend/ → SpaceWeb
-PHP API. Document root: `backend/public/`.
-Copy `.env.example` → `.env`. Folder `data/` must be writable.
-
-## Deployment chain
-`Browser → Vercel /api/v1 → SpaceWeb /api/v1 → PHP → Supabase`
-
-## План и документация
-- [ROADMAP.md](ROADMAP.md) — единый план проекта и порядок работ
-- [Отчёт Pass 53: API proxy hardening](docs/API-PROXY-HARDENING-2026-10-10-PASS53.md) — PHP-first fallback, приватное кеширование media, безопасные 502; CI/runtime verification ещё заблокированы
-- [Отчёт Pass 54: сверка целостности тестов и вопросов](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md) — read-only проверка связей и классификация пустых ответов
-- [PHASES_STATUS.md](PHASES_STATUS.md) — текущее состояние фаз
-- [Единый чек-лист GitHub/production](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) — Actions, сборка, API, безопасность, данные, media, UI и сценарии end-to-end
-- [docs/README.md](docs/README.md) — карта документов и источников истины
-- [Браузерное расширение](integrations/browser-extension/README.md) — MVP быстрых ссылок для Chrome/Edge
-- [GitHub issue template](.github/ISSUE_TEMPLATE/bug_report.yml) — структурированная фиксация ошибок с commit SHA и доказательствами
-- [Optional integrations workflow](.github/workflows/optional-integrations-check.yml) — тесты Telegram webhook и минимальных прав расширения
-
-## Docs
-- [BRANCHES.md](BRANCHES.md) — main vs beta
-- [docs/ACTIVE-EXPERIMENTS.md](docs/ACTIVE-EXPERIMENTS.md) — что тестируется на beta
-- [docs/chemical-engine.md](docs/chemical-engine.md)
-- [docs/dev-notes.md](docs/dev-notes.md)
-- [docs/platform-concept-medbiohim.md](docs/platform-concept-medbiohim.md)
-
-Synced: 2026-10-10
-
-
-## Текущее состояние проекта — 2026-10-10
-
-MEDBIOHIM — единая образовательная платформа. Полный запланированный функционал сохраняется при $0 обязательных расходов.
-
-**Важно:** этот README описывает архитектуру и функциональные контуры. Он не заменяет runtime-проверку: актуальные статусы, подтверждённые deployment SHA, блокеры и правила закрытия задач фиксируются в [ROADMAP.md](ROADMAP.md), [PHASES_STATUS.md](PHASES_STATUS.md) и [едином чек-листе проверки](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md). Коммит или статус Vercel READY сам по себе не означает, что SpaceWeb API, физические файлы и пользовательские сценарии проверены.
-
-### Каноническая архитектура
-
-- GitHub — код, миграции, документация, roadmap/status и небольшие декларативные контентные артефакты.
-- Vercel Hobby — Next.js frontend и deployment.
-- SpaceWeb Free — PHP API/runtime и тяжёлые физические media-файлы.
-- Supabase Free — PostgreSQL, Auth, RLS, metadata и canonical data.
-- Backblaze B2 Free — дополнительное object storage/backup при необходимости.
-- Дополнительные бесплатные сервисы — только специализированные дополнения: cache/CDN, push, OCR, search, monitoring, analytics, backup.
-
-Supabase остаётся единственным canonical source of truth для данных. Дополнительные сервисы не создают вторую конкурирующую БД и не должны быть обязательными для базовой работы сайта.
-
-### Уже реализовано
-
-- авторизация, /api/v1/me, роли и academic context;
-- группы, предметы, учебный план и расписание;
-- homework/planner и group-scoped academic flows;
-- тесты, подготовки, история и server-authoritative scoring;
-- immutable snapshots для воспроизводимости результатов;
-- Question Library с ответами без запуска теста;
-- subject-scoped банки вопросов и жалобы на вопросы;
-- admin problem center;
-- optional AI grading с deterministic-проверкой до вызова AI;
-- игнорирование орфографических ошибок при свободном ответе;
-- curriculum → topic → question/test mapping;
-- Histology atlas/trainer/materials architecture;
-- 28 electronograms и captions metadata;
-- Chemistry unified master catalog на 436 элементов с provenance;
-- chemistry bank на сайте;
-- admin database console с редактированием, импортом/экспортом и audit/rollback;
-- поиск и пагинация в admin database console;
-- zero-cost/full-functionality policy;
-- стабильная baseline-точка для безопасного отката.
-
-### Гистология
-
-Физические материалы хранятся отдельно от Supabase metadata. Канонический runtime-путь на SpaceWeb: /public_html/content/histology/.
-
-Модель: Supabase metadata/source_key/path → SpaceWeb physical file → PHP API → frontend.
-Наличие записи в Supabase не считается доказательством существования физического файла; финальная проверка — HTTP 200 + корректный MIME.
-
-### Тесты и ответы
-
-Server-authoritative модель: клиент не является источником правильного ответа; question/authoritative answer фиксируются snapshot; score вычисляется сервером; free-text сначала проверяется детерминированно и только затем при необходимости AI; AI необязателен; spelling/orthography не должны влиять на смысловую оценку; multiple-choice проверяется без AI.
-
-### Химия
-
-Единый master catalog: 436 элементов, 260 open tasks, 176 test questions. Сохраняется provenance двух независимых методических источников. Текстовые формулы сохраняются; image-only structural formulas не восстанавливаются догадкой; неподтверждённый OCR не заменяет production answers.
-
-### Администрирование
-
-Планируется единый PC-style Operations Center: Database Console → Content Center → File & Storage Center для SpaceWeb/B2 → reconciliation metadata/objects → health/quota dashboard → audit/history/rollback. Изменения должны проходить whitelist, server-side role checks, validation и audit.
-
-### Объединённый flow расписания и заданий
-
-Целевой сценарий: Расписание → дата → предмет → занятие → задание → выполнение/сдача → единый статус.
-
-### Основной незакрытый backlog
-
-Перед тем как отмечать любой пункт готовым, пройти соответствующую часть [единого чек-листа GitHub/production](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md). Для каждого подтверждённого дефекта создать GitHub issue с commit SHA, шагами воспроизведения, ожидаемым/фактическим результатом и безопасно очищенными логами.
-
-Production/runtime Vercel + SpaceWeb + CI; auth/security final gate; физическая сверка Histology media; Materials/DOCX/PDF/media delivery; smoke всех published tests; единый Schedule + Homework UX; Smart grading E2E; admin Content Center; DB/File/Storage Operations Center; mobile/browser acceptance; завершение Chemistry answers/formula verification; strict TypeScript/ESLint и architecture cleanup; AI tutor/provider runtime; performance/free-tier optimization; дополнительные бесплатные сервисы только как optional additions.
-
-Подробности и порядок работ находятся в ROADMAP.md и PHASES_STATUS.md.
-
-### Дополнительные инструменты
-
-- Browser extension MVP: `integrations/browser-extension/` — только быстрые ссылки, без permissions, токенов и доступа к приватным данным.
-- [Telegram bot MVP](integrations/telegram-bot/README.md): изолированный webhook с `/start`, `/help`, `/site`, `/schedule`, `/tests`, `/subjects`, `/materials`, `/privacy`. Пока только публичные ссылки; нет доступа к аккаунтам, расписанию конкретного студента или оценкам.
-
-### Zero-cost правило
-
-Функциональность не удаляется и не урезается только из-за бесплатной инфраструктуры. Сначала применяются cache, pagination, lazy loading, streaming, batching, deduplication, metadata/binary separation и распределение нагрузки между бесплатными слоями.
-
-### Stable baseline
-
-Rollback reference: 8e8fef5c2f661e7e1d625964909307c00c343884. Это технический baseline, а не независимая production-проверка.
-
-
-### Latest engineering workstream — 2026-10-10 (Pass 55)
-
-Reviewed GitHub Actions workflow definitions and rechecked the runner failure; current evidence still shows a pre-step failure, not a confirmed test failure or green CI. Reconciled Histology electronogram metadata read-only: 28 cards, captions on all, five source/image basename mismatches, and no linked `source_file_id` values. No production data or media paths were changed pending physical SpaceWeb/B2 verification. Details: `docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md`.
-
-
-### Pass 56 — security status
-
-The PostgreSQL 17.6 privilege audit found unnecessary MAINTAIN/TRUNCATE/REFERENCES/TRIGGER privileges on 71 public tables for `anon` and 78 for `authenticated` (out of 83). The migration was updated but remains unapplied. Latest Actions runs are pre-step failures, so current CI is blocked/unverified. Details: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
-
-### Latest verification status — 2026-10-10 (Pass 57)
-
-- GitHub Actions smoke job retry still fails before steps/logs (`steps: null`); PHP/frontend checks have not been verified by CI. Do not treat this as a code-test failure or a green build.
-- Supabase default ACL/role-membership preflight was read-only. Least-privilege migration is committed but **not applied**; no production writes in this pass.
-- Details: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
-
-### Release verification caveats — Pass 58 (2026-10-10)
-
-The latest source audit found no tracked frontend dependency lockfile, a minimal ESLint config without rules, Next.js build configuration that ignores built-in TypeScript errors (the separate predeploy audit runs typecheck), and disabled FTPS certificate verification in the backend deployment workflow. GitHub Actions still fails before steps, so none of these gates has been confirmed by a successful run. Details: [Pass 58 report](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
-
-
-### Latest engineering status — 2026-10-10 (Pass 59)
-GitHub Actions currently fails across code-check, smoke, backend archive, and source-package workflows before step details are exposed (`steps: null`). This does not establish that code checks ran or failed; frontend/PHP validation remains unverified. Follow `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md` for evidence and next steps. No production deployment or database writes were made in this pass.
-
-
-### CI efficiency update — Pass 60
-Documentation-only pushes now skip code-check, smoke-on-push, source-package, and backend-archive workflows where configured. Scheduled/manual checks remain available. This is queue-noise reduction only; the Actions runner initialization issue remains unresolved. See `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
-
-
-### Actions diagnostics — Pass 61
-The job-step endpoint returned no steps and log downloads returned `BlobNotFound` for both code-check jobs. The connected integration has repository admin-level permissions and the repo is not archived, so root cause remains unknown. Owner-side Actions settings/usage checks and potentially GitHub Support are needed. No successful CI result is claimed. See `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
-
-
-### Vercel observability — Pass 62
-A recent docs-only production deployment was READY, but the newer commit's deployment state was not confirmed. Vercel runtime-log access returned 403 and build-event retrieval returned 404, so this does not establish runtime health. See `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
-
-
-### Pre-deploy audit reconciliation — 2026-10-10
-The pre-deploy audit now warns when the ESLint config appears to contain no rules or recognized presets. This is a heuristic warning, not a substitute for a real lint baseline. CI remains unverified while Actions jobs fail before exposing steps/logs. See [report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
-
-
-### Pass 64 — archive security and project inventory
-Archive workflows now exclude root and nested `.env*` paths and include a pre-upload archive listing guard. CI has not executed the guard because Actions jobs still fail before steps/logs are available. Current inventory: 38 named PASS reports (numbering up to 64, with historical gaps), 22 closed legacy blockers, and 7 broad remaining workstreams. [Details](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
-
-
-**Development status (2026-10-10):** GitHub Actions workflows have explicit read-only repository permissions, and archive/deployment steps have additional fail-fast guards. However, recent CI jobs terminate before steps and expose no logs; tests are not considered passed until runner execution is restored. See [`docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md) and [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md).
-
-
-**Latest code follow-up (2026-10-10):** A regression test now covers `AccountSettingsService::getPreferences()` and its default values, wired into CI and deployment preflight. It is committed but not verified in execution because GitHub Actions jobs still fail before their first step. See the continuation handoff and unfinished registry for evidence and next steps.
+| `main` | Прод, source of truth, Vercel production |
+| `spaceweb-backend` | Совместимость/фиксы текущего PHP на SpaceWeb |
+| `beta` | Эксперименты, не деплоить как prod |
+
+Подробно: [BRANCHES.md](BRANCHES.md).
+
+## Документация
+
+| Документ | Назначение |
+|----------|------------|
+| [docs/README.md](docs/README.md) | Карта всей документации |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура |
+| [docs/SPACEWEB-API-INVENTORY.md](docs/SPACEWEB-API-INVENTORY.md) | **Полный список API SpaceWeb** (для сверки с Cloudflare) |
+| [docs/STATUS.md](docs/STATUS.md) | Текущий статус и блокеры |
+| [backend/MODULE-INTEGRATION.md](backend/MODULE-INTEGRATION.md) | Как добавлять новые модули в PHP |
+
+## Что уже есть
+
+- Auth (login/register/refresh/logout/recover/me), роли, academic context
+- Группы, предметы, расписание, homework/planner
+- Тесты с server-authoritative scoring и immutable snapshots
+- Question Library, жалобы на вопросы
+- Тренажёр гистологии (feed + answers + media)
+- Chemistry master catalog (436 элементов)
+- Admin database console, content package, import
+- Telegram bot (публичные команды), browser extension MVP
+
+## Zero-cost правило
+
+Функциональность не режется из‑за бесплатной инфраструктуры.
+Сначала: cache, pagination, lazy loading, разделение metadata/binary, распределение нагрузки.
+
+## Важно
+
+- Supabase — единственный canonical source of truth для данных.
+- Секреты в Git не класть.
+- Cutover production на Cloudflare — только после явной сверки по [SPACEWEB-API-INVENTORY](docs/SPACEWEB-API-INVENTORY.md) и smoke-тестов.
