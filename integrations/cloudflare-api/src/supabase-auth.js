@@ -946,6 +946,39 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
         sort_order: module.order_index ?? null,
       }));
     }
+
+    // Attach the actual curriculum topics to each module so the subject page can
+    // render a useful thematic plan when no curated JSON plan exists. Topics are
+    // read with the same caller JWT and remain subject to Supabase RLS.
+    const moduleIds = modules.map((module) => String(module?.id || "")).filter((id) => id && !/[(),]/.test(id));
+    let topics = [];
+    if (moduleIds.length) {
+      try {
+        topics = await rows("topics", {
+          select: "id,module_id,title,order_index",
+          module_id: "in.(" + moduleIds.join(",") + ")",
+          order: "module_id.asc,order_index.asc,title.asc",
+        });
+      } catch {
+        try {
+          topics = await rows("topics", {
+            select: "id,module_id,title,sort_order",
+            module_id: "in.(" + moduleIds.join(",") + ")",
+            order: "module_id.asc,sort_order.asc,title.asc",
+          });
+          topics = topics.map((topic) => ({ ...topic, order_index: topic.order_index ?? topic.sort_order ?? null }));
+        } catch {
+          // Older deployments may not expose topics to the caller; keep subject
+          // details usable and do not invent a curriculum.
+          topics = [];
+        }
+      }
+    }
+    modules = modules.map((module) => ({
+      ...module,
+      topics: topics.filter((topic) => String(topic.module_id || "") === String(module.id || ""))
+        .map((topic) => ({ id: topic.id ?? null, title: topic.title ?? "", order_index: topic.order_index ?? null })),
+    }));
   } catch (error) {
     console.error("MEDBIOHIM_SUBJECT_DETAIL_FAILED", JSON.stringify({
       table: String(error?.table || "unknown").slice(0, 50),
