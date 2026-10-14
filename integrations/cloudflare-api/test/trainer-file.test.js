@@ -121,6 +121,49 @@ test("trainer image URL prefers a private Upstash Blob object when it exists", a
   assert.equal(b2Calls, 0);
 });
 
+test("trainer image URL resolves legacy preparation hash keys to uploaded archive paths", async () => {
+  const checked = [];
+  const expectedKey = "5_Фотографии препаратов/цитология, эмбриология и общая гистология/4.Эпителий. Многорядный эпителий.jpg";
+  const envWithBlob = {
+    ...env,
+    UPSTASH_BLOB_TOKEN: "test-only-token",
+    FILE_STORAGE: {
+      async head(key) {
+        checked.push(key);
+        return key === expectedKey ? { size: 123, httpMetadata: { contentType: "image/jpeg" } } : null;
+      },
+      async signedReadUrl(key, options) {
+        assert.equal(key, expectedKey);
+        assert.equal(options.expiresIn, "5m");
+        return { url: "https://blob.example.test/preparation-photo", expiresAt: "2026-10-14T00:05:00Z" };
+      },
+    },
+  };
+  const result = await getSupabaseTrainerImageUrl(request(), envWithBlob, "card-prep-1", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards") {
+      return response([{
+        id: "card-prep-1",
+        subject_slug: "histology",
+        specialty_slug: "mbh",
+        source_file_id: null,
+        source_key: "histology-photo-legacy-hash",
+        preparation: { imagePath: "4.Эпителий. Многорядный эпителий.jpg" },
+        is_published: true,
+      }]);
+    }
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      return response([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]);
+    }
+    assert.fail("Unexpected endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.mode, "upstash-blob");
+  assert.equal(result.data.url, "https://blob.example.test/preparation-photo");
+  assert.ok(checked.includes(expectedKey));
+});
+
 test("trainer image URL rejects malformed card IDs before database access", async () => {
   let calls = 0;
   const result = await getSupabaseTrainerImageUrl(request(), env, "../secret", async (url) => { calls += 1; assert.equal(new URL(String(url)).pathname, "/auth/v1/user"); return response({ id: "user-1" }); });
