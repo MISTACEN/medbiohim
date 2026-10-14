@@ -126,7 +126,8 @@ DECLARE
   v_layout_mode text := COALESCE(p_input->>'layout_mode', 'top');
   v_requested_count integer := 20;
   v_limit integer := 20;
-  v_force boolean := COALESCE((p_input->>'force')::boolean, false);
+  v_force boolean := false;
+  v_all_questions boolean := false;
   v_hide_labels boolean;
   v_training_id uuid;
   v_existing_id uuid;
@@ -146,6 +147,18 @@ BEGIN
   END IF;
   IF pg_catalog.jsonb_typeof(COALESCE(p_input, '{}'::jsonb)) <> 'object' THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 422, 'code', 'VALIDATION_ERROR', 'message', 'Некорректные настройки тренировки');
+  END IF;
+  IF p_input ? 'force' THEN
+    IF lower(COALESCE(p_input->>'force', '')) NOT IN ('true', 'false') THEN
+      RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 422, 'code', 'VALIDATION_ERROR', 'message', 'Некорректный признак force');
+    END IF;
+    v_force := COALESCE((p_input->>'force')::boolean, false);
+  END IF;
+  IF p_input ? 'all_questions' THEN
+    IF lower(COALESCE(p_input->>'all_questions', '')) NOT IN ('true', 'false') THEN
+      RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 422, 'code', 'VALIDATION_ERROR', 'message', 'Некорректный all_questions');
+    END IF;
+    v_all_questions := COALESCE((p_input->>'all_questions')::boolean, false);
   END IF;
   IF v_content_type NOT IN ('all','preparation','electronogram') THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 422, 'code', 'VALIDATION_ERROR', 'message', 'Недопустимый тип материалов');
@@ -189,7 +202,7 @@ BEGIN
       WHERE pg_catalog.btrim(value) <> '';
   END IF;
 
-  IF COALESCE((p_input->>'all_questions')::boolean, false) THEN
+  IF v_all_questions THEN
     v_requested_count := 500;
   ELSE
     BEGIN
