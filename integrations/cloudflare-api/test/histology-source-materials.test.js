@@ -72,6 +72,52 @@ test("textbook listing requires MBH membership and returns legacy item fields", 
   assert.ok(calls.some((call) => call.parsed.pathname === "/b2api/v2/b2_list_file_names"));
 });
 
+test("textbook listing and streaming prefer the private Upstash Blob archive", async () => {
+  const envWithBlob = {
+    ...env,
+    UPSTASH_BLOB_TOKEN: "test-only-token",
+    FILE_STORAGE: {
+      async list({ prefix }) {
+        return {
+          blobs: prefix === "source-materials/Учебники/" ? [{
+            path: objectKey,
+            size: 1234,
+            uploadedAt: "2026-10-14T00:00:00.000Z",
+          }] : [],
+          cursor: null,
+        };
+      },
+      async signedReadUrl(path, options) {
+        assert.equal(path, objectKey);
+        assert.equal(options.expiresIn, "5m");
+        return { url: "https://b52abdc10f9f4caba34db7acf38f7e80.r2.cloudflarestorage.com/private-pdf" };
+      },
+    },
+  };
+  const { fetcher } = fetcherFactory();
+  const listed = await listSupabaseHistologySourceMaterials(request(), envWithBlob, { folder: "Учебники" }, fetcher);
+  assert.equal(listed.ok, true);
+  assert.equal(listed.data.source, "upstash-blob");
+  assert.equal(listed.data.items.length, 1);
+  assert.equal(listed.data.items[0].path, objectKey);
+
+  const downloaded = await getSupabaseHistologySourceFile(request(objectKey), envWithBlob, { path: objectKey }, async (url, init) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return json({ id: userId, email: "student@example.test" });
+    if (parsed.pathname === "/rest/v1/group_memberships") {
+      return json([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]);
+    }
+    if (parsed.hostname.endsWith(".r2.cloudflarestorage.com")) {
+      assert.equal(init.method, "GET");
+      return new Response(new Uint8Array([37, 80, 68, 70, 45]), { status: 200, headers: { "content-type": "application/pdf", "content-length": "5" } });
+    }
+    assert.fail("Unexpected endpoint: " + parsed.href);
+  });
+  assert.equal(downloaded.status, 200);
+  assert.equal(downloaded.headers.get("content-type"), "application/pdf");
+  assert.deepEqual([...new Uint8Array(await downloaded.arrayBuffer())], [37, 80, 68, 70, 45]);
+});
+
 test("textbook listing denies users outside MBH before B2 access", async () => {
   const { fetcher, calls } = fetcherFactory({ member: false });
   const result = await listSupabaseHistologySourceMaterials(request(), env, { folder: "Учебники" }, fetcher);
