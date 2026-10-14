@@ -2201,6 +2201,7 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 **Implementation status: complete in the isolated Shadow Worker; Production routing remains unchanged.**
 
 - Applied live Supabase migration `secure_histology_training_lifecycle_rpc_20261015` and committed the source migration `database/migrations/20261015120000_secure_histology_training_lifecycle.sql`.
+- Follow-up migration `persist_histology_training_score_20261015` persists the completion percentage in `trainings.score`; the rolled-back live-schema smoke verified the persisted value matches the session history listing.
 - Added owner-bound `SECURITY DEFINER` RPCs for create, list, get, answer, complete and cancel. Every RPC derives the owner from `auth.uid()`, requires active MBH membership and is executable by `authenticated` only; `anon`/`PUBLIC` have no execute privilege.
 - Verified `authenticated` has no direct SELECT/INSERT on `public.trainings` or `public.training_answers`. Do not restore table grants as a workaround.
 - Snapshots remain private in database tables. The get RPC strips correctness fields and (when required by the session label mode) preparation names/captions for unanswered cards; review data appears only after answer/skip. Correctness is computed server-side, not trusted from the request.
