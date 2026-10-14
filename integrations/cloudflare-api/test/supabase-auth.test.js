@@ -584,8 +584,16 @@ test("search queries only caller-scoped published questions and normalizes facet
       assert.equal(parsed.searchParams.get("is_published"), "eq.true");
       assert.equal(parsed.searchParams.get("archived_at"), "is.null");
       return new Response(JSON.stringify([
-        { id: "q1", subject_id: "subject-1", topic: "Клеточный цикл", text: "Что такое mitosis?", answer: "Деление клетки" },
-        { id: "q2", subject_id: "subject-2", topic: "Другой предмет", text: "Mitosis unrelated subject", answer: "private" },
+        { id: "q1", subject_id: "subject-1", topic_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", text: "Что такое mitosis?", answer: "Деление клетки" },
+        { id: "q2", subject_id: "subject-2", topic_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", text: "Mitosis unrelated subject", answer: "private" },
+      ]), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (parsed.pathname === "/rest/v1/topics") {
+      assert.equal(parsed.searchParams.get("select"), "id,title");
+      assert.match(parsed.searchParams.get("id") || "", /^in\.\(/);
+      return new Response(JSON.stringify([
+        { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title: "Клеточный цикл" },
+        { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", title: "Другой предмет" },
       ]), { status: 200, headers: { "content-type": "application/json" } });
     }
     throw new Error("Unexpected endpoint " + parsed.pathname);
@@ -597,7 +605,7 @@ test("search queries only caller-scoped published questions and normalizes facet
   assert.equal(result.data.items[0].href, "/subjects/histology?tab=practice");
   assert.deepEqual(result.data.facets.subjects, [{ subject: "Гистология", subject_slug: "histology", count: 1 }]);
   assert.deepEqual(result.data.facets.types, { question: 1 });
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 4);
 });
 
 test("search rejects invalid type and maps Supabase RLS failures to a generic service error", async () => {
