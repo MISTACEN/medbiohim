@@ -371,8 +371,6 @@ function makeSources(hits) {
 }
 
 export async function askSupabaseTutor(request, env, input = {}, fetcher = fetch) {
-  const client = await createClient(request, env, fetcher);
-  if (client.ok === false) return client;
   const body = input && typeof input === "object" && !Array.isArray(input) ? input : {};
   const question = typeof body.question === "string" ? body.question.trim()
     : (typeof body.q === "string" ? body.q.trim() : "");
@@ -380,6 +378,11 @@ export async function askSupabaseTutor(request, env, input = {}, fetcher = fetch
   if (Array.from(question).length > MAX_QUESTION) return failure(422, "VALIDATION_ERROR", "Вопрос слишком длинный (макс. 2000 символов)");
   const slugResult = normalizeSubjectSlug(body.subject_slug);
   if (!slugResult.ok) return failure(422, "VALIDATION_ERROR", "Некорректный предмет");
+
+  // Reject malformed input before any network/authentication request.
+  const client = await createClient(request, env, fetcher);
+  if (client.ok === false) return client;
+
   const topK = Number.isFinite(Number(body.top_k)) ? Math.max(1, Math.min(20, Math.trunc(Number(body.top_k)))) : 6;
   const history = Array.isArray(body.history) ? body.history.slice(-8).flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
