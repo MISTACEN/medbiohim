@@ -790,7 +790,7 @@ export async function searchSupabaseContent(request, env, options = {}, fetcher 
       }
     }
     if (!type || type === "trainer") {
-      const data = await rows("trainer_feed_cards", { is_published: "eq.true", select: "id,subject_id,subject_slug,specialty_slug,preparation,question,tags", order: "created_at.desc", limit: 1000 });
+      const data = await rows("trainer_feed_cards_public", { is_published: "eq.true", select: "id,subject_id,subject_slug,specialty_slug,preparation,question,tags", order: "created_at.desc", limit: 1000 });
       for (const row of data) {
         const slug = String(row.subject_slug ?? "").trim();
         if (!matchesSubject(slug, row.subject_id) || (slug === "histology" && String(row.specialty_slug || "mbh") !== "mbh")) continue;
