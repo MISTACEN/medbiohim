@@ -62,7 +62,7 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
     // Query the base table with the caller JWT so its RLS policies remain in force.
     // source_key is the legacy canonical object path and permits staged migration
     // without inventing fake public.files rows for files that have not been copied.
-    const cards = await rows("trainer_feed_cards", {
+    const cards = await rows("trainer_feed_cards_public", {
       select: "id,subject_slug,specialty_slug,mode_set,source_file_id,source_key,preparation,is_published",
       id: "eq." + id,
       is_published: "eq.true",
