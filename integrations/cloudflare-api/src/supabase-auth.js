@@ -2165,39 +2165,287 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
   if (!/^[a-z0-9][a-z0-9_-]{0,100}$/i.test(normalized)) return failure(422, "VALIDATION_ERROR", "Invalid subject slug");
   const identity = await authenticateSupabaseRequest(request, env, fetcher);
   if (!identity.ok) return identity;
+
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
   const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  let base;
   try {
-    const base = new URL(baseUrl);
+    base = new URL(baseUrl);
     if (base.protocol !== "https:" || !anonKey) throw new Error("config");
-    const endpoint = new URL("/rest/v1/site_content", base);
-    endpoint.searchParams.set("select", "payload");
-    endpoint.searchParams.set("key", "eq.subject_plan:" + normalized);
-    endpoint.searchParams.set("limit", "1");
+  } catch {
+    return failure(503, "AUTH_NOT_CONFIGURED", "Supabase REST must use HTTPS and an anon key");
+  }
+
+  async function rows(table, query = {}) {
+    const endpoint = new URL("/rest/v1/" + table, base);
+    for (const [key, value] of Object.entries(query)) endpoint.searchParams.set(key, String(value));
     const response = await fetcher(endpoint.toString(), {
       method: "GET",
       headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Subject plan read failed");
-    const rows = await response.json();
-    if (!Array.isArray(rows)) throw new Error("Invalid subject plan response");
-    const plan = rows[0]?.payload && typeof rows[0].payload === "object" ? rows[0].payload : null;
-    if (plan === null) return { ok: true, data: { plan: null, schedule_count: 0, schedule_sample: [], available: false } };
+    if (response.status >= 300 && response.status < 400) throw new Error("Supabase REST redirect blocked");
+    if (!response.ok) {
+      const error = new Error("Subject plan read failed");
+      error.status = response.status;
+      error.table = table;
+      throw error;
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload)) throw new Error("Invalid Supabase collection");
+    return payload;
+  }
+
+  async function withSchedule(plan, subject) {
     const scheduleResult = await listSupabaseSchedule(request, env, {
       from: "2000-01-01",
       to: "2100-12-31",
       all_groups: true,
     }, fetcher);
     if (!scheduleResult.ok) {
-      return { ok: true, data: { plan, schedule_count: null, schedule_sample: [], available: true, schedule_available: false } };
+      return { ok: true, data: {
+        plan,
+        schedule_count: null,
+        schedule_sample: [],
+        available: true,
+        schedule_available: false,
+        source: plan.source || "site_content",
+      } };
     }
-    const subjectName = String(plan.subject || "");
-    const schedule = scheduleResult.data.items.filter((row) => String(row.subject_name || row.subject || "") === subjectName);
-    return { ok: true, data: { plan, schedule_count: schedule.length, schedule_sample: schedule.slice(0, 5), available: true, schedule_available: true } };
-  } catch {
+    const subjectName = String(subject?.name || plan.subject || "");
+    const subjectId = String(subject?.id || "");
+    const schedule = scheduleResult.data.items.filter((row) =>
+      (subjectId && String(row.subject_id || "") === subjectId)
+      || String(row.subject_slug || "") === normalized
+      || (!row.subject_slug && String(row.subject_name || row.subject || "") === subjectName)
+    );
+    return { ok: true, data: {
+      plan,
+      schedule_count: schedule.length,
+      schedule_sample: schedule.slice(0, 5),
+      available: true,
+      schedule_available: true,
+      source: plan.source || "site_content",
+    } };
+  }
+
+  try {
+    const savedRows = await rows("site_content", {
+      select: "payload",
+      key: "eq.subject_plan:" + normalized,
+      limit: "1",
+    });
+    const savedPlan = savedRows[0]?.payload && typeof savedRows[0].payload === "object"
+      ? savedRows[0].payload
+      : null;
+    if (savedPlan) return await withSchedule(savedPlan, { name: savedPlan.subject || "" });
+
+    // JSON plans are curated only for a few subjects. For all others, build the
+    // same page contract from published curriculum rows visible to this caller.
+    // Never create dates or lessons: every item comes from Supabase curriculum
+    // or the user's current group schedule, both queried with their JWT.
+    const memberships = await rows("group_memberships", {
+      select: "group_id,groups(specialty_slug,is_active,course_number)",
+      user_id: "eq." + identity.user.id,
+      is_active: "eq.true",
+      limit: "100",
+    });
+    const activeGroups = memberships.flatMap((membership) => {
+      const raw = membership?.groups;
+      const group = Array.isArray(raw) ? raw[0] : raw;
+      return group && group.is_active !== false && membership.group_id
+        ? [{ id: String(membership.group_id), ...group }]
+        : [];
+    });
+    const allowedSpecialties = new Set(activeGroups.map((group) => String(group.specialty_slug || "").trim().toLowerCase()).filter(Boolean));
+    if (allowedSpecialties.has("mbh")) allowedSpecialties.add("histology");
+
+    const subjectRows = await rows("subjects", {
+      select: "id,slug,name,description,specialty_slug,course_number,semester,control_type,lecture_hours,practice_hours,self_study_hours,total_hours,credits,is_active",
+      slug: "eq." + normalized,
+      is_active: "eq.true",
+      order: "course_number.asc.nullslast,semester.asc.nullslast,name.asc",
+      limit: "200",
+    });
+    const visibleSubjects = subjectRows.filter((subject) => {
+      const specialty = String(subject.specialty_slug || "").trim().toLowerCase();
+      const requiredSpecialty = normalized === "histology" || specialty === "mbh" ? "mbh" : specialty;
+      return !requiredSpecialty || allowedSpecialties.has(requiredSpecialty);
+    });
+    if (!visibleSubjects.length) {
+      return { ok: true, data: { plan: null, schedule_count: 0, schedule_sample: [], available: false, schedule_available: false, source: "none" } };
+    }
+
+    let profile = null;
+    try {
+      const profileRows = await rows("users", {
+        select: "course_number,semester",
+        id: "eq." + identity.user.id,
+        limit: "1",
+      });
+      profile = profileRows[0] || null;
+    } catch {
+      // Older installations may not expose optional profile fields; group data is enough.
+    }
+    const groupCourse = activeGroups.find((group) => Number.isInteger(Number(group.course_number)))?.course_number;
+    const preferredCourse = Number(profile?.course_number ?? groupCourse);
+    const preferredSemester = Number(profile?.semester);
+    const scoreSubject = (subject) => {
+      let score = 0;
+      const course = Number(subject.course_number);
+      const semester = Number(subject.semester);
+      if (Number.isFinite(preferredCourse) && subject.course_number != null) score += course === preferredCourse ? 8 : -4;
+      if (Number.isFinite(preferredSemester) && subject.semester != null) score += semester === preferredSemester ? 4 : -2;
+      return score;
+    };
+    visibleSubjects.sort((a, b) => scoreSubject(b) - scoreSubject(a));
+    const subject = visibleSubjects[0];
+
+    const curriculumItems = await rows("curriculum_items", {
+      select: "id,subject_id,module_id,topic_id,course_number,semester,item_type,title,description,planned_date,due_at,order_index,is_required,source,metadata",
+      subject_id: "eq." + subject.id,
+      is_active: "eq.true",
+      order: "planned_date.asc.nullslast,order_index.asc,title.asc",
+      limit: "2000",
+    });
+
+    const scheduleResult = await listSupabaseSchedule(request, env, {
+      from: "2000-01-01",
+      to: "2100-12-31",
+      all_groups: true,
+    }, fetcher);
+    const schedule = scheduleResult.ok
+      ? scheduleResult.data.items.filter((row) =>
+          String(row.subject_id || "") === String(subject.id)
+          || String(row.subject_slug || "") === normalized
+          || (!row.subject_slug && String(row.subject_name || row.subject || "") === String(subject.name || ""))
+        )
+      : [];
+
+    const buckets = new Map();
+    const safeDate = (value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(String(value || "")) ? String(value) : "";
+    const ensureBucket = (key, date = null, metadata = {}) => {
+      if (!buckets.has(key)) {
+        buckets.set(key, {
+          date,
+          week: Number.isFinite(Number(metadata.calendar_week)) ? Number(metadata.calendar_week) : null,
+          lecture: "",
+          practice: "",
+          preparations: [],
+          items: [],
+          schedule: [],
+          _sort: date || "9999-99-99",
+        });
+      }
+      return buckets.get(key);
+    };
+    const append = (bucket, field, text) => {
+      const value = String(text || "").trim();
+      if (!value) return;
+      bucket[field] = bucket[field] ? bucket[field] + "\\n" + value : value;
+    };
+
+    for (const [index, item] of curriculumItems.entries()) {
+      const date = safeDate(item.planned_date);
+      const bucket = ensureBucket(date ? "date:" + date : "undated:" + index, date || null, item.metadata || {});
+      const title = String(item.title || "").trim();
+      const kind = String(item.item_type || "lesson").trim().toLowerCase();
+      const description = String(item.description || "").trim();
+      const entry = {
+        id: item.id ?? null,
+        item_type: kind,
+        title,
+        description: description || null,
+        planned_date: date || null,
+        due_at: item.due_at ?? null,
+        order_index: item.order_index ?? null,
+        topic_id: item.topic_id ?? null,
+        module_id: item.module_id ?? null,
+        is_required: item.is_required === true,
+        source: item.source ?? null,
+        metadata: item.metadata && typeof item.metadata === "object" ? item.metadata : {},
+      };
+      bucket.items.push(entry);
+      if (["lecture", "лекция", "lectures"].includes(kind)) append(bucket, "lecture", title);
+      else if (["practice", "practical", "lab", "laboratory", "seminar", "практика", "лабораторная", "семинар"].includes(kind)) {
+        append(bucket, "practice", title ? (["practice", "practical", "практика"].includes(kind) ? title : "Практика: " + title) : "");
+      } else if (["exam", "credit", "зачет", "зачёт", "экзамен", "assessment", "control"].includes(kind)) {
+        append(bucket, "practice", title ? "Контроль: " + title : "");
+      } else {
+        append(bucket, "practice", title ? (kind === "lesson" ? title : kind + ": " + title) : "");
+      }
+    }
+
+    for (const [index, event] of schedule.entries()) {
+      const date = safeDate(event.date);
+      const bucket = ensureBucket(date ? "date:" + date : "schedule:" + index, date || null, {});
+      const time = [event.start_time, event.end_time].map((value) => String(value || "").slice(0, 5)).filter(Boolean).join("–");
+      const title = String(event.title || event.event_title || event.notes || event.event_kind || event.type || "Занятие").trim();
+      const where = [event.building, event.room].map((value) => String(value || "").trim()).filter(Boolean).join(", ");
+      const line = ["Расписание", time, title, where].filter(Boolean).join(" · ");
+      append(bucket, bucket.lecture ? "practice" : "lecture", line);
+      bucket.schedule.push({
+        id: event.id ?? null,
+        date: event.date ?? null,
+        start_time: event.start_time ?? null,
+        end_time: event.end_time ?? null,
+        type: event.type ?? null,
+        event_kind: event.event_kind ?? null,
+        room: event.room ?? null,
+        building: event.building ?? null,
+        is_cancelled: event.is_cancelled === true,
+      });
+    }
+
+    const weeks = [...buckets.values()]
+      .sort((a, b) => a._sort.localeCompare(b._sort) || String(a.date || "").localeCompare(String(b.date || "")))
+      .map((week, index) => {
+        const { _sort, ...value } = week;
+        const weekNumber = value.week || index + 1;
+        return { n: index + 1, week: weekNumber, ...value };
+      });
+    const available = curriculumItems.length > 0 || schedule.length > 0;
+    if (!available) {
+      return { ok: true, data: { plan: null, schedule_count: 0, schedule_sample: [], available: false, schedule_available: scheduleResult.ok, source: "none" } };
+    }
+
+    const plan = {
+      subject: String(subject.name || normalized),
+      subject_slug: normalized,
+      description: subject.description || "",
+      course_number: subject.course_number ?? null,
+      semester: subject.semester ?? null,
+      control: subject.control_type ?? null,
+      hours: {
+        lecture: subject.lecture_hours ?? null,
+        practice: subject.practice_hours ?? null,
+        self_study: subject.self_study_hours ?? null,
+        total: subject.total_hours ?? null,
+      },
+      credits: subject.credits ?? null,
+      note: "План собран из опубликованной учебной программы и расписания группы. Показаны только данные, сохранённые в Supabase.",
+      source: "supabase_curriculum_and_schedule",
+      weeks,
+      updated_at: curriculumItems.reduce((value, item) => {
+        const date = String(item.planned_date || item.due_at || "");
+        return date && date > value ? date : value;
+      }, ""),
+    };
+    return { ok: true, data: {
+      plan,
+      schedule_count: schedule.length,
+      schedule_sample: schedule.slice(0, 5),
+      available: true,
+      schedule_available: scheduleResult.ok,
+      source: "supabase_curriculum_and_schedule",
+    } };
+  } catch (error) {
+    console.error("MEDBIOHIM_SUBJECT_PLAN_FAILED", JSON.stringify({
+      table: String(error?.table || "unknown").slice(0, 50),
+      status: Number(error?.status) || 0,
+    }));
     return failure(503, "SUBJECT_PLAN_UNAVAILABLE", "Учебный план предмета временно недоступен");
   }
 }
