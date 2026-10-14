@@ -20,7 +20,7 @@ export async function streamSupabaseMaterialFile(request, env, materialId, fetch
   let target;
   try {
     target = new URL(String(signed.data?.url || ""));
-    const allowedB2 = /^f\\d+[.]backblazeb2[.]com$/i.test(target.hostname);
+    const allowedB2 = /^f\d+[.]backblazeb2[.]com$/i.test(target.hostname);
     const allowedBlob = /^[a-f0-9]{32}[.]r2[.]cloudflarestorage[.]com$/i.test(target.hostname);
     if (target.protocol !== "https:" || (!allowedB2 && !allowedBlob)) {
       throw new Error("Unexpected private media download host");
