@@ -99,26 +99,28 @@ export async function getSupabaseMaterialFileUrl(request, env, materialId, fetch
       });
       const source = sourceRows[0] || null;
       if (source?.file_id) {
+        // A registered file keeps its own active/group policy; never bypass it
+        // by falling back to the content-source path if that file is unavailable.
         const files = await rows("files", {
           select: "id,object_key,group_id,status",
           id: "eq." + String(source.file_id),
           status: "eq.active",
           limit: "1",
         });
-        file = files[0] || file;
+        file = files[0] || null;
         addCandidate(file?.object_key);
-      }
-      const sourcePath = String(source?.source_path || "").trim();
-      addCandidate(sourcePath);
-      if (sourcePath.startsWith("photos/")) addCandidate(sourcePath.slice("photos/".length));
-      if (sourcePath.startsWith("content/histology/")) addCandidate(sourcePath.slice("content/histology/".length));
-      if (sourcePath && !sourcePath.startsWith("source-materials/") &&
-          !sourcePath.startsWith("electronograms/") && !sourcePath.startsWith("em/") &&
-          !sourcePath.startsWith("5_Фотографии препаратов/") && !sourcePath.startsWith("photos/")) {
-        addCandidate("source-materials/" + sourcePath);
+      } else {
+        const sourcePath = String(source?.source_path || "").trim();
+        addCandidate(sourcePath);
+        if (sourcePath.startsWith("photos/")) addCandidate(sourcePath.slice("photos/".length));
+        if (sourcePath.startsWith("content/histology/")) addCandidate(sourcePath.slice("content/histology/".length));
+        if (sourcePath && !sourcePath.startsWith("source-materials/") &&
+            !sourcePath.startsWith("electronograms/") && !sourcePath.startsWith("em/") &&
+            !sourcePath.startsWith("5_Фотографии препаратов/") && !sourcePath.startsWith("photos/")) {
+          addCandidate("source-materials/" + sourcePath);
+        }
       }
     }
-
     if (!candidateKeys.length) {
       return failure(503, "FILE_UNAVAILABLE", "Физический файл материала ещё не подключён к приватному хранилищу");
     }
