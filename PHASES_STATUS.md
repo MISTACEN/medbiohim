@@ -1,3 +1,13 @@
+## Storage decision — 2026-10-14
+
+The chosen architecture is fixed to three services: Supabase for relational data and RLS; private Upstash Blob bucket `medbiohim-files` for binary media; Upstash Redis `medbiohimcache` for short-lived metadata cache only. No additional storage service is being added.
+
+The Worker source has Blob and Redis adapters and a Blob-first/B2-fallback trainer image path. Live readiness remains blocked: Blob bucket was last observed empty; Worker secrets `UPSTASH_BLOB_TOKEN` and `UPSTASH_REDIS_REST_TOKEN` are not confirmed installed; 206 MBH trainer cards still require verified object/key mapping; no signed-in real AI generation or end-to-end media/RLS acceptance is confirmed. Do not enable production cutover on the basis of source code or mock tests alone.
+
+A temporary Upstash Box test environment was created, but its repository clone failed because authenticated GitHub credentials were unavailable inside that box. No production settings, keys, schema, or traffic routing were changed in that attempt.
+
+---
+
 ## Latest verified checkpoint — 2026-10-14 (after account/training/textbook route port)
 
 - 🟢 Cloudflare Worker build/deploy passed: commit `bd787c12cd324c66dfcf5260b5753e74b8b60f0b`, version `f27f713e-e1cc-44ad-95b3-266f64a7885c`, **276/276 tests passed**.
