@@ -840,13 +840,15 @@ test("Cloudflare chemistry resolver is wired and rejects blank queries before up
 });
 
 
-test("Cloudflare wires training history, histology source materials and account settings", async () => {
+test("Cloudflare wires the full private training lifecycle and histology source routes", async () => {
   const env = {
     SUPABASE_URL: "https://project-id.supabase.co",
     SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
   };
+  const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   for (const path of [
     "/api/v1/trainings",
+    "/api/v1/trainings/" + id,
     "/api/v1/histology/source-materials?folder=%D0%A3%D1%87%D0%B5%D0%B1%D0%BD%D0%B8%D0%BA%D0%B8",
     "/api/v1/settings/account",
     "/api/v1/histology/source-file?path=Учебники%2Ftest.pdf",
@@ -857,8 +859,37 @@ test("Cloudflare wires training history, histology source materials and account 
     assert.equal(body.ok, false, path);
     assert.equal(body.error.code, "UNAUTHORIZED", path);
   }
+
+  const create = await worker.fetch(request("/api/v1/trainings", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ topics: [], content_type: "all", question_count: 10, label_mode: "without" }),
+  }), env);
+  assert.equal(create.status, 401);
+  assert.equal((await create.json()).error.code, "UNAUTHORIZED");
+
+  for (const action of ["answer", "complete", "cancel"]) {
+    const body = action === "answer"
+      ? JSON.stringify({ order: 0, user_answer: "option-a", is_skipped: false })
+      : "{}";
+    const response = await worker.fetch(request("/api/v1/trainings/" + id + "/" + action, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    }), env);
+    assert.equal(response.status, 401, action);
+    assert.equal((await response.json()).error.code, "UNAUTHORIZED", action);
+  }
+
+  const unsupportedRootMethod = await worker.fetch(request("/api/v1/trainings", { method: "PATCH" }), env);
+  assert.equal(unsupportedRootMethod.status, 405);
+  assert.equal(unsupportedRootMethod.headers.get("allow"), "GET, POST, OPTIONS");
+
+  const unsupportedSessionMethod = await worker.fetch(request("/api/v1/trainings/" + id, { method: "POST", body: "{}" }), env);
+  assert.equal(unsupportedSessionMethod.status, 405);
+  assert.equal(unsupportedSessionMethod.headers.get("allow"), "GET, OPTIONS");
+
   for (const [path, allow] of [
-    ["/api/v1/trainings", "GET, OPTIONS"],
     ["/api/v1/histology/source-materials", "GET, OPTIONS"],
     ["/api/v1/histology/source-file", "GET, OPTIONS"],
     ["/api/v1/settings/account", "GET, OPTIONS"],
