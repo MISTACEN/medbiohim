@@ -107,6 +107,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
       question_count: n,
       all_questions: allQuestions || selectedCardIds.length > 0,
       label_mode: labelMode === "with" ? "without" : labelMode,
+      layout_mode: layout,
       card_ids: selectedCardIds.length ? selectedCardIds : undefined,
       force: true,
     });
