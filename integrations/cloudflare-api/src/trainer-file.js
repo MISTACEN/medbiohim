@@ -134,15 +134,13 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
       addCandidate(cleanLegacyPath(imagePath));
       addCandidate(cleanLegacyPath(imageUrl));
 
-      const imagePathBase = cleanLegacyPath(imagePath || imageUrl).split("/").pop() || "";
-      if (imagePathBase && !imagePathBase.includes("..")) {
+      const normalizedImagePath = cleanLegacyPath(imagePath || imageUrl);
+      const imagePathBase = normalizedImagePath.split("/").pop() || "";
+      if (imagePathBase && !imagePathBase.includes("..") && card.mode_set === "electronogram") {
+        // EM archive paths are canonical and deterministic; preparation images
+        // with basename-only metadata must instead use the unique-match resolver.
         addCandidate("electronograms/images/" + imagePathBase);
         addCandidate("em/" + imagePathBase);
-        for (const folder of [
-          "5_Фотографии препаратов/стом. гистология/",
-          "5_Фотографии препаратов/цитология, эмбриология и общая гистология/",
-          "5_Фотографии препаратов/частная гистология/",
-        ]) addCandidate(folder + imagePathBase);
       }
     }
 
