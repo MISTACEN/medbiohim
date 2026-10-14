@@ -1,3 +1,14 @@
+## Verified legacy archive migration pass — 2026-10-14
+
+- New upload `public_html-31(1).zip`: ZIP integrity check passed; 1,088 entries; 162,345,152 uncompressed bytes; SHA-256 `3697cc5ba99b6cbc0c157cd40614cbf4b807227d77e6364f21f5dcf18c264b68`.
+- Syntax checked 192 PHP entries across the archive's root copy and `spaceweb_upload`: 191 passed; one root-copy parse error at `src/Repositories/HomeworkRepository.php:22`. Its SQL timezone literal is not escaped inside the PHP single-quoted query string. The separate `spaceweb_upload` counterpart is older and omits the `due_date` expression; the current GitHub `backend/src/Repositories/HomeworkRepository.php` contains the escaped SQL literal. Root and deployed-folder route registries differ, so do not replace either copy wholesale.
+- **SRS migration:** ported the legacy service to `integrations/cloudflare-api/src/srs.js`, covering `GET /srs/summary`, `POST /srs/ensure`, `GET /srs/due`, `GET/POST /srs/cards`, `POST /srs/review`, and `DELETE /srs/cards/{id}`. Reads and writes use the authenticated caller JWT and explicit `user_id` scoping, with the live Supabase RLS policies remaining authoritative.
+- **Binary material compatibility route:** added `GET /api/v1/materials/{id}/file`; it resolves the material through the existing authorization-checked B2 signing helper, streams content without returning the signed URL, and supports a single byte range. It safely fails when mappings, credentials or upstream file access are unavailable.
+- **Latest Worker gate:** Cloudflare Build `67d6a594-2b6b-4474-bbef-c63e87e0714e`, source commit `bc3b6aef2371f352395fb704099d86bec9295276`, `npm test` **297 passed / 0 failed**, Wrangler dry-run passed, deploy command completed; deployed Shadow Worker version `d0e5d5cd-637e-4fb0-a866-c551c1b941ba`. This does not mean the new flows passed authenticated live-user acceptance or that the physical files are present.
+- Archive `.env` values were not printed, committed, or installed. No Vercel Production, DNS or PHP production-routing cutover was performed.
+- Remaining gates: run signed-in SRS acceptance against live Supabase/RLS; verify B2 signer and real material objects; upload/reconcile the legacy archive and 206 histology mappings; keep Upstash Blob primary for active media and Redis cache-only; fix the archive-only PHP syntax defect before anyone deploys that root tree.
+
+---
 ## Storage architecture and current execution checkpoint — 2026-10-14
 
 The storage architecture now includes four services, with separate responsibilities. Do not add Cloudflare R2 or another storage provider unless the user changes this decision again:
