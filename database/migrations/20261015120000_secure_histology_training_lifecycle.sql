@@ -677,6 +677,12 @@ BEGIN
   v_percent := CASE WHEN v_total = 0 THEN 0 ELSE round(v_correct * 100.0 / v_total, 1) END;
   v_grade := CASE WHEN v_percent >= 90 THEN 5 WHEN v_percent >= 75 THEN 4 WHEN v_percent >= 60 THEN 3 ELSE 2 END;
 
+  -- Persist the score in the canonical session row; history must not depend on
+  -- the response being retained by the browser.
+  UPDATE public.trainings
+     SET score = v_percent
+   WHERE id = v_training.id AND user_id = v_user_id;
+
   SELECT pg_catalog.jsonb_build_object(
     'id', t.id, 'topics', t.topics, 'content_type', t.content_type,
     'question_count', t.question_count, 'label_mode', t.label_mode, 'layout_mode', t.layout_mode,
