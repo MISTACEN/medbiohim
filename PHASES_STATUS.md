@@ -1,3 +1,11 @@
+## Legacy PHP archive follow-up — 2026-10-14
+
+- `public_html-31.zip` (149,011,784 bytes) is the separate old PHP backend archive; it is not the older Cloudflare scaffold ZIP.
+- File materialization succeeded, but the local execution container returned `ClientError` for even basic file listing, so extraction/source inventory is **blocked and not claimed complete**.
+- Current Worker source review: authenticated Supabase reads + private Blob-first/B2 fallback exist in `trainer-file.js`; B2 URL/key validation and short-lived download auth exist in `b2-download.js`. Live B2 credentials/files and signed delivery remain unverified.
+- Next: extract archive, inventory PHP routes/contracts/auth/media/provider use, then port missing behavior route-by-route with parity tests. Preserve PHP and avoid production cutover until signed-in acceptance passes.
+- Detailed handoff: [legacy archive and Vercel audit](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
 ## Storage architecture — 2026-10-14
 
 Four services have distinct roles: Supabase is the relational source of truth and enforces RLS; private Upstash Blob bucket `medbiohim-files` is the primary application delivery store for active binary media; Backblaze B2 is retained as the existing large-archive/original-source store and migration fallback; Upstash Redis `medbiohimcache` is only a short-lived metadata cache. Do not add Cloudflare R2 or another storage provider unless the user changes this decision again.
