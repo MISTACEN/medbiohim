@@ -3077,3 +3077,14 @@ Added to \`main\`:
 The latest source commit containing these routes is \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\`. Its Cloudflare build is still queued; these routes are **not marked deployed** until the build queue runs tests, Wrangler dry-run and Shadow deployment.
 
 Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipart handling and B2 upload; move SpaceWeb-only files using a manifest + checksum verification; securely configure B2 Worker secrets; then test real-user RLS and signed URL expiry. Production stays unchanged.
+
+
+## Histology media connection — 2026-10-14
+
+- Upstash Blob inventory now contains 358 keys: the 357 expected archive files plus a folder-marker key. Extension counts match the archive inventory: 246 images, 4 PDFs, 102 Word documents, 3 JSON files, 1 Markdown file, and 1 text file. The bucket remains private.
+- Updated the authenticated Worker trainer-image resolver to map legacy `histology-photo-…` keys through `preparation.imagePath` and the three actual preparation-photo directories, and to try electronogram path aliases. It still checks the caller JWT and MBH group membership before signing a short-lived private Blob URL; B2 remains a fallback.
+- Updated material-file resolution: when a published Histology material has no `files` row, resolve its `source_key` through caller-authorized `content_sources.source_path`, then match the actual Blob archive path. This includes basename-only photo aliases, legacy electronogram DOCX directory names, and `source-materials/` document paths. File/group restrictions remain enforced when a registered `file_id` exists.
+- Updated private material streaming to accept only the expected Backblaze host or a 32-hex `*.r2.cloudflarestorage.com` host. Histology textbook listing/download now prefers private Blob and falls back to B2.
+- Added tests for preparation-photo aliases, content-source photo resolution, and Blob-backed textbook listing/streaming. **The tests/build have not yet been confirmed running in CI**, so this is code committed to `main`, not a verified live deployment.
+- Reconciliation check: 260 of 261 Histology content-source paths map to an uploaded object by deterministic path rules. One unresolved name remains: DB asks for `photos/5. Эмалевый орган.jpg`, while the archive has `2. Эмалевый орган.jpg`; no automatic substitution was made because the exact source image is ambiguous.
+- **Deployment blocker:** Cloudflare Worker `medbiohim-api-shadow` does not yet have the `UPSTASH_BLOB_TOKEN` secret binding. Add it in Cloudflare Dashboard → Workers & Pages → `medbiohim-api-shadow` → Settings → Variables and Secrets. Do not put the token in Git, frontend variables, or chat. After adding it, deploy the updated Worker and run authenticated checks for trainer photos, DOCX/PDF materials, and the histology atlas. Production traffic/DNS were not switched.
