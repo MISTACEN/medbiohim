@@ -16,6 +16,7 @@ import { listSupabaseTrainings } from "./trainings.js";
 import { getSupabaseHistologySourceFile, listSupabaseHistologySourceMaterials } from "./histology-source-materials.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
 import { addSrsCard, deleteSrsCard, ensureSrsDeck, getSrsSummary, listSrsCards, listSrsDueCards, reviewSrsCard } from "./srs.js";
+import { askSupabaseTutor, getSupabaseTutorMeta, listSupabaseTutorSubjects } from "./tutor.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submitSupabaseQuestionReport } from "./mini-quiz.js";
 
 import { getSupabaseAcademicState, syncSupabaseAcademicState, saveSupabaseAcademicState, generateSupabaseAcademicPlan } from "./academic-planning.js";
@@ -1234,6 +1235,50 @@ export default {
         return withCors(json({ ok: false, error: { code: "NOT_FOUND", message: "Калькулятор не найден" }, requestId: crypto.randomUUID() }, 404), origin);
       }
       return withCors(success({ calculator }), origin);
+    }
+
+    if (pathname === API_PREFIX + "/tutor/meta") {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await getSupabaseTutorMeta(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/tutor/subjects") {
+      if (request.method !== "GET") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+      }
+      const result = await listSupabaseTutorSubjects(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
+    }
+
+    if (pathname === API_PREFIX + "/tutor/ask") {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const auth = await authenticateSupabaseRequest(request, env);
+      if (!auth.ok) {
+        return withCors(json({ ok: false, error: { code: auth.code, message: auth.message }, requestId: crypto.randomUUID() }, auth.status), origin);
+      }
+      const parsed = await readJsonLimited(request, 32_768);
+      if (parsed.tooLarge) {
+        return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      }
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      const result = await askSupabaseTutor(request, env, parsed.value);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data), origin);
     }
 
     if (pathname === `${API_PREFIX}/ai/providers`) {
