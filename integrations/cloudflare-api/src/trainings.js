@@ -1,26 +1,27 @@
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CONTENT_TYPES = new Set(["all", "preparation", "electronogram"]);
-const LABEL_MODES = new Set(["with", "without", "manual"]);
-const LAYOUT_MODES = new Set(["sidebar", "list", "top"]);
-const STATUSES = new Set(["in_progress", "completed", "cancelled"]);
-const TIMEOUT_MS = 8000;
+import { authenticateSupabaseRequest } from "./supabase-auth.js";
 
-function failure(status, code, message, extra = {}) {
-  return { ok: false, status, code, message, ...extra };
+const TIMEOUT_MS = 8000;
+const ALLOWED_STATUSES = new Set(["in_progress", "completed", "cancelled"]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, message, ...extra });
+
+function validId(value) {
+  const id = String(value || "").trim();
+  return UUID.test(id) ? id : "";
 }
 
-async function callTrainingRpc(request, env, name, args, fetcher = fetch) {
+async function callTrainingRpc(request, env, rpcName, args, fetcher = fetch) {
+  const identity = await authenticateSupabaseRequest(request, env, fetcher);
+  if (!identity.ok) return identity;
+
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") || "")?.[1] || "";
-  if (!token) return failure(401, "UNAUTHORIZED", "Требуется войти в систему");
-  const baseUrl = String(env.SUPABASE_URL || "").trim();
   const anonKey = String(env.SUPABASE_ANON_KEY || "").trim();
   let endpoint;
   try {
-    const base = new URL(baseUrl);
-    if (base.protocol !== "https:" || !base.hostname.endsWith(".supabase.co") || !anonKey) throw new Error("config");
-    endpoint = new URL("/rest/v1/rpc/" + name, base);
+    endpoint = new URL("/rest/v1/rpc/" + rpcName, String(env.SUPABASE_URL || "").trim());
+    if (endpoint.protocol !== "https:" || !anonKey || !token) throw new Error("configuration");
   } catch {
-    return failure(503, "TRAINING_NOT_CONFIGURED", "Защищённый API тренировок не настроен");
+    return fail(503, "TRAINING_NOT_CONFIGURED", "Тренировки временно недоступны");
   }
 
   let response;
@@ -34,120 +35,90 @@ async function callTrainingRpc(request, env, name, args, fetcher = fetch) {
         "content-type": "application/json",
       },
       body: JSON.stringify(args),
-      redirect: "manual",
+      redirect: "error",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch {
-    return failure(503, "TRAINING_UPSTREAM_ERROR", "Тренировки временно недоступны");
+    return fail(503, "TRAINING_UPSTREAM_ERROR", "Тренировки временно недоступны");
   }
-  if (response.status >= 300 && response.status < 400) {
-    return failure(503, "TRAINING_UPSTREAM_ERROR", "Тренировки временно недоступны");
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
   }
-  let payload;
-  try { payload = await response.json(); }
-  catch { return failure(503, "TRAINING_UPSTREAM_ERROR", "Некорректный ответ сервиса тренировок"); }
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      return failure(401, "UNAUTHORIZED", "Сессия недействительна или истекла");
-    }
-    return failure(503, "TRAINING_UPSTREAM_ERROR", "Тренировки временно недоступны");
+  if (!response.ok || !payload || typeof payload !== "object" || Array.isArray(payload)) {
+    if (response.status === 401) return fail(401, "UNAUTHORIZED", "Недействительная сессия");
+    // Never pass Postgres/PostgREST diagnostics to the browser.
+    return fail(503, "TRAINING_UPSTREAM_ERROR", "Тренировки временно недоступны");
   }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return failure(503, "TRAINING_UPSTREAM_ERROR", "Некорректный ответ сервиса тренировок");
+
+  if (payload.ok !== true) {
+    const status = [400, 401, 403, 404, 409, 413, 422].includes(Number(payload.status)) ? Number(payload.status) : 503;
+    const code = /^[A-Z0-9_]{1,60}$/.test(String(payload.code || "")) ? String(payload.code) : "TRAINING_UPSTREAM_ERROR";
+    const message = String(payload.message || "Тренировки временно недоступны").slice(0, 240);
+    const extra = payload.existing_training_id && UUID.test(String(payload.existing_training_id))
+      ? { existing_training_id: payload.existing_training_id }
+      : {};
+    return fail(status, code, message, extra);
   }
-  if (payload.ok === false) {
-    const status = Number(payload.status);
-    return failure(
-      Number.isInteger(status) && status >= 400 && status <= 599 ? status : 503,
-      typeof payload.code === "string" ? payload.code : "TRAINING_UPSTREAM_ERROR",
-      typeof payload.message === "string" ? payload.message : "Тренировка временно недоступна",
-      payload.existing_training_id ? { existing_training_id: payload.existing_training_id } : {},
-    );
-  }
-  if (payload.ok !== true || !payload.data || typeof payload.data !== "object") {
-    return failure(503, "TRAINING_UPSTREAM_ERROR", "Некорректный ответ сервиса тренировок");
+
+  if (!payload.data || typeof payload.data !== "object" || Array.isArray(payload.data)) {
+    return fail(503, "TRAINING_UPSTREAM_ERROR", "Некорректный ответ хранилища тренировок");
   }
   return { ok: true, data: payload.data };
 }
 
+/** List the caller's own sessions through a SECURITY DEFINER RPC; never read
+ * trainings/training_answers directly because client table grants are revoked. */
 export async function listSupabaseTrainings(request, env, options = {}, fetcher = fetch) {
   const status = String(options.status || "").trim();
-  if (status && !STATUSES.has(status)) {
-    return failure(422, "VALIDATION_ERROR", "Недопустимый статус тренировки");
-  }
-  return callTrainingRpc(request, env, "list_histology_trainings", {
-    p_status: status || null,
-  }, fetcher);
+  if (status && !ALLOWED_STATUSES.has(status)) return fail(422, "VALIDATION_ERROR", "Недопустимый статус тренировки");
+  return callTrainingRpc(request, env, "histology_training_list", { p_status: status || null }, fetcher);
 }
 
-export async function createSupabaseTraining(request, env, payload = {}, fetcher = fetch) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return failure(422, "VALIDATION_ERROR", "Некорректные параметры тренировки");
+export async function createSupabaseTraining(request, env, input, fetcher = fetch) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return fail(422, "VALIDATION_ERROR", "Передайте настройки тренировки");
   }
-  const topics = Array.isArray(payload.topics) ? payload.topics : [];
-  const contentType = String(payload.content_type || "all");
-  const labelMode = String(payload.label_mode || "without");
-  const layoutMode = String(payload.layout_mode || "top");
-  const rawCount = Number(payload.question_count ?? 20);
-  if (topics.length > 100 || topics.some((x) => typeof x !== "string" || x.length > 200)
-    || !CONTENT_TYPES.has(contentType) || !LABEL_MODES.has(labelMode) || !LAYOUT_MODES.has(layoutMode)
-    || !Number.isFinite(rawCount)) {
-    return failure(422, "VALIDATION_ERROR", "Некорректные параметры тренировки");
-  }
-  const cardIds = payload.card_ids === undefined || payload.card_ids === null
-    ? null : payload.card_ids;
-  if (cardIds !== null && (!Array.isArray(cardIds) || cardIds.length > 500
-    || cardIds.some((id) => typeof id !== "string" || id.length > 200))) {
-    return failure(422, "VALIDATION_ERROR", "Некорректный список карточек");
-  }
-  return callTrainingRpc(request, env, "create_histology_training", {
-    p_topics: topics,
-    p_content_type: contentType,
-    p_question_count: Math.max(1, Math.min(500, Math.trunc(rawCount))),
-    p_all_questions: payload.all_questions === true,
-    p_label_mode: labelMode,
-    p_layout_mode: layoutMode,
-    p_card_ids: cardIds,
-    p_force: payload.force === true,
-  }, fetcher);
+  return callTrainingRpc(request, env, "histology_training_create", { p_input: input }, fetcher);
 }
 
 export async function getSupabaseTraining(request, env, trainingId, fetcher = fetch) {
-  const id = String(trainingId || "");
-  if (!UUID_RE.test(id)) return failure(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
-  return callTrainingRpc(request, env, "get_histology_training", { p_training_id: id }, fetcher);
+  const id = validId(trainingId);
+  if (!id) return fail(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
+  return callTrainingRpc(request, env, "histology_training_get", { p_training_id: id }, fetcher);
 }
 
-export async function answerSupabaseTrainingQuestion(request, env, trainingId, payload = {}, fetcher = fetch) {
-  const id = String(trainingId || "");
-  if (!UUID_RE.test(id)) return failure(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return failure(422, "VALIDATION_ERROR", "Некорректный ответ");
-  }
-  const order = Number(payload.order);
-  const skipped = payload.is_skipped === true;
-  const answer = payload.user_answer;
-  if (!Number.isInteger(order) || order < 0 || order > 499
-    || (!skipped && (typeof answer !== "string" || !answer.trim() || answer.length > 6000))
-    || (skipped && answer !== null && answer !== undefined && typeof answer !== "string")) {
-    return failure(422, "VALIDATION_ERROR", "Некорректный ответ");
-  }
-  return callTrainingRpc(request, env, "save_histology_training_answer", {
+export async function answerSupabaseTrainingQuestion(request, env, trainingId, input, fetcher = fetch) {
+  const id = validId(trainingId);
+  if (!id) return fail(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
+  if (!input || typeof input !== "object" || Array.isArray(input)) return fail(422, "VALIDATION_ERROR", "Некорректный ответ");
+  const order = Number(input.order);
+  if (!Number.isInteger(order) || order < 0 || order > 499) return fail(422, "VALIDATION_ERROR", "Некорректный номер вопроса");
+  const skipped = input.is_skipped === true;
+  if (input.is_skipped !== undefined && typeof input.is_skipped !== "boolean") return fail(422, "VALIDATION_ERROR", "Некорректный признак пропуска");
+  const answer = input.user_answer;
+  if (answer !== null && answer !== undefined && typeof answer !== "string") return fail(422, "VALIDATION_ERROR", "Ответ должен быть текстом");
+  if (!skipped && !String(answer || "").trim()) return fail(422, "VALIDATION_ERROR", "Введите ответ или пропустите вопрос");
+  if (String(answer || "").length > 5000) return fail(422, "VALIDATION_ERROR", "Ответ слишком длинный");
+  return callTrainingRpc(request, env, "histology_training_answer", {
     p_training_id: id,
     p_order: order,
-    p_user_answer: typeof answer === "string" ? answer.trim() : null,
+    p_user_answer: skipped ? null : (answer == null ? null : answer),
     p_is_skipped: skipped,
   }, fetcher);
 }
 
 export async function completeSupabaseTraining(request, env, trainingId, fetcher = fetch) {
-  const id = String(trainingId || "");
-  if (!UUID_RE.test(id)) return failure(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
-  return callTrainingRpc(request, env, "complete_histology_training", { p_training_id: id }, fetcher);
+  const id = validId(trainingId);
+  if (!id) return fail(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
+  return callTrainingRpc(request, env, "histology_training_complete", { p_training_id: id }, fetcher);
 }
 
 export async function cancelSupabaseTraining(request, env, trainingId, fetcher = fetch) {
-  const id = String(trainingId || "");
-  if (!UUID_RE.test(id)) return failure(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
-  return callTrainingRpc(request, env, "cancel_histology_training", { p_training_id: id }, fetcher);
+  const id = validId(trainingId);
+  if (!id) return fail(422, "VALIDATION_ERROR", "Некорректный идентификатор тренировки");
+  return callTrainingRpc(request, env, "histology_training_cancel", { p_training_id: id }, fetcher);
 }
