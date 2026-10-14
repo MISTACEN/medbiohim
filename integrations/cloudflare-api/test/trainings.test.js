@@ -1,146 +1,196 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  answerSupabaseTrainingQuestion, cancelSupabaseTraining, completeSupabaseTraining,
-  createSupabaseTraining, getSupabaseTraining, listSupabaseTrainings,
+  answerSupabaseTrainingQuestion,
+  cancelSupabaseTraining,
+  completeSupabaseTraining,
+  createSupabaseTraining,
+  getSupabaseTraining,
+  listSupabaseTrainings,
 } from "../src/trainings.js";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const trainingId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const env = { SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "test-publishable-key" };
-const request = (authorization = "Bearer student-jwt") => new Request("https://worker.test/api/v1/trainings", {
-  headers: authorization ? { authorization } : {},
+const env = {
+  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_ANON_KEY: "test-publishable-key",
+};
+const request = (path = "/api/v1/trainings", authorization = "Bearer test-access-token") =>
+  new Request("https://medbiohim.test" + path, { headers: authorization ? { authorization } : {} });
+const okJson = (value) => new Response(JSON.stringify(value), {
+  status: 200,
+  headers: { "content-type": "application/json" },
 });
-const rpc = (name, data, status = 200) => new Response(JSON.stringify({ ok: true, data, ...(name ? { rpc: name } : {}) }), {
-  status, headers: { "content-type": "application/json" },
-});
-const callName = (calls) => calls[0] && calls[0].url.pathname.split("/").pop();
+function rpcFetch(expectedName, result, calls = []) {
+  return async (url, init) => {
+    const target = new URL(String(url));
+    calls.push({ url: target, init });
+    if (target.pathname === "/auth/v1/user") return okJson({ id: userId, email: "student@example.test" });
+    assert.equal(target.pathname, "/rest/v1/rpc/" + expectedName);
+    assert.equal(init.method, "POST");
+    assert.equal(init.headers.authorization, "Bearer test-access-token");
+    assert.equal(init.headers.apikey, env.SUPABASE_ANON_KEY);
+    return okJson(result);
+  };
+}
 
-test("training history uses the owner-scoped RPC instead of querying protected tables", async () => {
+test("training list calls only the owner-scoped RPC, never private tables directly", async () => {
   const calls = [];
-  const result = await listSupabaseTrainings(request(), env, { status: "completed" }, async (url, init) => {
-    calls.push({ url: new URL(String(url)), init });
-    return rpc("list_histology_trainings", { items: [{ id: trainingId, status: "completed", answered_count: 2 }] });
-  });
+  const result = await listSupabaseTrainings(request(), env, { status: "completed" }, rpcFetch(
+    "histology_training_list",
+    { ok: true, data: { items: [{ id: trainingId, status: "completed", answered_count: 2 }] } },
+    calls,
+  ));
   assert.equal(result.ok, true);
   assert.equal(result.data.items[0].answered_count, 2);
-  assert.equal(callName(calls), "list_histology_trainings");
-  assert.equal(calls[0].url.pathname, "/rest/v1/rpc/list_histology_trainings");
-  assert.deepEqual(JSON.parse(calls[0].init.body), { p_status: "completed" });
-  assert.equal(calls[0].init.headers.authorization, "Bearer student-jwt");
-  assert.equal(calls[0].init.headers.apikey, env.SUPABASE_ANON_KEY);
+  const rpc = calls.find((call) => call.url.pathname.includes("/rpc/"));
+  assert.deepEqual(JSON.parse(rpc.init.body), { p_status: "completed" });
+  assert.equal(calls.filter((call) => call.url.pathname.startsWith("/rest/v1/")).length, 1);
 });
 
-test("training RPC refuses missing bearer before network access", async () => {
+test("training list rejects invalid status before upstream access", async () => {
   let calls = 0;
-  const result = await listSupabaseTrainings(request(""), env, {}, async () => { calls++; return rpc("", {}); });
+  const result = await listSupabaseTrainings(request(), env, { status: "everything" }, async () => {
+    calls += 1;
+    return okJson({});
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
+  assert.equal(calls, 0);
+});
+
+test("training list rejects a missing bearer token before querying Supabase", async () => {
+  let calls = 0;
+  const result = await listSupabaseTrainings(request("/api/v1/trainings", ""), env, {}, async () => {
+    calls += 1;
+    return okJson({ id: userId });
+  });
   assert.equal(result.ok, false);
   assert.equal(result.status, 401);
   assert.equal(calls, 0);
 });
 
-test("create training validates and sends only requested filter/config to secure RPC", async () => {
+test("training creation passes preferences to one server-owned lifecycle RPC", async () => {
+  const input = {
+    topics: ["Неделя 1 · Клетка"],
+    content_type: "preparation",
+    question_count: 10,
+    all_questions: false,
+    label_mode: "without",
+    layout_mode: "sidebar",
+    force: true,
+  };
   const calls = [];
-  const result = await createSupabaseTraining(request(), env, {
-    topics: ["Эпителий"], content_type: "preparation", question_count: 9999,
-    all_questions: false, label_mode: "manual", layout_mode: "sidebar",
-    card_ids: ["card-1", "card-2"], force: true,
-  }, async (url, init) => {
-    calls.push({ url: new URL(String(url)), init });
-    return rpc("create_histology_training", { training: { id: trainingId }, questions: [] });
-  });
+  const result = await createSupabaseTraining(request(), env, input, rpcFetch(
+    "histology_training_create",
+    { ok: true, data: { training: { id: trainingId, status: "in_progress" }, questions: [] } },
+    calls,
+  ));
   assert.equal(result.ok, true);
-  assert.equal(callName(calls), "create_histology_training");
-  assert.deepEqual(JSON.parse(calls[0].init.body), {
-    p_topics: ["Эпителий"], p_content_type: "preparation", p_question_count: 500,
-    p_all_questions: false, p_label_mode: "manual", p_layout_mode: "sidebar",
-    p_card_ids: ["card-1", "card-2"], p_force: true,
+  assert.equal(result.data.training.id, trainingId);
+  assert.deepEqual(JSON.parse(calls.find((call) => call.url.pathname.includes("/rpc/")).init.body), { p_input: input });
+});
+
+test("training detail calls one owner-scoped RPC and returns safe snapshots", async () => {
+  const calls = [];
+  const safeData = { training: { id: trainingId }, answers: [{ question_snapshot: { question: { prompt: "Что изображено?" }, options: [{ id: "a", label: "A" }] } }] };
+  const result = await getSupabaseTraining(request("/api/v1/trainings/" + trainingId), env, trainingId, rpcFetch(
+    "histology_training_get",
+    { ok: true, data: safeData },
+    calls,
+  ));
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data, safeData);
+  assert.deepEqual(JSON.parse(calls.find((call) => call.url.pathname.includes("/rpc/")).init.body), { p_training_id: trainingId });
+});
+
+test("answer RPC receives only the selected answer and skip state; server computes correctness", async () => {
+  const calls = [];
+  const result = await answerSupabaseTrainingQuestion(
+    request("/api/v1/trainings/" + trainingId + "/answer"),
+    env,
+    trainingId,
+    { order: 2, user_answer: "option-b", is_skipped: false, is_correct: true, user_id: "forged" },
+    rpcFetch("histology_training_answer", {
+      ok: true,
+      data: { answer: { order: 2, user_answer: "option-b", is_correct: false }, correct: false },
+    }, calls),
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.data.correct, false);
+  assert.deepEqual(JSON.parse(calls.find((call) => call.url.pathname.includes("/rpc/")).init.body), {
+    p_training_id: trainingId, p_order: 2, p_user_answer: "option-b", p_is_skipped: false,
   });
 });
 
-test("create training rejects invalid filters before any upstream call", async () => {
+test("answer validation refuses malformed IDs, missing values and huge answers before network access", async () => {
   let calls = 0;
-  const result = await createSupabaseTraining(request(), env, {
-    topics: ["x"], content_type: "all", label_mode: "answer-key", layout_mode: "top", question_count: 1,
-  }, async () => { calls++; return rpc("", {}); });
-  assert.equal(result.ok, false);
-  assert.equal(result.status, 422);
+  const fetcher = async () => { calls += 1; return okJson({}); };
+  const badId = await answerSupabaseTrainingQuestion(request(), env, "../other", { order: 0, user_answer: "x" }, fetcher);
+  const badOrder = await answerSupabaseTrainingQuestion(request(), env, trainingId, { order: 500, user_answer: "x" }, fetcher);
+  const missingAnswer = await answerSupabaseTrainingQuestion(request(), env, trainingId, { order: 0, user_answer: "" }, fetcher);
+  const hugeAnswer = await answerSupabaseTrainingQuestion(request(), env, trainingId, { order: 0, user_answer: "x".repeat(5001) }, fetcher);
+  assert.equal(badId.status, 422);
+  assert.equal(badOrder.status, 422);
+  assert.equal(missingAnswer.status, 422);
+  assert.equal(hugeAnswer.status, 422);
   assert.equal(calls, 0);
 });
 
-test("an unanswered question snapshot has no correct answer material", async () => {
-  const calls = [];
-  const safeData = {
-    training: { id: trainingId, status: "in_progress", total_questions: 1 },
-    answers: [{
-      id: "row-1", question_id: "card-1", order: 0, user_answer: null, is_correct: null, is_skipped: false,
-      options: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
-      question_snapshot: { question: { prompt: "Что изображено?", options: [{ id: "a", label: "A" }, { id: "b", label: "B" }] } },
-      review_snapshot: {},
-    }],
-  };
-  const result = await getSupabaseTraining(request(), env, trainingId, async (url, init) => {
-    calls.push({ url: new URL(String(url)), init });
-    return rpc("get_histology_training", safeData);
-  });
-  assert.equal(result.ok, true);
-  assert.equal(callName(calls), "get_histology_training");
-  assert.equal(JSON.stringify(result.data).includes('"correct":true'), false);
-  assert.deepEqual(JSON.parse(calls[0].init.body), { p_training_id: trainingId });
-});
-
-test("answer writes are routed to secure scoring RPC with bounded arguments", async () => {
-  const calls = [];
-  const result = await answerSupabaseTrainingQuestion(request(), env, trainingId, {
-    order: 0, user_answer: "option-b", is_skipped: false,
-  }, async (url, init) => {
-    calls.push({ url: new URL(String(url)), init });
-    return rpc("save_histology_training_answer", { answer: { question_id: "card-1" }, correct: false, explanation: null });
-  });
-  assert.equal(result.ok, true);
-  assert.equal(callName(calls), "save_histology_training_answer");
-  assert.deepEqual(JSON.parse(calls[0].init.body), {
-    p_training_id: trainingId, p_order: 0, p_user_answer: "option-b", p_is_skipped: false,
-  });
-});
-
-test("answer rejects malformed order and empty non-skip answer without network access", async () => {
-  let calls = 0;
-  const result = await answerSupabaseTrainingQuestion(request(), env, trainingId, {
-    order: -1, user_answer: "", is_skipped: false,
-  }, async () => { calls++; return rpc("", {}); });
-  assert.equal(result.ok, false);
-  assert.equal(result.status, 422);
-  assert.equal(calls, 0);
-});
-
-test("complete and cancel use separate server-side state-transition RPCs", async () => {
-  const calls = [];
-  const fetcher = async (url, init) => {
-    calls.push({ url: new URL(String(url)), init });
-    const name = new URL(String(url)).pathname.split("/").pop();
-    return rpc(name, name === "complete_histology_training"
-      ? { training: { id: trainingId, status: "completed" }, stats: { total: 1, correct: 1, percent: 100, grade: 5 } }
-      : { training: { id: trainingId, status: "cancelled" } });
-  };
-  const completed = await completeSupabaseTraining(request(), env, trainingId, fetcher);
-  const cancelled = await cancelSupabaseTraining(request(), env, trainingId, fetcher);
+test("complete and cancel use dedicated lifecycle RPCs", async () => {
+  const completed = await completeSupabaseTraining(request(), env, trainingId, rpcFetch(
+    "histology_training_complete",
+    { ok: true, data: { training: { id: trainingId, status: "completed" }, stats: { total: 1, correct: 1, wrong: 0, skipped: 0, percent: 100, grade: 5 } } },
+  ));
+  const cancelled = await cancelSupabaseTraining(request(), env, trainingId, rpcFetch(
+    "histology_training_cancel",
+    { ok: true, data: { training: { id: trainingId, status: "cancelled" } } },
+  ));
   assert.equal(completed.ok, true);
   assert.equal(completed.data.stats.grade, 5);
   assert.equal(cancelled.ok, true);
-  assert.deepEqual(calls.map((x) => x.url.pathname.split("/").pop()), [
-    "complete_histology_training", "cancel_histology_training",
-  ]);
+  assert.equal(cancelled.data.training.status, "cancelled");
 });
 
-test("owner-scoped RPC conflicts preserve HTTP status and resume identifier", async () => {
-  const response = new Response(JSON.stringify({
-    ok: false, status: 409, code: "TRAINING_IN_PROGRESS",
-    message: "Уже есть тренировка", existing_training_id: trainingId,
-  }), { status: 200, headers: { "content-type": "application/json" } });
-  const result = await createSupabaseTraining(request(), env, {}, async () => response);
+test("RPC conflict metadata is retained without exposing PostgREST internals", async () => {
+  const result = await createSupabaseTraining(request(), env, { topics: [] }, rpcFetch(
+    "histology_training_create",
+    { ok: false, status: 409, code: "TRAINING_IN_PROGRESS", message: "Уже есть сессия", existing_training_id: trainingId },
+  ));
   assert.equal(result.ok, false);
   assert.equal(result.status, 409);
-  assert.equal(result.code, "TRAINING_IN_PROGRESS");
   assert.equal(result.existing_training_id, trainingId);
+});
+
+test("unavailable or malformed RPC replies fail closed", async () => {
+  const upstream = await getSupabaseTraining(request(), env, trainingId, async (url) => {
+    if (new URL(String(url)).pathname === "/auth/v1/user") return okJson({ id: userId });
+    return new Response("database secret diagnostic", { status: 500 });
+  });
+  assert.equal(upstream.ok, false);
+  assert.equal(upstream.status, 503);
+  assert.doesNotMatch(upstream.message, /database secret diagnostic/i);
+});
+
+
+test("all lifecycle actions reject invalid session IDs before calling Supabase", async () => {
+  let calls = 0;
+  const fetcher = async () => { calls += 1; return okJson({}); };
+  const badGet = await getSupabaseTraining(request(), env, "not-a-uuid", fetcher);
+  const badComplete = await completeSupabaseTraining(request(), env, "../someone-else", fetcher);
+  const badCancel = await cancelSupabaseTraining(request(), env, " ", fetcher);
+  const badAnswer = await answerSupabaseTrainingQuestion(request(), env, "bad-id", { order: 0, user_answer: "x" }, fetcher);
+  assert.deepEqual([badGet.status, badComplete.status, badCancel.status, badAnswer.status], [422, 422, 422, 422]);
+  assert.equal(calls, 0);
+});
+
+test("training creation rejects non-object preferences before authentication or upstream access", async () => {
+  let calls = 0;
+  const fetcher = async () => { calls += 1; return okJson({}); };
+  for (const input of [null, [], "preparation", 12]) {
+    const result = await createSupabaseTraining(request(), env, input, fetcher);
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 422);
+  }
+  assert.equal(calls, 0);
 });
