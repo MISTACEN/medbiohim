@@ -3167,3 +3167,9 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟢 Verified current Cloudflare gateway returns route-specific auth/method responses rather than 503 for these endpoints: auth/me GET 401 without token; subjects/:id GET 401; subjects-catalog GET 401; presence heartbeat POST 401 and GET 405. These unauthenticated probes prove route dispatch only, not successful signed-in data access.
 - 🟡 Added a code fix so Vercel Production/Preview default to `https://medbiohim-api.ryazansevegor.workers.dev/api/v1` and Cloudflare-first routing when explicit mode/origin are absent. `MEDBIOHIM_API_MODE=legacy` remains an explicit rollback requiring HTTPS SpaceWeb origin. Local development stays opt-in. This avoids the 503 caused solely by an absent SpaceWeb env var.
 - 🟡 Needs Preview/build verification and a deployed smoke test; do not mark the frontend issue resolved until the updated Vercel deployment is live. This does not claim full API parity; unmigrated routes may still return 501.
+
+
+## 2026-10-15 — post-merge production verification
+
+- 🟡 The routing fix is merged at `453f19b504e014a9e222a6d02654462c64641f91`, but it is **not yet live**. Direct production smoke still reports `x-medbiohim-build: ff737a17fe95beae06e53d65f79931a1d0f123cc` and HTTP 503 `BACKEND_NOT_CONFIGURED` for `/api/v1/health`, `/api/v1/auth/me`, `/api/v1/subjects-catalog`, and `/api/v1/presence/heartbeat`.
+- 🟡 GitHub's Vercel check remains `pending`. The connected Vercel tool cannot inspect/create deployments or set project environment variables due 403/404 permission/scope errors. No claim of production resolution until the deployed build marker advances and smoke tests stop returning 503.
