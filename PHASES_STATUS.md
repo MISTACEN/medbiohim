@@ -2302,5 +2302,6 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 ## 2026-10-15 — Admin API log and histology incident
 
 - 🟡 Added `/admin/api-logs` for current-tab API telemetry: method, sanitized path, reported upstream, HTTP status, duration, request ID, filters and CSV export. This is not durable cross-user server logging.
-- 🔴 Histology media remains unresolved: supplied console export has 236 image endpoint 503s. Prior audit found Upstash Blob empty and Worker secrets for Blob/B2 absent. Metadata alone does not prove physical objects exist.
-- 🟡 Next gates: deploy the current API proxy fix; configure storage secrets only through secret management; reconcile all 206 histology cards against actual objects and verify authenticated HTTP/MIME. No production cutover performed.
+- 🔴 Histology media remains unresolved: supplied console export has 236 image endpoint 503s. The current Upstash Blob inventory now contains 358 `histology/` objects (~432.7 MB); the earlier empty-bucket note is stale. Physical presence is confirmed, but the full 206-card-to-object mapping and signed-in HTTP/MIME delivery are not yet verified.
+- 🟡 API log now captures response and network/timeout failures and persists up to 1,000 entries in the current browser tab's sessionStorage. It remains browser-local, not a durable cross-user server audit.
+- 🟡 Next gates: confirm Worker secret *presence* without exposing values; reconcile all 206 cards against the actual `histology/`-prefixed keys; verify authenticated signed URLs and MIME; run frontend/Worker tests. No production cutover performed.
