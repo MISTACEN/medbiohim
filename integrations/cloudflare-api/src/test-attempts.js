@@ -421,10 +421,17 @@ export async function regradeSupabaseTestAnswer(request, env, attemptId, questio
         String(result.message || "Не удалось повторно проверить ответ"),
       );
     }
-    if (result.ok !== true || !result.data?.answer) {
+    if (result.ok !== true || !result.data?.answer || typeof result.data.answer !== "object" || Array.isArray(result.data.answer)) {
       return fail(503, "GRADING_RETRY_ERROR", "Сервис вернул некорректный ответ");
     }
-    return result;
+    // Never forward arbitrary RPC columns (e.g. answer_snapshot/correct_answer)
+    // to the browser. Regrading returns only the feedback fields needed by UI.
+    const answer = result.data.answer;
+    const safeAnswer = {};
+    for (const key of ["id", "attempt_id", "question_id", "is_correct", "score", "grading_status", "grading_source", "grading_confidence", "grading_feedback", "graded_at"]) {
+      if (Object.prototype.hasOwnProperty.call(answer, key)) safeAnswer[key] = answer[key];
+    }
+    return { ok: true, data: { answer: safeAnswer } };
   } catch (error) {
     if (error?.status === 404) return fail(404, "ANSWER_NOT_FOUND", "Ответ не найден");
     if (error?.status === 409) return fail(409, "ATTEMPT_CONFLICT", "Повторная проверка недоступна для этого состояния");
