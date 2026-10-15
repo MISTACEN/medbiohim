@@ -2425,3 +2425,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 1. Obtain actionable CI step output or an alternate isolated test environment and run `node --test` under `integrations/cloudflare-api`.
 2. Validate frontend expectations for catalogue, lectures, and plans against their components/hooks.
 3. Continue with homework and schedule CRUD, then verify test/training answer persistence and completion through the intended Supabase RPCs.
+
+
+## Reverse API contract pass — 2026-10-16 (continued)
+- **Done:** added regression test `integrations/cloudflare-api/test/planner-homework.test.js` proving that a file belonging to another group is rejected before the atomic homework-with-attachments RPC. Commit: `b15e4aa0fb8f3698ea9ea168cee73544f1e15c12`.
+- **Done:** supporting evidence note: `docs/migration/REVERSE_API_CONTRACT_PASS_2026-10-16.md` (commit `7f5d064dd8cfe0809eebff7672e07ae96f18f4ea`).
+- **Not verified:** the new test has not been executed against the exact `main` checkout in this session; Vercel status for the documentation commit is pending. No production deployment/cutover was performed.
+- **Next:** verify homework attachment upload/download end-to-end; run training lifecycle with student JWT; check account-settings behavior while authenticated; execute tests on exact `main` commit and record real outcomes.
