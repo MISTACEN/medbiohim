@@ -4,7 +4,12 @@ import { protectTrainingPayload } from "@/lib/training-payload-sanitizer.mjs";
 
 /** Use Cloudflare only when a production origin is explicitly configured.
  * The migration shadow Worker is never a production default. */
-const requestedCloudflareOrigin = process.env.CLOUDFLARE_API_ORIGIN || "";
+const DEFAULT_CLOUDFLARE_API_ORIGIN = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1";
+// Vercel deployments must not silently depend on the retired SpaceWeb origin.
+// Local development remains explicit; production/preview use the known gateway
+// unless the deployment deliberately selects legacy mode.
+const isVercelDeployment = process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview";
+const requestedCloudflareOrigin = process.env.CLOUDFLARE_API_ORIGIN ?? (isVercelDeployment ? DEFAULT_CLOUDFLARE_API_ORIGIN : "");
 const isProductionDeployment = process.env.VERCEL_ENV === "production";
 const isProductionCloudflareOrigin = (() => {
   try {
@@ -15,7 +20,7 @@ const isProductionCloudflareOrigin = (() => {
   }
 })();
 const cloudflareOrigin = isProductionCloudflareOrigin ? requestedCloudflareOrigin : "";
-const cloudflareOptIn = process.env.MEDBIOHIM_API_MODE === "cloudflare" || process.env.MEDBIOHIM_CF_FIRST === "true";
+const cloudflareOptIn = process.env.MEDBIOHIM_API_MODE === "cloudflare" || process.env.MEDBIOHIM_CF_FIRST === "true" || (isVercelDeployment && process.env.MEDBIOHIM_API_MODE !== "legacy");
 const API_MODE = process.env.MEDBIOHIM_API_MODE === "legacy" || !cloudflareOrigin || !cloudflareOptIn ? "legacy" : "cloudflare";
 const configuredOrigin = API_MODE === "legacy" ? process.env.SPACEWEB_API_ORIGIN : undefined;
 const UPSTREAM = configuredOrigin && isHttpsOrigin(configuredOrigin) ? configuredOrigin.replace(/\/$/, "") : undefined;
