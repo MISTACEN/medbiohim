@@ -3318,7 +3318,7 @@ The current Worker already validates homework attachment IDs, caller ownership/s
 
 ## 2026-10-16 — Frontend contract repair: retry test-answer grading
 
-**Completed on main:** wired `POST /api/v1/tests/attempts/{attemptId}/answers/{questionId}/regrade`, which is called by `retryTestAnswerGrading()` in `src/lib/api.ts` but was absent from the Worker router. Added an allowlisted `medbiohim_regrade_test_answer` RPC call in `test-attempts.js` and a route contract test for POST/auth/method handling.
+**Completed on main:** wired `POST /api/v1/tests/attempts/{attemptId}/answers/{questionId}/regrade`, which is called by `retryTestAnswerGrading()` in `src/lib/api.ts` but was absent from the Worker router. Added an allowlisted `medbiohim_regrade_test_answer` RPC call in `test-attempts.js`, route contract coverage, and unit tests for the RPC call. The returned payload is allowlisted to grading-feedback fields so `correct_answer` and `answer_snapshot` are never forwarded.
 
 **Security boundary:** the Worker passes the caller JWT through Supabase and does not grade or return an answer locally. RPC authorization and its response shape remain a database-side requirement.
 
