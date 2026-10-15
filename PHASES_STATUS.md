@@ -2407,3 +2407,21 @@ This pass treats the existing frontend as the behavioral specification instead o
 - No live shadow/production smoke test, Supabase RLS acceptance test, or deployment was performed.
 
 **Next:** run the actual GitHub-tree Worker test suite; then implement/verify the next frontend contract gap from the route matrix (file uploads/downloads and training lifecycle are higher priority than broad admin coverage). Do not enable production traffic.
+
+
+## 2026-10-16 — Route fallback pass (optional CMS / RLS)
+
+| Scope | Status | Evidence / note |
+|---|---|---|
+| `getSupabaseSubjectCatalog` when curriculum `site_content` is denied | **Implemented; runtime not checked** | Falls back to the previously loaded caller-visible subjects and marks curriculum unavailable/degraded. |
+| `listSupabaseLectures` when CMS lecture JSON is denied/missing | **Implemented; runtime not checked** | Keeps published-only CMS filtering; histology continues through caller-JWT `histology_lectures`. |
+| `listSupabaseSubjectPlans` when optional CMS list is denied/missing | **Implemented; runtime not checked** | Returns empty plans with `available:false`; does not weaken RLS. |
+| Regression coverage | **Added; not locally executed** | Four tests cover 403 fallback and prove catalog 503 remains a failure. |
+| GitHub Actions diagnostics | **TODO / blocked** | Workflows associated with commits `bce6a42451ad6bbda4b4319a476822f512077af1` and `647e38e7a372d29f2fb936c6e325cca8fd95b9eb` show failure within seconds; job steps/logs were unavailable via the current connector response. |
+| Real Supabase student-JWT smoke | **Not checked** | Need authenticated end-to-end calls; never log JWTs or broaden RLS for compatibility. |
+| Cloudflare production cutover | **Not changed** | This pass changed repository code only, not Worker deployment or production traffic. |
+
+### Continuation
+1. Obtain actionable CI step output or an alternate isolated test environment and run `node --test` under `integrations/cloudflare-api`.
+2. Validate frontend expectations for catalogue, lectures, and plans against their components/hooks.
+3. Continue with homework and schedule CRUD, then verify test/training answer persistence and completion through the intended Supabase RPCs.
