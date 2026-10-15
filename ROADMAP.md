@@ -3219,3 +3219,42 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 
 - Additional telemetry showed bursts of `authenticate` timeouts while many trainer-image requests were retried concurrently. The frontend now limits each image lookup to two attempts and immediately stops retrying deterministic 401/403/404/410/422 responses, reducing avoidable request amplification. This frontend change has not yet passed a Vercel build because the project is still blocked by the Vercel `build-rate-limit` status.
 - Added regression fixtures for the actual `order_index` schema and `site_content` 403 case. Targeted Node regression suite `test/supabase-auth.test.js` passed 60/60 against the exact PR-branch source and test files in an isolated Node environment. Full Worker suite, GitHub Actions status, and deployed shadow acceptance remain pending; this source change is not yet claimed live-fixed. Keep production routing unchanged until these gates pass.
+
+
+## Reverse contract pass — frontend → API → storage (2026-10-16)
+
+This pass treats the existing frontend as the behavioral specification instead of assuming the legacy PHP implementation is correct.
+
+### Browser-observed critical contract
+
+| Frontend request | Expected responsibility | Current evidence / next verification |
+|---|---|---|
+| `GET /api/v1/subjects-catalog` | Subject list and catalog metadata | Worker route exists; verify Supabase schema/query and envelope against UI consumption |
+| `GET /api/v1/tests?subject_id=…&group_id=…` | Published tests filtered by selected subject/group | Worker route exists; verify membership/RLS, published-only filtering, and empty-state shape |
+| `GET /api/v1/lectures?subject=histology` | Lecture list with title/topic/summary/media count | Worker route exists; verify live rows and subject slug mapping |
+| `GET /api/v1/progress?subject_id=…&group_id=…` | Current user's progress for selected scope | Worker route exists; verify caller JWT and group scoping |
+| `GET /api/v1/subject-plans/histology` | Histology plan, with safe curriculum fallback | Worker route exists; optional CMS/RLS denial must not become a global 503 |
+| `GET /api/v1/tickets` | Ticket bank list | Worker route exists; verify schema and visibility rules |
+| `GET /api/v1/trainings` | User's training list/session entry point | Worker route exists; verify auth, create/read/finish lifecycle |
+| `GET /api/v1/trainers/feed/{id}/image` | Private trainer image delivery | Route exists; verify metadata-to-object-key mapping, storage binding and concurrency |
+| `GET /api/v1/settings/account` | Profile, preferences and linked identity settings | Route exists; 401 in browser means auth/session propagation must be checked end-to-end |
+
+### Contract rules
+
+- Preserve the frontend's same-origin `/api/v1` contract and standard `{ ok, data, requestId }` / `{ ok:false, error, requestId }` envelope where JSON is returned.
+- Treat the browser log as evidence of failed requests, not proof that every backend handler is missing.
+- A routed `503` is a dependency/schema/configuration failure until proven otherwise; a `501 ROUTE_NOT_MIGRATED` is an implementation gap. Do not hide either with fabricated success data.
+- Supabase user data must use the caller JWT and remain subject to RLS. Never move service-role credentials into the browser or weaken RLS to make a screen load.
+- Binary histology media must be verified independently from its metadata row. Test status, MIME type, object-key mapping, and authenticated access.
+- Browser-extension exceptions and unsupported `Permissions-Policy` features are separate from API failures unless evidence links them.
+
+### Added regression guard
+
+`integrations/cloudflare-api/test/index.test.js` now checks that every critical route seen in the supplied browser log dispatches to a concrete handler rather than falling through to 404/501, and that the subject-catalog method contract remains explicit. This is a routing contract check, **not** a claim that live Supabase/storage dependencies are healthy.
+
+### Next reverse-engineering sequence
+
+1. Capture each frontend caller's expected response shape and loading/empty/error behavior.
+2. Match it to the Worker handler and the actual Supabase table/RPC/storage contract.
+3. Add handler-level fixture tests for data shape, RLS/ownership and error mapping.
+4. Run live shadow checks with real student JWTs and configured secrets; keep production traffic unchanged until P0 checks pass.
