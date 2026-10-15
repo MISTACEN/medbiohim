@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "../src/test-attempts.js";
+import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, regradeSupabaseTestAnswer, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "../src/test-attempts.js";
 
 const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
 const groupId = "11111111-1111-4111-8111-111111111111";
@@ -175,4 +175,41 @@ test("test attempt start/save/finish use the verified private RPC boundary", asy
   assert.equal("question_snapshot" in finishResult.data.attempt, false);
   assert.equal(finishResult.data.answers[0].question_id, questionId);
   assert.equal(finishResult.data.answers[0].is_correct, true);
+});
+
+
+test("test-answer regrade calls the allowlisted RPC and redacts private answer snapshot fields", async () => {
+  const attemptId = "33333333-3333-4333-8333-333333333333";
+  const result = await regradeSupabaseTestAnswer(
+    makeRequest("/tests/attempts/" + attemptId + "/answers/" + questionId + "/regrade"),
+    env, attemptId, questionId,
+    baseMock((url, init) => {
+      assert.equal(url.pathname, "/rest/v1/rpc/medbiohim_regrade_test_answer");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(init.body), { p_attempt_id: attemptId, p_question_id: questionId });
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { answer: {
+          id: "answer-1", attempt_id: attemptId, question_id: questionId,
+          is_correct: true, score: 1, grading_status: "deterministic",
+          grading_feedback: "Ответ проверен.", correct_answer: "secret", answer_snapshot: { answer: "secret" },
+        } },
+      }), { status: 200 });
+    }),
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.data.answer.is_correct, true);
+  assert.equal(result.data.answer.grading_feedback, "Ответ проверен.");
+  assert.equal("correct_answer" in result.data.answer, false);
+  assert.equal("answer_snapshot" in result.data.answer, false);
+});
+
+test("test-answer regrade rejects invalid identifiers", async () => {
+  const result = await regradeSupabaseTestAnswer(
+    makeRequest("/tests/attempts/not-a-uuid/answers/" + questionId + "/regrade"),
+    env, "not-a-uuid", questionId,
+    baseMock(() => { throw new Error("invalid identifiers must not reach database RPC"); }),
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 422);
 });
