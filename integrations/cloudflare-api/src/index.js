@@ -3,7 +3,7 @@ import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
 import { gradeSupabaseSubmission } from "./homework-grading.js";
 import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence, createSupabaseHomework, submitSupabaseHomework, startSupabasePreparation, getSupabasePreparation, saveSupabasePreparation, finishSupabasePreparation, retrySupabasePreparationGrading, reviewSupabasePreparation } from "./planner.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
-import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
+import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, regradeSupabaseTestAnswer, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
 import { getSupabaseChemistryMaster, getSupabaseTestCurriculumMap } from "./test-catalog.js";
 import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseMaterialFileUrl } from "./material-file.js";
@@ -1229,6 +1229,22 @@ export default {
       let attemptId;
       try { attemptId = decodeURIComponent(finishAttemptMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid attempt id" }, requestId: crypto.randomUUID() }, 422), origin); }
       const result = await finishSupabaseTestAttempt(request, env, attemptId);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
+    }
+
+
+    const regradeMatch = new RegExp("^" + API_PREFIX + "/tests/attempts/([^/]+)/answers/([^/]+)/regrade$").exec(pathname);
+    if (regradeMatch) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      let attemptId, questionId;
+      try {
+        attemptId = decodeURIComponent(regradeMatch[1]);
+        questionId = decodeURIComponent(regradeMatch[2]);
+      } catch {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid attempt or question id" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      const result = await regradeSupabaseTestAnswer(request, env, attemptId, questionId);
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
