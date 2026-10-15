@@ -2246,3 +2246,13 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟡 This result applies only to the alternate archive. The current GitHub Worker has not been proven green by this action, and no alternate source modules were merged from this test-only repair.
 - 🔒 R2 remains rejected for the selected architecture unless explicitly reconsidered; no production deploy/cutover, DNS, Vercel production, Telegram webhook, or Supabase schema changes.
 - Details: `docs/CLOUDFLARE-ARCHIVE-VALIDATION-2026-10-15.md`.
+
+
+## Cloudflare production API — live account check (2026-10-15)
+
+- 🟢 **Verified:** Shadow Worker deployed; native auth rate-limit bindings exist; private Upstash Blob bucket and active EU Redis database exist; no Cloudflare R2 dependency is required.
+- 🟡 **Not done:** production Worker `medbiohim-api` has not been created; no Worker custom domain is attached; Upstash Redis token binding was not present in the live Shadow binding list; Blob object inventory and all 206 histology mappings remain unverified.
+- 🟡 **Acceptance not proven:** mocked tests and deployment status do not replace signed-in student/admin checks against real Supabase RLS, schedule/homework/test/SRS flows, AI, and private media delivery.
+- 🔒 **Traffic:** do not mark production traffic enabled. Shadow's 100% version assignment is scoped to the Shadow Worker only; it is not a production cutover.
+- Next: test exact GitHub `main`, verify required secrets and storage objects, complete signed-in acceptance, then deploy `medbiohim-api` and switch frontend routing with rollback ready.
+- Evidence: [live Cloudflare account state](docs/LIVE-CLOUDFLARE-ACCOUNT-STATE-2026-10-15.md).
