@@ -9,6 +9,7 @@ import { listSupabaseSubjectMaterials } from "./materials.js";
 import { getSupabaseMaterialFileUrl } from "./material-file.js";
 import { streamSupabaseMaterialFile } from "./material-binary.js";
 import { getSupabaseFileDownload, getSupabaseFileRecord } from "./file-records.js";
+import { uploadSupabaseFile } from "./file-upload.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
@@ -464,6 +465,17 @@ export default {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
       return withCors(success(result.data), origin);
+    }
+
+    if (pathname === `${API_PREFIX}/files/upload`) {
+      if (request.method !== "POST") {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      }
+      const result = await uploadSupabaseFile(request, env);
+      if (!result.ok) {
+        return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      }
+      return withCors(success(result.data, result.status || 201), origin);
     }
 
     const fileDownloadMatch = new RegExp("^" + API_PREFIX + "/files/([^/]+)/download$").exec(pathname);
