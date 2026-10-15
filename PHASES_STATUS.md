@@ -2282,3 +2282,10 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟢 Cloudflare gateway dispatches the reported routes: `/auth/me`, `/subjects/:id`, `/subjects-catalog`, and POST `/presence/heartbeat` return expected auth/method guards without a token instead of 503. Actual authenticated Supabase/RLS behavior still requires a signed-in smoke test.
 - 🟡 Source/test change defaults Vercel Production and Preview to the `medbiohim-api` gateway if no explicit origin is set; `MEDBIOHIM_API_MODE=legacy` remains the explicit rollback. Local development is unchanged.
 - 🟡 Awaiting Vercel build/deploy and public frontend smoke test. Do not claim resolved until deployment is observed; route parity gaps elsewhere remain separate.
+
+
+## 2026-10-15 — live status after routing fix merge
+
+- 🟢 Source fix is in `main` (`453f19b504e014a9e222a6d02654462c64641f91`).
+- 🔴 Production still runs build `ff737a17fe95beae06e53d65f79931a1d0f123cc` and still returns HTTP 503 `BACKEND_NOT_CONFIGURED` on health/auth/me/subjects-catalog/presence-heartbeat. Thus the browser error is not resolved in the live deployment yet.
+- 🟡 Vercel Git status is pending; deployment/environment operations from the connected Vercel tool return authorization/scope errors. Next required acceptance: observe new production build marker, then confirm API calls route to Cloudflare and check auth/login plus subject/catalog/presence in browser.
