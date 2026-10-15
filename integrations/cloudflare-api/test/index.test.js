@@ -936,6 +936,26 @@ test("subjects catalog rejects unsupported methods explicitly", async () => {
 });
 
 
+
+test("test-answer regrade route matches the frontend contract and is auth-protected", async () => {
+  const attemptId = "66666666-6666-4666-8666-666666666666";
+  const questionId = "77777777-7777-4777-8777-777777777777";
+  const path = `/api/v1/tests/attempts/${attemptId}/answers/${questionId}/regrade`;
+  const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
+
+  const wrongMethod = await worker.fetch(request(path, { method: "GET" }), env);
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "POST, OPTIONS");
+
+  const unauthorized = await worker.fetch(request(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  }), env);
+  assert.equal(unauthorized.status, 401);
+  assert.equal((await unauthorized.json()).error.code, "UNAUTHORIZED");
+});
+
 test("homework grading route is auth-protected and method-restricted", async () => {
   const path = "/api/v1/submissions/66666666-6666-4666-8666-666666666666/grade";
   const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
