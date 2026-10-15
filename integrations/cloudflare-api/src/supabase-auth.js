@@ -2105,13 +2105,26 @@ export async function listSupabaseLectures(request, env, subjectSlug = "", fetch
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Lecture read failed");
+    if (!response.ok) {
+      const error = new Error("Lecture read failed");
+      error.status = response.status;
+      error.table = path;
+      throw error;
+    }
     const payload = await response.json();
     if (!Array.isArray(payload)) throw new Error("Invalid lecture response");
     return payload;
   }
   try {
-    const documents = await rows("site_content", { key: "eq.lectures", select: "payload", limit: "1" });
+    let documents = [];
+    try {
+      documents = await rows("site_content", { key: "eq.lectures", select: "payload", limit: "1" });
+    } catch (error) {
+      // CMS lecture JSON is optional and student RLS may intentionally deny
+      // site_content. Do not weaken RLS; continue with any caller-visible
+      // published legacy histology lectures. Infrastructure errors still fail.
+      if (![401, 403, 404].includes(Number(error?.status))) throw error;
+    }
     const payload = documents[0]?.payload;
     let items = payload && Array.isArray(payload.items) ? payload.items.filter((row) => row && typeof row === "object" && row.status === "published") : [];
     if (subjectSlug) items = items.filter((row) => String(row.subject_slug || "") === subjectSlug);
@@ -2189,14 +2202,36 @@ export async function getSupabaseSubjectCatalog(request, env, fetcher = fetch) {
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Curriculum read failed");
+    if (!response.ok) {
+      const error = new Error("Curriculum read failed");
+      error.status = response.status;
+      throw error;
+    }
     const rows = await response.json();
     if (!Array.isArray(rows)) throw new Error("Invalid curriculum response");
     const curriculum = rows[0]?.payload && typeof rows[0].payload === "object"
       ? rows[0].payload
       : { items: subjectResult.data.items };
     return { ok: true, data: { items: subjectResult.data.items, tools: [], program: null, semester_label: null, curriculum } };
-  } catch {
+  } catch (error) {
+    // The curriculum document is optional. Keep the authenticated subject list
+    // usable when student RLS hides site_content; never mask upstream 5xx/timeouts.
+    if ([401, 403, 404].includes(Number(error?.status))) {
+      const items = subjectResult.data.items;
+      return {
+        ok: true,
+        data: {
+          items,
+          tools: [],
+          program: null,
+          semester_label: null,
+          curriculum: { items },
+          curriculum_available: false,
+          curriculum_source: "caller_subjects_fallback",
+          degraded: true,
+        },
+      };
+    }
     return failure(503, "CURRICULUM_UNAVAILABLE", "Учебный план временно недоступен");
   }
 }
@@ -2221,7 +2256,11 @@ export async function listSupabaseSubjectPlans(request, env, fetcher = fetch) {
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Subject plan list failed");
+    if (!response.ok) {
+      const error = new Error("Subject plan list failed");
+      error.status = response.status;
+      throw error;
+    }
     const rows = await response.json();
     if (!Array.isArray(rows)) throw new Error("Invalid subject plan list");
     const plans = {};
@@ -2231,7 +2270,13 @@ export async function listSupabaseSubjectPlans(request, env, fetcher = fetch) {
       }
     }
     return { ok: true, data: { plans } };
-  } catch {
+  } catch (error) {
+    // A bulk list of curated CMS JSON is optional. Individual subject plans
+    // can be derived from caller-visible curriculum instead; return a clear
+    // degraded result for expected RLS denial without broadening permissions.
+    if ([401, 403, 404].includes(Number(error?.status))) {
+      return { ok: true, data: { plans: {}, available: false, source: "none" } };
+    }
     return failure(503, "SUBJECT_PLANS_UNAVAILABLE", "Учебные планы предметов временно недоступны");
   }
 }
