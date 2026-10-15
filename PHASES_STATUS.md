@@ -2237,3 +2237,12 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟢 Confirmed live Supabase has the canonical histology training lifecycle RPCs and that client roles have no direct table grants for `trainings` / `training_answers`. This is schema-level verification, not authenticated UI acceptance.
 - 🟡 Tests are **not verified after this commit**. GitHub Actions runs for commit `9fc2afebc8b07244647958eb8120c38fda7295e7` failed before running any steps: runner ID 0, blank runner name, zero steps across smoke/code/package/optional jobs. This is an Actions runner/infrastructure blocker, not a demonstrated source-test failure.
 - 🔒 No Cloudflare deploy, Supabase schema change, Vercel production setting, DNS, Telegram webhook, or production routing switch was made. Do not mark this pass test-green or production-ready until tests/build and signed-in Worker acceptance run successfully.
+
+
+## Checkpoint — 2026-10-15: alternate archive test fixture repair
+
+- 🟢 The archived Cloudflare package's one failing test was caused by obsolete mock data (`user_roles.role`) rather than the current `roles(code)` contract.
+- 🟢 Corrected only test fixtures in an isolated archive copy; full suite: **59 passed / 0 failed**. Syntax checks passed for 54 JS files.
+- 🟡 This result applies only to the alternate archive. The current GitHub Worker has not been proven green by this action, and no alternate source modules were merged from this test-only repair.
+- 🔒 R2 remains rejected for the selected architecture unless explicitly reconsidered; no production deploy/cutover, DNS, Vercel production, Telegram webhook, or Supabase schema changes.
+- Details: `docs/CLOUDFLARE-ARCHIVE-VALIDATION-2026-10-15.md`.
