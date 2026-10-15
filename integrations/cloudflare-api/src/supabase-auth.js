@@ -927,25 +927,28 @@ export async function getSupabaseSubjectDetail(request, subjectId, env, fetcher 
     });
     if (!subjects.length) return failure(404, "NOT_FOUND", "Subject not found");
     try {
-      modules = await rows("modules", {
-        select: "id,title,sort_order",
-        subject_id: "eq." + id,
-        order: "sort_order.asc.nullslast,title.asc",
-      });
-    } catch {
-      // The current PHP REST fallback uses order_index while the SQL repository
-      // uses sort_order. Support either deployed schema without relaxing RLS.
+      // Live Supabase schema uses order_index (not sort_order). Query the
+      // canonical column first to avoid turning a harmless ordering mismatch
+      // into a 503 for the entire subject page.
       modules = await rows("modules", {
         select: "id,title,order_index",
         subject_id: "eq." + id,
         order: "order_index.asc.nullslast,title.asc",
       });
-      modules = modules.map((module) => ({
-        id: module.id ?? null,
-        title: module.title ?? "",
-        sort_order: module.order_index ?? null,
-      }));
+    } catch {
+      // Keep subject details available on older schemas with no ordering
+      // column. RLS still applies to the same caller-JWT read.
+      modules = await rows("modules", {
+        select: "id,title",
+        subject_id: "eq." + id,
+        order: "title.asc",
+      });
     }
+    modules = modules.map((module) => ({
+      id: module.id ?? null,
+      title: module.title ?? "",
+      sort_order: module.order_index ?? module.sort_order ?? null,
+    }));
 
     // Attach the actual curriculum topics to each module so the subject page can
     // render a useful thematic plan when no curated JSON plan exists. Topics are
@@ -2264,6 +2267,8 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
       const error = new Error("Subject plan read failed");
       error.status = response.status;
       error.table = table;
+      const details = await response.json().catch(() => null);
+      error.code = typeof details?.code === "string" ? details.code.slice(0, 40) : "REST_ERROR";
       throw error;
     }
     const payload = await response.json();
@@ -2305,11 +2310,19 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
   }
 
   try {
-    const savedRows = await rows("site_content", {
-      select: "payload",
-      key: "eq.subject_plan:" + normalized,
-      limit: "1",
-    });
+    let savedRows = [];
+    try {
+      savedRows = await rows("site_content", {
+        select: "payload",
+        key: "eq.subject_plan:" + normalized,
+        limit: "1",
+      });
+    } catch (error) {
+      // Student RLS intentionally denies site_content. Treat a 401/403 on this
+      // optional curated JSON as "no saved plan" and continue with the
+      // caller-visible curriculum below; do not weaken the table's RLS.
+      if (![401, 403, 404].includes(Number(error?.status))) throw error;
+    }
     const savedPlan = savedRows[0]?.payload && typeof savedRows[0].payload === "object"
       ? savedRows[0].payload
       : null;
