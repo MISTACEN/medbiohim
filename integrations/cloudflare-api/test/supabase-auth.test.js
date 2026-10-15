@@ -1249,3 +1249,72 @@ test("auth fetch rejects redirects safely without forwarding credentials", async
   });
   assert.equal(JSON.stringify(warnings).includes("redirect.example.test"), false);
 });
+
+
+test("subject catalog degrades to caller-visible subjects when optional curriculum CMS is hidden by RLS", async () => {
+  const calls = [];
+  const result = await getSupabaseSubjectCatalog(request("Bearer valid-user-token"), configured, async (input, init) => {
+    const url = new URL(String(input));
+    calls.push(url.pathname);
+    if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (url.pathname === "/rest/v1/group_memberships") {
+      return new Response(JSON.stringify([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true, course_number: 2 } }]), { status: 200 });
+    }
+    if (url.pathname === "/rest/v1/subjects") {
+      return new Response(JSON.stringify([{ id: "subject-1", slug: "histology", name: "Гистология", specialty_slug: "histology", course_number: 2, is_active: true }]), { status: 200 });
+    }
+    if (url.pathname === "/rest/v1/site_content") return new Response(JSON.stringify({ code: "42501" }), { status: 403 });
+    throw new Error("unexpected endpoint " + url.pathname);
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.items.map((item) => item.id), ["subject-1"]);
+  assert.deepEqual(result.data.curriculum, { items: result.data.items });
+  assert.equal(result.data.curriculum_available, false);
+  assert.equal(result.data.curriculum_source, "caller_subjects_fallback");
+  assert.equal(result.data.degraded, true);
+  assert.ok(calls.includes("/rest/v1/site_content"));
+});
+
+test("subject catalog does not hide transient curriculum backend errors", async () => {
+  const result = await getSupabaseSubjectCatalog(request("Bearer valid-user-token"), configured, async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (url.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true, course_number: 2 } }]), { status: 200 });
+    if (url.pathname === "/rest/v1/subjects") return new Response(JSON.stringify([{ id: "subject-1", name: "Гистология", specialty_slug: "mbh", is_active: true }]), { status: 200 });
+    if (url.pathname === "/rest/v1/site_content") return new Response("temporarily unavailable", { status: 503 });
+    throw new Error("unexpected endpoint " + url.pathname);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(result.code, "CURRICULUM_UNAVAILABLE");
+});
+
+test("lectures fall back to caller-visible legacy histology lectures when optional CMS JSON is denied", async () => {
+  const result = await listSupabaseLectures(request("Bearer valid-user-token"), configured, "histology", async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (url.pathname === "/rest/v1/site_content") return new Response(JSON.stringify({ code: "42501" }), { status: 403 });
+    if (url.pathname === "/rest/v1/histology_lectures") return new Response(JSON.stringify([
+      { id: "legacy-1", title: "Электроннограммы", subject_slug: "histology", kind: "EM", is_published: true, body_markdown: "Текст" },
+    ]), { status: 200 });
+    throw new Error("unexpected endpoint " + url.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.items.length, 1);
+  assert.equal(result.data.items[0].id, "histology-legacy-1");
+  assert.equal(result.data.items[0].status, "published");
+});
+
+test("subject plan catalog treats expected site_content RLS denial as empty and degraded", async () => {
+  const result = await listSupabaseSubjectPlans(request("Bearer valid-user-token"), configured, async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    if (url.pathname === "/rest/v1/site_content") return new Response(JSON.stringify({ code: "42501" }), { status: 403 });
+    throw new Error("unexpected endpoint " + url.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.plans, {});
+  assert.equal(result.data.available, false);
+  assert.equal(result.data.source, "none");
+});
