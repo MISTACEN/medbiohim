@@ -10,8 +10,8 @@ const ALLOWED_EXTENSIONS = new Set([
 function failure(status, code, message) { return { ok: false, status, code, message }; }
 function safeName(value) {
   const base = String(value || "upload.bin").replace(/\\/g, "/").split("/").pop()
-    .replace(/[\\u0000-\\u001f\\u007f]/g, "").trim();
-  const normalized = base.replace(/[^\\p{L}\\p{N}._() -]/gu, "_").replace(/^\\.+/, "").slice(0, 180);
+    .replace(/[\u0000-\u001f\u007f]/g, "").trim();
+  const normalized = base.replace(/[^\p{L}\p{N}._() -]/gu, "_").replace(/^\.+/, "").slice(0, 180);
   return normalized || "upload.bin";
 }
 function validHttpsUrl(value, allowedHosts) {
@@ -142,10 +142,15 @@ export async function uploadSupabaseFile(request, env, fetcher = fetch) {
     storage = await authorizeB2(env, fetcher);
     if (!storage) return failure(503, "FILE_STORAGE_NOT_CONFIGURED", "Приватное хранилище загрузок не настроено");
     const bytes = await file.arrayBuffer();
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
-    const sha256 = [...new Uint8Array(digest)].map((part) => part.toString(16).padStart(2, "0")).join("");
+    const [sha256Digest, sha1Digest] = await Promise.all([
+      crypto.subtle.digest("SHA-256", bytes),
+      crypto.subtle.digest("SHA-1", bytes),
+    ]);
+    const toHex = (digest) => [...new Uint8Array(digest)].map((part) => part.toString(16).padStart(2, "0")).join("");
+    const sha256 = toHex(sha256Digest);
+    const sha1 = toHex(sha1Digest);
     objectKey = "uploads/" + identity.user.id + "/" + crypto.randomUUID() + "/" + name;
-    uploaded = await uploadToB2(storage, objectKey, bytes, mimeType, sha256, fetcher);
+    uploaded = await uploadToB2(storage, objectKey, bytes, mimeType, sha1, fetcher);
 
     const endpoint = new URL("/rest/v1/rpc/medbiohim_create_file_record", base);
     const rpcResponse = await fetcher(endpoint.toString(), {
