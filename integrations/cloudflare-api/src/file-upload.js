@@ -90,7 +90,7 @@ async function deleteUploadedObject(storage, fileId, fileName, fetcher) {
     // Best-effort cleanup. The caller still receives a failure and no metadata is exposed.
   }
 }
-async function uploadToB2(storage, objectKey, bytes, mimeType, sha256, fetcher) {
+async function uploadToB2(storage, objectKey, bytes, mimeType, contentSha1, fetcher) {
   const info = await jsonResponse(fetcher, new URL("/b2api/v2/b2_get_upload_url", storage.apiUrl).toString(), {
     method: "POST",
     headers: { authorization: storage.authorizationToken, "content-type": "application/json", accept: "application/json" },
@@ -104,7 +104,7 @@ async function uploadToB2(storage, objectKey, bytes, mimeType, sha256, fetcher) 
       authorization: String(info.authorizationToken),
       "x-bz-file-name": encodeURIComponent(objectKey),
       "content-type": mimeType,
-      "x-bz-content-sha1": sha256,
+      "x-bz-content-sha1": contentSha1,
     },
     body: bytes,
     redirect: "error",
