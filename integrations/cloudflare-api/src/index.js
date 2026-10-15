@@ -843,7 +843,7 @@ export default {
         "x-content-type-options": "nosniff",
       });
       const length = mediaResponse.headers.get("content-length");
-      if (length && /^\\d+$/.test(length)) headers.set("content-length", length);
+      if (length && /^\d+$/.test(length)) headers.set("content-length", length);
       return withCors(new Response(mediaResponse.body, { status: 200, headers }), origin);
     }
 
