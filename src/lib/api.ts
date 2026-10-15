@@ -56,6 +56,8 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
   }
   const timeout=setTimeout(()=>controller.abort(),(options.method||"GET").toUpperCase()==="GET"?12000:20000);
   try{
+    const startedAt=Date.now();
+    const method=(options.method||"GET").toUpperCase();
     const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store",signal:controller.signal});
     if(typeof window!=="undefined"){
       const source=res.headers.get("x-mbh-api-source");
@@ -68,6 +70,11 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
           at:Date.now(),
         }}));
       }
+    }
+    if(typeof window!=="undefined"){
+      const safePath=path.split("?")[0].replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi,":id");
+      const source=res.headers.get("x-mbh-api-source")||"unknown";
+      window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:{at:Date.now(),method,path:safePath,status:res.status,durationMs:Date.now()-startedAt,source,requestId:res.headers.get("x-request-id")||"",fallback:source.includes("fallback"),ok:res.ok,kind:"response"}}));
     }
     return{res,text:await res.text()};
   }finally{
