@@ -1,0 +1,24 @@
+name = "medbiohim-api"
+main = "production-gateway.js"
+compatibility_date = "2026-10-11"
+workers_dev = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = false
+head_sampling_rate = 1
+persist = true
+destinations = ["cloudflare"]
+
+[vars]
+APP_ENV = "production"
+
+# Keep application behavior and secrets on the Shadow upstream until the
+# independent production bundle has passed full acceptance. No R2 binding.
+[[services]]
+binding = "MEDBIOHIM_UPSTREAM"
+service = "medbiohim-api-shadow"
