@@ -19,9 +19,11 @@ API caller families observed in the frontend:
 
 ## First concrete implementation gap to investigate
 
-**`POST /api/v1/files/upload` is called by the frontend but no upload handler was found in the current Worker router source.** The router has handlers for file-record reads/downloads, but that does not implement upload. This is a source-level finding; it must be confirmed against the exact deployed bundle before calling it a live outage.
+**Initial upload gap resolved in source:** `POST /api/v1/files/upload` now dispatches to `src/file-upload.js`, uploads privately to B2, validates caller authentication and file limits, and persists metadata via `medbiohim_create_file_record` using the caller JWT. The upload RPC migration is authored but not applied, and the live route has not been runtime-verified.
 
-Do not patch this with a fake success response or write bytes to an arbitrary storage key. Before implementing upload, verify the actual Supabase file-record schema, the allowed group/specialty rules, and whether existing private storage is Upstash Blob or Backblaze B2 for this file class. Then implement authenticated ownership/group checks, strict size/type limits, object upload, metadata persistence, cleanup on partial failure, and download authorization together.
+**Initial groups/subjects mutation gap resolved in source:** frontend `POST /groups`, `PATCH/DELETE /groups/{id}`, `POST /subjects`, and `PATCH/DELETE /subjects/{id}` now dispatch to `src/admin-entities.js`. Database RPCs enforce the `admin` role from `user_roles`/`roles`; delete is soft-delete to preserve linked academic data. The migration is authored but not applied. Module-level tests cover validation, auth denial, B2 upload success with mocked upstream services, and fail-closed storage configuration (7 passed / 0 failed in an isolated sandbox; not the full Worker suite).
+
+Do not mark either feature runtime-verified until migrations are reviewed/applied, secrets are configured, full Worker tests and Wrangler dry-run pass, and shadow requests succeed for student/admin roles.
 
 ## Priority order for the next code passes
 
@@ -29,7 +31,7 @@ Do not patch this with a fake success response or write bytes to an arbitrary st
 2. P0: authenticate `/auth/me` and refresh lifecycle; dashboard; schedule read and mutations; homework create/progress/submit; file upload/download; groups/subjects; account settings.
 3. P1: assessment attempt/preparation/training lifecycles and private media bytes.
 4. P2: remaining community, AI and academic workflows.
-5. P3: admin CRUD/imports and audit tools.
+5. P3: remaining admin CRUD/imports and audit tools (groups/subjects mutation handlers are now authored but awaiting migration and runtime verification).
 
 ## Verification labels
 
