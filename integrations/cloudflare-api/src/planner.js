@@ -1,4 +1,5 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
+import { createB2DownloadUrl } from "./b2-download.js";
 
 const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, message, ...extra });
 const uuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ""));
@@ -66,7 +67,39 @@ async function client(request, env, fetcher) {
     }
     const data = await r.json(); return Array.isArray(data) ? data : [];
   }
-  return { ok: true, identity: auth.user, rows };
+  async function rpc(functionName, payload) {
+    if (!/^[a-z_][a-z0-9_]*$/i.test(String(functionName || ""))) throw new Error("Invalid RPC name");
+    const endpoint = new URL("/rest/v1/rpc/" + functionName, base);
+    const response = await fetcher(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        apikey: key,
+        authorization: "Bearer " + token,
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      redirect: "manual",
+      signal: AbortSignal.timeout(7000),
+    });
+    if (response.status >= 300 && response.status < 400) {
+      logPresenceRestRedirect(response, endpoint, "rpc/" + functionName, "POST");
+      const error = new Error("Supabase RPC redirect blocked");
+      error.status = response.status;
+      error.code = "UPSTREAM_REDIRECT";
+      throw error;
+    }
+    if (!response.ok) {
+      let payloadError = null;
+      try { payloadError = await response.json(); } catch {}
+      const error = new Error("Supabase RPC failed");
+      error.status = response.status;
+      error.code = typeof payloadError?.code === "string" ? payloadError.code : "RPC_ERROR";
+      throw error;
+    }
+    return await response.json();
+  }
+  return { ok: true, identity: auth.user, rows, rpc };
 }
 
 async function groupFor(rows, userId, requested) {
@@ -105,15 +138,43 @@ export async function getSupabasePlanner(request, env, filters = {}, fetcher = f
     let hw = await c.rows("homeworks", hwParams);
     hw = hw.filter((h) => !(to && h.due_date && String(h.due_date) > to));
     const ids = hw.map((h) => String(h.id)).filter(uuid);
-    let prog = new Map(), subs = new Map();
+    let prog = new Map(), subs = new Map(), attachmentsByHomework = new Map();
     if (ids.length) {
       const byIds = "in.(" + ids.join(",") + ")";
       const results = await Promise.all([
         c.rows("homework_progress", { select: "homework_id,completed,submitted_at", user_id: "eq." + uid, homework_id: byIds, limit: "500" }),
         c.rows("homework_submissions", { select: "id,homework_id,status,grade,submitted_at", user_id: "eq." + uid, homework_id: byIds, order: "submitted_at.desc", limit: "500" }),
+        c.rows("homework_attachments", {
+          select: "homework_id,file_id,attachment_type,caption,sort_order,inline_view,files(id,original_name,mime_type,size_bytes,object_key,status)",
+          homework_id: byIds,
+          order: "homework_id.asc,sort_order.asc,created_at.asc",
+          limit: "1500",
+        }),
       ]);
       for (const p of results[0]) prog.set(String(p.homework_id), p);
-      for (const s of results[1]) if (!subs.has(String(s.homework_id))) subs.set(String(s.homework_id), s);
+      for (const sub of results[1]) if (!subs.has(String(sub.homework_id))) subs.set(String(sub.homework_id), sub);
+      for (const attachment of results[2]) {
+        const file = rel(attachment.files);
+        if (!file || String(file.status || "").toLowerCase() !== "active") continue;
+        let downloadUrl = null;
+        if (String(file.object_key || "").trim() && env.B2_KEY_ID && env.B2_APPLICATION_KEY && env.B2_BUCKET) {
+          const signed = await createB2DownloadUrl(env, file.object_key, 3600, fetcher);
+          if (signed.ok) downloadUrl = signed.url;
+        }
+        const value = {
+          file_id: String(attachment.file_id),
+          name: file.original_name ?? null,
+          mime_type: file.mime_type ?? null,
+          size_bytes: file.size_bytes == null ? null : Number(file.size_bytes),
+          attachment_type: attachment.attachment_type ?? "file",
+          caption: attachment.caption ?? null,
+          inline_view: attachment.inline_view === true,
+          download_url: downloadUrl,
+        };
+        const key = String(attachment.homework_id);
+        if (!attachmentsByHomework.has(key)) attachmentsByHomework.set(key, []);
+        attachmentsByHomework.get(key).push(value);
+      }
     }
     const homeworks = hw.map((h) => {
       const p = prog.get(String(h.id)), s = subs.get(String(h.id)), sub = rel(h.subjects);
@@ -127,7 +188,7 @@ export async function getSupabasePlanner(request, env, filters = {}, fetcher = f
         subject_id: h.subject_id, group_id: h.group_id, schedule_entry_id: h.schedule_entry_id,
         created_by: h.created_by, created_at: h.created_at, subject_name: sub?.name ?? null,
         subject_slug: sub?.slug ?? null, color_hex: sub?.color_hex ?? null, my_completed: p?.completed === true,
-        completed_at: p?.submitted_at ?? null, submission_status: s?.status ?? null, ...mine, attachments: [] };
+        completed_at: p?.submitted_at ?? null, submission_status: s?.status ?? null, ...mine, attachments: attachmentsByHomework.get(String(h.id)) || [] };
     });
     const schedules = await c.rows("schedules", { select: "id,semester,version", group_id: "eq." + gid, is_active: "eq.true", limit: "20" });
     const scheduleIds = schedules.map((s) => String(s.id)).filter(uuid);
@@ -337,7 +398,12 @@ export async function createSupabaseHomework(request, env, input, fetcher = fetc
   const subjectId = String(body.subject_id || "").trim();
   const dueDate = String(body.due_date || "").trim();
   const scheduleEntryId = String(body.schedule_entry_id || "").trim();
-  const attachments = Array.isArray(body.attachment_file_ids) ? body.attachment_file_ids : [];
+  if (body.attachment_file_ids != null && !Array.isArray(body.attachment_file_ids)) {
+    return fail(422, "VALIDATION_ERROR", "attachment_file_ids должен быть массивом");
+  }
+  const attachments = [...new Set((Array.isArray(body.attachment_file_ids) ? body.attachment_file_ids : [])
+    .map((value) => String(value || "").trim()).filter(Boolean))];
+
   if (!title) return fail(422, "VALIDATION_ERROR", "title is required");
   if (title.length > 240 || (description && description.length > 20000)) return fail(422, "VALIDATION_ERROR", "Заголовок или описание слишком длинные");
   if (!["group", "personal"].includes(scope)) return fail(422, "VALIDATION_ERROR", "scope должен быть group или personal");
@@ -347,7 +413,7 @@ export async function createSupabaseHomework(request, env, input, fetcher = fetc
   if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return fail(422, "VALIDATION_ERROR", "due_date должен иметь формат YYYY-MM-DD");
   if (scheduleEntryId && !uuid(scheduleEntryId)) return fail(422, "VALIDATION_ERROR", "schedule_entry_id должен быть UUID");
   if (attachments.length > 12) return fail(422, "VALIDATION_ERROR", "Можно прикрепить не более 12 файлов");
-  if (attachments.length) return fail(503, "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED", "Загрузка вложений пока не подключена к приватному хранилищу");
+  if (attachments.some((id) => !uuid(id))) return fail(422, "VALIDATION_ERROR", "Каждый attachment_file_id должен быть UUID");
 
   let membership = null;
   if (!isPersonal) {
@@ -366,10 +432,9 @@ export async function createSupabaseHomework(request, env, input, fetcher = fetc
       return fail(503, "DB_UNAVAILABLE", "Не удалось проверить учебную группу");
     }
     if (!membership) return fail(403, "FORBIDDEN", "Нет доступа к указанной учебной группе");
-    // Any active member may record homework for their own group's schedule.
-    // RLS independently enforces membership and created_by = auth.uid().
   }
 
+  try {
     let dueAt = String(body.due_at || "").trim();
     if (!dueAt && dueDate) dueAt = dueDate + "T23:59:00";
     if (dueAt && !Number.isFinite(Date.parse(dueAt))) return fail(422, "VALIDATION_ERROR", "due_at имеет неверный формат");
@@ -403,13 +468,44 @@ export async function createSupabaseHomework(request, env, input, fetcher = fetc
         ? "student"
         : String(membership?.role_in_group || "").toLowerCase() === "starosta" ? "starosta" : "student",
     };
+
+    if (attachments.length) {
+      const files = await c.rows("files", {
+        select: "id,original_name,mime_type,size_bytes,group_id,uploaded_by,status",
+        id: "in.(" + attachments.join(",") + ")",
+        status: "eq.active",
+        uploaded_by: "eq." + uid,
+        limit: String(attachments.length),
+      });
+      if (files.length !== attachments.length) {
+        return fail(403, "ATTACHMENT_NOT_ACCESSIBLE", "Один или несколько файлов недоступны или загружены другим пользователем");
+      }
+      if (files.some((file) => file.group_id && (isPersonal || String(file.group_id) !== groupId))) {
+        return fail(403, "ATTACHMENT_GROUP_MISMATCH", "Вложение относится к другой учебной группе");
+      }
+
+      const created = await c.rpc("create_homework_with_attachments", {
+        p_homework: row,
+        p_attachment_file_ids: attachments,
+      });
+      if (!created?.homework?.id) return fail(503, "DB_UNAVAILABLE", "Задание с вложениями не было сохранено");
+      return {
+        ok: true,
+        status: 201,
+        data: {
+          homework: created.homework,
+          attachments: Array.isArray(created.attachments) ? created.attachments : [],
+        },
+      };
+    }
+
     const saved = await c.rows("homeworks", { select: "*" }, {
       method: "POST",
       headers: { prefer: "return=representation" },
       body: JSON.stringify(row),
     });
     if (!saved[0]) return fail(503, "DB_UNAVAILABLE", "Задание не было сохранено");
-    return { ok: true, status: 201, data: { homework: saved[0] } };
+    return { ok: true, status: 201, data: { homework: saved[0], attachments: [] } };
   } catch (error) {
     if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
     if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав для создания задания");
