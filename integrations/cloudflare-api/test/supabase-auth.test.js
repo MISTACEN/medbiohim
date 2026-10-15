@@ -775,7 +775,9 @@ test("subject detail queries modules and curriculum topics with the caller JWT",
       return new Response(JSON.stringify([{ id: "subject-1", name: "Histology", is_active: true }]), { status: 200 });
     }
     if (parsed.pathname === "/rest/v1/modules") {
-      return new Response(JSON.stringify([{ id: "module-1", title: "Cell", sort_order: 1 }]), { status: 200 });
+      assert.equal(parsed.searchParams.get("select"), "id,title,order_index");
+      assert.equal(parsed.searchParams.get("order"), "order_index.asc.nullslast,title.asc");
+      return new Response(JSON.stringify([{ id: "module-1", title: "Cell", order_index: 1 }]), { status: 200 });
     }
     if (parsed.pathname === "/rest/v1/topics") {
       assert.match(parsed.searchParams.get("module_id") || "", /module-1/);
@@ -1049,7 +1051,9 @@ test("subject plan is generated from live curriculum rows when no JSON plan exis
   const result = await getSupabaseSubjectPlan(request("Bearer valid-user-token"), "histology", configured, async (input) => {
     const url = new URL(String(input));
     if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
-    if (url.pathname === "/rest/v1/site_content") return new Response(JSON.stringify([]), { status: 200 });
+    // Student-facing RLS denies site_content; the API must fall back to
+    // curriculum rows rather than failing the entire subject plan.
+    if (url.pathname === "/rest/v1/site_content") return new Response(JSON.stringify({ code: "42501" }), { status: 403 });
     if (url.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{
       group_id: groupId,
       groups: { id: groupId, is_active: true, specialty_slug: "mbh", course_number: 2 },
