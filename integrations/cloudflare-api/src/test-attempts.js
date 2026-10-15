@@ -155,7 +155,7 @@ async function makeRestClient(request, env, fetcher) {
   }
 
   async function rpc(name, args = {}) {
-    if (!/^medbiohim_(start_test_attempt|save_test_answer|finish_test_attempt)$/.test(name)) {
+    if (!/^medbiohim_(start_test_attempt|save_test_answer|finish_test_attempt|regrade_test_answer)$/.test(name)) {
       throw new Error("Unsupported test RPC");
     }
     const endpoint = new URL("/rest/v1/rpc/" + name, base);
@@ -393,6 +393,42 @@ export async function finishSupabaseTestAttempt(request, env, attemptId, fetcher
     return result;
   } catch (error) {
     return publicAttemptErrors(error, "ATTEMPT_FINISH_UNAVAILABLE", "Не удалось завершить попытку");
+  }
+}
+
+
+/**
+ * POST /api/v1/tests/attempts/{id}/answers/{questionId}/regrade
+ * The database RPC owns authorization and grading; the Worker only validates
+ * identifiers and returns the RPC's deliberately restricted result.
+ */
+export async function regradeSupabaseTestAnswer(request, env, attemptId, questionId, fetcher = fetch) {
+  const client = await makeRestClient(request, env, fetcher);
+  if (!client.ok) return client;
+  const id = String(attemptId || "");
+  const qid = String(questionId || "");
+  if (!uuid(id) || !uuid(qid)) return fail(422, "VALIDATION_ERROR", "Некорректный ID попытки или вопроса");
+  try {
+    const result = await client.rpc("medbiohim_regrade_test_answer", {
+      p_attempt_id: id,
+      p_question_id: qid,
+    });
+    if (!result || typeof result !== "object") return fail(503, "GRADING_RETRY_ERROR", "Не удалось повторно проверить ответ");
+    if (result.ok === false) {
+      return fail(
+        Number(result.status) || 503,
+        String(result.code || "GRADING_RETRY_ERROR"),
+        String(result.message || "Не удалось повторно проверить ответ"),
+      );
+    }
+    if (result.ok !== true || !result.data?.answer) {
+      return fail(503, "GRADING_RETRY_ERROR", "Сервис вернул некорректный ответ");
+    }
+    return result;
+  } catch (error) {
+    if (error?.status === 404) return fail(404, "ANSWER_NOT_FOUND", "Ответ не найден");
+    if (error?.status === 409) return fail(409, "ATTEMPT_CONFLICT", "Повторная проверка недоступна для этого состояния");
+    return publicAttemptErrors(error, "GRADING_RETRY_ERROR", "Не удалось повторно проверить ответ");
   }
 }
 
