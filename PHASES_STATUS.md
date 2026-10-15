@@ -2289,3 +2289,11 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟢 Source fix is in `main` (`453f19b504e014a9e222a6d02654462c64641f91`).
 - 🔴 Production still runs build `ff737a17fe95beae06e53d65f79931a1d0f123cc` and still returns HTTP 503 `BACKEND_NOT_CONFIGURED` on health/auth/me/subjects-catalog/presence-heartbeat. Thus the browser error is not resolved in the live deployment yet.
 - 🟡 Vercel Git status is pending; deployment/environment operations from the connected Vercel tool return authorization/scope errors. Next required acceptance: observe new production build marker, then confirm API calls route to Cloudflare and check auth/login plus subject/catalog/presence in browser.
+
+
+## 2026-10-15 — Dashboard API transport indicator
+
+- 🟡 Added a compact dashboard status pill that displays the source reported by the latest same-origin API response: Cloudflare, SpaceWeb/legacy, fallback, unavailable, or unknown. This is the backend/API transport, not the login provider (Google/Telegram/email).
+- 🟡 The Next.js API proxy emits a non-secret `x-mbh-api-source` response header for proxied requests and configuration failures; the frontend listens for it and shows the latest observed request path. It does not infer an upstream from the OAuth provider or local token storage.
+- 🟡 Source changes and regression behavior still require CI/build and production deployment verification. No production routing or environment settings were changed by this pass.
+
