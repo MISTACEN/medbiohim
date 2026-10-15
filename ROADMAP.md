@@ -3125,3 +3125,11 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟡 GitHub Actions runs for the code commit did not execute jobs (runner ID 0, no runner name, no steps). Code tests and Wrangler dry-run therefore remain unverified for this commit.
 - 🔒 The alternate R2 instructions were rejected because they conflict with the selected private Upstash Blob + Backblaze B2 + Redis-cache architecture. No secrets copied; no production deploy, Vercel production change, DNS switch, or API cutover.
 - Next: restore a functioning test runner or run the current Worker suite in a verified build environment; selectively review admin/domain modules from the alternate package; complete authenticated training lifecycle and private media acceptance before any cutover.
+
+
+## 2026-10-15 — isolated Cloudflare archive test repair
+
+- 🟢 Reproduced the alternate package's reported teacher-grading test failure and traced it to stale test fixtures using `user_roles.role`; the module already reads the live schema relation `roles(code)`.
+- 🟢 In an isolated extracted copy only, updated test fixtures in `test/homework-mutations.test.js` and `test/presence-ai.test.js`. Full archive suite now reports **59/59 passed**; `node --check` passed for all 54 JavaScript files.
+- 🟡 This does not validate the current GitHub Worker suite or authorize porting/deployment. The archive's R2 binding and alternate module/route surface still conflict with the selected storage architecture and current `main`.
+- Evidence: `docs/CLOUDFLARE-ARCHIVE-VALIDATION-2026-10-15.md`. No production, DNS, Vercel, Telegram, or Supabase schema changes were made.
