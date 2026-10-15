@@ -3210,3 +3210,10 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - ⚠️ This source change is on PR #23 and is not yet verified on the deployed Worker. The supplied browser log shows a 503 at the Vercel endpoint, but does not include the response JSON, so it cannot distinguish `MEDIA_NOT_MIGRATED`, `MEDIA_URL_UNAVAILABLE`, or an upstream storage failure. Next acceptance must inspect the response body/request ID and verify the deployed shadow Worker path; do not call this resolved until the live URL returns image bytes.
 
 - 🔧 The frontend's raw `getTrainerImageUrl()` fetch previously bypassed `/admin/api-logs`. It now logs the image endpoint's sanitized status/source/request ID and, for JSON errors only, `errorCode`; successful binary bodies are not read for telemetry. This makes the next live 503 distinguishable without logging tokens or response bodies.
+
+## Live 503/subject-data incident — 2026-10-15
+
+- Read Cloudflare persisted Worker telemetry for the actual shadow API requests (not just browser console). Confirmed `GET /api/v1/subject-plans/histology` fails because the optional curated `site_content` read returns HTTP 403 under the student's JWT; the old handler propagated this as `SUBJECT_PLAN_UNAVAILABLE`. This is an RLS boundary, not a reason to loosen table access.
+- Confirmed `GET /api/v1/subjects/{id}` logs PostgREST error `42703` for `modules`. Read-only schema inspection shows `modules.order_index` exists while `modules.sort_order` does not. The Worker had tried `sort_order` first and was not successfully recovering.
+- PR #23 now queries the live `order_index` schema first and uses a title-only fallback if no ordering column exists. The optional `site_content` curated-plan lookup now treats only 401/403/404 as unavailable and continues to the existing caller-JWT `curriculum_items` fallback; RLS remains unchanged.
+- Added regression fixtures for the actual `order_index` schema and `site_content` 403 case. CI/test execution and deployed shadow acceptance are still pending; this source change is not yet claimed live-fixed. Keep production routing unchanged until these gates pass.
