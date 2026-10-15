@@ -1528,7 +1528,6 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       return Boolean(group) && group.is_active !== false && Boolean(row.group_id);
     });
     const groupIds = [...new Set(activeMemberships.map((row) => String(row.group_id || "")).filter(Boolean))];
-    if (!groupIds.length) return failure(422, "NO_GROUP", "Для заданий нужна активная учебная группа");
     const requestedGroup = String(filters.group_id || "").trim();
     if (requestedGroup && !groupIds.includes(requestedGroup)) {
       return failure(403, "GROUP_ACCESS_DENIED", "You do not have access to this group's homework");
@@ -1537,11 +1536,31 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       return failure(409, "GROUP_REQUIRED", "Выберите учебную группу для просмотра заданий");
     }
     const scopedGroups = requestedGroup ? [requestedGroup] : groupIds;
-    const homeworks = await rows("homeworks", {
-      select: "id,group_id,subject_id,title,description,due_at,due_date,status,created_by,created_by_role,created_at,schedule_entry_id,subjects(name,slug,color_hex)",
-      group_id: "in.(" + scopedGroups.join(",") + ")",
+    const selectHomework = "id,group_id,subject_id,title,description,due_at,due_date,status,created_by,created_by_role,created_at,schedule_entry_id,subjects(name,slug,color_hex)";
+    const homeworks = [];
+    if (scopedGroups.length) {
+      const shared = await rows("homeworks", {
+        select: selectHomework,
+        group_id: "in.(" + scopedGroups.join(",") + ")",
+        order: "due_date.asc.nullslast,due_at.asc.nullslast,created_at.desc",
+        limit: "500",
+      });
+      homeworks.push(...shared);
+    }
+    // Personal tasks have no group_id and are visible only through the caller's
+    // own-row RLS policy. Keep them in the selected group's list as well.
+    const personal = await rows("homeworks", {
+      select: selectHomework,
+      group_id: "is.null",
+      created_by: "eq." + identity.user.id,
       order: "due_date.asc.nullslast,due_at.asc.nullslast,created_at.desc",
       limit: "500",
+    });
+    homeworks.push(...personal);
+    homeworks.sort((a, b) => {
+      const dateA = String(a.due_date || a.due_at || a.created_at || "");
+      const dateB = String(b.due_date || b.due_at || b.created_at || "");
+      return dateA.localeCompare(dateB);
     });
     if (!homeworks.length) {
       const groups = activeMemberships.map((row) => { const group = Array.isArray(row.groups) ? row.groups[0] : row.groups; return group ? { ...group, group_id: String(row.group_id || group.id || ""), group_name: group.name || "" } : null; }).filter(Boolean);
@@ -1611,19 +1630,22 @@ export async function setSupabaseHomeworkProgress(request, homeworkId, done, env
     return fetcher(endpoint.toString(), { ...init, headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json", ...(init.body ? { "content-type": "application/json", prefer: "resolution=merge-duplicates,return=representation" } : {}), ...(init.headers || {}) }, redirect: "error", signal: AbortSignal.timeout(AUTH_TIMEOUT_MS) });
   }
   try {
-    const hr = await call("homeworks", { select: "id,group_id", id: "eq." + id, limit: "1" });
+    const hr = await call("homeworks", { select: "id,group_id,created_by", id: "eq." + id, limit: "1" });
     if (!hr.ok) throw new Error("Homework read failed");
     const homeworks = await hr.json();
     if (!Array.isArray(homeworks)) throw new Error("Invalid homework response");
     const homework = homeworks[0];
     if (!homework) return failure(404, "NOT_FOUND", "Задание не найдено или недоступно");
-    if (!homework.group_id) return failure(403, "HOMEWORK_ACCESS_DENIED", "Для этого задания нельзя изменить прогресс");
-    const mr = await call("group_memberships", { select: "group_id,groups(id,is_active)", user_id: "eq." + identity.user.id, group_id: "eq." + homework.group_id, is_active: "eq.true", limit: "1" });
-    if (!mr.ok) throw new Error("Membership read failed");
-    const memberships = await mr.json();
-    const membership = Array.isArray(memberships) ? memberships[0] : null;
-    const group = Array.isArray(membership?.groups) ? membership.groups[0] : membership?.groups;
-    if (!membership || !group || group.is_active === false) return failure(403, "HOMEWORK_ACCESS_DENIED", "Задание недоступно в вашей учебной группе");
+    if (homework.group_id) {
+      const mr = await call("group_memberships", { select: "group_id,groups(id,is_active)", user_id: "eq." + identity.user.id, group_id: "eq." + homework.group_id, is_active: "eq.true", limit: "1" });
+      if (!mr.ok) throw new Error("Membership read failed");
+      const memberships = await mr.json();
+      const membership = Array.isArray(memberships) ? memberships[0] : null;
+      const group = Array.isArray(membership?.groups) ? membership.groups[0] : membership?.groups;
+      if (!membership || !group || group.is_active === false) return failure(403, "HOMEWORK_ACCESS_DENIED", "Задание недоступно в вашей учебной группе");
+    } else if (String(homework.created_by || "") !== String(identity.user.id)) {
+      return failure(403, "HOMEWORK_ACCESS_DENIED", "Личное задание доступно только создавшему его пользователю");
+    }
     const wr = await call("homework_progress", { on_conflict: "homework_id,user_id" }, { method: "POST", body: JSON.stringify([{ homework_id: id, user_id: identity.user.id, completed: done, submitted_at: done ? new Date().toISOString() : null }]) });
     if (!wr.ok) throw new Error("Progress write failed");
     const rows = await wr.json();
