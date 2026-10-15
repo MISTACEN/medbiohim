@@ -23,7 +23,7 @@ The platform is split into:
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Publishable/legacy anon key; browser-safe by design, subject to RLS. |
 | NEXT_PUBLIC_APP_NAME | Frontend application name. |
 | SPACEWEB_API_ORIGIN | Server-only Vercel → SpaceWeb PHP API target; must use valid HTTPS when carrying authenticated traffic. |
-| CLOUDFLARE_API_ORIGIN | Server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. The migration shadow hostname is rejected in Production and remains available to the isolated Preview acceptance environment. |
+| CLOUDFLARE_API_ORIGIN | Server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. Vercel production/preview default to `https://medbiohim-api.ryazansevegor.workers.dev/api/v1` when unset; set `MEDBIOHIM_API_MODE=legacy` only for an intentional rollback. The migration shadow hostname is rejected in Production. |
 | MEDBIOHIM_CF_FIRST | Preview-only opt-in. When exactly `true`, request Cloudflare first and use safe SpaceWeb fallback cases. Keep `false` in Production until the canary is accepted. |
 | MEDBIOHIM_API_MODE | Production cutover switch. Set to `cloudflare` only after a production Worker and parity checks are ready; otherwise the proxy uses legacy mode and requires a valid HTTPS `SPACEWEB_API_ORIGIN`. |
 | GEMINI_API_KEY | Optional Vercel-side Gemini key for the proxy route. |
@@ -91,3 +91,8 @@ The private test .env supplied for this work contains the Supabase, PostgreSQL, 
 ### Admin database console
 
 DB_CREDENTIALS_KEY — server-side key used to encrypt external PostgreSQL/MySQL passwords stored in public.admin_db_connections. It must never be exposed through NEXT_PUBLIC_*. The preferred deployment is a dedicated strong random DB_CREDENTIALS_KEY on SpaceWeb. Compatibility fallback to an existing server-side admin/encryption key is kept for migration safety.
+
+
+## 2026-10-15 — Vercel API routing default
+
+Vercel Production and Preview no longer require `SPACEWEB_API_ORIGIN` just to serve browser API calls. When `CLOUDFLARE_API_ORIGIN` is unset, the proxy uses the public `medbiohim-api` gateway and enables Cloudflare-first routing. `MEDBIOHIM_API_MODE=legacy` is the explicit rollback switch; it requires a valid HTTPS `SPACEWEB_API_ORIGIN`. Local development stays explicit and is not silently pointed at a remote service. This restores API connectivity for migrated routes but does not imply that every Worker route is migrated; `501 ROUTE_NOT_MIGRATED` remains a separate parity gap.
