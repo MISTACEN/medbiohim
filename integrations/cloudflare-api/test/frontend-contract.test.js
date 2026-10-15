@@ -7,8 +7,8 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const [frontend, worker] = await Promise.all([
-  readFile(resolve(root, "../../src/lib/api.ts"), "utf8"),
-  readFile(resolve(root, "src/index.js"), "utf8"),
+  readFile(resolve(root, "src/lib/api.ts"), "utf8"),
+  readFile(resolve(root, "integrations/cloudflare-api/src/index.js"), "utf8"),
 ]);
 
 test("frontend and Worker keep the same API envelope and base path", () => {
