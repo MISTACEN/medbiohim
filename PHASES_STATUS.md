@@ -2228,3 +2228,12 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟢 Cloudflare Build `31ae9afd-1466-4e12-ad13-bf2132a6d829`, source commit `adda422197b70912a5cca3cc159bb0f9809b1e5d`: **330 tests passed / 0 failed**, Wrangler dry-run passed, deploy command completed. Shadow deployment `d6fa407b-ce7b-459a-83eb-2359e3abe66e`, version `88d4a621-31e1-4f10-ad10-6246f6ffad4e` at 100%.
 - 🟡 Still required for full acceptance: use a real signed-in browser's bearer JWT against the deployed Worker and run feed → create → answer/skip → review → complete/cancel. This transaction smoke sets JWT claim context inside PostgreSQL, not the actual HTTP token transport.
 - 🔒 Production API routing remains on PHP/SpaceWeb. Shadow deploy success is not a production cutover.
+
+
+## Checkpoint — 2026-10-15: Cloudflare archive reconciliation
+
+- 🟢 Reviewed the three Cloudflare variants against current `main` and the legacy PHP archive. Detailed evidence and conflict decisions: `docs/CLOUDFLARE-ARCHIVE-RECONCILIATION-2026-10-15.md`.
+- 🟢 Restored `GET/POST /api/v1/sessions` and `GET/PATCH /api/v1/sessions/{id}` in `integrations/cloudflare-api/src/index.js`, reusing the existing caller-JWT/RLS `src/sessions.js` implementation and tests. No migration was required; the existing `learning_sessions` table/policies already cover owner-only reads/inserts/updates.
+- 🟢 Confirmed live Supabase has the canonical histology training lifecycle RPCs and that client roles have no direct table grants for `trainings` / `training_answers`. This is schema-level verification, not authenticated UI acceptance.
+- 🟡 Tests are **not verified after this commit**. GitHub Actions runs for commit `9fc2afebc8b07244647958eb8120c38fda7295e7` failed before running any steps: runner ID 0, blank runner name, zero steps across smoke/code/package/optional jobs. This is an Actions runner/infrastructure blocker, not a demonstrated source-test failure.
+- 🔒 No Cloudflare deploy, Supabase schema change, Vercel production setting, DNS, Telegram webhook, or production routing switch was made. Do not mark this pass test-green or production-ready until tests/build and signed-in Worker acceptance run successfully.
