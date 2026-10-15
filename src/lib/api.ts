@@ -18,6 +18,14 @@ export type AcademicState = {
 };
 function getToken(){if(typeof window==="undefined")return null;const t=localStorage.getItem("mb_access_token");return t&&t.trim()?t.trim():null}
 function getRefreshToken(){if(typeof window==="undefined")return null;const t=localStorage.getItem("mb_refresh_token");return t&&t.trim()?t.trim():null}
+function logTrainerImageResponse(res:Response,startedAt:number){
+  if(typeof window==="undefined")return;
+  const entry:any={at:Date.now(),method:"GET",path:"/trainers/feed/:id/image",status:res.status,durationMs:Date.now()-startedAt,source:res.headers.get("x-mbh-api-source")||"unknown",requestId:res.headers.get("x-request-id")||"",fallback:res.headers.get("x-mbh-transport-fallback")==="true",ok:res.ok,kind:"image_response"};
+  void res.clone().json().then((payload:any)=>{if(payload?.error?.code)entry.errorCode=String(payload.error.code).slice(0,80);}).catch(()=>{}).finally(()=>{
+    try{const key="mbh:api-log-buffer";const prior=JSON.parse(sessionStorage.getItem(key)||"[]");sessionStorage.setItem(key,JSON.stringify([entry,...(Array.isArray(prior)?prior:[])].slice(0,1000)));}catch{}
+    window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:entry}));
+  });
+}
 export function setTokens(access:string,refresh?:string){
   const previousScope = cacheUserScope();
   localStorage.setItem("mb_access_token",access);
@@ -268,11 +276,13 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
     for(let attempt=0;attempt<3;attempt++){
       try{
         const bust=attempt===0?"":`?retry=${attempt}-${Date.now()}`;
+        let imageRequestStartedAt=Date.now();
         let res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image${bust}`,{
           headers:token?{Authorization:`Bearer ${token}`}:{},
           cache:"no-store",
           signal:AbortSignal.timeout(15000),
         });
+        logTrainerImageResponse(res,imageRequestStartedAt);
         if(res.status===401){
           const refreshToken=getRefreshToken();
           if(refreshToken){
@@ -289,11 +299,13 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
                 if(parsed.data?.access_token){
                   setTokens(parsed.data.access_token,parsed.data.refresh_token);
                   token=parsed.data.access_token;
+                  imageRequestStartedAt=Date.now();
                   res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image?retry=auth-${Date.now()}`,{
                     headers:{Authorization:`Bearer ${token}`},
                     cache:"no-store",
                     signal:AbortSignal.timeout(15000),
                   });
+                  logTrainerImageResponse(res,imageRequestStartedAt);
                 }
               }catch{}
             }
