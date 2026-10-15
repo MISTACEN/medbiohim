@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSupabaseHomework, submitSupabaseHomework } from "../src/planner.js";
+import { createSupabaseHomework, getSupabasePlanner, submitSupabaseHomework } from "../src/planner.js";
 import { listSupabaseHomeworks } from "../src/supabase-auth.js";
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -262,4 +262,70 @@ test("homework attachments reject files outside the authenticated user's ownersh
   assert.equal(result.status, 403);
   assert.equal(result.code, "ATTACHMENT_NOT_ACCESSIBLE");
   assert.equal(rpcCalls, 0);
+});
+
+
+test("planner returns visible homework attachment metadata without exposing private object keys", async () => {
+  const fetcher = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return json({ id: USER_ID, email: "student@example.test" });
+    if (url.pathname === "/rest/v1/group_memberships") return json([{
+      group_id: GROUP_ID,
+      groups: { id: GROUP_ID, name: "МБХ-201", code: "MBH-201", course_number: 2, specialty_slug: "mbh", is_active: true },
+    }]);
+    if (url.pathname === "/rest/v1/homeworks") return json([{
+      id: HOMEWORK_ID,
+      title: "Посмотреть микропрепарат",
+      description: null,
+      due_at: null,
+      due_date: "2026-10-20",
+      subject_id: SUBJECT_ID,
+      group_id: GROUP_ID,
+      schedule_entry_id: ENTRY_ID,
+      created_by: USER_ID,
+      created_at: "2026-10-16T00:00:00Z",
+      subjects: { name: "Гистология", slug: "histology", color_hex: "#6366f1" },
+    }]);
+    if (url.pathname === "/rest/v1/homework_progress") return json([]);
+    if (url.pathname === "/rest/v1/homework_submissions") return json([]);
+    if (url.pathname === "/rest/v1/homework_attachments") return json([{
+      homework_id: HOMEWORK_ID,
+      file_id: "88888888-8888-4888-8888-888888888888",
+      attachment_type: "image",
+      caption: "Микропрепарат",
+      sort_order: 0,
+      inline_view: true,
+      files: {
+        id: "88888888-8888-4888-8888-888888888888",
+        original_name: "micro.jpg",
+        mime_type: "image/jpeg",
+        size_bytes: 2048,
+        object_key: "private/student-uploads/micro.jpg",
+        status: "active",
+      },
+    }]);
+    if (url.pathname === "/rest/v1/schedules") return json([]);
+    throw new Error("Unexpected endpoint " + url.pathname + " " + url.search);
+  };
+
+  const result = await getSupabasePlanner(
+    request("/api/v1/planner?group_id=" + GROUP_ID, "GET"),
+    env,
+    { group_id: GROUP_ID, from: "2026-10-01", to: "2026-10-31" },
+    fetcher,
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.homeworks.length, 1);
+  assert.deepEqual(result.data.homeworks[0].attachments, [{
+    file_id: "88888888-8888-4888-8888-888888888888",
+    name: "micro.jpg",
+    mime_type: "image/jpeg",
+    size_bytes: 2048,
+    attachment_type: "image",
+    caption: "Микропрепарат",
+    inline_view: true,
+    download_url: null,
+  }]);
+  assert.equal(JSON.stringify(result).includes("private/student-uploads/micro.jpg"), false);
 });
