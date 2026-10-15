@@ -271,13 +271,16 @@ const trainerImageQueue:Array<()=>void>=[];
 async function withTrainerImageConcurrency<T>(task:()=>Promise<T>):Promise<T>{
   if(activeTrainerImageRequests>=MAX_CONCURRENT_TRAINER_IMAGE_REQUESTS){
     await new Promise<void>(resolve=>trainerImageQueue.push(resolve));
+  }else{
+    activeTrainerImageRequests++;
   }
-  activeTrainerImageRequests++;
   try{return await task();}
   finally{
-    activeTrainerImageRequests--;
+    // Transfer the occupied slot directly to the next waiter. Decrement only
+    // when no waiter exists, otherwise a newly arriving task could race ahead.
     const next=trainerImageQueue.shift();
     if(next)next();
+    else activeTrainerImageRequests--;
   }
 }
 export async function getTrainerImageUrl(id:string):Promise<string|null>{
