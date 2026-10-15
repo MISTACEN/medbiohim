@@ -1,5 +1,5 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
-import { createB2DownloadUrl } from "./b2-download.js";
+import { createB2DownloadUrls } from "./b2-download.js";
 
 const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, message, ...extra });
 const uuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ""));
@@ -153,14 +153,31 @@ export async function getSupabasePlanner(request, env, filters = {}, fetcher = f
       ]);
       for (const p of results[0]) prog.set(String(p.homework_id), p);
       for (const sub of results[1]) if (!subs.has(String(sub.homework_id))) subs.set(String(sub.homework_id), sub);
-      for (const attachment of results[2]) {
-        const file = rel(attachment.files);
-        if (!file || String(file.status || "").toLowerCase() !== "active") continue;
-        let downloadUrl = null;
-        if (String(file.object_key || "").trim() && env.B2_KEY_ID && env.B2_APPLICATION_KEY && env.B2_BUCKET) {
-          const signed = await createB2DownloadUrl(env, file.object_key, 3600, fetcher);
-          if (signed.ok) downloadUrl = signed.url;
+
+      const attachmentCandidates = results[2].map((attachment) => ({
+        attachment,
+        file: rel(attachment.files),
+      })).filter(({ file }) => file && String(file.status || "").toLowerCase() === "active");
+      const signableKeys = [];
+      const uniqueKeys = new Set();
+      if (env.B2_KEY_ID && env.B2_APPLICATION_KEY && env.B2_BUCKET) {
+        for (const { file } of attachmentCandidates) {
+          const objectKey = String(file.object_key || "").trim();
+          if (!objectKey || uniqueKeys.has(objectKey)) continue;
+          uniqueKeys.add(objectKey);
+          // Stay below Cloudflare's free-tier subrequest budget even on large
+          // homework lists; metadata remains visible when a link is not signed.
+          if (signableKeys.length < 24) signableKeys.push(objectKey);
         }
+      }
+      let signedUrls = Object.create(null);
+      if (signableKeys.length) {
+        const signed = await createB2DownloadUrls(env, signableKeys, 3600, fetcher);
+        if (signed.ok) signedUrls = signed.urls;
+      }
+
+      for (const { attachment, file } of attachmentCandidates) {
+        const objectKey = String(file.object_key || "").trim();
         const value = {
           file_id: String(attachment.file_id),
           name: file.original_name ?? null,
@@ -169,7 +186,7 @@ export async function getSupabasePlanner(request, env, filters = {}, fetcher = f
           attachment_type: attachment.attachment_type ?? "file",
           caption: attachment.caption ?? null,
           inline_view: attachment.inline_view === true,
-          download_url: downloadUrl,
+          download_url: objectKey && Object.prototype.hasOwnProperty.call(signedUrls, objectKey) ? signedUrls[objectKey] : null,
         };
         const key = String(attachment.homework_id);
         if (!attachmentsByHomework.has(key)) attachmentsByHomework.set(key, []);
