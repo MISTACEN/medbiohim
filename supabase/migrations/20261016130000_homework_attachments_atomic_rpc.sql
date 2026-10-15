@@ -111,7 +111,7 @@ BEGIN
   END IF;
   IF v_requested_count > 0 AND (
     SELECT count(*) <> count(DISTINCT file_id)
-    FROM unnest(p_attachment_file_ids) AS file_id
+    FROM unnest(p_attachment_file_ids) AS requested(file_id)
   ) THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Duplicate attachment ids are not allowed';
   END IF;
