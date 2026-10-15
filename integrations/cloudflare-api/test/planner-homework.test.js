@@ -184,3 +184,82 @@ test("homework list combines caller-visible group homework and the user's own pe
   assert.deepEqual(result.data.items.map((item) => item.title).sort(), ["Личное", "Общее"]);
   assert.ok(seen.every((call) => !call.auth || call.auth === "Bearer student-token"));
 });
+
+
+test("homework with photos uses caller-JWT atomic RPC and returns attachment metadata", async () => {
+  const FILE_ID = "88888888-8888-4888-8888-888888888888";
+  const body = {
+    title: "Проверить микропрепарат",
+    subject_id: SUBJECT_ID,
+    due_date: "2026-10-20",
+    group_id: GROUP_ID,
+    schedule_entry_id: ENTRY_ID,
+    attachment_file_ids: [FILE_ID],
+  };
+  let rpcPayload = null;
+  let directHomeworkWrites = 0;
+  const fetcher = async (input, init = {}) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return json({ id: USER_ID, email: "student@example.test" });
+    if (url.pathname === "/rest/v1/group_memberships") return json([
+      { group_id: GROUP_ID, role_in_group: "student", is_active: true },
+    ]);
+    if (url.pathname === "/rest/v1/schedule_entries") return json([{
+      id: ENTRY_ID, date: "2026-10-20", subject_id: SUBJECT_ID,
+      schedules: { id: "77777777-7777-4777-8777-777777777777", group_id: GROUP_ID, is_active: true },
+    }]);
+    if (url.pathname === "/rest/v1/files") return json([{
+      id: FILE_ID, original_name: "micro.jpg", mime_type: "image/jpeg",
+      size_bytes: 2048, group_id: GROUP_ID, uploaded_by: USER_ID, status: "active",
+    }]);
+    if (url.pathname === "/rest/v1/rpc/create_homework_with_attachments") {
+      assert.equal(init.method, "POST");
+      assert.equal(init.headers.authorization, "Bearer student-token");
+      assert.equal(init.headers.apikey, "test-anon-key");
+      rpcPayload = JSON.parse(init.body);
+      return json({
+        homework: { id: HOMEWORK_ID, ...rpcPayload.p_homework },
+        attachments: [{
+          file_id: FILE_ID, attachment_type: "image", sort_order: 0, inline_view: true,
+        }],
+      });
+    }
+    if (url.pathname === "/rest/v1/homeworks" && init.method === "POST") directHomeworkWrites += 1;
+    throw new Error("Unexpected endpoint " + url.pathname + " " + (init.method || "GET"));
+  };
+
+  const result = await createSupabaseHomework(
+    request("/api/v1/homeworks", "POST", body), env, body, fetcher,
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 201);
+  assert.deepEqual(rpcPayload.p_attachment_file_ids, [FILE_ID]);
+  assert.equal(rpcPayload.p_homework.created_by, USER_ID);
+  assert.equal(result.data.attachments[0].file_id, FILE_ID);
+  assert.equal(directHomeworkWrites, 0);
+});
+
+test("homework attachments reject files outside the authenticated user's ownership or group scope", async () => {
+  const FILE_ID = "88888888-8888-4888-8888-888888888888";
+  const body = { title: "Фото", group_id: GROUP_ID, attachment_file_ids: [FILE_ID] };
+  let rpcCalls = 0;
+  const fetcher = async (input, init = {}) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return json({ id: USER_ID });
+    if (url.pathname === "/rest/v1/group_memberships") return json([
+      { group_id: GROUP_ID, role_in_group: "student", is_active: true },
+    ]);
+    if (url.pathname === "/rest/v1/files") return json([]);
+    if (url.pathname === "/rest/v1/rpc/create_homework_with_attachments") rpcCalls += 1;
+    throw new Error("Unexpected endpoint " + url.pathname + " " + (init.method || "GET"));
+  };
+
+  const result = await createSupabaseHomework(
+    request("/api/v1/homeworks", "POST", body), env, body, fetcher,
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+  assert.equal(result.code, "ATTACHMENT_NOT_ACCESSIBLE");
+  assert.equal(rpcCalls, 0);
+});
