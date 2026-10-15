@@ -3114,3 +3114,14 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - Cloudflare Build `31ae9afd-1466-4e12-ad13-bf2132a6d829`, commit `adda422197b70912a5cca3cc159bb0f9809b1e5d`: **330 тестов пройдены, 0 ошибок**, Wrangler dry-run и Shadow deploy завершены. Версия `88d4a621-31e1-4f10-ad10-6246f6ffad4e` распределена на 100%.
 - Непройденный последний acceptance gate — HTTP smoke с реальным подписанным студенческим JWT из браузера. SQL smoke с тестовым claim внутри транзакции не доказывает передачу реального bearer через все слои.
 - Production routing не менялся: реальный сайт продолжает использовать PHP/SpaceWeb; переключение на Cloudflare — отдельный финальный этап после проверки реального JWT и всех страниц.
+
+
+## Execution checkpoint — 2026-10-15: Cloudflare archive reconciliation
+
+- 🟢 Compared the uploaded `cf-push` entry point and alternate Cloudflare package against current `main`; did not replace the current module tree with the incompatible alternate architecture.
+- 🟢 Restored the missing learning-session router wiring in `integrations/cloudflare-api/src/index.js`: GET/POST `/api/v1/sessions`, GET/PATCH `/api/v1/sessions/{id}`. The existing `sessions.js`, tests and Supabase RLS migration were reused; no database change was necessary.
+- 🟢 Confirmed the current index blob now exactly matches the reviewed `medbiohim-cf-push.zip` index blob (`8831b42e2258e07217e64e7d0b3be4100b533451`). Code commit: `9fc2afebc8b07244647958eb8120c38fda7295e7`.
+- 🟡 Alternate `medbiohim-cloudflare-api 2.zip` test run is 58 passed / 1 failed, despite its local status file claiming 56/56. Failure: teacher-role homework grading test. Do not port that package wholesale.
+- 🟡 GitHub Actions runs for the code commit did not execute jobs (runner ID 0, no runner name, no steps). Code tests and Wrangler dry-run therefore remain unverified for this commit.
+- 🔒 The alternate R2 instructions were rejected because they conflict with the selected private Upstash Blob + Backblaze B2 + Redis-cache architecture. No secrets copied; no production deploy, Vercel production change, DNS switch, or API cutover.
+- Next: restore a functioning test runner or run the current Worker suite in a verified build environment; selectively review admin/domain modules from the alternate package; complete authenticated training lifecycle and private media acceptance before any cutover.
