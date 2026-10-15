@@ -21,10 +21,13 @@ function getRefreshToken(){if(typeof window==="undefined")return null;const t=lo
 function logTrainerImageResponse(res:Response,startedAt:number){
   if(typeof window==="undefined")return;
   const entry:any={at:Date.now(),method:"GET",path:"/trainers/feed/:id/image",status:res.status,durationMs:Date.now()-startedAt,source:res.headers.get("x-mbh-api-source")||"unknown",requestId:res.headers.get("x-request-id")||"",fallback:res.headers.get("x-mbh-transport-fallback")==="true",ok:res.ok,kind:"image_response"};
-  void res.clone().json().then((payload:any)=>{if(payload?.error?.code)entry.errorCode=String(payload.error.code).slice(0,80);}).catch(()=>{}).finally(()=>{
+  const persist=()=>{
     try{const key="mbh:api-log-buffer";const prior=JSON.parse(sessionStorage.getItem(key)||"[]");sessionStorage.setItem(key,JSON.stringify([entry,...(Array.isArray(prior)?prior:[])].slice(0,1000)));}catch{}
     window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:entry}));
-  });
+  };
+  if(!res.ok&&(res.headers.get("content-type")||"").includes("json")){
+    void res.clone().json().then((payload:any)=>{if(payload?.error?.code)entry.errorCode=String(payload.error.code).slice(0,80);}).catch(()=>{}).finally(persist);
+  }else persist();
 }
 export function setTokens(access:string,refresh?:string){
   const previousScope = cacheUserScope();
