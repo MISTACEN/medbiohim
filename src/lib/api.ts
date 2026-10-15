@@ -55,9 +55,9 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
     else externalSignal.addEventListener("abort",abortFromCaller,{once:true});
   }
   const timeout=setTimeout(()=>controller.abort(),(options.method||"GET").toUpperCase()==="GET"?12000:20000);
+  const startedAt=Date.now();
+  const method=(options.method||"GET").toUpperCase();
   try{
-    const startedAt=Date.now();
-    const method=(options.method||"GET").toUpperCase();
     const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store",signal:controller.signal});
     if(typeof window!=="undefined"){
       const source=res.headers.get("x-mbh-api-source");
