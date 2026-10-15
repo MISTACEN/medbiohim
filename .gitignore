@@ -10,3 +10,5 @@ dist/
 .vercel
 coverage/
 *.tsbuildinfo
+
+supabase/.temp/
