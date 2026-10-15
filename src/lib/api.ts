@@ -262,6 +262,24 @@ export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResu
 }
 const trainerImageCache=new Map<string,string>();
 const trainerImageInflight=new Map<string,Promise<string|null>>();
+// Keep image bursts from overwhelming the authenticated Worker/Supabase path when
+// a feed renders many cards at once. Failed 503s are surfaced to the UI for manual
+// retry instead of multiplying an upstream outage into hundreds of retry requests.
+const MAX_CONCURRENT_TRAINER_IMAGE_REQUESTS=6;
+let activeTrainerImageRequests=0;
+const trainerImageQueue:Array<()=>void>=[];
+async function withTrainerImageConcurrency<T>(task:()=>Promise<T>):Promise<T>{
+  if(activeTrainerImageRequests>=MAX_CONCURRENT_TRAINER_IMAGE_REQUESTS){
+    await new Promise<void>(resolve=>trainerImageQueue.push(resolve));
+  }
+  activeTrainerImageRequests++;
+  try{return await task();}
+  finally{
+    activeTrainerImageRequests--;
+    const next=trainerImageQueue.shift();
+    if(next)next();
+  }
+}
 export async function getTrainerImageUrl(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
   const idKey=String(id);
@@ -324,14 +342,14 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
         }
         // Do not fan out retries for deterministic auth, access, missing-file or
         // validation errors when a feed renders many cards concurrently.
-        if([401,403,404,410,422].includes(res.status)) return null;
+        if([401,403,404,410,422,503].includes(res.status)) return null;
         if(res.status<500 && res.status!==429) return null;
       }catch{}
       if(attempt<1)await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));
     }
     return null;
   };
-  const promise=run().finally(()=>{if(cacheKey)trainerImageInflight.delete(cacheKey);});
+  const promise=withTrainerImageConcurrency(run).finally(()=>{if(cacheKey)trainerImageInflight.delete(cacheKey);});
   if(cacheKey)trainerImageInflight.set(cacheKey,promise);
   return promise;
 }
