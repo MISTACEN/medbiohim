@@ -15,6 +15,7 @@ import { changeSupabasePassword, getSupabaseAccountSettings, getSupabaseTelegram
 import { answerSupabaseTrainingQuestion, cancelSupabaseTraining, completeSupabaseTraining, createSupabaseTraining, getSupabaseTraining, listSupabaseTrainings } from "./trainings.js";
 import { getSupabaseHistologySourceFile, listSupabaseHistologySourceMaterials } from "./histology-source-materials.js";
 import { listSupabaseFavorites, listSupabaseNotes, toggleSupabaseFavorite, upsertSupabaseNote } from "./personal-state.js";
+import { listSupabaseLearningSessions, getSupabaseLearningSession, createSupabaseLearningSession, patchSupabaseLearningSession } from "./sessions.js";
 import { addSrsCard, deleteSrsCard, ensureSrsDeck, getSrsSummary, listSrsCards, listSrsDueCards, reviewSrsCard } from "./srs.js";
 import { askSupabaseTutor, getSupabaseTutorMeta, listSupabaseTutorSubjects } from "./tutor.js";
 import { checkSupabaseLectureMiniQuizAnswer, listSupabaseLectureMiniQuiz, submitSupabaseQuestionReport } from "./mini-quiz.js";
@@ -844,6 +845,61 @@ export default {
       return withCors(success(result.data), origin);
     }
 
+
+    if (pathname === API_PREFIX + "/sessions") {
+      if (request.method === "GET") {
+        const result = await listSupabaseLearningSessions(request, env, {
+          status: url.searchParams.get("status") || "",
+        });
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "POST") {
+        const parsed = await readJsonLimited(request, 65_536);
+        if (!parsed.ok) {
+          const status = parsed.tooLarge ? 413 : 400;
+          const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+          return withCors(json({ ok: false, error: { code, message: parsed.tooLarge ? "Request body is too large" : "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+        }
+        const result = await createSupabaseLearningSession(request, env, parsed.value);
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data, result.status || 201), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
+    }
+
+    const learningSessionMatch = new RegExp("^" + API_PREFIX + "/sessions/([^/]+)$").exec(pathname);
+    if (learningSessionMatch) {
+      let sessionId;
+      try { sessionId = decodeURIComponent(learningSessionMatch[1]); } catch {
+        return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid session id" }, requestId: crypto.randomUUID() }, 422), origin);
+      }
+      if (request.method === "GET") {
+        const result = await getSupabaseLearningSession(request, env, sessionId);
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data), origin);
+      }
+      if (request.method === "PATCH") {
+        const parsed = await readJsonLimited(request, 65_536);
+        if (!parsed.ok) {
+          const status = parsed.tooLarge ? 413 : 400;
+          const code = parsed.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR";
+          return withCors(json({ ok: false, error: { code, message: parsed.tooLarge ? "Request body is too large" : "Invalid JSON body" }, requestId: crypto.randomUUID() }, status), origin);
+        }
+        const result = await patchSupabaseLearningSession(request, env, sessionId, parsed.value);
+        if (!result.ok) {
+          return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        }
+        return withCors(success(result.data), origin);
+      }
+      return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, PATCH, OPTIONS" }), origin);
+    }
 
     if (pathname === API_PREFIX + "/notes") {
       if (request.method === "GET") {
@@ -1906,7 +1962,7 @@ export default {
           version: "v1",
           build,
           phase: "D",
-          endpoints: ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence, ai, calculators"],
+          endpoints: ["auth, me, groups, subjects, tests, homeworks, planner, attendance, academic-state, community-posts, tickets, files, materials, content-sources, trainer-feed, sessions, notes, favorites, lecture-mini-quiz, question-reports, material-file, trainer-image, presence, ai, calculators"],
         }), origin);
       }
 
