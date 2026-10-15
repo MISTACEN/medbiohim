@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION public.medbiohim_create_file_record(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $function$
 DECLARE
   v_user_id uuid := auth.uid();
