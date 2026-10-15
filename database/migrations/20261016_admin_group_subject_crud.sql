@@ -70,7 +70,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'administrator role required' USING ERRCODE = '42501';
   END IF;
-  IF p_action NOT IN ('create','update','delete') OR p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object' THEN
+  IF p_action IS NULL OR p_action NOT IN ('create','update','delete') OR p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object' THEN
     RAISE EXCEPTION 'invalid operation' USING ERRCODE = '22023';
   END IF;
   IF p_action = 'create' THEN
