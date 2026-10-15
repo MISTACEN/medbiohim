@@ -3181,3 +3181,10 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟡 The Next.js API proxy emits a non-secret `x-mbh-api-source` response header for proxied requests and configuration failures; the frontend listens for it and shows the latest observed request path. It does not infer an upstream from the OAuth provider or local token storage.
 - 🟡 Source changes and regression behavior still require CI/build and production deployment verification. No production routing or environment settings were changed by this pass.
 
+
+
+## 2026-10-15 — Admin API log and histology incident
+
+- 🟡 Added `/admin/api-logs` for current-tab API telemetry: method, sanitized path, reported upstream, HTTP status, duration, request ID, filters and CSV export. This is not durable cross-user server logging.
+- 🔴 Histology media remains unresolved: supplied console export has 236 image endpoint 503s. Prior audit found Upstash Blob empty and Worker secrets for Blob/B2 absent. Metadata alone does not prove physical objects exist.
+- 🟡 Next gates: deploy the current API proxy fix; configure storage secrets only through secret management; reconcile all 206 histology cards against actual objects and verify authenticated HTTP/MIME. No production cutover performed.
