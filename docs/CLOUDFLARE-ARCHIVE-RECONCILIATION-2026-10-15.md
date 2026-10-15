@@ -65,3 +65,18 @@ This is a positive schema-level check, **not** proof of successful authenticated
 5. Keep production cutover gated until Worker build/tests, storage delivery, RLS, frontend canary, and rollback path are all verified.
 
 **Status:** source reconciliation started; no production routing cutover approved by this audit.
+
+
+## Work applied after initial audit
+
+- Restored the four owner-scoped `/api/v1/sessions` routes from the `cf-push` entry-point variant into current `main`: GET/POST collection and GET/PATCH individual session.
+- Reused the already-present `src/sessions.js` implementation and `test/sessions.test.js`; those tests explicitly check bearer-token requirement, `user_id` scoping, owner-only lookup, request validation, and route methods.
+- Added `sessions` to the Worker endpoint summary. No database migration was needed for this route restoration; `database/migrations/20260922000000_learning_sessions.sql` already defines the table and owner-only RLS policies.
+- The resulting `src/index.js` blob SHA is `8831b42e2258e07217e64e7d0b3be4100b533451`, matching the uploaded `medbiohim-cf-push.zip` entry-point blob exactly. The integration was applied surgically to current `main`; no other module files were overwritten.
+- Commit: `9fc2afebc8b07244647958eb8120c38fda7295e7`.
+
+### Validation status after the commit
+
+- GitHub Actions run `38678306543` was created for the commit but completed as **failure** with one job reporting `runner_id: 0`, no runner name, and an empty `steps` list. This is consistent with the repository's known runner/Actions infrastructure problem; it does **not** establish that the source tests failed, and it does **not** count as a passing test run.
+- The session route tests exist in the repository but have not yet been executed in a functioning runner. Do not mark this change test-green until `npm test` and the Worker build/dry-run run successfully.
+- No Cloudflare deployment, Vercel environment change, DNS change, Supabase schema change, or production routing switch was performed by this code commit.
