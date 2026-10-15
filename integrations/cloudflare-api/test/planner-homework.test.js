@@ -329,3 +329,41 @@ test("planner returns visible homework attachment metadata without exposing priv
   }]);
   assert.equal(JSON.stringify(result).includes("private/student-uploads/micro.jpg"), false);
 });
+
+test("homework attachments reject files scoped to a different group before calling the atomic RPC", async () => {
+  const FILE_ID = "88888888-8888-4888-8888-888888888888";
+  const OTHER_GROUP_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const body = { title: "Фото препарата", group_id: GROUP_ID, attachment_file_ids: [FILE_ID] };
+  let rpcCalls = 0;
+  const fetcher = async (input, init = {}) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/auth/v1/user") return json({ id: USER_ID });
+    if (url.pathname === "/rest/v1/group_memberships") return json([
+      { group_id: GROUP_ID, role_in_group: "student", is_active: true },
+    ]);
+    if (url.pathname === "/rest/v1/files") return json([{
+      id: FILE_ID,
+      original_name: "private.jpg",
+      mime_type: "image/jpeg",
+      size_bytes: 1024,
+      group_id: OTHER_GROUP_ID,
+      uploaded_by: USER_ID,
+      status: "active",
+    }]);
+    if (url.pathname === "/rest/v1/rpc/create_homework_with_attachments") {
+      rpcCalls += 1;
+      return json({ homework: { id: HOMEWORK_ID }, attachments: [] });
+    }
+    throw new Error("Unexpected endpoint " + url.pathname + " " + (init.method || "GET"));
+  };
+
+  const result = await createSupabaseHomework(
+    request("/api/v1/homeworks", "POST", body), env, body, fetcher,
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 403);
+  assert.equal(result.code, "ATTACHMENT_GROUP_MISMATCH");
+  assert.equal(rpcCalls, 0);
+});
+
