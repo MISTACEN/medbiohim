@@ -332,34 +332,43 @@ export async function createSupabaseHomework(request, env, input, fetcher = fetc
   const title = String(body.title || "").trim();
   const description = body.description == null ? null : String(body.description).trim();
   const groupId = String(body.group_id || "").trim();
+  const scope = String(body.scope || (groupId ? "group" : "personal")).trim().toLowerCase();
+  const isPersonal = scope === "personal";
   const subjectId = String(body.subject_id || "").trim();
   const dueDate = String(body.due_date || "").trim();
   const scheduleEntryId = String(body.schedule_entry_id || "").trim();
   const attachments = Array.isArray(body.attachment_file_ids) ? body.attachment_file_ids : [];
   if (!title) return fail(422, "VALIDATION_ERROR", "title is required");
   if (title.length > 240 || (description && description.length > 20000)) return fail(422, "VALIDATION_ERROR", "Заголовок или описание слишком длинные");
-  if (!groupId || !uuid(groupId)) return fail(422, "VALIDATION_ERROR", "Для задания требуется корректный group_id");
+  if (!["group", "personal"].includes(scope)) return fail(422, "VALIDATION_ERROR", "scope должен быть group или personal");
+  if (isPersonal && scheduleEntryId) return fail(422, "INVALID_LESSON_CONTEXT", "Личную задачу нельзя привязать к общему занятию расписания");
+  if (!isPersonal && (!groupId || !uuid(groupId))) return fail(422, "VALIDATION_ERROR", "Для общего задания требуется корректный group_id");
   if (subjectId && !uuid(subjectId)) return fail(422, "VALIDATION_ERROR", "subject_id должен быть UUID");
   if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return fail(422, "VALIDATION_ERROR", "due_date должен иметь формат YYYY-MM-DD");
   if (scheduleEntryId && !uuid(scheduleEntryId)) return fail(422, "VALIDATION_ERROR", "schedule_entry_id должен быть UUID");
   if (attachments.length > 12) return fail(422, "VALIDATION_ERROR", "Можно прикрепить не более 12 файлов");
   if (attachments.length) return fail(503, "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED", "Загрузка вложений пока не подключена к приватному хранилищу");
 
-  try {
-    const memberships = await c.rows("group_memberships", {
-      select: "group_id,role_in_group,is_active",
-      user_id: "eq." + uid,
-      group_id: "eq." + groupId,
-      is_active: "eq.true",
-      limit: "1",
-    });
-    const membership = memberships[0];
-    if (!membership) return fail(403, "FORBIDDEN", "Нет доступа к указанной учебной группе");
-    // Live homeworks RLS permits shared homework creation by the group starosta.
-    // Do not bypass this policy or write with a service-role key.
-    if (String(membership.role_in_group || "").toLowerCase() !== "starosta") {
-      return fail(403, "HOMEWORK_CREATION_REQUIRES_STAROSTA", "Создавать общие задания для группы может староста");
+  let membership = null;
+  if (!isPersonal) {
+    try {
+      const memberships = await c.rows("group_memberships", {
+        select: "group_id,role_in_group,is_active",
+        user_id: "eq." + uid,
+        group_id: "eq." + groupId,
+        is_active: "eq.true",
+        limit: "1",
+      });
+      membership = memberships[0] || null;
+    } catch (error) {
+      if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
+      if (error?.status === 403) return fail(403, "FORBIDDEN", "Нет доступа к указанной учебной группе");
+      return fail(503, "DB_UNAVAILABLE", "Не удалось проверить учебную группу");
     }
+    if (!membership) return fail(403, "FORBIDDEN", "Нет доступа к указанной учебной группе");
+    // Any active member may record homework for their own group's schedule.
+    // RLS independently enforces membership and created_by = auth.uid().
+  }
 
     let dueAt = String(body.due_at || "").trim();
     if (!dueAt && dueDate) dueAt = dueDate + "T23:59:00";
@@ -385,12 +394,14 @@ export async function createSupabaseHomework(request, env, input, fetcher = fetc
       title,
       description,
       subject_id: subjectId || null,
-      group_id: groupId,
+      group_id: isPersonal ? null : groupId,
       schedule_entry_id: scheduleEntryId || null,
       due_date: dueDate || null,
       due_at: dueAt || null,
       created_by: uid,
-      created_by_role: "starosta",
+      created_by_role: isPersonal
+        ? "student"
+        : String(membership?.role_in_group || "").toLowerCase() === "starosta" ? "starosta" : "student",
     };
     const saved = await c.rows("homeworks", { select: "*" }, {
       method: "POST",
@@ -420,7 +431,7 @@ export async function submitSupabaseHomework(request, env, homeworkId, input, fe
 
   try {
     const homeworkRows = await c.rows("homeworks", {
-      select: "id,group_id,subject_id,title,status,due_date",
+      select: "id,group_id,created_by,subject_id,title,status,due_date",
       id: "eq." + homeworkId,
       limit: "1",
     });
@@ -436,14 +447,8 @@ export async function submitSupabaseHomework(request, env, homeworkId, input, fe
         limit: "1",
       });
       if (!memberships.length) return fail(403, "FORBIDDEN", "Вы не состоите в группе, для которой выдано задание");
-    } else {
-      const memberRows = await c.rows("group_memberships", {
-        select: "group_id",
-        user_id: "eq." + uid,
-        is_active: "eq.true",
-        limit: "100",
-      });
-      if (!memberRows.length) return fail(422, "NO_GROUP", "Для сдачи задания требуется активная учебная группа");
+    } else if (String(homework.created_by || "") !== uid) {
+      return fail(403, "FORBIDDEN", "Личное задание доступно только создавшему его пользователю");
     }
 
     if (fileId) {
