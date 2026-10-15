@@ -2274,3 +2274,11 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟡 `GET /api/v1/homework` returns 501 `ROUTE_NOT_MIGRATED` through both Shadow and gateway. This is an existing migration gap, not a gateway forwarding bug; the new hostname is not feature-complete versus the legacy backend.
 - 🟡 Independent deployment is still blocked: secret values cannot be read back from Cloudflare settings, and the connected build box could not clone the repo due unavailable GitHub clone credentials. No frontend routing cutover was made.
 - Evidence updated in `docs/PRODUCTION-API-GATEWAY-2026-10-15.md`.
+
+
+## 2026-10-15 — Vercel 503 routing fix (pending deployment verification)
+
+- 🟢 Root cause identified: the proxy defaults to legacy mode unless Cloudflare is explicitly opted in; absent `SPACEWEB_API_ORIGIN` then returns 503 `BACKEND_NOT_CONFIGURED`.
+- 🟢 Cloudflare gateway dispatches the reported routes: `/auth/me`, `/subjects/:id`, `/subjects-catalog`, and POST `/presence/heartbeat` return expected auth/method guards without a token instead of 503. Actual authenticated Supabase/RLS behavior still requires a signed-in smoke test.
+- 🟡 Source/test change defaults Vercel Production and Preview to the `medbiohim-api` gateway if no explicit origin is set; `MEDBIOHIM_API_MODE=legacy` remains the explicit rollback. Local development is unchanged.
+- 🟡 Awaiting Vercel build/deploy and public frontend smoke test. Do not claim resolved until deployment is observed; route parity gaps elsewhere remain separate.
