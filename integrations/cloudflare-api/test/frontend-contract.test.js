@@ -41,6 +41,19 @@ test("P0 authentication and dashboard paths are explicitly dispatched", () => {
   }
 });
 
+test("frontend group and subject CRUD routes are wired to the database-guarded admin service", () => {
+  for (const path of [
+    "/groups",
+    "/subjects",
+  ]) assert.ok(frontend.includes(path));
+  assert.ok(frontend.includes('method:"POST"'));
+  assert.ok(frontend.includes('method:"PATCH"'));
+  assert.ok(frontend.includes('method:"DELETE"'));
+  assert.ok(worker.includes("mutateSupabaseAdminEntity"));
+  assert.ok(worker.includes("groupMutationMatch"));
+  assert.ok(worker.includes("subjectMutationMatch"));
+});
+
 test("file upload is explicitly dispatched to the authenticated upload service", () => {
   assert.ok(frontend.includes('"/files/upload"'), "frontend upload contract changed; re-audit it");
   assert.ok(worker.includes("/files/upload"));
