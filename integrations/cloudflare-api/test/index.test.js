@@ -912,6 +912,7 @@ test("frontend-observed critical routes are registered in the Worker router", as
     ["trainings", "/api/v1/trainings"],
     ["trainer image", "/api/v1/trainers/feed/feed-prep-9d6443a5e3/image"],
     ["account settings", "/api/v1/settings/account"],
+    ["homework grading", "/api/v1/submissions/66666666-6666-4666-8666-666666666666/grade"],
   ];
   for (const [name, path] of observedRoutes) {
     await t.test(name, async () => {
@@ -932,4 +933,21 @@ test("subjects catalog rejects unsupported methods explicitly", async () => {
   const response = await worker.fetch(request("/api/v1/subjects-catalog", { method: "POST" }), { APP_ENV: "contract-test" });
   assert.equal(response.status, 405);
   assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+});
+
+
+test("homework grading route is auth-protected and method-restricted", async () => {
+  const path = "/api/v1/submissions/66666666-6666-4666-8666-666666666666/grade";
+  const env = { SUPABASE_URL: "https://project-id.supabase.co", SUPABASE_ANON_KEY: "public-anon-key-for-test-only" };
+  const unauthorized = await worker.fetch(request(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ grade: 90 }),
+  }), env);
+  assert.equal(unauthorized.status, 401);
+  assert.equal((await unauthorized.json()).error.code, "UNAUTHORIZED");
+
+  const wrongMethod = await worker.fetch(request(path, { method: "GET" }), env);
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get("allow"), "POST, OPTIONS");
 });
