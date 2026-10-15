@@ -2432,3 +2432,16 @@ This pass treats the existing frontend as the behavioral specification instead o
 - **Done:** supporting evidence note: `docs/migration/REVERSE_API_CONTRACT_PASS_2026-10-16.md` (commit `7f5d064dd8cfe0809eebff7672e07ae96f18f4ea`).
 - **Not verified:** the new test has not been executed against the exact `main` checkout in this session; Vercel status for the documentation commit is pending. No production deployment/cutover was performed.
 - **Next:** verify homework attachment upload/download end-to-end; run training lifecycle with student JWT; check account-settings behavior while authenticated; execute tests on exact `main` commit and record real outcomes.
+
+
+## Pass 2026-10-16 — test answer regrade route
+
+- [x] Compared frontend `retryTestAnswerGrading()` path with Worker dispatch.
+- [x] Added `regradeSupabaseTestAnswer` using the caller JWT and an explicit RPC allowlist.
+- [x] Registered `POST /api/v1/tests/attempts/{attemptId}/answers/{questionId}/regrade`.
+- [x] Added route-level auth and method-contract test.
+- [ ] Verify `medbiohim_regrade_test_answer` exists in live Supabase and has authenticated-only EXECUTE grants; no SQL was applied.
+- [ ] Run the updated repository's full tests and Worker dry-run against the exact main tree; CI/deployment is not verified.
+- [ ] Next frontend-contract gaps to inspect: `POST /files/upload`, `GET /groups/{id}`, `POST /groups/{id}/members`.
+
+**Implementation detail:** route is now registered, but functional regrading depends on the database RPC. A controlled 503 until that dependency exists is preferable to a fake success or client-side grading.
