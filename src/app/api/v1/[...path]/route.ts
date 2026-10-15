@@ -89,12 +89,14 @@ async function isCanonicalAdminRequest(req: NextRequest): Promise<boolean> {
 }
 
 async function withTransportDiagnostics(req: NextRequest, response: Response, source: string): Promise<Response> {
-  if (req.headers.get("x-mbh-transport-diagnostics") !== "1") return response;
-  if (!(await isCanonicalAdminRequest(req))) return response;
-
+  // This header contains only a public transport label, never an origin URL or credential.
+  // It lets the dashboard report the upstream that handled its latest API request.
   const headers = new Headers(response.headers);
-  headers.set("x-mbh-transport-source", source);
-  headers.set("x-mbh-transport-fallback", source === "spaceweb-fallback" || source === "compatibility-fallback" ? "true" : "false");
+  headers.set("x-mbh-api-source", source);
+  if (req.headers.get("x-mbh-transport-diagnostics") === "1" && await isCanonicalAdminRequest(req)) {
+    headers.set("x-mbh-transport-source", source);
+    headers.set("x-mbh-transport-fallback", source === "spaceweb-fallback" || source === "compatibility-fallback" ? "true" : "false");
+  }
   return new NextResponse(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -103,17 +105,19 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const url = new URL(req.url);
 
   if (!CLOUDFLARE_FIRST_ENABLED && !UPSTREAM) {
-    return NextResponse.json(
+    const unavailable = NextResponse.json(
       { ok: false, error: { code: "BACKEND_NOT_CONFIGURED", message: "SPACEWEB_API_ORIGIN is not configured on this deployment." } },
       { status: 503 }
     );
+    return withTransportDiagnostics(req, unavailable, "unavailable");
   }
   // Never forward bearer credentials to a plaintext upstream, even in legacy mode.
   if (!CLOUDFLARE_FIRST_ENABLED && UPSTREAM && !isHttpsOrigin(UPSTREAM)) {
-    return NextResponse.json(
+    const unavailable = NextResponse.json(
       { ok: false, error: { code: "INSECURE_BACKEND_ORIGIN", message: "SPACEWEB_API_ORIGIN must use HTTPS." } },
       { status: 503 }
     );
+    return withTransportDiagnostics(req, unavailable, "unavailable");
   }
 
   if (CLOUDFLARE_FIRST_ENABLED) {
@@ -201,10 +205,11 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     }
   } else {
     if (!UPSTREAM) {
-      return NextResponse.json(
+      const unavailable = NextResponse.json(
         { ok: false, error: { code: "BACKEND_NOT_CONFIGURED", message: "SPACEWEB_API_ORIGIN is not configured on this deployment." } },
         { status: 503 }
       );
+      return withTransportDiagnostics(req, unavailable, "unavailable");
     }
     source = "spaceweb";
     upstream = await fetchSpacewebTargets();
