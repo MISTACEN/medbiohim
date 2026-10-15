@@ -159,6 +159,7 @@ export default function AdminPage() {
           <Link href="/tests" className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-left text-sm font-semibold text-emerald-800"><span className="h-2 w-2 rounded-full bg-emerald-500" />Банк вопросов тестов</Link>
           <Link href="/admin/lectures" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><BookOpen className="h-4 w-4" />AI-лекции</Link>
           <Link href="/admin/database" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Database className="h-4 w-4" />База данных / SQL</Link>
+          <Link href="/admin/api-logs" className="flex w-full items-center gap-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-left text-sm font-semibold text-emerald-800"><Activity className="h-4 w-4" />Журнал API</Link>
           <Link href="/admin/tools" className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700"><Settings2 className="h-4 w-4" />Импорт / tools</Link>
           <Link href="/admin/problems" className="flex w-full items-center gap-3 rounded-xl bg-rose-50 px-3 py-2.5 text-left text-sm font-semibold text-rose-700"><Flag className="h-4 w-4" />Проблемы и работы</Link>
           <div className="my-2 border-t border-slate-100" />
