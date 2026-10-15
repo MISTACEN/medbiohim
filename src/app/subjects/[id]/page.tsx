@@ -171,7 +171,10 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
   const course = subject?.course_number ?? 2;
   const sem = subject?.semester ?? 3;
-  const slug = resolveSubjectSlug(subjectId, subject?.name);
+  // The route id is usually a UUID. Resolve the canonical slug from the
+  // subject's own slug/name first so banks and linked views don't get filtered
+  // by that UUID.
+  const slug = resolveSubjectSlug(subject?.slug || "", subject?.name) || resolveSubjectSlug(subjectId, subject?.name);
   const histology = slug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
   const query = new URLSearchParams({
     subject: subjectId,
