@@ -899,3 +899,37 @@ test("Cloudflare wires the full private training lifecycle and histology source 
     assert.equal(response.headers.get("allow"), allow, path);
   }
 });
+
+
+test("frontend-observed critical routes are registered in the Worker router", async (t) => {
+  const observedRoutes = [
+    ["subjects catalog", "/api/v1/subjects-catalog"],
+    ["published tests", "/api/v1/tests?subject_id=977d78ca-7a58-4b0a-9e93-29d8e03f6946&group_id=a1000000-0000-4000-8000-000000000002"],
+    ["lectures", "/api/v1/lectures?subject=histology"],
+    ["progress", "/api/v1/progress?subject_id=977d78ca-7a58-4b0a-9e93-29d8e03f6946&group_id=a1000000-0000-4000-8000-000000000002"],
+    ["histology subject plan", "/api/v1/subject-plans/histology"],
+    ["ticket banks", "/api/v1/tickets"],
+    ["trainings", "/api/v1/trainings"],
+    ["trainer image", "/api/v1/trainers/feed/feed-prep-9d6443a5e3/image"],
+    ["account settings", "/api/v1/settings/account"],
+  ];
+  for (const [name, path] of observedRoutes) {
+    await t.test(name, async () => {
+      const response = await worker.fetch(request(path), { APP_ENV: "contract-test" });
+      assert.notEqual(response.status, 404, `route fell through to NOT_FOUND: ${path}`);
+      assert.notEqual(response.status, 501, `route fell through to ROUTE_NOT_MIGRATED: ${path}`);
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await response.json();
+        assert.ok(payload && typeof payload === "object", `expected JSON object for ${path}`);
+        assert.ok("ok" in payload || "error" in payload, `expected standard API envelope for ${path}`);
+      }
+    });
+  }
+});
+
+test("subjects catalog rejects unsupported methods explicitly", async () => {
+  const response = await worker.fetch(request("/api/v1/subjects-catalog", { method: "POST" }), { APP_ENV: "contract-test" });
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+});
