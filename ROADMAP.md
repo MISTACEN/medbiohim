@@ -3159,3 +3159,11 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟢 Rechecked live `medbiohim-api` across schedule, planner, subjects, tests, materials, auth/me, sessions, trainer feed, and admin schedule. Protected routes returned 401 without a Bearer token; no protected data was exposed.
 - 🟡 Found a real parity gap: `GET /api/v1/homework` returns 501 `ROUTE_NOT_MIGRATED` on Shadow and therefore through the production gateway. The gateway faithfully forwards current Shadow behavior; it cannot make an unmigrated route functional.
 - 🔒 Independent production deployment remains blocked until current source is deployed with the full secret set securely provisioned and tested. Cloudflare settings cannot reveal Shadow secret values for copying, and the linked Upstash Box could not clone the repo because GitHub write/clone credentials were unavailable. Do not switch frontend traffic to this gateway as a claimed full cutover.
+
+
+## 2026-10-15 — homework route smoke correction and compatibility alias
+
+- 🟢 Corrected the prior smoke-test classification: the documented PHP/frontend contract is plural `/api/v1/homeworks`; the live Worker already implements GET/POST and the progress/submit subroutes. The earlier `GET /api/v1/homework` probe used a singular path that is not the canonical contract, so its 501 was not evidence that the canonical homework list was absent.
+- 🟢 Added a compatibility alias from singular `/api/v1/homework` and its subpaths to the same plural handlers, without bypassing authentication, validation, group scoping, or write guards. The production gateway alias is deployed and smoke-tested: singular GET now returns the same 401 as plural GET when no bearer token is supplied; alias header confirms rewrite. Health remains 200.
+- 🟡 Source implementation and regression test are in PR #20; GitHub Actions jobs failed before producing step logs, so the suite result is not claimed. Keep the PR open until checks can be run or reviewed; no frontend cutover was performed.
+- 🟡 Canonical live smoke confirms several *non-contract* paths (for example `GET /api/v1/files`, `GET /api/v1/ai/chat`) still return 501; do not treat those names alone as migration gaps. Compare each against the current frontend API client and legacy PHP route inventory before implementing.
