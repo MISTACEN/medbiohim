@@ -3308,3 +3308,9 @@ This pass treats the existing frontend as the behavioral specification instead o
 - GitHub Actions marked the associated workflows failed within seconds; the available job-step/log endpoints returned no usable step detail. This is **not** evidence that tests passed, and it does not yet establish that the code caused the workflow failures.
 - Container-side cloning was unavailable because outbound DNS to GitHub failed; no local test run is claimed. Cloudflare Worker production deployment/traffic was not changed by this pass.
 - Next: recover actionable workflow diagnostics; test with a real student JWT (without logging the token); compare the actual `/api/v1/subjects-catalog`, `/lectures`, `/subject-plans` response shapes against frontend consumers; continue to dashboard/homework/schedule CRUD and the private training attempt lifecycle.
+
+
+## 2026-10-16 — Reverse API contract pass (continued)
+The current Worker already validates homework attachment IDs, caller ownership/status, and group scope before invoking `create_homework_with_attachments` with the caller JWT. Added a regression test for the cross-group attachment case (commit `b15e4aa0fb8f3698ea9ea168cee73544f1e15c12`) and a supporting audit note at `docs/migration/REVERSE_API_CONTRACT_PASS_2026-10-16.md` (commit `7f5d064dd8cfe0809eebff7672e07ae96f18f4ea`).
+
+**Acceptance still open:** test execution on the exact main commit, authenticated upload → metadata → download, training lifecycle against live RLS, and settings under an authenticated session. Vercel status observed for the documentation commit is pending. No production traffic switch or deploy was performed.
