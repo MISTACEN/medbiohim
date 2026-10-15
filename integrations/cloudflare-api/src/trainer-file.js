@@ -1,6 +1,7 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { createB2DownloadUrl } from "./b2-download.js";
 import { getFileStorage } from "./blob-storage.js";
+import { safeHistologyObjectKey, trainerCorpusCandidateKeys, PREPARATION_PHOTO_PREFIXES } from "./histology-key-map.js";
 
 const TIMEOUT_MS = 5_000;
 
@@ -10,14 +11,6 @@ function failure(status, code, message) {
 
 function related(value) {
   return Array.isArray(value) ? (value[0] || null) : (value || null);
-}
-
-function safeObjectKey(value) {
-  const key = String(value || "").trim();
-  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[?#\u0000-\u001f]/.test(key)) return "";
-  const parts = key.split("/");
-  if (parts.some((part) => !part || part === "." || part === "..")) return "";
-  return key;
 }
 
 export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher = fetch) {
@@ -112,36 +105,16 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
     // Uploaded histology files preserve their original relative paths. The database
     // still contains legacy hash keys for preparation photos, so resolve those keys
     // against the source filename without changing the Supabase content rows.
-    const objectKey = safeObjectKey(file?.object_key) ||
-      (requiredSpecialty === "mbh" && !card.source_file_id ? safeObjectKey(card.source_key) : "");
-    if (!objectKey) {
+    // A registered user/group file is bound to one exact key. Only published
+    // corpus rows without a file reference may use historical path aliases.
+    const objectKey = safeHistologyObjectKey(file?.object_key);
+    const candidateKeys = objectKey
+      ? [objectKey]
+      : requiredSpecialty === "mbh" && !card.source_file_id
+        ? trainerCorpusCandidateKeys(card)
+        : [];
+    if (!candidateKeys.length) {
       return failure(503, "MEDIA_NOT_MIGRATED", "Оригинал изображения ещё не подключён к приватному хранилищу");
-    }
-
-    const candidateKeys = [objectKey];
-    const addCandidate = (value) => {
-      const key = safeObjectKey(value);
-      if (key && !candidateKeys.includes(key)) candidateKeys.push(key);
-    };
-
-    // Only published MBH corpus cards with no user-uploaded file reference may
-    // use archive aliases. Group/user files stay strictly bound to files.object_key.
-    if (requiredSpecialty === "mbh" && !card.source_file_id) {
-      const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
-      const imagePath = String(preparation.imagePath || "").trim();
-      const imageUrl = String(preparation.imageUrl || "").trim();
-      const cleanLegacyPath = (value) => value.replace(/^\/+/, "").replace(/^content\/histology\//, "");
-      addCandidate(cleanLegacyPath(imagePath));
-      addCandidate(cleanLegacyPath(imageUrl));
-
-      const normalizedImagePath = cleanLegacyPath(imagePath || imageUrl);
-      const imagePathBase = normalizedImagePath.split("/").pop() || "";
-      if (imagePathBase && !imagePathBase.includes("..") && card.mode_set === "electronogram") {
-        // EM archive paths are canonical and deterministic; preparation images
-        // with basename-only metadata must instead use the unique-match resolver.
-        addCandidate("electronograms/images/" + imagePathBase);
-        addCandidate("em/" + imagePathBase);
-      }
     }
 
     const storage = await getFileStorage(env);
@@ -171,13 +144,18 @@ export async function getSupabaseTrainerImageUrl(request, env, cardId, fetcher =
         const basename = String(preparation.imagePath || preparation.imageUrl || "").replace(/\\/g, "/").split("/").pop() || "";
         if (basename) {
           try {
-            const page = await storage.list({ prefix: "5_Фотографии препаратов/", limit: 1000 });
-            const matches = (Array.isArray(page?.blobs) ? page.blobs : []).filter((blob) => {
-              const key = safeObjectKey(blob?.path);
-              return key && key.startsWith("5_Фотографии препаратов/") && key.split("/").pop() === basename;
-            });
+            const pages = await Promise.all(PREPARATION_PHOTO_PREFIXES.map((prefix) => storage.list({ prefix, limit: 1000 })));
+            const matchesByPath = new Map();
+            for (let i = 0; i < PREPARATION_PHOTO_PREFIXES.length; i += 1) {
+              const prefix = PREPARATION_PHOTO_PREFIXES[i];
+              for (const blob of Array.isArray(pages[i]?.blobs) ? pages[i].blobs : []) {
+                const key = safeHistologyObjectKey(blob?.path);
+                if (key && key.startsWith(prefix) && key.split("/").pop() === basename) matchesByPath.set(key, key);
+              }
+            }
+            const matches = [...matchesByPath.values()];
             if (matches.length === 1) {
-              const signed = await storage.signedReadUrl(matches[0].path, { expiresIn: "5m" });
+              const signed = await storage.signedReadUrl(matches[0], { expiresIn: "5m" });
               if (signed?.url) {
                 return {
                   ok: true,

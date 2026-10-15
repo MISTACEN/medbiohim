@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
@@ -206,7 +207,7 @@ function ImageBlock({ raw }: { raw: string }) {
       <figcaption className="border-t border-slate-100 px-4 py-3">
         <div className="font-semibold text-slate-900">{caption}</div>
         {detail ? <div className="mt-1 text-xs leading-5 text-slate-500">{detail}</div> : null}
-        {data.trainerId ? <a href="/subjects/histology?tab=trainer" className="mt-2 inline-flex text-xs font-semibold text-indigo-600 underline">Открыть этот раздел в атласе/тренажёре</a> : null}
+        {data.trainerId ? <Link href="/subjects/histology?tab=trainer" className="mt-2 inline-flex text-xs font-semibold text-indigo-600 underline">Открыть этот раздел в атласе/тренажёре</Link> : null}
       </figcaption>
     </figure>
   );

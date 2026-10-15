@@ -69,6 +69,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resourceErrors, setResourceErrors] = useState<Record<string, string>>({});
   const [subjectId, setSubjectId] = useState("");
   const [tab, setTab] = useState<TabId>("plan");
   // Материалы: модальное чтение без перехода со страницы предмета.
@@ -139,6 +140,11 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           ]);
           if (!cancelled && pr.ok) setPlan(pr.data.plan);
           if (!cancelled) {
+            setResourceErrors({
+              ...(!pr.ok ? { plan: pr.error?.message || "Не удалось загрузить учебный план." } : {}),
+              ...(!tt.ok ? { tests: tt.error?.message || "Не удалось загрузить тесты." } : {}),
+              ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
+            });
             if (gb.ok) setGradebook(gb.data.items || []);
             if (tt.ok) setTests(tt.data.items || []);
             if (mm.ok) setMaterials(mm.data.items || []);
@@ -171,7 +177,10 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
   const course = subject?.course_number ?? 2;
   const sem = subject?.semester ?? 3;
-  const slug = resolveSubjectSlug(subjectId, subject?.name);
+  // The route id is usually a UUID. Resolve the canonical slug from the
+  // subject's own slug/name first so banks and linked views don't get filtered
+  // by that UUID.
+  const slug = resolveSubjectSlug(subject?.slug || "", subject?.name) || resolveSubjectSlug(subjectId, subject?.name);
   const histology = slug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
   const query = new URLSearchParams({
     subject: subjectId,
@@ -313,7 +322,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
             <p className="mt-1 text-sm text-slate-500">
-              {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : "План ещё не загружен."}
+              {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : resourceErrors.plan || "План ещё не загружен."}
             </p>
             {plan?.weeks?.length ? (
               <div className="mt-4 grid gap-3">
@@ -434,7 +443,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </>
             ) : (
               <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Банк билетов для этого предмета пока не подключён.
+                {resourceErrors.tickets || "Банк билетов для этого предмета пока не подключён."}
               </p>
             )}
           </section>
@@ -472,7 +481,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </>
             ) : (
               <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Тесты для этого предмета пока не подключены. После импорта SQL они появятся здесь.
+                {resourceErrors.tests || "Опубликованных тестов для этого предмета пока нет."}
               </p>
             )}
           </section>

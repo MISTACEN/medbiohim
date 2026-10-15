@@ -24,7 +24,7 @@ type Spec = {
   sourceMode?: SourceMode;
   visualMode?: VisualMode;
   coverageMode?: CoverageMode;
-  rounds?: number;
+  rounds: number;
 };
 type Norm = { text: string; min: number; max: number; approximate?: boolean };
 type AgeProfile = { id: string; label: string; norms: Record<CellKey, Norm> };

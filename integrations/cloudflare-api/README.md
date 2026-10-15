@@ -1,17 +1,28 @@
-# MEDBIOHIM Cloudflare API migration scaffold
+# MEDBIOHIM Cloudflare API migration
+
+## Production observation — 2026-10-15
+
+- The public same-origin route `https://medbiohim.vercel.app/api/v1/health` currently reaches this Cloudflare API Worker. It reports `mode: shadow`, `role: migration-scaffold`, and `productionTrafficEnabled: false`; therefore Worker requests are live, but a complete production cutover is not verified.
+- Read-only probes returned `401` for authenticated catalogs/trainings/SRS/admin routes (expected without a user session). `GET /api/v1/files` returned `501 ROUTE_NOT_MIGRATED`, confirming incomplete route parity. Keep the remaining SpaceWeb-compatible behavior available until missing routes are ported and acceptance checks pass.
+- Histology binaries are stored in the private Upstash Blob bucket and resolved through `UPSTASH_BLOB_TOKEN`; Supabase remains the metadata and authorization source. **Cloudflare R2 is not configured or required.** B2 signing code/secrets are retained only as a legacy fallback for any old object keys; no files were copied, deleted, or rewritten in this pass.
+- The `medbiohim-api-shadow` Worker is the existing service that receives the observed API requests. Do not create a second Worker until its private secrets and bindings can be provisioned without exposing or losing them.
+
+## Histology object-key compatibility
+
+The Worker resolves published Histology corpus paths against bare, `histology/`, and legacy `content/histology/` Upstash Blob prefixes. Ambiguous preparation-photo basenames fail closed. A `files.object_key` belonging to a user or group file is still used exactly after its normal access checks; no path aliases are tried for those records.
 
 ## Latest archive port — 2026-10-14
 
 - Cloudflare Build `67d6a594-2b6b-4474-bbef-c63e87e0714e` deployed Shadow Worker version `d0e5d5cd-637e-4fb0-a866-c551c1b941ba` from `bc3b6aef2371f352395fb704099d86bec9295276`.
 - Current build gate: **297 passed, 0 failed**; Wrangler dry-run and deploy command succeeded.
-- Added caller-scoped spaced-repetition endpoints and the authenticated, streamed `GET /api/v1/materials/{id}/file` compatibility route. Real-user Supabase/RLS acceptance and physical-file availability remain unverified; the file route is gated on B2 access and valid metadata/object mappings.
+- Added caller-scoped spaced-repetition endpoints and the authenticated, streamed `GET /api/v1/materials/{id}/file` compatibility route. Real-user Supabase/RLS acceptance remains unverified; file delivery uses the configured private object store and valid metadata/object mappings.
 - The old `public_html-31(1).zip` was ZIP-verified. Of its 192 PHP entries, 191 pass PHP syntax lint; one root-copy defect is documented in ROADMAP.md and PHASES_STATUS.md. Root/deployed copies are divergent and must not be swapped wholesale.
 - No Production Vercel/DNS routing was changed and no archive secrets were committed or installed.
 
 
-## Status: deployed Shadow Worker; migration is not complete
+## Status: Worker serves some production API traffic; migration is not complete
 
-The existing PHP API remains the behavioral-compatibility baseline, but the latest audit observed that `https://medbiohim.vercel.app/api/v1/health` returns the Worker `mode: shadow` response. Therefore, do **not** assume all current API traffic still reaches PHP. The Worker is still a shadow/migration target with incomplete route and media parity; no intentional Production cutover was performed in this pass. Verify each route's actual response before relying on the legacy backend or enabling more traffic.
+The latest live check observed that `https://medbiohim.vercel.app/api/v1/health` returns the Worker `mode: shadow` response and the Vercel proxy's `direct` response header. This means some production API requests already reach the Worker. The current source and public API probe show incomplete route parity (`501 ROUTE_NOT_MIGRATED`), so this is not a complete or verified cutover. Verify route behavior before removing any legacy backend.
 
 ### Historical release gate — 2026-10-13, Cloudflare Shadow verified
 
@@ -19,10 +30,10 @@ The existing PHP API remains the behavioral-compatibility baseline, but the late
 - 🟢 **Worker gate:** \`npm test\` **231 passed, 0 failed**; Wrangler 4.149.0 dry-run passed; Shadow deployment completed. This is the current checked source count; older roadmap entries with 134/135/225 tests are historical snapshots.
 - 🟢 **Verified deployed read/write paths:** materials listing/detail/source metadata; trainer feed/detail and answer submission through the existing scoring RPC; personal notes/favorites; lecture mini-quiz read/check; published-question report submission; scoped file metadata and private download handler; material file-URL and trainer image handlers.
 - 🟢 **Test attempts are not disabled:** the live Supabase migration \`secure_test_answer_review_20261013\` is applied. Start/save/finish use the narrow \`medbiohim_start_test_attempt\`, \`medbiohim_save_test_answer\`, and \`medbiohim_finish_test_attempt\` RPCs, not direct table writes. The RPCs are SECURITY DEFINER with authenticated execution and guarded attempt ownership/snapshot behavior. No real student token was used in this pass; browser/user acceptance remains separate.
-- 🟡 **File downloads remain configuration-gated:** current Worker settings contain no \`B2_*\` secrets/bindings. File metadata is scoped and download code fails closed if private B2 signing is unavailable. Do not describe real downloads as verified until B2 secrets and live file/object-key mappings are securely configured and tested.
-- 🟡 **Legacy files:** \`GET /api/v1/materials/{id}/file\`, \`GET /api/v1/histology/source-file\`, and \`POST /api/v1/files/upload\` are still open migration items. Worker cannot read SpaceWeb's local filesystem; migration requires an inventory + checksum-verified copy, plus private B2 upload/access handling.
-- 🟡 **Frontend/Preview:** Preview and browser parity must be rechecked against this Worker version before switching the frontend mode. Vercel Production remains on the legacy backend; its health endpoint previously returned \`503 INSECURE_BACKEND_ORIGIN\`. No Production variables, DNS or traffic route were changed here.
-- 🔒 **Production is unchanged:** no Cloudflare production cutover, Vercel Production deployment, Supabase schema/RLS mutation, B2 secret write, or Redis resource creation was performed. No valid student JWT was supplied, so live user RLS/media smoke tests remain outstanding.
+- 🟡 **File downloads remain configuration-gated:** the current Worker has Upstash Blob configured and B2 compatibility credentials. Real-user RLS acceptance and exact file/object-key mapping still require authenticated checks.
+- 🟡 **Legacy files:** \`GET /api/v1/histology/source-file\`, \`POST /api/v1/files/upload\`, and other paths listed in the route matrix remain migration items. Worker cannot read SpaceWeb's local filesystem; each required file needs an inventory and checksum-verified copy into the approved private store.
+- 🟡 **Frontend/Preview:** preview and browser parity must be rechecked against the currently observed Worker before changing production mode. No DNS, Vercel environment, or file-object migration was changed in this pass.
+- 🔒 **Production safety:** no Cloudflare Worker code/config deployment, Vercel Production environment update, or object migration was performed in this pass. The already applied `trainings_one_active_histology_per_user_idx` unique partial index prevents concurrent duplicate active Histology sessions without deleting data. No authenticated student JWT was used for live media/RLS smoke checks.
 
 
 - Worker name: `medbiohim-api-shadow`

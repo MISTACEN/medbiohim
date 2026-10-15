@@ -36,14 +36,20 @@ export default function PracticePage() {
   const pageSize = 40;
   const [noteSaving, setNoteSaving] = useState(false);
   const [contextSubjectSlug, setContextSubjectSlug] = useState("");
+  const [filtersReady, setFiltersReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const initialSlug = params.get("subject_slug") || "";
-    const initialId = params.get("subject_id") || "";
+    // Older subject pages link with `subject=<uuid>`. Keep that deep link
+    // contract while also accepting the explicit subject_id/subject_slug form.
+    const legacySubject = params.get("subject") || "";
+    const initialId = params.get("subject_id") ||
+      (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(legacySubject) ? legacySubject : "");
+    const initialSlug = params.get("subject_slug") || (!initialId ? legacySubject : "");
     if (initialId) setSubjectId(initialId);
     if (initialSlug) { setSubjectSlug(initialSlug); setContextSubjectSlug(initialSlug); }
+    setFiltersReady(true);
   }, []);
 
   useEffect(() => {
@@ -66,6 +72,7 @@ export default function PracticePage() {
   }, []);
 
   useEffect(() => {
+    if (!filtersReady) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -91,7 +98,7 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [subjectId, subjectSlug, kind, q, page]);
+  }, [filtersReady, subjectId, subjectSlug, kind, q, page]);
 
   useEffect(() => { setPage(0); }, [subjectId, subjectSlug, kind, q]);
 

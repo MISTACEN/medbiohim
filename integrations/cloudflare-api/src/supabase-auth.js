@@ -1985,7 +1985,13 @@ export async function listSupabaseExamQuestions(request, env, filters = {}, fetc
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Question bank read failed");
+    if (!response.ok) {
+      const upstream = await response.json().catch(() => null);
+      const error = new Error("Question bank read failed");
+      error.status = response.status;
+      error.code = typeof upstream?.code === "string" ? upstream.code.slice(0, 40) : "REST_ERROR";
+      throw error;
+    }
     const rows = await response.json();
     if (!Array.isArray(rows)) throw new Error("Invalid question bank response");
     const filtered = rows.filter((row) => {
@@ -2007,7 +2013,12 @@ export async function listSupabaseExamQuestions(request, env, filters = {}, fetc
       return item;
     });
     return { ok: true, data: { items, total: filtered.length, limit, offset, source: "supabase", answers_included: includeAnswer } };
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_QUESTION_BANK_READ_FAILED", JSON.stringify({
+      status: Number(error?.status) || 0,
+      code: /^[A-Z0-9_]{1,40}$/i.test(String(error?.code || "")) ? error.code : "UPSTREAM_ERROR",
+      category: error?.name === "TimeoutError" || error?.name === "AbortError" ? "timeout" : "upstream",
+    }));
     return failure(503, "DB_UNAVAILABLE", "Банк вопросов временно недоступен");
   }
 }
@@ -2038,7 +2049,13 @@ export async function listSupabaseQuestionSubjects(request, env, fetcher = fetch
       redirect: "error",
       signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Question bank summary read failed");
+    if (!response.ok) {
+      const upstream = await response.json().catch(() => null);
+      const error = new Error("Question bank summary read failed");
+      error.status = response.status;
+      error.code = typeof upstream?.code === "string" ? upstream.code.slice(0, 40) : "REST_ERROR";
+      throw error;
+    }
     const rows = await response.json();
     if (!Array.isArray(rows)) throw new Error("Invalid question bank summary");
     const map = new Map();
@@ -2051,7 +2068,12 @@ export async function listSupabaseQuestionSubjects(request, env, fetcher = fetch
       entry.kinds[rowKind] = (entry.kinds[rowKind] || 0) + 1;
     }
     return { ok: true, data: { items: [...map.values()], source: "supabase" } };
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_QUESTION_BANK_SUMMARY_FAILED", JSON.stringify({
+      status: Number(error?.status) || 0,
+      code: /^[A-Z0-9_]{1,40}$/i.test(String(error?.code || "")) ? error.code : "UPSTREAM_ERROR",
+      category: error?.name === "TimeoutError" || error?.name === "AbortError" ? "timeout" : "upstream",
+    }));
     return failure(503, "DB_UNAVAILABLE", "Каталог вопросов временно недоступен");
   }
 }

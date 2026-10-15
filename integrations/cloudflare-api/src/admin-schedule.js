@@ -60,10 +60,24 @@ export async function getSupabaseAdminSchedule(request, env, groupId, semester, 
   async function rows(table, params) {
     const url = new URL("/rest/v1/" + table, base);
     for (const [k,v] of Object.entries(params)) url.searchParams.set(k, String(v));
-    const res = await fetcher(url.toString(), { headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" }, redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const res = await fetcher(url.toString(), { headers: { apikey: anonKey, authorization: "Bearer " + token, accept: "application/json" }, redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (res.status === 401 || res.status === 403) throw Object.assign(new Error("denied"), { denied: true });
-    if (!res.ok) throw new Error("read failed");
-    const data = await res.json(); if (!Array.isArray(data)) throw new Error("invalid response"); return data;
+    if (!res.ok || (res.status >= 300 && res.status < 400)) {
+      let upstreamCode = "unknown";
+      try {
+        const body = await res.clone().json();
+        if (typeof body?.code === "string" && /^[A-Z0-9_]{1,64}$/.test(body.code)) upstreamCode = body.code;
+      } catch {}
+      // Keep diagnostics useful without logging row contents, auth tokens, or URLs.
+      console.warn("admin_schedule_read_failed", { table, status: res.status, upstreamCode });
+      throw new Error("read failed");
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      console.warn("admin_schedule_read_invalid_response", { table });
+      throw new Error("invalid response");
+    }
+    return data;
   }
   try {
     const filters = { group_id: "eq." + groupId, is_active: "eq.true", select: "id,group_id,semester,academic_year,academic_year_id,version,is_active,created_at", order: "version.desc,created_at.desc", limit: "100" };

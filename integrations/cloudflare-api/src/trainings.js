@@ -50,6 +50,12 @@ async function callTrainingRpc(request, env, rpcName, args, fetcher = fetch) {
   }
   if (!response.ok || !payload || typeof payload !== "object" || Array.isArray(payload)) {
     if (response.status === 401) return fail(401, "UNAUTHORIZED", "Недействительная сессия");
+    // The partial unique index is the final concurrency guard if two start
+    // requests race. Keep the public API contract consistent with the RPC's
+    // normal TRAINING_IN_PROGRESS response without exposing SQL diagnostics.
+    if (rpcName === "histology_training_create" && response.status === 409 && payload?.code === "23505") {
+      return fail(409, "TRAINING_IN_PROGRESS", "У вас уже есть незавершённая тренировка");
+    }
     // Never pass Postgres/PostgREST diagnostics to the browser.
     return fail(503, "TRAINING_UPSTREAM_ERROR", "Тренировки временно недоступны");
   }

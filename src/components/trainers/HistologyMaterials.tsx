@@ -262,6 +262,7 @@ export default function HistologyMaterials() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [textbookError, setTextbookError] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -283,6 +284,9 @@ export default function HistologyMaterials() {
         }
 
         const feed = feedResult.ok ? (feedResult.data.items || []) : [];
+        if (!feedResult.ok) {
+          setFeedError(feedResult.error.message || "Не удалось загрузить микропрепараты.");
+        }
         const currentEmNames = new Set(
           feed
             .filter((card: any) => card.mode_set === "electronogram" && card.plan_status === "ПРИВЯЗАНО")
@@ -372,9 +376,9 @@ export default function HistologyMaterials() {
   const groups = useMemo(() => {
     const map = new Map<string, Item[]>();
     for (const item of visible) {
-      const module = item.module_title || "Материалы без привязки к учебному плану";
+      const moduleTitle = item.module_title || "Материалы без привязки к учебному плану";
       const topic = item.topic_title || "Общий раздел";
-      const key = module + "||" + topic;
+      const key = moduleTitle + "||" + topic;
       const group = map.get(key) || [];
       group.push(item);
       map.set(key, group);
@@ -471,9 +475,10 @@ export default function HistologyMaterials() {
         </div>
 
         {error ? <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div> : null}
+        {feedError ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Микропрепараты временно недоступны: {feedError}</div> : null}
         {textbookError ? (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            Не удалось прочитать каталог «Учебники» на SpaceWeb: {textbookError}
+            Не удалось прочитать каталог «Учебники» в подключённом файловом хранилище: {textbookError}
           </div>
         ) : null}
       </section>
@@ -483,13 +488,13 @@ export default function HistologyMaterials() {
       ) : (
         groups.map(([key, group]) => {
           const first = group[0];
-          const module = first.module_title || "Материалы без привязки к учебному плану";
+          const moduleTitle = first.module_title || "Материалы без привязки к учебному плану";
           const topic = first.topic_title || "Общий раздел";
           return (
             <section key={key} className="card p-4 sm:p-5">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{module}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{moduleTitle}</div>
                   <h3 className="mt-1 font-bold text-slate-900">{topic}</h3>
                   <p className="text-xs text-slate-500">{group.length} материалов</p>
                 </div>
@@ -600,7 +605,7 @@ export default function HistologyMaterials() {
                 <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
                   <p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p>
                   <p className="mt-1">
-                    Проверь размещение <code>content/histology</code> на SpaceWeb. Учебники открываются напрямую из <code>source-materials/Учебники</code>; для них запись в Supabase не требуется.
+                    Проверьте, что оригинал есть в подключённом файловом хранилище и его путь совпадает с записью материала. До проверки копии исходные файлы не удаляйте.
                   </p>
                 </div>
               )}

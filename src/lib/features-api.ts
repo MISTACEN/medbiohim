@@ -68,6 +68,7 @@ export type SearchHit = {
   type: string;
   score: number;
   has_answer: boolean;
+  answer?: string;
   href: string;
 };
 export async function globalSearch(q: string, opts?: { limit?: number; subject_slug?: string; type?: string }) {
