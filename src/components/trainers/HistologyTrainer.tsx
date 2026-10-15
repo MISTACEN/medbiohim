@@ -55,10 +55,14 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([listTrainerFeed("histology", "mbh", 500), listTrainings(), getAccountSettings()]).then(([feed, history, account]) => {
+      if (cancelled) return;
       if (feed.ok) {
         setFeedItems(feed.data.items || []);
         setTopics(Array.from(new Set(feed.data.items.flatMap((x: any) => Array.isArray(x.tags) ? x.tags : []))).sort());
+      } else {
+        setError(feed.error?.message || "Не удалось загрузить микропрепараты.");
       }
       if (history.ok) setSessions(history.data.items);
       if (account.ok) {
@@ -66,7 +70,13 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
         if (saved === "sidebar" || saved === "list" || saved === "top") setLayout(saved);
       }
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      if (!cancelled) {
+        setError("Не удалось загрузить микропрепараты.");
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const loadSession = async (id: string, showResult = false) => {

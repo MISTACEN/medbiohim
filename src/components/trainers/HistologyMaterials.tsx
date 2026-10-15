@@ -262,6 +262,7 @@ export default function HistologyMaterials() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [textbookError, setTextbookError] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -283,6 +284,9 @@ export default function HistologyMaterials() {
         }
 
         const feed = feedResult.ok ? (feedResult.data.items || []) : [];
+        if (!feedResult.ok) {
+          setFeedError(feedResult.error.message || "Не удалось загрузить микропрепараты.");
+        }
         const currentEmNames = new Set(
           feed
             .filter((card: any) => card.mode_set === "electronogram" && card.plan_status === "ПРИВЯЗАНО")
@@ -471,9 +475,10 @@ export default function HistologyMaterials() {
         </div>
 
         {error ? <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div> : null}
+        {feedError ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Микропрепараты временно недоступны: {feedError}</div> : null}
         {textbookError ? (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            Не удалось прочитать каталог «Учебники» на SpaceWeb: {textbookError}
+            Не удалось прочитать каталог «Учебники» в подключённом файловом хранилище: {textbookError}
           </div>
         ) : null}
       </section>
@@ -600,7 +605,7 @@ export default function HistologyMaterials() {
                 <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
                   <p className="font-semibold text-slate-800">Документ пока не доступен для просмотра.</p>
                   <p className="mt-1">
-                    Проверь размещение <code>content/histology</code> на SpaceWeb. Учебники открываются напрямую из <code>source-materials/Учебники</code>; для них запись в Supabase не требуется.
+                    Проверьте, что оригинал есть в подключённом файловом хранилище и его путь совпадает с записью материала. До проверки копии исходные файлы не удаляйте.
                   </p>
                 </div>
               )}
