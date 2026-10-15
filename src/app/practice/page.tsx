@@ -36,6 +36,7 @@ export default function PracticePage() {
   const pageSize = 40;
   const [noteSaving, setNoteSaving] = useState(false);
   const [contextSubjectSlug, setContextSubjectSlug] = useState("");
+  const [filtersReady, setFiltersReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -48,6 +49,7 @@ export default function PracticePage() {
     const initialSlug = params.get("subject_slug") || (!initialId ? legacySubject : "");
     if (initialId) setSubjectId(initialId);
     if (initialSlug) { setSubjectSlug(initialSlug); setContextSubjectSlug(initialSlug); }
+    setFiltersReady(true);
   }, []);
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export default function PracticePage() {
   }, []);
 
   useEffect(() => {
+    if (!filtersReady) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -95,7 +98,7 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [subjectId, subjectSlug, kind, q, page]);
+  }, [filtersReady, subjectId, subjectSlug, kind, q, page]);
 
   useEffect(() => { setPage(0); }, [subjectId, subjectSlug, kind, q]);
 
