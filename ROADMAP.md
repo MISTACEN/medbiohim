@@ -3273,3 +3273,21 @@ This pass treats the existing frontend as the behavioral specification instead o
 - The shadow Worker exposes bindings for Supabase URL/anon key, Backblaze B2, Upstash Blob, Upstash Redis URL, AI provider keys, and auth rate limiters. Only binding names/configuration were inspected; secret values were not read.
 - The currently deployed shadow bundle contains the `order_index` schema fallback and the secure training RPC client. Therefore the observed 503s should be diagnosed at the specific handler's upstream response/runtime path, not treated as proof that all routes are absent.
 - Direct runtime requests from the connected Cloudflare tool were blocked by its outbound-request policy, so no live endpoint status is claimed from this inspection.
+
+
+## 2026-10-16 — Reverse contract pass: staff grading of homework submissions
+
+**Implemented on `main` (code changes only; no deployment/cutover):**
+- Added `integrations/cloudflare-api/src/homework-grading.js` for `POST /api/v1/submissions/{id}/grade`.
+- Registered the route in the Worker router and restricted it to POST.
+- Role authorization is resolved server-side through `user_roles → roles(code)` using the caller JWT; client-supplied role fields are ignored.
+- The update uses the caller JWT + Supabase anon key, and relies on Supabase RLS for the final write authorization. No service-role key is used.
+- Added unit coverage for invalid IDs/grades, student-role rejection, teacher grading, missing submission, and route-level auth/method behavior.
+- Added the route to the frontend-observed route contract guard.
+
+**Verification status:**
+- The uploaded alternate API archive was run locally: 58/59 tests passed. Its only failure is a stale test fixture returning `{ role: "teacher" }` while the implementation correctly reads the live-schema relation `roles(code)`; this archive result is not a test run of the current GitHub tree.
+- The current GitHub Worker suite has **not yet been executed** against this commit. The repository is private to the available shell-clone path, so do not report the new tests as passing until a runner with repository access executes `npm test`.
+- No live shadow/production smoke test, Supabase RLS acceptance test, or deployment was performed.
+
+**Next:** run the actual GitHub-tree Worker test suite; then implement/verify the next frontend contract gap from the route matrix (file uploads/downloads and training lifecycle are higher priority than broad admin coverage). Do not enable production traffic.
