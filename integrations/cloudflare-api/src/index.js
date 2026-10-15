@@ -822,12 +822,30 @@ export default {
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
-      // The existing frontend fetches this endpoint as a Blob. Preserve PHP's
-      // redirect contract so the browser downloads the short-lived B2 object.
-      return withCors(new Response(null, {
-        status: 302,
-        headers: { location: result.data.url, "cache-control": "private, no-store" },
-      }), origin);
+      // Stream the private object through this Worker instead of redirecting the
+      // browser to Upstash/B2. The frontend fetches this endpoint as a Blob; a
+      // cross-origin redirect can fail browser CORS even when the signed URL is valid.
+      let mediaResponse;
+      try {
+        mediaResponse = await fetch(result.data.url, {
+          method: "GET",
+          redirect: "error",
+          signal: AbortSignal.timeout(12_000),
+        });
+      } catch {
+        return withCors(json({ ok: false, error: { code: "MEDIA_UPSTREAM_UNAVAILABLE", message: "Не удалось загрузить файл изображения" }, requestId: crypto.randomUUID() }, 503), origin);
+      }
+      if (!mediaResponse.ok || !mediaResponse.body) {
+        return withCors(json({ ok: false, error: { code: "MEDIA_UPSTREAM_UNAVAILABLE", message: "Хранилище не вернуло изображение" }, requestId: crypto.randomUUID() }, 503), origin);
+      }
+      const headers = new Headers({
+        "content-type": mediaResponse.headers.get("content-type") || "application/octet-stream",
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+      });
+      const length = mediaResponse.headers.get("content-length");
+      if (length && /^\\d+$/.test(length)) headers.set("content-length", length);
+      return withCors(new Response(mediaResponse.body, { status: 200, headers }), origin);
     }
 
     const trainerCardMatch = new RegExp("^" + API_PREFIX + "/trainers/feed/([^/]+)$").exec(pathname);
