@@ -2374,3 +2374,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 2. Match it to the Worker handler and the actual Supabase table/RPC/storage contract.
 3. Add handler-level fixture tests for data shape, RLS/ownership and error mapping.
 4. Run live shadow checks with real student JWTs and configured secrets; keep production traffic unchanged until P0 checks pass.
+
+
+## 2026-10-16 — Reverse pass: trainer image request pressure
+
+- The supplied browser log shows a large burst of per-card image requests and a second wave of retry-query requests after 503 responses. The frontend helper used to start every image request immediately and automatically retried 503, multiplying load during an upstream outage.
+- `src/lib/api.ts` now limits active trainer-image fetches to 6 and stops automatic retries on 503; the existing per-image manual retry remains available. Other transient statuses retain the bounded retry path.
+- This mitigates request amplification; it does not repair a failing Supabase/RPC/storage dependency. Live runtime acceptance and frontend build remain unverified because the current Vercel status is `build-rate-limit`.
