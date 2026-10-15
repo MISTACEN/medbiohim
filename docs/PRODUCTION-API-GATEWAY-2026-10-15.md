@@ -22,6 +22,8 @@ Executed against the deployed public workers.dev endpoint on 2026-10-15:
 
 The Shadow endpoint independently returned 200 for `/api/v1/health` at the same time.
 
+Additional route smoke checks without a Bearer token: `/api/v1/planner`, `/api/v1/subjects`, `/api/v1/tests`, `/api/v1/materials`, `/api/v1/auth/me`, `/api/v1/sessions`, `/api/v1/trainers/feed`, and `/api/v1/admin/schedule` all returned 401 as expected. `GET /api/v1/homework` returned 501 `ROUTE_NOT_MIGRATED`, explicitly demonstrating that the existing Shadow API is still a partial migration and is not yet full feature parity with the legacy API.
+
 ## Important limitation
 
 This makes the new production hostname behaviorally equivalent to the current Shadow API for requests that reach the Shadow application, but it is **not an independent production application deployment**. The health payload still says `mode: shadow` and `productionTrafficEnabled: false`; those values were deliberately not rewritten because the underlying application remains the Shadow deployment. The current Worker source uses many secret bindings, and Cloudflare does not reveal their values for copying. A fully independent `medbiohim-api` needs the current GitHub main bundle built and deployed with the required secret bindings provisioned securely, followed by authenticated student/admin acceptance.
