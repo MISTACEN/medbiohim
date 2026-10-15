@@ -62,3 +62,43 @@ test("B2 signer refuses unexpected authorization hosts and never follows redirec
   assert.equal(result.ok, false);
   assert.equal(result.status, 503);
 });
+
+
+test("B2 batch signer reuses one account authorization for unique keys", async () => {
+  const calls = [];
+  const result = await createB2DownloadUrls(env, [
+    "private/a.jpg",
+    "private/b.jpg",
+    "private/a.jpg",
+  ], 7200, async (url, init) => {
+    const parsed = new URL(String(url));
+    calls.push({ parsed, init });
+    if (parsed.pathname === "/b2api/v2/b2_authorize_account") {
+      return response({
+        apiUrl: "https://api004.backblazeb2.com",
+        downloadUrl: "https://f004.backblazeb2.com",
+        authorizationToken: "account-token",
+        accountId: "account-id",
+      });
+    }
+    assert.equal(parsed.pathname, "/b2api/v2/b2_get_download_authorization");
+    const body = JSON.parse(init.body);
+    assert.equal(body.bucketId, "bucket-id-test");
+    assert.equal(body.validDurationInSeconds, 3600);
+    return response({ authorizationToken: "download-token-" + body.fileNamePrefix });
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.expires_in, 3600);
+  assert.deepEqual(Object.keys(result.urls).sort(), ["private/a.jpg", "private/b.jpg"]);
+  assert.equal(calls.filter(({ parsed }) => parsed.pathname === "/b2api/v2/b2_authorize_account").length, 1);
+  assert.equal(calls.filter(({ parsed }) => parsed.pathname === "/b2api/v2/b2_get_download_authorization").length, 2);
+  assert.equal(new URL(result.urls["private/a.jpg"]).searchParams.get("Authorization"), "download-token-private/a.jpg");
+});
+
+test("B2 batch signer does not expose keys or secrets when storage is unconfigured", async () => {
+  const result = await createB2DownloadUrls({}, ["private/a.jpg"]);
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "FILE_STORAGE_NOT_CONFIGURED");
+  assert.equal(JSON.stringify(result).includes("private/a.jpg"), false);
+  assert.equal(JSON.stringify(result).includes("application-key"), false);
+});
