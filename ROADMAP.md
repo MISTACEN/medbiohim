@@ -3159,3 +3159,11 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟢 Rechecked live `medbiohim-api` across schedule, planner, subjects, tests, materials, auth/me, sessions, trainer feed, and admin schedule. Protected routes returned 401 without a Bearer token; no protected data was exposed.
 - 🟡 Found a real parity gap: `GET /api/v1/homework` returns 501 `ROUTE_NOT_MIGRATED` on Shadow and therefore through the production gateway. The gateway faithfully forwards current Shadow behavior; it cannot make an unmigrated route functional.
 - 🔒 Independent production deployment remains blocked until current source is deployed with the full secret set securely provisioned and tested. Cloudflare settings cannot reveal Shadow secret values for copying, and the linked Upstash Box could not clone the repo because GitHub write/clone credentials were unavailable. Do not switch frontend traffic to this gateway as a claimed full cutover.
+
+
+## 2026-10-15 — fix Vercel 503 caused by missing SpaceWeb origin
+
+- 🟡 Browser console reported 503 for `/api/v1/auth/me`, `/api/v1/subjects/:id`, `/api/v1/subjects-catalog`, `/api/v1/auth/login`, and `/api/v1/presence/heartbeat`, with `SPACEWEB_API_ORIGIN is not configured on this deployment.`
+- 🟢 Verified current Cloudflare gateway returns route-specific auth/method responses rather than 503 for these endpoints: auth/me GET 401 without token; subjects/:id GET 401; subjects-catalog GET 401; presence heartbeat POST 401 and GET 405. These unauthenticated probes prove route dispatch only, not successful signed-in data access.
+- 🟡 Added a code fix so Vercel Production/Preview default to `https://medbiohim-api.ryazansevegor.workers.dev/api/v1` and Cloudflare-first routing when explicit mode/origin are absent. `MEDBIOHIM_API_MODE=legacy` remains an explicit rollback requiring HTTPS SpaceWeb origin. Local development stays opt-in. This avoids the 503 caused solely by an absent SpaceWeb env var.
+- 🟡 Needs Preview/build verification and a deployed smoke test; do not mark the frontend issue resolved until the updated Vercel deployment is live. This does not claim full API parity; unmigrated routes may still return 501.
