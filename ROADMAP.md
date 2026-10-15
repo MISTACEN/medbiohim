@@ -3265,3 +3265,11 @@ This pass treats the existing frontend as the behavioral specification instead o
 - The supplied browser log shows a large burst of per-card image requests and a second wave of retry-query requests after 503 responses. The frontend helper used to start every image request immediately and automatically retried 503, multiplying load during an upstream outage.
 - `src/lib/api.ts` now limits active trainer-image fetches to 6 and stops automatic retries on 503; the existing per-image manual retry remains available. Other transient statuses retain the bounded retry path.
 - This mitigates request amplification; it does not repair a failing Supabase/RPC/storage dependency. Live runtime acceptance and frontend build remain unverified because the current Vercel status is `build-rate-limit`.
+
+
+### Cloudflare deployment inspection (read-only, 2026-10-16)
+
+- The production gateway Worker `medbiohim-api` has `APP_ENV=production` and a service binding to `medbiohim-api-shadow`; it does not run the API module directly.
+- The shadow Worker exposes bindings for Supabase URL/anon key, Backblaze B2, Upstash Blob, Upstash Redis URL, AI provider keys, and auth rate limiters. Only binding names/configuration were inspected; secret values were not read.
+- The currently deployed shadow bundle contains the `order_index` schema fallback and the secure training RPC client. Therefore the observed 503s should be diagnosed at the specific handler's upstream response/runtime path, not treated as proof that all routes are absent.
+- Direct runtime requests from the connected Cloudflare tool were blocked by its outbound-request policy, so no live endpoint status is claimed from this inspection.
