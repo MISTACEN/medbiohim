@@ -12,7 +12,7 @@ type Props = SVGProps<SVGSVGElement> & {
   variant?: 0 | 1;
 };
 
-const pick = (variant: number | undefined, first: number, second: number) =>
+const pick = <T,>(variant: number | undefined, first: T, second: T): T =>
   (variant ?? 0) % 2 === 0 ? first : second;
 
 function Granules({

@@ -44,6 +44,7 @@ type Q = {
   options: Option[];
   answer?: string | number | null;
   type?: string;
+  allowMultiple?: boolean;
 };
 
 export default function TestsPage() {
@@ -188,7 +189,7 @@ export default function TestsPage() {
     setBusy(true);
     try {
       const res = await retryTestAnswerGrading(active.attemptId, questionId);
-      if (!res.ok) {
+      if ("error" in res) {
         setNote(res.error.message);
         return;
       }
@@ -208,13 +209,13 @@ export default function TestsPage() {
       );
       const saved = await Promise.all(writes);
       const failed = saved.find((x:any) => !x.ok);
-      if (failed) {
-        setNote(failed.error?.message || "Не удалось сохранить ответы");
+      if (failed && "error" in failed) {
+        setNote(failed.error.message || "Не удалось сохранить ответы");
         setBusy(false);
         return;
       }
       const finished = await finishAttempt(active.attemptId);
-      if (!finished.ok) {
+      if ("error" in finished) {
         setNote(finished.error.message);
         setBusy(false);
         return;

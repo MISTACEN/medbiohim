@@ -4,24 +4,18 @@ import type { NextConfig } from "next";
  * Browser always calls same-origin /api/v1/* on the Vercel deployment.
  *
  * The App Router catch-all route at src/app/api/v1/[...path]/route.ts is the
- * single Vercel-side API entrypoint. It proxies requests server-side to the
- * PHP backend on SpaceWeb using SPACEWEB_API_ORIGIN.
+ * single Vercel-side API entrypoint. It proxies to Cloudflare only when an
+ * explicit production Worker origin is configured; the migration shadow is
+ * never a production target. Without one, the proxy requires legacy PHP config
+ * and fails closed when no safe HTTPS backend is configured.
  *
  * Do not add a second rewrite for /api/v1 here: keeping one proxy path avoids
- * route ambiguity and makes the Vercel -> SpaceWeb architecture explicit.
+ * route ambiguity and makes the Vercel -> Cloudflare architecture explicit.
  */
 const BUILD_FINGERPRINT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.MEDBIOHIM_BUILD || "local";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Vercel: do not fail production build on local eslint flat-config quirks
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  // Residual implicit-any on admin pages must not block production deploys
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   env: {
     NEXT_PUBLIC_API_URL: "/api/v1",
   },

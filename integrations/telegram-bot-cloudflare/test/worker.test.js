@@ -171,7 +171,7 @@ test("rejects insecure HTTP homework relay URL without making a request", async 
   let called = false;
   globalThis.fetch = async () => { called = true; return new Response("{}", { status: 200 }); };
   t.after(() => { globalThis.fetch = oldFetch; });
-  const response = await handleRequest(request("/api/webhook", { body: { message: { text: "Задание на завтра", chat: { id: -42, type: "group", title: "МБХ-201" } } }), { ...baseEnv, TELEGRAM_HOMEWORK_WEBHOOK_URL: "http://insecure.example/api/v1/telegram/webhook" });
+  const response = await handleRequest(request("/api/webhook", { body: { message: { text: "Задание на завтра", chat: { id: -42, type: "group", title: "МБХ-201" } } } }), { ...baseEnv, TELEGRAM_HOMEWORK_WEBHOOK_URL: "http://insecure.example/api/v1/telegram/webhook" });
   assert.equal(response.status, 502);
   assert.equal(called, false);
 });

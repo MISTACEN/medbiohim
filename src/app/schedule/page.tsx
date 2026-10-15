@@ -304,7 +304,7 @@ function ScheduleCard({
   );
 }
 
-export default function SchedulePage({ embedded = false }: { embedded?: boolean }) {
+export default function SchedulePage() {
   const { user } = useAuth();
   const [now, setNow] = useState(() => nowParts());
   const [weekStart, setWeekStart] = useState(() => startOfWeekYmd(nowParts().date));
@@ -527,9 +527,9 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
   const groupName = user?.groupName || first?.group_name || first?.group_code || "Учебная группа не назначена";
   const groupMissing = !user?.groupName && allItems.length === 0;
   const currentDayItems = grouped.get(selectedDay) || [];
-  const monthDays = useMemo(() => monthGridDays(monthStart), [monthStart]);
-  const monthItems = useMemo(() => allItems.filter((it) => it.date?.startsWith(monthStart.slice(0,7))), [allItems, monthStart]);
-  const semesterWeeks = useMemo(() => Array.from({ length: 21 }, (_, i) => { const start = addDaysYmd(SEMESTER_FROM, i * 7); const end = addDaysYmd(start, 6); const weekItems = allItems.filter((it) => it.date >= start && it.date <= end); return { index:i+1, start, end, items:weekItems }; }), [allItems]);
+  const monthDays = monthGridDays(monthStart);
+  const monthItems = allItems.filter((it) => it.date?.startsWith(monthStart.slice(0,7)));
+  const semesterWeeks = Array.from({ length: 21 }, (_, i) => { const start = addDaysYmd(SEMESTER_FROM, i * 7); const end = addDaysYmd(start, 6); const weekItems = allItems.filter((it) => it.date >= start && it.date <= end); return { index:i+1, start, end, items:weekItems }; });
   const showNowLine = now.minutes >= GRID_START_MIN && now.minutes <= 18 * 60 + 30;
   const nowTop = (now.minutes - GRID_START_MIN) * PX_PER_MIN;
   const weekCount = items.length;
@@ -544,7 +544,6 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
         .schedule-now-label{position:absolute;left:8px;top:-11px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:#f43f5e;color:#fff}
       `}} />
 
-      {!embedded && (
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -567,7 +566,6 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
           <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,7); setSelectedDay(next); return next; })} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="schedule-tabs">
@@ -867,7 +865,14 @@ export default function SchedulePage({ embedded = false }: { embedded?: boolean 
               {selected.week_parity && <div><b>Чередование:</b> {selected.week_parity === "numerator" ? "числитель" : selected.week_parity === "denominator" ? "знаменатель" : "все недели"}</div>}
               {selected.source_detail && <div className="sm:col-span-2"><b>Источник/уточнение:</b> {selected.source_detail}</div>}
               {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Отработка — это не обычное занятие</div>}
-            {attendanceBlock}
+            <div className="sm:col-span-2">
+              <div className="mb-1 font-semibold">Посещение</div>
+              <div className="flex flex-wrap gap-2">
+                {([["present", "Был"], ["excused", "Уважительная"], ["sick", "Болезнь"], ["unexcused", "Пропуск"]] as const).map(([status, label]) => (
+                  <button key={status} type="button" disabled={attendanceBusy} aria-pressed={selected.attendance_status === status} onClick={() => void setAttendance(selected, status)} className="rounded-lg border px-2 py-1 disabled:opacity-50" style={selected.attendance_status === status ? { borderColor: "var(--primary)", color: "var(--primary)" } : undefined}>{label}</button>
+                ))}
+              </div>
+            </div>
             </div>
 
             {(selected.room||selected.notes) && (

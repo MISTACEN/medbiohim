@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isHttpsOrigin, shouldFallbackFromCloudflare } from "@/lib/api-failover.mjs";
+import { protectTrainingPayload } from "@/lib/training-payload-sanitizer.mjs";
 
-/** API proxy: Cloudflare is the default backend. Legacy PHP mode is an explicit
- * rollback option and is safe only with a valid HTTPS SpaceWeb origin. */
-// Cloudflare mode deliberately ignores the retired HTTP SpaceWeb URL and fails closed
-// for routes not migrated yet; bearer tokens are never sent over plaintext HTTP.
-const API_MODE = process.env.MEDBIOHIM_API_MODE === "legacy" ? "legacy" : "cloudflare";
-const configuredOrigin = API_MODE === "cloudflare" ? undefined : process.env.SPACEWEB_API_ORIGIN;
-const UPSTREAM = configuredOrigin?.replace(/\/$/, "");
-const cloudflareOrigin = process.env.CLOUDFLARE_API_ORIGIN || "https://medbiohim-api-shadow.ryazansevegor.workers.dev/api/v1";
+/** Use Cloudflare only when a production origin is explicitly configured.
+ * The migration shadow Worker is never a production default. */
+const requestedCloudflareOrigin = process.env.CLOUDFLARE_API_ORIGIN || "";
+const isProductionDeployment = process.env.VERCEL_ENV === "production";
+const isProductionCloudflareOrigin = (() => {
+  try {
+    const origin = new URL(requestedCloudflareOrigin);
+    return origin.protocol === "https:" && !(isProductionDeployment && origin.hostname.startsWith("medbiohim-api-shadow."));
+  } catch {
+    return false;
+  }
+})();
+const cloudflareOrigin = isProductionCloudflareOrigin ? requestedCloudflareOrigin : "";
+const cloudflareOptIn = process.env.MEDBIOHIM_API_MODE === "cloudflare" || process.env.MEDBIOHIM_CF_FIRST === "true";
+const API_MODE = process.env.MEDBIOHIM_API_MODE === "legacy" || !cloudflareOrigin || !cloudflareOptIn ? "legacy" : "cloudflare";
+const configuredOrigin = API_MODE === "legacy" ? process.env.SPACEWEB_API_ORIGIN : undefined;
+const UPSTREAM = configuredOrigin && isHttpsOrigin(configuredOrigin) ? configuredOrigin.replace(/\/$/, "") : undefined;
 const CLOUDFLARE_UPSTREAM = cloudflareOrigin.replace(/\/$/, "");
-const CLOUDFLARE_FIRST_ENABLED = API_MODE === "cloudflare" || process.env.MEDBIOHIM_CF_FIRST === "true";
+const CLOUDFLARE_FIRST_ENABLED = API_MODE === "cloudflare";
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gnobvyjywtqbdfeejxmf.supabase.co").replace(/\/$/, "");
 // The anon key is public by design, but its configured value must stay in environment variables.
 // Do not commit test or production key material to the repository.
@@ -141,7 +151,6 @@ async function proxy(req: NextRequest, pathParts: string[]) {
 
   async function fetchSpacewebTargets() {
     let response: Response | null = null;
-    let error: unknown = null;
     for (let i = 0; i < spacewebTargets.length; i += 1) {
       try {
         const candidate = await fetch(spacewebTargets[i], makeInit());
@@ -149,18 +158,16 @@ async function proxy(req: NextRequest, pathParts: string[]) {
           response = candidate;
           break;
         }
-      } catch (e) {
-        error = e;
+      } catch {
         // A write may have reached SpaceWeb before the connection dropped.
         // Do not retry it against a second legacy path.
         if (req.method !== "GET") break;
       }
     }
-    return { response, error };
+    return response;
   }
 
   let upstream: Response | null = null;
-  let lastError: unknown = null;
   let source = "spaceweb";
 
   if (CLOUDFLARE_FIRST_ENABLED) {
@@ -174,20 +181,15 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       // Never send bearer tokens or private request bodies to a plaintext origin.
       if (useFallback && UPSTREAM && isHttpsOrigin(UPSTREAM)) {
         source = "spaceweb-fallback";
-        const fallback = await fetchSpacewebTargets();
-        upstream = fallback.response;
-        lastError = fallback.error;
+        upstream = await fetchSpacewebTargets();
       } else {
         upstream = cloudflareResponse;
       }
     } catch (error) {
-      lastError = error;
       const safeRead = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
       if (safeRead && UPSTREAM && isHttpsOrigin(UPSTREAM)) {
         source = "spaceweb-fallback";
-        const fallback = await fetchSpacewebTargets();
-        upstream = fallback.response;
-        lastError = fallback.error || lastError;
+        upstream = await fetchSpacewebTargets();
       } else {
         source = "cloudflare-unavailable";
       }
@@ -200,17 +202,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       );
     }
     source = "spaceweb";
-    const primary = await fetchSpacewebTargets();
-    upstream = primary.response;
-    lastError = primary.error;
-  }
-
-  // The old backend may not have trainer routes yet. Feed data itself is already
-  // in Supabase, so the frontend proxy can keep the module usable without touching
-  // the working schedule/auth backend.
-  if (upstream?.status === 404 && sub.startsWith("trainers/feed")) {
-    const fallback = await trainerFallback(req, pathParts);
-    if (fallback) return withTransportDiagnostics(req, fallback, "compatibility-fallback");
+    upstream = await fetchSpacewebTargets();
   }
 
   if (!upstream) {
@@ -226,23 +218,8 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   if (sub.startsWith("trainings") && upstreamContentType.includes("json")) {
     try {
       const payload = JSON.parse(new TextDecoder().decode(buf));
-      const data = payload && typeof payload === "object" ? (payload as any).data : null;
-      if (data && typeof data === "object") {
-        if (req.method === "POST" && sub === "trainings" && Array.isArray(data.questions)) {
-          data.questions = data.questions.map((question: unknown) => safeTrainerQuestion(question));
-        } else if (req.method === "GET" && sub.startsWith("trainings/") && sub.split("/").length === 2 && Array.isArray(data.answers)) {
-          data.answers = data.answers.map((answer: any) => {
-            if (!answer || typeof answer !== "object") return answer;
-            if (answer.user_answer != null || Boolean(answer.is_skipped)) return answer;
-            const safe = { ...answer };
-            for (const key of ["options", "question_snapshot", "review_snapshot"]) {
-              if (safe[key] !== undefined) safe[key] = safeTrainerQuestion(safe[key]);
-            }
-            return safe;
-          });
-        }
-      }
-      buf = new TextEncoder().encode(JSON.stringify(payload));
+      const protectedPayload = protectTrainingPayload(payload, req.method.toUpperCase(), sub);
+      buf = new TextEncoder().encode(JSON.stringify(protectedPayload)).buffer as ArrayBuffer;
     } catch {
       // Keep the original upstream response if it is not valid JSON.
     }

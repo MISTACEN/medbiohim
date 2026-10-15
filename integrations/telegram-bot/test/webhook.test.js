@@ -70,9 +70,9 @@ test("ignores group messages without calling Telegram API when relay is not conf
   global.fetch = async () => { called = true; return { ok: true, status: 200 }; };
   try {
     const res = makeResponse();
-    await webhook(makeRequest({ body: { message: { text: "/start", chat: { id: -100, type: "group" } } }), res);
+    await webhook(makeRequest({ body: { message: { text: "/start", chat: { id: -100, type: "group" } } } }), res);
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.ignored, true);
+    assert.equal(res.body.forwarded, false);
     assert.equal(called, false);
   } finally {
     global.fetch = oldFetch;

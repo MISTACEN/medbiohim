@@ -56,6 +56,13 @@ Production-трафик на Cloudflare **не переключён**.
 | [docs/STATUS.md](docs/STATUS.md) | Текущий статус и блокеры |
 | [backend/MODULE-INTEGRATION.md](backend/MODULE-INTEGRATION.md) | Как добавлять новые модули в PHP |
 
+## Frontend (repo root) → Vercel
+Next.js App Router.
+- Browser API base: `/api/v1`
+- Vercel server-side proxy: Cloudflare is selected only by explicit Preview opt-in or `MEDBIOHIM_API_MODE=cloudflare` with a production Worker origin; the migration shadow is rejected. The legacy PHP origin remains a temporary fallback and must use HTTPS.
+- Chemistry (на main): `/chemistry`, `/api/chemistry/resolve`, `/api/chemistry/health` — см. [docs/chemical-engine.md](docs/chemical-engine.md)
+- **Strict TypeScript**: see **[docs/dev-notes.md](docs/dev-notes.md)**.
+
 ## Что уже есть
 
 - Auth (login/register/refresh/logout/recover/me), роли, academic context

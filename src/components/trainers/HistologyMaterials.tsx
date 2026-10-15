@@ -372,9 +372,9 @@ export default function HistologyMaterials() {
   const groups = useMemo(() => {
     const map = new Map<string, Item[]>();
     for (const item of visible) {
-      const module = item.module_title || "Материалы без привязки к учебному плану";
+      const moduleTitle = item.module_title || "Материалы без привязки к учебному плану";
       const topic = item.topic_title || "Общий раздел";
-      const key = module + "||" + topic;
+      const key = moduleTitle + "||" + topic;
       const group = map.get(key) || [];
       group.push(item);
       map.set(key, group);
@@ -483,13 +483,13 @@ export default function HistologyMaterials() {
       ) : (
         groups.map(([key, group]) => {
           const first = group[0];
-          const module = first.module_title || "Материалы без привязки к учебному плану";
+          const moduleTitle = first.module_title || "Материалы без привязки к учебному плану";
           const topic = first.topic_title || "Общий раздел";
           return (
             <section key={key} className="card p-4 sm:p-5">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{module}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{moduleTitle}</div>
                   <h3 className="mt-1 font-bold text-slate-900">{topic}</h3>
                   <p className="text-xs text-slate-500">{group.length} материалов</p>
                 </div>

@@ -276,65 +276,6 @@ $router->delete('/api/v1/admin/db/{table}/{id}', static function(Request $req,ar
 });
 
 
-$router->post('/api/v1/admin/content/import', static function(Request $req,array $params)use($adminGridGate):void{
-    if(!$adminGridGate($req))return;
-    $payload=is_array($req->jsonBody??null)?$req->jsonBody:[];
-    $tests=is_array($payload['tests']??null)?$payload['tests']:[];
-    $questions=is_array($payload['questions']??null)?$payload['questions']:[];
-    $links=is_array($payload['test_questions']??null)?$payload['test_questions']:[];
-    $dryRun=(bool)($payload['dry_run']??false);
-    $errors=[];$createdTests=0;$createdQuestions=0;$createdLinks=0;
-    try{
-        $subjects=SupabaseRest::select('subjects?select=id,name,slug,code&limit=1000');
-        $byKey=[]; foreach($subjects as $s){foreach(['id','slug','code','name'] as $k){$v=trim((string)($s[$k]??''));if($v!=='')$byKey[mb_strtolower($v)]=(string)$s['id'];}}
-        $modules=SupabaseRest::select('modules?select=id,name,slug,subject_id&limit=2000'); $moduleByKey=[]; foreach($modules as $m){foreach(['id','slug','name'] as $k){$v=trim((string)($m[$k]??''));if($v!=='')$moduleByKey[mb_strtolower((string)$m['subject_id']).'|'.mb_strtolower($v)]=(string)$m['id'];}}
-        $topics=SupabaseRest::select('topics?select=id,name,slug,module_id&limit=5000'); $topicByKey=[]; foreach($topics as $t){foreach(['id','slug','name'] as $k){$v=trim((string)($t[$k]??''));if($v!=='')$topicByKey[mb_strtolower((string)$t['module_id']).'|'.mb_strtolower($v)]=(string)$t['id'];}}
-        $testIds=[];
-        foreach($tests as $i=>$row){
-            $title=trim((string)($row['title']??''));
-            $subjectKey=trim((string)($row['subject_key']??$row['subject_slug']??$row['subject']??$row['subject_id']??''));
-            if($title===''){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'title is required'];continue;}
-            $sid=$subjectKey!==''?($byKey[mb_strtolower($subjectKey)]??null):null;
-            if($subjectKey!==''&&!$sid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'subject not found: '.$subjectKey];continue;}
-            $moduleKey=trim((string)($row['module_key']??$row['module_slug']??$row['module']??$row['module_id']??'')); $mid=$moduleKey!==''?($moduleByKey[mb_strtolower((string)$sid).'|'.mb_strtolower($moduleKey)]??null):null; if($moduleKey!==''&&!$mid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'module not found: '.$moduleKey];continue;}
-            $topicKey=trim((string)($row['topic_key']??$row['topic_slug']??$row['topic']??$row['topic_id']??'')); $tid=$topicKey!==''?($topicByKey[mb_strtolower((string)$mid).'|'.mb_strtolower($topicKey)]??null):null; if($topicKey!==''&&!$tid){$errors[]=['sheet'=>'tests','row'=>$i+2,'error'=>'topic not found: '.$topicKey];continue;}
-            $id=trim((string)($row['id']??''));
-            $sourceKey=trim((string)($row['test_key']??''));
-            $data=['title'=>$title,'subject_id'=>$sid,'module_id'=>$mid,'topic_id'=>$tid,'time_limit_sec'=>($row['time_limit_sec']??null)===''?null:(int)$row['time_limit_sec'],'max_attempts'=>($row['max_attempts']??null)===''?null:(int)$row['max_attempts'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
-            if($id!=='')$data['id']=$id;
-            if(!$dryRun){$x=SupabaseRest::insert('tests',$data,true);$id=(string)($x[0]['id']??'');}
-            if($id!==''){$testIds[(string)($row['id']??$title)]=$id;if($sourceKey!=='')$testIds[$sourceKey]=$id;$createdTests++;}
-        }
-        $questionIds=[];
-        foreach($questions as $i=>$row){
-            $text=trim((string)($row['text']??''));
-            $subjectKey=trim((string)($row['subject_slug']??$row['subject']??$row['subject_id']??''));
-            if($text===''){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'text is required'];continue;}
-            $sid=$subjectKey!==''?($byKey[mb_strtolower($subjectKey)]??null):null;
-            if($subjectKey!==''&&!$sid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'subject not found: '.$subjectKey];continue;}
-            $moduleKey=trim((string)($row['module_slug']??$row['module']??$row['module_id']??'')); $mid=$moduleKey!==''?($moduleByKey[mb_strtolower((string)$sid).'|'.mb_strtolower($moduleKey)]??null):null; if($moduleKey!==''&&!$mid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'module not found: '.$moduleKey];continue;}
-            $topicKey=trim((string)($row['topic_slug']??$row['topic']??$row['topic_id']??'')); $tid=$topicKey!==''?($topicByKey[mb_strtolower((string)$mid).'|'.mb_strtolower($topicKey)]??null):null; if($topicKey!==''&&!$tid){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'topic not found: '.$topicKey];continue;}
-            $type=trim((string)($row['type']??'theory'));if(!in_array($type,['mcq','open','problem','theory','practical'],true)){$errors[]=['sheet'=>'questions','row'=>$i+2,'error'=>'invalid type: '.$type];continue;}
-            $options=$row['options']??[];
-            if(is_string($options)){try{$options=json_decode($options,true,512,JSON_THROW_ON_ERROR);}catch(\Throwable $e){$options=array_values(array_filter(array_map('trim',explode('|',$options))));}}
-            if(!is_array($options))$options=[];
-            $id=trim((string)($row['id']??''));
-            $sourceKey=trim((string)($row['question_key']??''));
-            $data=['subject_id'=>$sid,'module_id'=>$mid,'topic_id'=>$tid,'type'=>$type,'text'=>$text,'answer'=>($row['answer']??null)===''?null:(string)$row['answer'],'options'=>$options,'difficulty'=>($row['difficulty']??null)===''?null:(int)$row['difficulty'],'is_published'=>filter_var($row['is_published']??true,FILTER_VALIDATE_BOOLEAN)];
-            if($id!=='')$data['id']=$id;
-            if(!$dryRun){$x=SupabaseRest::insert('questions',$data,true);$id=(string)($x[0]['id']??'');}
-            if($id!==''){$questionIds[(string)($row['id']??$text)]=$id;if($sourceKey!=='')$questionIds[$sourceKey]=$id;$createdQuestions++;}
-        }
-        foreach($links as $i=>$row){
-            $testRef=trim((string)($row['test_key']??$row['test_id']??$row['test']??''));$questionRef=trim((string)($row['question_key']??$row['question_id']??$row['question']??''));
-            $tid=$testIds[$testRef]??$testRef;$qid=$questionIds[$questionRef]??$questionRef;
-            if($tid===''||$qid===''){$errors[]=['sheet'=>'test_questions','row'=>$i+2,'error'=>'test_id and question_id are required'];continue;}
-            if(!$dryRun){SupabaseRest::insert('test_questions',['test_id'=>$tid,'question_id'=>$qid,'order_index'=>(int)($row['order_index']??$i)],true);$createdLinks++;}
-        }
-        Response::success(['dry_run'=>$dryRun,'created'=>['tests'=>$createdTests,'questions'=>$createdQuestions,'test_questions'=>$createdLinks],'errors'=>$errors],$req->requestId,$dryRun?200:201);
-    }catch(\Throwable $e){\Medbiohim\Support\Logger::error('admin_import_failed',['requestId'=>$req->requestId,'error'=>$e->getMessage()]);Response::error('IMPORT_ERROR','Не удалось импортировать данные',$req->requestId,503);}
-});
-
 // Safe content operations: archive instead of destructive delete, move across hierarchy, and restore snapshots.
 $router->post('/api/v1/admin/content/archive',static function(Request $req,array $params)use($adminGridGate):void{
  if(!$adminGridGate($req))return; $p=is_array($req->jsonBody??null)?$req->jsonBody:[]; $table=(string)($p['table']??''); $id=(string)($p['id']??''); if(!in_array($table,['tests','questions'],true)||$id===''){Response::error('VALIDATION_ERROR','table and id required',$req->requestId,422);return;}

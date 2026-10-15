@@ -42,6 +42,11 @@ function sameSet(a: string[], b: string[]): boolean {
   return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
 }
 
+function answerCorrect(q: any, value: string | undefined): boolean {
+  const expected = correctLabels(q);
+  return expected.length > 0 && sameSet(parseSelection(value), expected);
+}
+
 function answerDisplay(q: any, value: string | undefined): string {
   const selected = parseSelection(value);
   if (!selected.length) return "";
@@ -144,7 +149,7 @@ export default function PreparationPage() {
 
   function refreshSequentialProgressOptimistic() {
     if (mode !== "sequential") return;
-    setBankProgress((prev) => {
+    setBankProgress((prev: any) => {
       if (!prev) return prev;
       const answered = Math.min(Number(prev.total ?? questions.length), Number(prev.answered ?? 0) + 1);
       return {

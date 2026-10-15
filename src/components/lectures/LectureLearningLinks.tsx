@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { BookOpen, ExternalLink, FileText, Images, Loader2 } from "lucide-react";
 import { getMaterialFileUrl } from "@/lib/api";
 import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
@@ -147,12 +148,12 @@ export function LectureLearningLinks({ relatedLearning }: Props) {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold">Препараты ({preparations.length})</h3>
-              <a
+              <Link
                 href="/subjects/histology?tab=trainer"
                 className="text-xs font-semibold text-[var(--primary)] hover:underline"
               >
                 Открыть весь тренажёр
-              </a>
+              </Link>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {preparations.map((item, i) => (

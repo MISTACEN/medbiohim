@@ -627,7 +627,7 @@ export function RichLectureEditor({
     }
   }
 
-  function useSearchResult(item: SearchResult) {
+  function handleSearchResult(item: SearchResult) {
     rememberSelection();
     if (mediaTab === "image") {
       insertAtCursor('<p><img src="' + item.url + '" alt="' + esc(item.title) + '" title="' + esc(item.title) + '" /></p>');
@@ -767,7 +767,7 @@ export function RichLectureEditor({
           <input value={query} onChange={(event)=>setQuery(event.target.value)} placeholder={subject?.name ? subject.name+" · "+(topic||"тема"):"Тема, препарат, процесс…"} onKeyDown={(event)=>{if(event.key==="Enter")void searchWeb()}}/>
           <button type="button" onClick={()=>void searchWeb()} disabled={searching}><Search className="h-4 w-4"/>{searching?"Ищу…":"Найти в интернете"}</button>
         </div>
-        {results.length>0&&<div className="lecture-search-results">{results.map((item,i)=><button key={i} type="button" className="lecture-search-result" onClick={()=>useSearchResult(item)}>{item.thumb&&<img src={item.thumb} alt="" />}{item.isVideo&&<Video className="h-4 w-4"/>}<span>{item.title}</span></button>)}</div>}
+        {results.length>0&&<div className="lecture-search-results">{results.map((item,i)=><button key={i} type="button" className="lecture-search-result" onClick={()=>handleSearchResult(item)}>{item.thumb&&<img src={item.thumb} alt="" />}{item.isVideo&&<Video className="h-4 w-4"/>}<span>{item.title}</span></button>)}</div>}
         <div className="lecture-editor-urlrow">
           <input value={page} onChange={(event)=>setPage(event.target.value.replace(/\D/g,""))} inputMode="numeric" placeholder="Стр. PDF"/>
           <span>страница PDF</span>

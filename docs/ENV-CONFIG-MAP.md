@@ -23,8 +23,9 @@ The platform is split into:
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Publishable/legacy anon key; browser-safe by design, subject to RLS. |
 | NEXT_PUBLIC_APP_NAME | Frontend application name. |
 | SPACEWEB_API_ORIGIN | Server-only Vercel → SpaceWeb PHP API target; must use valid HTTPS when carrying authenticated traffic. |
-| CLOUDFLARE_API_ORIGIN | Optional server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. |
+| CLOUDFLARE_API_ORIGIN | Server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. The migration shadow hostname is rejected in Production and remains available to the isolated Preview acceptance environment. |
 | MEDBIOHIM_CF_FIRST | Preview-only opt-in. When exactly `true`, request Cloudflare first and use safe SpaceWeb fallback cases. Keep `false` in Production until the canary is accepted. |
+| MEDBIOHIM_API_MODE | Production cutover switch. Set to `cloudflare` only after a production Worker and parity checks are ready; otherwise the proxy uses legacy mode and requires a valid HTTPS `SPACEWEB_API_ORIGIN`. |
 | GEMINI_API_KEY | Optional Vercel-side Gemini key for the proxy route. |
 | GEMINI_VERCEL_PROXY_SECRET | Optional server-to-server secret protecting the Gemini proxy. |
 
