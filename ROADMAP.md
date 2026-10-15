@@ -1,0 +1,3154 @@
+## Verified legacy archive migration pass — 2026-10-14
+
+- New upload `public_html-31(1).zip`: ZIP integrity check passed; 1,088 entries; 162,345,152 uncompressed bytes; SHA-256 `3697cc5ba99b6cbc0c157cd40614cbf4b807227d77e6364f21f5dcf18c264b68`.
+- Syntax checked 192 PHP entries across the archive's root copy and `spaceweb_upload`: 191 passed; one root-copy parse error at `src/Repositories/HomeworkRepository.php:22`. Its SQL timezone literal is not escaped inside the PHP single-quoted query string. The separate `spaceweb_upload` counterpart is older and omits the `due_date` expression; the current GitHub `backend/src/Repositories/HomeworkRepository.php` contains the escaped SQL literal. Root and deployed-folder route registries differ, so do not replace either copy wholesale.
+- **SRS migration:** ported the legacy service to `integrations/cloudflare-api/src/srs.js`, covering `GET /srs/summary`, `POST /srs/ensure`, `GET /srs/due`, `GET/POST /srs/cards`, `POST /srs/review`, and `DELETE /srs/cards/{id}`. Reads and writes use the authenticated caller JWT and explicit `user_id` scoping, with the live Supabase RLS policies remaining authoritative.
+- **Binary material compatibility route:** added `GET /api/v1/materials/{id}/file`; it resolves the material through the existing authorization-checked B2 signing helper, streams content without returning the signed URL, and supports a single byte range. It safely fails when mappings, credentials or upstream file access are unavailable.
+- **Latest Worker gate:** Cloudflare Build `67d6a594-2b6b-4474-bbef-c63e87e0714e`, source commit `bc3b6aef2371f352395fb704099d86bec9295276`, `npm test` **297 passed / 0 failed**, Wrangler dry-run passed, deploy command completed; deployed Shadow Worker version `d0e5d5cd-637e-4fb0-a866-c551c1b941ba`. This does not mean the new flows passed authenticated live-user acceptance or that the physical files are present.
+- Archive `.env` values were not printed, committed, or installed. No Vercel Production, DNS or PHP production-routing cutover was performed.
+- Remaining gates: run signed-in SRS acceptance against live Supabase/RLS; verify B2 signer and real material objects; upload/reconcile the legacy archive and 206 histology mappings; keep Upstash Blob primary for active media and Redis cache-only; fix the archive-only PHP syntax defect before anyone deploys that root tree.
+
+---
+## Storage architecture and current execution checkpoint — 2026-10-14
+
+The storage architecture now includes four services, with separate responsibilities. Do not add Cloudflare R2 or another storage provider unless the user changes this decision again:
+
+- **Supabase** — relational source of truth: accounts, authorization/RLS, metadata, application records and relationships.
+- **Upstash Blob (private bucket `medbiohim-files`)** — primary application delivery store for active binary media: histology photographs, electronograms, lecture media and documents. Never make course files public just to simplify delivery.
+- **Backblaze B2 (bucket `medbiohim-files`, existing legacy configuration to verify)** — large archive/original-source store and migration fallback. Keep B2 support until files are reconciled and verified; do not delete or overwrite source archives. Decide which assets should remain B2-only versus be copied to Blob based on real inventory, size and access requirements.
+- **Upstash Redis (`medbiohimcache`, EU)** — short-lived cache only. Current Worker code scopes trainer-feed cache keys by user and filters, TTL is 15 seconds, and cache failures are fail-open. Never cache file bytes, credentials or answer keys.
+
+Current source includes `src/blob-storage.js`, `src/redis-cache.js`, and `src/trainer-file.js`: the trainer image handler checks private Blob objects and falls back to the B2 signer during migration. This is source-level integration, not proof that either provider's live media delivery is fully validated.
+
+**Outstanding execution gates (not done):**
+1. Shadow Worker still needs `UPSTASH_BLOB_TOKEN` and `UPSTASH_REDIS_REST_TOKEN` securely installed; do not place either value in Git or public frontend variables.
+2. The private Blob bucket was last verified empty. The 357-entry histology archive has not been bulk-uploaded, and 206 published MBH trainer cards still need verified object-key mapping/source-file metadata reconciliation.
+3. Five AI provider secret names were present in a prior inventory, but no signed-in live generation was verified; `OPENAI_API_KEY` is not confirmed installed.
+4. No production routing cutover. Preserve the current frontend + legacy PHP backend until shadow API routes, media delivery and RLS pass authenticated acceptance tests.
+
+**Execution environment note:** a fresh temporary Upstash Box was created for a test attempt, but the GitHub clone failed because the box had no authenticated GitHub credentials; no files or production resources were changed by that attempt. Continue via authenticated GitHub/Cloudflare tooling or provision the required secrets through the Cloudflare dashboard. Never invent values or claim a test/deploy that did not run.
+
+---
+
+## Legacy PHP archive reviewed — 2026-10-14
+
+- Newly uploaded `public_html-31(1).zip` integrity check passed; archive SHA-256: `3697cc5ba99b6cbc0c157cd40614cbf4b807227d77e6364f21f5dcf18c264b68`; 1,088 ZIP entries and 162,345,152 uncompressed bytes.
+- PHP syntax lint ran on all 192 PHP entries (100 root copy + 92 `spaceweb_upload` copy): 191 passed, 1 failed. Root `src/Repositories/HomeworkRepository.php:22` contains a single-quoted PHP string around SQL that itself contains `'Asia/Vladivostok'`; the equivalent deployed-folder copy is older and lacks the due_date expression. Do not deploy the broken root file as-is.
+- Root and `spaceweb_upload` copies are not identical; route registries and per-file route declarations differ. Preserve the currently working SpaceWeb contract and reconcile route-by-route rather than replacing one tree with the other.
+- Ported the PHP `SrsService.php` contract into Worker `src/srs.js` and wired the seven route/method combinations under `/api/v1/srs`. Changes: `5556e238` (service), `5fdd07ab` (tests), `83dfdc07` (routes), `ff55f60b` (test-fixture correction). First Worker build found one test-fixture mistake (287 pass / 1 fail); the test was corrected and the new build is queued. Do not mark this port verified until that build succeeds.
+- Archive `.env` exists; its values were intentionally not printed or copied. Test/runtime credentials have not been installed by this archive inspection.
+- Production PHP/frontend and routing remain unchanged. Next ports must compare input validation, response shape/status, ownership/RLS and error behavior against the archive before completion.
+
+---
+
+## Latest verified checkpoint — 2026-10-14 (after account/training/textbook route port)
+
+- 🟢 Cloudflare Worker build/deploy passed: commit `bd787c12cd324c66dfcf5260b5753e74b8b60f0b`, version `f27f713e-e1cc-44ad-95b3-266f64a7885c`, **276/276 tests passed**.
+- 🟢 Public `medbiohim.vercel.app/api/v1/health` returns the Worker `mode: shadow` response. This confirms Vercel's current API proxy routes to the Shadow Worker even though the Worker is labelled shadow; don't assume the PHP API is the active path.
+- 🟢 Added current frontend routes for account settings, GET training list, and histology textbook listing/private download. Public smoke checks without a bearer token return 401 rather than 501. Signed-in runtime behavior still needs E2E verification.
+- 🟢 Applied `public.user_preferences` in Supabase with RLS and owner-only CRUD policies; the repo migration filename matches applied version `20261013171940`.
+- 🟡 Private B2 textbook listing/streaming has mock-backed tests, but actual files were not found in the checked Supabase Storage or Upstash Blob inventories. Missing PDFs fail explicitly, not as empty success. Training POST/detail/answer/cancel/complete still need parity.
+- 🔴 Trainer media incident remains open: 206 published MBH cards have no `source_file_id`; `files` has only one deleted stub. Preparations use `histology-photo-…` hash keys but `preparation.imagePath` original JPEG names; electronograms use `electronograms/images/*.png`. Verify/upload real objects and finish key mapping before calling the 236 historical image 503s fixed.
+- 🟡 Five server-side AI provider secret bindings exist, but no signed-in real generation has been verified. `UPSTASH_REDIS_REST_TOKEN` and `UPSTASH_BLOB_TOKEN` remain missing from Shadow and must be added through the Cloudflare Dashboard. Redis remains metadata cache only.
+- 🟡 Supabase security advisor flags the sanitized trainer view as SECURITY DEFINER, four authenticated SECURITY DEFINER RPCs, and disabled leaked-password protection. Review grants/RLS before semantics-changing remediation.
+- 🔒 No extra branch created. No Vercel env, DNS, or custom-domain setting was changed by this pass; live Vercel health confirms the existing public API proxy is already forwarding to Shadow. Audit: [UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+---
+
+## Verified state — 2026-10-14: AI execution + Upstash storage/cache implementation pass
+
+- 🟡 **AI message execution ported in source:** authenticated `POST /api/v1/ai/conversations/{id}/messages` now calls the provider pipeline rather than returning a fixed 501. Caller JWT + explicit user filters are used for Supabase writes. Groq, Mistral, OpenRouter, region-gated Gemini and GigaChat OAuth adapters have source support and configured-provider fallback. **Not live-verified**: current Worker Build/tests have not succeeded after these commits, and the required provider secrets were not installed.
+- 🟡 **Storage/cache code ported:** `@upstash/blob` private adapter is added; trainer image route prefers a present Blob object, then falls back to B2; published MBH cards can use their canonical `source_key` during the missing-`source_file_id` backfill. Redis caches only user-scoped sanitized trainer metadata for 15 seconds; it never stores image bytes or answer keys.
+- 🔴 **Current shadow Worker secret inventory:** the Cloudflare API lists only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. No `B2_KEY_ID`, `B2_APPLICATION_KEY`, `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, or AI provider secret is configured.
+- 🔴 **Credentials still pending:** the private Blob bucket exists but is empty; `UPSTASH_BLOB_TOKEN` is not available in the old `.env`. The Redis DB exists but its REST token is not configured in Worker. B2 and AI provider secrets in the legacy `.env` were not transferred because the secret write was blocked by connected security controls. Add secrets via Cloudflare's Worker secret manager.
+- 🔴 **No production cutover:** latest known shadow deployment is still from 2026-10-13 15:14 UTC; current `main` changes are not proven deployed. Vercel check is still failing at `build-rate-limit`. 206 trainer cards still lack `source_file_id`; bucket has 0 objects.
+- Details: [uploaded archive and console-log audit](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+## Verified state — 2026-10-14: legacy secrets and storage split
+
+Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+- 🟢 **Shadow Worker secret bindings saved:** Supabase URL + anon key; Backblaze B2 key ID/application key; AI keys for Groq, Gemini, GigaChat, Mistral and OpenRouter. No Supabase service-role/secret DB key was copied, and no secret value was committed.
+- 🟡 **Not yet end-to-end verified:** saved bindings do not prove AI generation or a real image download works. The latest observed 100% shadow deployment predates this configuration update; confirm the deployed runtime before relying on these secrets.
+- 🔴 **Media migration remains:** 206 published histology cards still have no `source_file_id`; all 206 have source keys, but actual object presence in B2 has not been verified. Backblaze is configured for the existing B2 path; Upstash Blob remains empty and its bucket token is not configured.
+- 🟡 **Upstash Redis:** `medbiohimcache` exists in EU and has 21 existing `mbhdeploy:v1:*` keys. Those keys were left untouched. Redis REST token could not be installed in this pass; Redis is not wired into runtime yet.
+- **Architecture rule:** Supabase = relational data/metadata/RLS; private B2 or Upstash Blob = image/document/video bytes; Redis = bounded metadata/cache only, never binary media.
+- 🔒 **Production stays on the legacy backend:** no DNS, Vercel production API mode, production Worker, or production cutover was changed.
+
+## Verified state — 2026-10-14: uploaded archive and production console log
+
+Full evidence and next gates: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+
+- 🟡 **Credentials not copied from the uploaded archive:** the ZIP has no populated runtime `.env`; its test URLs are fixtures, not valid project credentials. Never copy placeholders to live bindings or commit keys.
+- 🟡 **Worker credentials:** Cloudflare shadow already has `SUPABASE_URL` and `SUPABASE_ANON_KEY` binding names. Stored values were not read; secret sync was not applied. Do not treat credentials as repaired.
+- 🔴 **Browser errors reproduced in the supplied log:** 250 API error records: 247 HTTP 503 and 3 HTTP 501; 236 of those 503 responses affect trainer preparation/electronogram images. Prioritize trainer-image transport/object lookup.
+- 🔴 **Auth diagnostics:** current shadow telemetry shows `TimeoutError` during Supabase Auth validation on 2026-10-13 14:37 UTC despite an HTTPS URL matching the expected project hostname. Earlier login events were redirect-classified. Diagnose from live connectivity and Supabase Auth logs instead of swapping keys blindly.
+- 🔴 **Trainer media evidence from live Supabase:** 206 published cards (178 preparations, 28 electronograms) have `source_key` and a preparation image path, but all 206 have `source_file_id IS NULL`; `public.files` has only 1 row. `trainer-file.js` consequently returns `503 MEDIA_NOT_MIGRATED` before it can sign a download. The active Worker also lacks `B2_KEY_ID`, `B2_APPLICATION_KEY`, and `B2_BUCKET`; actual files + mapping + B2 runtime config are all required, not just an anon key.
+- 🔴 **Missing contracts:** `GET /api/v1/histology/source-materials`, `GET /api/v1/trainings`, and `GET /api/v1/settings/account` each returned 501 in the uploaded browser log.
+- 🟡 **File storage:** Cloudflare R2 is not enabled in the connected account (API error 10042). Do not assume the archived `FILES_BUCKET` binding exists. Decide whether to enable R2 or keep private Backblaze B2; these are separate systems.
+- 🟡 **Non-secret config prepared:** added `B2_BUCKET = "medbiohim-files"` to `integrations/cloudflare-api/wrangler.toml` (commit `c0057bc9e1a1c569ba4e0f08c32aa1867dfb41de`). Cloudflare Build/deployment after this commit is **not yet verified**; no live B2 credentials were added.
+- 🔒 **Scope:** shadow telemetry and read-only Supabase metadata were inspected. No production traffic/DNS route, Vercel environment, Supabase schema/RLS, Cloudflare secret value, or production Worker was changed.
+
+## Verified state — 2026-10-14 (AI history and calculator API deployed to shadow)
+
+- 🟢 **Admin access:** user confirmed that sign-in using the existing `@hotmail.com` account now opens the admin interface. No duplicate role assignment was made.
+- 🟢 **Calculators:** the PHP calculator catalog/formulas have parity in `integrations/cloudflare-api/src/calculators.js`; the Worker exposes authenticated catalog, detail, and compute routes for all 8 calculators. The full Worker Build passed after the calculator tests were added.
+- 🟢 **AI provider status and conversation history:** the Worker now handles authenticated `GET /api/v1/ai/providers`, `GET/POST /api/v1/ai/conversations`, `GET/DELETE /api/v1/ai/conversations/{id}`. Reads/writes use the caller's Supabase JWT and explicit owner filtering; Supabase RLS is enabled for `ai_conversations` and `ai_messages` and has been verified against `auth.uid() = user_id` owner policies. The live provider constraint now allows `auto`, `groq`, `gigachat`, `gemini`, `mistral`, and `openrouter`, matching the supported PHP provider list.
+- 🟢 **Latest Worker build/deploy:** commit `7db8224aa6dab6ea538f5995e0566be69fbc8265` completed Workers Build successfully (Node tests plus Wrangler deploy dry-run). Cloudflare version `0f2871b2-abeb-4e38-940f-a5d1225b816b` is deployed at 100% of `medbiohim-api-shadow`. This is still a shadow Worker deployment—not production cutover.
+- 🟡 **AI answer generation deliberately remains unavailable in the Worker:** `POST /api/v1/ai/conversations/{id}/messages` authenticates and then returns `AI_EXECUTION_NOT_MIGRATED` (501); no fake assistant response is produced. Current Worker settings expose only Supabase Auth, origin, and rate-limit bindings—not LLM provider secret bindings. Before porting this route, configure provider credentials securely, implement region-aware provider fallback, timeouts/retries and per-user limits, then prove it end-to-end. Do not copy provider keys into tracked files or logs.
+- 🟡 **Open runtime diagnosis:** old `/presence/heartbeat` redirect errors and `/trainers/feed/*/image` authentication timeouts found in telemetry belong to older Worker versions. They are not proof of a current-version failure, but absence of newer events is not proof that those issues are fixed. Reproduce with current version before closing.
+- 🟡 **Remaining backend parity:** prior `/subjects`, subject-detail, academic-state, schedule and presence 503/500 symptoms still need a fresh post-deploy reproduction and log correlation.
+- 🔒 **Traffic boundary unchanged:** do not enable production routing, change DNS, or switch the frontend API base to this Worker until route-by-route E2E checks, RLS/data contracts and write-path safety are accepted.
+
+## Current state — 2026-10-14 (admin login confirmed; calculator API migrated)
+
+- 🟢 **Admin sign-in:** owner confirmed the `@hotmail.com` account now opens the admin interface after a hard refresh and a fresh login. The database role was already assigned correctly; no duplicate role assignment was made.
+- 🟢 **Cloudflare calculator routes:** ported the PHP `CalculatorsService` catalog and formulas into `integrations/cloudflare-api/src/calculators.js`; implemented authenticated `GET /api/v1/calculators`, `GET /api/v1/calculators/{id}`, and `POST /api/v1/calculators/{id}/compute`. Preserved the PHP-style payload shape, category groups, formula labels, validation errors and generic computation failures. All requests still validate the caller's Supabase bearer token; no service-role key or database write was added.
+- 🟢 **Verification:** Cloudflare Workers Build for main commit `f987acce68925af18cf5dee25e9185e4401a43b0` finished with outcome `success`. Its logs show the new calculator formula, catalog, authentication and method-guard tests passing; `npm run build` runs the entire Node test suite and a Wrangler `deploy --dry-run`. The worker's newest deployment is in shadow mode; this is not production cutover.
+- 🟡 **Still not migrated:** `/api/v1/ai/*` remains a route-family gap (501 `ROUTE_NOT_MIGRATED`) and needs a careful port of provider availability, per-user conversations/messages, usage limits, provider secrets and failure behavior. Do not add fake success responses or expose provider secrets.
+- 🟡 **Still under diagnosis:** prior `/subjects`, academic-state, schedule, and presence 503/500 reports need current post-fix runtime evidence. Treat old log entries as historical until correlated with the active Worker version.
+- 🔒 **Production gate unchanged:** this is an incremental shadow migration. Do not switch Vercel production traffic to Cloudflare or alter production environment variables, DNS, Supabase RLS, or credentials until authenticated real-user read/write contracts and route parity are accepted.
+
+### Current release gate — 2026-10-13, Cloudflare Shadow verified
+
+- 🟢 **Latest confirmed Shadow build:** source commit \`4effc4e59f2e1cccad4166f4e306e218f0ee344b\`; Cloudflare Build \`d35cdff6-696c-476a-8b8a-e3e058fb4c8f\`; outcome \`success\`; Worker version \`0c4d9644-7122-4b16-92f7-3670614b0e52\`. A duplicate build for the same source also succeeded.
+- 🟢 **Worker gate:** \`npm test\` **231 passed, 0 failed**; Wrangler 4.149.0 dry-run passed; Shadow deployment completed. This is the current checked source count; older roadmap entries with 134/135/225 tests are historical snapshots.
+- 🟢 **Verified deployed read/write paths:** materials listing/detail/source metadata; trainer feed/detail and answer submission through the existing scoring RPC; personal notes/favorites; lecture mini-quiz read/check; published-question report submission; scoped file metadata and private download handler; material file-URL and trainer image handlers.
+- 🟢 **Test attempts are not disabled:** the live Supabase migration \`secure_test_answer_review_20261013\` is applied. Start/save/finish use the narrow \`medbiohim_start_test_attempt\`, \`medbiohim_save_test_answer\`, and \`medbiohim_finish_test_attempt\` RPCs, not direct table writes. The RPCs are SECURITY DEFINER with authenticated execution and guarded attempt ownership/snapshot behavior. No real student token was used in this pass; browser/user acceptance remains separate.
+- 🟡 **File downloads remain configuration-gated:** current Worker settings contain no \`B2_*\` secrets/bindings. File metadata is scoped and download code fails closed if private B2 signing is unavailable. Do not describe real downloads as verified until B2 secrets and live file/object-key mappings are securely configured and tested.
+- 🟡 **Legacy files:** \`GET /api/v1/materials/{id}/file\`, \`GET /api/v1/histology/source-file\`, and \`POST /api/v1/files/upload\` are still open migration items. Worker cannot read SpaceWeb's local filesystem; migration requires an inventory + checksum-verified copy, plus private B2 upload/access handling.
+- 🟡 **Frontend/Preview:** Preview and browser parity must be rechecked against this Worker version before switching the frontend mode. Vercel Production remains on the legacy backend; its health endpoint previously returned \`503 INSECURE_BACKEND_ORIGIN\`. No Production variables, DNS or traffic route were changed here.
+- 🔒 **Production is unchanged:** no Cloudflare production cutover, Vercel Production deployment, Supabase schema/RLS mutation, B2 secret write, or Redis resource creation was performed. No valid student JWT was supplied, so live user RLS/media smoke tests remain outstanding.
+
+
+
+## API migration — Pass 19: authenticated curriculum read — 2026-10-13
+
+- 🟢 Added `GET /api/v1/curriculum` to the Cloudflare Worker. It mirrors PHP `ContentStore::listCurriculum()` by returning `{items}` from the existing caller-JWT/RLS-aware subject-list helper. It does not require the optional `site_content.curriculum` JSON document, so a missing CMS document cannot make this route fail unlike the broader subject catalog.
+- 🟢 Added the route to the authenticated GET contract tests and method-guard tests.
+- 🟢 Exact-source verification after the change: `npm test` **136 passed, 0 failed**; Wrangler 4.149.0 `npm run build` dry-run passed (213.39 KiB, 31.53 KiB gzip). Bindings show login/registration limiter enforcement still defaulted off.
+- 🟡 Not yet confirmed: Cloudflare's auto-build/deployment for this latest source commit, and real authenticated RLS/response comparison. No live data result is claimed.
+- 🔒 No production routing change. Auth login/registration and test-attempt writes remain fail-closed. Do not treat mock limiter tests as a live 429 proof.
+
+---
+
+## Frontend route-parity audit — 2026-10-13
+
+- 🟢 Re-read current `src/lib/api.ts` and Worker router from `main`; recorded a prioritized caller-family gap matrix in `docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md`. It explicitly corrects stale historical statements that the shadow Worker is not deployed, and keeps production cutover prohibited.
+- 🔴 Large route parity gap remains. The frontend uses more API calls than the Worker has handlers: file uploads/downloads, homework create/submit, planner/attendance, community, settings/Telegram linking, mini-quiz/check/reports, trainer feed/answer, academic state/sync/AI plan, notes/favorites, preparation attempts, tickets/materials, group/subject mutations and most admin routes remain cutover blockers.
+- 🔒 Do not fill those gaps by forwarding to the legacy HTTP origin or by using a Supabase service-role key as a shortcut. Each route needs exact verb/payload/response compatibility, caller JWT ownership/group checks, RLS/schema verification and tests.
+- 🟢 Current fetched Worker source snapshot: `npm test` 135/135; `npm run build` Wrangler dry-run passed. This is the exact run performed in this pass; prior inventory notes mentioning 139 tests refer to a different snapshot and are not being represented as the same run.
+- 🔴 Auth limiter still lacks a reproducible live 429 proof; login/registration gate stays off. Test-attempt writes stay blocked. Vercel Production remains unchanged.
+
+---
+
+## Exact-source verification pass — 2026-10-13
+
+- 🟢 Retrieved the current `main` versions of all Worker source modules, all six test files, `package.json`, and `wrangler.toml` through GitHub and staged them in a disposable Node box for verification. This pass used the current source SHAs from `main`, rather than the older mixed test tree noted in previous history.
+- 🟢 `npm test`: **135 tests passed, 0 failed** against the retrieved Worker source.
+- 🟢 `npm run build`: Wrangler 4.149.0 dry-run passed; upload estimate 212.79 KiB (31.50 KiB gzip). Output confirms the two native rate-limit bindings and the default `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=false` setting.
+- 🟢 Cloudflare Workers Builds history now shows the latest documentation commit `7245d0c21e00af2c922ae9cf4317bacf0d26b03d` completed with outcome `success`. This verifies the build for that commit, not a production cutover.
+- 🟡 An outbound live probe initiated from the Cloudflare management execution environment returned 403 for every requested worker path; this environment-level response did not provide a usable Worker HTTP status/body, so it is not counted as an application smoke-test result.
+- 🔒 Auth rate limiting remains unverified: do not set `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=true`. The binding configuration and passing mock tests are not substitutes for a reproducible live 429.
+- 🔒 Test-attempt writes remain blocked pending private answer snapshots and guarded scoring. Production remains on legacy mode; no Vercel production variables were changed.
+
+**Next:** diagnose the native limiter's real-world threshold behavior in a controlled shadow environment; review frontend-to-Worker route parity; fix the Vercel project/team scope and legacy HTTPS health blocker before any migration cutover.
+
+---
+
+## Frontend API parity pass — authenticated groups read, 2026-10-13
+
+- 🟢 Migrated and deployed GET /api/v1/groups for the frontend listGroups() consumer. Uses Supabase Auth plus caller JWT/anon-key REST read and RLS, no service-role key; the group filter/order mirrors the PHP repository (active or NULL is_active, course then code).
+- 🟢 Added unit tests for caller-JWT forwarding, result shape/filter/order, RLS-denied fail-closed behavior, route authentication and method handling. Exact current Cloudflare Worker suite: 139/139 passing; Wrangler 4.149.0 dry-run build passes. Cloudflare Workers Build commit 6ea5331126d0dcb5b64817f39bfc9b80ea90088a succeeded.
+- 🟡 Live shadow smoke: GET /api/v1/groups without a token returns 401; POST returns 405. No real-user JWT/RLS data-read acceptance has been performed.
+- 🔴 Frontend parity audit shows remaining unmigrated API families: group mutations, file/media endpoints, community, account settings/Telegram links, presence, planner/attendance, homework creation/submission, quiz/report/trainer APIs, preparation sessions/grading, tickets/materials/lesson-plan, academic planning, notes/favorites, gradebook, and admin APIs.
+- 🔒 No Vercel Production environment, Supabase schema/RLS, DNS, or Telegram webhook was changed. Login/registration and attempt mutations stay closed. Cloudflare-only cutover remains blocked until route parity and authenticated role/RLS acceptance are complete.
+
+**Next:** finish authenticated group-read/RLS validation using a safe student and admin session, then migrate the next read-only frontend route family before any new state-changing API.
+
+---
+
+## Native rate-limit runtime proof + live shadow smoke — 2026-10-13
+
+- 🟢 Rechecked the deployed main shadow Worker over HTTPS from an allowed test client: GET /api/v1/health → 200; unauthenticated GET /api/v1/schedule → 401; GET /api/v1/subjects with a deliberately invalid Bearer token → 401 UNAUTHORIZED. The earlier 502 AUTH_UPSTREAM_ERROR is no longer reproduced by the live invalid-token path.
+- 🟢 Reproducibly exercised Cloudflare native rate-limit bindings in a temporary Worker that contained no Supabase credentials and did not call auth or create users. The binding configuration used the same login namespace (1001, 5/60s) and registration namespace (1002, 3/60s) as the main Worker. In 100 login probe requests, 10 returned 429; in 100 registration probe requests, 31 returned 429. Test requests reached Cloudflare locations EWR and IAD. This proves the bindings do produce a denied result/HTTP 429 at runtime, but the distribution across locations means the observed behavior must not be described as a strict global cap of exactly 5/3 requests.
+- 🟢 Removed the temporary probe Worker and disabled/removed its workers.dev subdomain after testing. No temporary public probe endpoint remains.
+- 🔒 Main Worker setting AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED deliberately remains false; auth routes still return 503. Rate-limit primitive verification does not make login/registration route parity ready: registration lacks PHP-compatible profile creation/default student-role assignment, and live valid-session/profile/RLS contract checks still need acceptance. Do not enable those routes yet.
+- 🔒 Test-attempt start/save/finish remain blocked with 503 TEST_ATTEMPT_SECURITY_NOT_READY until private answer snapshots and guarded scoring are implemented and verified.
+- 🟢 Current-source verification remains: Cloudflare Worker tests 126/126, frontend API failover tests 9/9, Wrangler 4.149.0 deploy --dry-run passes. Latest Cloudflare source bundle contains all six expected Worker modules. These local/source checks are not GitHub Actions results.
+- 🔴 Production still has not switched to Cloudflare-only mode. Do not change Vercel Production settings, Supabase schema/RLS, custom domains, DNS, or Telegram webhook until authenticated reads, write authorization, route contract parity, and rollback checks pass.
+
+**Next:** continue safe valid-session and read-only RLS acceptance for dashboard/schedule/subjects, map frontend API route coverage, and test the Vercel proxy in a separate Preview environment once its Vercel project scope is accessible. Leave the main auth gate false until the missing login/register contract and acceptance checks are complete.
+
+---
+
+## Full current-source verification and auth telemetry diagnosis — 2026-10-13
+
+- 🟢 Fetched every current file under `integrations/cloudflare-api/src` and `test`, plus `package.json` and `wrangler.toml`, from GitHub `main` into a temporary isolated workspace. Ran `npm test`: **126 passed, 0 failed** (Node.js v25.9.0). This replaces older 124/124 results.
+- 🟢 Ran `npm run build` in the same workspace. Wrangler `4.149.0 deploy --dry-run` passed, included all source modules, and recognized `AUTH_LOGIN_LIMITER` (5/60s) and `AUTH_REGISTER_LIMITER` (3/60s). Bundle: 205.01 KiB / 30.89 KiB gzip. It was a dry-run compilation, not by itself a deployment.
+- 🟢 Cloudflare API confirms Workers Builds connected to `MISTACEN/medbiohim`, branch `main`, root `integrations/cloudflare-api`, with `npm run build` and `npx wrangler deploy`. The latest code-containing build inspected (commit `7245d0c21e00af2c922ae9cf4317bacf0d26b03d`) succeeded; active deployment is 100% on version `b7b84bbe-34ec-4043-9ffb-f08894abe261`. The active bundle has all six expected modules/markers.
+- 🟢 Worker settings confirm both native rate-limit bindings are present and `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED=false`. The switch is intentionally false; presence of bindings and a dry run do not prove live 429 enforcement.
+- 🟡 Read-only Cloudflare telemetry for earlier auth attempts records `TypeError` during upstream fetch with sanitized category `redirect`; the configured URL was HTTPS and the hostname matched `gnobvyjywtqbdfeejxmf.supabase.co`. This rules out a simple project-host typo as an explanation, but does not determine the exact cause and does not validate the anon key. Never log raw errors, credentials, token values, or response bodies.
+- 🔴 Fresh public HTTP smoke requests from the current isolated test environment were blocked at Cloudflare edge with error 1010 before reaching the Worker. Therefore no new health/auth endpoint status can be claimed from this pass; use a permitted test origin or Cloudflare telemetry after a controlled attempt.
+- 🔒 No secret values were read, no Supabase schema/RLS was changed, and no Vercel Production variables or production traffic routing were changed. Login/registration and test-attempt writes remain fail-closed; Production remains on legacy mode.
+
+**Next safe pass:** (1) diagnose the upstream redirect-category failure without logging raw exception detail; (2) run a controlled 429 verification from an allowed test origin while the auth gate remains fail-closed by default; (3) verify live read-only Supabase/RLS routes using an authorized test session; (4) repeat Worker route-contract and frontend proxy acceptance; only then consider Preview, never Production first.
+
+---
+
+## Latest state reconciliation — 2026-10-13 (supersedes older conflicting status entries)
+
+- 🟢 Re-queried Cloudflare API for the live `medbiohim-api-shadow` script and settings. The returned bundle contains all six expected modules/markers: `index.js`, `supabase-auth.js`, `schedule-mutations.js`, `admin-schedule.js`, `test-attempts.js`, and `test-catalog.js`. This supersedes earlier entries claiming only two modules were deployed.
+- 🟢 Workers Builds configuration is present and enabled for GitHub repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`, build command `npm run build`, deploy command `npx wrangler deploy`. This supersedes earlier entries saying the build connection was absent. Build configuration being present does not alone prove the latest commit's build/deploy passed.
+- 🟢 Live Worker settings include `AUTH_LOGIN_LIMITER` and `AUTH_REGISTER_LIMITER` rate-limit bindings, plus the two Supabase secret binding names. Secret values were not read.
+- 🔒 `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED` remains `false` in tracked Wrangler configuration. Login and registration stay fail-closed until real HTTP 429 enforcement is demonstrated. The earlier 18-attempt probe did not yield 429; do not treat the bindings' presence as proof of enforcement.
+- 🔒 Test-attempt start/save/finish remain blocked by `TEST_ATTEMPT_SECURITY_NOT_READY` until private answer-snapshot storage and guarded scoring are implemented and verified.
+- 🟡 This environment's outbound DNS lookup for the workers.dev hostname failed during this pass, so no fresh live HTTP response codes are claimed here. The active script bundle/settings were verified through Cloudflare API instead.
+- 🔴 Production remains on legacy mode: do not change Vercel environment variables, production API routing, Supabase RLS/schema, DNS, or Telegram webhook. The Vercel production API previously returned `503 INSECURE_BACKEND_ORIGIN`; Vercel project-scope access and full route parity remain blockers.
+
+**Next actions:** obtain a reproducible isolated rate-limit test against a disposable/shadow target without exposing login/registration; diagnose the invalid-bearer `502 AUTH_UPSTREAM_ERROR` via safe upstream status/code diagnostics; run the full Worker suite against the exact current source and verify the latest Cloudflare build record; then resume authenticated read/RLS and frontend route-contract checks. No production cutover until every gate passes.
+
+---
+
+## Wrangler validation and deployment gate — 2026-10-13
+
+- 🟢 Ran Wrangler `4.149.0 deploy --dry-run` against a minimal isolated fixture using the committed TOML binding syntax. Wrangler recognized both `AUTH_LOGIN_LIMITER` (5 requests/60s) and `AUTH_REGISTER_LIMITER` (3 requests/60s). This validates the config schema and binding declaration, **not** the full application bundle.
+- 🔴 Cloudflare API confirms there is currently **no Workers Builds configuration associated with** `medbiohim-api-shadow` (API error 12040). Therefore GitHub auto-deploy for this Worker is not set up/confirmed. No attempt was made to deploy an unreviewed or incomplete bundle through the live script API.
+- 🔴 GitHub Actions package/smoke jobs continue to terminate before any runner step (`runner_id=0`, no runner name, no steps). The complete Worker test suite has not been run in GitHub Actions; only the isolated 9-test API failover suite and the minimal Wrangler fixture dry-run passed in this session.
+- 🔒 Live Worker code and secrets remain unchanged; no production route or database permission was changed.
+
+**Deployment acceptance criteria:** create/verify Cloudflare Workers Builds connection for repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`; obtain a successful full source build; deploy to shadow; confirm deployed modules include all six source files; verify invalid bearer returns 401 (not 502), login/register are rate-limited, CORS remains strict, and read-only Supabase calls behave correctly. Keep Vercel Production in legacy mode until these pass.
+
+## Rate-limit configuration added — 2026-10-13
+
+- 🟢 Updated `integrations/cloudflare-api/wrangler.toml` on `main` to declare Cloudflare native rate-limit bindings matching the existing Worker code: `AUTH_LOGIN_LIMITER` = 5 requests/IP/minute and `AUTH_REGISTER_LIMITER` = 3 requests/IP/minute. Namespace IDs are separate (`1001`, `1002`); thresholds are conservative initial values.
+- 🟢 Parsed the exact TOML configuration with Python `tomllib`; both bindings and thresholds validated.
+- 🟢 Re-ran isolated API failover tests in the sandbox: **9 passed, 0 failed**.
+- 🟡 GitHub Actions did start workflows for commit `9b2a0abb0f7917b817e0ac6ed61f876501d2269c`, but package and smoke jobs again failed before any steps with `runner_id=0`, empty runner name, and `steps=[]`. This is not evidence of a test assertion failure; CI runner provisioning remains unresolved.
+- 🔴 The config is committed but has **not yet been deployed** to Cloudflare. The active Worker will still lack these bindings until a successful Wrangler/Cloudflare Builds deployment is confirmed.
+- 🔴 Invalid-token auth smoke test still needs investigation: live Worker returned `502 AUTH_UPSTREAM_ERROR`. A request to update the deployed public Supabase anon-key binding was blocked by the tool safety layer, so no secret/config value was changed.
+- 🔒 Production Vercel mode remains unchanged; SpaceWeb HTTP fallback remains guarded. No Supabase schema/RLS or production traffic was changed.
+
+**Next:** resolve CI runner provisioning and complete a Wrangler validation/build for the entire Worker; deploy to the shadow Worker only, then re-test health, 401 invalid-token behavior, CORS, rate-limit 429 behavior, and read-only Supabase routes. Do not switch Vercel Production until all checks pass.
+
+## Live Worker reconciliation — follow-up verification, 2026-10-13
+
+- 🟢 Re-read the active Cloudflare script bundle through the Cloudflare API without exposing secret values. The live bundle is exactly **two modules**: `src/index.js` and `src/supabase-auth.js` (about 101.8 KB multipart payload).
+- 🔴 GitHub `main` currently has **six Worker source modules**: `index.js`, `supabase-auth.js`, `schedule-mutations.js`, `admin-schedule.js`, `test-attempts.js`, and `test-catalog.js`. The last four are absent from the deployed bundle, confirming source/deployment drift.
+- 🟡 Active Worker settings show the names `SUPABASE_URL` and `SUPABASE_ANON_KEY` as secret bindings, but their values were not read. The same settings do not show `AUTH_LOGIN_LIMITER` or `AUTH_REGISTER_LIMITER`; therefore login/register are expected to remain fail-closed with 503 until limiters are provisioned.
+- 🔴 Auth smoke check remains unresolved: an invalid bearer to `GET /api/v1/subjects` returns 502 `AUTH_UPSTREAM_ERROR`, not 401. Because secret values and upstream response details were not inspected, do not assume whether the cause is the key, endpoint, or network. Re-test after controlled deploy/config verification.
+- 🔒 No live Worker bundle, secret, Vercel environment, Supabase schema/RLS, DNS, Telegram webhook, or production route was changed in this verification. Vercel API runtime error lookup returned 403 (project access not available through that connector), so no runtime-log conclusion is claimed.
+
+**Next safe action:** configure rate-limit bindings in the tracked Wrangler configuration using the documented current syntax; validate with Wrangler dry-run/build and unit tests; then deploy the complete `main` source to the shadow Worker through the connected Cloudflare Builds/Wrangler path while preserving secret bindings. Verify the deployment's module list, health, CORS, auth (401 for invalid token), login/register limiter behavior, and read-only Supabase RLS before any Vercel Preview switch. Keep Production unchanged.
+
+## First live migration test pass — 2026-10-13
+
+### Verified with real HTTP requests
+- `https://medbiohim.vercel.app/` returned HTTP 200.
+- Active Worker `https://medbiohim-api-shadow.ryazansevegor.workers.dev/health` and `/api/v1/health` returned HTTP 200 and explicitly reported `mode=shadow`, `role=migration-scaffold`, `productionTrafficEnabled=false`.
+- Worker `GET /api/v1/schedule` without a bearer token returned 401 `UNAUTHORIZED` as expected.
+- Worker `POST /api/v1/schedule` returned 405 `METHOD_NOT_ALLOWED`.
+- Worker preflight with an unapproved origin returned 403 `ORIGIN_NOT_ALLOWED`.
+- Worker unknown API route returned 501 `ROUTE_NOT_MIGRATED`.
+- The active Worker currently returns 503 `RATE_LIMIT_NOT_CONFIGURED` for both `POST /api/v1/auth/login` and `POST /api/v1/auth/register`. Login/registration are therefore not ready for cutover until real rate-limit bindings are configured.
+- Worker `GET /api/v1/subjects` with a deliberately invalid bearer token returned 502 `AUTH_UPSTREAM_ERROR`, rather than expected 401. This requires investigation of the live Worker Supabase Auth upstream/configuration before authenticated API acceptance.
+- Vercel `GET /api/v1/health` returned 503 `INSECURE_BACKEND_ORIGIN`. Production is still on legacy mode and the current configured SpaceWeb origin appears to be HTTP; Vercel environment inventory access did not succeed during this pass, so the exact variable value is not independently confirmed. Do not set Cloudflare-only Production mode until Preview acceptance is complete.
+- A direct Supabase Auth health probe reached the known Supabase host and returned 401 because the probe intentionally supplied no API key; this only confirms host reachability, not Worker credentials.
+
+### Local tests
+- Isolated Node.js run of `test/api-failover.test.mjs`: **9 passed, 0 failed**.
+- This test was run against the fetched current proxy/test/helper files in an isolated temporary workspace, not against the full checked-out repository.
+
+### CI / deployment status
+- Latest inspected GitHub Actions run for code checks failed before steps started: jobs had `runner_id=0`, blank runner name and empty `steps`. The smoke workflow showed the same pattern. This is a runner/Actions execution blocker, not a demonstrated test assertion failure.
+- Vercel deployment status API was inaccessible (403) in this pass; an existing deployment check had a successful Vercel status, and the live homepage responds 200. No claim that all frontend build or browser smoke tests passed.
+- No production environment variables, database migrations, RLS policies, storage bindings, Telegram settings, or live Worker source were changed as part of this test pass.
+
+### Cutover blockers (must pass before production switch)
+1. Inspect/fix live Worker Supabase Auth behavior: invalid bearer must return 401, not 502.
+2. Provision and verify real Cloudflare login/registration rate limiting, then test valid and invalid auth safely.
+3. Deploy the exact current GitHub Worker source and verify module parity (live Worker reports migration scaffold and is not the production API).
+4. Test authenticated dashboard/schedule/homework/subjects/tests using a safe test account and verify RLS.
+5. Configure Cloudflare-only mode in Vercel Preview and test no SpaceWeb dependency; keep Production unchanged until all required routes and media/storage paths pass.
+6. Restore GitHub Actions runner execution and obtain actual completed job steps.
+
+## SpaceWeb exit plan — Cloudflare + Supabase only (2026-10-13)
+
+- Decision: SpaceWeb is not a required fallback because its HTTP-only temporary URL cannot safely carry authenticated API traffic and the paid HTTPS upgrade is intentionally out of scope.
+- Added an explicit server-side mode, `MEDBIOHIM_API_MODE=cloudflare`, to the Vercel API proxy. In this mode the proxy ignores any stale `SPACEWEB_API_ORIGIN`, forces Cloudflare-first routing, and fails closed if Cloudflare is unavailable. It does not retry ambiguous writes or leak bearer credentials to the retired HTTP origin.
+- Default remains `legacy` until the Cloudflare Worker has been reconciled with GitHub source, tested against real Supabase RLS/auth, and accepted for the routes being moved. This commit alone does not switch production traffic.
+- Target architecture: Vercel frontend/API gateway → Cloudflare Worker → Supabase. Cloudflare R2 is not assumed available; file/media storage must be migrated separately to an already-provisioned secure storage backend (existing private B2 is a candidate after its server-side bindings and access controls are verified).
+- Cutover gates: deploy exact multi-module Worker source; prove auth, dashboard, schedule, subject catalog, tests and writes route contracts; confirm student/admin RLS; confirm upload/media paths; test 503/timeout behavior; verify Vercel env vars in Preview first; then Production. If a route is not migrated, show an explicit unavailable response rather than silently falling back to SpaceWeb.
+- No Supabase migration, RLS change, Telegram webhook change, DNS change, or Vercel environment change is included in this code commit.
+- Required Vercel variables for the eventual Cloudflare-only Preview test: `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN=https://medbiohim-api-shadow.ryazansevegor.workers.dev/api/v1` (verify the exact deployed workers.dev hostname before setting it). Do not set these until the Worker deployment and smoke tests are confirmed.
+
+## Cloudflare failover hardening — 2026-10-13 (continued)
+
+- Fixed a missing server-side `isCanonicalAdminRequest()` verifier in the Vercel API proxy. Without this helper, the admin transport-diagnostics path could not compile. It validates the bearer token with Supabase Auth and checks `user_roles → roles.code` using the caller JWT/RLS; metadata supplied by the client is not trusted.
+- Added a hard HTTPS guard for `SPACEWEB_API_ORIGIN`. The proxy now refuses a plaintext HTTP backend origin instead of forwarding bearer tokens or private payloads to it.
+- Added a regression test that checks the admin-only diagnostics contract and the HTTPS guard. The change is in commit `075a666ebcfd4ce4a25f4d8d272a6dd18c75552d`; the guard fix is in `1a7a2ffc65cfd6b0e073bad351a9a24752af02ff`.
+- The Vercel Preview flag `MEDBIOHIM_CF_FIRST` remains off unless explicitly configured. No environment variables or production aliases were changed.
+- The active Cloudflare Worker remains behind the latest GitHub source. Its live bundle still needs a controlled full-module redeploy; do not claim source/deployment parity or cut over production until smoke checks pass.
+- Verification caveat: the GitHub combined commit status endpoint returned no statuses for the test commit at the time of review; this is not proof that CI passed. Continue to inspect the actual workflow jobs/logs.
+- Next: ensure the new Node test itself passes, confirm GitHub Actions actually allocates runners, run `npm run test:api-failover`, `cd integrations/cloudflare-api && npm test`, typecheck/build, and then test the shadow Worker over HTTPS. Only after that enable the Preview flag and test as student/admin accounts.
+
+## Cloudflare ZIP review + Cloudflare-first preview test mode — 2026-10-12 (updated)
+
+- 🟢 Cloudflare-first proxy mode and admin-only transport diagnostics are implemented in source. `MEDBIOHIM_CF_FIRST` defaults to off; no Vercel Preview or Production environment variables have been changed.
+- 🟢 Repaired the reviewed ZIP's observed Supabase schema mismatches: caller-scoped role lookup now uses `user_roles → roles(code)`; group memberships read `role_in_group` instead of the nonexistent `role` column.
+- 🟢 Added 7 router-level test cases to the reviewed candidate archive. Latest local Node.js 22.16.0 result: **65 passed, 0 failed**, with JS syntax checks passing. Downloadable candidate archive was rebuilt and ZIP integrity verified.
+- 🟡 The corrected ZIP is a reviewed candidate artifact, not yet the deployed Worker bundle and not fully merged into the checked-in `integrations/cloudflare-api` source. The active Cloudflare Worker still contains only two modules, while GitHub's entry imports additional modules.
+- 🔴 R2 is not enabled (Cloudflare error 10042), so its bucket/binding cannot be validated. Auth rate-limit bindings, live RLS tests, media delivery and the optional academic RPC migration remain unresolved.
+- 🔴 Latest Actions runs still fail before steps: run IDs `38260355983`, `38260355958`, `38260355910`, `38260355848` on commit `31cbdf6`; inspected job has `runner_id=0`, no runner name, and no steps. CI now includes the Worker router/helper suite but no green execution is claimed.
+- 🟢 New file: [Cloudflare ZIP review and failover](docs/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). The corrected candidate should not be cut over until R2/configuration prerequisites, complete bundle deployment and live contract/RLS tests pass.
+- 🔒 No production route, DNS, Vercel variable, Supabase schema/policy, SQL migration, R2 setting, or Telegram webhook changed.
+
+Next: correct/integrate the ZIP modules into the GitHub Worker source; configure safe R2 and rate limiting only after account prerequisites; reconcile and deploy the complete module bundle to shadow; restore actual Actions runner execution; run live public/authenticated smoke tests; then enable Preview-only failover. Keep Production on the current route until acceptance.
+
+
+## Cloudflare ZIP review + Cloudflare-first preview test mode — 2026-10-12
+
+- 🟢 Added opt-in Vercel proxy mode `MEDBIOHIM_CF_FIRST=true` with server-only `CLOUDFLARE_API_ORIGIN`; default remains off. It tries Cloudflare first and allows guarded SpaceWeb fallback only over HTTPS.
+- 🟢 Admin-only route diagnostics were added to `src/lib/api.ts` and `src/app/admin/tools/page.tsx`. The server verifies the caller JWT and canonical `user_roles → roles.code` relationship before sending transport headers; an ordinary authenticated user cannot request/see those headers.
+- 🟢 Safe fallback for `POST /api/v1/files/upload` was added only for the explicit `STORAGE_NOT_CONFIGURED` pre-write guard. Generic/ambiguous write errors are not retried automatically.
+- 🟢 Uploaded ZIP tests ran locally under Node 22.16.0: **58/58 passed** (archive status file's 56/56 count is outdated).
+- 🔴 ZIP integration is not approved as a production replacement. Live Supabase schema confirms `public.user_roles` has `user_id` and `role_id` only and joins `public.roles.code`; ZIP modules in domain/files/homework/presence use `select=role` and need correction.
+- 🔴 Cloudflare API reports R2 is not enabled on the account (error 10042). `FILES_BUCKET` cannot be assumed present; ZIP upload/download is not ready. No R2 enablement or bucket migration was performed.
+- 🟡 Histogram/source-media binary routes are deliberately tagged SpaceWeb-only; auth rate-limit bindings are still required; the optional academic RPC SQL has not been applied or approved.
+- 🔴 The active deployed Worker bundle is behind GitHub source (only `src/index.js` and `src/supabase-auth.js` were returned by Cloudflare). Public HTTP smoke-test access failed from the current environment, and Actions remains historically blocked before steps; live behavior is unverified.
+- 🔒 No Vercel variables were changed, Preview did not get switched to Cloudflare-first mode, and no Production URL/DNS/API route/Supabase policy/SQL/Telegram webhook changed.
+- Report: [Cloudflare ZIP review and failover test mode](docs/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). Deployment drift report: [Cloudflare shadow deployment reconciliation](docs/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
+
+Next: fix ZIP role queries, add Worker router-level tests, reconcile the Worker upload bundle, verify Wrangler dry-run/build and external HTTP smoke, then activate Preview-only failover. Keep Production unchanged until auth, reads/writes, media, RLS, and rollback tests pass.
+
+## Cloudflare shadow deployment reconciliation — 2026-10-12
+
+- 🟢 Re-read Cloudflare API state for `medbiohim-api-shadow`; secret bindings for Supabase URL/anon key are present (values not read).
+- 🟢 Enabled only the isolated Worker's `workers.dev` subdomain for smoke testing; previews remain disabled. No custom domain, production routing, frontend API URL, DB policy, or Telegram webhook changed.
+- 🔴 Found source/deployment drift: GitHub `integrations/cloudflare-api/src/index.js` includes modules/routes not present in the Cloudflare script-content response. The deployed Worker cannot be assumed to match the latest repo source.
+- 🟡 External HTTP smoke tests and GitHub Actions execution remain unverified. Do not add further routes or switch production until the bundle is reconciled, Node tests pass, Wrangler build is clean, and shadow HTTP/RLS tests succeed.
+- Report and next steps: [Cloudflare shadow deployment reconciliation](docs/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
+
+
+
+## Extension + Telegram integration hardening (2026-10-11)
+
+- 🟢 Extension search now prefers question text instead of concatenating all options, formulas and captions into one long query; when the question is too short, it falls back to formula text or image captions.
+- 🟢 Telegram webhook adds /homework guidance and regression tests for commands addressed to a different bot and refusal of insecure HTTP relay URLs.
+- 🟡 Group homework ingestion depends on the existing PHP TelegramHomeworkService, an explicitly mapped/active Telegram chat and correct server-side bot/secret configuration. Cloudflare Worker remains an un-deployed alternative; no production webhook changed.
+- ⚠️ BotFather group privacy must permit ordinary group updates if the bot is expected to receive regular homework text/photos. Change this only for the intended bot and verify update delivery.
+- ⬜ Next: run both bot test suites in Node 20, test a mapped group with text/photo/reply/media-group updates against a non-production backend, then improve extension image selection and consent-based OCR/vision after privacy review.
+- 🔒 No production data writes, deploys, webhook changes, token exposure or new browser host permissions were made in this pass.
+
+
+## Multimodal STEM questions — formula/equation groundwork (2026-10-11)
+
+- 🟢 Side panel now has an editable formula/equation field and attempts to collect text exposed by MathML, KaTeX, MathJax, MathJax v3 containers, accessible formula labels, data-math nodes and code blocks in the likely question area.
+- 🟢 Formula text and image captions are included in the explicit copy/search handoff alongside question and answer options. This covers some text-rendered chemical equations, mathematical notation and formula descriptions.
+- 🟡 It does **not** reconstruct arbitrary 2D chemical structures, stereochemistry, reaction arrows, charges/subscripts lost by the page renderer, or formula drawings embedded only as pixels/canvas. Extracted notation must be reviewed before using it for answer matching.
+- ⬜ Future work: structure-aware chemistry representation (e.g. MOL/SDF/SMILES when genuinely available in page data), image selection + user-consented OCR/vision, equation normalization that preserves stoichiometry/charge/state/conditions, and tests for organic structures, ionic equations, redox, equilibrium, graphs and image-only prompts.
+- 🔒 No image/formula upload is automatic; no new host permissions or access-control bypass added.
+
+
+## Image-based questions — extraction groundwork (2026-10-11)
+
+- 🟢 Side panel now collects visible image-like elements in the likely question area and their available alt/ARIA/title/figcaption descriptions. This metadata is editable and included in the user-triggered copy/search handoff.
+- 🟡 This is **not image recognition/OCR**: pixels, arrows/markers, histology morphology, chart axes and labels rendered only inside an image are not interpreted yet. Image URLs/pixels are not uploaded.
+- ⬜ Next image pass: let the user explicitly choose the relevant image(s), add local/consented OCR or a secure vision endpoint only after privacy/auth review, preserve captions/marker context, and rank matches by question + options + image evidence. Never label an answer correct from visual similarity alone.
+- 🔒 No host permissions, automatic image uploads, credential extraction or access-control bypass added.
+
+## Browser extension — resilient page extraction (2026-10-11)
+
+- 🟢 Improved `sidepanel.js` extraction heuristics: multiple question selectors, ARIA labels/label associations, radio/checkbox/option variants, scored question roots and manual fallback messaging.
+- 🟡 It only reads visible DOM content in the active page. Complex cross-origin iframes, image-only questions, PDF viewers, canvas-rendered content and inaccessible pages are not guaranteed; add source-specific adapters and optional user-triggered OCR only after evaluating privacy/performance.
+- 🔒 “Works under restrictions” means robust parsing of different layouts where the user has normal access—not bypassing login, CAPTCHA, paywalls or technical protections.
+
+## Browser extension — authenticated answer display groundwork (2026-10-11)
+
+- 🟢 Existing authenticated global search now includes the stored answer field for published `questions` and `exam_questions` results; the search page renders it behind an explicit “Показать ответ” disclosure. It does not expose answer keys for trainer cards.
+- 🟡 Bridge still opens the MEDBIOHIM search page rather than calling a protected API from the extension side panel. This avoids copying or storing site bearer tokens in the extension; direct in-panel lookup needs an explicit safe auth handoff design.
+- 🟡 Search result answer display depends on the PHP API deployment being current and on user authentication; CI runner dispatch remains blocked, so runtime verification is pending.
+- ⬜ Next: design authenticated side-panel lookup without copying tokens into extension storage; then implement pending candidate capture, source trust states, answer provenance and admin review journal. Never treat selected option/score-only as answer evidence.
+
+## Telegram on Cloudflare — prototype added, production switch pending (2026-10-11)
+
+- Added isolated Worker implementation under `integrations/telegram-bot-cloudflare/`: `GET /health`, secret-protected `POST /api/webhook`, public commands, optional HTTPS relay to existing PHP homework endpoint, bounded request size and safe errors.
+- Added Node test suite and included it in `.github/workflows/optional-integrations-check.yml`.
+- **Not deployed:** no Cloudflare account/auth, secrets, webhook URL or production Telegram token was changed. Current Node/Vercel webhook remains the active documented path until a test Worker passes and the user approves switching.
+- Tests are authored but not run in a local project runtime; GitHub Actions runner failure still blocks verified CI execution.
+- Next: run `npm test` in this directory, inspect `npx wrangler deploy --dry-run` / Wrangler compatibility, deploy to a preview Worker, test /health and Telegram webhook secret, then ask before changing BotFather webhook. One bot token has one active webhook; do not register both endpoints simultaneously.
+
+## Project state and hosting failover snapshot — 2026-10-11
+
+Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
+
+## Latest execution gate — Pass 65–73 (2026-10-10)
+
+- Explicit `contents: read` permissions are set in all six workflows, including deploy and optional integrations.
+- Fixed malformed YAML indentation in `.github/workflows/package-archives.yml` (commit `d566031d01e73f7a62a91e7502c9410456a9e6f2`); GitHub now recognizes the workflow, but job `38025017740` still fails before steps. Code-check `38025017750`, smoke `38025017788`, and SpaceWeb archive `38025017818` also fail pre-step; raw job metadata shows `runner_id: 0` and no runner name.
+- Next critical path: restore Actions runner allocation in repository/org settings or escalate to GitHub support; then execute code checks, archive leak guards and smoke checks. Do not treat source commits as test success.
+- Detailed restart instructions: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
+
+## Consolidated workstream — Data + DB privileges (2026-10-10)
+
+This workstream groups the Pass 54 data-integrity audit with the follow-on public-schema privilege review. Historical Pass 54 and all earlier reports remain intact; future work will be grouped by domain instead of creating a separate long report for every micro-step.
+
+- 🟢 Read-only invariants: 854 test-question links, 0 duplicates/broken links; 32/32 active published tests and 660/660 active published questions are linked; 776 published exam questions have prompts and valid checked curriculum links.
+- 🟡 719 blank exam answers appear to be open-ticket/preparation records; no bulk content edits. Five legacy linked subject rows have NULL slugs; no orphan links.
+- 🟡 New least-privilege migration committed: `database/migrations/20261010_revoke_non_rls_table_privileges.sql`. It is **not applied** to live Supabase. Stage-review and privilege verification required first.
+- 🔴 GitHub Actions still fails before steps; CI remains unverified.
+
+Combined report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). Historical detail: [Pass 54](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+
+## Work batching rule
+
+Group related changes and their verification into domain workstreams (CI/PHP/deployment; database/data/security; learning UX/media). Keep commit history and historical reports, but do not create a new pass report for every micro-change. A consolidated workstream is complete only when its required source, CI, and target-runtime gates are verified.
+
+## Data integrity reconciliation — Pass 54 (2026-10-10)
+
+- 🟢 Read-only Supabase audit: 854 question links; 0 duplicate pairs; 0 broken links; all 32 active published tests have questions; all 660 active published questions have test links.
+- 🟢 `exam_questions`: 776 published, no blank prompts, no missing subject identity, no broken non-null module/topic links.
+- 🟡 719 published blank answers were classified by type and appear to be open-ticket/preparation questions; no content changes are justified from counts alone.
+- 🟡 Five linked legacy Anatomy/Biochemistry questions belong to subjects whose `slug` is NULL; not orphans, leave unchanged pending canonical mapping.
+- 🔴 GitHub Actions still fails before steps (`runner_id=0`, `steps=[]`). No CI or runtime pass is claimed.
+
+Details: [Pass 54 read-only data integrity report](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+
+## API proxy hardening — Pass 53 (2026-10-10)
+
+- 🟢 Restored the documented PHP-first behavior for trainer endpoints: the Supabase compatibility fallback is now attempted only after the PHP upstream returns 404.
+- 🟢 Authenticated trainer image responses now use `private, no-store` to avoid browser retention of private media across account/session changes.
+- 🟢 Generic 502 responses no longer include raw upstream exception messages.
+- 🟢 Added pre-deploy audit assertions for the fallback order, private-media cache header, and generic proxy errors.
+- 🔴 Validation remains blocked: workflow runs triggered by commits `ec4aad1` and `6aeb401` failed before steps with `runner_id=0`; this does not mean the checks themselves ran or passed. No live deployment/runtime test is claimed.
+
+Code: [`ec4aad1`](https://github.com/MISTACEN/medbiohim/commit/ec4aad139413292c3beb6992e58bdfb6ef7ae17b), audit guard: [`6aeb401`](https://github.com/MISTACEN/medbiohim/commit/6aeb401434ab8ba10dad778bc48c585a5fe4347e).
+
+# MEDBIOHIM ROADMAP
+
+> Единый план проекта и источник порядка по задачам.  
+> Обновляется вместе с изменениями в коде/БД.  
+> Дата актуализации: **2026-10-10**.
+
+## CI/PHP audit follow-up — Pass 52 (2026-10-10)
+
+- 🟢 Fixed repeated named PDO placeholders in homework listing/attachment queries and student-planner queries.
+- 🟢 Added `backend/tests/HomeworkSqlContractTest.php` and wired it into code-check + SpaceWeb pre-deploy gates.
+- 🟢 Hardened selected attendance/admin/media error responses: internal details are logged server-side and generic messages are returned to clients. One legacy platform handler remains explicitly under review.
+- 🔴 GitHub Actions runner allocation remains blocked. Run `37993824049` has repeatedly failed with `runner_id=0`, zero steps and no logs; attempt 4 was also accepted but ended with both jobs failing before any steps; retry did not restore execution.
+- 🔴 Vercel deployment is independently blocked by the observed `build-rate-limit` / upgrade-to-Pro target. This is a quota/plan blocker, not proof of a source build error.
+- 🟡 Full PHP lint, real DB/RLS integration, exact-main CI and SpaceWeb post-deploy smoke remain unverified.
+
+Details: [CI/PHP audit Pass 52](docs/CI-PHP-AUDIT-2026-10-10-PASS52.md).
+
+## CI recovery + PHP security audit — Pass 51 (2026-10-10)
+
+- 🟢 Fixed a concrete PHP parse defect in the homework attachment SQL string.
+- 🟢 Backend role claims no longer trust editable Supabase \`user_metadata\`; privileged route checks use canonical DB roles and fail closed if role lookup is unavailable.
+- 🟢 Removed duplicate admin route registrations and repaired the cross-file duplicate-route detector.
+- 🟢 Removed query-string bearer token fallback and hid internal exception details from client responses.
+- 🟢 Pinned active Actions workflows to Ubuntu 24.04; added role-claim regression tests to CI and deployment preflight.
+- 🔴 **GitHub Actions runner allocation is blocked**: fresh run [37993824049, attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049) used `ubuntu-24.04`, but both jobs had `runner_id=0`, zero steps and no logs (`BlobNotFound`). Pinning the image did not help; check account Actions billing/permissions or contact GitHub Support.
+- 🟡 Full exact-tree PHP lint, route registration, SQL/RLS/fallback integration, and SpaceWeb deployment smoke remain pending.
+
+Details: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
+
+## Как читать статус
+
+- ✅ **DONE** — реализовано и проверено в живой системе.
+- 🟡 **IN PROGRESS** — часть готова, требуется доработка или проверка.
+- 🔴 **BLOCKED** — есть конкретный блокирующий дефект/зависимость.
+- ⬜ **TODO** — ещё не делали.
+- ⚪ **DEFERRED** — сознательно отложено.
+
+Правило: задача получает ✅ только после проверки результата в целевом окружении. Сам факт коммита не считается проверкой.
+
+---
+
+## CURRENT EXECUTION CYCLE — 2026-10-10
+
+**Текущий поток: CI diagnostics → security regression tests → SpaceWeb deployment gate → media/data reconciliation → runtime verification.**
+
+### P1 trainer-answer confidentiality — mitigation applied (Pass 42, 2026-10-09)
+- 🟢 Live Supabase: base table `trainer_feed_cards` is no longer readable by `anon` / `authenticated`; safe view `trainer_feed_cards_public` strips answer-bearing fields and option correctness flags.
+- 🟢 Safe view was verified with an active MBH membership context: 206 cards visible, 0 correctness flags; unauthenticated SQL-editor context sees no MBH cards.
+- 🟢 Direct client writes to `trainer_feed_answers` were revoked; authenticated users submit through `submit_trainer_feed_answer`, which validates membership and grades server-side.
+- 🟢 PHP trainer feed/detail and common training-session responses now sanitize unanswered question snapshots; Next.js fallback uses the safe view/RPC and sanitizes unanswered snapshots.
+- 🟡 Latest observed READY Vercel deployment is `6687e057`; it includes the frontend source changes for Pass 45–47. Later commits are primarily PHP route hardening, CI, docs and isolated integrations. Browser/runtime behavior remains unverified. SpaceWeb PHP deployment and real authenticated feed → training → answer → review → complete acceptance remain unverified.
+- 🟡 Pass 41 also fixed two PHP syntax errors in `backend/src/Services/AdminDatabaseManager.php` (commit `fb4eed97`); runtime lint/build still await a functioning CI runner.
+
+### P1 trainer route access consistency — source fix committed (Pass 44, 2026-10-10)
+- 🟢 PHP source now treats both `subject_slug = histology` and `specialty_slug = mbh` as MBH-restricted in feed, detail, answer submission, and image routes.
+- 🟢 The non-MBH feed query and both Supabase REST fallback branches exclude restricted cards; nested trainer-question answer fields are recursively sanitized.
+- 🟡 Source fix commit: `99ed1bc905a1b9fe2f2d5ca2f2b6e8bac2dd53a3`. PHP lint, authenticated/non-MBH integration tests, and SpaceWeb deployment remain unverified because Actions jobs terminate before steps. Details: [Pass 44 security report](docs/SECURITY-FIX-2026-10-10-PASS44.md).
+
+### P1 recursive answer-key sanitization — source fix committed (Pass 45, 2026-10-10)
+- 🟢 Shared PHP `TrainingPayloadSanitizer::sanitizeQuestion()` now recursively strips answer/explanation/correctness keys; PHP trainer routes reuse it rather than maintaining a weaker duplicate closure.
+- 🟢 Next.js trainer sanitizer now recursively traverses nested objects and arrays.
+- 🟢 15 PHP sanitizer assertions passed in an isolated PHP 8.4 CLI run using repository class/test contents. A read-only DB spot-check found 206 published cards and no nested answer fields under the checked `question`/`metadata` branches.
+- 🟡 Pass 45 is source-only until the next Vercel READY build and SpaceWeb deployment are verified; GitHub Actions still fails before steps. See [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
+
+### P1 API cache isolation — source fix committed (Pass 46, 2026-10-10)
+- 🟢 Malformed/opaque JWTs no longer share the literal `auth` cache scope; `apiCached()` bypasses cache when no valid subject can be parsed.
+- 🟢 Added a pre-deploy audit guard for this contract.
+- 🟡 No live cross-account exposure was demonstrated; this is defensive cache isolation. Typecheck, audit and two-account runtime acceptance remain open because CI does not start and the latest observed READY Vercel deployment `6687e057` includes Pass 46. See [Pass 46 report](docs/RELIABILITY-FIX-2026-10-10-PASS46.md).
+
+### P1 consistent MBH access across material/file endpoints — source fix committed (Pass 49, 2026-10-10)
+- 🟢 Material list filters now enforce MBH for histology even with empty/inconsistent `specialty_slug`; detail follows the same rule.
+- 🟢 Content-source access checks both linked histology materials and canonical/legacy source paths instead of relying only on the source ID label.
+- 🟢 File repository adds an internal histology-link flag and both file metadata/download routes enforce MBH access from it.
+- 🟢 Pre-deploy audit and SpaceWeb post-deploy verifier now guard these source contracts.
+- 🟡 PHP lint, end-to-end role tests and SpaceWeb deployment remain unverified because GitHub Actions fails before steps. See [Pass 49 report](docs/SECURITY-FIX-2026-10-10-PASS49.md).
+
+### P1 subject catalog/gradebook/academic context access — source fix committed (Pass 50, 2026-10-10)
+- 🟢 Central subject access now requires MBH for `slug = histology` or `specialty_slug = mbh` and excludes inactive subjects.
+- 🟢 SQL and Supabase subject-list paths apply the same filter; gradebook checks access and fails closed if the access check cannot run.
+- 🟢 `AcademicContextResolver` requires an MBH group for histology through both schedule-entry and compatibility branches, even if `specialty_slug` is NULL.
+- 🟡 Source-only until PHP lint, CI and SpaceWeb deployment are confirmed. See [Pass 50 report](docs/SECURITY-FIX-2026-10-10-PASS50.md).
+
+### P1 histology material access consistency — source fix committed (Pass 48, 2026-10-10)
+- 🟢 Both `materials/{id}/file-url` and `materials/{id}/file` now require MBH membership whenever `subject_slug = histology`, even if `specialty_slug` is empty/inconsistent.
+- 🟢 Deployment verifier downloads `material_viewer.php` and checks its MBH guard; pre-deploy audit guards the same contract.
+- 🟡 No live unauthorized access was demonstrated; PHP lint/CI and SpaceWeb deployment are still unverified. See [Pass 48 report](docs/SECURITY-FIX-2026-10-10-PASS48.md).
+
+### P1 private media cache isolation — source fix committed (Pass 47, 2026-10-10)
+- 🟢 Trainer card, trainer image and material-file caches are now keyed by user scope; malformed token scopes bypass cache.
+- 🟢 Account switch/logout clears cached API data, private card/media caches and revokes blob URLs. Authenticated trainer images use `no-store`; expiring B2 presigned URLs are not cached.
+- 🟢 Direct image/material/source-file requests now have timeouts; pre-deploy audit checks the cache isolation contract.
+- 🟡 No live cross-account leak was reproduced; TypeScript, pre-deploy audit and account-switch acceptance remain open. Latest observed READY Vercel deployment predates Pass 45–47. See [Pass 47 report](docs/SECURITY-FIX-2026-10-10-PASS47.md).
+
+### CI/QA hardening — source updated, runner still blocked (2026-10-10)
+- 🟢 Fixed the PHP namespace prefix in `.github/workflows/code-check.yml` route-registration smoke test; it previously contained four literal backslashes, which PHP interpreted as two namespace separators instead of one.
+- 🟢 Added `backend/tests/TrainingPayloadSanitizerTest.php` covering unanswered answer-key removal, option correctness flags, preparation metadata, media path preservation, answered review preservation, and non-training endpoint isolation. The copied source/test pair was executed locally with PHP 8.4: syntax clean and all 15 assertions passed.
+- 🟢 `scripts/predeploy-audit.mjs`, the code-check workflow, and the SpaceWeb deploy preflight now run this regression test.
+- 🟢 SpaceWeb deploy workflow now requires a non-empty backup before deployment and verifies Pass 44 route/sanitizer markers after upload.
+- 🟡 GitHub Actions runner allocation still fails before steps (`runner_id=0`, `steps=[]`); these new workflow checks have not run inside GitHub yet. See [the unified checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md).
+
+### Optional integration — browser extension MVP (2026-10-10)
+- 🟢 Added `integrations/browser-extension/` Manifest V3 quick-access popup for Chrome/Edge.
+- 🟢 No permissions, host permissions, cookies, API tokens, or private data access; it only opens canonical MEDBIOHIM routes.
+- 🟡 Manual installation and all destination routes still need browser acceptance; not published to any extension store.
+- 🟢 Telegram bot public-command MVP added under `integrations/telegram-bot/`: secret-verified webhook, private-chat-only public commands, canonical links, privacy response; 12 local Node tests passed using the source/test content.
+- 🟢 Added `.github/workflows/optional-integrations-check.yml` to run bot tests and validate extension syntax/permissions.
+- 🟡 Not deployed: bot token/webhook secret are not configured; no private data or account linking exists. Before schedule/grade notifications, add one-time linking, durable update idempotency, consent/preferences, group authorization, unlinking and privacy review.
+
+### Active P1 — Unified Media Viewer
+- 🟢 code architecture: unified viewer implemented;
+- 🟢 Atlas nested modal removed;
+- 🟢 Lecture/Trainer/Materials image entry points aligned;
+- 🟢 desktop + mobile interaction contract implemented;
+- 🟢 malformed TSX escaped-newline artifact found during regression and removed;
+- 🟡 target-browser smoke: Windows/macOS/iPhone/Android;
+- 🟢 Latest observed READY Vercel deployment (`6687e057`) includes frontend Pass 45–47 source changes. 🟡 Real browser smoke on desktop/mobile remains open;
+- 🟡 SpaceWeb authenticated media smoke.
+
+### Immediate next gates — updated 2026-10-10
+1. 🟡 **P1 trainer-answer mitigation verification.** Live DB boundary is fixed; Pass 44 also hardened PHP route membership checks. Verify authenticated MBH/non-MBH end-to-end training flows and confirm the current PHP source is deployed to SpaceWeb.
+2. 🔴 **CI runner allocation.** Current GitHub Actions jobs fail before the first step (`runner_id=0`, no steps/logs); no new code-check result exists. Restore runner execution and verify the exact `main` commit.
+3. 🟡 SpaceWeb trainer/material media 404/502 smoke and physical-file reconciliation (28 electronogram source-key paths have no matching `content_sources.source_path`).
+4. 🟡 Histology questions/tests: compare duplicate/blank-answer candidates against source materials; then run start → answer → finish → review.
+5. 🟡 Schedule/auth/dashboard production smoke; clarify makeup-session group scope before expanding recurring rows.
+6. 🟡 Compare `site_content` and `histology_lectures`, then unify the canonical lecture source and continue Admin Content Center / quick editors.
+7. 🟡 Admin database console target-runtime smoke after the `fb4eed97` syntax fix; validate SQL safety before wider use.
+8. 🔴 AI provider runtime health and verified primary provider.
+9. 🟡 API client timeout/stale-cache fix (`77b0f4a1`) is included in the latest observed READY Vercel deployment (`d0949aa3`); browser/runtime behavior remains unverified. See [Pass 43](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+
+**Rule:** no item becomes DONE from source inspection alone; target runtime evidence is required.
+
+## 0. Source of truth и порядок работы
+
+**Статус: 🟡 IN PROGRESS**
+
+Цепочка проекта:
+
+`GitHub main → Vercel → SpaceWeb API → Supabase`
+
+Правила:
+- `main` — стабильный источник для production.
+- `beta` — только эксперименты.
+- данные предметов и контента считаются актуальными только после проверки Supabase.
+- числовое состояние проекта хранится в `docs/LIVE-PROJECT-SNAPSHOT-2026-10-06.md`; roadmap/status не должны копировать устаревающие live counts.
+- файлы/медиа, которые физически лежат на SpaceWeb, документируются отдельно.
+- перед крупными изменениями сначала обновляем roadmap/status.
+
+---
+
+## 1. Базовая платформа и авторизация
+
+**Статус: 🟡 IN PROGRESS**
+
+### Уже сделано
+- ✅ React/Next.js frontend в корне репозитория.
+- ✅ PHP backend в `backend/`.
+- ✅ Supabase подключён.
+- ✅ Auth flow и текущая структура пользовательских ролей существуют.
+- ✅ Основные API-модули: auth, me, groups, subjects, tests, homeworks, files.
+- ✅ Исправлен legacy test-key resolution (`local:` / `source_key`).
+- ✅ Исправлен `AccountSettingsService::getPreferences()`.
+- ✅ Настроен deployment workflow backend → SpaceWeb.
+- ✅ TLS для HTTP-клиента больше не отключается автоматически.
+
+### Осталось
+- 🟡 пройти полный smoke-test логин → dashboard → logout;
+- ✅ shared API refresh deduplicated; app bootstrap can recover a valid refresh session;
+- 🟡 проверить production после последнего frontend commit;
+- 🟡 зафиксировать единую схему env/secrets для Vercel + SpaceWeb;
+- 🟡 устранить оставшиеся runtime 404/502 по медиа.
+
+---
+
+## 2. Главная / общий shell
+
+**Статус: 🟡 IN PROGRESS**
+
+- ✅ Sidebar / TopBar / AppShell существуют.
+- ✅ Страница предмета использует единый контекст предмета.
+- ✅ Базовая визуальная система сохранена стабильной.
+- 🟡 **Aero Glass** добавлена только как **β-тема**, не как production default.
+- ⬜ после стабилизации функционала провести отдельный UI-аудит всех страниц.
+
+---
+
+## 3. Расписание
+
+**Статус: 🟡 IN PROGRESS**
+
+### Уже сделано
+- ✅ расписание берётся из Supabase;
+- ✅ group-aware загрузка;
+- ✅ День / Неделя / Месяц / Семестр;
+- ✅ выделение текущего занятия;
+- ✅ карточка занятия с темой;
+- ✅ subject/lesson-plan связь;
+- ✅ в Supabase для гистологии есть 37 schedule entries.
+
+### Осталось
+- 🟡 production smoke-test после последних изменений;
+- 🟡 проверить все чередующиеся пары и объединённые пары визуально;
+- 🟡 довести mobile view до полноценного agenda-режима;
+- ⬜ отдельный polish расписания после функциональной стабилизации.
+
+---
+
+## 4. Архитектура предмета
+
+**Статус: 🟡 IN PROGRESS**
+
+Цель:
+
+`Предмет → Учебный план → Билеты → Тесты → Практика → Лекции → Материалы → Микропрепараты → SRS → Прогресс`
+
+### Уже сделано
+- ✅ разделы остаются внутри выбранного предмета;
+- ✅ не нужно заново выбирать предмет при переходах;
+- ✅ гистология использует canonical active subject;
+- ✅ пустая дублирующая запись `histology` на 4 семестр отключена;
+- ✅ canonical active subject: 2 курс / 3 семестр.
+
+### Осталось
+- 🟡 одинаковый UX для всех предметов;
+- 🟡 связать элементы учебного плана с контентом предмета;
+- ⬜ предметная страница как единый learning hub.
+
+---
+
+## 5. Гистология
+
+**Статус: 🟡 IN PROGRESS — основной текущий контентный приоритет**
+
+Фактическое состояние Supabase на 2026-10-04:
+- ✅ 350 `exam_questions`;
+- ✅ 5 `ticket_banks`;
+- ✅ 206 опубликованных trainer feed cards;
+- ✅ 27 опубликованных материалов;
+- ✅ 30 карточек относятся к канонической предметной связке тренажёра/атласа;
+- ✅ 9 опубликованных тестов по гистологии;
+- ✅ 14 модулей учебного плана;
+- ✅ 37 записей расписания по гистологии.
+
+### Архитектура
+- ✅ **Микропрепараты → Атлас** — полноценный атлас только контента тренажёра.
+- ✅ **Микропрепараты → Тренажёр** — режимы выбора тем/карточек, последовательное прохождение, история.
+- ✅ подробные файлы ведут в **Материалы**;
+- ✅ DOCX viewer реализован;
+- ✅ фото и документы доступны внутри предмета.
+
+### Осталось
+- 🟡 проверить соответствие всех 30 карточек плану занятий;
+- 🟡 проверить все 28 электронограмм и captions;
+- 🟡 проверить полноту тестов 96 + 67 без потери существующих тестов;
+- ✅ two malformed bird-blastula links reconstructed from supplied source archive;
+- 🟡 пройти UI smoke-test атлас → материал → документ → назад;
+- 🟡 решить 404/502 локальных медиа на SpaceWeb;
+- ⬜ сделать окончательную матрицу: тема → лекция → препарат → ЭМ → вопросы → тест.
+
+---
+
+## 6. Тесты и банк вопросов
+
+**Статус: 🟡 IN PROGRESS**
+
+### Уже сделано
+- ✅ 735 опубликованных questions (live Supabase, 2026-10-05);
+- ✅ test/question backend;
+- ✅ режим банка;
+- ✅ нумерация;
+- ✅ последовательное прохождение;
+- ✅ history/attempt flow;
+- ✅ admin editing groundwork;
+- ✅ legacy test IDs через `source_key`.
+
+### Осталось
+- 🟡 проверить каждый published test на открытие;
+- 🟡 довести admin quick-edit вопросов;
+- 🟡 объединить bank / проход / разбор в один UX;
+- ✅ массовая проверка целостности test → questions проведена; после dedup 118 однозначных связей восстановлены;
+- ✅ malformed bird-blastula links reconstructed from supplied source; source answer retained verbatim and documented for review.
+- ✅ пользовательские отчёты об ошибках вопроса: student UI + preparation + bank + admin problem center.
+
+---
+
+## 7. Материалы
+
+**Статус: 🟡 IN PROGRESS**
+
+- ✅ материалы доступны внутри предмета;
+- ✅ гистология имеет отдельный materials UI;
+- ✅ документы и фото разделены;
+- ✅ DOCX можно открывать на сайте;
+- ✅ предусмотрен переход к оригиналу/файлам.
+
+Осталось:
+- 🟡 полноценный viewer для DOCX без потери структуры;
+- 🟡 корректная выдача локальных файлов через SpaceWeb;
+- ⬜ связать материалы с темами учебного плана.
+
+---
+
+## 8. AI-тьютор
+
+**Статус: 🔴 BLOCKED / 🟡 IN PROGRESS**
+
+Есть backend chain:
+`groq → gigachat → gemini → mistral → openrouter`
+
+Известные проблемы:
+- Groq: возможен 403;
+- GigaChat: модель переключена на `GigaChat-2-Max`;
+- Gemini: direct mode не подходит для RU SpaceWeb, нужен proxy;
+- Mistral: требуется повторная диагностика runtime body;
+- OpenRouter: возможен security-policy 403.
+
+План:
+1. ⬜ привести provider health к фактическому runtime состоянию;
+2. ⬜ выбрать гарантированный primary provider;
+3. ⬜ оставить fallback chain;
+4. ⬜ проверить AI chat end-to-end;
+5. ⬜ затем связывать AI с предметом/темой/вопросом.
+
+---
+
+## 9. Chemistry
+
+**Статус: 🟡 IN PROGRESS**
+
+- ✅ chemistry engine / PubChem resolver на main;
+- ✅ basic chemistry routes;
+- ✅ educational projection renderers;
+- 🟡 часть сложных экспериментальных UI остаётся в beta;
+- ⬜ стабилизировать все chemistry tests;
+- ⬜ устранить/проверить provider-related AI errors внутри chemistry flow.
+
+---
+
+## 10. Admin / CMS
+
+**Статус: 🟡 IN PROGRESS**
+
+Уже есть:
+- ✅ users/roles;
+- ✅ schedule CMS;
+- ✅ subjects;
+- ✅ content/work tools;
+- ✅ question admin groundwork.
+
+Следом:
+- ⬜ единый Content Center;
+- ⬜ quick edit question/answer;
+- ⬜ edit material;
+- ⬜ edit lesson;
+- ⬜ edit trainer card;
+- ⬜ audit/history изменений;
+- ⬜ массовые операции.
+
+---
+
+## 11. Media / SpaceWeb
+
+**Статус: 🟡 IN PROGRESS**
+
+- ✅ backend media route;
+- ✅ B2 integration exists;
+- ✅ prepared clean `content/histology` package;
+- 🟡 physical histology media still require SpaceWeb-side verification;
+- 🟡 trainer feed image 404/502 must be closed.
+
+---
+
+## 12. Documentation / cleanup
+
+**Статус: 🟡 IN PROGRESS**
+
+Новая система:
+- `ROADMAP.md` — что делаем и в каком порядке;
+- `PHASES_STATUS.md` — текущее состояние фаз;
+- `docs/README.md` — карта документов;
+- `BRANCHES.md` — правила main/beta;
+- `docs/ACTIVE-EXPERIMENTS.md` — только актуальные beta-эксперименты.
+
+Временные GPT handoff / base64 artifact docs больше не должны быть source of truth.
+
+---
+
+# Порядок следующих работ
+
+## NEXT 1 — Stability
+1. ⬜ Vercel production build/smoke.
+2. ⬜ login/logout.
+3. ⬜ dashboard.
+4. ⬜ schedule.
+5. ⬜ subject page.
+6. ⬜ tests.
+7. ⬜ histology atlas/materials.
+8. ⬜ media.
+
+## NEXT 2 — Histology completion
+1. ⬜ EM/captions audit.
+2. ⬜ plan ↔ content mapping.
+3. ⬜ tests/question bank audit.
+4. ⬜ material viewer polish.
+
+## NEXT 3 — Admin CMS
+1. ⬜ questions quick-edit.
+2. ⬜ materials edit.
+3. ⬜ lessons edit.
+4. ⬜ trainer cards edit.
+
+## NEXT 4 — AI
+1. ⬜ provider health.
+2. ⬜ guaranteed primary provider.
+3. ⬜ fallback.
+4. ⬜ context-aware tutor.
+
+## NEXT 5 — UI
+1. ⬜ only after functionality is stable.
+2. ⬜ Aero Glass remains beta until explicitly promoted.
+3. ⬜ audit every screen against one design system.
+
+---
+
+# Definition of Done
+
+Проект не считается «готовым», пока:
+
+- [ ] production build зелёный;
+- [ ] login работает;
+- [ ] Vercel → SpaceWeb → Supabase работает;
+- [ ] расписание работает;
+- [ ] каждый раздел предмета открывается без повторного выбора предмета;
+- [ ] тесты/банк работают;
+- [ ] материалы открываются;
+- [ ] histology atlas/trainer work end-to-end;
+- [ ] media 404/502 закрыты;
+- [ ] admin can fix content;
+- [ ] AI has at least one verified provider;
+- [ ] документация отражает фактическое состояние.
+
+
+# Audit update — 2026-10-04
+
+Актуальные документы:
+- docs/FULL-AUDIT-2026-10-04.md — первый полный аудит;
+- docs/DEEP-AUDIT-2-2026-10-04.md — повторный аудит скрытых следов функций и UI coverage;
+- docs/UNFINISHED-REGISTRY.md — актуальный реестр;
+- docs/API-COVERAGE-2026-10-04.md — API coverage.
+
+## Что из старых P0 уже закрыто
+
+- ✅ literal escaped newline в HistologyTrainer.tsx;
+- ✅ frontend /api-compat calls удалены;
+- ✅ homework mock-data удалён;
+- ✅ sequential bank flow синхронизирован с preparation;
+- ✅ structured question options поддерживаются preparation/test flows;
+- ✅ admin schedule save идёт через реальный /admin/schedule;
+- ✅ frontend/ и spaceweb_upload/ удалены;
+- ✅ dead mock/fixture/UI artifacts удалены;
+- ✅ legacy QuestionBank service удалён;
+- ✅ false-zero admin question/progress fallbacks закрываются explicit errors/degraded state.
+
+## Что осталось
+
+### P1 — target environment
+- 🟡 проверить последнюю Vercel сборку;
+- 🟡 проверить последнюю SpaceWeb backend deployment;
+- 🟡 закрыть trainer media 404/502 физическим media smoke-test;
+- 🟡 проверить AI provider chain end-to-end.
+
+### P2 — product/architecture
+- 🟡 общий document viewer для поддерживаемых форматов;
+- 🟡 material metadata editor;
+- 🟡 trainer card editor;
+- 🟡 content version history/rollback UI;
+- 🟡 bulk content validation;
+- 🟡 duplicate route consolidation;
+- ⚪ generic learning_sessions layer — удалить после проверки legacy consumers;
+- 🟡 расширение chemistry data/content.
+
+## Current CI baseline
+
+Последний полностью завершённый code-check перед самым новым documentation-only commit:
+- ✅ TypeScript;
+- ✅ Next.js production build;
+- ✅ PHP syntax (93 files);
+- ✅ predeploy audit: no escaped-newline, no retired /api-compat, homework API-only;
+- ✅ smoke.
+
+Новый code-check после Deep Audit commit запущен отдельно; его итог нужно дождаться перед финальным production verdict.
+
+## Порядок дальше
+
+1. Дождаться зелёного code-check.
+2. Проверить Vercel/SpaceWeb.
+3. Закрыть media.
+4. Закрыть AI provider runtime.
+5. Потом делать P2 product/architecture cleanup.
+# Deep audit 3 — 2026-10-04
+
+Полный новый отчёт: docs/DEEP-AUDIT-3-2026-10-04.md.
+
+### Исправлено в третьем проходе
+- ✅ shadowed domain routes consolidated;
+- ✅ broken /admin/lectures/assist removed;
+- ✅ legacy schedule writes removed;
+- ✅ duplicate schedule import removed;
+- ✅ generic session frontend helpers removed;
+- ✅ search-param static-render risk removed from admin/settings;
+- ✅ live Supabase integrity checked: no orphan test links, no missing material files, no missing trainer image paths.
+
+### Remaining real work
+- 🔴 delivery lag: Vercel production still points to an older commit;
+- 🟡 SpaceWeb deploy must complete once on the final stable commit;
+- 🟡 histology media requires real SpaceWeb/B2 file smoke;
+- 🔴 AI provider runtime availability requires credentials/upstream access;
+- 🟡 generic DOCX/PDF viewer for non-histology materials;
+- 🟡 mobile schedule agenda;
+- 🟡 polished subject-plan/material/trainer-card editors and visual version history.
+## P0 blockers confirmed
+
+- ✅ literal escaped newline in HistologyTrainer fixed; latest Code Checks are green.
+- ✅ active frontend /api-compat calls removed.
+- ✅ sequential bank/preparation contract is covered by current preparation flow.
+- ✅ homework production mock fallback removed.
+- ✅ admin schedule save uses real /admin/schedule.
+- 🟡 remaining P0-class work is external/runtime verification (media and AI credentials) rather than failing CI.
+
+## P1/P2 cleanup confirmed
+
+
+# Audit hardening update — 2026-10-05
+
+- ✅ live Supabase RLS init-plan warnings reduced to 0;
+- ✅ question_reports SELECT policies consolidated to reporter-or-admin;
+- ✅ trainer_feed_answers RLS uses init-plan-safe auth.uid();
+- ✅ admin_change_log and content_versions admin policies use init-plan-safe auth.uid();
+- 🟡 44 unindexed FK advisor findings remain informational/performance work;
+- 🟡 leaked-password protection remains a Supabase Auth setting to enable;
+- ✅ public smoke workflow strengthened for /, /tests, /schedule, /subjects, /materials, /trainers and public API surfaces;
+- 🟡 final production verdict still waits for green CI + Vercel READY + SpaceWeb/media smoke.
+
+
+# Runtime regression update — 2026-10-05
+
+- ✅ live preparation mode constraint now allows sequential;
+- ✅ global loading indicator covers shared API requests across pages, not only tests;
+- ✅ concurrent 401 refresh race hardened;
+- ✅ subject/ticket Supabase REST transient retries added;
+- ✅ supplied Гистология.zip inspected and used for malformed histology reconstruction;
+- 🟡 newest post-fix Vercel deployment must be confirmed READY;
+- 🟡 actual authenticated production smoke remains required because the connector cannot inspect the user's browser token/session.
+
+
+- 2026-10-05: Histology ZIP cross-audit completed through current 3rd semester; materials UI now includes all source documents, next-semester content is retained but hidden by default, legacy DOC HTML mirrors prepared for SpaceWeb, and published duplicate test/question cleanup continued. SpaceWeb media upload remains a manual infrastructure step.
+
+
+## Audit update — 2026-10-05, current-semester content reconciliation
+
+### Гистология
+Live active subject is **2 курс / 3 семестр**.
+
+Current verified live counts:
+- ✅ 14 modules / 19 plan topics;
+- ✅ 80 published materials;
+- ✅ 261 source rows from `Гистология.zip`;
+- ✅ 178 preparation photo sources;
+- ✅ 28 electronogram trainer cards with source documents/captions;
+- ✅ 206 trainer cards total;
+- ✅ 169 trainer cards explicitly marked current-plan;
+- ✅ 37 future/out-of-current-plan cards retained but hidden by default;
+- ✅ 273 published questions, 194 archived;
+- ✅ 0 published source-less questions;
+- ✅ 76 published exam questions;
+- ✅ 8 published tests + 1 archived duplicate;
+- ✅ 5 ticket banks retained;
+- 🟡 0 generated tickets because source ZIP does not provide canonical ticket grouping.
+
+### Materials
+- ✅ complete source-document layer registered in Supabase;
+- ✅ Materials categories separated into Schemes / EM / Methodicals / Tests / Exam / Photos;
+- ✅ default UI is current 3rd semester;
+- ✅ future content is retained and shown through “Весь курс”;
+- ✅ module/topic-first sorting;
+- ✅ mobile/iPhone form controls normalized to a light scheme;
+- ✅ DOCX/HTML/image/PDF viewer paths covered;
+- 🟡 physical SpaceWeb document payload upload remains external.
+
+### SpaceWeb
+Prepared archive:
+`MEDBIOHIM_histology_spaceweb_3sem_content_patch.zip`
+
+It contains the source DOC/DOCX/GIF layer from `Гистология.zip` plus HTML mirrors for legacy `.doc`. Existing photo/EM deployment media is intentionally not duplicated.
+
+### Next acceptance test
+After the archive is physically placed on SpaceWeb:
+`/subjects → Гистология → Материалы → DOC/DOCX → Фото препаратов → back`
+must be checked on iPhone and desktop. Only then move the Histology Materials item from 🟡 to ✅.
+
+
+### Гистология — экзаменационный банк, Pass 8
+- ✅ Current 3rd-semester exam bank reconciled to **366 published exam_questions**: 350 canonical rows + 16 unique ZIP additions.
+- ✅ ZIP additions are deduplicated against the canonical bank; 100 exact-text duplicates are archived, while 16 unique additions remain published.
+- ✅ Canonical bank subject links were restored after detecting 350 rows with `subject_id = NULL`; all 366 published rows now point to the active histology subject.
+- ✅ 0 published exam questions without a source.
+- 🟡 Future respiratory/skin/urinary/reproductive/later GI source questions remain retained in source documents but unpublished until the next-semester plan is activated.
+- 🟡 Ticket banks remain metadata-only; `tickets=0` because no canonical ticket grouping manifest exists in the supplied source archive.
+
+
+---
+
+# 13. Student-first architecture — «от студентов для студентов»
+
+**Статус: 🟡 IN PROGRESS — новая продуктовая ось**
+
+Главный принцип MEDBIOHIM теперь формулируется так:
+
+> Сайт не должен быть только «электронным деканатом» или CMS. Это рабочее учебное пространство, которое студенты наполняют и используют вместе.
+
+Основной контур:
+
+`Студент → аккаунт → учебная группа → расписание → предмет → занятие → ДЗ → выполнение → прогресс`
+
+Дополнительный контур:
+
+`Telegram группы → бот → сообщение/фото → распознавание → предмет → занятие → ДЗ → сайт`
+
+### 13.1 Студент как основной участник
+
+- 🟡 регистрация/вход;
+- 🟡 привязка к учебной группе;
+- 🟡 просмотр группового расписания;
+- 🟡 создание и уточнение ДЗ студентами;
+- 🟡 отметка «сделано»;
+- 🟡 сдача работы;
+- 🟡 сообщения/сообщество;
+- ⬜ предложения исправлений/дополнений к контенту;
+- ⬜ подтверждение информации другими студентами;
+- ⬜ история изменений учебной информации;
+- ⬜ механика «кто добавил / кто подтвердил / кто исправил».
+
+**Важно:** роль студента не должна превращаться в бесконтрольное редактирование официального расписания или канонического учебного контента. Нужна граница между пользовательским вкладом и официальными данными.
+
+### 13.2 Учебная группа — центральная сущность
+
+Уже есть:
+- ✅ `groups`;
+- ✅ `group_memberships`;
+- ✅ active membership;
+- ✅ group-aware schedule;
+- ✅ group-aware homework;
+- ✅ Telegram chat → group binding.
+
+Нужно довести:
+- ⬜ безопасное присоединение по коду/ссылке;
+- ⬜ подтверждение участника;
+- ⬜ starosta/модератор группы;
+- ⬜ несколько групп у одного пользователя без поломки текущего UI;
+- ⬜ история членства;
+- ⬜ перенос студента между группами;
+- ⬜ привязка Telegram-пользователя к аккаунту сайта.
+
+### 13.3 Занятие как связующий объект
+
+Для будущей автоматизации ДЗ недостаточно знать только предмет.
+
+Нужна логика:
+
+`Telegram message → group → date/time → schedule entry → subject → homework`
+
+При этом:
+- subject определяется из официального каталога;
+- занятие определяется по расписанию и времени/дате сообщения;
+- если совпадений несколько — бот не должен угадывать молча;
+- при низкой уверенности создаётся **кандидат ДЗ**, а не окончательное ДЗ;
+- пользователь/староста может подтвердить или исправить привязку.
+
+Это важнее, чем просто `subject_hint`.
+
+---
+
+# 14. Telegram — регистрация + «Telegram → ДЗ»
+
+**Статус: 🟡 IN PROGRESS — backend foundation есть, production flow не подтверждён**
+
+### Что уже реально есть в коде
+
+- ✅ `TelegramHomeworkService`;
+- ✅ webhook endpoint `/api/v1/telegram/webhook`;
+- ✅ secret-token проверка;
+- ✅ Telegram chat discovery;
+- ✅ admin привязка Telegram-чата к учебной группе;
+- ✅ хранение Telegram messages;
+- ✅ защита от повторной обработки message_id;
+- ✅ reply-thread привязка;
+- ✅ media-group/album привязка;
+- ✅ импорт фото/документов;
+- ✅ OCR/vision metadata;
+- ✅ AI semantic classification;
+- ✅ subject/due hints;
+- ✅ создание `homeworks`;
+- ✅ связь `telegram_messages → telegram_homework_links → homeworks`;
+- ✅ `homework_attachments`;
+- ✅ Admin UI `/admin/telegram`;
+- ✅ webhook setup из admin;
+- ✅ Telegram OAuth/custom provider trace в frontend/auth layer.
+
+### Что показала живая Supabase
+
+На текущей проверке:
+- `telegram_bot_chats = 0`;
+- `telegram_messages = 0`;
+- `telegram_homework_links = 0`;
+- `homework_attachments = 0`;
+- `homeworks = 0`.
+
+Следовательно, **кодовая foundation готова, но реальная эксплуатация Telegram-контура ещё не доказана**.
+
+### 14.1 Регистрация через Telegram
+
+Целевой UX:
+
+1. Студент открывает бота.
+2. Бот объясняет, что MEDBIOHIM использует Telegram для входа/привязки.
+3. `/start` выдаёт безопасную ссылку/flow регистрации.
+4. Студент подтверждает Telegram identity.
+5. Аккаунт MEDBIOHIM создаётся или связывается с существующим.
+6. Студент выбирает/вводит код учебной группы.
+7. Сайт показывает группу и просит подтверждение.
+8. После подтверждения студент получает расписание и ДЗ группы.
+
+**Пока нельзя считать этот сценарий готовым:** в репозитории есть custom Telegram OAuth trace, но отдельного end-to-end bot registration flow с Telegram user ↔ `auth.users.id` ↔ `users` ↔ `group_memberships` не подтверждено.
+
+### 14.2 Распознавание ДЗ из чата
+
+Целевой алгоритм:
+
+1. Получить сообщение.
+2. Сохранить raw message.
+3. Определить группу по Telegram chat.
+4. Определить дату сообщения и автора.
+5. Найти ближайшие занятия этой группы по расписанию.
+6. Из текста/фото извлечь:
+   - предмет;
+   - формулировку задания;
+   - срок;
+   - номер/тему занятия;
+   - вложения.
+7. Сопоставить предмет с официальным `subjects`.
+8. Сопоставить занятие с `schedule_entries`.
+9. Оценить confidence.
+10. Если confidence высокий — создать ДЗ.
+11. Если средний/низкий — создать candidate для подтверждения.
+12. Дать старосте/модератору исправить предмет/занятие/срок.
+13. После подтверждения показать ДЗ всем участникам группы.
+
+### 14.3 Критический gap текущей реализации
+
+Сейчас сервис умеет выбрать **subject**, но основной автоматический контур ещё не является полноценным `message → конкретное занятие` resolver.
+
+Нужно добавить отдельный слой:
+`TelegramHomeworkResolver`
+
+Он не должен смешиваться с OCR/LLM.
+
+Вход:
+- `group_id`;
+- `telegram_date`;
+- `message_text`;
+- `subject_hint`;
+- `due_hint`.
+
+Выход:
+- `subject_id`;
+- `schedule_entry_id`;
+- `lesson_context`;
+- `confidence`;
+- `resolution_status = auto|needs_confirmation|unresolved`.
+
+### 14.4 Защита от ошибок
+
+Бот **не должен**:
+- создавать ДЗ только потому, что в сообщении есть слово «дз»;
+- придумывать дату;
+- подменять официальный предмет похожим названием;
+- привязывать сообщение к чужой группе;
+- публиковать низкоуверенное распознавание как подтверждённый факт;
+- создавать дубликаты при повторной доставке Telegram update.
+
+### 14.5 Telegram production acceptance
+
+Для перевода фазы в ✅ нужен реальный тест:
+
+`Telegram chat → webhook → Supabase message → resolver → homework → attachment → website`
+
+и отдельно:
+
+`Telegram /start → account link → group join → schedule/homework`
+
+На каждом шаге должна быть запись/ответ, а не только HTTP 200.
+
+---
+
+# 15. Student-generated content / community
+
+**Статус: ⬜ TODO / product direction**
+
+Сайт «от студентов для студентов» должен позволять безопасно добавлять:
+
+- ⬜ уточнения к ДЗ;
+- ⬜ полезные материалы;
+- ⬜ конспекты;
+- ⬜ заметки к занятию;
+- ⬜ сообщения группы;
+- ⬜ предложения исправлений;
+- ⬜ вопросы по предмету;
+- ⬜ подтверждение/опровержение информации.
+
+Модель доверия:
+
+`student contribution → moderation/confirmation → shared group knowledge`
+
+Не смешивать это с каноническим импортом учебных материалов.
+
+---
+
+# 16. Updated project dependency map
+
+```
+                         ┌─────────────────────┐
+                         │      STUDENT        │
+                         └──────────┬──────────┘
+                                    │
+                         auth / Telegram link
+                                    │
+                 ┌──────────────────▼──────────────────┐
+                 │          USER + MEMBERSHIP          │
+                 │ users → group_memberships → groups  │
+                 └───────────────┬─────────────────────┘
+                                 │
+                ┌────────────────┼────────────────┐
+                │                │                │
+                ▼                ▼                ▼
+           SCHEDULE           SUBJECT          COMMUNITY
+                │                │
+                └────────┬───────┘
+                         ▼
+                    LESSON CONTEXT
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+       HOMEWORK       MATERIALS       TESTS
+          │
+          ▼
+    SUBMISSIONS / DONE
+          │
+          ▼
+       PROGRESS
+
+Telegram group
+      │
+      ▼
+  Telegram Bot
+      │
+      ▼
+telegram_messages
+      │
+      ▼
+OCR / semantic classifier
+      │
+      ▼
+Homework Resolver
+      │
+      ├──────────────→ subject_id
+      │
+      ├──────────────→ schedule_entry_id
+      │
+      └──────────────→ due_at
+                       │
+                       ▼
+                    HOMEWORK
+                       │
+                       ▼
+                    STUDENT
+```
+
+### Архитектурный приоритет
+
+1. 🔴 **Production stability** — auth/router/media/deployment.
+2. 🔴 **Student identity + group membership**.
+3. 🔴 **Telegram registration/linking**.
+4. 🔴 **Telegram → lesson resolver → homework**.
+5. 🟡 Student-generated content/community.
+6. 🟡 Admin moderation/confirmation.
+7. 🟡 Progress/analytics around real student activity.
+8. 🟢 UI polish / Aero Glass после функциональной стабилизации.
+
+### Новое правило карты
+
+Любая новая функция должна отвечать на три вопроса:
+
+1. **Кто студент?**
+2. **К какой учебной группе и занятию относится действие?**
+3. **Как результат попадает обратно в учебный процесс?**
+
+Если на эти вопросы нет ответа, функция не считается интегрированной в MEDBIOHIM.
+
+
+## Audit update — 2026-10-06 — Pass 14–17 second verification
+
+**Статус: 🟢 CLOSED at implementation + live-invariant level.**
+
+Pass 14–17 уже были реализованы в main, а последующие Pass 18–22 закрыли часть оставшихся P1. Второй проход 06.10 проверил именно текущий код и живую Supabase, а не только исторические отчёты.
+
+### Pass 14 — AcademicContext
+- 🟢 canonical group/subject/session/lesson/context_version contract;
+- 🟢 explicit group selection for multi-group users;
+- 🟢 UUID-authoritative subject identity;
+- 🟢 active schedule/lesson resolution;
+- 🟢 no current foreign-context gaps.
+
+### Pass 15 — Core academic flow
+- 🟢 planner/schedule/attendance use selected group;
+- 🟢 homework submission retry/state transitions are safe;
+- 🟢 active test attempt uniqueness is enforced;
+- 🟢 progress is group-scoped;
+- 🟢 homework now exposes one canonical derived my_status.
+
+### Pass 16 — Tests / Preparation
+- 🟢 preparation start validates group + subject context;
+- 🟢 question membership is restricted to the session;
+- 🟢 sequential bank progress is group-scoped;
+- 🟢 terminal state transitions are guarded.
+
+### Pass 17 — Test integrity / reproducibility
+- 🟢 answers are persisted server-side;
+- 🟢 final score is calculated server-side;
+- 🟢 test attempts store immutable question/answer snapshots;
+- 🟢 test attempts and preparation sessions store group/session/context version;
+- 🟢 preparation result answer snapshots are populated;
+- 🟢 normal test/preparation responses do not leak answer keys.
+
+### Second-pass live invariants
+- active attempt snapshot gaps: **0**;
+- active preparation snapshot gaps: **0**;
+- answers outside immutable snapshots: **0**;
+- preparation answer snapshot gaps: **0**;
+- foreign-group attempts/sessions: **0**;
+- schedule ↔ academic session/year/semester mismatches: **0**.
+
+There is one historical submitted attempt from 02.10.2026 created before snapshot migration with no saved answers, score or academic context. It is intentionally retained as a legacy historical anomaly; reconstructing its score/context would fabricate history.
+
+Detailed verification: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS14-17-SECOND-VERIFY.md.
+
+**Release caveat:** these passes are closed in code + live DB. Final PHP/TypeScript/build/browser/Vercel/SpaceWeb verification remains a separate deployment gate.
+
+## Audit update — 2026-10-06 — Pass 18
+
+Pass 18: 🟢 historical test/preparation integrity / 🟡 runtime verification pending.
+
+- ✅ preparation scoring reads immutable session question snapshots;
+- ✅ preparation result stores answer snapshot;
+- ✅ AI review uses historical answer snapshot;
+- ✅ live DB invariants show no active attempt/preparation context gaps;
+- 🟡 GitHub Actions has no run attached to the latest commits;
+- 🟡 PHP/Next build and SpaceWeb smoke test remain mandatory before final green gate.
+
+Detailed report: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS18.md.
+
+
+## 2026-10-06 — Pass 19: Progress / History / Preparation contract
+
+- 🟢 preparation GET/finish/AI review теперь используют immutable question snapshots;
+- 🟢 preparation results сохраняют answer_snapshot;
+- 🟢 /progress считает submitted attempts завершёнными;
+- 🟢 DB error в test history больше не превращается в ложный пустой progress;
+- 🟢 test history строго scoped по test_attempts.group_id;
+- 🟢 bank/preparation frontend передают group_id в bank-progress;
+- 🟢 live active-context invariants остаются нулевыми;
+- 🟡 один legacy submitted attempt от 2026-10-02 не имеет group_id и намеренно не приписан к группе;
+- 🟡 PHP/Next/build/runtime verification после Pass 19 ещё обязательна.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS19.md.
+
+
+## 2026-10-06 — Pass 20: Test / Preparation API contract
+
+- 🟢 закрыты API leaks: test_attempts.question_snapshot больше не отдаётся клиенту;
+- 🟢 preparation session.question_snapshot больше не отдаётся через start/get/save/finish;
+- 🟢 эталоны подготовки доступны после завершения через исторический snapshot;
+- 🟢 my attempts теперь SELECT-ит только публичные поля без answer snapshot;
+- 🟢 старый ProgressService найден как неиспользуемый legacy trace, source of truth остаётся progress_rest;
+- 🟡 PHP/Next/browser/runtime verification ещё обязательны.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS20.md.
+
+
+## 2026-10-06 — Pass 21: Deployment gate / cross-group audit
+
+- 🟢 bank-progress sequential session теперь строго scoped по canonical group;
+- 🟢 live invariants после исправления: active context/snapshot gaps = 0;
+- 🟢 GitHub code-check workflow существует и содержит PHP syntax + route registration + frontend audit;
+- 🟡 GitHub workflow query не показывает runs для latest commits;
+- 🟡 Vercel connected account возвращает 403 на list/create deployment, поэтому production deployment не форсировался;
+- 🟡 SpaceWeb runtime gate ещё не подтверждён.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS21.md.
+
+
+## 2026-10-06 — Pass 22: Legacy / stub / fake-success audit
+
+- 🟢 admin users/homeworks no longer silently return partial data after primary-store failure;
+- 🟢 unused legacy `ProgressService` removed together with its unused platform import;
+- 🟢 TODO/placeholder/null/empty scans classified semantically rather than mass-editing legitimate UI/empty states;
+- 🟡 historical documentation traces remain and are scheduled for source-of-truth reconciliation;
+- 🟡 runtime/build/browser gate remains unconfirmed.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS22.md.
+
+
+## 2026-10-06 — Pass 23: route / legacy cleanup
+
+- 🟢 найден и устранён duplicate GET /api/v1/me: одновременно регистрировались profile_rest.php и domain_rest.php;
+- 🟢 из routes.php удалена регистрация legacy profile_rest.php;
+- 🟢 удалены orphan profile_rest.php и SupabaseRestProfile.php, которые возвращали неполный fallback-профиль;
+- 🟢 canonical /api/v1/me теперь проходит через UserRepository::profileBundle() с существующим REST fallback;
+- 🟡 полный PHP/Next/browser/runtime gate всё ещё требует target-environment проверки;
+- 🟡 продолжается аудит остальных legacy fallback/import traces.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS23.md.
+
+
+## 2026-10-06 — Pass 24: Tests / questions by lesson topic
+
+- 🟢 added canonical curriculum topic map to the tests API;
+- 🟢 map is scoped by the user's group/course/semester/specialty;
+- 🟢 tests expose module/topic names and ordering metadata;
+- 🟢 tests page now shows “Темы занятий → что готовить” with question/test counts;
+- 🟢 question banks can be filtered by lesson topic;
+- 🟢 untagged questions are explicitly reported instead of being guessed into topics;
+- 🟡 detailed lesson-plan rows are still missing for subjects whose topic hierarchy has not been imported;
+- 🟡 remaining untagged questions require controlled curriculum mapping;
+- 🟡 PHP/Next/browser/SpaceWeb runtime verification remains mandatory.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS24.md.
+
+
+## 2026-10-06 — Pass 25: full current-semester curriculum mapping
+
+- 🟢 all 655 published questions in current 2nd-year/3rd-semester histology + organic/physical chemistry have canonical topics;
+- 🟢 all 30 published tests in those subjects have canonical topics;
+- 🟢 histology 206 previously untagged questions mapped by specimen/content, with 47 explicitly kept outside the current 18-week plan;
+- 🟢 chemistry question taxonomy 1.1–3.13 mapped to canonical curriculum topics using source provenance;
+- 🟢 chemistry 18-lecture calendar linked to topic dates where the current plan confirms them;
+- 🟢 questions/tests outside the current calendar remain visible and explicitly marked rather than being falsely attached to a lesson;
+- 🟢 tests UI shows date, topic, question/test counts and extra/out-of-calendar status;
+- 🟢 no ticket-bank UUIDs or question answers/text were changed;
+- 🟡 runtime/build/browser gate remains to be verified.
+
+Подробно: docs/IMPLEMENTATION-AUDIT-2026-10-06-PASS25.md.
+
+
+## 2026-10-07 — Pass 26: единый химический каталог из исходных файлов
+
+- 🟢 проверен загруженный архив из 7 сканированных PDF: 142 страницы; обычный PDF text layer отсутствует, поэтому OCR не используется как единственный источник истины;
+- 🟢 использованы ранее выверенные документы проекта с повторной сверкой исходного архива: `organic_chemistry_open_tasks_fixed.sql` и итоговая расшифровка вопросов/тестов;
+- 🟢 в Supabase создан `chemistry_master_documents` — единый канонический документ для органической и физической химии;
+- 🟢 в единый каталог собраны 260 открытых заданий + 176 опубликованных тестовых вопросов = 436 элементов;
+- 🟢 для тестов сохранены варианты и правильные ответы;
+- 🟢 для открытых заданий исходный текст, номер, тема и привязка к плану сохранены; пустой ответ не заменяется выдуманным решением;
+- 🟢 химические формулы/реакции, которые присутствуют в текстовом источнике, сохраняются; формулы, существующие только как изображение, не восстанавливаются по догадке;
+- 🟡 задания «Напишите структурные/скелетные формулы» требуют отдельного подтверждения формул по оригинальным изображениям страниц перед заполнением эталонных ответов;
+- 🟡 полный архивный тестовый раздел источника содержит больше вопросов, чем текущий canonical test set; расширять production bank нужно отдельным контролируемым импортом, чтобы не занести OCR-ошибки;
+- 🟢 ticket banks не изменялись.
+
+Подробно: `docs/IMPLEMENTATION-AUDIT-2026-10-07-CHEMISTRY-MASTER-CATALOG.md`.
+
+
+## 2026-10-07 — Pass 26A: эталонные ответы и формулы
+
+- 🟢 в единый Supabase-каталог добавлены подготовленные ответы для 40 элементов;
+- 🟢 19 формульных элементов получили отдельное текстовое представление структурных формул;
+- 🟡 формулы пока имеют статус `prepared_from_text`, а не визуально подтверждённой: исходные сканы нужно проверить постранично перед использованием в автоматической проверке;
+- 🟢 production `exam_questions.answer` не перезаписывался;
+- 🟢 каталог защищён RLS и доступен на чтение авторизованным пользователям;
+- 🟡 остаётся обработать ответы остальных 220 открытых заданий и провести визуальную проверку формул/стереохимии.
+
+
+## 2026-10-07 — Pass 26B: две методички химии
+
+- 🟢 подтверждено, что химический массив состоит минимум из **двух самостоятельных методических источников**;
+- 🟢 источник 1: «Учебно-методическое пособие по органической и физической химии» ДВГМУ;
+- 🟢 источник 2: Н.Н. Минаева, С.А. Пронкина — «Сборник задач, упражнений и тестовых заданий по органической химии» ДВГМУ;
+- 🟢 в Supabase создан `chemistry_source_documents` с раздельной provenance-записью обоих источников;
+- 🟢 единый master catalog хранит оба источника в `source_documents`;
+- 🟢 совпадающие задания не удаляются автоматически как дубли: сначала сохраняется происхождение из методички;
+- 🟡 конкретные элементы без надёжной source attribution не будут искусственно приписываться методичке.
+
+
+### Pass 27 — Химический банк на сайте
+- 🟢 Единый каталог химии подключён к странице «Тесты и билеты».
+- 🟢 Добавлены поиск, фильтры «задание/тест» и «формулы сохранены», пагинация и раскрытие вопроса/ответа.
+- 🟢 Ответы без подготовленного решения не выдаются за проверенные; формулы не восстанавливаются догадкой.
+
+
+## 2026-10-07 — Storage architecture clarification: Supabase Free + SpaceWeb media
+
+> Важное инфраструктурное правило проекта: Supabase используется на бесплатном плане и является БД/слоем метаданных, а тяжёлые изображения, фотографии препаратов, электронограммы и другие крупные медиа по возможности хранятся на SpaceWeb. Supabase Storage/B2 не считаются обязательным хранилищем для этих файлов.
+
+### Каноническое разделение
+
+- **Supabase Free** — PostgreSQL, Auth, RLS, связи, метаданные контента, вопросы, тесты, учебный план, trainer cards, source_key, пути/идентификаторы медиа.
+- **SpaceWeb** — физические файлы большого объёма: фотографии, изображения микропрепаратов, электронограммы и документы, когда их хранение в репозитории или бесплатном Supabase нецелесообразно.
+- **GitHub** — код, миграции, документация и небольшие декларативные/контентные артефакты; не использовать как обязательное хранилище всего большого архива.
+- **Vercel** — frontend/deployment; не считать Vercel источником постоянного пользовательского media storage.
+
+### Ограничение исходных архивов
+
+Полный content.zip может быть слишком большим для загрузки в чат. Это не означает, что контент нужно урезать: архив рассматривается как источник, а его содержимое должно быть перенесено/разложено по канонической архитектуре частями.
+
+Для content.zip уже подтверждено:
+- 444 фактических файлов;
+- 389 изображений;
+- 207 уникальных наборов байтов после удаления дублей;
+- Supabase содержит 206 trainer feed cards, включая 28 EM по назначению;
+- физический media-layer должен проверяться отдельно на SpaceWeb.
+
+### Правило для Histology media
+
+Для гистологии каноническим физическим источником остаётся `/public_html/content/histology` на SpaceWeb (или путь из HISTOLOGY_MEDIA_ROOT), а Supabase хранит карточки, captions, metadata и ссылки/source_key.
+
+**Не переносить все изображения из content.zip в public.files только ради формального соответствия.** Это нарушило бы выбранную бесплатную архитектуру и увеличило бы зависимость от лимитов Supabase.
+
+### Release gate
+
+Физическое наличие файла на SpaceWeb считается отдельным обязательным smoke-test:
+Supabase metadata → API media route → SpaceWeb file → HTTP 200/image.
+
+Статус: 🟡 требуется финальная проверка/синхронизация физического media-layer на SpaceWeb.
+
+
+## 2026-10-07 — подтверждён физический Histology media root на SpaceWeb
+
+Получено прямое подтверждение из файлового менеджера SpaceWeb: каталог Histology media физически присутствует под /public_html/... и содержит ожидаемую структуру:
+
+- source-materials/;
+- electronograms/;
+- em/ — alias/совместимость электронограмм;
+- 5_Фотографии препаратов/;
+- дополнительный каталог с URL/Unicode-encoded именованием;
+- README.md.
+
+Это означает, что ранее сформулированный вывод «физические media отсутствуют» был слишком сильным: отсутствие этих бинарных файлов в GitHub и таблице public.files не означает, что их нет на SpaceWeb.
+
+### Текущий статус media
+
+- 🟢 физический Histology media root на SpaceWeb подтверждён;
+- 🟢 структура каталогов соответствует README/content package;
+- 🟡 требуется инвентаризация фактических файлов внутри каталогов и сопоставление с 206 trainer cards / 28 EM / Materials;
+- 🟡 требуется HTTP smoke-test нескольких реальных image/document paths через production API;
+- 🟡 требуется проверить, что backend HISTOLOGY_MEDIA_ROOT указывает именно на этот физический каталог.
+
+Каноническая модель остаётся:
+Supabase Free = metadata/DB → SpaceWeb = physical media → API = controlled delivery.
+
+
+## 2026-10-07 — полноценная база вопросов без запуска теста
+
+Раздел `/practice` переведён из режима только «практики» в полноценную **Базу вопросов** для всех авторизованных пользователей.
+
+- опубликованные вопросы доступны напрямую, без создания test_attempt/preparation session;
+- по умолчанию загружаются все типы опубликованных вопросов, а не только `ticket`;
+- есть фильтр предмета, типа и поиск по тексту;
+- есть постраничная навигация для полного банка;
+- правильный ответ загружается отдельно от режима прохождения теста и доступен при просмотре вопроса;
+- у каждого вопроса остаётся `QuestionReport` — жалоба привязана к конкретному `question_id`;
+- жалобы обрабатываются админским `/admin/problems`, где вопрос можно быстро исправить;
+- запуск теста для просмотра/изучения вопроса не требуется.
+
+Архитектурное правило: **просмотр базы вопросов ≠ попытка теста**. Открытие вопроса не должно менять прогресс, результат или историю попыток.
+
+
+## 2026-10-07 — изоляция банков по предметам
+
+База вопросов и тестовая часть теперь рассматриваются как предметные контексты: переход из конкретного предмета передаёт его `subject_slug`, поэтому банк вопросов загружается только для этого предмета. Для гистологии и химии не смешиваются вопросы, ответы и тесты. Прямой общий `/practice` без контекста сохраняет возможность выбрать предмет вручную.
+
+
+## 2026-10-07 — Project Source-of-Truth Audit
+
+Проведена сверка кода, пользовательской логики и существующих документов. Создан канонический обзор архитектурных правил и остаточных release-gates:
+
+`docs/PROJECT-SOURCE-OF-TRUTH-AUDIT-2026-10-07.md`
+
+Зафиксированы как постоянные правила: независимые банки по предметам, база вопросов ≠ тест, жалоба → question_id → admin correction, optional AI grading, immutable history snapshots, единый academic context, Supabase Free как DB/metadata + SpaceWeb как physical media, расписание + задания как единый целевой UX, content reconciliation, runtime/deployment truth, strict build gate, timezone и mobile/browser acceptance.
+
+Отдельно отмечены остаточные 🟡 проверки, которые нельзя выдавать за полностью закрытые только по наличию кода в GitHub.
+
+
+## 2026-10-07 — Zero-cost + full-functionality policy
+
+**Новый обязательный архитектурный принцип:** полный запланированный функционал должен сохраняться при **$0 обязательных расходов**.
+
+Бесплатный стек:
+- GitHub Free;
+- Vercel Hobby;
+- SpaceWeb Free;
+- Supabase Free;
+- Backblaze B2 Free allowance.
+
+Правило оптимизации: при лимитах сначала применять caching, pagination, lazy loading, streaming, batching, deduplication, metadata/binary separation и распределение media между SpaceWeb/B2. Не урезать пользовательский сценарий только ради free-tier.
+
+AI остаётся optional: deterministic/local path должен сохранять базовый функционал без платного AI.
+
+Любой новый сервис проходит проверку permanent free vs trial, квоты, egress, поведение после лимита и риск автоматического расхода.
+
+Полная политика: docs/FREE-TIER-FULL-FUNCTIONALITY-POLICY-2026-10-07.md.
+
+
+## 2026-10-07 — Admin Data & Storage Control Center
+
+Supabase остаётся единственным основным источником истины. Админская консоль развивается как единый интерфейс управления данными и физическими объектами, без создания второй canonical БД.
+
+### A — Database Console
+- 🟢 `/admin/database`: whitelisted tables, редактирование, импорт/экспорт, audit/rollback;
+- 🟢 добавлен поиск по значениям и пагинация;
+- 🟡 desktop/PC-style интерфейс: дерево таблиц, сортировка, фильтры, закрепление ключей, инспектор строки, связи;
+- 🟡 bulk-edit с dry-run и валидацией;
+- 🟡 health/reconciliation проверки.
+
+### B — File & Storage Center
+- 🟡 SpaceWeb file tree и проверка существования;
+- 🟡 B2 object browser через бесплатный API;
+- 🟡 Supabase metadata ↔ физический объект reconciliation;
+- 🟡 MIME/размер/checksum, дубликаты и orphan-файлы;
+- 🟡 безопасные move/rename/archive/delete;
+- 🟡 отдельная проверка Histology `content/histology` и Materials.
+
+### C — Unified Operations Dashboard
+- 🟡 состояние Supabase/SpaceWeb/B2/Vercel;
+- 🟡 квоты бесплатных ресурсов;
+- 🟡 ошибки интеграций и проверки;
+- 🟡 export/backup snapshots;
+- 🟡 журнал операций и безопасный rollback.
+
+### D — Free-service extensions
+Другие бесплатные сервисы подключаются только как дополнения: кэш, push, поиск, OCR, мониторинг, аналитика, backup и т.п. Они не создают вторую БД и не становятся обязательными для работы MEDBIOHIM.
+
+Подробная архитектура: `docs/ADMIN-DATA-CONSOLE-ARCHITECTURE.md`.
+
+## 2026-10-07 — Consolidated Remaining Implementation Map
+
+Этот блок фиксирует все ранее найденные, но ещё не закрытые направления. Ничего из уже работающего функционала не считается кандидатом на удаление только ради упрощения или free-tier.
+
+### 1. Release / production verification — P0
+- 🟡 подтвердить последний Vercel deployment как READY;
+- 🟡 выполнить production smoke: login → /me → dashboard → logout;
+- 🟡 authenticated smoke для schedule, subjects, tests, preparation, question bank, materials, trainer/atlas и admin;
+- 🟡 подтвердить актуальный backend на SpaceWeb и отсутствие рассинхрона GitHub → SpaceWeb;
+- 🟡 проверить PHP runtime, роутер, env/secrets и OPcache;
+- 🟡 получить фактический CI result для актуального HEAD.
+
+### 2. Auth / security — P0/P1
+- 🟡 полный auth regression после исправлений /api/v1/me;
+- 🟡 refresh/re-login и concurrent 401 recovery;
+- 🟡 production roles/claims/group membership;
+- 🟡 leaked-password protection в Supabase Auth;
+- 🟡 отсутствие bootstrap/admin secrets в production;
+- 🟡 финальный аудит RLS и 44 оставшихся advisor findings по FK-индексам;
+- 🟡 server-side защита всех admin/data mutations.
+
+### 3. Расписание + Задания — единый learning flow
+Целевой UX: Расписание → дата → предмет → занятие → задания/домашняя работа → выполнение/сдача → статус.
+- 🟡 объединить «Задания» и «Расписание» в единый пользовательский сценарий;
+- 🟡 создание/редактирование homework из контекста даты и subject;
+- 🟡 единый статус submitted/done/returned/graded;
+- 🟡 attendance по паре: присутствовал / уважительная / болезнь / неуважительная;
+- 🟡 knowledge gaps по предмету;
+- 🟡 проверить schedule_entries ↔ academic_sessions/year/semester для исторических данных;
+- 🟡 month/week overlap и чередующиеся/объединённые пары;
+- 🟡 mobile agenda mode.
+
+### 4. Histology — physical content completion
+- 🟡 сопоставить все 444 файлов content.zip с физическими файлами SpaceWeb;
+- 🟡 сопоставить 206 trainer cards с реальными image paths;
+- 🟡 проверить все 28 EM и captions;
+- 🟡 проверить Materials → DOCX/JPG/PNG physical objects → API HTTP 200 + MIME;
+- 🟡 закрыть trainer media 404/502;
+- 🟡 atlas → material → document/image → back smoke;
+- 🟡 итоговая матрица тема → лекция → препарат → ЭМ → вопросы → тест;
+- 🟡 не переносить весь архив в Supabase Storage только ради формальной синхронизации.
+
+### 5. Materials / documents
+- 🟡 единый viewer для DOCX/PDF и поддерживаемых форматов;
+- 🟡 сохранить структуру документа, изображения и навигацию;
+- 🟡 material metadata editor;
+- 🟡 связать материал с canonical curriculum topic;
+- 🟡 physical-file reconciliation и orphan detection;
+- 🟡 streaming/lazy loading больших файлов.
+
+### 6. Tests / preparation / Question Library
+- 🟡 открыть и smoke-test каждый published test;
+- 🟡 объединить банк → прохождение → разбор ошибок в единый UX;
+- 🟡 admin quick-edit question/answer/options;
+- 🟡 быстрый переход из жалобы к вопросу и исправлению;
+- 🟡 строгая subject isolation для histology/chemistry и будущих subjects;
+- 🟡 повторно проверить multiple-correct, free text, sequential и history;
+- 🟡 сохранить immutable snapshot semantics при будущих редакторах;
+- 🟡 историческую старую submitted attempt оставить документированным legacy case без выдумывания истории.
+
+### 7. Smart answer grading
+- 🟢 deterministic exact/normalized path;
+- 🟢 spelling/orthography ignored;
+- 🟢 AI optional;
+- 🟡 end-to-end grading на реальном тесте;
+- 🟡 pending/error/retry semantics;
+- 🟡 multiple-choice без AI;
+- 🟡 AI получает только необходимый question + authoritative answer и не раскрывает answer key клиенту.
+
+### 8. Chemistry — completion
+- 🟢 unified 436-item master catalog;
+- 🟢 provenance for two independent methodicals;
+- 🟡 подготовить/проверить оставшиеся 220 open-task answers;
+- 🟡 визуально подтвердить 19 formula-heavy prepared answers по исходным страницам;
+- 🟡 controlled expansion OCR-sensitive archived test sections;
+- 🟡 не заменять production answers неподтверждёнными OCR/formula guesses;
+- 🟡 стабилизировать chemistry tests and experimental UI;
+- 🟡 проверить chemistry AI/provider-dependent flows.
+
+### 9. Trainers / atlas / preparations
+- 🟡 полный browser cycle: start → answer → resume → finish → result → error review;
+- 🟡 randomization без дублей и с одним authoritative correct answer;
+- 🟡 скрытие captions/answers там, где это требуется режимом экзамена/подготовки;
+- 🟡 retry image loading и устойчивость на мобильной сети;
+- 🟡 topic/type/count modes: 10/20/50/custom/all;
+- 🟡 mobile pagination/list/sidebar.
+
+### 10. Admin / CMS / Content Center
+- 🟡 единый Content Center;
+- 🟡 question quick-edit;
+- 🟡 material editor;
+- 🟡 lesson/lecture editor;
+- 🟡 trainer-card editor;
+- 🟡 content version history + visual rollback;
+- 🟡 bulk validation and dry-run imports;
+- 🟡 relation-aware row inspector;
+- 🟡 DB health/reconciliation;
+- 🟡 безопасные bulk operations.
+
+### 11. File & Storage Operations Center
+- 🟡 SpaceWeb tree/browser;
+- 🟡 B2 object browser;
+- 🟡 Supabase metadata ↔ SpaceWeb/B2 object map;
+- 🟡 MIME/size/checksum, duplicate/orphan scan;
+- 🟡 safe move/rename/archive/delete;
+- 🟡 backup/export snapshots;
+- 🟡 provider capacity/quota panel;
+- 🟡 operation log + safe rollback.
+
+### 12. UI / cross-platform acceptance
+- 🟡 iPhone Safari, Android Chrome, Windows Chrome/Edge, Firefox, Yandex, macOS Safari/Chrome;
+- 🟡 устранить iPhone dark/misaligned area;
+- 🟡 mobile admin pagination and dense data tables;
+- 🟡 mobile tests/preparation/trainers/materials;
+- 🟡 loading/subject-loading performance and perceived latency;
+- 🟡 prevent overlapping theory/visual layers in schedule/content;
+- 🟡 one unified design system; Aero Glass remains beta until separately promoted;
+- ⬜ final visual audit after functionality is stable.
+
+### 13. Performance / free-tier optimization
+- 🟡 measure DB/API/storage/egress before moving workloads;
+- 🟡 cache read-heavy metadata;
+- 🟡 pagination for large datasets;
+- 🟡 lazy-load images/documents/trainers;
+- 🟡 streaming for large files;
+- 🟡 deduplicate media and metadata;
+- 🟡 batch requests and verify indexes;
+- 🟡 hard limits / graceful degradation for optional external providers;
+- 🟡 no mandatory paid dependency.
+
+### 14. AI tutor / provider layer
+- 🟡 provider health endpoint with factual runtime status;
+- 🟡 verified primary free/available provider;
+- 🟡 preserve fallback chain;
+- 🟡 diagnose Mistral/OpenRouter/GigaChat/Groq runtime errors with actual response bodies;
+- 🟡 context-aware tutor: subject → topic → question/material;
+- 🟡 AI remains optional for core learning/testing flows.
+
+### 15. Code quality / architecture cleanup
+- 🟡 fix current TypeScript/ESLint issues before removing build-time bypasses (typescript.ignoreBuildErrors, eslint.ignoreDuringBuilds);
+- 🟡 centralize timezone handling;
+- 🟡 inspect remaining legacy learning_sessions consumers before deletion;
+- 🟡 finish duplicate/dead route and service cleanup audits;
+- 🟡 keep API route ownership canonical and documented;
+- 🟡 regression tests for subject isolation, snapshots, reports and academic context.
+
+### 16. Documentation / release discipline
+- 🟢 stable baseline recorded in docs/STABLE-BASELINE-2026-10-07.md;
+- 🟡 every production-impacting change updates roadmap/status and relevant audit;
+- 🟡 maintain free-tier capacity register;
+- 🟡 maintain runtime deployment checklist;
+- 🟡 distinguish repository state, user-observed working state and independently verified runtime;
+- 🟡 create release snapshots before risky migrations.
+
+### 17. Optional free-service aggregation — additions only
+- 🟡 search permanent-free additions for cache/CDN, push, OCR, monitoring, analytics, search and backup;
+- 🟡 each service must have clear quota, egress, retention, sleep/suspension and billing behavior;
+- 🟡 supplementary services may enrich data through API but never replace Supabase canonical truth;
+- 🟡 failure of an optional service must not break core MEDBIOHIM.
+
+### Execution order
+**P0:** production/auth/runtime gate → media delivery → tests/question bank smoke → schedule/homework core.
+**P1:** Histology/Materials reconciliation → admin Content Center → trainer/preparation completion → mobile acceptance → chemistry answer completion.
+**P2:** AI tutor/provider layer → PC-style storage/operations center → performance/free-tier distribution → optional free-service integrations → visual polish.
+**Rule:** no new feature may silently regress the stable baseline; risky changes require a rollback point.
+
+
+## 2026-10-07 — P0 implementation pass
+
+Исправлены две найденные регрессии в curriculum-map: повреждённый PHP Throwable handler и потерянная связь topic → curriculum_items для planned_date/item_type. Подробный audit: `docs/IMPLEMENTATION-AUDIT-2026-10-07-P0.md`.
+
+Production gate пока не закрыт: Vercel сообщает `build-rate-limit`; CI/runtime READY не считаются подтверждёнными до фактического успешного запуска.
+
+
+## 2026-10-07 — P0 verification/fix cycles continued
+
+- 🟢 Vercel production deployment for `59e38d9664645556bd2fca64ea6d97f998a5f200` reached **READY**; GitHub combined status for that commit reports Vercel success.
+- 🟢 Repeated source verification found and fixed a real JSX regression in the Chemistry master-bank section and two admin validation defects.
+- 🟢 Public health diagnostics were hardened: DB host/port/user and raw connection diagnostics are no longer returned by `HealthChecker`.
+- 🟢 Histology Materials now have an authenticated SpaceWeb physical-file fallback when no B2 download URL exists; this preserves the canonical architecture `Supabase metadata + SpaceWeb binary`.
+- 🟡 Latest commits after `59e38d9...` are currently blocked from a new Vercel deployment by `build-rate-limit`; they remain source-verified only until a READY deployment is available.
+- 🟡 Production authenticated smoke and SpaceWeb runtime verification remain open.
+
+
+## 2026-10-07 — semantic verification cycle
+
+### Security
+- 🟢 `public.chemistry_source_documents` RLS enabled in live Supabase.
+- 🟢 Authenticated read-only policy added; server-side writes remain protected.
+- 🟡 Supabase Auth Leaked Password Protection remains a separate hardening item.
+
+### Subject/question isolation
+- 🟡 Do not make `subjects.slug` globally unique: current data intentionally contains repeated slugs across academic contexts.
+- 🟡 Next implementation gate: question/search boundaries must prefer authoritative `subject_id` / academic context and use slug only as a human-facing alias.
+- 🟢 Existing histology ticket banks remain untouched by this cycle.
+
+### 18. Media Optimization Pipeline — P1/P2
+Цель: уменьшать размер загружаемых изображений и других медиа без заметной потери качества и без нарушения исходных файлов.
+
+- 🟡 единый upload pipeline для Materials, лекций, trainer/atlas, профиля и админского Content Center;
+- 🟡 определять реальный MIME/type по содержимому, а не доверять расширению;
+- 🟡 изображения: автоматический resize по максимальному разумному разрешению;
+- 🟡 выбирать оптимальный web-формат: **WebP** как основной безопасный fallback и **AVIF** для ещё меньшего веса там, где поддержка/качество оправданы;
+- 🟡 не использовать WebM для обычных фотографий: WebM — контейнер прежде всего для видео/анимации. Если в конкретном сценарии WebM для image/animation действительно даёт выигрыш, поддержать его экспериментально, но не делать canonical photo format;
+- 🟡 видео/анимации: отдельная транскодировка в WebM/AV1/VP9 только при доказанном выигрыше размера и совместимости;
+- 🟡 сохранять оригинал только для типов, где он нужен для обучения/архива/редактирования; для обычных preview-фото хранить оптимизированный master + при необходимости thumbnail;
+- 🟡 генерировать thumbnail/preview и несколько responsive sizes вместо загрузки огромного оригинала на телефон;
+- 🟡 EXIF: удалять GPS и ненужные метаданные из пользовательских фото;
+- 🟡 дедупликация по checksum/content hash до повторной загрузки;
+- 🟡 лимиты размера/разрешения с понятной ошибкой до тяжёлого upload;
+- 🟡 прогресс загрузки + состояние processing + retry;
+- 🟡 оптимизация должна выполняться server-side/worker, чтобы слабый телефон не тратил батарею/память на тяжёлую конвертацию;
+- 🟡 оригинал и производные файлы связывать через source_file_id/asset family;
+- 🟡 MIME/size/checksum/width/height/duration хранить в metadata;
+- 🟡 CDN/cache headers для immutable derivatives;
+- 🟡 fallback: если конвертация недоступна, исходный поддерживаемый файл всё равно должен корректно сохраниться;
+- 🟡 для документов не делать «сжатие любой ценой»: PDF/DOCX оптимизировать отдельно;
+- 🟡 сравнить качество/размер на реальных фото препаратов, ЭМ, атласа и лекционных изображениях;
+- 🟡 измерять storage + egress до/после оптимизации.
+
+#### Архитектурное правило
+**Original → optimized master → thumbnails/responsive derivatives → client.**
+Canonical metadata остаётся в Supabase, физические бинарники — в согласованном storage (SpaceWeb/B2). Оптимизация не должна ломать Atlas/content или Materials.
+
+#### Очередность
+1. MIME/размер/checksum + безопасный upload.
+2. Image optimizer WebP/AVIF + resize + thumbnails.
+3. Responsive delivery/cache.
+4. Video WebM pipeline.
+5. Document/PDF optimization.
+6. Дедупликация и storage/egress metrics.
+7. Финальный visual/quality regression на iPhone/Android/desktop.
+
+
+## 2026-10-07 — Media quality safety rule
+
+Для Media Optimization Pipeline зафиксировано обязательное правило **content-aware multi-candidate compression**:
+
+- 🟢 качество нельзя выбирать одной глобальной настройкой;
+- 🟢 изображения классифицируются по назначению/содержимому: фото, микропрепарат/ЭМ, атлас, схема, скан, text-heavy, mixed;
+- 🟢 для значимых изображений создаются несколько quality/compression candidates;
+- 🟢 quality gate отдельно проверяет мелкий текст, подписи, формулы, границы и учебные детали;
+- 🟢 выбирается минимальный по размеру кандидат, который проходит quality/readability threshold;
+- 🟢 если кандидат не проходит — автоматически выбирается более качественный;
+- 🟢 если ни один derivative не проходит — используется оригинал;
+- 🟢 при невозможности надёжно подтвердить качество нельзя рисковать читаемостью: fallback идёт на более качественную версию/original;
+- 🟢 original не удаляется ради экономии веса, если он нужен для zoom, восстановления или архива;
+- 🟡 реализация этого quality gate ещё не считается DONE до runtime/visual проверки на реальных MEDBIOHIM материалах.
+
+Полная политика: `docs/MEDIA-QUALITY-DELIVERY-POLICY.md`.
+
+
+## 2026-10-07 — Pass 28: authoritative subject identity
+
+🟢 Проведён semantic/code audit границы предметов.
+
+- 🟢 exam_questions filtering теперь принимает subject_id и при его наличии считает UUID authoritative; subject_slug остаётся совместимым fallback.
+- 🟢 Генерация билетов предпочитает ticket_banks.subject_id, а не выбирает весь банк только по slug.
+- 🟢 Question Library catalog сохраняет subject_id, поэтому одинаковые slug больше не должны схлопывать разные subject rows в один logical item.
+- 🟢 Global Search получил subject_id boundary и передаёт authoritative identity во все поддерживаемые источники.
+- 🟢 Admin content package import больше не выбирает первый subject при duplicate slug: если slug неоднозначен, импорт требует явный subject_id.
+- 🟢 Live DB подтверждает, что все текущие ticket banks имеют согласованный ticket_banks.subject_id = exam_questions.subject_id; для гистологии 366 опубликованных вопросов относятся к canonical subject UUID 977d78ca-7a58-4b0a-9e93-29d8e03f6946.
+- 🟡 Frontend subject context должен передавать subject_id там, где контекст уже известен; старые slug-only входы сохраняются как backward-compatible fallback.
+- 🟡 Target-runtime smoke остаётся отдельным gate: текущие новые commits ещё не получили READY Vercel deployment из-за build-rate-limit.
+
+
+## 2026-10-07 — Pass 28A: Question Library UUID propagation
+
+🟢 Предметный контекст в Question Library теперь может передавать subject_id; если старый вход содержит только subject_slug, frontend пытается безопасно вывести UUID только когда для этого slug существует ровно один subject_id в каталоге вопросов. При неоднозначности система не угадывает предмет и оставляет выбор пользователю.
+
+🟡 Полный subject-id propagation по всем старым frontend entry points остаётся отдельным compatibility cleanup; новые boundaries уже принимают UUID.
+
+
+## 2026-10-07 — Pass 29: Smart grading optionality/state machine
+
+🟢 Исправлена семантика smart grading по всей цепочке обычного теста и preparation:
+
+- deterministic MCQ/open normalized match остаётся первым и не вызывает AI без необходимости;
+- орфография/опечатки не являются критерием correctness;
+- AI остаётся optional fallback для смысловой проверки;
+- pending/error от AI больше не блокируют завершение теста или preparation;
+- unresolved answers сохраняются с grading_status и могут быть повторно проверены после завершения;
+- обычные тесты получили retry endpoint для pending/error answer;
+- preparation получила retry endpoint для одного или всех unresolved answers;
+- Test/Preparation UI теперь использует server-authoritative grading, а не локальное сравнение как источник результата;
+- для unresolved ответа UI показывает состояние и кнопку повторной проверки;
+- после regrade результат обычной попытки пересчитывается;
+- preparation сохраняет unresolved count отдельно от wrong count;
+- AI review после завершения preparation остаётся отдельной необязательной аналитикой и не влияет на факт завершения.
+
+🟡 Runtime gate остаётся: требуется реальный authenticated smoke на SpaceWeb/Vercel с детерминированным, semantic-AI, AI-error и retry сценариями.
+
+
+## 2026-10-07 — Pass 30: file visibility security alignment
+
+🟢 Закрыт выявленный P0 mismatch между Supabase RLS и server-side B2 presign:
+
+- backend FileRepository больше не считает `group_id IS NULL` автоматически доступным для всех authenticated users;
+- group-scoped file требует active membership;
+- group-less file доступен authenticated пользователю только при `visibility='public'` либо uploader ownership;
+- Supabase `files_read_allowed` приведена к той же политике;
+- B2 presigned URL выдаётся после server-side `assertAccess`, поэтому service-role backend не должен расширять доступ относительно продуктовой модели.
+- security advisor повторно проверен: этот file-policy gap исчез; остаётся отдельное предупреждение Leaked Password Protection.
+
+🟡 Требуется target-runtime authorization smoke: owner, public file, same-group member, inactive member, unrelated user.
+
+
+## 2026-10-07 — Pass 31: Histology material viewer access
+
+🟢 Закрыт ещё один access-boundary gap: `/api/v1/materials/{id}/file` теперь проверяет не только `subject_slug=histology`, но и специальность пользователя (`mbh`) перед чтением физического файла с SpaceWeb.
+
+Это синхронизирует viewer с generic Materials access policy и не оставляет прямой authenticated URL обходом specialty boundary.
+
+🟡 Финальный target-runtime smoke всё ещё обязателен: разрешённый MBH user → DOC/DOCX/photo; пользователь без MBH → 403.
+
+
+## 2026-10-08 — Histology Lecture 05: blood practical integration
+
+🟢 Создана и проверена в Supabase полноценная Lecture 05: «Кровь и лимфа».
+
+Связь закреплена с canonical curriculum:
+- module: «Кровь и лимфа»;
+- topic: «Неделя 5–6 · Лекция 5/практика · Кровь и лимфа»;
+- topic UUID: b1000001-0000-4000-8000-000000000007.
+
+🟢 Усилена сквозная учебная цепочка внутри лекции:
+**теория → конкретный микропрепарат → морфологический признак → ЭМ → тест → экзаменационный вопрос**.
+
+Подтверждены и связаны без изменения их canonical plan mapping:
+- 8 опубликованных preparation-карточек «Кровь мазок»;
+- 2 релевантных электронограммы;
+- 2 source-backed материала;
+- тест «Гистология — общая: кровь» — 20 вопросов;
+- 9 опубликованных exam-question IDs по теме.
+
+🟡 Не считать весь лекционный слой завершённым: это первый полноценно заполненный lecture body; остальные lecture bodies требуют отдельного source-backed прохода.
+
+🟡 Production/browser smoke для лекции и физического media остаётся открытым до подтверждения целевого окружения.
+
+Документация: docs/HISTOLOGY-LECTURE-05-BLOOD-LINKS-2026-10-08.md.
+
+
+## 2026-10-08 — Histology Lecture 05: Mermaid rendering repair
+
+🟢 Исправлена проблема, из-за которой Mermaid-схемы Lecture 05 отображались как текстовый блок кода. Причина найдена в импортированном `body_md`: Markdown был сохранён с лишним уровнем escaping для обратных кавычек и кавычек внутри Mermaid.
+
+- live Supabase content нормализован;
+- проверено: 11 Mermaid-блоков распознаются как реальные ```mermaid fences;
+- проверено: лишних escaped backticks/quotes больше нет;
+- `LectureRenderer` теперь нормализует такой legacy/imported Markdown до `parseBlocks`, не меняя обычные backslashes;
+- добавлена воспроизводимая миграция `database/migrations/20261008_histology_lecture_05_mermaid_escape_fix.sql`.
+
+🟡 Осталось: target-runtime/browser smoke после доставки frontend commit — проверить iPhone/Safari и desktop, что все 11 схем реально превращаются в SVG Mermaid, а таблицы и обычный Markdown остаются корректными.
+
+
+### 2026-10-08 — Lecture 05: links + visual references
+- 🟢 Fixed Markdown link rendering in `LectureRenderer`: internal lecture links such as «Микропрепараты» and the 20-question test now become actual clickable anchors.
+- 🟢 Added 9 visual blocks to Lecture 05: 5 existing MEDBIOHIM blood-smear preparation images + 4 independent University of Utah WebPath images.
+- 🟢 External images are used only as a visual cross-check; canonical MEDBIOHIM trainer cards remain the primary practical material.
+- 🟢 Live Supabase lecture updated and verified; only Lecture 05 was touched.
+- 🟡 Runtime/browser smoke on deployed Vercel build remains to be confirmed.
+
+## 2026-10-08 — Histology Lecture 05: iPhone/Safari visual defect repair
+
+### Фактически подтверждённые проблемы
+На реальном скриншоте production medbiohim.vercel.app видно:
+1. 5 собственных фотографий препаратов дают broken-image placeholder.
+2. Markdown-ссылки отображаются как [Микропрепараты] + URL вместо кликабельной ссылки.
+3. Внешняя WebPath-фотография загружается корректно, значит проблема не является общим запретом изображений в Safari.
+
+### Исправление
+- В src/components/lectures/LectureRenderer.tsx исправлен Markdown-link parser.
+- Для защищённых MEDBIOHIM trainer images лекция больше не использует прямые /content/histology/...jpg URL. Контент хранит canonical trainerId, а client-side ImageBlock получает изображение через существующий authenticated getTrainerImageUrl().
+- Это соответствует фактической архитектуре: metadata в Supabase → authenticated trainer media endpoint → физический Histology media root на SpaceWeb.
+- Live Lecture 05 обновлена без изменения trainer cards, их plan mapping или других subjects.
+- Добавлена миграция: database/migrations/20261008_histology_lecture_05_trainer_images_fix.sql.
+
+### Release gate
+🟡 До READY deployment и повторного browser smoke не считать пункт закрытым. Проверить:
+- «Микропрепараты» → /subjects/histology?tab=trainer;
+- «Материалы» → /subjects/histology?tab=materials;
+- тест «Гистология — общая: кровь» → 20 вопросов;
+- 5 MEDBIOHIM photos;
+- 4 WebPath photos;
+- 11 Mermaid blocks;
+- iPhone Safari layout/scroll.
+
+Ограничение сохраняется: этот цикл касается только Histology Lecture 05.
+ 
+---
+
+# 2026-10-08 — Histology Lecture 05 learning UX / visual learning
+
+**Статус: 🟡 IN PROGRESS — code + live content updated; deployed/runtime smoke pending**
+
+Зафиксирован learning-слой: **теория → контекстный препарат → мини-тест из БД → ЭМ/практика → итоговый тест**.
+
+### Уже сделано
+- 🟢 Lecture 05 `lec-histology-blood-20261008` сохранена как canonical lecture в `site_content`.
+- 🟢 Markdown/HTML rendering regression исправлена в `LectureRenderer`.
+- 🟢 Mermaid parsing/normalization исправлен.
+- 🟢 собственные фото лекции переведены на canonical trainer IDs + authenticated `getTrainerImageUrl()`.
+- 🟢 Markdown links исправлены.
+- 🟢 создан `ImageLightbox`: viewport-centered modal, zoom, reset, close, fullscreen API fallback.
+- 🟢 Atlas `ImageBox` переведён на новый lightbox.
+- 🟢 canonical specimen cards получают название/окраску/описание из trainer card, поэтому текст препарата не дублируется вручную в каждом фото-блоке.
+- 🟢 Lecture 05 разбита на 6 логичных учебных блоков.
+- 🟢 после каждого блока добавлен mini-test block, вопросы берутся из опубликованной `public.questions`.
+- 🟢 создан authenticated backend `GET /questions/mini-quiz` + `POST /questions/mini-quiz/check`; answer key не отдаётся клиенту.
+- 🟢 live Lecture 05 обновлена: 6 quiz blocks, контекстные photo checkpoints, старый photo-wall убран.
+- 🟢 сохранена внешняя WebPath-проверка как дополнительный источник.
+- 🟢 создан документ `docs/HISTOLOGY-LECTURE-LEARNING-UX-2026-10-08.md`.
+
+### Остаётся
+- 🟡 Vercel READY + frontend build verification;
+- 🟡 SpaceWeb backend deployment для новых mini-quiz endpoints;
+- 🟡 авторизованный iPhone Safari smoke;
+- 🟡 проверить отсутствие regressions в других lecture pages;
+- 🟡 после подтверждения — перевести пункт из IN PROGRESS в DONE.
+
+### Non-regression
+Этот цикл не меняет другие subjects, ticket banks или существующие trainer/electronogram records.
+
+ 
+### Дополнение 2026-10-08 — возрастные нормы гемограммы
+
+- 🟢 В Lecture 05 добавлен отдельный блок **7A–7E «Возрастные нормы гемограммы»**.
+- 🟢 Добавлена временная шкала физиологических перекрёстов: 1-е сутки → 4-е сутки → 1–2 года → 4 года → 14–15 лет/взрослый.
+- 🟢 Добавлены возрастные таблицы лейкоцитарной формулы и ключевых показателей гемограммы.
+- 🟢 Добавлен алгоритм чтения возрастной карточки: **возраст → соответствующая норма → сравнение → вывод**.
+- 🟢 После блока добавлен отдельный мини-тест из существующей базы вопросов гистологии.
+- 🟡 Значения с различиями между указанными в присланном материале источниками не сведены молча к одному варианту.
+
+
+## 2026-10-08 — Явные кнопки просмотра изображений
+
+- 🟢 ImageLightbox обновлён: на превью теперь есть явная кнопка «Открыть на весь экран».
+- 🟢 В открытом просмотрщике добавлены отдельные кнопки «Уменьшить», «Увеличить», «Сбросить», «Полный экран» и «Закрыть».
+- 🟢 Управление масштабом сохранено до 300%; viewport остаётся фиксированным поверх страницы.
+- 🟢 Для iPhone/iPad Safari сохранён fallback: если нативный Fullscreen API недоступен, используется полноэкранный fixed-lightbox.
+- 🟡 Runtime на iPhone Safari и production deployment остаются непроверенными до фактического smoke-test.
+- Commit: 7735ff1ccdc21b509ca6e61bb8267d81a3a1a4bf.
+
+
+## 2026-10-08 — Unified Media Viewer / Atlas release gate
+
+**Статус: 🟡 IN PROGRESS — P1**
+
+Проблема подтверждена не только на iPhone: на Windows/desktop тот же архитектурный дефект проявляется как вложенное окно с ограничением 90vh, внутренним overflow-auto и отсутствующими на первом уровне controls.
+
+### Исправление в работе
+- 🟢 ImageLightbox переведён на единый viewport viewer: 100dvh, safe-area, явные controls, zoom до 500%, reset, close, desktop wheel, double-click, drag/pan и Pointer Events для pinch.
+- 🟢 native Fullscreen API оставлен только как enhancement; CSS viewport остаётся рабочим fallback для Safari/iOS.
+- 🟢 Atlas больше не использует внешний max-h-[90vh] overflow-auto modal вокруг изображения.
+- 🟢 Atlas открывает тот же unified viewer напрямую, с названием, занятием, captions и переходом к материалам.
+- 🟡 Lecture / Trainer / Materials должны пройти cross-page regression на том же viewer contract.
+- 🟡 target runtime пока не подтверждён: Vercel/SpaceWeb deployment и реальный браузерный smoke обязательны.
+
+### Release gate
+1. Windows Chrome/Edge/Firefox/Yandex: Atlas open → controls → zoom → pan → close.
+2. macOS Safari/Chrome: тот же сценарий.
+3. iPhone Safari: viewer сразу занимает viewport, нет page-scroll для изображения, controls видимы.
+4. Android Chrome: touch/pinch/drag/close.
+5. Lecture → Atlas → Trainer → Materials: нет вложенных image modals и regressions.
+6. Light/dark и safe-area не создают чёрных/пустых полос.
+7. Production commit совпадает с проверяемой веткой до перевода в DONE.
+
+До выполнения release gate пункт остаётся 🟡.
+
+## 2026-10-08 — Unified Media Viewer: iPhone viewport regression found and patched
+
+- 🟡 Screenshot smoke exposed a second-level issue: the fixed viewer was still physically constrained by the app DOM on iPhone Safari, so the overlay did not cover the full viewport and MobileNav remained visible above it.
+- 🟢 Patched in `fix/unified-media-viewer-desktop-mobile`: `ImageLightbox` renders through `createPortal(..., document.body)`, gets explicit viewport sizing/z-index, and uses explicit glass RGBA surfaces.
+- 🟢 Scroll-lock effect no longer restarts on every zoom change.
+- 🟡 Target-runtime smoke remains mandatory before calling the viewer DONE.
+- 🟡 Required: iPhone Safari, Android Chrome, Windows Chrome/Edge/Firefox/Yandex, macOS Safari/Chrome, and Lecture → Atlas → Trainer → Materials regression.
+
+2026-10-08 — launch-blocker sweep: fixed an additional literal-newline PHP syntax artifact in `backend/config/routes/questions_rest.php` on the same active viewer branch (`b374a49fd03574806595064746d09c046a19778e`). No new branch created. Remaining release gate is target runtime/Vercel build plus SpaceWeb/browser smoke.
+
+## 2026-10-08 — Runtime integrity fixes during pre-launch audit
+
+- 🟢 Schedule academic-session reconciliation: live `schedule_entries` now 309/309 with `session_id`; 0 unresolved current entries.
+- 🟢 Backend namespace exception audit: fixed unqualified exceptions in `TestRepository`, `CalculatorsService`, `SrsService` on the current working branch.
+- 🟡 Vercel remains externally blocked by current `build-rate-limit` status; exact branch deployment still required.
+- 🟡 GitHub code-check jobs currently fail without usable step/log evidence; do not interpret that as a source failure until runner evidence exists.
+- 🟡 SpaceWeb/auth/media/browser runtime gates remain open.
+
+Rule unchanged: no production DONE from source-only inspection.
+
+## 2026-10-08 — Final pre-launch sweep
+
+- 🟢 Materials: canonical `public.files`/B2 delivery + legacy Histology SpaceWeb fallback unified.
+- 🟢 Vercel API proxy preserves media redirect/cache/disposition headers.
+- 🟢 B2 materials now negotiate a presigned URL through a JSON `file-url` endpoint; legacy authenticated binaries remain blob-fetched with Bearer.
+- 🟢 Live DB integrity cleanup applied: duplicate schedule session index removed; `file_variants` RLS initplan fixed.
+- 🟢 Live checks: 309/309 schedule entries have `session_id`; 80/80 published Materials have source metadata; 479/479 published active Histology questions have test links; duplicate/orphan test-question links = 0.
+- 🟢 Found and fixed a real PHP SQL-string quoting bug in `HomeworkRepository.php` that could break backend parsing.
+- 🟢 Predeploy audit extended to media viewer/materials redirect regressions.
+- 🟡 Exact current branch deployment is still blocked by Vercel build-rate-limit; target SpaceWeb/browser runtime remains the final acceptance gate.
+
+No new branch created; the unified viewer correction is already integrated into `main`, and the latest zoom/pan refinement is committed directly to `main`.
+
+
+## 2026-10-07 — Pass 32: Schedule → exact lesson → homework → photos
+- Schedule homework creation now uses the exact schedule entry UUID when launched from a lesson.
+- Shared homework creation is aligned with the product security model: staff or the group's starosta; an ordinary student cannot publish shared group homework.
+- Homework now stores `schedule_entry_id`; legacy homework without this field remains visible through the date+subject compatibility fallback.
+- Homework creation supports up to 12 image attachments. Files reuse the existing authenticated `/files/upload` → B2/metadata pipeline; attachment rows live in `homework_attachments`.
+- Primary DB and Supabase REST fallback both persist lesson context, due_date and attachments.
+- Planner returns homework attachments with B2 download URLs for lesson view.
+- Primary repository now persists `due_date`; this removes the existing create→planner visibility mismatch.
+- Live Supabase schema was migrated and verified: `homeworks.schedule_entry_id` + index exist; no existing homework rows were modified.
+- Private test environment was inventoried by variable family. Repository templates contain placeholders only; real test credentials are not published to GitHub.
+
+- ⚠️ В live DB на 2026-10-07 нет ни одной активной membership с `role_in_group='starosta'`; сценарий ДЗ готов в коде, но для реального student-side создания общего ДЗ староста должен быть назначен администратором.
+
+- 🟡 Materials physical delivery audit: live Histology has 80 published materials, all source_path-only (materials.file_id/content_sources.file_id are null); unified viewer fix now prefers canonical B2 file objects and keeps authenticated SpaceWeb fallback.
+
+## 2026-10-07 — Pass 33: File & Storage Center foundation
+
+- 🟢 added canonical file checksum metadata (`sha256`) for new uploads;
+- 🟢 added explicit `storage_provider` and `processing_status` metadata;
+- 🟢 added non-destructive admin Storage Audit API and UI;
+- 🟢 audit reports file references from Materials, trainer cards, homework attachments and homework submissions;
+- 🟢 live DB default corrected to `storage_provider='unknown'` for legacy/unclassified files; B2 is set only when `b2_file_id` is present;
+- 🟡 physical B2/SpaceWeb object reconciliation is still not performed automatically — this is the next storage pass;
+- 🟡 media optimization worker/derivatives are not implemented yet.
+
+## 2026-10-07 — Pass 34: complete B2 reconciliation foundation
+
+- 🟢 B2 reconciliation now builds its metadata keyset independently of the UI item limit;
+- 🟢 B2 listing is paginated through all available object pages instead of stopping at the first 5000 objects;
+- 🟢 audit now distinguishes matched B2 objects, B2 orphan objects, and active DB B2-backed records missing from B2;
+- 🟢 B2 orphan detection is restricted to B2-backed metadata and no longer treats SpaceWeb/unknown files as B2 records;
+- 🟢 admin Storage Center exposes both “нет в B2” and “нет в БД” results;
+- 🟢 fixed the Storage Center navigation tuple type so the new storage tab is TypeScript-valid;
+- 🟡 SpaceWeb physical existence/head reconciliation remains the next runtime-dependent storage task;
+- 🟡 quality-gated image/video derivative generation remains unimplemented.
+
+
+## 2026-10-07 — Pass 35: media derivative metadata foundation
+
+- 🟢 added file_variants as a dedicated metadata layer for optimized image/video derivatives;
+- 🟢 variants retain a strict parent files record and unique variant_key;
+- 🟢 variant metadata supports MIME, dimensions, duration, checksum, physical object key and B2 id;
+- 🟢 processing state is explicit (ready/queued/processing/failed/skipped);
+- 🟢 variant RLS inherits the parent file's owner/public/active-group-member visibility boundary;
+- 🟢 live migration applied; no existing binaries were moved, rewritten or deleted;
+- 🟡 physical derivative generation/quality gating is deliberately not claimed yet and is the next implementation stage after runtime capability verification.
+
+
+## 2026-10-07 — Pass 36: content-aware media quality gate
+
+- added a pure MediaQualityPolicy service for selecting the smallest derivative that passes content-aware gates;
+- separate thresholds cover text-heavy/diagram/scan versus electronogram/micropreparation/atlas content;
+- policy rejects excessive downscaling, text readability loss, edge/detail loss and compression artifacts;
+- video policy preserves a 1080p source tier and provides 720p/480p fallback candidates;
+- policy never deletes or rewrites the original file;
+- actual encoding and perceptual measurements remain runtime-dependent and will be wired after capability/worker verification.
+
+
+## 2026-10-07 — Pass 37: safe derivative processor foundation
+
+- 🟢 добавлен FileVariantRepository для upsert/list/status;
+- 🟢 добавлен MediaDerivativeProcessor для реального image→WebP/AVIF процесса при наличии соответствующего GD encoder;
+- 🟢 MIME определяется по фактическому содержимому через finfo, а не доверяется клиентскому MIME;
+- 🟢 оригинал никогда не перезаписывается и не удаляется;
+- 🟢 derivative candidate проходит существующий MediaQualityPolicy перед физической загрузкой выбранного варианта;
+- 🟢 выбранный derivative получает checksum, MIME, размер, размеры изображения и B2 object id;
+- 🟢 добавлен strict-admin endpoint ручной обработки существующего B2-backed изображения;
+- 🟢 при отсутствии подходящего encoder файл не ломается: derivative остаётся failed/skipped, original сохраняется;
+- 🟡 автоматический queue/worker ещё не объявлен готовым — текущий запуск намеренно ручной до проверки target runtime;
+- 🟡 perceptual text/detail/artifact scoring пока не измеряется реально: текущий pass подготавливает pipeline, но не выдаёт ложный quality-pass.
+
+
+## 2026-10-08 — Histology lecture bodies
+
+🟢 Заполнен canonical lecture layer для гистологии из source-backed материалов `Гистология.zip`: 20 published lecture records в `site_content`, включая 19 новых тематических/дополнительных лекций и существующую расширенную Lecture 05 «Кровь и лимфа». Legacy `histology_lectures` stubs отключены из published выдачи. Reproducible migration: `database/migrations/20261008_histology_full_lectures.sql`.
+
+🟡 Остались отдельные задачи: runtime/browser smoke deployed build, физическая сверка media на SpaceWeb и дальнейшее связывание каждой лекции с конкретными trainer/EM/test cards там, где source-backed IDs однозначны.
+
+## 2026-10-08 — Histology lecture → plan → methodics → files → preparations
+
+🟢 Текущий 3-й семестр гистологии нормализован по учебному плану: **16 лекционных пунктов** используют названия плана 1:1, без самостоятельного переименования.
+
+🟢 Каждая текущая лекция получила explicit related_learning:
+- конкретный Word/методический источник;
+- точный раздел и страницы там, где пагинация надёжно извлечена;
+- для старых .doc, где автоматическая пагинация не подтверждена, сохраняется точный заголовок раздела без выдуманных страниц;
+- связанные схемы/таблицы/файлы из Гистология.zip;
+- связанные канонические микропрепараты из trainer-контурa;
+- электронограммы темы, когда они реально относятся к этому пункту.
+
+🟢 Исправлены фактические cross-topic ошибки trainer mapping: кровь перенесена из «Соединительных тканей» в «Кровь и лимфа», кора мозжечка — в «Кора, мозжечок и ВНС», желудочно-кишечные препараты сняты с текущего пункта «ротовая полость».
+
+🟢 Добавлен UI-блок прямо на странице лекции: «Материалы к этой лекции» с открытием Word/файлов и запуском полного просмотрщика препаратов с zoom/pan/fullscreen.
+
+🟢 Добавлены воспроизводимые миграции:
+- database/migrations/20261008_histology_lecture_plan_learning_links.sql;
+- database/migrations/20261008_histology_lecture_01_preparations.sql.
+
+🟡 Точный постраничный диапазон для части старых binary .doc пока не заявляется без надёжного сохранения исходной Word-пагинации; на сайте показывается проверенный раздел документа вместо выдуманных номеров страниц.
+
+
+## 2026-10-08 — Lecture 05 as canonical rich-editor standard
+
+🟢 Лекция 05 «Кровь и лимфа» закреплена как эталон оформления и структуры лекции: специальный контент хранится в body_md и включает Mermaid, изображения препаратов, мини-тесты, таблицы и математическую разметку.
+
+🟢 Админский редактор лекций переведён на lossless block model: существующие специальные блоки при открытии лекции превращаются в редактируемые placeholder-блоки, а при сохранении обратно сериализуются без потери Mermaid/quiz/image/chart/chem/video/formula структуры.
+
+🟢 Добавлены конструкторы для Mermaid-схем, таблиц, мини-тестов, формул, диаграмм, химических фигур, видео и trainer-препаратов/электронограмм; обычное Word-подобное форматирование сохранено.
+
+🟢 Добавлен отдельный редактор учебных связей: методички, страницы/разделы, файлы/схемы, микропрепараты и электронограммы управляются из той же админской формы.
+
+🟢 Остальные 15 текущих лекций получили первый source-backed rich-template слой по образцу Lecture 05: схема + реальные препараты + мини-тест из существующего банка.
+
+🟢 Reproducible migration: database/migrations/20261008_histology_lecture_template_blocks.sql.
+
+🟡 Следующий content pass — углубить каждую оставшуюся лекцию до уровня Lecture 05 по количеству source-backed таблиц/схем/практических блоков, не добавляя неподтверждённых фактов.
+
+
+## 2026-10-08 — Single canonical admin lecture editor
+
+🟢 Удалён встроенный legacy RichEditor из src/app/admin/lectures/page.tsx: админка использует только RichLectureEditor.
+
+🟢 RichLectureEditor поддерживает lossless editing для форматов, используемых эталонной Lecture 05: Mermaid, таблицы, mini-quiz, формулы, trainer/EM images, charts, chemistry figures, videos, PDF/Word uploads, ссылки и базовое Word-подобное форматирование.
+
+🟢 Специальные блоки можно заново открыть через «Изменить» и удалить без ручного редактирования Markdown.
+
+🟢 LectureLearningEditor подключён к форме той же лекции и управляет methodic pages/sections, scheme/file materials, preparations и electronograms.
+
+🟢 Current Histology lecture titles остаются canonical curriculum titles even after admin save.
+
+
+## 2026-10-08 — Lecture 05 leukocyte differential trainer
+
+🟢 В Лекцию 05 lec-histology-blood-20261008 встроен интерактивный тренажёр лейкоцитарной формулы.
+- проценты: запоминание учебной нормы взрослого;
+- ↑/↓: распознавание нейтрофилии/нейтропении, лимфоцитоза/лимфопении, эозинофилии, базофилии, моноцитопении и сдвига влево;
+- мазок: распознавание клетки по изображению;
+- два визуальных источника: локальные canonical MEDBIOHIM trainer cards и независимая внешняя сверка WebPath;
+- внешний лабораторный reference-check отделён от учебной нормы Lecture 05 и помечен как вариант, зависящий от лаборатории;
+- тренажёр является отдельным переиспользуемым блоком leukocyte в RichLectureEditor / LectureRenderer.
+
+Важно: Lecture 05 уже редактируется через единый RichLectureEditor; новый тренажёр теперь также доступен как вставляемый блок редактора.
+
+
+## 2026-10-08 — Unified Media Viewer refinement + branch reconciliation
+
+- 🟢 `src/components/media/ImageLightbox.tsx` refined on canonical `main`: zoom keeps the exact cursor/touch focal point, pinch zoom preserves the pinch focal area, drag/pan is bounded by the visible image area, resize re-clamps the viewport, and controls remain touch-sized.
+- 🟢 The same viewer continues to serve Atlas/micropreparations, lecture images, Materials images and trainer media; no second viewer implementation was introduced.
+- 🟢 Repository branch audit completed against `main`: `fix/unified-media-viewer-desktop-mobile` has 0 unique commits and is already contained by `main`.
+- 🟡 `beta`, `fix/chem-rendering-tests-rdkit` and `fix/lecture-service-schedule-home` are old divergent branches with unique commits, but their files are based on substantially older `main` history and would reintroduce retired/stale code if merged wholesale. They were intentionally not merged blindly; only useful work should be ported selectively after a current-target review.
+- 🟡 Runtime acceptance remains open: exact current `main` deployment, iPhone Safari/Android Chrome touch smoke, Windows/macOS browser smoke and Lecture → Atlas → Trainer → Materials regression.
+
+
+## 2026-10-08 — Leukocyte practical case cards
+
+- 🟢 `LeukocyteDifferentialTrainer` переведён в практический режим карточки по методичке `4.Кровь.docx`.
+- 🟢 Карточка генерирует возраст из учебных колонок методички и случайный процентный результат для конкретного вида лейкоцита.
+- 🟢 Формат карточки: 1) опознать клетку на мазке; 2) написать возрастную норму; 3) переписать результат исследования; 4) назвать термин отклонения/норму; 5) сформулировать предварительную гипотезу для «5» через функцию клетки.
+- 🟢 Оценка: ошибка в любом из первых 4 полей → 2; все 4 верны → 4; все 4 + обоснованная гипотеза → 5.
+- 🟢 Проверка текста терпит варианты регистра, `ё/е`, дефисы и разделители диапазона; числовая проверка нормы и результата не требует идеальной записи символов.
+- 🟢 Для эозинофилов и базофилов карточки не требуют отдельного термина снижения, потому что в исходной курсовой таблице он не приведён.
+- 🟡 Гипотеза на «5» является учебной, не окончательным диагнозом; связи с бактериальной/вирусной инфекцией, аллергией/паразитозом и другими состояниями показываются как возможные направления, а не как диагноз по одному проценту.
+
+
+## 2026-10-08 — однозначная визуальная карточка лейкоцитов
+
+- Практический тренажёр больше не использует общий мазок с несколькими лейкоцитами для задания «опознать клетку».
+- Нейтрофилы, лимфоциты и моноциты берутся только из подтверждённых одиночных MEDBIOHIM trainer-карточек.
+- Для эозинофила и базофила используется отдельный внешний кадр с фокусировкой одного целевого лейкоцита; общий мазок не подменяет ответ.
+- ImageLightbox получил режим focused image: фиксированная точка интереса + сохранённые zoom/pan/pinch/fullscreen.
+- Исправлена нормализация и разбор чисел в ответах тренажёра: Unicode-символы и десятичные значения теперь обрабатываются корректно.
+
+
+## 2026-10-08 — разнообразные визуальные варианты лейкоцитарной карточки
+
+- В практической карточке добавлен режим `visualMode: mixed`: каждый раунд случайно показывает либо реальный препарат, либо учебный рисунок.
+- Для одного типа клетки допускаются разные визуальные источники: подтверждённый одиночный препарат MEDBIOHIM, сфокусированный препарат WebPath и два варианта источника-рисунка.
+- Учебные рисунки реализованы как контролируемые SVG-иллюстрации, а не как неподписанные случайные изображения: морфология следует методичке «Кровь» (форма ядра, количество сегментов, характер зернистости и соотношение ядра/цитоплазмы).
+- Изображения остаются однозначными: в рабочем кадре один целевой лейкоцит; окружающие элементы мазка не должны создавать второй возможный ответ.
+- ImageLightbox теперь умеет открывать и увеличивать такие векторные учебные рисунки теми же zoom/pan/fullscreen-контролами.
+
+
+## 2026-10-08 — сборщик тестов в админке
+
+- Добавлена кнопка **«Собрать тест»** в админскую страницу тестов.
+- Конструктор позволяет выбрать предмет → модуль → тему, отобрать вопросы из банка, задать число вопросов и параметры теста.
+- Добавлена кнопка **«Сброс для нового теста»**: полностью очищает текущую конфигурацию и выбранный пул.
+- Добавлен режим пакетной сборки: из одного выбранного пула можно сразу создать несколько вариантов теста; состав и порядок вопросов перемешиваются для каждого варианта отдельно.
+- Перед сборкой показывается инструкция, как должен выглядеть корректный тест и чем отличается тест-контейнер от отдельного вопроса.
+
+
+## 2026-10-08 — уточнение нейтрофильных форм на общем мазке
+
+- Карточки с общим мазком теперь явно показывают уровень распознавания: **популяция** или **одна конкретная клетка**.
+- Для карточки «Нейтрофилы всего» явно указано, что палочкоядерные и сегментоядерные формы входят в одну оцениваемую популяцию; отвечать «п/я» или «с/я» вместо общего типа нельзя.
+- В интерфейс добавлено наглядное отличие: п/я — цельное изогнутое ядро (палочка/подкова/S) без сегментации; с/я — 3–5 сегментов, соединённых тонкими перемычками.
+- Исправлена подпись проблемного общего препарата MEDBIOHIM: он больше не называется «одиночной клеткой».
+
+
+## 2026-10-08 — только задания с обязательным распознаванием клетки
+
+- Практический тренажёр переведён в режим **single-cell only**: каждая карточка требует самостоятельно определить конкретную клетку по изображению.
+- Общие мазки/популяционные карточки исключены из рабочего режима, чтобы палочкоядерные и сегментоядерные нейтрофилы не создавали двусмысленность.
+- Название целевой клетки больше не подсказывается до ответа.
+- Под изображением остаётся только универсальная инструкция по морфологическому распознаванию; после проверки показывается эталон.
+
+
+## 2026-10-08 — возврат к предыдущим карточкам и своим ответам
+
+- В практическом тренажёре сохранено состояние каждой пройденной карточки в текущем прохождении: изображение/кейс, введённые ответы и результат проверки.
+- Добавлена кнопка **«Предыдущая карточка»**.
+- Добавлена компактная навигация по номерам уже открытых карточек: можно вернуться непосредственно к нужной карточке.
+- При возврате восстанавливаются именно ответы студента и ранее полученная оценка; новая случайная карточка вместо старой не генерируется.
+- Кнопка **«Пройти заново»** очищает историю текущего прохождения.
+
+
+## 2026-10-08 — подробная морфологическая подсказка в лейкоцитарном тренажёре
+
+- Добавлена разворачиваемая памятка «Как отличать клетки в мазке».
+- В ней сохранены признаки нейтрофила с различением юного/палочкоядерного/сегментоядерного, эозинофила, базофила, лимфоцита, моноцита и тромбоцитов.
+- Добавлен быстрый алгоритм распознавания у микроскопа: зернистость → тип ядра → размер → соотношение ядра и цитоплазмы.
+- Подсказка не меняет механику проверки: карточка по-прежнему требует самостоятельного ответа о конкретной клетке.
+
+
+## 2026-10-08 — толерантная текстовая проверка ответов
+
+- Орфография, регистр, `ё/е`, `й/и`, пробелы, дефисы и обычные окончания слов не влияют на оценку текстовых ответов.
+- Для названий клеток добавлены нормальные словоформы, например `базофил` и `базофилы` считаются одним ответом.
+- Для терминов вывода и учебной гипотезы допускаются небольшие опечатки в длинных словах.
+- Числовая проверка остаётся строгой по смыслу: десятичная точка/запятая принимается, но неправильное числовое значение не засчитывается.
+- В результате карточка «базофилы / 0–1% / 0,9% / норма» больше не получает `2` только из-за формы слова «базофил».
+
+
+## 2026-10-08 — тренажёр заполнения таблицы норм крови
+
+- В раздел «Тренажёры» гистологии добавлен отдельный тренажёр **«Нормы крови»**.
+- Основа — таблица «Показатели лейкоцитарной формулы в %» из `4.Кровь.docx`: 7 строк × 5 возрастных колонок = **35 ячеек** для самостоятельного заполнения.
+- Студент сначала заполняет всю таблицу без эталона, затем нажимает **«Проверить себя»** и получает подсветку верных/ошибочных/пропущенных ячеек и общий результат.
+- При проверке не учитывается формат записи: `0,5–5` и `0.5-5` равнозначны, знак `≈` для приблизительных значений можно не вводить.
+- Нормы не расширялись внешними справочниками: использованы только значения из исходного `4.Кровь.docx`.
+
+
+## 2026-10-08 — тренажёр свободного ответа по смыслу
+
+- В раздел «Тренажёры» добавлен режим **«Ответ по смыслу»** для самостоятельной проверки подготовки.
+- Вопрос показывается обычным текстом без вариантов ответа; студент отвечает своими словами, как на занятии.
+- Проверка не требует дословного совпадения: ответ сопоставляется с ключевыми смысловыми группами, орфография и регистр не влияют.
+- После проверки показываются процент понимания, найденные/пропущенные ключевые идеи и эталонный ответ из `4.Кровь.docx`.
+- Первый набор содержит 12 вопросов по теме «Кровь»: функции и состав крови, гемограмма, лейкоцитарная формула, форменные элементы, классификация и морфо-функциональные признаки лейкоцитов, термины изменений.
+
+
+## 2026-10-08 — фото-препараты крови и алгоритм определения
+
+- Добавлен отдельный режим **«Препараты крови»** в тренажёры гистологии.
+- В него включены реальные локальные фотографии из базы препаратов: нейтрофил, лимфоцит, моноцит, тромбоциты, а также сравнительные препараты «эозинофил + нейтрофил» и «лимфоцит + моноцит».
+- Для каждого препарата студент сначала отвечает самостоятельно, затем открывает разбор: ключевые морфологические признаки, функция и признаки, по которым клетку не следует путать с другой.
+- Методика определения опирается на `4.Кровь.docx`, атлас/учебный материал и уже импортированную базу препаратов; многоклеточные изображения используются только как сравнительные учебные препараты, а не как неоднозначная одиночная карточка идентификации.
+
+
+## 2026-10-08 — blood sources + SpaceWeb textbooks integration
+- BloodPreparationTrainer.tsx теперь использует реальные trainer-фото через защищённый API/ImageLightbox, а не прямые frontend-пути к изображениям.
+- В карточках препаратов добавлены источник, ориентир «куда смотреть», пошаговый алгоритм определения, морфология, функция и признаки для дифференциации.
+- Карточки опираются на 4.Кровь.docx и дополнительную учебную памятку; сравнительные фото остаются именно сравнительными.
+- Для SpaceWeb добавлен защищённый каталог PDF: content/histology/source-materials/Учебники/.
+- Frontend раздела «Материалы» автоматически показывает PDF из «Учебники» с сохранением исходных имён файлов; запись в Supabase для самого PDF не требуется.
+- Доступ к книгам ограничен авторизацией и специальностью МБХ; путь к файлу проверяется на traversal и выдаётся inline как PDF.
+- Точная проверка конкретных atlas-файлов не подменена догадкой: в предоставленных архивах отдельные atlas-картинки с таким именем не обнаружены, поэтому в тренажёр не добавлены выдуманные «atlas» источники.
+
+
+## 2026-10-09 — admin database console / external SQL connections
+- Добавлена защищённая админская консоль /admin/database.
+- Основная БД Supabase отображается как встроенное подключение; её server-side реквизиты не выдаются браузеру для редактирования.
+- Добавлены профили SpaceWeb: PostgreSQL pg4.sweb.ru:5433, БД ryazansev3, пользователь ryazansev3; MySQL 8 127.0.0.1:3308, БД ryazansev3, пользователь ryazansev3.
+- Из сайта доступны настройка подключения, проверка соединения, просмотр таблиц и схем, чтение/поиск строк, вставка, изменение и удаление строк, а также SQL editor.
+- Изменяющие SQL-операции требуют явного подтверждения; разрешён один SQL-оператор за запуск; опасные операции чтения файлов/выгрузки запрещены.
+- Пароли внешних БД не показываются обратно и хранятся на backend только в зашифрованном виде.
+- В Supabase создана отдельная public.admin_db_connections; RLS включён, прямой доступ anon/authenticated закрыт.
+- Реальные подключения SpaceWeb пока не тестировались без пароля: профили заполнены по предоставленным реквизитам, поле пароля остаётся пустым до ввода секрета администратором.
+
+
+## 2026-10-09 — общая отработка по гистологии
+
+- 🟡 В Supabase сохранены 33 повторяющиеся отработки на 09.10.2026–29.01.2027: понедельник 16:30–18:00, пятница 15:30–16:00.
+- 🟡 Записи фактически добавлены только в активное расписание МБХ-201, semester 3. Запрос пользователя — общая отработка для всех групп первого семестра; распространение на все группы ещё не выполнено.
+- 🟡 Проверка отображения на сайте и мобильных устройствах не выполнена.
+- ⚠️ До расширения охвата сверить неоднозначность «первый семестр» vs фактически выбранный semester 3.
+- Подробности и дальнейшие действия: docs/HISTOLOGY-MAKEUP-SCHEDULE-2026-10-09.md.
+
+
+## Functional audit Pass 41 — 2026-10-09
+Full findings, source references, data counts and the ordered corrective plan: [docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
+
+No broad cleanup or Supabase data modification was done in this pass. Do not mark security, media, runtime, or browser items complete until their target-environment checks pass.
+
+
+## Functional security Pass 42 — 2026-10-09
+The live trainer answer-key mitigation and remaining runtime acceptance gates are documented in [docs/SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42.md). Do not mark the trainer flow fully accepted until Vercel + SpaceWeb and authenticated end-to-end checks pass.
+
+
+## Reliability Pass 43 — 2026-10-09
+API timeout and stale-cache signalling are fixed in source at `77b0f4a1` and included in the Vercel production READY deployment `a56d3fdb`; browser behavior still needs verification. Details: [docs/RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+
+
+## CI/PHP follow-up — 2026-10-10 (Pass 52)
+
+- Homework SQL now uses distinct named PDO placeholders; a static contract regression test is wired into CI and backend pre-deploy checks.
+- GitHub Actions runner allocation remains blocked before step execution; the full PHP audit and SpaceWeb verification are not yet complete. See `docs/CI-PHP-AUDIT-2026-10-10-PASS52.md`.
+
+
+- 2026-10-10 PHP audit follow-up: homework SQL placeholders and planner query bindings hardened; internal exception details removed from several admin/question/planner/media responses. Full lint and runtime integration remain blocked by GitHub Actions runner allocation. See `docs/CI-PHP-AUDIT-2026-10-10-PASS52.md`.
+
+
+## Consolidated workstream — CI + Histology media traceability (Pass 55, 2026-10-10)
+
+- 🟢 Reviewed current smoke, code-check, and SpaceWeb deployment workflows. Their intended checks/gates are present in source; no YAML root cause for the pre-step runner failure was established.
+- 🔴 Latest inspected Actions job still has `steps: null`; CI is not restored. Need owner-side Actions runner/account diagnosis or GitHub Support; do not mask an infrastructure failure by weakening checks.
+- 🟢 Read-only audit of Histology electronograms: 28 cards, 28 caption arrays, 28 missing `source_file_id`, 27 canonical `source_key` values, and 5 source-key/image-URL basename mismatches.
+- 🟡 No live image paths changed: actual SpaceWeb/B2 object existence has not been verified, and the shorter paths may reflect legacy physical filenames.
+- Report: [CI + media traceability workstream](docs/CI-MEDIA-TRACEABILITY-WORKSTREAM-2026-10-10-PASS55.md). Repeatable SELECT-only query: `database/audits/20261010_electronogram_asset_traceability.sql`.
+
+
+## Pass 56 — database least-privilege + quality-gate reconciliation (2026-10-10)
+
+- PostgreSQL 17.6 read-only audit: effective MAINTAIN/TRUNCATE/REFERENCES/TRIGGER privileges exist on 71/83 public tables for `anon` and 78/83 for `authenticated`.
+- Proposed migration now covers all four privileges and default ACLs for `postgres` and `supabase_admin`; it is not applied.
+- Added read-only post-migration verification SQL and corrected stale quality-gate claims: latest Actions runs are pre-step failures, not current green checks.
+- Report: `docs/DATABASE-LEAST-PRIVILEGE-STATUS-RECONCILIATION-2026-10-10-PASS56.md`.
+
+## CI + DB preflight follow-up — Pass 57 (2026-10-10)
+
+- 🔴 Re-ran GitHub Actions smoke job (run 38012180433, attempt 2); it again failed before steps (`steps: null`, no logs). Workflow definitions look structurally consistent; no code/workflow defect is evidenced by the available runner record. CI remains blocked, not green.
+- 🟡 Read-only Supabase review confirmed default table ACLs for both `postgres` and `supabase_admin` currently grant broad rights to browser roles; the prepared migration addresses the four unnecessary privileges for both owners.
+- 🟡 Role membership confirms PostgREST `authenticator` uses explicit SET ROLE for anon/authenticated/service_role (inherit disabled). No browser privilege escalation was established by this query.
+- 🔴 Migration is still unapplied; staging project/runner role not confirmed. No production writes.
+- Report: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+
+## Pass 58 — release-gate source audit (2026-10-10)
+
+- 🔴 Actions still fails before workflow steps/logs; actual tests remain unverified.
+- 🔴 Source audit found the frontend has no tracked package lockfile; current CI uses `npm install`, so dependency resolution can drift. A real lockfile must be generated with registry access; none was fabricated.
+- 🟡 `next.config.ts` ignores built-in TypeScript build errors, but the independent predeploy audit runs `npm run typecheck`; it must be executed before relying on it.
+- 🟡 `eslint.config.mjs` currently contains ignores only, not actual lint rules; `npm run lint` is not a meaningful gate yet.
+- 🔴 SpaceWeb deploy workflow disables FTPS certificate verification (`curl -k`, `ssl:verify-certificate no`). Verify host certificate/hostname before enabling verification; no secret read/changed.
+- 🟡 Backup exists but automatic rollback after partial deployment is not demonstrated. No code/deployment/production writes in this pass.
+- Report: [Pass 58 release-gate source audit](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+
+
+## 2026-10-10 — Pass 59: Actions runner reconciliation
+- Latest-head runs across code-check, smoke, backend archive, and source-package workflows fail with jobs exposing `steps: null`; no command-level failure is evidenced.
+- Keep CI restoration as a release blocker; do not claim checks passed. Owner-side Actions usage/permissions inspection or GitHub Support is required if the platform continues to provide no steps/logs.
+- After execution is restored: real lockfile + `npm ci`, meaningful ESLint rules backed by actual results, frontend typecheck/build, PHP lint/regressions/routes, then runtime smoke.
+- Report: `docs/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md`.
+
+
+## Pass 60 — reduce documentation-only CI churn (2026-10-10)
+Added Markdown-only `paths-ignore` filters to code-check, smoke push, source-package, and SpaceWeb archive workflows. Manual dispatch and scheduled smoke remain enabled. This reduces redundant workflow queue pressure but does not fix the underlying `steps: null` runner failure. Report: `docs/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md`.
+
+
+## Pass 61 — diagnose missing Actions job logs (2026-10-10)
+The job-step endpoint for code-check run `38013521893` returned empty step lists for both jobs; log downloads returned HTTP 404 `BlobNotFound`. Repo is active/private and integration permissions are admin-level. Root cause remains unknown; owner-side Settings → Actions, usage/limits, run UI annotations, and Support escalation are required. Report: `docs/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md`.
+
+
+## Pass 62 — Vercel observability check (2026-10-10)
+One recent docs-only production deployment was READY; a newer deployment was BUILDING during inspection and its final state was not confirmed. Vercel runtime-log query returned 403 and deployment-event endpoint returned 404, so application health cannot be inferred from missing logs. Next: confirm deployment in dashboard, run public/authenticated runtime smoke, restore log access. Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
+
+
+## Pass 62 — Vercel observability check (2026-10-10)
+One recent docs-only production deployment was READY; a newer deployment was BUILDING during inspection and its final state was not confirmed. Vercel runtime-log query returned 403 and deployment-event endpoint returned 404, so application health cannot be inferred from missing logs. Next: confirm deployment in dashboard, run public/authenticated runtime smoke, restore log access. Report: `docs/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md`.
+
+
+## Pass 63 follow-up — Actions retry (2026-10-10)
+- The pre-deploy audit now warns when ESLint config has no recognizable rules/presets; this is a heuristic and does not replace a proper lint baseline.
+- The four workflows triggered by the source commit all failed before exposing steps or logs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), [smoke](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), [backend archive](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), [package](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). No tests are confirmed to have executed.
+- Details: [Pass 63 report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
+
+
+## Pass 64 — archive security + pass inventory (2026-10-10)
+- Hardened source/backend/SpaceWeb archive workflows to exclude root and nested `.env*` files and added an archive-list guard before upload.
+- Recursive repo inventory: 38 documentation files named PASS<number>.md, highest numbered report Pass 64; this is not 62 sequentially completed passes because numbering has historical gaps.
+- Unfinished registry currently has 22 closed legacy blockers (C-01…C-22) and 7 broad open workstreams (R1–R7), plus release blockers for CI execution, dependency lockfile/lint, FTPS validation, and DB migration staging.
+- Validation caveat: four latest workflow attempts still failed before exposing executable steps/logs; archive guard has not yet run in CI.
+- Report: [Pass 64 archive security and inventory](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+
+
+### CI reliability follow-up (Pass 77)
+- SpaceWeb archive preparation now fails immediately on any shell/copy error (`set -euo pipefail`), commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`.
+- Still blocked: GitHub Actions runs report failure before steps, so no workflow test can yet be called passing. Resolve runner provisioning/settings first, then rerun the full checks.
+
+
+### Pass 78 — auth preferences contract
+- Added `backend/tests/AccountSettingsPreferencesTest.php` and wired it into code-check and deployment preflight to guard the previously reported `getPreferences()` fatal. Current source has the method, but the test cannot yet be confirmed passing because Actions fails before job steps.
+- Runner block remains a release gate: runs `38035609359`, `38035609394`, `38035609378`, `38035609353` have no step logs.
+
+
+## Product contract update — 2026-10-11
+
+Canonical product intent and integration rules are recorded in [MEDBIOHIM product intent and integration contract](docs/MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md). Preserve the existing approved site structure/UI; MEDBIOHIM is a student-built exam/self-preparation tool, not an official university portal. Keep source provenance for imported real questions and distinguish verified keys from AI-generated suggestions. All homework entry channels must converge on one group homework model; target policy allows any authenticated member of the same group to add shared homework, while server-side membership/scope checks remain mandatory. Telegram is both a site registration/login + Mini App entry point and a group-chat homework ingestion channel. Browser extension bridge remains a staged, consent-based import flow. Current gaps to address: reconcile privileged-only homework creation in UI/API with the group-member contract; make PHP Telegram webhook secret validation fail closed; verify account linking and Mini App end-to-end. CI runner failure remains an explicit verification blocker.
+
+## Implementation slice — 2026-10-11
+
+1. Completed source changes: PHP Telegram webhook secret fails closed via a tested helper; regression test is wired into code-check.
+2. Completed source changes: authenticated students may create shared homework in their own group; server-side group membership resolution remains required; schedule UI exposes the existing create flow to signed-in users.
+3. Next: verify PHP syntax/tests on a functioning runner, then test member/non-member authorization and the full Telegram webhook flow. CI currently fails before steps, so no test pass is claimed.
+4. Then implement secure Telegram account linking/registration and launching the existing site as a Mini App, reusing the current site rather than building a duplicate interface.
+### Project checkpoint — 2026-10-11
+- Full state snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). This is the hand-off source of truth for latest code edits, known historical risks, what remains unverified, and the exact continuation order.
+
+## Контрольный снимок перед паузой — 2026-10-11
+Полная фиксация текущего состояния, изменений последнего прохода, не подтверждённых функций, CI-блокера, продуктовых требований и безопасного порядка продолжения: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
+
+## Контрольный снимок перед паузой — 2026-10-11
+Полная фиксация состояния, сделанного/несделанного, требований, блокеров и плана продолжения: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
+
+### Checkpoint 2026-10-11 — pause state / handoff
+
+Canonical pause snapshot: [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Full checkpoint — 2026-10-11”. It records what changed, what remains unverified, architecture decisions, and the exact next steps. Treat source changes as unverified until Actions runs actual steps.
+
+### Pass 79 — Telegram webhook consolidation and relay
+- Node/Vercel is the single webhook target for the Telegram bot. Added optional HTTPS forwarding of group/supergroup updates to the PHP `/api/v1/telegram/webhook`, authenticated with the shared webhook secret.
+- Added Node tests for relay success and safe no-configuration behavior; tightened Mini App initData tests and Telegram user ID validation.
+- Updated the bot deployment guide and unfinished registry. No live webhook, environment secrets, production DB, or hosting configuration was changed.
+- Verification blocker remains external to the test steps: latest workflow jobs report `runner_id=0`, empty `runner_name`, and `steps=[]`, completing as failures in about three seconds. Logs are unavailable. The exact account/repository Actions setting or GitHub runner provisioning cause still needs to be inspected in the GitHub Actions UI/settings.
+- Next: restore runner execution; run `npm test`, PHP syntax and regression tests; configure the actual PHP API URL and shared secret only after confirming deployment settings; then perform an end-to-end group ingestion test. Telegram identity linking remains separate and must not trust unvalidated browser-provided IDs.
+### Pass 80 — Полный снимок состояния и hosting resilience (2026-10-11)
+- Создан `docs/STATE-SNAPSHOT-2026-10-11.md`: фиксирует продуктовый замысел, текущую архитектуру, последний набор исходных изменений, то, что не реализовано/не проверено, CI blocker, исторические технические риски и порядок возобновления.
+- Создан `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`: сохранить Vercel + Supabase + SpaceWeb + B2 как primary; сначала измерить медленную цепочку Vercel → SpaceWeb/API/media; затем отдельно проверить Cloudflare Workers для Telegram webhook, независимый foreign secondary frontend и российский read-only emergency mirror.
+- Идея отказоустойчивости: primary иностранный, secondary независимый иностранный, последний fallback — российская статика/совместимый хостинг. Secondary не считается полноценным failover, пока не проверены зависимости, Next.js/Auth/API, сеть и процедура возврата.
+- Никакие hosting/DNS/webhook/secret/production DB изменения не сделаны. Все тарифы и обещания «без карты» из списка пользователя — кандидаты к перепроверке по актуальным официальным условиям, не подтверждённые гарантии.
+- Основной блокер всё ещё GitHub Actions: задания падают до шагов. Первым делом при возобновлении проверить Actions/runner, затем тесты и E2E; только после этого PoC хостингов.
+
+### Hosting resilience architecture — 2026-10-11
+- Canonical plan: `docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md`.
+- Keep current Vercel → SpaceWeb PHP API → Supabase + existing media storage as primary. Do not replace it.
+- Priority: measure and optimize the existing slow path; then test a second independent foreign origin (Cloudflare Pages/compatible Next.js hosting) with a separate backup URL; later publish a Russian read-only emergency snapshot.
+- Telegram bot: Cloudflare Workers is the first PoC candidate, not yet selected for production. Keep current Node/Vercel webhook until parity tests and rollback exist; one active Telegram webhook per bot token.
+- User-provided provider quotas/card requirements are unverified. No provider migration, DNS change, production secret change or database replication is authorized.
+
+### Project checkpoint and continuation prompt — 2026-10-11
+- Full continuation snapshot and copy/paste new-chat prompt are recorded at the end of `docs/UNFINISHED-REGISTRY.md` under `SESSION HANDOFF SNAPSHOT — 2026-10-11`.
+- Use that snapshot together with the product contract and hosting strategy before resuming. It explicitly separates implemented source edits from unverified tests and production configuration.
+
+
+## Browser extension — subject-aware answer lookup and trusted-source ingestion (2026-10-11)
+
+- 🟢 **Requirements recorded, implementation pending:** [Browser extension trust/answer-learning specification](docs/BROWSER-EXTENSION-TRUSTED-SOURCES-ANSWER-LEARNING-SPEC-2026-10-11.md).
+- Extension must infer subject/topic, show compact side-panel answer lookup during supported tests, match the existing MEDBIOHIM question bank, and support manual correction when extraction is incomplete.
+- Admin-approved sources may be used automatically within configured adapter capabilities. Unknown sources remain beta/review candidates and cannot silently overwrite trusted answers.
+- First-seen questions with unknown answers are stored as candidates; after test completion, capture a source-provided key/review where available. A student's selected option or a score-only page is not proof of correctness.
+- Admin panel requirements: source allowlist, complete dated ingestion/change journal, filters/sorting, editing, evidence/provenance, audit history, duplicate review/merge and safe rejection.
+- Preserve existing extension quick links and avoid broad permissions, privileged secrets in the extension, unauthorized scraping, parallel question databases, or invented API routes.
+- **Not yet implemented or verified.** Next: inspect existing extension and API/schema, then build staged vertical slices. CI runner allocation remains an independent verification blocker.
+
+
+## Browser extension implementation — side-panel MVP (2026-10-11)
+
+- 🟢 Added Manifest V3 side panel (integrations/browser-extension/sidepanel.html, sidepanel.css, sidepanel.js) and service worker; existing quick links are preserved in the panel.
+- 🟢 Added user-triggered extraction of visible text/options from the active HTTP(S) tab, heuristic subject inference with manual override, editable question/options, copy action and a link to MEDBIOHIM global search.
+- 🟢 Permissions are limited to activeTab, scripting, sidePanel; no host permissions, cookies/history access, or automatic upload of captured text.
+- 🟡 This is an initial UI/extraction slice, not the full agreed feature: answer lookup is not yet connected directly to the authenticated API; question candidates are not saved; post-test answer capture, trusted-source registry, beta review queue and admin journal/editing remain pending.
+- 🟡 Syntax/manifest checks were added to .github/workflows/optional-integrations-check.yml, but have not been executed here; GitHub Actions runner allocation is still a known blocker. Browser acceptance on real sites is pending.
+- Next: inspect authenticated API contract and existing question models; add safe read-only search from a signed-in MEDBIOHIM session without extracting session tokens into extension code, then source registry and candidate-ingestion pipeline.
+
+
+## Telegram account linking — 2026-10-11
+- Source pass committed: private one-time link tokens (10-minute expiry, SHA-256 hash storage), authenticated Settings endpoints for start/status/unlink, transactional PHP confirmation through the existing webhook secret, Cloudflare Worker `/start link_<token>` handling, and Settings UI.
+- Migration: `database/migrations/20261011120000_telegram_account_linking.sql`.
+- NOT live/verified yet: migration has not been confirmed applied; real SpaceWeb API origin is not identified; Worker variable `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` must be set; PHP/Worker deploy and E2E tests remain pending.
+- Telegram-only sign-in is a separate pending phase. Do not claim full Telegram login yet: a linked Telegram ID does not itself create a valid Supabase Auth session.
+- Details and setup checklist: `docs/TELEGRAM-ACCOUNT-INTEGRATION-2026-10-11.md`.
+
+
+## Telegram onboarding/menu and Cloudflare GitHub CI — 2026-10-11
+- Worker onboarding now directs new users to sign in/register on the site, then open Settings → Telegram; private account data is not shown before linking.
+- `/start` and `/help` register the Telegram native command menu with `setMyCommands` and show inline buttons for the site, login/registration, and linking settings.
+- Added `.github/workflows/telegram-worker-checks.yml` to run `npm test` under `integrations/telegram-bot-cloudflare` on relevant pushes/PRs. The run result must be inspected before claiming tests pass.
+- Wrangler target aligned to existing Worker name `medbiohim-telegram` to avoid creating a second Worker when GitHub auto-deploy is enabled.
+- Deployment guide: `docs/CLOUDFLARE-GITHUB-TELEGRAM-DEPLOYMENT.md`.
+- The user-provided PHP health URL is HTTP. Cloudflare Worker relays require HTTPS, and the HTTPS endpoint has not yet been confirmed reachable. Do not set a plain-HTTP relay variable.
+- Telegram-only website login is NOT implemented/verified yet. The former `custom:telegram` Supabase OAuth link was removed from the login page because it is not a real login flow without a configured, verified OIDC provider. Existing Google/email login remains; after signing in, Telegram linking is the supported current flow.
+
+
+## Hosting / HTTPS contingency plan (2026-10-11)
+
+- **No hosting migration now.** Preserve Vercel + current PHP API + Supabase; work on code, CI, and security first.
+- Future order: **A)** Cloudflare HTTPS in front of the API only if we control a domain and can secure the origin; **B)** another free PHP host with valid HTTPS; **C)** separate API hosting while retaining SpaceWeb for files where practical; **D)** SpaceWeb as the permanent API host is the absolute last resort.
+- Live diagnostic: SpaceWeb health endpoint returns HTTP 200 and reports PHP 8.4.21, Supabase connection, required extensions and B2 config. HTTPS fails Windows certificate trust (SEC_E_UNTRUSTED_ROOT); when bypassed for diagnosis only, it returns 302 to HTTP. Do not send credentials or account-link tokens over HTTP.
+- Cloudflare account inspection found no DNS zones, only the existing Telegram Workers. The temporary temp.swtest.ru hostname cannot simply be added as our own zone; a secure Cloudflare origin path is not yet available.
+- Telegram account-link migration is in GitHub but not in the live Supabase migration list; tables are not present. No Supabase Edge Functions are deployed. Do not claim linking is live.
+- GitHub Actions run 38143942074 for Telegram Worker checks failed before executing steps: runner_id=0, runner_name empty, steps empty. Treat tests as not executed; fix runner allocation before interpreting code tests.
+- Supabase advisor snapshot: 1 security ERROR (SECURITY DEFINER view), 2 warnings (SECURITY DEFINER RPC callable by authenticated users; leaked-password protection disabled), 44 unindexed foreign keys and 67 unused-index notices. Review security findings first; do not drop indexes without workload review.
+- Detailed decision record: docs/HOSTING-HTTPS-DECISION-2026-10-11.md.
+
+
+## Cloudflare API migration — shadow scaffold started (2026-10-12)
+
+- 🟢 User decision: keep the current PHP API on SpaceWeb for now; prepare a gradual, full migration of API functionality to Cloudflare without switching production traffic yet.
+- 🟢 Added isolated \`integrations/cloudflare-api/\` scaffold: Worker entry point, Wrangler config, Node test suite, and migration/deployment README.
+- 🟢 Scaffold health route reports \`productionTrafficEnabled: false\`; unimplemented \`/api/v1/*\` routes return \`501 ROUTE_NOT_MIGRATED\`. No SpaceWeb proxy/fallback exists, deliberately avoiding the currently untrusted HTTPS origin and HTTP downgrade.
+- 🟡 This is source preparation only. The Worker has not been deployed; tests have not been executed because GitHub Actions runner allocation remains a known blocker. Do not mark CI green or switch the frontend API URL.
+- ⬜ Next: restore runner execution; run the new test suite; inventory PHP routes into public/authenticated/admin/webhook/media groups; define route contracts and auth/RLS rules; migrate read-only endpoints first; add contract and authorization tests before each write route.
+- ⬜ Production gates: verified Cloudflare account/Worker configuration, secret setup outside Git, valid HTTPS, CI green, endpoint parity and rollback plan. Keep SpaceWeb active until all required API routes pass staging and end-to-end verification.
+
+- Route-family inventory and mandatory migration gates: [docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md](docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md).
+
+- 🔴 Latest verification attempt after adding the Cloudflare API scaffold: workflow run [38146062456](https://github.com/MISTACEN/medbiohim/actions/runs/38146062456) failed before executing any step; job metadata shows `runner_id: 0`, empty `runner_name`, and `steps: []`. The new `npm test` command therefore did not run. This confirms the runner-allocation blocker persists; it does not indicate a test assertion failure.
+
+
+## Cloudflare API migration — Pass 1 (2026-10-12)
+
+- 🟢 Implemented the first two public, read-only PHP-contract routes in the isolated Worker: **GET /api/v1** and **GET /api/v1/ping**. They preserve the PHP success envelope and expected metadata fields without Supabase access.
+- 🟢 Added regression tests for response shape, environment/build values, UTC timestamp, trailing-slash normalization, non-GET behavior, CORS and no-proxy behavior. Seven Worker regression tests are authored; a fresh local run and successful CI run are still required before treating them as passing.
+- 🟡 GitHub Actions remains unverified because runner allocation previously failed before any step; Wrangler dry-run/deployment verification also remains open.
+- 🔴 Shadow Worker is not deployed or wired to the frontend. SpaceWeb remains active; no production DNS, API URL, database permissions, Telegram webhook, or secrets changed.
+- Next: verify the Worker build configuration and Wrangler dry-run in Cloudflare; then migrate HealthChecker only after reviewing public disclosure of runtime/configuration metadata. Proceed afterward to authenticated reads with server-side Supabase JWT validation and RLS parity.
+
+
+## Cloudflare API authentication foundation — Pass 2 (2026-10-12)
+
+- 🟢 Added `integrations/cloudflare-api/src/supabase-auth.js`: server-side Supabase Auth token validation over HTTPS, requiring the public anon key, enforcing a timeout, refusing redirects, and returning only the verified identity (ID/email).
+- 🟢 Added seven isolated regression tests for missing bearer token, missing configuration, non-HTTPS origin, successful validation, expired token, upstream failure, and secret-safe error handling. Fourteen tests were present at that earlier checkpoint; no reproducible local test log or successful CI run is available in the current session, so their passing status remains unverified.
+- 🔒 The helper is not yet wired to a route; it does not grant roles or bypass RLS, and it never uses a service-role key. No live Supabase setting changed.
+- 🟡 GitHub Actions runner allocation and Wrangler/Cloudflare deployment checks remain unverified.
+- 🔴 Cloudflare account inspection found no deployed `medbiohim-api-shadow` Worker. A Workers Builds configuration was not found for the current Telegram Worker tag during this check; a filled UI form is not proof of a saved, successful build.
+- Next: wire the helper only into a route after reviewing that route's data contract and database-level authorization; separately configure the API Worker build with repository root `/integrations/cloudflare-api/` when a staging deploy is approved.
+
+
+## Branching policy — SpaceWeb maintenance vs Cloudflare migration (2026-10-12)
+
+- 🟢 Created branch `spaceweb-backend` from the current `main` head to preserve a maintenance line for the existing SpaceWeb PHP backend.
+- 🔵 `main` is the forward migration line for the Cloudflare API implementation in `integrations/cloudflare-api/`; the Telegram Worker remains a separate project in `integrations/telegram-bot-cloudflare/`.
+- 🔒 SpaceWeb remains the live backend until a route-by-route verification and an explicitly approved cutover. No production DNS, Vercel API URL, Supabase policy, or Telegram webhook changes are allowed as part of ordinary code migration.
+- ⚠️ The maintenance branch is a source snapshot, not yet a verified rollback/release branch. Keep fixes there when needed for the live PHP backend and port shared critical fixes intentionally.
+
+
+
+## Cloudflare API migration — Pass 4 (2026-10-12)
+
+- 🟢 Added `POST /api/v1/auth/refresh` in `integrations/cloudflare-api/src/index.js`, using the new Supabase Auth refresh helper.
+- 🟢 Session normalization mirrors the PHP service's key fields; role is derived only from server-controlled `app_metadata`, not editable `user_metadata`.
+- 🟢 Added tests for missing token, HTTPS/config requirements, token exchange, normalized response, invalid refresh token, wrong method and unconfigured Worker.
+- 🟡 New tests are written but not yet confirmed by a successful GitHub Actions run. Cloudflare Worker is not deployed.
+- 🔒 No live settings, production API URL, DNS, database policy, or Telegram webhook changed.
+- ⬜ Next: confirm CI execution and continue with the next auth route only after reviewing rate limiting and profile-side effects in the PHP login/register handlers.
+
+
+
+## Cloudflare API migration — Pass 5 (2026-10-12)
+
+- 🟢 Added `POST /api/v1/auth/recover` backed by Supabase Auth over HTTPS, with a fixed callback path on the configured HTTPS app origin.
+- 🟢 Normalizes Supabase 4xx responses to avoid revealing whether an email exists; handles throttling and upstream errors separately. Request body is limited to 16 KiB.
+- 🟢 Added helper tests for callback safety, anti-enumeration behavior, throttling and upstream failure; route tests cover input validation, method and fail-closed configuration.
+- 🟡 Tests are written but have not been confirmed by a successful Node/GitHub Actions run. No Worker deployment has occurred.
+- ⚠️ Before production, add Cloudflare edge rate limiting for recovery; current code relies on Supabase's built-in limits, matching the absence of an app-level limiter in the PHP handler.
+- 🔒 SpaceWeb remains production. No frontend API URL, DNS, Supabase policy or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 6 (partial login)
+
+- 🟢 Added `loginSupabaseUser()` and `POST /api/v1/auth/login` with HTTPS-only Supabase password exchange, bounded input, generic invalid-credential responses and upstream error handling.
+- 🟢 Login tests cover input/configuration, session normalization, invalid credentials, throttling and upstream failures; route tests cover missing/denied rate limiter.
+- 🟡 Login route intentionally returns 503 until Cloudflare binding `AUTH_LOGIN_LIMITER` is configured. Do not expose it before then.
+- 🟡 Not contract-complete: PHP login may return DB-backed `profile` and `roles`; Worker has not yet migrated this profile synchronization because RLS/DB credential safety must be confirmed first.
+- 🟡 Tests remain authored but not verified by a successful full Node/GitHub Actions run.
+- 🔒 Production stays on SpaceWeb; no frontend API URL, DNS, database policies, or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 7 (partial registration)
+
+- 🟢 Added `registerSupabaseUser()` and `POST /api/v1/auth/register` with HTTPS-only signup, bounded input, name/email/password validation, generic signup errors and email-confirmation handling.
+- 🟢 Added helper tests and route tests for required rate limiting.
+- 🟡 Route deliberately returns 503 until Cloudflare binding `AUTH_REGISTER_LIMITER` is configured.
+- 🟡 Not contract-complete: PHP also creates a DB profile and assigns the default student role. This remains blocked on RLS/database write strategy review.
+- 🟡 Test cases are authored but not verified by a successful full Node/GitHub Actions run.
+- 🔒 Production stays on SpaceWeb; no frontend URL, DNS, database policy or Telegram webhook changed.
+
+
+## Histology archive integration — 2026-10-12
+
+- 🟢 Audited the user-provided `content.zip`: 444 entries (~202.46 MiB), 178 preparation-photo paths, 33 canonical electronogram paths, 33 legacy `em/` paths, 28 caption-map topics and 52 DOCX source documents.
+- 🟢 Updated `tools/import_histology_media.py` to accept both legacy `features.zip` and the uploaded `content.zip` layout, decode legacy `#UXXXX` filenames, preserve canonical and compatibility paths, emit a SHA-256 manifest, and reject conflicting normalized paths.
+- 🟢 Added `tools/test_import_histology_media.py` with path normalization, traversal rejection, duplicate, alias and conflict cases; connected these tests to the optional-integrations GitHub Actions workflow.
+- 🟢 Generated a separate SpaceWeb media deployment archive with 178 photos, 33 canonical electronogram paths, 33 `em/` aliases and the 28-topic caption maps. Binary assets are intentionally not committed to Git.
+- 🟡 The new importer tests still need a confirmed CI or local run; GitHub runner allocation has previously failed before any step.
+- 🔒 No Supabase data, trainer-card records, DNS, frontend API base URL or live SpaceWeb files were changed by this archive preparation.
+- 📄 Details: `docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md`.
+
+
+
+## Cloudflare API migration — Pass 8 (profile bundle)
+
+- 🟢 Added `GET /api/v1/auth/me` to the Worker with Supabase Auth token verification and caller-JWT PostgREST reads for the profile, role assignments and active group memberships.
+- 🟢 Response shape includes PHP-compatible `user`, `roles`, `groups`, `current_group`, `course` and `semester` fields; no service-role key is used.
+- 🟢 Added helper and route tests for user-scoped filters, response normalization, missing token and method handling. Cloudflare API suite now contains 50 authored Node test cases; importer suite contains 6 Python test cases.
+- 🟡 Tests are authored but not yet verified by a successful full run.
+- 🟡 Before cutover, validate live RLS permissions and PostgREST relationship names. Login/register DB profile writes and default student-role assignment remain unported.
+- 🔒 Production remains on SpaceWeb; no DNS, frontend API base URL, Supabase policies or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 9 and content archive (2026-10-12)
+
+- 🟢 Confirmed the Worker source includes `GET /api/v1/auth/me` and a Supabase REST profile-bundle helper. It validates the caller's Supabase token, uses the caller JWT plus anon key (no service-role key), filters data by the authenticated user, and returns user/roles/groups/course/semester fields.
+- 🟡 Live RLS behavior and PostgREST embedded relationship names still need staging verification; tests are authored but the full suite has not been confirmed by a successful CI run.
+- 🟢 Inspected the uploaded `content.zip` and produced a normalized asset package with Unicode filenames, duplicate-entry removal, a SHA-256 manifest, and repaired document-to-image map paths.
+- 🟢 Added `docs/HISTOLOGY-CONTENT-ARCHIVE-2026-10-12.md` with safe SpaceWeb extraction instructions and validation limits.
+- 🟡 The cleaned media archive is prepared for download but has not been uploaded to SpaceWeb or switched into production.
+- 🔒 SpaceWeb remains active. No production API URL, DNS, Supabase policy, Cloudflare deployment, or Telegram webhook was changed.
+
+
+
+## Cloudflare API migration — Pass 10 (authenticated search)
+
+- 🟢 Added `GET /api/v1/search` to Worker source, supporting `q/query`, limit, subject and type filters, ranked results and facets.
+- 🟢 Uses the authenticated caller JWT plus Supabase anon key for REST queries; no service-role key and no proxy to SpaceWeb.
+- 🟢 Added helper tests for blank queries, caller-scoped published question search, facets, invalid type and generic RLS failure; route tests cover auth/method guards.
+- 🟡 Tests are authored but the full suite has not been confirmed by successful CI. Live RLS and table/column compatibility must be verified before cutover.
+- 🔒 Production remains on SpaceWeb; no API URL, DNS, Supabase policy, Worker deployment or Telegram webhook changed.
+
+
+
+## Cloudflare API migration — Pass 11
+
+- 🟢 Added PHP-compatible `GET /api/v1/me` alias for the authenticated profile bundle.
+- 🟢 Added a regression test confirming the alias requires authentication.
+- 🟡 Live RLS/table relationship compatibility remains unverified; the Worker is not deployed and SpaceWeb remains production.
+
+
+
+## Cloudflare API migration — Pass 12
+
+- 🟢 Added authenticated `GET /api/v1/subjects/{id}` with caller-JWT/anon-key Supabase REST reads for subject details and modules.
+- 🟢 Added helper tests for authentication, subject ID validation, response shape, missing subjects and RLS-denied reads; route tests cover auth and method handling.
+- 🟡 Full test run and live Supabase RLS/schema behavior are not yet verified. No deployment or production cutover occurred.
+
+
+## Cloudflare backend migration — full product scope (2026-10-12)
+
+- 🟡 Cloudflare shadow Worker `medbiohim-api-shadow` is deployed and connected to the existing Supabase project using only `SUPABASE_URL` + `SUPABASE_ANON_KEY`; the service-role key is not used. SpaceWeb PHP remains the active backend.
+- 🟡 Added read routes for dashboard aggregation, schedule ranges, group homework, and published test catalog; added route guards/tests. Source uploaded to the shadow Worker, but external HTTP smoke tests and GitHub Actions execution are still unverified.
+- 🟡 Dashboard now reads site settings and announcements through RLS-protected `site_content`; full response parity and live role-specific behavior remain to verify.
+- 🟡 Schedule read range + calendar metadata are implemented; ⬜ mutations: create/update/cancel lessons, attendance states, and full calendar/week/month/semester parity.
+- ⬜ Homework mutations and submissions, completion tracking, photo/file attachments, private media permissions and storage integration.
+- 🟡 Published exam-question bank GET + subject summary, published lecture list/detail, subject catalog and subject-plan reads are implemented; ⬜ remaining routes: modules/materials, mini-quiz and test attempts, trainer feed/media, progress/SRS, academic plan, calculators, community, settings, presence, AI, Telegram admin, imports and admin panels.
+- 🔒 Preserve the existing UI and its translucent Atlas viewer; this is a backend migration, not a redesign. No production frontend switch until tests, RLS, PHP contract parity, and file/media authorization are verified.
+- Next pass: resolve GitHub Actions execution, run Node tests, validate schedule PostgREST filters against real authenticated users, and then implement schedule/homework writes only after confirming safe RLS policies.
+
+
+## Cloudflare API — Dashboard + schedule mutation pass (2026-10-12)
+
+- 🟢 Dashboard frontend: fixed the “Ближайшее занятие” selector so it shows lessons that are still in progress/upcoming today; if today's lessons have all ended, it now shows the next future date instead of stale past lessons.
+- 🟢 Dashboard frontend: returned/completed homework statuses are no longer counted as active/pending tasks.
+- 🟢 Dashboard API source: the published-test list used by the dashboard is raised from 20 to the current endpoint cap of 200, matching the live catalog size rather than silently truncating after 20.
+- 🟢 Dashboard API source: adds explicit summary counts for upcoming lessons, pending/completed homework and available tests; each unavailable source remains `null`/degraded rather than inventing zeroes.
+- 🟢 Fixed a double-escaped date regex that prevented schedule entries from receiving the weekday label.
+- 🟢 Added source-only Cloudflare API routes for the versioned schedule editor: `GET /api/v1/admin/schedule?group_id=&semester=` and `PUT /api/v1/admin/schedule`. Save creates a new inactive schedule version, inserts the full entry set, activates it only after the entries are written, then deactivates the previous active version. It uses the caller JWT/anon key and the existing RLS manager policies; no service-role key.
+- 🟢 Added granular schedule entry source routes: `POST /api/v1/schedule/entries`, `PATCH /api/v1/schedule/entries/{id}`, `DELETE /api/v1/schedule/entries/{id}`. Delete is a soft cancellation to preserve homework/history references. These routes remain guarded by Supabase RLS and are source-only.
+- 🟡 Added Node tests for schedule versioning and granular mutation authorization/validation. **Not executed in this environment**; GitHub Actions were deliberately not touched per current instruction.
+- 🔒 No Supabase schema/RLS changes, production API base URL switch, or Cloudflare deployment was performed in this pass. Existing PHP/SpaceWeb API remains active.
+- ⬜ Before deployment: run `npm test` locally/when a runner is available; confirm the live manager-role/RLS behavior; test partial-failure recovery and schedule-version activation; compare the admin editor payload with the actual PHP UI. Then upload all three Worker modules and smoke-test shadow endpoints.
+
+
+## Cloudflare migration — Progress + test/question catalog pass (2026-10-12)
+
+- 🟢 Added `GET /api/v1/progress?subject_id=&group_id=` in the shadow API source. It aggregates homework completion from the caller-visible group homework/progress/submission rows and test-attempt history scoped to the authenticated user (and optional group/subject). It returns the PHP-compatible `overall_pct`, homework counts, test attempt/finished counts, average score and attempt items. Upstream/RLS failures return a service error instead of fabricated zero progress.
+- 🟢 Published test catalog now joins visible test-question links to calculate `questions_count` in the field the current UI actually reads, and resolves `subject_name` from the linked subject. Answer keys and attempt snapshots are not selected by the catalog route.
+- 🟢 Existing question bank endpoints reviewed: `GET /api/v1/questions` and `GET /api/v1/questions/subjects` already read published `exam_questions` using caller JWT/RLS, with filters and pagination; full answers are returned only when explicitly requested by `include_answer=1`.
+- 🟢 Read-only audit of the live Supabase project: `tests` 33 rows (32 published); `questions` 855 rows (660 published and not archived); `test_questions` 854 links; `exam_questions` 876 rows (776 published). All 854 test-question links currently point to published, non-archived questions. There are no published, non-archived `questions` rows without a `test_questions` link in this audit. One unpublished test contains 67 links; it was deliberately not auto-published.
+- 🟡 Added regression tests for progress aggregates, test-question counts and route authentication/methods. **Not executed here**; GitHub Actions were left untouched per request.
+- ⬜ Still not migrated in this pass: the full interactive test attempt lifecycle (`GET /tests/{id}`, start, answer save/grading, finish, history and retry grading) and the separate full `questions` vs `exam_questions` authoring/import workflow. Do not switch the tests UI to Cloudflare until these routes are implemented and tested.
+- 🔒 No live data was edited, no question/test was published, no RLS policy was broadened, and no Worker deployment or frontend API cutover was performed. SpaceWeb PHP remains active.
+
+
+## Progress + tests/question bank — Cloudflare API pass (2026-10-12)
+
+- 🟢 Added authenticated `GET /api/v1/progress?subject_id=&group_id=` source handler. It combines homework completion from the caller-scoped homework/progress/submission records with the authenticated user's test attempts; attempt history is restricted to the resolved active group. Score averaging follows PHP's `score` field and ignores null scores.
+- 🟢 Corrected progress UI so a missing average, zero attempts, or no assigned homework is rendered as “—” rather than a fabricated 0%; a degraded API response continues to suppress metric cards.
+- 🟢 Published test catalog now scopes subject-bound tests against the caller-visible active subject list and restores subject/module/topic labels, linked-question counts and optional source-file metadata expected by the frontend. Global tests remain visible.
+- 🟢 Added an authenticated `GET /api/v1/tests/{uuid}` read route that returns published question bodies and option labels without sending answer keys/correct-choice flags in the response.
+- 🟢 Added authenticated `GET /api/v1/my/attempts?subject_id=&group_id=` for the caller's own selected-group attempt history; response projection excludes `question_snapshot`.
+- 🟡 Test start, answer save and finish are deliberately **fail-closed** with `TEST_ATTEMPT_SECURITY_NOT_READY`. Live Supabase grants currently allow authenticated users to select `public.test_attempts.question_snapshot` and `public.questions.answer/options`; using those tables for caller-JWT snapshots would not keep the key private. Do not wire these writes to the frontend until a private snapshot store / guarded RPC strategy and column/table grants are audited and tested.
+- 🟡 Semantic AI grading is not migrated to Cloudflare. Exact matching and MCQ grading must not be presented as equivalent to the PHP AI-aware grading service.
+- 🟡 Regression tests were authored for progress totals, catalog scoping/counts, read projections, and the fail-closed attempt-write gate. They have **not been executed**: repository clone/network access was unavailable. GitHub Actions were not touched per instruction.
+- 🔒 No Supabase schema/grant change, Cloudflare deploy, or frontend API switch was made. PHP/SpaceWeb remains the active production API.
+- ⬜ Follow-up: design and test an inaccessible answer-snapshot table plus narrow database functions (or another private server-side store); then implement idempotent start/save/finish and AI regrade, compare against `TestRepository`/PHP response contracts, run the test suite, and smoke-test shadow only.
+
+
+## Progress + test and question-bank read routes — follow-up (2026-10-12)
+
+- 🟢 Added `GET /api/v1/tests/curriculum-map?subject_id=&group_id=`. It resolves an authenticated active group, filters active subjects by course/specialty compatibility, then builds module/topic trees with published question counts, published test counts, planned dates and unclassified-question counts. A missing/foreign group is not silently inferred when the user has multiple groups.
+- 🟢 Added `GET /api/v1/tests/chemistry-master?page=&limit=&kind=&formula=&q=`. It reads the live `chemistry_master_documents` JSON document under the caller JWT, filters and paginates a bounded result set, and matches the existing ChemistryMaster frontend response contract.
+- 🟢 Confirmed the live unified chemistry bank currently contains 436 items in version `2026-10-07-v1`; its RLS read policy is authenticated-only.
+- 🟢 Added `GET /api/v1/tests/{id}/bank-progress?group_id=`. It resolves group/specialty context, counts published/unarchived questions linked to the test, and reports the caller's latest sequential preparation progress in that group using safe session/result projections.
+- 🟢 Auth/method regression tests were added for the new routes and helper-level catalog/progress tests. A static JavaScript parse pass succeeded for the 12 changed Worker modules/test files.
+- 🟡 The real Node test suite has **not** been executed and no runtime HTTP smoke test is confirmed. GitHub Actions remains untouched by instruction; the shell cannot clone the repository in the current network context.
+- 🔒 Test attempt start/save/finish remain intentionally fail-closed until their write path has database-enforced score/status integrity. Existing RLS permits a user to update their own attempt row and its score/status when direct table DML grants are present. The full test runner should use narrow authenticated database RPCs and a coordinated grants strategy rather than trusting the caller-JWT table write path.
+- 🔒 No production API base URL, live Supabase grants/schema, or Cloudflare deployment was changed. PHP/SpaceWeb remains the current backend.
+
+
+## Test bank response-contract follow-up — 2026-10-12
+
+- 🟢 The bank screen now calls a dedicated API-client helper `getTestBank()` which requests `/tests/{id}?view=bank&group_id=...`; the path remains compatible with the active PHP route and the Cloudflare source recognizes `view=bank` to include the correct answers only in the explicitly selected bank view. The default quiz detail route keeps answers/correct-choice flags stripped.
+- 🟢 A direct Cloudflare `GET /api/v1/tests/{id}/bank` alias is also present. The question-bank view receives `topic_title` / `module_title` fields expected by the UI and continues using the existing dedicated `bank-progress` endpoint.
+- 🟢 Published-test visibility now passes the selected group through the subject resolver and filters by active membership, specialty, and—when a single group is selected—course. Regression fixtures use UUID group/test identifiers.
+- 🟡 Static JavaScript parsing passed for 12 Worker/test JS files after the latest edits. `npm test` was not run because this environment cannot resolve GitHub; no claim of runtime test success.
+
+## Cloudflare candidate ZIP review — 2026-10-13
+
+- 🟢 Reviewed the attached expanded Worker candidate package and corrected four authorization role lookups in the review copy: `src/homework-mutations.js`, `src/presence.js`, `src/domain.js`, and `src/files.js` now use the canonical PostgREST relation `user_roles → roles(code)`, not the nonexistent `user_roles.role` column.
+- 🟢 Re-ran the candidate archive’s complete Node test suite after the corrections: **59/59 passed on Node.js v22.16.0**. `node --check` over all candidate source and test JavaScript files also passed. These are mocked/unit tests only; they do not validate live RLS, remote PostgREST relationships, deployed Worker behavior, R2, or LLM connectivity.
+- 🟡 The corrected candidate is delivered as a review ZIP; the new candidate modules are **not yet merged into the main repository or deployed**. Keep the current main Worker and live SpaceWeb PHP backend unchanged until module-by-module integration review is complete.
+- 🔴 R2 remains unavailable in the connected Cloudflare account (previous API response: error 10042). Candidate `wrangler.toml` still declares an R2 binding and production environment, so it must not be deployed as-is.
+- 🔒 `database/20261012_public_sync_my_academic_state.sql` has not been applied. Reconcile the remote migration history, function definitions, grants, `SECURITY DEFINER` boundaries and RLS before any execution.
+- 🔴 GitHub Actions runs are being created, but recent jobs immediately finish as failures with empty runner names, zero steps, and no downloadable logs; rerunning the code-check jobs reproduces the same behavior. This is consistent with an execution/runner/account configuration problem rather than evidence of failing test assertions, but the underlying account-level cause is not exposed by the current connector. The Supabase Preview check separately reported its monthly 1,000 git-push-event limit was reached.
+- 🔒 No Worker deployment, DNS or Vercel API cutover, Supabase schema/RLS mutation, or production data write was performed.
+
+**Next order:** restore GitHub Actions runner execution; reconcile each candidate query with live schema/RLS in read-only mode; decide how to resolve the R2 blocker or remove R2 dependency from an initial migration slice; review the academic-state SQL; then stage and smoke-test the complete Worker. `MEDBIOHIM_CF_FIRST` remains off.
+
+## Cutover preflight — 2026-10-13 (deployment request)
+
+- 🔴 **Production/Preview failover is not safe to enable yet:** the Vercel project currently has no `CLOUDFLARE_API_ORIGIN` or `MEDBIOHIM_CF_FIRST` variable, and `SPACEWEB_API_ORIGIN` exists but has an empty value in Production, Preview, and Development.
+- 🔴 The only previously recorded SpaceWeb endpoint is `http://ryazansev3.temp.swtest.ru/api/v1` (HTTP). The proxy now intentionally rejects non-HTTPS upstreams before forwarding bearer credentials. Do not bypass this guard or send authenticated traffic over plaintext HTTP. A working HTTPS SpaceWeb origin is required for fallback.
+- 🔴 The live `medbiohim-api-shadow` still contains only `src/index.js` and `src/supabase-auth.js`; the reviewed ZIP's additional modules are not in GitHub `main` and therefore cannot be deployed from the repository as a complete Worker bundle yet. R2 is also unavailable and auth rate-limit bindings are not configured.
+- 🔒 No Cloudflare Worker source was replaced, no Vercel environment variable or production alias was changed, and no traffic cutover was performed in response to this request. This avoids routing students to a partial Worker with a non-working SpaceWeb fallback.
+
+**Unblock sequence:** (1) make the reviewed ZIP modules available as tracked repository source; (2) deploy them to the shadow Worker without R2-dependent uploads enabled; (3) configure required secrets and rate-limit bindings; (4) supply/verify the actual HTTPS SpaceWeb API origin; (5) configure Cloudflare-first only in Preview and verify read, auth, write, and failover behavior; (6) enable Production only after successful checks and a rollback path.
+
+## Cloudflare Workers Builds: fix missing build script — 2026-10-13
+
+- 🔴 Observed actual Cloudflare build log from 2026-10-12: dependency install completed with “No packages!”, then configured Build command `npm run build` failed with `Missing script: "build"`. This is a package-script mismatch, not a GitHub connection failure.
+- 🟢 Updated `integrations/cloudflare-api/package.json` on `main` (commit `5f23331d35ee7b7038862a6c90148987f7d9c844`) to add a deterministic `build` script using `npx --yes wrangler@4.149.0 deploy --dry-run`, plus a pinned Wrangler `deploy` script. This makes the configured Build command perform an actual bundle/config validation before deployment.
+- 🟡 The uploaded Cloudflare dashboard screenshot confirms the GitHub repo `MISTACEN/medbiohim`, production branch `main`, root `integrations/cloudflare-api`, Build command `npm run build`, and Deploy command `npx wrangler deploy`. Thus GitHub is connected and Workers Builds is configured; earlier API lookup error 12040 was not sufficient to conclude the dashboard configuration was absent.
+- 🔴 A new build/deploy run after commit is still required. Do not treat the code change as a successful build or deployment until Cloudflare logs show dry-run success and deploy success. Then verify live Worker modules and smoke tests. Production Vercel routing remains unchanged.
+
+## Post-fix runtime smoke check — 2026-10-13
+
+- 🟢 Live Worker `/health` and `/api/v1/health`: HTTP 200; response remains `mode=shadow`, `role=migration-scaffold`, `productionTrafficEnabled=false`.
+- 🟢 Disallowed CORS preflight from `https://evil.example`: HTTP 403 `ORIGIN_NOT_ALLOWED`.
+- 🟢 Unknown route: HTTP 501 `ROUTE_NOT_MIGRATED`, fails closed.
+- 🟢 Empty login and registration requests: HTTP 422 validation errors.
+- 🔴 Protected `GET /api/v1/subjects` with a deliberately invalid bearer token: HTTP 502 `AUTH_UPSTREAM_ERROR` (“Could not reach Supabase Auth”), still not the expected 401. Investigate Supabase Auth reachability/configuration without exposing secret values.
+- 🟡 GitHub commit status for build-script commit `5f23331d35ee7b7038862a6c90148987f7d9c844` reports Vercel success only; it does not confirm Cloudflare Workers Builds. Live health responses also cannot prove the latest source bundle was deployed.
+- 🔴 Need Cloudflare Builds log for a run after `5f23331d` showing successful `npm run build` and `npx wrangler deploy`; then inspect deployed module list and re-run auth/rate-limit tests.
+- 🔒 No production route, Vercel environment, Supabase schema/RLS, or secret was changed. Production cutover remains blocked.
+
+## Cloudflare runtime follow-up — 2026-10-13
+
+- Confirmed active Worker has both native rate-limit bindings and all six expected source modules; previous two-module deployment drift is resolved for the currently deployed bundle.
+- Smoke tests: health 200, blocked CORS 403, unmigrated route 501, empty login/register 422.
+- Invalid bearer still returns 502 from Supabase Auth instead of expected 401. Added safe internal error-name/network-cause logging in commit `4074659aa0e0a5261175358e63d22c7c8b6c801a`; deployment of this diagnostic change is not yet confirmed.
+- Rate limiting is provisioned, but the quick test did not demonstrate 429; perform a controlled test after deployment and inspect runtime logs. Do not switch production until authentication and limits are verified.
+
+
+## Runtime diagnosis continuation — 2026-10-13
+
+- 🟢 Re-checked the live Worker bundle after commit `4074659a`: the safe auth-fetch diagnostic marker is now present, along with all six expected modules. This supersedes the earlier note that deployment was unconfirmed.
+- 🔴 Live HTTPS smoke tests still return HTTP 502 `AUTH_UPSTREAM_ERROR` for both an invalid bearer on a protected read and a login attempt with deliberately fake credentials. The login test does not create an account. Root cause is not yet established; do not assume the Supabase URL or key is wrong without diagnostic evidence.
+- 🟡 Cloudflare Observability telemetry query returned zero events, and Worker settings reported `logpush=false` with no tail consumers. Therefore the diagnostic log was not yet available through the queried telemetry path.
+- 🟡 Added `[observability]` with `enabled = true` and full head sampling to `integrations/cloudflare-api/wrangler.toml` in commit `961e2b8ee3b08e1b992982b0d83847a7b7497c49`. This is a config change intended to make safe runtime logs queryable; deployment and actual log visibility still need confirmation.
+- 🔴 Next: confirm Cloudflare Workers Build and deployment after `961e2b8`; re-check settings and query logs for `supabase_auth_upstream_fetch_failed`; identify the network cause without reading or logging secret values. Then re-run auth and rate-limit checks.
+- 🔒 Production routing and Vercel environment remain unchanged. Do not enable Cloudflare-first production traffic until auth, required read/write paths, and rate limits pass.
+
+
+## Latest verification after observability config commit — 2026-10-13
+
+- 🔴 Repeated seven login requests using deliberately fake `.invalid` email addresses; all seven still returned HTTP 502 `AUTH_UPSTREAM_ERROR`, and none returned 429. No account was created. Rate limiting remains unverified and may not be enforcing the configured threshold.
+- 🟡 The live Worker settings still show `logpush=false` and no tail consumers after commit `961e2b8`; therefore the new `[observability]` config has not been confirmed active. The temporary tail session could not establish a WebSocket connection and was deleted afterward.
+- 🟡 GitHub combined status currently reports Vercel `failure` with a build-rate-limit/upgrade link for the config and docs commits. This is not evidence of a Cloudflare build result. Cloudflare's build-trigger API lookup returns no triggers for the script, despite the previously supplied dashboard screenshot showing a configured build UI; reconcile this mismatch before relying on auto-deploy.
+- 🔴 Remaining blockers are still auth upstream reachability, a proven 429 rate-limit test, and verified Cloudflare build/deploy. Production remains on its existing routing; no cutover was performed.
+
+
+## Cloudflare auth fix and post-deploy verification — 2026-10-13
+
+- 🟢 Root symptom isolated: with `redirect: "error"`, the Worker raised a `TypeError` classified as a redirect failure while calling Supabase Auth. With redirect following still blocked but response inspection enabled (`redirect: "manual"`), the same HTTPS origin returned normal Supabase HTTP responses.
+- 🟢 Updated only the six Supabase Auth operations to use manual redirect handling. Any unexpected 3xx response is rejected with generic HTTP 502; telemetry logs only status and safe booleans/categories (same origin, HTTPS, Supabase domain, expected project, and path category), never the Location URL. Other Supabase REST calls retain `redirect: "error"`.
+- 🟢 Uploaded and deployed the source from GitHub main to the isolated shadow Worker as version 26: version ID `09e2db48-2621-4085-a54e-7df798da415b`, deployment ID `8f2a3bb7-bda7-4042-aca6-94e2a9f876fa`, source annotation commit `dd8833c5561abde7d14e98cd6bdbad3e051ec8bb`. Cloudflare accepted all six ES-module source files; all existing bindings were preserved, and no secret values were read.
+- 🟢 Post-deploy smoke checks: `/api/v1/health` HTTP 200; missing bearer HTTP 401; deliberately invalid bearer HTTP 401 `UNAUTHORIZED`; fake/nonexistent login HTTP 401 `AUTH_INVALID_CREDENTIALS`; disallowed CORS HTTP 403; wrong-method schedule request HTTP 405; unmigrated route HTTP 501. These tests do not create a user or rely on a real user's token.
+- 🟢 Targeted test suite `node --test test/supabase-auth.test.js`: 53/53 passing after fixing two test-suite defects (missing `getSupabaseSubjectDetail` import and an overly broad `attempt` substring assertion that incorrectly matched the allowed `max_attempts` field).
+- 🟢 Worker rate-limit bindings exist and have the expected configured thresholds: login 5 attempts/60 seconds; registration 3 attempts/60 seconds. 🟡 A post-fix live HTTP 429 check has not been confirmed; do not claim enforcement solely from bindings.
+- 🟢 Enabled Cloudflare Observability for diagnosing the shadow Worker, then disabled invocation logs to avoid collecting full request-header records. Persisted custom diagnostic logs remain enabled with safe fields only.
+- 🔴 The Vercel homepage still returns HTTP 200, but `/api/v1/health` still returns HTTP 503 `INSECURE_BACKEND_ORIGIN` because production routing remains configured to reject the legacy HTTP SpaceWeb origin. This remains an unresolved site/API integration blocker.
+- 🟡 Cloudflare Worker Build automation is not yet proven to track the latest commits reliably; the verified source was deployed directly to the shadow Worker. Continue fixing/confirming the GitHub-to-Cloudflare build flow.
+- 🔒 Production Vercel routing remains unchanged; `MEDBIOHIM_API_MODE=cloudflare` was not enabled. Auth is repaired in the shadow Worker, but production cutover is still blocked on verified API reads/writes, rate-limit enforcement, and build/deploy automation.
+
+
+## Full Worker regression pass and test-write safety gate — 2026-10-13
+
+- 🟢 Ran the complete Cloudflare Worker unit test set from the current `main` source in a Node 25.9 environment: **124 tests passed, 0 failed** across auth, routes, schedule/admin schedule mutations, test catalog, attempts/progress, and curriculum/chemistry handlers.
+- 🟢 Fixed a real oversized-body reader stall in `src/index.js`: `readJsonLimited` previously read a clone branch and awaited its cancellation, which could hang for oversized JSON. It now reads the one-shot request body directly; the existing oversized-refresh test completes and the full suite exits normally.
+- 🟢 Restored the intended fail-closed test-attempt write gate in `src/test-attempts.js`. Start, save-answer, and finish immediately return HTTP 503 `TEST_ATTEMPT_SECURITY_NOT_READY` until private answer-snapshot storage and guarded scoring are ready. Added regression coverage that verifies no upstream request is made by those disabled write operations.
+- 🟢 Added `[observability.logs]` configuration with invocation logs disabled, while keeping persisted custom diagnostics enabled. The goal is to avoid retaining full request/header records while preserving the safe auth error classification.
+- 🟢 `npm run build` / `npx wrangler@4.149.0 deploy --dry-run` passed against a fresh local materialization of current source/config. Wrangler reports the two intended rate-limit bindings (login 5/60s, registration 3/60s) and no configuration/module build error. This is a local dry-run, not evidence that Cloudflare's GitHub-linked Build pipeline executed.
+- 🟢 Uploaded the current source modules from GitHub `main` and deployed the isolated shadow Worker as version **37**, version ID `2fe3e2af-2929-44ab-9d0e-296435dcaeeb`, deployment ID `9f380d36-5250-4303-a8ef-0ea7e61832b5`, annotation commit `1facb9b0355dc7cba076d109f3868d6f9d5ce8a1`. Existing plain-text, rate-limit, and secret bindings were preserved without reading any secret values.
+- 🟢 Post-deploy live smoke checks: health 200; missing bearer 401; invalid bearer 401; test-attempt start/save/finish each 503 `TEST_ATTEMPT_SECURITY_NOT_READY`; disallowed CORS 403; unmigrated route 501. This confirms unsafe answer writes remain blocked rather than accidentally opening the feature.
+- 🟡 Runtime enforcement of rate limits is still not demonstrated by a controlled HTTP 429 test; the correct native bindings and thresholds exist, but do not mark the limiter phase fully verified.
+- 🔴 Production integration is still blocked: Vercel homepage returns 200, while `/api/v1/health` returns 503 `INSECURE_BACKEND_ORIGIN` because the production API route still rejects the legacy HTTP SpaceWeb origin. The GitHub-to-Cloudflare automatic build configuration remains unconfirmed; current shadow deployment was performed directly after local source and tests were checked.
+- 🔒 No production Vercel routing/environment, Supabase schema/grants, or Telegram webhook was changed. Do not enable `MEDBIOHIM_API_MODE=cloudflare` until live read paths, approved write paths, rate-limit enforcement, and the automated release process are verified.
+
+
+## Correction: Cloudflare Workers Builds automation verified — 2026-10-13
+
+- 🟢 Resolved the earlier API lookup ambiguity: Cloudflare's Builds API expects the Worker's system tag `3f7f446562fe43bdb19164b283d5a924`, not the script name `medbiohim-api-shadow`. The prior HTTP 12040 / empty-trigger result came from querying with the wrong identifier; it did not mean the dashboard build setup was absent.
+- 🟢 Read the existing build configuration by the correct tag. It points to GitHub `MISTACEN/medbiohim`, branch `main`, root directory `integrations/cloudflare-api`, build command `npm run build`, deploy command `npx wrangler deploy`, with automatic builds enabled.
+- 🟢 Confirmed Cloudflare Build runs reporting outcome `success` for commits `cf1ca28`, `d16e1c5`, `3ccd640`, `1facb9b`, `71c97af`, and `63525d6`. The latest checked build (`74ff2673-95bf-4384-8bf3-4fb1e75341b0`, commit `63525d6`) completed with outcome success; its logs did not contain the earlier `Missing script: "build"` error or failure markers.
+- 🟢 After that automatic build, the active Worker bundle was confirmed to contain the fail-closed attempt-write gate, direct one-shot request-body reader (no cloned-stream cancel stall), and safe Auth redirect diagnostics. Runtime settings retained both native rate-limit bindings and `observability.logs.invocation_logs=false`.
+- 🟡 Automatic build/deploy is now verified at least through the latest observed commit. Continue checking new source commits on `main`; do not use the earlier incorrect API lookup as evidence that automation is absent.
+- 🔒 Production Vercel routing remains unchanged. This resolves the Cloudflare build-pipeline verification item only; it does not clear the separate production API 503, live read/write validation, or rate-limit 429 verification blockers.
+
+
+## Rate-limit enforcement probe and auth fail-closed guard — 2026-10-13
+
+- 🔴 Controlled live probe: 18 sequential POSTs to the shadow Worker's login endpoint using a made-up `.invalid` email and non-real password all reached Supabase Auth and returned `401 AUTH_INVALID_CREDENTIALS`; none returned HTTP 429. This does not prove the Cloudflare native rate-limit binding is broken in every colo, but it proves enforcement has **not** been demonstrated and the current login path must not be treated as protected.
+- 🟢 Added an explicit `AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED` gate before both login and registration rate-limit checks. Unless the environment value is exactly `"true"`, both endpoints return HTTP 503 `RATE_LIMIT_ENFORCEMENT_UNVERIFIED` before reading credentials or calling Supabase. Wrangler config defaults this flag to `"false"`; do not flip it until a reproducible HTTP 429 test and binding behavior are understood.
+- 🟢 Updated route tests to require the explicit flag for limiter behavior. Full Worker suite after this change: **124/124 passed, 0 failed**.
+- 🟢 Live shadow smoke after the automatic build picked up the new commit: health HTTP 200; login HTTP 503 with `RATE_LIMIT_ENFORCEMENT_UNVERIFIED`; registration HTTP 503 with the same code. The registration probe used a synthetic `.invalid` email and was rejected before account creation.
+- 🟢 Confirmed the active Worker bundle includes the new auth gate, the fail-closed test-attempt write gate, the direct request-body reader, and safe auth diagnostics.
+- 🔴 Production still has a separate API outage: `https://medbiohim.vercel.app/` returns HTTP 200, but `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN`. Production was deliberately not switched to the incomplete shadow API.
+- 🟡 Vercel management connector currently denies access to environment/deployment listing for the known project scope (404/403). No production environment variables were changed; proceed with the available GitHub/Cloudflare checks and resolve Vercel scope/permissions before a safe cutover.
+
+
+## Current live progress — RPC-backed attempts enabled, 2026-10-13
+
+
+
+- 🟢 Cloudflare Workers Builds auto-deployed current `main` commit `1aa040eab6af990e63aa81365606a0def4480cd8`. Build `c9b324ff-c6f5-4cfc-a61b-5fae2febc3c6` outcome `success`; deployment `481e1a26-3121-4723-8e30-5a84623c7571` serves version `7da54e49-70cf-4f50-89f7-6c50c5c005b3` at 100%.
+- 🟢 Auth rate limit enforcement flag is active `true`; live shadow route probes confirmed login throttling (six malformed body probes → 422, then 429) and registration throttling (four malformed body probes → 422, then 429). The probes carried no passwords, created no accounts, and were checked against the exact configured namespaces (login 1001, 5/60s; registration 1002, 3/60s). Cloudflare’s distributed limiter can permit small overshoot between locations; this is not a strict global counter.
+- 🟢 Verified the live Supabase migration `secure_test_attempt_rpc_20261012` exists (version `20261012062330`). Its three `SECURITY DEFINER` RPCs exist with fixed `search_path=pg_catalog, public, pg_temp`. SQL privilege checks confirmed `authenticated` can execute start/save/finish, `anon` cannot; authenticated users cannot read `test_attempts.question_snapshot`; anon cannot select attempts or answers; RLS has owner-only policies.
+- 🟢 Enabled test attempt start/save/finish in `src/test-attempts.js` only after the live migration, grants and RLS had been checked. These operations call `medbiohim_start_test_attempt`, `medbiohim_save_test_answer` and `medbiohim_finish_test_attempt` RPCs; the Worker does not accept client-supplied score/status or directly write private snapshots.
+- 🟢 Targeted unit tests for test-bank and attempt routes: **5/5 passed**, including an RPC contract test verifying exact function names, arguments and that returned public objects do not contain `question_snapshot` or answer keys.
+- 🟢 Live unauthenticated probes for test-attempt start, answer save and finish all return HTTP 401, so removal of the maintenance gate did not permit anonymous writes. A full end-to-end start/answer/finish with a real student JWT has not yet been executed.
+- 🟡 Score logic is now handled by the database RPC. AI semantic grading/regrade and PHP-compatible profile/default-student-role creation at registration remain separate integration tasks.
+- 🔴 Vercel homepage still responds HTTP 200, but production `/api/v1/health` returns HTTP 503 `INSECURE_BACKEND_ORIGIN` because production remains in legacy mode against the old HTTP SpaceWeb origin. SpaceWeb HTTPS is unavailable; the target is Cloudflare-only.
+- 🟡 Preview env variables `MEDBIOHIM_API_MODE=cloudflare` and `CLOUDFLARE_API_ORIGIN` are configured only for Preview. A new Vercel deployment was rejected by the API’s daily deployment quota (`api-deployments-free-per-day`; retry after 24 hours), so those env settings have not yet been exercised by a newly built Preview. Production env and routing are unchanged.
+- 🔒 No authenticated student test was created; no real credentials, Supabase schema changes, production routing changes or HTTP fallback bypass were used in these probes.
+
+
+
+## Cloudflare migration — verified Shadow pass (2026-10-13)
+
+**Verified:** commit \`236b12f4261e4aa523c894a1d3f131c123bc1d35\`; Cloudflare build \`5c5c4227-9002-4116-8c7c-912f9f5a3bd0\`; Worker version \`d77cb3da-9ff3-46cf-8f3f-b991f9ad7709\`. \`npm test\` passed **176/176**, Wrangler dry-run passed and the test-gated Shadow deployment completed.
+
+Implemented in this pass:
+- Materials listing/detail: \`GET /api/v1/subject-materials\`, \`GET /api/v1/materials\`, \`GET /api/v1/materials/{id}\`.
+- Source metadata with MBH checks: \`GET /api/v1/content-sources/{id}\`.
+- Trainer feed/detail from the sanitized \`trainer_feed_cards_public\` view: \`GET /api/v1/trainers/feed\`, \`GET /api/v1/trainers/feed/{id}\`.
+- Trainer answer submission through existing secure \`submit_trainer_feed_answer\` RPC: \`POST /api/v1/trainers/feed/answer\`.
+- Cyrillic/Unicode search sanitization, text-keyed source lookups, bounded batch source resolution and explicit active-MBH-group checks.
+- Authentication/method guards, access-denial/fail-closed behavior, hidden answer-key tests and RPC error mapping.
+
+Remaining blockers are intentionally not marked complete:
+1. Physical file/media routes are not migrated: \`/materials/{id}/file-url\`, \`/materials/{id}/file\`, \`/trainers/feed/{id}/image\`, and \`/histology/source-file\`. Worker does not yet have private B2/R2 signing/access bindings or the SpaceWeb filesystem path; no fabricated download URLs or HTTP fallback.
+2. Valid-student live Supabase/RLS smoke testing remains pending; unit tests with a mocked identity cannot prove the live user's grants and memberships.
+3. Vercel frontend API-mode change, Preview verification and Production cutover remain separate gates. No production routing, DNS, Supabase schema/RLS, credential, or Redis changes were made in this pass.
+
+Source-of-truth details and route-by-route status are in \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\`. This pass is a verified increment, not full PHP/Worker API parity.
+
+
+## Private media delivery — next Cloudflare increment (2026-10-13)
+
+The Worker source now contains a shared private B2 URL signer and scoped route handlers:
+- \`GET /api/v1/materials/{id}/file-url\`: checks published material, active subject, specialty and active group membership before returning a 10-minute B2 URL.
+- \`GET /api/v1/trainers/feed/{id}/image\`: reads only the safe published trainer view, checks MBH membership and active file mapping, then returns a 302 redirect to the short-lived URL so the existing frontend can fetch the image as a Blob.
+- B2 URL construction uses HTTPS-only Backblaze host validation, refuses redirects, clamps URL lifetime and never accepts an object key from the user.
+
+**Not yet runtime-ready:** the Cloudflare build output lists no B2 secrets/bindings. Configure \`B2_KEY_ID\`, \`B2_APPLICATION_KEY\`, and \`B2_BUCKET\` as Worker secrets/variables, with optional \`B2_BUCKET_ID\`; do not put secret values in the repository. Without the required values, endpoints fail closed with a 503. The existing SpaceWeb-only Histology paths are still not available from Workers; \`/materials/{id}/file\` and \`/histology/source-file\` remain on the guarded PHP backend.
+
+The final Shadow source snapshot is verified: commit `18e4af15e616dc213c73774ad882471ce94c959f`, build `530dd56a-a902-41b7-9879-06451f1382f5`, Worker version `0709ef4f-3d7d-474a-af27-c1198e60a1e1`. All **225/225 tests passed**, Wrangler dry-run passed, and the image endpoint's 302/binary-fetch contract is included in the deployed code.
+
+Next acceptance gates:
+1. Verify the latest source/build/test result and Worker version.
+2. Securely configure B2 bindings, then test a real authorized file URL and confirm expiry/denial behavior.
+3. Run a live student JWT/RLS smoke test; mocked identity tests are not enough.
+4. Migrate the remaining SpaceWeb-only Histology files using a controlled inventory/copy/hash check, then add a guarded Worker delivery path.
+5. Verify Vercel Preview with API mode explicitly set to Shadow; only consider Production after separate approval.
+
+
+## Latest verified Cloudflare pass — 2026-10-13
+
+- **Shadow build verified:** source \`462d1d3fdb2168b05f9b7afb437acb280c29f075\`; Build \`64f4be30-63ca-483f-8e62-c644f2a5e424\`; Worker version \`dbc06ade-10ea-4b09-b8ca-969dfb9de6c4\`.
+- **Quality gate:** 225 tests passed, 0 failed; Wrangler dry-run and test-gated Shadow deployment succeeded.
+- Migrated in the verified build: materials list/detail and source metadata; safe trainer list/detail and scoring RPC; personal notes/favorites; lecture mini-quiz read/check; published-question report submission; private material file URL and trainer-image route code.
+- The two file-delivery routes are code-complete only at the handler level. Worker runtime configuration has Supabase and auth-rate-limit bindings, but **no \`B2_*\` secrets**. Binary access therefore remains blocked until credentials and real source-file/object-key mappings are provisioned and checked.
+- Keep \`/api/v1/materials/{id}/file\` and \`/api/v1/histology/source-file\` on the existing guarded backend for now; these depend on private binary delivery and/or SpaceWeb filesystem content.
+- Keep test-attempt start/save/finish blocked until private snapshot and narrow server-side scoring RPC/grants are resolved.
+- A real authenticated student-token RLS test remains pending. No Vercel API-mode switch, Production/DNS cutover, Supabase schema/RLS mutation, or B2 secret creation occurred.
+
+Route-level detail and acceptance gates: \`docs/CLOUDFLARE-API-ROUTE-INVENTORY-2026-10-12.md\`. Do not describe the whole PHP API or media archive as fully migrated until those remaining gates are closed.
+
+
+## File API read routes — source pass awaiting build (2026-10-13)
+
+Added to \`main\`:
+- \`GET /api/v1/files/{id}\`: scoped file metadata, without returning storage object keys or internal B2 IDs.
+- \`GET /api/v1/files/{id}/download\`: access check plus a short-lived private B2 redirect.
+- Tests cover ownership, group privacy, specialty checks, safe metadata and route guards.
+
+The latest source commit containing these routes is \`4c8d25f43ab851e9f25b78e7d1b5ce1498d10a7f\`. Its Cloudflare build is still queued; these routes are **not marked deployed** until the build queue runs tests, Wrangler dry-run and Shadow deployment.
+
+Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipart handling and B2 upload; move SpaceWeb-only files using a manifest + checksum verification; securely configure B2 Worker secrets; then test real-user RLS and signed URL expiry. Production stays unchanged.
+
+
+## Histology media connection — 2026-10-14
+
+- Upstash Blob inventory now contains 358 keys: the 357 expected archive files plus a folder-marker key. Extension counts match the archive inventory: 246 images, 4 PDFs, 102 Word documents, 3 JSON files, 1 Markdown file, and 1 text file. The bucket remains private.
+- Updated the authenticated Worker trainer-image resolver to map legacy `histology-photo-…` keys through `preparation.imagePath` and the three actual preparation-photo directories, and to try electronogram path aliases. It still checks the caller JWT and MBH group membership before signing a short-lived private Blob URL; B2 remains a fallback.
+- Updated material-file resolution: when a published Histology material has no `files` row, resolve its `source_key` through caller-authorized `content_sources.source_path`, then match the actual Blob archive path. This includes basename-only photo aliases, legacy electronogram DOCX directory names, and `source-materials/` document paths. File/group restrictions remain enforced when a registered `file_id` exists.
+- Updated private material streaming to accept only the expected Backblaze host or a 32-hex `*.r2.cloudflarestorage.com` host. Histology textbook listing/download now prefers private Blob and falls back to B2.
+- Added tests for preparation-photo aliases, content-source photo resolution, and Blob-backed textbook listing/streaming. **The tests/build have not yet been confirmed running in CI**, so this is code committed to `main`, not a verified live deployment.
+- Reconciliation check: 260 of 261 Histology content-source paths map to an uploaded object by deterministic path rules. One unresolved name remains: DB asks for `photos/5. Эмалевый орган.jpg`, while the archive has `2. Эмалевый орган.jpg`; no automatic substitution was made because the exact source image is ambiguous.
+- **Deployment blocker:** Cloudflare Worker `medbiohim-api-shadow` does not yet have the `UPSTASH_BLOB_TOKEN` secret binding. Add it in Cloudflare Dashboard → Workers & Pages → `medbiohim-api-shadow` → Settings → Variables and Secrets. Do not put the token in Git, frontend variables, or chat. After adding it, deploy the updated Worker and run authenticated checks for trainer photos, DOCX/PDF materials, and the histology atlas. Production traffic/DNS were not switched.
+
+
+## Verified training lifecycle on Cloudflare + live Supabase — 2026-10-15
+
+**Implementation status: complete in the isolated Shadow Worker; Production routing remains unchanged.**
+
+- Applied live Supabase migration `secure_histology_training_lifecycle_rpc_20261015` and committed the source migration `database/migrations/20261015120000_secure_histology_training_lifecycle.sql`.
+- Follow-up migration `persist_histology_training_score_20261015` persists the completion percentage in `trainings.score`; the rolled-back live-schema smoke verified the persisted value matches the session history listing.
+- Added owner-bound `SECURITY DEFINER` RPCs for create, list, get, answer, complete and cancel. Every RPC derives the owner from `auth.uid()`, requires active MBH membership and is executable by `authenticated` only; `anon`/`PUBLIC` have no execute privilege.
+- Verified `authenticated` has no direct SELECT/INSERT on `public.trainings` or `public.training_answers`. Do not restore table grants as a workaround.
+- Snapshots remain private in database tables. The get RPC strips correctness fields and (when required by the session label mode) preparation names/captions for unanswered cards; review data appears only after answer/skip. Correctness is computed server-side, not trusted from the request.
+- Worker routes are now connected: `GET/POST /api/v1/trainings`, `GET /api/v1/trainings/{id}`, `POST /answer`, `POST /complete`, `POST /cancel`. Frontend create payload now carries selected layout mode.
+- Live-schema transactional smoke passed for create → get hidden snapshot → answer → get review → complete → create → cancel → list. The transaction was rolled back, so smoke sessions are not retained.
+- Latest Worker source/deployment checkpoint at time of verification: commit `8fc117fd8f74f3848bcc110fe3477a5430dd244e`, build `4dfae369-a941-44e3-b05a-8ab0ec258e3f`, **328 tests passed / 0 failed**, Wrangler dry-run and Shadow deployment succeeded; Worker version `50b913a6-9002-46c8-9d2c-eb489e7fcc57`.
+- Remaining gate before calling the whole user flow accepted: a signed-in browser/API smoke with a real student bearer JWT. The SQL transaction smoke sets a test claim and is not a substitute for that HTTP/Auth test. Vercel reports `build-rate-limit`; frontend production deployment and routing cutover are not confirmed.
+
+## 2026-10-15 — тренажёры: финальная сверка canonical RPC
+
+Технический контур тренажёров гистологии готов в Shadow Worker и Supabase; production API пока остаётся на PHP/SpaceWeb.
+
+- Worker использует единственный канонический контракт RPC: `histology_training_list`, `histology_training_create`, `histology_training_get`, `histology_training_answer`, `histology_training_complete`, `histology_training_cancel`. Запросы сессий не читают/пишут защищённые таблицы напрямую; Bearer проверяется Supabase Auth и затем передаётся в RPC.
+- Удалены временные дубли RPC из прохода по миграции `remove_duplicate_histology_training_rpc`. У канонических RPC `SECURITY DEFINER`, владелец `postgres`, EXECUTE разрешён `authenticated` и запрещён `anon`. У ролей `anon` и `authenticated` нет прямых table grants на `trainings` и `training_answers`.
+- Откатываемый smoke на live-схеме подтвердил создание и чтение сессии, отсутствие answer keys до ответа, раскрытие review после ответа, отказ в чтении чужой сессии, завершение с сохранением `trainings.score`, выдачу оценки в истории и отмену другой сессии. Временные записи транзакцией откатились.
+- Cloudflare Build `31ae9afd-1466-4e12-ad13-bf2132a6d829`, commit `adda422197b70912a5cca3cc159bb0f9809b1e5d`: **330 тестов пройдены, 0 ошибок**, Wrangler dry-run и Shadow deploy завершены. Версия `88d4a621-31e1-4f10-ad10-6246f6ffad4e` распределена на 100%.
+- Непройденный последний acceptance gate — HTTP smoke с реальным подписанным студенческим JWT из браузера. SQL smoke с тестовым claim внутри транзакции не доказывает передачу реального bearer через все слои.
+- Production routing не менялся: реальный сайт продолжает использовать PHP/SpaceWeb; переключение на Cloudflare — отдельный финальный этап после проверки реального JWT и всех страниц.
+
+
+## Execution checkpoint — 2026-10-15: Cloudflare archive reconciliation
+
+- 🟢 Compared the uploaded `cf-push` entry point and alternate Cloudflare package against current `main`; did not replace the current module tree with the incompatible alternate architecture.
+- 🟢 Restored the missing learning-session router wiring in `integrations/cloudflare-api/src/index.js`: GET/POST `/api/v1/sessions`, GET/PATCH `/api/v1/sessions/{id}`. The existing `sessions.js`, tests and Supabase RLS migration were reused; no database change was necessary.
+- 🟢 Confirmed the current index blob now exactly matches the reviewed `medbiohim-cf-push.zip` index blob (`8831b42e2258e07217e64e7d0b3be4100b533451`). Code commit: `9fc2afebc8b07244647958eb8120c38fda7295e7`.
+- 🟡 Alternate `medbiohim-cloudflare-api 2.zip` test run is 58 passed / 1 failed, despite its local status file claiming 56/56. Failure: teacher-role homework grading test. Do not port that package wholesale.
+- 🟡 GitHub Actions runs for the code commit did not execute jobs (runner ID 0, no runner name, no steps). Code tests and Wrangler dry-run therefore remain unverified for this commit.
+- 🔒 The alternate R2 instructions were rejected because they conflict with the selected private Upstash Blob + Backblaze B2 + Redis-cache architecture. No secrets copied; no production deploy, Vercel production change, DNS switch, or API cutover.
+- Next: restore a functioning test runner or run the current Worker suite in a verified build environment; selectively review admin/domain modules from the alternate package; complete authenticated training lifecycle and private media acceptance before any cutover.
+
+
+## 2026-10-15 — isolated Cloudflare archive test repair
+
+- 🟢 Reproduced the alternate package's reported teacher-grading test failure and traced it to stale test fixtures using `user_roles.role`; the module already reads the live schema relation `roles(code)`.
+- 🟢 In an isolated extracted copy only, updated test fixtures in `test/homework-mutations.test.js` and `test/presence-ai.test.js`. Full archive suite now reports **59/59 passed**; `node --check` passed for all 54 JavaScript files.
+- 🟡 This does not validate the current GitHub Worker suite or authorize porting/deployment. The archive's R2 binding and alternate module/route surface still conflict with the selected storage architecture and current `main`.
+- Evidence: `docs/CLOUDFLARE-ARCHIVE-VALIDATION-2026-10-15.md`. No production, DNS, Vercel, Telegram, or Supabase schema changes were made.
+
+
+## Live Cloudflare account verification — 2026-10-15
+
+- 🟢 Read-only account inspection confirmed the private Upstash Blob bucket `medbiohim-files` and active EU Redis database `medbiohimcache`; Cloudflare R2 remains excluded.
+- 🟡 Only `medbiohim-api-shadow`, `medbiohim-telegram`, and `medbiohim-telegram-test` are present as Worker scripts. A production Worker named `medbiohim-api` does not exist yet, and no Worker custom domain is attached.
+- 🟡 Shadow has Cloudflare native login/register rate-limit bindings and an Upstash Blob token binding. The live binding list did not show `UPSTASH_REDIS_REST_TOKEN`; cache readiness is unverified. Blob object inventory could not be read in this check.
+- 🔒 Production cutover is not complete and must not be reported as complete. Exact-current-main tests/dry-run, secret readiness, Blob/histology key verification, and signed-in student/admin acceptance remain required before production Worker creation and frontend routing change.
+- Evidence: [live Cloudflare account state](docs/LIVE-CLOUDFLARE-ACCOUNT-STATE-2026-10-15.md).
+
+
+## 2026-10-15 — production API hostname created (gateway, not independent app)
+
+- 🟢 Created Cloudflare Worker `medbiohim-api` and enabled `https://medbiohim-api.ryazansevegor.workers.dev`.
+- 🟢 Gateway uses a Cloudflare service binding to `medbiohim-api-shadow`; public smoke checks passed for health (200), unauthenticated schedule (401), unmigrated route (501), and Vercel-origin CORS preflight (204). Responses carry `x-medbiohim-api-gateway: production`.
+- 🟢 Added reproducible gateway source/config: `integrations/cloudflare-api/production-gateway.js` and `integrations/cloudflare-api/wrangler.production.toml`; evidence: `docs/PRODUCTION-API-GATEWAY-2026-10-15.md`.
+- 🟡 This is an operational production hostname forwarding to Shadow, **not an independent application deployment**. The health payload correctly still reports `mode=shadow` and `productionTrafficEnabled=false`; those fields were not falsified.
+- 🔒 Frontend/Vercel routing, DNS/custom domains, existing Shadow, Telegram, Supabase schema, and SpaceWeb were not changed. No R2 used. Do not claim full production cutover.
+- Next: build and deploy current GitHub main as an independent Worker, provision its secret bindings securely (including Redis token if used), run authenticated student/admin acceptance for schedule/homework/tests/training/private media, then perform a separately approved frontend routing switch with rollback.
