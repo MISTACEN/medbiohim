@@ -3152,3 +3152,10 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟡 This is an operational production hostname forwarding to Shadow, **not an independent application deployment**. The health payload correctly still reports `mode=shadow` and `productionTrafficEnabled=false`; those fields were not falsified.
 - 🔒 Frontend/Vercel routing, DNS/custom domains, existing Shadow, Telegram, Supabase schema, and SpaceWeb were not changed. No R2 used. Do not claim full production cutover.
 - Next: build and deploy current GitHub main as an independent Worker, provision its secret bindings securely (including Redis token if used), run authenticated student/admin acceptance for schedule/homework/tests/training/private media, then perform a separately approved frontend routing switch with rollback.
+
+
+## 2026-10-15 — production gateway extended route smoke
+
+- 🟢 Rechecked live `medbiohim-api` across schedule, planner, subjects, tests, materials, auth/me, sessions, trainer feed, and admin schedule. Protected routes returned 401 without a Bearer token; no protected data was exposed.
+- 🟡 Found a real parity gap: `GET /api/v1/homework` returns 501 `ROUTE_NOT_MIGRATED` on Shadow and therefore through the production gateway. The gateway faithfully forwards current Shadow behavior; it cannot make an unmigrated route functional.
+- 🔒 Independent production deployment remains blocked until current source is deployed with the full secret set securely provisioned and tested. Cloudflare settings cannot reveal Shadow secret values for copying, and the linked Upstash Box could not clone the repo because GitHub write/clone credentials were unavailable. Do not switch frontend traffic to this gateway as a claimed full cutover.
