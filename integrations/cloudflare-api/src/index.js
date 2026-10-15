@@ -11,6 +11,7 @@ import { getSupabaseFileDownload, getSupabaseFileRecord } from "./file-records.j
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
+import { fetchPrivateMedia } from "./media-stream.js";
 import { changeSupabasePassword, getSupabaseAccountSettings, getSupabaseTelegramStatus, saveSupabasePreferences, startSupabaseIdentityLink, startSupabaseTelegramLink, unlinkSupabaseIdentity, unlinkSupabaseTelegram, updateSupabaseProfile } from "./settings.js";
 import { answerSupabaseTrainingQuestion, cancelSupabaseTraining, completeSupabaseTraining, createSupabaseTraining, getSupabaseTraining, listSupabaseTrainings } from "./trainings.js";
 import { getSupabaseHistologySourceFile, listSupabaseHistologySourceMaterials } from "./histology-source-materials.js";
@@ -827,11 +828,9 @@ export default {
       // cross-origin redirect can fail browser CORS even when the signed URL is valid.
       let mediaResponse;
       try {
-        mediaResponse = await fetch(result.data.url, {
-          method: "GET",
-          redirect: "error",
-          signal: AbortSignal.timeout(12_000),
-        });
+        // Storage signed URLs may legitimately redirect to a CDN/object origin.
+        // Follow redirects server-side; the browser only sees this same-origin Worker response.
+        mediaResponse = await fetchPrivateMedia(result.data.url);
       } catch {
         return withCors(json({ ok: false, error: { code: "MEDIA_UPSTREAM_UNAVAILABLE", message: "Не удалось загрузить файл изображения" }, requestId: crypto.randomUUID() }, 503), origin);
       }
