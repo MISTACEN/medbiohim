@@ -47,6 +47,8 @@ export async function mutateSupabaseAdminEntity(request, env, entity, action, id
   const invalid = validatePayload(entity, payload);
   if (invalid) return invalid;
   if (action === "create" && (!payload.name || !payload.name.trim())) return failure(422, "VALIDATION_ERROR", "Название обязательно");
+  if (entity === "groups" && action === "create" && (typeof payload.code !== "string" || !payload.code.trim() || payload.code.trim().length > 64)) return failure(422, "VALIDATION_ERROR", "Код группы обязателен и должен быть не длиннее 64 символов");
+  if (entity === "subjects" && "credits" in payload && payload.credits != null && (!Number.isFinite(Number(payload.credits)) || Number(payload.credits) < 0 || Number(payload.credits) > 1000)) return failure(422, "VALIDATION_ERROR", "Количество зачётных единиц указано некорректно");
 
   const identity = await authenticateSupabaseRequest(request, env, fetcher);
   if (!identity.ok) return identity;
