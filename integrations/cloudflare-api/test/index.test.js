@@ -355,6 +355,22 @@ test("schedule and dashboard read routes reject writes rather than silently acce
 });
 
 
+test("singular homework route is a compatibility alias for the canonical homeworks route", async () => {
+  for (const suffix of ["", "/11111111-1111-4111-8111-111111111111/progress", "/11111111-1111-4111-8111-111111111111/submit"]) {
+    const singular = await worker.fetch(request(`/api/v1/homework${suffix}`), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    const plural = await worker.fetch(request(`/api/v1/homeworks${suffix}`), {
+      SUPABASE_URL: "https://project-id.supabase.co",
+      SUPABASE_ANON_KEY: "public-anon-key-for-test-only",
+    });
+    assert.equal(singular.status, plural.status, suffix);
+    assert.equal((await singular.json()).error.code, (await plural.json()).error.code, suffix);
+    assert.notEqual(singular.status, 501, suffix);
+  }
+});
+
 test("homework creation route validates JSON and requires authentication", async () => {
   const malformed = await worker.fetch(request("/api/v1/homeworks", {
     method: "POST",
