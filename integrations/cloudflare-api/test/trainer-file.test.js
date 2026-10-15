@@ -131,8 +131,7 @@ test("trainer image URL resolves legacy preparation hash keys to uploaded archiv
     FILE_STORAGE: {
       async list({ prefix }) {
         listed = true;
-        assert.equal(prefix, "5_Фотографии препаратов/");
-        return { blobs: [{ path: expectedKey, size: 123 }], cursor: null };
+        return { blobs: expectedKey.startsWith(prefix) ? [{ path: expectedKey, size: 123 }] : [], cursor: null };
       },
       async head(key) {
         checked.push(key);
@@ -228,4 +227,35 @@ test("trainer image URL refuses ambiguous preparation basenames instead of choos
   });
   assert.equal(result.ok, false);
   assert.equal(result.code, "MEDIA_NOT_MIGRATED");
+});
+
+test("trainer corpus resolves private Blob objects uploaded under the histology/ prefix", async () => {
+  const target = "histology/5_Фотографии препаратов/частная гистология/epithelium.jpg";
+  const checked = [];
+  const envWithBlob = {
+    ...env,
+    UPSTASH_BLOB_TOKEN: "test-only-token",
+    FILE_STORAGE: {
+      async head(key) { checked.push(key); return key === target ? { size: 100 } : null; },
+      async signedReadUrl(key, options) {
+        assert.equal(key, target);
+        assert.equal(options.expiresIn, "5m");
+        return { url: "https://blob.example.test/histology-photo", expiresAt: "2026-10-15T00:05:00Z" };
+      },
+    },
+  };
+  const result = await getSupabaseTrainerImageUrl(request(), envWithBlob, "card-prefixed", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/trainer_feed_cards_public") return response([{
+      id: "card-prefixed", mode_set: "preparation", subject_slug: "histology", specialty_slug: "mbh",
+      source_file_id: null, source_key: "legacy-photo-id", preparation: { imagePath: "5_Фотографии препаратов/частная гистология/epithelium.jpg" }, is_published: true,
+    }]);
+    if (parsed.pathname === "/rest/v1/group_memberships") return response([{ group_id: "group-1", groups: { specialty_slug: "mbh", is_active: true } }]);
+    assert.fail("Unexpected endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.mode, "upstash-blob");
+  assert.equal(result.data.url, "https://blob.example.test/histology-photo");
+  assert.ok(checked.includes(target));
 });

@@ -1,6 +1,7 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { createB2DownloadUrl } from "./b2-download.js";
 import { getFileStorage } from "./blob-storage.js";
+import { materialSourceCandidateKeys } from "./histology-key-map.js";
 
 const TIMEOUT_MS = 5_000;
 
@@ -111,29 +112,7 @@ export async function getSupabaseMaterialFileUrl(request, env, materialId, fetch
         addCandidate(file?.object_key);
       } else {
         const sourcePath = String(source?.source_path || "").trim();
-        const leaf = sourcePath.split("/").pop() || "";
-        addCandidate(sourcePath);
-        if (sourcePath.startsWith("photos/")) {
-          addCandidate(sourcePath.slice("photos/".length));
-          for (const folder of [
-            "5_Фотографии препаратов/стом. гистология/",
-            "5_Фотографии препаратов/цитология, эмбриология и общая гистология/",
-            "5_Фотографии препаратов/частная гистология/",
-          ]) addCandidate(folder + leaf);
-        }
-        if (sourcePath.startsWith("content/histology/")) addCandidate(sourcePath.slice("content/histology/".length));
-        // Older DOCX metadata kept an obsolete exam-folder prefix; the archive
-        // stores the same source document directly under electronograms/docx/.
-        if (sourcePath.startsWith("electronograms/docx/") ||
-            sourcePath.startsWith("1_Экзаменационные электронограммы_")) {
-          addCandidate("electronograms/docx/" + leaf);
-        }
-        if (sourcePath && !sourcePath.startsWith("source-materials/") &&
-            !sourcePath.startsWith("electronograms/") && !sourcePath.startsWith("em/") &&
-            !sourcePath.startsWith("5_Фотографии препаратов/") && !sourcePath.startsWith("photos/") &&
-            !sourcePath.startsWith("1_Экзаменационные электронограммы_")) {
-          addCandidate("source-materials/" + sourcePath);
-        }
+        for (const key of materialSourceCandidateKeys(sourcePath)) addCandidate(key);
       }
     }
     if (!candidateKeys.length) {

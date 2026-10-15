@@ -15,8 +15,9 @@ head_sampling_rate = 1
 persist = true
 destinations = ["cloudflare"]
 
-# Deliberately isolated from production. This Worker is a shadow scaffold:
-# it does not replace the SpaceWeb PHP API and does not proxy requests to it.
+# The Worker is named shadow and reports APP_ENV=shadow. The public Vercel API
+# has been observed sending production requests here, but route parity is partial.
+# Keep the diagnostic label until the missing routes and acceptance checks are done.
 [vars]
 APP_ENV = "shadow"
 MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
@@ -28,11 +29,11 @@ OPENROUTER_MODEL = "google/gemini-2.5-flash"
 GEMINI_MODEL = "gemini-2.0-flash"
 GIGACHAT_MODEL = "GigaChat"
 UPSTASH_REDIS_REST_URL = "https://rare-oyster-230342.upstash.io"
-B2_BUCKET = "medbiohim-files" # Non-secret bucket name; B2 credentials stay in Worker secrets.
+B2_BUCKET = "medbiohim-files" # Legacy object-storage fallback only; not Cloudflare R2.
 AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED = "true"
 
 # Cloudflare native rate limiting. Keys are client IPs in src/index.js.
-# Keep thresholds conservative until real traffic is observed.
+# Keep thresholds conservative until authenticated production behavior is validated.
 [[ratelimits]]
 name = "AUTH_LOGIN_LIMITER"
 namespace_id = "1001"

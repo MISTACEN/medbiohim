@@ -99,7 +99,7 @@ test("Histology material resolves content_sources.source_path to a private Blob 
       async signedReadUrl(key, options) {
         assert.equal(key, expectedKey);
         assert.equal(options.expiresIn, "5m");
-        return { url: "https://b52abdc10f9f4caba34db7acf38f7e80.r2.cloudflarestorage.com/signed" };
+        return { url: "https://blob.example.test/histology-material" };
       },
     },
   };
@@ -133,7 +133,7 @@ test("Histology material resolves content_sources.source_path to a private Blob 
   });
   assert.equal(result.ok, true);
   assert.equal(result.data.mode, "upstash-blob");
-  assert.equal(result.data.url, "https://b52abdc10f9f4caba34db7acf38f7e80.r2.cloudflarestorage.com/signed");
+  assert.equal(result.data.url, "https://blob.example.test/histology-material");
   assert.ok(checked.includes(expectedKey));
 });
 

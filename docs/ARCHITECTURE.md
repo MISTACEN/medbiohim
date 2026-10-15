@@ -1,8 +1,8 @@
 # Архитектура MEDBIOHIM
 
-Обновлено: 2026-10-14.
+Обновлено: 2026-10-15.
 
-## Каноническая схема (production сейчас)
+## Наблюдаемая production-схема
 
 ```
 Browser
@@ -10,16 +10,15 @@ Browser
   ▼
 Vercel (Next.js App Router)
   │  same-origin /api/v1/*
-  │  proxy → SPACEWEB_API_ORIGIN
+  │  same-origin API proxy (live health identifies the Cloudflare Worker)
   ▼
-SpaceWeb (PHP API)
-  document root: backend/public/
-  │
-  ├── RequireAuth / RequireRole / SpecialtyAccess
-  ├── Repository / Service
-  └── Supabase (PostgreSQL + Auth + RLS)
-        │
-        └── media metadata → SpaceWeb files / B2 (physical objects)
+Cloudflare Worker `medbiohim-api-shadow` (partial route parity; health says `APP_ENV=shadow`)
+  ├── Supabase (PostgreSQL + Auth + RLS; canonical data and authorization)
+  └── Upstash Blob (private Histology object bytes)
+
+SpaceWeb PHP remains a compatibility backend for routes that have not yet been
+ported. The public `GET /api/v1/files` probe returned `501 ROUTE_NOT_MIGRATED`,
+so this is active Worker traffic, not a completed migration.
 ```
 
 ## Компоненты
@@ -28,10 +27,10 @@ SpaceWeb (PHP API)
 |------|------|--------|
 | GitHub | Код, миграции, docs | free |
 | Vercel | Frontend + API proxy | Hobby |
-| SpaceWeb | PHP runtime, тяжёлые media | Free |
+| SpaceWeb | PHP compatibility API and legacy media | Free |
 | Supabase | PostgreSQL, Auth, RLS, metadata | Free |
-| Backblaze B2 | Object storage (опционально) | Free tier |
-| Cloudflare Workers | Shadow API + Telegram (миграция) | Free |
+| Upstash Blob | Private Histology object storage | Current configured file store |
+| Cloudflare Workers | API receiving production requests; route migration incomplete | Free |
 
 **Supabase** — единственный source of truth для данных.
 JSON в `backend/data/` не production SoT.
@@ -71,7 +70,9 @@ JSON в `backend/data/` не production SoT.
 ## Медиа и приватные файлы
 
 1. Метаданные — Supabase `public.files`
-2. Объект — SpaceWeb path или B2
+2. Объект — private Upstash Blob key. Existing B2 integration remains a legacy
+   fallback for old records while object-key coverage is checked.
+3. Cloudflare R2 is intentionally not used; there is no R2 binding or paid R2 dependency.
 3. Приватный доступ — только через PHP (или Worker) с Bearer; `<img src>` без Authorization не подходит
 4. Frontend: authenticated fetch → blob → `URL.createObjectURL()`
 
