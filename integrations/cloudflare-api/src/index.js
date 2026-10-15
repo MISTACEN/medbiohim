@@ -10,6 +10,7 @@ import { getSupabaseMaterialFileUrl } from "./material-file.js";
 import { streamSupabaseMaterialFile } from "./material-binary.js";
 import { getSupabaseFileDownload, getSupabaseFileRecord } from "./file-records.js";
 import { uploadSupabaseFile } from "./file-upload.js";
+import { mutateSupabaseAdminEntity } from "./admin-entities.js";
 import { getSupabaseContentSource } from "./content-sources.js";
 import { getSupabaseTrainerCard, listSupabaseTrainerFeed, submitSupabaseTrainerAnswer } from "./trainer-feed.js";
 import { getSupabaseTrainerImageUrl } from "./trainer-file.js";
@@ -1316,13 +1317,43 @@ export default {
     }
 
     if (pathname === API_PREFIX + "/groups") {
+      if (request.method === "POST") {
+        const body = await readJsonLimited(request, 64 * 1024);
+        if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+          return withCors(json({ ok: false, error: { code: body.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR", message: "Некорректное тело запроса" }, requestId: crypto.randomUUID() }, body.tooLarge ? 413 : 422), origin);
+        }
+        const result = await mutateSupabaseAdminEntity(request, env, "groups", "create", null, body.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data, 201), origin);
+      }
       if (request.method !== "GET") {
-        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, OPTIONS" }), origin);
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "GET, POST, OPTIONS" }), origin);
       }
       const result = await listSupabaseGroups(request, env);
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
+      return withCors(success(result.data), origin);
+    }
+
+    const groupMutationMatch = new RegExp("^" + API_PREFIX + "/groups/([^/]+)$").exec(pathname);
+    if (groupMutationMatch) {
+      if (!["PATCH", "DELETE"].includes(request.method)) {
+        return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "PATCH, DELETE, OPTIONS" }), origin);
+      }
+      let groupId;
+      try { groupId = decodeURIComponent(groupMutationMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Некорректный идентификатор группы" }, requestId: crypto.randomUUID() }, 422), origin); }
+      let payload = {};
+      if (request.method === "PATCH") {
+        const body = await readJsonLimited(request, 64 * 1024);
+        if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+          return withCors(json({ ok: false, error: { code: body.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR", message: "Некорректное тело запроса" }, requestId: crypto.randomUUID() }, body.tooLarge ? 413 : 422), origin);
+        }
+        payload = body.value;
+      }
+      const result = await mutateSupabaseAdminEntity(request, env, "groups", request.method === "PATCH" ? "update" : "delete", groupId, payload);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
 
@@ -1531,25 +1562,26 @@ export default {
 
     // Explicitly migrated routes only; all other API paths fail closed below.
     if (pathname === `${API_PREFIX}/subjects`) {
+      if (request.method === "POST") {
+        const body = await readJsonLimited(request, 64 * 1024);
+        if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+          return withCors(json({ ok: false, error: { code: body.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR", message: "Некорректное тело запроса" }, requestId: crypto.randomUUID() }, body.tooLarge ? 413 : 422), origin);
+        }
+        const result = await mutateSupabaseAdminEntity(request, env, "subjects", "create", null, body.value);
+        if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+        return withCors(success(result.data, 201), origin);
+      }
       if (request.method !== "GET") {
         return withCors(json({
-          ok: false,
-          error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
-          requestId: crypto.randomUUID(),
-        }, 405, { allow: "GET, OPTIONS" }), origin);
+          ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID(),
+        }, 405, { allow: "GET, POST, OPTIONS" }), origin);
       }
       const params = url.searchParams;
       const result = await listSupabaseSubjects(request, env, {
         course: params.get("course") ?? "",
         semester: params.get("semester") ?? "",
       });
-      if (!result.ok) {
-        return withCors(json({
-          ok: false,
-          error: { code: result.code, message: result.message },
-          requestId: crypto.randomUUID(),
-        }, result.status), origin);
-      }
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
 
@@ -1568,6 +1600,24 @@ export default {
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
+      return withCors(success(result.data), origin);
+    }
+
+    const subjectMutationMatch = new RegExp("^" + API_PREFIX + "/subjects/([^/]+)$").exec(pathname);
+    if (subjectMutationMatch && ["PATCH", "DELETE"].includes(request.method)) {
+      let subjectId;
+      try { subjectId = decodeURIComponent(subjectMutationMatch[1]); }
+      catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Некорректный идентификатор предмета" }, requestId: crypto.randomUUID() }, 422), origin); }
+      let payload = {};
+      if (request.method === "PATCH") {
+        const body = await readJsonLimited(request, 64 * 1024);
+        if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+          return withCors(json({ ok: false, error: { code: body.tooLarge ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR", message: "Некорректное тело запроса" }, requestId: crypto.randomUUID() }, body.tooLarge ? 413 : 422), origin);
+        }
+        payload = body.value;
+      }
+      const result = await mutateSupabaseAdminEntity(request, env, "subjects", request.method === "PATCH" ? "update" : "delete", subjectId, payload);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data), origin);
     }
 
