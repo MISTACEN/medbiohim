@@ -21,12 +21,12 @@ Updated: 2026-10-16. Source inspection only; no live request or deployment is im
 | Schedule read/meta and entry mutations | Dispatch and mutation module exist | Verify CRUD, group scoping, forbidden cross-group edits |
 | Homework list/create/progress/submit | Dispatch and modules exist | Verify student-created work policy, ownership and attachment flow |
 | Account settings | Read/update routes exist | Verify profile/preference writes and Telegram linking |
-| File upload | **Not implemented in Worker router** | Verify storage provider and metadata insert authorization/RPC before coding |
+| File upload | Worker handler + B2 upload module + caller-JWT metadata RPC migration authored; not runtime verified | Apply the migration, configure B2 secrets, run tests, then smoke-test upload/download with a student token |
 | Groups/subjects CRUD | Frontend calls exist; coverage is incomplete at source level | Finish endpoint/method parity inventory before marking complete |
 
 ## File upload blocker
 
-The frontend submits multipart `file`, optional `group_id`, and optional `specialty_slug` to `POST /api/v1/files/upload`. The Worker has metadata/download reads, but no upload handler. The existing RLS hardening migration drops direct insert/update policies on `public.files`; do not bypass that with a service-role key or broad policy. The implementation needs a narrowly scoped authenticated RPC (or another explicitly approved server-side insert path), group/specialty authorization, storage upload, metadata insert, and compensating object cleanup on failure. The current download implementation signs Backblaze B2 URLs, so Upstash Blob cannot be substituted for these files without adding a compatible private download path.
+The frontend submits multipart `file`, optional `group_id`, and optional `specialty_slug` to `POST /api/v1/files/upload`. The Worker now dispatches this route to `src/file-upload.js`: it validates authentication, type/size, group UUID, specialty slug, and private visibility; uploads bytes to Backblaze B2; then calls the narrowly scoped `medbiohim_create_file_record` RPC with the caller JWT. The SQL migration is authored but has **not** been applied to Supabase. It checks the caller identity and active group/specialty membership, and does not add broad table insert policies or use a service-role key. A failed metadata insert triggers best-effort deletion of the uploaded B2 object. The route remains unverified until the migration is applied, B2 secrets are configured, and tests plus a real shadow upload/download are run. The current download implementation signs Backblaze B2 URLs, so Upstash Blob cannot be substituted for these files without adding a compatible private download path.
 
 ## Completion language
 
