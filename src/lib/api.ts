@@ -74,9 +74,27 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
     if(typeof window!=="undefined"){
       const safePath=path.split("?")[0].replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi,":id");
       const source=res.headers.get("x-mbh-api-source")||"unknown";
-      window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:{at:Date.now(),method,path:safePath,status:res.status,durationMs:Date.now()-startedAt,source,requestId:res.headers.get("x-request-id")||"",fallback:source.includes("fallback"),ok:res.ok,kind:"response"}}));
+      const entry={at:Date.now(),method,path:safePath,status:res.status,durationMs:Date.now()-startedAt,source,requestId:res.headers.get("x-request-id")||"",fallback:source.includes("fallback")||res.headers.get("x-mbh-transport-fallback")==="true",ok:res.ok,kind:"response"};
+      try{
+        const key="mbh:api-log-buffer";
+        const prior=JSON.parse(sessionStorage.getItem(key)||"[]");
+        sessionStorage.setItem(key,JSON.stringify([entry,...(Array.isArray(prior)?prior:[])].slice(0,1000)));
+      }catch{}
+      window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:entry}));
     }
     return{res,text:await res.text()};
+  }catch(error){
+    if(typeof window!=="undefined"){
+      const safePath=path.split("?")[0].replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi,":id");
+      const entry={at:Date.now(),method,path:safePath,status:0,durationMs:Date.now()-startedAt,source:"unavailable",requestId:"",fallback:false,ok:false,kind:controller.signal.aborted?"timeout":"network_error"};
+      try{
+        const key="mbh:api-log-buffer";
+        const prior=JSON.parse(sessionStorage.getItem(key)||"[]");
+        sessionStorage.setItem(key,JSON.stringify([entry,...(Array.isArray(prior)?prior:[])].slice(0,1000)));
+      }catch{}
+      window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:entry}));
+    }
+    throw error;
   }finally{
     clearTimeout(timeout);
     if(externalSignal)externalSignal.removeEventListener("abort",abortFromCaller);
