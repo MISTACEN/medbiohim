@@ -2266,3 +2266,11 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟡 Status is **production gateway online / independent production API pending**. The proxied health JSON remains `mode=shadow` and `productionTrafficEnabled=false` by design.
 - 🔒 No frontend routing or DNS change. No claim of full production cutover or independent secret provisioning. The gateway can be disabled without affecting the current frontend route or Shadow Worker.
 - Next gate: deploy current app source independently with securely provisioned secrets, then real signed-in student/admin acceptance before routing cutover.
+
+
+## 2026-10-15 — additional production gateway acceptance
+
+- 🟢 Live unauthenticated smoke: schedule, planner, subjects, tests, materials, auth/me, sessions, trainer feed, and admin schedule return 401 through the production gateway, preserving the upstream auth boundary.
+- 🟡 `GET /api/v1/homework` returns 501 `ROUTE_NOT_MIGRATED` through both Shadow and gateway. This is an existing migration gap, not a gateway forwarding bug; the new hostname is not feature-complete versus the legacy backend.
+- 🟡 Independent deployment is still blocked: secret values cannot be read back from Cloudflare settings, and the connected build box could not clone the repo due unavailable GitHub clone credentials. No frontend routing cutover was made.
+- Evidence updated in `docs/PRODUCTION-API-GATEWAY-2026-10-15.md`.
