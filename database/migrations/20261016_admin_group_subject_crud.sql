@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION public.medbiohim_admin_mutate_group(
   p_action text, p_id uuid DEFAULT NULL, p_payload jsonb DEFAULT '{}'::jsonb
 ) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE
   v_user_id uuid := auth.uid();
@@ -58,7 +58,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.medbiohim_admin_mutate_subject(
   p_action text, p_id uuid DEFAULT NULL, p_payload jsonb DEFAULT '{}'::jsonb
 ) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE
   v_user_id uuid := auth.uid();
