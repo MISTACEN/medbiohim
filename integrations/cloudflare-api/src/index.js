@@ -122,7 +122,11 @@ function withCors(response, origin) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const pathname = url.pathname !== "/" ? url.pathname.replace(/\/+$/, "") : "/";
+    const normalizedPathname = url.pathname !== "/" ? url.pathname.replace(/\/+$/, "") : "/";
+    // Keep the canonical plural route while accepting older singular links.
+    // This is a path alias only; all requests still pass through the same auth,
+    // validation, group-scope and mutation handlers below.
+    const pathname = normalizedPathname.replace(/^\/api\/v1\/homework(?=\/|$)/, "/api/v1/homeworks");
     const origin = allowedOrigin(request, env);
 
     if (request.method === "OPTIONS") {
