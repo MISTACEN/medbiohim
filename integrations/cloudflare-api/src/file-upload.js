@@ -8,6 +8,33 @@ const ALLOWED_EXTENSIONS = new Set([
 ]);
 
 function failure(status, code, message) { return { ok: false, status, code, message }; }
+async function readLimitedMultipart(request, maxBytes) {
+  if (!request.body) return { ok: false, tooLarge: false };
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { ok: false, tooLarge: true };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, tooLarge: false };
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, body };
+}
 function safeName(value) {
   const base = String(value || "upload.bin").replace(/\\/g, "/").split("/").pop()
     .replace(/[\u0000-\u001f\u007f]/g, "").trim();
@@ -100,9 +127,18 @@ export async function uploadSupabaseFile(request, env, fetcher = fetch) {
   const declaredLength = Number(request.headers.get("content-length") || 0);
   if (declaredLength > MAX_FILE_BYTES + 128 * 1024) return failure(413, "PAYLOAD_TOO_LARGE", "Максимальный размер файла — 15 МБ");
 
+  const limitedBody = await readLimitedMultipart(request, MAX_FILE_BYTES + 128 * 1024);
+  if (!limitedBody.ok) {
+    return limitedBody.tooLarge
+      ? failure(413, "PAYLOAD_TOO_LARGE", "Максимальный размер файла — 15 МБ")
+      : failure(422, "VALIDATION_ERROR", "Некорректная multipart-загрузка");
+  }
   let form;
-  try { form = await request.formData(); }
-  catch { return failure(422, "VALIDATION_ERROR", "Некорректная multipart-загрузка"); }
+  try {
+    form = await new Response(limitedBody.body, { headers: { "content-type": contentType } }).formData();
+  } catch {
+    return failure(422, "VALIDATION_ERROR", "Некорректная multipart-загрузка");
+  }
   const file = form.get("file");
   if (!(file instanceof File) || file.size <= 0) return failure(422, "VALIDATION_ERROR", "Необходимо приложить файл в поле file");
   if (file.size > MAX_FILE_BYTES) return failure(413, "PAYLOAD_TOO_LARGE", "Максимальный размер файла — 15 МБ");
