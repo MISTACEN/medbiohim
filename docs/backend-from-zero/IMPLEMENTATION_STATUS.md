@@ -10,7 +10,8 @@ Updated: 2026-10-16. Source inspection only; no live request or deployment is im
 - [x] Keep the file-upload gap visible as a deliberate failing-to-implement marker in the contract test (the test passes only while the gap remains known and must be replaced when upload is implemented).
 - [ ] Enumerate every exported frontend API function against Worker methods, not just path families.
 - [x] Add the missing groups/subjects POST/PATCH/DELETE route handlers and database-enforced admin checks.
-- [ ] Run tests and dry-run on the exact commit; the private repository could not be cloned into the isolated test box, so runtime results are not yet available.
+- [x] Run isolated Node tests for the new upload/admin mutation modules in a clean sandbox: **7 passed / 0 failed**. The sandbox used a minimal mocked Supabase Auth helper; this is not the full Worker suite.
+- [ ] Run the full `npm test` and Wrangler dry-run against the complete repository. The private GitHub clone was denied by the sandbox's GitHub installation, so this gate remains open.
 - [ ] Run `npm test` and Worker dry-run against the exact `main` tree.
 - [ ] Runtime-smoke the shadow Worker with real student/admin identities.
 
@@ -23,8 +24,8 @@ Updated: 2026-10-16. Source inspection only; no live request or deployment is im
 | Schedule read/meta and entry mutations | Dispatch and mutation module exist | Verify CRUD, group scoping, forbidden cross-group edits |
 | Homework list/create/progress/submit | Dispatch and modules exist | Verify student-created work policy, ownership and attachment flow |
 | Account settings | Read/update routes exist | Verify profile/preference writes and Telegram linking |
-| File upload | Worker handler + B2 upload module + caller-JWT metadata RPC migration authored; not runtime verified | Apply the migration, configure B2 secrets, run tests, then smoke-test upload/download with a student token |
-| Groups/subjects CRUD | Worker now dispatches frontend POST/PATCH/DELETE routes to a database RPC service; SQL migration authored with database-side admin-role checks and soft deletes | Apply migration after review; run tests; verify admin succeeds and student is denied; verify existing schedule/homework relations remain intact |
+| File upload | Worker handler + B2 upload module + caller-JWT metadata RPC migration authored; 7 isolated module tests pass; live route not verified | Apply the migration, configure B2 secrets, run tests, then smoke-test upload/download with a student token |
+| Groups/subjects CRUD | Worker now dispatches frontend POST/PATCH/DELETE routes to a database RPC service; SQL migration authored with database-side admin-role checks and soft deletes; module-level tests cover validation and database denial | Apply migration after review; run tests; verify admin succeeds and student is denied; verify existing schedule/homework relations remain intact |
 
 ## File upload blocker
 
