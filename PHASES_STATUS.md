@@ -2439,7 +2439,8 @@ This pass treats the existing frontend as the behavioral specification instead o
 - [x] Compared frontend `retryTestAnswerGrading()` path with Worker dispatch.
 - [x] Added `regradeSupabaseTestAnswer` using the caller JWT and an explicit RPC allowlist.
 - [x] Registered `POST /api/v1/tests/attempts/{attemptId}/answers/{questionId}/regrade`.
-- [x] Added route-level auth and method-contract test.
+- [x] Added route-level auth/method test plus module tests for RPC arguments, invalid IDs and safe output fields.
+- [x] Whitelisted response fields to prevent arbitrary RPC columns such as `correct_answer` or `answer_snapshot` from reaching the browser.
 - [ ] Verify `medbiohim_regrade_test_answer` exists in live Supabase and has authenticated-only EXECUTE grants; no SQL was applied.
 - [ ] Run the updated repository's full tests and Worker dry-run against the exact main tree; CI/deployment is not verified.
 - [ ] Next frontend-contract gaps to inspect: `POST /files/upload`, `GET /groups/{id}`, `POST /groups/{id}/members`.
