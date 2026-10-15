@@ -71,6 +71,36 @@ test("material file URL denies MBH materials when active specialty membership is
   assert.equal(b2Calls, 0);
 });
 
+test("material with a missing active file record cannot fall back to a legacy source path", async () => {
+  let sourceLookups = 0;
+  let blobLookups = 0;
+  const envWithBlob = {
+    ...env,
+    UPSTASH_BLOB_TOKEN: "test-only-token",
+    FILE_STORAGE: {
+      async head() { blobLookups += 1; return { size: 100 }; },
+      async signedReadUrl() { assert.fail("revoked file must never be signed"); },
+    },
+  };
+  const result = await getSupabaseMaterialFileUrl(request(), envWithBlob, "histology-material-revoked", async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/auth/v1/user") return response({ id: "user-1" });
+    if (parsed.pathname === "/rest/v1/materials") return response([{
+      id: "histology-material-revoked", subject_id: "histology-subject", file_id: "revoked-file",
+      source_key: "legacy-source-id", is_published: true,
+    }]);
+    if (parsed.pathname === "/rest/v1/subjects") return response([{ id: "histology-subject", slug: "histology", specialty_slug: "mbh", is_active: true }]);
+    if (parsed.pathname === "/rest/v1/files") return response([]);
+    if (parsed.pathname === "/rest/v1/content_sources") sourceLookups += 1;
+    assert.fail("Unexpected endpoint: " + parsed.pathname);
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "NOT_FOUND");
+  assert.equal(sourceLookups, 0);
+  assert.equal(blobLookups, 0);
+});
+
 test("material file URL fails closed when B2 signing secrets are not configured", async () => {
   const result = await getSupabaseMaterialFileUrl(request(), { SUPABASE_URL: env.SUPABASE_URL, SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY }, "material-1", async (url) => {
     const pathname = new URL(String(url)).pathname;

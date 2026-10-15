@@ -78,6 +78,11 @@ export async function getSupabaseMaterialFileUrl(request, env, materialId, fetch
         limit: "1",
       });
       file = files[0] || null;
+      // A revoked, inactive, or RLS-hidden registered file must not fall back
+      // to a legacy content_sources path or any corpus alias.
+      if (!file || !String(file.object_key || "").trim()) {
+        return failure(404, "NOT_FOUND", "Material file not found");
+      }
     }
 
     const candidateKeys = [];
