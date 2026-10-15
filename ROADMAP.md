@@ -3291,3 +3291,20 @@ This pass treats the existing frontend as the behavioral specification instead o
 - No live shadow/production smoke test, Supabase RLS acceptance test, or deployment was performed.
 
 **Next:** run the actual GitHub-tree Worker test suite; then implement/verify the next frontend contract gap from the route matrix (file uploads/downloads and training lifecycle are higher priority than broad admin coverage). Do not enable production traffic.
+
+
+## 2026-10-16 — Reverse contract pass: optional CMS reads under student RLS
+
+### Implemented directly on main
+- `integrations/cloudflare-api/src/supabase-auth.js`
+  - `getSupabaseSubjectCatalog`: when the optional `site_content?key=curriculum` read returns 401/403/404, preserves the already-loaded caller-visible subject list and returns an explicitly degraded curriculum envelope. It does **not** relax table policies or use a service-role key.
+  - `listSupabaseLectures`: a denied/missing optional `site_content?key=lectures` document no longer blocks the route; for histology it continues to caller-authorized `histology_lectures` rows and retains the existing published-only filter.
+  - `listSupabaseSubjectPlans`: expected 401/403/404 for the optional bulk CMS list returns `plans: {}`, `available: false`, `source: "none"`; other errors still produce the existing service error.
+  - Upstream HTTP status is retained for these reads so only known optional-resource cases degrade; transient 5xx/network/invalid-response failures are not hidden.
+- `integrations/cloudflare-api/test/supabase-auth.test.js`: added regression tests for subject-catalog 403 fallback, preservation of 503 failures, legacy histology lecture fallback, and denied subject-plan catalog behavior.
+
+### Verification state
+- GitHub accepted both code/test commits on `main`: `bce6a42451ad6bbda4b4319a476822f512077af1` and `647e38e7a372d29f2fb936c6e325cca8fd95b9eb`.
+- GitHub Actions marked the associated workflows failed within seconds; the available job-step/log endpoints returned no usable step detail. This is **not** evidence that tests passed, and it does not yet establish that the code caused the workflow failures.
+- Container-side cloning was unavailable because outbound DNS to GitHub failed; no local test run is claimed. Cloudflare Worker production deployment/traffic was not changed by this pass.
+- Next: recover actionable workflow diagnostics; test with a real student JWT (without logging the token); compare the actual `/api/v1/subjects-catalog`, `/lectures`, `/subject-plans` response shapes against frontend consumers; continue to dashboard/homework/schedule CRUD and the private training attempt lifecycle.
