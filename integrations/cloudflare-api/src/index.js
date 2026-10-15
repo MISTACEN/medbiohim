@@ -1,5 +1,6 @@
 import { authenticateSupabaseRequest, getSupabaseLecture, getSupabaseProfileBundle, getSupabaseProgress, getSupabaseScheduleMeta, getSupabaseSiteContent, getSupabaseSubjectCatalog, getSupabaseSubjectDetail, getSupabaseSubjectGradebook, getSupabaseSubjectPlan, listSupabaseExamQuestions, listSupabaseGroups, listSupabaseHomeworks, listSupabaseLectures, listSupabasePublishedTests, listSupabaseQuestionSubjects, listSupabaseSchedule, listSupabaseSubjectPlans, listSupabaseSubjects, loginSupabaseUser, logoutSupabaseSession, recoverSupabasePassword, refreshSupabaseSession, registerSupabaseUser, searchSupabaseContent, setSupabaseHomeworkProgress } from "./supabase-auth.js";
 import { mutateSupabaseScheduleEntry } from "./schedule-mutations.js";
+import { gradeSupabaseSubmission } from "./homework-grading.js";
 import { getSupabasePlanner, setSupabaseAttendance, heartbeatSupabasePresence, listSupabaseAdminPresence, createSupabaseHomework, submitSupabaseHomework, startSupabasePreparation, getSupabasePreparation, saveSupabasePreparation, finishSupabasePreparation, retrySupabasePreparationGrading, reviewSupabasePreparation } from "./planner.js";
 import { getSupabaseAdminSchedule, replaceSupabaseAdminSchedule } from "./admin-schedule.js";
 import { finishSupabaseTestAttempt, getSupabaseBankProgress, getSupabaseTestBankDetail, getSupabaseTestDetail, listSupabaseMyAttempts, saveSupabaseTestAnswer, startSupabaseTestAttempt } from "./test-attempts.js";
@@ -314,6 +315,19 @@ export default {
       const result = await submitSupabaseHomework(request, env, homeworkId, parsed.value);
       if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       return withCors(success(result.data, result.status || 201), origin);
+    }
+
+    const homeworkGradeMatch = new RegExp("^" + API_PREFIX + "/submissions/([^/]+)/grade$").exec(pathname);
+    if (homeworkGradeMatch) {
+      if (request.method !== "POST") return withCors(json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, requestId: crypto.randomUUID() }, 405, { allow: "POST, OPTIONS" }), origin);
+      let submissionId;
+      try { submissionId = decodeURIComponent(homeworkGradeMatch[1]); } catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid submission id" }, requestId: crypto.randomUUID() }, 422), origin); }
+      const parsed = await readJsonLimited(request, 8192);
+      if (parsed.tooLarge) return withCors(json({ ok: false, error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" }, requestId: crypto.randomUUID() }, 413), origin);
+      if (!parsed.ok || !parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid JSON body" }, requestId: crypto.randomUUID() }, 422), origin);
+      const result = await gradeSupabaseSubmission(request, env, submissionId, parsed.value);
+      if (!result.ok) return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
+      return withCors(success(result.data), origin);
     }
 
     const homeworkProgressMatch = new RegExp("^" + API_PREFIX + "/homeworks/([^/]+)/progress$").exec(pathname);
