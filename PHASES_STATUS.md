@@ -2274,3 +2274,11 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟡 `GET /api/v1/homework` returns 501 `ROUTE_NOT_MIGRATED` through both Shadow and gateway. This is an existing migration gap, not a gateway forwarding bug; the new hostname is not feature-complete versus the legacy backend.
 - 🟡 Independent deployment is still blocked: secret values cannot be read back from Cloudflare settings, and the connected build box could not clone the repo due unavailable GitHub clone credentials. No frontend routing cutover was made.
 - Evidence updated in `docs/PRODUCTION-API-GATEWAY-2026-10-15.md`.
+
+
+## 2026-10-15 — homework route alias correction
+
+- 🟢 Live `GET /api/v1/homeworks` is implemented and returns 401 without a bearer token, as expected. The previous singular `/api/v1/homework` smoke was a route-name mismatch, not missing canonical homework functionality.
+- 🟢 Production gateway now rewrites the singular path and its subpaths to the canonical plural route, using the same upstream handlers. Smoke-tested singular GET (401 + `x-medbiohim-route-alias`) and singular progress subroute (405 for GET, matching method guard); health remains 200.
+- 🟡 Source alias + regression test are tracked in PR #20. CI checks were triggered but failed/queued without job-step logs; automated suite status remains unverified.
+- 🟡 Continue parity checks against routes actually called by `src/lib/api.ts` and documented in the PHP inventory. A bare 501 on an undocumented path (such as `/api/v1/ai/chat`) is not by itself evidence of a production feature gap.
