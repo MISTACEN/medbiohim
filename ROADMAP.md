@@ -3133,3 +3133,12 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 - 🟢 In an isolated extracted copy only, updated test fixtures in `test/homework-mutations.test.js` and `test/presence-ai.test.js`. Full archive suite now reports **59/59 passed**; `node --check` passed for all 54 JavaScript files.
 - 🟡 This does not validate the current GitHub Worker suite or authorize porting/deployment. The archive's R2 binding and alternate module/route surface still conflict with the selected storage architecture and current `main`.
 - Evidence: `docs/CLOUDFLARE-ARCHIVE-VALIDATION-2026-10-15.md`. No production, DNS, Vercel, Telegram, or Supabase schema changes were made.
+
+
+## Live Cloudflare account verification — 2026-10-15
+
+- 🟢 Read-only account inspection confirmed the private Upstash Blob bucket `medbiohim-files` and active EU Redis database `medbiohimcache`; Cloudflare R2 remains excluded.
+- 🟡 Only `medbiohim-api-shadow`, `medbiohim-telegram`, and `medbiohim-telegram-test` are present as Worker scripts. A production Worker named `medbiohim-api` does not exist yet, and no Worker custom domain is attached.
+- 🟡 Shadow has Cloudflare native login/register rate-limit bindings and an Upstash Blob token binding. The live binding list did not show `UPSTASH_REDIS_REST_TOKEN`; cache readiness is unverified. Blob object inventory could not be read in this check.
+- 🔒 Production cutover is not complete and must not be reported as complete. Exact-current-main tests/dry-run, secret readiness, Blob/histology key verification, and signed-in student/admin acceptance remain required before production Worker creation and frontend routing change.
+- Evidence: [live Cloudflare account state](docs/LIVE-CLOUDFLARE-ACCOUNT-STATE-2026-10-15.md).
