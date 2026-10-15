@@ -22,6 +22,9 @@ BEGIN
     IF length(trim(coalesce(p_payload->>'name',''))) NOT BETWEEN 1 AND 180 THEN
       RAISE EXCEPTION 'invalid group name' USING ERRCODE = '22023';
     END IF;
+    IF length(trim(coalesce(p_payload->>'code',''))) NOT BETWEEN 1 AND 64 THEN
+      RAISE EXCEPTION 'invalid group code' USING ERRCODE = '22023';
+    END IF;
     INSERT INTO public.groups(code,name,course_number,admission_year,academic_program_name,is_active,specialty_slug)
     VALUES (
       nullif(trim(p_payload->>'code'),''), trim(p_payload->>'name'),
