@@ -276,7 +276,7 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
 
   const run=async()=>{
     let token=getToken();
-    for(let attempt=0;attempt<3;attempt++){
+    for(let attempt=0;attempt<2;attempt++){
       try{
         const bust=attempt===0?"":`?retry=${attempt}-${Date.now()}`;
         let imageRequestStartedAt=Date.now();
@@ -322,8 +322,12 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
             return url;
           }
         }
+        // Do not fan out retries for deterministic auth, access, missing-file or
+        // validation errors when a feed renders many cards concurrently.
+        if([401,403,404,410,422].includes(res.status)) return null;
+        if(res.status<500 && res.status!==429) return null;
       }catch{}
-      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));
+      if(attempt<1)await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));
     }
     return null;
   };
