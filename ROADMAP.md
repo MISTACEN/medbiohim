@@ -3173,3 +3173,11 @@ Remaining file tasks: migrate \`POST /api/v1/files/upload\` with bounded multipa
 
 - 🟡 The routing fix is merged at `453f19b504e014a9e222a6d02654462c64641f91`, but it is **not yet live**. Direct production smoke still reports `x-medbiohim-build: ff737a17fe95beae06e53d65f79931a1d0f123cc` and HTTP 503 `BACKEND_NOT_CONFIGURED` for `/api/v1/health`, `/api/v1/auth/me`, `/api/v1/subjects-catalog`, and `/api/v1/presence/heartbeat`.
 - 🟡 GitHub's Vercel check remains `pending`. The connected Vercel tool cannot inspect/create deployments or set project environment variables due 403/404 permission/scope errors. No claim of production resolution until the deployed build marker advances and smoke tests stop returning 503.
+
+
+## 2026-10-15 — Dashboard API transport indicator
+
+- 🟡 Added a compact dashboard status pill that displays the source reported by the latest same-origin API response: Cloudflare, SpaceWeb/legacy, fallback, unavailable, or unknown. This is the backend/API transport, not the login provider (Google/Telegram/email).
+- 🟡 The Next.js API proxy emits a non-secret `x-mbh-api-source` response header for proxied requests and configuration failures; the frontend listens for it and shows the latest observed request path. It does not infer an upstream from the OAuth provider or local token storage.
+- 🟡 Source changes and regression behavior still require CI/build and production deployment verification. No production routing or environment settings were changed by this pass.
+

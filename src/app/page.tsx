@@ -105,6 +105,22 @@ export default function DashboardPage() {
   const [planNotice, setPlanNotice] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<SubjectCard[]>([]);
   const [subjectsError, setSubjectsError] = useState<string | null>(null);
+  const [apiTransport, setApiTransport] = useState<{source:string;fallback:boolean;path:string;at:number}|null>(null);
+
+  useEffect(() => {
+    const onTransport = (event: Event) => {
+      const detail = (event as CustomEvent<{source?:unknown;fallback?:unknown;path?:unknown;at?:unknown}>).detail;
+      if (!detail || typeof detail.source !== "string") return;
+      setApiTransport({
+        source: detail.source,
+        fallback: detail.fallback === true,
+        path: typeof detail.path === "string" ? detail.path : "",
+        at: typeof detail.at === "number" ? detail.at : Date.now(),
+      });
+    };
+    window.addEventListener("mbh:api-transport", onTransport);
+    return () => window.removeEventListener("mbh:api-transport", onTransport);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -307,6 +323,20 @@ export default function DashboardPage() {
           <p className="mt-2 text-sm text-slate-600">
             Расписание, предметы, задания и подготовка — в одном месте.
           </p>
+          <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-600 shadow-sm" role="status" aria-live="polite">
+            <span className={`h-2 w-2 rounded-full ${!apiTransport ? "bg-slate-300" : apiTransport.source === "cloudflare" ? "bg-emerald-500" : apiTransport.source === "spaceweb" ? "bg-amber-500" : apiTransport.source.includes("fallback") ? "bg-amber-500" : "bg-rose-500"}`} />
+            <span className="font-semibold text-slate-700">API:</span>
+            <span>
+              {!apiTransport ? "проверяем источник…" :
+                apiTransport.source === "cloudflare" ? "Cloudflare" :
+                apiTransport.source === "spaceweb" ? "SpaceWeb (legacy)" :
+                apiTransport.source === "spaceweb-fallback" || apiTransport.source === "compatibility-fallback" ? "резервный маршрут: SpaceWeb" :
+                apiTransport.source === "cloudflare-unavailable" ? "Cloudflare недоступен" :
+                apiTransport.source === "unavailable" ? "бэкенд не настроен" : "источник не определён"}
+            </span>
+            {apiTransport?.fallback && <span className="rounded-md bg-amber-50 px-2 py-0.5 font-medium text-amber-700">резервный маршрут</span>}
+            {apiTransport?.path && <span className="text-slate-400">· последний запрос {apiTransport.path}</span>}
+          </div>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               href="/schedule"

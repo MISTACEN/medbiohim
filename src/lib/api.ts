@@ -57,12 +57,13 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
   const timeout=setTimeout(()=>controller.abort(),(options.method||"GET").toUpperCase()==="GET"?12000:20000);
   try{
     const res=await fetch(`${API_URL}${path.startsWith("/")?path:`/${path}`}`,{...options,headers,cache:"no-store",signal:controller.signal});
-    if(typeof window!=="undefined"&&window.location.pathname.startsWith("/admin")){
-      const source=res.headers.get("x-mbh-transport-source");
+    if(typeof window!=="undefined"){
+      const source=res.headers.get("x-mbh-api-source");
       if(source){
+        const fallback=source==="spaceweb-fallback"||source==="compatibility-fallback"||res.headers.get("x-mbh-transport-fallback")==="true";
         window.dispatchEvent(new CustomEvent("mbh:api-transport",{detail:{
           source,
-          fallback:res.headers.get("x-mbh-transport-fallback")==="true",
+          fallback,
           path:path.split("?")[0],
           at:Date.now(),
         }}));
