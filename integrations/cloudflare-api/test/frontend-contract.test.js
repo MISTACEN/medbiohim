@@ -41,8 +41,8 @@ test("P0 authentication and dashboard paths are explicitly dispatched", () => {
   }
 });
 
-test("file upload remains explicitly tracked as a known implementation gap", () => {
+test("file upload is explicitly dispatched to the authenticated upload service", () => {
   assert.ok(frontend.includes('"/files/upload"'), "frontend upload contract changed; re-audit it");
-  assert.ok(!worker.includes('pathname === `${API_PREFIX}/files/upload`'),
-    "POST /files/upload was added: replace this guard with upload success/error/authorization tests");
+  assert.ok(worker.includes("/files/upload"));
+  assert.ok(worker.includes("uploadSupabaseFile(request, env)"));
 });
