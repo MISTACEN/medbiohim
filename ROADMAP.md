@@ -3314,3 +3314,14 @@ This pass treats the existing frontend as the behavioral specification instead o
 The current Worker already validates homework attachment IDs, caller ownership/status, and group scope before invoking `create_homework_with_attachments` with the caller JWT. Added a regression test for the cross-group attachment case (commit `b15e4aa0fb8f3698ea9ea168cee73544f1e15c12`) and a supporting audit note at `docs/migration/REVERSE_API_CONTRACT_PASS_2026-10-16.md` (commit `7f5d064dd8cfe0809eebff7672e07ae96f18f4ea`).
 
 **Acceptance still open:** test execution on the exact main commit, authenticated upload → metadata → download, training lifecycle against live RLS, and settings under an authenticated session. Vercel status observed for the documentation commit is pending. No production traffic switch or deploy was performed.
+
+
+## 2026-10-16 — Frontend contract repair: retry test-answer grading
+
+**Completed on main:** wired `POST /api/v1/tests/attempts/{attemptId}/answers/{questionId}/regrade`, which is called by `retryTestAnswerGrading()` in `src/lib/api.ts` but was absent from the Worker router. Added an allowlisted `medbiohim_regrade_test_answer` RPC call in `test-attempts.js` and a route contract test for POST/auth/method handling.
+
+**Security boundary:** the Worker passes the caller JWT through Supabase and does not grade or return an answer locally. RPC authorization and its response shape remain a database-side requirement.
+
+**Not verified / gate:** repository search did not find a committed SQL definition for `medbiohim_regrade_test_answer`; until the RPC is confirmed on Supabase, the route may correctly return a controlled 503. No live SQL was applied and no deployment/cutover was performed.
+
+**Next pass:** check the actual Supabase function and grants read-only; then add module-level tests for successful RPC response, invalid IDs, 404/409 and upstream failures. Continue matching the frontend's concrete `src/lib/api.ts` paths against Worker routes, prioritizing `POST /files/upload` and group detail/membership paths, which the frontend references but the current Worker router does not expose.
