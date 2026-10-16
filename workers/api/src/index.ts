@@ -60,6 +60,19 @@ app.route("/", health);
 
 const v1 = new Hono<{ Bindings: Env }>();
 
+// Compatibility aliases from the archived PHP/legacy Cloudflare API.
+// Keep these aliases in the same Worker so the frontend has one canonical API origin.
+v1.get("/auth/me", (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = "/api/v1/me";
+  return me.fetch(new Request(url.toString(), c.req.raw), c.env);
+});
+v1.post("/files/upload", (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = "/api/v1/storage/upload";
+  return storage.fetch(new Request(url.toString(), c.req.raw), c.env);
+});
+
 v1.route("/auth", auth);
 v1.route("/me", me);
 v1.route("/dashboard", dashboard);
