@@ -2780,3 +2780,13 @@ This pass treats the existing frontend as the behavioral specification instead o
 - 🔴 **Production activation is still unverified/blocked:** prior deployment audit recorded empty/missing GitHub Actions secret `CLOUDFLARE_API_TOKEN` and Vercel deployment HTTP 403. Keep the current production UI marked as not verified until worker version, frontend deployment, and signed-in read-after-write/page checks are confirmed.
 
 Next: run canonical Worker typecheck/tests plus the integration Worker tests, inspect CI/deployment state, then verify the authenticated subject page and continue PHP-to-Worker route parity beyond this page.
+
+
+## Pass — restore PHP-compatible test detail and question-bank contract (2026-10-17)
+
+- 🟢 **Source updated on `main`:** Worker test catalog/detail now returns `{ test, questions }`, including ordered published/non-archived questions. Existing frontend `openTest()` and `getTestBank()` already expected that contract; the former Cloudflare handler returned only test metadata.
+- 🟢 **Answer handling:** default test mode strips the answer and correctness flags; `view=bank` is the deliberate study-mode path for question answers. Subject-specific tests are scoped by the student's active group specialty. Unknown subject slug returns no tests rather than unfiltered results.
+- 🟡 **Test gate:** regression assertions were added, but the latest commit's Action run summaries returned zero jobs and the Vercel check is failing; don't claim these new changes passed CI yet.
+- 🔴 **Live activation pending:** live `medbiohim-api` contains the scoped subject-plan RPC but lacks the newest test-question response handler, so the source fix is not yet present in the inspected deployed bundle. Vercel preview creation was rejected with 403; existing status points at the build-rate-limit gate.
+
+Next: get an authorized Vercel deployment path, verify typecheck and tests against current main, deploy canonical Worker and frontend, then smoke-test Histology plan (18 weeks / 144 h / 4 credits), billets, test mode, study-bank answers and preparation sessions with a legitimate MBH student session.
