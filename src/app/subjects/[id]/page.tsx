@@ -122,9 +122,21 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           setLoading(false);
           return;
         }
-        const s: any = r.ok ? r.data.subject : hit;
+        // Cloudflare returns the subject row directly; the legacy SpaceWeb
+        // contract may wrap it as { subject, modules }. Accept both shapes and
+        // retain the catalog row as a safe fallback so a shape mismatch cannot
+        // blank the entire subject page.
+        const responseData: any = r.ok ? r.data : null;
+        const subjectPayload = responseData?.subject || responseData?.item ||
+          (responseData?.id ? responseData : null);
+        const s: any = { ...(hit || {}), ...(subjectPayload || {}) };
+        if (!s.name && hit?.name) s.name = hit.name;
+        if (!s.slug && hit?.slug) s.slug = hit.slug;
+        if (s.course_number == null && hit?.course_number != null) s.course_number = hit.course_number;
+        if (s.semester == null && hit?.semester != null) s.semester = hit.semester;
         setSubject(s);
-        setModules(r.ok && Array.isArray(r.data.modules) ? (r.data.modules as Module[]) : []);
+        const moduleRows = responseData?.modules || responseData?.subject?.modules || [];
+        setModules(Array.isArray(moduleRows) ? (moduleRows as Module[]) : []);
         const slug = slugNames[(s?.name || "").toLowerCase()] || s?.slug || "";
         if (s?.id) {
           // Everything below is independent after the subject is known.
