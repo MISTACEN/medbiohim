@@ -73,11 +73,20 @@ plans.get("/subject-plans/:slug", requireAuth, async (c) => {
   const supabase = c.get("supabase");
   const slug = c.req.param("slug") || "";
   try {
-    const { data: subject, error: subjectError } = await supabase
+    const requestedCourse = Number(c.req.query("course") || 0);
+    const requestedSemester = Number(c.req.query("semester") || 0);
+    let subjectQuery = supabase
       .from("subjects")
-      .select("id,slug,name,course_number,semester")
+      .select("id,slug,name,course_number,semester,control_type")
       .eq("slug", slug)
-      .maybeSingle();
+      .eq("is_active", true);
+    if (requestedCourse > 0) subjectQuery = subjectQuery.eq("course_number", requestedCourse);
+    if (requestedSemester > 0) subjectQuery = subjectQuery.eq("semester", requestedSemester);
+    const { data: subjectRows, error: subjectError } = await subjectQuery
+      .order("course_number", { ascending: true })
+      .order("semester", { ascending: true })
+      .limit(1);
+    const subject = subjectRows?.[0] || null;
     if (subjectError || !subject) {
       const { body, status } = fail("NOT_FOUND", "Учебный план не найден", 404, rid);
       return c.json(body, status as 404);
@@ -94,13 +103,31 @@ plans.get("/subject-plans/:slug", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось загрузить учебный план", 503, rid);
       return c.json(body, status as 503);
     }
+    const weeks = (items || []).map((item: any, index: number) => {
+      const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
+      return {
+        id: item.id,
+        date: item.planned_date || metadata.date || null,
+        week: metadata.week ?? index + 1,
+        lecture: item.item_type === "lecture" ? item.title : (metadata.lecture || null),
+        practice: ["practice", "lab", "seminar"].includes(String(item.item_type || "").toLowerCase())
+          ? item.title
+          : (metadata.practice || null),
+        title: item.title,
+        description: item.description,
+        item_type: item.item_type,
+        is_required: item.is_required,
+      };
+    });
     return c.json(ok({
       slug: subject.slug,
       subject_slug: subject.slug,
       title: subject.name,
+      control: subject.control_type ?? null,
       course_number: subject.course_number,
       semester: subject.semester,
       items: items || [],
+      weeks,
     }, rid));
   } catch (error) {
     console.error("[plans:detail]", error);
