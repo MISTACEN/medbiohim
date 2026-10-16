@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
+const filesSource = await readFile(new URL("../src/routes/files.ts", import.meta.url), "utf8");
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const telegramMigration = await readFile(new URL("../../../database/migrations/20261017120000_telegram_account_linking_rpc.sql", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
@@ -88,4 +89,17 @@ test("admin user directory RLS stays admin-only and does not disable RLS", () =>
   assert.ok(adminRlsMigration.includes("private.has_app_role((SELECT auth.uid()), 'admin')"));
   assert.ok(!/DISABLE ROW LEVEL SECURITY/i.test(adminRlsMigration));
   assert.ok(!/TO anon/i.test(adminRlsMigration));
+});
+
+test("files API persists metadata under the caller and enforces existing RLS access", () => {
+  assert.ok(indexSource.includes('v1.route("/files", files)'));
+  assert.ok(filesSource.includes('files.post("/upload", requireAuth'));
+  assert.ok(filesSource.includes('files.get("/:id", requireAuth'));
+  assert.ok(filesSource.includes('files.get("/:id/download", requireAuth'));
+  assert.ok(filesSource.includes('uploaded_by: user.id'));
+  assert.ok(filesSource.includes('storage_provider: "upstash_blob"'));
+  assert.ok(filesSource.includes('await bucket.del(key)'));
+  assert.ok(filesSource.includes('files_read_allowed') === false);
+  assert.ok(filesSource.includes('hasSpecialtyAccess'));
+  assert.ok(filesSource.includes('group_memberships'));
 });
