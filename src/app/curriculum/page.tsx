@@ -34,7 +34,6 @@ type AcademicRow = {
   last_result_max?: number | null;
 };
 
-const learningLabels: Record<string,string> = { not_started: "Не начато", in_progress: "В процессе", completed: "Завершено" };
 const typeLabels: Record<string,string> = { subject: "Дисциплина", exam: "Экзамен", credit: "Зачёт", lecture: "Лекция", practice: "Практика", seminar: "Семинар", lab: "Лабораторная", topic: "Тема", module: "Модуль", assessment: "Контроль", other: "Учебный элемент" };
 
 function subjectName(item: CurriculumItem) {
