@@ -138,7 +138,21 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             listMaterials(slug ? { subjectSlug: slug } : {}),
             listLectures(slug),
           ]);
-          if (!cancelled && pr.ok) setPlan({ ...(pr.data.plan || pr.data), weeks: pr.data.weeks || pr.data.plan?.weeks || pr.data.items || [], control: pr.data.control || pr.data.plan?.control });
+          if (!cancelled && pr.ok) {
+            const planData = pr.data.plan || pr.data;
+            const planWeeks = Array.isArray(planData.weeks) ? planData.weeks : (Array.isArray(planData.items) ? planData.items.map((item: any, index: number) => {
+              const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
+              const kind = String(item.item_type || "").toLowerCase();
+              return {
+                ...item,
+                date: item.planned_date || metadata.date || null,
+                week: metadata.week ?? index + 1,
+                lecture: kind === "lecture" ? item.title : (metadata.lecture || item.title),
+                practice: ["practice", "lab", "seminar"].includes(kind) ? item.title : (metadata.practice || null),
+              };
+            }) : []);
+            setPlan({ ...planData, weeks: planWeeks, control: planData.control || pr.data.plan_meta?.control });
+          }
           if (!cancelled) {
             setResourceErrors({
               ...(!pr.ok ? { plan: pr.error?.message || "Не удалось загрузить учебный план." } : {}),
