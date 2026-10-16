@@ -2314,9 +2314,23 @@ export async function listSupabaseSubjectPlans(request, env, fetcher = fetch) {
   }
 }
 
-export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch) {
-  const normalized = String(slug || "").trim();
+export async function getSupabaseSubjectPlan(request, slug, env, fetcherOrFilters = fetch, maybeFetcher = fetch) {
+  const filters = typeof fetcherOrFilters === "function" ? {} : (fetcherOrFilters || {});
+  const fetcher = typeof fetcherOrFilters === "function" ? fetcherOrFilters : maybeFetcher;
+  const normalized = String(slug || "").trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{0,100}$/i.test(normalized)) return failure(422, "VALIDATION_ERROR", "Invalid subject slug");
+  const parseOptionalNumber = (value, max) => {
+    if (value == null || String(value).trim() === "") return null;
+    const number = Number(value);
+    return Number.isInteger(number) && number > 0 && number <= max ? number : NaN;
+  };
+  const requestedCourse = parseOptionalNumber(filters.course, 8);
+  const requestedSemester = parseOptionalNumber(filters.semester, 16);
+  if (Number.isNaN(requestedCourse) || Number.isNaN(requestedSemester)) {
+    return failure(422, "VALIDATION_ERROR", "Invalid course or semester filter");
+  }
+  const databaseSlug = normalized === "organic_chemistry" ? "chemistry_organic_physical" : normalized;
+  const curatedSlugs = new Set(["histology", "physiology", "organic_chemistry", "chemistry_organic_physical"]);
   const identity = await authenticateSupabaseRequest(request, env, fetcher);
   if (!identity.ok) return identity;
 
@@ -2365,6 +2379,7 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
         plan,
         schedule_count: null,
         schedule_sample: [],
+        subject: subject && typeof subject === "object" ? subject : null,
         available: true,
         schedule_available: false,
         source: plan.source || "site_content",
@@ -2372,15 +2387,18 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
     }
     const subjectName = String(subject?.name || plan.subject || "");
     const subjectId = String(subject?.id || "");
+    const subjectSlug = String(subject?.slug || databaseSlug || normalized);
     const schedule = scheduleResult.data.items.filter((row) =>
       (subjectId && String(row.subject_id || "") === subjectId)
       || String(row.subject_slug || "") === normalized
+      || String(row.subject_slug || "") === subjectSlug
       || (!row.subject_slug && String(row.subject_name || row.subject || "") === subjectName)
     );
     return { ok: true, data: {
       plan,
       schedule_count: schedule.length,
       schedule_sample: schedule.slice(0, 5),
+      subject: subject && typeof subject === "object" ? subject : null,
       available: true,
       schedule_available: true,
       source: plan.source || "site_content",
@@ -2388,6 +2406,91 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
   }
 
   try {
+    // The curated CMS plans are private under site_content RLS. Use the narrowly
+    // scoped student RPC first so we can return the original weekly lecture,
+    // practice and preparation list without widening table access.
+    if (curatedSlugs.has(normalized)) {
+      try {
+        const rpcEndpoint = new URL("/rest/v1/rpc/medbiohim_get_student_subject_plan", base);
+        const rpcResponse = await fetcher(rpcEndpoint.toString(), {
+          method: "POST",
+          headers: {
+            apikey: anonKey,
+            authorization: "Bearer " + token,
+            "content-type": "application/json",
+            accept: "application/json",
+          },
+          body: JSON.stringify({
+            p_subject_slug: normalized,
+            p_course_number: requestedCourse,
+            p_semester: requestedSemester,
+          }),
+          redirect: "error",
+          signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+        });
+        if (!rpcResponse.ok) {
+          const rpcError = await rpcResponse.json().catch(() => null);
+          const rpcCode = String(rpcError?.code || "");
+          if (rpcCode === "42501" || rpcResponse.status === 403) {
+            return failure(403, "FORBIDDEN", "Доступ к учебному плану доступен участникам МБХ");
+          }
+          if (rpcCode === "22023") {
+            return failure(422, "VALIDATION_ERROR", "Invalid subject plan filters");
+          }
+          // A not-yet-deployed RPC may happen while the two Worker sources are
+          // being synchronized. Preserve the published-curriculum fallback.
+          console.error("MEDBIOHIM_SUBJECT_PLAN_RPC_UNAVAILABLE", JSON.stringify({
+            status: Number(rpcResponse.status) || 0,
+            code: rpcCode.slice(0, 32),
+          }));
+        } else {
+          const envelope = await rpcResponse.json();
+          const curatedPlan = envelope?.plan && typeof envelope.plan === "object" ? envelope.plan : null;
+          const subject = envelope?.subject && typeof envelope.subject === "object" ? envelope.subject : null;
+          if (curatedPlan && subject && Array.isArray(curatedPlan.weeks) && curatedPlan.weeks.length > 0) {
+            const weeks = curatedPlan.weeks.map((week, index) => ({
+              ...week,
+              n: week?.n ?? week?.week ?? index + 1,
+              week: week?.week ?? week?.n ?? index + 1,
+              date: week?.date || week?.planned_date || null,
+              lecture: week?.lecture || "",
+              practice: week?.practice || "",
+              preparations: Array.isArray(week?.preparations) ? week.preparations : [],
+            }));
+            const plan = {
+              ...curatedPlan,
+              subject: subject.name || curatedPlan.subject || normalized,
+              subject_slug: subject.slug || databaseSlug,
+              description: subject.description || curatedPlan.description || "",
+              course_number: subject.course_number ?? curatedPlan.course ?? null,
+              semester: subject.semester ?? curatedPlan.semester ?? null,
+              control: subject.control_type ?? curatedPlan.control ?? curatedPlan.control_type ?? null,
+              hours: {
+                lecture: subject.lecture_hours ?? curatedPlan.hours?.lecture ?? curatedPlan.lecture_hours ?? null,
+                practice: subject.practice_hours ?? curatedPlan.hours?.practice ?? curatedPlan.practice_hours ?? null,
+                self_study: subject.self_study_hours ?? curatedPlan.hours?.self_study ?? curatedPlan.self_study_hours ?? null,
+                total: subject.total_hours ?? curatedPlan.hours?.total ?? curatedPlan.total_hours ?? null,
+              },
+              total_hours: subject.total_hours ?? curatedPlan.total_hours ?? curatedPlan.hours?.total ?? null,
+              credits: subject.credits ?? curatedPlan.credits ?? null,
+              note: curatedPlan.note || curatedPlan.source_note || "",
+              source: "site_content",
+              weeks,
+            };
+            return await withSchedule(plan, subject);
+          }
+        }
+      } catch (rpcError) {
+        // The regular curriculum route remains a graceful fallback if the RPC
+        // endpoint is temporarily unavailable. Access-denied SQL responses are
+        // handled explicitly above and are never silently bypassed.
+        console.error("MEDBIOHIM_SUBJECT_PLAN_RPC_FAILED", JSON.stringify({
+          status: Number(rpcError?.status) || 0,
+          code: String(rpcError?.code || "").slice(0, 32),
+        }));
+      }
+    }
+
     let savedRows = [];
     try {
       savedRows = await rows("site_content", {
@@ -2428,14 +2531,14 @@ export async function getSupabaseSubjectPlan(request, slug, env, fetcher = fetch
 
     const subjectRows = await rows("subjects", {
       select: "id,slug,name,description,specialty_slug,course_number,semester,control_type,lecture_hours,practice_hours,self_study_hours,total_hours,credits,is_active",
-      slug: "eq." + normalized,
+      slug: "eq." + databaseSlug,
       is_active: "eq.true",
       order: "course_number.asc.nullslast,semester.asc.nullslast,name.asc",
       limit: "200",
     });
     const visibleSubjects = subjectRows.filter((subject) => {
       const specialty = String(subject.specialty_slug || "").trim().toLowerCase();
-      const requiredSpecialty = normalized === "histology" || specialty === "mbh" ? "mbh" : specialty;
+      const requiredSpecialty = curatedSlugs.has(normalized) || specialty === "mbh" ? "mbh" : specialty;
       return !requiredSpecialty || allowedSpecialties.has(requiredSpecialty);
     });
     if (!visibleSubjects.length) {
