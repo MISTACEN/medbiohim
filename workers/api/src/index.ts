@@ -48,6 +48,7 @@ import plans from "./routes/plans";
 import storage from "./routes/storage";
 import adminRoutes from "./routes/admin";
 import histology from "./routes/histology";
+import files from "./routes/files";
 import telegram from "./routes/telegram";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -138,6 +139,7 @@ v1.route("/calculators", calculators);
 v1.route("/ai", ai);
 v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
+v1.route("/files", files);
 v1.route("/admin", adminRoutes);
 v1.route("/histology", histology);
 
