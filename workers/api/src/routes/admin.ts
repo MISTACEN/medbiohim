@@ -51,6 +51,49 @@ function validText(value: unknown, max: number) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max;
 }
 
+admin.get("/overview", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase");
+  if (!await gate(c)) return;
+  try {
+    const [groups, subjects, tests, questions, site] = await Promise.all([
+      db.from("groups").select("id", { count: "exact", head: true }).eq("is_active", true),
+      db.from("subjects").select("id", { count: "exact", head: true }).eq("is_active", true),
+      db.from("tests").select("id", { count: "exact", head: true }),
+      db.from("questions").select("id", { count: "exact", head: true }),
+      db.from("site_content").select("key,payload").eq("key", "site").maybeSingle()
+    ]);
+    if (groups.error || subjects.error || tests.error || questions.error) return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен");
+    return c.json(ok({ site: site.data?.payload || {}, counts: { groups: groups.count || 0, subjects: subjects.count || 0, tests: tests.count || 0, questions: questions.count || 0 }, source: "supabase" }, rid));
+  } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен"); }
+});
+
+admin.get("/content/validate", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase");
+  if (!await gate(c, STRICT_ADMINS)) return;
+  try {
+    const [tests, questions, links, exam] = await Promise.all([
+      db.from("tests").select("id,title,is_published,archived_at").limit(1000),
+      db.from("questions").select("id,is_published,archived_at").limit(5000),
+      db.from("test_questions").select("test_id,question_id").limit(10000),
+      db.from("exam_questions").select("id,text,answer,subject_slug,type,is_published").eq("is_published", true).limit(5000)
+    ]);
+    if (tests.error || questions.error || links.error || exam.error) return error(c, rid, 503, "VALIDATION_FAILED", "Не удалось проверить данные");
+    const testIds = new Set((tests.data || []).map((x: any) => String(x.id)));
+    const questionIds = new Set((questions.data || []).map((x: any) => String(x.id)));
+    const counts: Record<string, number> = {};
+    const issues: any[] = [];
+    for (const link of links.data || []) {
+      const tid = String((link as any).test_id), qid = String((link as any).question_id);
+      counts[tid] = (counts[tid] || 0) + 1;
+      if (!testIds.has(tid)) issues.push({ type: "orphan_test_link", test_id: tid, question_id: qid });
+      if (!questionIds.has(qid)) issues.push({ type: "orphan_question_link", test_id: tid, question_id: qid });
+    }
+    for (const test of tests.data || []) if ((test as any).is_published && !(test as any).archived_at && !(counts[String((test as any).id)] > 0)) issues.push({ type: "published_test_without_questions", id: (test as any).id, title: (test as any).title || "" });
+    for (const question of exam.data || []) if (!String((question as any).answer || "").trim() && ["mc","mcq","case"].includes(String((question as any).type || ""))) issues.push({ type: "published_exam_question_without_answer", id: (question as any).id, subject_slug: (question as any).subject_slug || null });
+    return c.json(ok({ ok: issues.length === 0, issues: issues.slice(0, 500), count: issues.length, checked: { tests: tests.data?.length || 0, questions: questions.data?.length || 0, test_questions: links.data?.length || 0, exam_questions: exam.data?.length || 0 } }, rid));
+  } catch { return error(c, rid, 503, "VALIDATION_FAILED", "Не удалось проверить данные"); }
+});
+
 // Questions: preserve the legacy exam_questions contract used by the admin editor.
 admin.get("/questions", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
@@ -128,8 +171,12 @@ admin.put("/question-bank/:id", requireAuth, async (c) => {
     const { data: current, error: readError } = await db.from("questions").select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").eq("id", id).maybeSingle();
     if (readError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить вопрос");
     if (!current) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
-    const { error: versionError } = await db.from("content_versions").insert({ table_name: "questions", row_key: { id }, version_no: 1, data: current, source: "admin_ui", actor_user_id: c.get("user").id });
-    if (versionError) console.warn("[admin:question-version]", versionError.message);
+    const { data: versions, error: versionReadError } = await db.from("content_versions").select("version_no").eq("table_name", "questions").eq("row_key", JSON.stringify({ id })).order("version_no", { ascending: false }).limit(1);
+    if (!versionReadError) {
+      const versionNo = Number(versions?.[0]?.version_no || 0) + 1;
+      const { error: versionError } = await db.from("content_versions").insert({ table_name: "questions", row_key: { id }, version_no: versionNo, data: current, source: "admin_ui", actor_user_id: c.get("user").id });
+      if (versionError) console.warn("[admin:question-version]", versionError.message);
+    }
     const { data, error: writeError } = await db.from("questions").update({ type, text, answer, options: options || [], updated_at: new Date().toISOString() }).eq("id", id).select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
     if (writeError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
     return c.json(ok({ question: data }, rid));
