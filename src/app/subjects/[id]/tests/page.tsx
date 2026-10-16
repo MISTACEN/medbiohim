@@ -26,7 +26,7 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
       setSubjectId(p.id);
       const subject = await getSubject(p.id);
       if (cancelled) return;
-      const selected = subject.ok ? subject.data.subject : null;
+      const selected = subject.ok ? (subject.data.subject || subject.data.item || (subject.data.id ? subject.data : null)) : null;
       if (selected?.name) setSubjectName(selected.name);
       const name = String(selected?.name || "").toLowerCase().trim();
       const slug = selected?.slug || ({
