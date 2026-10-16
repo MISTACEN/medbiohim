@@ -1,2 +1,3 @@
-redeploy-2026-10-16T11:15Z
-# Full schedule page restored in 91868d8 — this file only triggers Vercel rebuild.
+redeploy-2026-10-16T11:23Z
+# Build must use main HEAD >= 91868d8 (full page.tsx module).
+# Failed build on ec91235 had WILL_REPLACE placeholder — ignore that deploy.
