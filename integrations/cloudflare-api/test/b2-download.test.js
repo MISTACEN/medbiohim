@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createB2DownloadUrl } from "../src/b2-download.js";
+import { createB2DownloadUrl, createB2DownloadUrls } from "../src/b2-download.js";
 
 function response(value, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
