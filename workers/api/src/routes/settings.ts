@@ -197,6 +197,12 @@ async function updateProfile(c: any) {
         const { body, status } = fail("PROFILE_UPDATE_FAILED", "Не удалось обновить email. Проверьте адрес и подтверждение в письме.", 422, rid);
         return c.json(body, status as 422);
       }
+      try {
+        const authUser = await authResponse.json() as Record<string, unknown>;
+        c.set("user", { ...user, ...authUser } as typeof user);
+      } catch {
+        // Supabase Auth may return an empty success body; the profile update itself remains valid.
+      }
     }
 
     if (Object.keys(patch).length) {
