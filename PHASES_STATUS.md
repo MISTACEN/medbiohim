@@ -2769,3 +2769,14 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Added a regression test for direct subject responses, workload fields and visible plan descriptions. Worker typecheck passes and all 21 tests pass.
 - Rebuilt from a clean `.next` directory after these UI changes: the full Next.js production build succeeds and generates all 44 static pages. Existing lint warnings remain.
 - Vercel's direct production-deployment API returned HTTP 403. The Vercel CLI fallback was checked but is logged out and has no credentials in the build environment. No credentials were requested in chat or added to source.
+
+
+## Pass — curated subject plans through a scoped Supabase RPC (2026-10-17)
+
+- 🟢 **Live Supabase DDL applied:** `medbiohim_get_student_subject_plan(text, integer, integer)`. Only allow-listed plan keys are readable; the function checks `auth.uid()`, active `group_memberships`/active `groups` with `specialty_slug='mbh'`, or an admin role, and resolves the requested course/semester to an active subject row.
+- 🟢 **Live privilege/RLS spot-check:** `anon_can_execute=false`; `authenticated_can_execute=true`; `SECURITY DEFINER` with empty `search_path`. Existing `site_content` policy still gates plan rows to admins for direct table reads; no broad table grants or RLS policy changes were made.
+- 🟢 **Source updated on `main`:** migration file, both Cloudflare Worker implementations, subject page fallback for title/workload fields, micro-preparation rendering, and regression test additions.
+- 🟡 **Runtime/test gate:** new tests have been authored but have not yet been run against the latest exact `main` snapshot in this pass. Successful live authenticated RPC invocation with a real student token has not been demonstrated.
+- 🔴 **Production activation is still unverified/blocked:** prior deployment audit recorded empty/missing GitHub Actions secret `CLOUDFLARE_API_TOKEN` and Vercel deployment HTTP 403. Keep the current production UI marked as not verified until worker version, frontend deployment, and signed-in read-after-write/page checks are confirmed.
+
+Next: run canonical Worker typecheck/tests plus the integration Worker tests, inspect CI/deployment state, then verify the authenticated subject page and continue PHP-to-Worker route parity beyond this page.
