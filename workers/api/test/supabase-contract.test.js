@@ -6,7 +6,6 @@ const settingsSource = await readFile(new URL("../src/routes/settings.ts", impor
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
 const filesSource = await readFile(new URL("../src/routes/files.ts", import.meta.url), "utf8");
-const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const telegramMigration = await readFile(new URL("../../../database/migrations/20261017120000_telegram_account_linking_rpc.sql", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
