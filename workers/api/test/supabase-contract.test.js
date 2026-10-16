@@ -14,6 +14,8 @@ const meSource = await readFile(new URL("../src/routes/me.ts", import.meta.url),
 const dashboardSource = await readFile(new URL("../src/routes/dashboard.ts", import.meta.url), "utf8");
 const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url), "utf8");
 const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
+const plansSource = await readFile(new URL("../src/routes/plans.ts", import.meta.url), "utf8");
+const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
