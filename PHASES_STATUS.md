@@ -2647,3 +2647,12 @@ This pass treats the existing frontend as the behavioral specification instead o
 - [x] Reconciled 416 SpaceWeb archive files against private Blob by object path + MD5/ETag.
 - [x] All 234 unique source file contents exist in Blob; all canonical path keys match. The 144 missing keys are encoded `#U...` aliases with content already present at canonical paths; database content tables contain zero references to those aliases.
 - [x] Preserved 58 extra `histology/source-materials/` objects in Blob. No objects were deleted or overwritten.
+
+
+## 2026-10-17 — files and admin storage parity
+
+- Added canonical `/api/v1/files/upload`, `/api/v1/files/{id}`, and `/api/v1/files/{id}/download` handlers. Upload persists metadata in Supabase `files`, checks group access and MBH specialty access, and cleans up Blob objects if metadata/signing fails. Read/download relies on existing RLS and rejects files outside the user's allowed storage key scope.
+- Added strict-admin `/api/v1/admin/files/capabilities` and read-only `/api/v1/admin/files/audit`, including reference counts for materials, trainer cards, homework attachments and submissions. Cloudflare Worker image processing is explicitly reported unsupported rather than returning false capability claims.
+- Worker TypeScript + 17/17 tests pass locally. Live route smoke still returns 501 for file metadata and admin audit, so these source changes are not yet live.
+- Current DB constraint `files_storage_provider_check` rejects `upstash_blob`; code uses allowed `unknown` until the additive constraint migration is applied. The migration file exists but was not applied; no constraint was bypassed.
+- Deployment still requires `CLOUDFLARE_API_TOKEN` in GitHub Actions. Do not call the SpaceWeb → Cloudflare sync complete until the latest Worker code is deployed and these routes return their expected authenticated behavior.
