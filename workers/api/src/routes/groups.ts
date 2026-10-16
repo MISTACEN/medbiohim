@@ -52,7 +52,7 @@ groups.get("/", requireAuth, async (c) => {
 });
 
 groups.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(); const db = c.get("supabase"); const id = c.req.param("id");
+  const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
   const { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course,course_number,semester,is_active").eq("id", id).maybeSingle();
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Group unavailable", 503, rid); return c.json(body, status as 503); }
@@ -77,7 +77,7 @@ groups.post("/", requireAuth, async (c) => {
 });
 
 groups.patch("/:id", requireAuth, async (c) => {
-  const rid = requestId(); const db = c.get("supabase"); const id = c.req.param("id");
+  const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
   if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
   let input: any = {}; try { input = await c.req.json(); } catch {}
@@ -97,7 +97,7 @@ groups.patch("/:id", requireAuth, async (c) => {
 });
 
 groups.delete("/:id", requireAuth, async (c) => {
-  const rid = requestId(); const db = c.get("supabase"); const id = c.req.param("id");
+  const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
   if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
   const { data, error } = await db.from("groups").update({ is_active: false }).eq("id", id).select("id").maybeSingle();

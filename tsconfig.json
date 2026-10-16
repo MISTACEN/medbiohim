@@ -37,6 +37,9 @@
   "exclude": [
     "node_modules",
     "workers/api/**",
-    "integrations/cloudflare-api/**"
+    "integrations/cloudflare-api/**",
+    "scripts/**",
+    "scripts",
+    "**/*.b64"
   ]
 }
