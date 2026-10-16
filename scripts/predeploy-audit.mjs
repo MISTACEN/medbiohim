@@ -223,23 +223,22 @@ if (existsSync(proxyPathForHeaders)) {
   } else {
     fail("training response sanitizer or trainer 404 handling references an unavailable helper");
   }
-  if (text.includes('message: "Backend is temporarily unavailable"') &&
-      !text.includes('message: msg')) {
+  if (text.includes('message: \\"Cloudflare API недоступен; безопасный резервный маршрут не дал ответа\\"') &&
+      !text.includes('message: msg') && !text.includes('error: String(error)')) {
     pass("proxy 502 response does not expose raw upstream exception messages");
   } else {
     fail("proxy 502 response may expose internal upstream exception details");
   }
 
-  if (text.includes('process.env.CLOUDFLARE_API_ORIGIN || ""') &&
-      text.includes('process.env.VERCEL_ENV === "production"') &&
-      text.includes('isProductionDeployment && origin.hostname.startsWith("medbiohim-api-shadow.")') &&
-      text.includes('process.env.MEDBIOHIM_API_MODE === "cloudflare" || process.env.MEDBIOHIM_CF_FIRST === "true"') &&
-      text.includes('|| !cloudflareOrigin || !cloudflareOptIn ? "legacy" : "cloudflare"') &&
+  if (text.includes('const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN)') &&
+      text.includes('https://medbiohim-api.ryazansevegor.workers.dev/api/v1') &&
+      !text.includes('medbiohim-api-shadow') &&
+      text.includes('u.protocol === \\"https:\\"') &&
       text.includes('shouldFallbackFromCloudflare') &&
-      text.includes('isHttpsOrigin(UPSTREAM)')) {
-    pass("Cloudflare requires explicit opt-in and HTTPS origin; migration shadow is rejected in Production");
+      text.includes('SAFE_SPACEWEB_ORIGIN')) {
+    pass("Cloudflare defaults to the production Worker; legacy fallback is HTTPS-only and never targets shadow");
   } else {
-    fail("Cloudflare default mode or HTTPS legacy fallback guard is missing");
+    fail("Cloudflare production origin or HTTPS-only legacy fallback guard is missing");
   }
 
   if (text.includes('async function isCanonicalAdminRequest') &&
