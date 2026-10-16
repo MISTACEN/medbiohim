@@ -3353,3 +3353,11 @@ The current Worker already validates homework attachment IDs, caller ownership/s
 - Commit `8627b7c058434859824cb625dbba4aa296c79bc7` restores a **read-only** HTTPS SpaceWeb fallback for GET/HEAD/OPTIONS when Cloudflare is unavailable or returns a fallback-eligible server error. Mutating requests are deliberately not retried to avoid duplicate writes.
 - This is a containment fix, not proof that all routes are healthy. Verify Vercel has a valid HTTPS `SPACEWEB_API_ORIGIN` before expecting fallback to work. The available Vercel connector currently returns 403 for project runtime logs, so live production smoke testing is still pending.
 - Next: verify Vercel production deployment/build; then run authenticated smoke tests for login/me, dashboard, schedule, homework, trainer feed/images, tests/tickets and AI. Keep existing UI intact; no broad redesigns while restoring stability.
+
+
+## 2026-10-16 — Academic planner / attendance merge
+- [x] Mount canonical Hono routes for academic state/sync/rule-based plan, student planner aggregate, and attendance mutations.
+- [x] Return linked homework inside each planner lesson via `schedule_entry_id`.
+- [x] Allow student-created tasks and validate any linked lesson against active group membership.
+- [ ] Run Worker typecheck and automated route tests; Vercel is currently blocked by build-rate-limit.
+- [ ] Verify authenticated live smoke tests and actual Supabase RLS/table relations before production-complete status.
