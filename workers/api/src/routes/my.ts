@@ -18,7 +18,7 @@ my.get("/", requireAuth, async (c) => {
       supabase.from("user_roles").select("roles(code,name)").eq("user_id", user.id).limit(25),
       supabase
         .from("group_memberships")
-        .select("group_id,role,groups(id,name,specialty_slug,course,semester,is_active)")
+        .select("group_id,role_in_group,groups(id,name,specialty_slug,course_number,is_active)")
         .eq("user_id", user.id)
         .eq("is_active", true)
         .limit(50),
@@ -40,9 +40,10 @@ my.get("/", requireAuth, async (c) => {
           id: g.id,
           name: g.name,
           specialty_slug: g.specialty_slug,
-          course: g.course,
-          semester: g.semester,
-          membership_role: row.role,
+          course: g.course_number ?? null,
+          course_number: g.course_number ?? null,
+          semester: profileRes.data?.semester ?? null,
+          membership_role: row.role_in_group,
         };
       })
       .filter(Boolean);
