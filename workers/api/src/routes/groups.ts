@@ -23,7 +23,7 @@ async function isManager(c: any) {
 function rel(v: any) { return Array.isArray(v) ? v[0] : v; }
 function mapGroup(row: any) {
   if (!row) return null;
-  const course = row.course ?? row.course_number ?? null;
+  const course = row.course_number ?? row.course ?? null;
   return { id: row.id, name: row.name, code: row.code ?? null, specialty_slug: row.specialty_slug ?? null, course, course_number: course, semester: row.semester ?? null, is_active: row.is_active !== false, membership_role: row.membership_role ?? null };
 }
 
@@ -36,17 +36,13 @@ groups.get("/", requireAuth, async (c) => {
     const codes = await roleCodes(c);
     const isAdminLike = codes.includes("admin") || codes.includes("moderator");
     if (isAdminLike && !membershipOnly) {
-      let { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course,course_number,semester,is_active").order("name", { ascending: true }).limit(500);
-      if (error) {
-        const retry = await db.from("groups").select("id,name,code,specialty_slug,course,semester,is_active").order("name", { ascending: true }).limit(500);
-        if (retry.error) { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
-        return c.json(ok({ items: (retry.data || []).map(mapGroup), source: "all" }, rid));
-      }
+      let { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course_number,is_active").order("name", { ascending: true }).limit(500);
+      if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
       return c.json(ok({ items: (data || []).map(mapGroup), source: "all" }, rid));
     }
-    const { data, error } = await db.from("group_memberships").select("group_id, role, groups(id,name,code,specialty_slug,course,course_number,semester,is_active)").eq("user_id", user.id).eq("is_active", true).limit(50);
+    const { data, error } = await db.from("group_memberships").select("group_id,role_in_group,groups(id,name,code,specialty_slug,course_number,is_active)").eq("user_id", user.id).eq("is_active", true).limit(50);
     if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
-    const items = (data || []).map((row: any) => { const g = rel(row.groups); if (!g || g.is_active === false) return null; return mapGroup({ ...g, membership_role: row.role }); }).filter(Boolean);
+    const items = (data || []).map((row: any) => { const g = rel(row.groups); if (!g || g.is_active === false) return null; return mapGroup({ ...g, membership_role: row.role_in_group }); }).filter(Boolean);
     return c.json(ok({ items, source: "memberships" }, rid));
   } catch { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
 });
@@ -54,7 +50,7 @@ groups.get("/", requireAuth, async (c) => {
 groups.get("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  const { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course,course_number,semester,is_active").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course_number,is_active").eq("id", id).maybeSingle();
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Group unavailable", 503, rid); return c.json(body, status as 503); }
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
   return c.json(ok(mapGroup(data), rid));
@@ -68,10 +64,8 @@ groups.post("/", requireAuth, async (c) => {
   if (!name) { const { body, status } = fail("VALIDATION_ERROR", "name required", 422, rid); return c.json(body, status as 422); }
   const course = input.course_number != null ? Number(input.course_number) : input.course != null ? Number(input.course) : null;
   const row: any = { name, code: input.code != null ? String(input.code).slice(0, 50) : null, specialty_slug: input.specialty_slug != null ? String(input.specialty_slug).slice(0, 100) : null, is_active: input.is_active !== false };
-  if (course != null && Number.isFinite(course)) { row.course = course; row.course_number = course; }
-  if (input.semester != null && Number.isFinite(Number(input.semester))) row.semester = Number(input.semester);
-  let { data, error } = await db.from("groups").insert(row).select("*").maybeSingle();
-  if (error && /course_number/i.test(error.message || "")) { delete row.course_number; ({ data, error } = await db.from("groups").insert(row).select("*").maybeSingle()); }
+  if (course != null && Number.isFinite(course)) row.course_number = course;
+  const { data, error } = await db.from("groups").insert(row).select("*").maybeSingle();
   if (error) { const { body, status } = fail("DB_ERROR", error.message || "create failed", 503, rid); return c.json(body, status as 503); }
   return c.json(ok({ item: mapGroup(data) }, rid), 201);
 });
@@ -86,11 +80,9 @@ groups.patch("/:id", requireAuth, async (c) => {
   if (input.code != null) patch.code = String(input.code).slice(0, 50);
   if (input.is_active != null) patch.is_active = Boolean(input.is_active);
   const course = input.course_number != null ? Number(input.course_number) : input.course != null ? Number(input.course) : undefined;
-  if (course !== undefined && Number.isFinite(course)) { patch.course = course; patch.course_number = course; }
-  if (input.semester != null) patch.semester = Number(input.semester);
+  if (course !== undefined && Number.isFinite(course)) patch.course_number = course;
   if (!Object.keys(patch).length) { const { body, status } = fail("VALIDATION_ERROR", "No fields", 422, rid); return c.json(body, status as 422); }
-  let { data, error } = await db.from("groups").update(patch).eq("id", id).select("*").maybeSingle();
-  if (error && /course_number/i.test(error.message || "")) { delete patch.course_number; ({ data, error } = await db.from("groups").update(patch).eq("id", id).select("*").maybeSingle()); }
+  const { data, error } = await db.from("groups").update(patch).eq("id", id).select("*").maybeSingle();
   if (error) { const { body, status } = fail("DB_ERROR", error.message || "update failed", 503, rid); return c.json(body, status as 503); }
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
   return c.json(ok({ item: mapGroup(data) }, rid));
