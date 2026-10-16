@@ -542,6 +542,13 @@ admin.post("/content/package/import", requireAuth, async (c) => {
   if (!input) return error(c, rid, 422, "VALIDATION_ERROR", "Передайте пакет в JSON");
   const subjectSlug = String(input.subject_slug || ""), specialty = String(input.specialty_slug || "");
   if (subjectSlug === "histology" && specialty !== "mbh") return error(c, rid, 422, "VALIDATION_ERROR", "Пакет гистологии должен быть ограничен specialty_slug=mbh");
+  let packageSubjectId = String(input.subject_id || "");
+  if (!packageSubjectId && subjectSlug) {
+    const { data: subjects, error: subjectError } = await db.from("subjects").select("id").eq("slug", subjectSlug).limit(2);
+    if (subjectError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось сопоставить предмет пакета");
+    if ((subjects || []).length > 1) return error(c, rid, 422, "AMBIGUOUS_SUBJECT", "Укажите subject_id: slug предмета неоднозначен");
+    packageSubjectId = String(subjects?.[0]?.id || "");
+  }
   const allowed = ["sources","materials","trainer_cards","tests","questions","test_questions"];
   const total = allowed.reduce((n, key) => n + (Array.isArray(input[key]) ? input[key].length : 0), 0);
   if (total < 1 || total > 500) return error(c, rid, 422, "VALIDATION_ERROR", "Пакет должен содержать от 1 до 500 записей");
@@ -556,6 +563,7 @@ admin.post("/content/package/import", requireAuth, async (c) => {
         if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error("invalid row");
         const copy = { ...row };
         for (const field of ["created_by","updated_by","actor_user_id","user_id","owner_id"]) delete copy[field];
+        if (["materials","tests","trainer_cards"].includes(key) && !copy.subject_id && packageSubjectId) copy.subject_id = packageSubjectId;
         if (subjectSlug === "histology") {
           if (key === "trainer_cards" && (copy.specialty_slug || specialty) !== "mbh") throw new Error("histology scope");
           if (key === "questions" && copy.subject_slug && copy.subject_slug !== "histology") throw new Error("histology scope");
