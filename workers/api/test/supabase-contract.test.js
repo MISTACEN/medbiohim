@@ -16,6 +16,7 @@ const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url),
 const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
 const plansSource = await readFile(new URL("../src/routes/plans.ts", import.meta.url), "utf8");
 const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta.url), "utf8");
+const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
 const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
@@ -120,6 +121,17 @@ test("subject content routes resolve duplicate slugs by semester and return test
   assert.ok(testsSource.includes('subject_slug: subjectSlug || null'));
   assert.ok(testsSource.includes('course_number: course || null'));
   assert.ok(testsSource.includes('semester: semester || null'));
+});
+
+test("ticket bank catalog reads canonical banks and generates source-backed questions without exam-mode answers", () => {
+  assert.ok(ticketsSource.includes('tickets.get("/banks", requireAuth'));
+  assert.ok(ticketsSource.includes('from("ticket_banks")'));
+  assert.ok(ticketsSource.includes('from("exam_questions")'));
+  assert.ok(ticketsSource.includes('.eq("for_ticket", true)'));
+  assert.ok(ticketsSource.includes('tickets.post("/generate", requireAuth'));
+  assert.ok(ticketsSource.includes('mode === "practice" ? { answer, has_answer: Boolean(answer.trim()) } : {}'));
+  assert.ok(ticketsSource.includes('title.includes("ситуационные задачи")'));
+  assert.ok(ticketsSource.includes('title.includes("экзаменационные препараты")'));
 });
 
 test("subject test pages keep catalog queries scoped to canonical subject, course, and semester", () => {
