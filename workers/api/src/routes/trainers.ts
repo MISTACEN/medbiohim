@@ -230,7 +230,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
           .maybeSingle();
         if (fileError) throw fileError;
         const objectKey = typeof file?.object_key === "string" ? file.object_key.trim() : "";
-        if (objectKey.startsWith("histology/") && !objectKey.includes("..") && !objectKey.includes("\\\\")) key = objectKey;
+        if (objectKey.startsWith("histology/") && !objectKey.includes("..") && !objectKey.includes("\\") && !/[?#\u0000-\u001f\u007f]/u.test(objectKey)) key = objectKey;
       }
     }
     if (!key) {
