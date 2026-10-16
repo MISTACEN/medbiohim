@@ -742,7 +742,7 @@ export async function listLectures(subject?:string): Promise<any> { const q=subj
 export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api("/questions/subjects") as any; }
 export async function listQuestions(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); if(!q.has("include_answer")) q.set("include_answer","1"); return api("/questions"+(q.toString()?"?"+q:"")) as any; }
 export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return apiCached("/subjects-catalog") as any; }
-export async function listTicketBanks(..._args: any[]): Promise<any> { return apiCached("/tickets") as any; }
+export async function listTicketBanks(..._args: any[]): Promise<any> { return apiCached("/tickets/banks") as any; }
 export async function getSubjectPlan(slug:string, course?:number|null, semester?:number|null): Promise<any> { const clean=String(slug??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return apiCached("/subject-plans/" + encodeURIComponent(clean) + (q.toString()?"?"+q:"")) as any; }
 export async function preparationAiReview(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId) + "/ai-review", {method:"POST",body:"{}"}) as any; }
 export async function register(email:string,password:string,fullName:string): Promise<any> { return api("/auth/register", { method:"POST", body:JSON.stringify({email,password,full_name:fullName}) }) as any; }
