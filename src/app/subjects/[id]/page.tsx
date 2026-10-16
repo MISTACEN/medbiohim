@@ -395,7 +395,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                     onChange={(e) => setTicketBankId(e.target.value)}
                   >
                     {subjectBanks.map((b: any) => (
-                      <option key={b.id} value={b.id}>{b.title} ({b.count})</option>
+                      <option key={b.id} value={b.id} disabled={Number(b.count ?? 0) <= 0}>
+                        {b.title} ({Number(b.count ?? 0) > 0 ? b.count : "нет опубликованных вопросов"})
+                      </option>
                     ))}
                   </select>
                   <select
