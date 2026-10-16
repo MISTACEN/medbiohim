@@ -71,14 +71,19 @@ export default function AdminPage() {
       const list = g.data.items as any[];
       setGroups(list);
       if (!groupId && list[0]?.id) setGroupId(String(list[0].id));
+    } else {
+      msg("Не удалось загрузить группы из Supabase: " + g.error.message);
     }
     if (s.ok) setSubjects(s.data.items as any[]);
+    else msg("Не удалось загрузить предметы из Supabase: " + s.error.message);
     if (u.ok) {
       const list = (u.data.items || []) as AdminUser[];
       setUsers(list);
       const drafts: Record<string, { groupId: string; semester: string }> = {};
       list.forEach((x) => { drafts[x.id] = { groupId: String(x.group_id || ""), semester: String(x.semester || 3) }; });
       setAcademicDrafts(drafts);
+    } else {
+      msg("Не удалось загрузить пользователей из Supabase: " + u.error.message);
     }
     if (a.ok) setAnns(a.data.items || []);
   }
