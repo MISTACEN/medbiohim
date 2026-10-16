@@ -57,7 +57,7 @@ planner.get("/", requireAuth, async (c) => {
     if (from) hwQuery = hwQuery.gte("due_date", from);
     const { data: hwRows, error: hwError } = await hwQuery;
     if (hwError) throw hwError;
-    let homeworks = (hwRows || []).filter((h: any) => !to || !h.due_date || String(h.due_date) <= to);
+    let homeworks: any[] = (hwRows || []).filter((h: any) => !to || !h.due_date || String(h.due_date) <= to);
     const hwIds = homeworks.map((h: any) => h.id).filter((id: string) => UUID.test(String(id)));
     let progressRows: any[] = [];
     let submissionRows: any[] = [];
