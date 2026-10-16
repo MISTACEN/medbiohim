@@ -1,0 +1,34 @@
+name: Apply DB writes
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject writes before export default
+        run: |
+          python3 << 'PY'
+          from pathlib import Path
+          p = Path("workers/api/src/routes/admin-database.ts")
+          t = p.read_text()
+          if 'dbAdmin.post("/:id/rows/:table"' in t:
+              print("writes already present")
+          else:
+              sn = Path("scripts/p0/admin-database-writes.snippet.ts").read_text()
+              if "export default dbAdmin" not in t:
+                  raise SystemExit("no export")
+              t = t.replace("export default dbAdmin", sn + "\nexport default dbAdmin", 1)
+              p.write_text(t)
+              print("injected", p.stat().st_size)
+          assert 'dbAdmin.post("/:id/rows/:table"' in p.read_text()
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/routes/admin-database.ts
+          git commit -m "feat(api): admin-database row write/patch/delete + sql" || exit 0
+          git push origin HEAD:main
