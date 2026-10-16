@@ -106,6 +106,15 @@ test("files API persists metadata under the caller and enforces existing RLS acc
   assert.ok(filesSource.includes('subject.slug === "histology" || subject.specialty_slug === "mbh"'));
 });
 
+test("subject content routes resolve duplicate slugs by semester and return test counts", () => {
+  assert.ok(plansSource.includes('c.req.query("course")'));
+  assert.ok(plansSource.includes('c.req.query("semester")'));
+  assert.ok(plansSource.includes('weeks,'));
+  assert.ok(testsSource.includes('c.req.query("subject_slug")'));
+  assert.ok(testsSource.includes('subjectId = String(subjects[0].id)'));
+  assert.ok(testsSource.includes('questions_count: counts.get(String(item.id)) || 0'));
+});
+
 test("admin file audit endpoints are strict-admin-only and non-destructive", () => {
   assert.ok(adminSource.includes('admin.get("/files/capabilities", requireAuth'));
   assert.ok(adminSource.includes('admin.get("/files/audit", requireAuth'));
