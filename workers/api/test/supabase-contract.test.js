@@ -17,6 +17,7 @@ const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta
 const plansSource = await readFile(new URL("../src/routes/plans.ts", import.meta.url), "utf8");
 const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta.url), "utf8");
 const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
+const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
 const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
@@ -150,6 +151,13 @@ test("subject test pages keep catalog queries scoped to canonical subject, cours
   assert.ok(subjectTestsPageSource.includes('slug,'));
   assert.ok(subjectTestsPageSource.includes('Number(selected?.course_number ?? 2)'));
   assert.ok(subjectTestsPageSource.includes('Number(selected?.semester ?? 3)'));
+});
+
+test("subject detail accepts the Cloudflare response shape and preserves workload fields", () => {
+  assert.ok(subjectPageSource.includes("responseData?.subject || responseData?.item"));
+  assert.ok(subjectTestsPageSource.includes("subject.data.subject || subject.data.item || (subject.data.id ? subject.data : null)"));
+  assert.ok(subjectsRouteSource.includes("total_hours,lecture_hours,practice_hours,self_study_hours"));
+  assert.ok(subjectPageSource.includes("w.description"));
 });
 
 test("admin file audit endpoints are strict-admin-only and non-destructive", () => {
