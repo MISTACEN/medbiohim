@@ -24,6 +24,7 @@ const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.
 const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
 const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
+const testPreparationPageSource = await readFile(new URL("../../../src/app/tests/preparation/[id]/page.tsx", import.meta.url), "utf8");
 const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
 const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
 const studentSubjectPlanMigration = await readFile(new URL("../../../database/migrations/20261017180000_student_subject_plan_rpc.sql", import.meta.url), "utf8");
@@ -160,7 +161,7 @@ test("subject content routes resolve duplicate slugs by semester and return test
   assert.ok(testsSource.includes('c.req.query("subject_slug")'));
   assert.ok(testsSource.includes('subjectId = String(subjects[0].id)'));
   assert.ok(testsSource.includes('questions_count: counts.get(String(item.id)) || 0'));
-  assert.ok(testsSource.includes('subject_slug: subjectSlug || null'));
+  assert.ok(testsSource.includes("subject_slug: subjectSlug || subject?.slug || null"));
   assert.ok(testsSource.includes('course_number: course || null'));
   assert.ok(testsSource.includes('semester: semester || null'));
 });
@@ -189,7 +190,7 @@ test("test details preserve the PHP envelope and keep answer keys out of normal 
   assert.ok(testsSource.includes("Этот тест недоступен для вашей специальности"));
   assert.ok(testsSource.includes("subject_name: subject?.name || \"\""));
   assert.ok(testsSource.includes("if (!subjects?.[0]?.id) return c.json(ok({ items: [] }, rid))"));
-  assert.ok(subjectTestsPageSource.includes("detail.data.questions || []"));
+  assert.ok(testPreparationPageSource.includes("Array.isArray(d.data.questions) ? d.data.questions : []"));
   assert.ok(apiClientSource.includes('new URLSearchParams({view:"bank"})'));
 });
 
