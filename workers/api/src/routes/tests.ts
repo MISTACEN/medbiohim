@@ -69,21 +69,47 @@ function rpcResult(c: any, rid: string, data: any, error: any, fallback: string,
 }
 
 tests.get("/", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), subjectId = c.req.query("subject_id");
+  const rid = requestId(), db = c.get("supabase");
+  let subjectId = c.req.query("subject_id") || "";
+  const subjectSlug = c.req.query("subject_slug") || "";
+  const course = Number(c.req.query("course") || 0);
+  const semester = Number(c.req.query("semester") || 0);
   try {
+    if (subjectId && !UUID.test(subjectId)) return invalid(c, rid, "Некорректный ID предмета");
+    if (subjectSlug) {
+      let subjectQuery = db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true);
+      if (course > 0) subjectQuery = subjectQuery.eq("course_number", course);
+      if (semester > 0) subjectQuery = subjectQuery.eq("semester", semester);
+      const { data: subjects, error: subjectError } = await subjectQuery.order("course_number").order("semester").limit(1);
+      if (subjectError) {
+        const { body, status } = fail("DB_UNAVAILABLE", "Предметы тестов недоступны", 503, rid);
+        return c.json(body, status as 503);
+      }
+      if (!subjectId) subjectId = String(subjects?.[0]?.id || "");
+    }
     let q = db.from("tests")
       .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index")
-      .eq("is_published", true).limit(200);
-    if (subjectId) {
-      if (!UUID.test(subjectId)) return invalid(c, rid, "Некорректный ID предмета");
-      q = q.eq("subject_id", subjectId);
-    }
+      .eq("is_published", true).is("archived_at", null).limit(200);
+    if (subjectId) q = q.eq("subject_id", subjectId);
     const { data, error } = await q;
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: (data || []).map((item: any) => ({ ...item, duration_sec: item.time_limit_sec })) }, rid));
+    const items = data || [];
+    const ids = items.map((item: any) => item.id).filter(Boolean);
+    const counts = new Map<string, number>();
+    if (ids.length) {
+      const { data: links, error: linkError } = await db.from("test_questions").select("test_id").in("test_id", ids);
+      if (linkError) {
+        const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
+        return c.json(body, status as 503);
+      }
+      for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
+    }
+    return c.json(ok({ items: items.map((item: any) => ({
+      ...item, duration_sec: item.time_limit_sec, questions_count: counts.get(String(item.id)) || 0,
+    })) }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
     return c.json(body, status as 503);
