@@ -60,7 +60,7 @@ async function listPdfs(bucket: Bucket) {
           name,
           path: path.startsWith(prefix) ? path : prefix + name,
           size_bytes: typeof (blob as { size?: number }).size === "number" ? (blob as { size: number }).size : null,
-          updated_at: (blob as { uploadedAt?: string }).uploadedAt ? String((blob as { uploadedAt: string }).uploadedAt) : null,
+          updated_at: (() => { const u = (blob as { uploadedAt?: unknown }).uploadedAt; if (u == null) return null; if (u instanceof Date) return u.toISOString(); return String(u); })(),
         });
       }
     } catch (e) {
