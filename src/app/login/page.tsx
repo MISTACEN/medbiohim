@@ -11,7 +11,7 @@ function mapLoginError(code: string, message: string): string {
   if (m.includes("invalid login") || m.includes("invalid credentials")) {
     return "Неверный email или пароль. Если регистрировались через Google — войдите кнопкой Google.";
   }
-  if (m.includes("email not confirmed") || m.includes("not confirmed")) {
+  if (code === "EMAIL_NOT_CONFIRMED" || m.includes("email not confirmed") || m.includes("not confirmed")) {
     return "Email не подтверждён. Проверьте письмо или используйте Google / magic-link.";
   }
   if (code === "AUTH_NOT_CONFIGURED") {
