@@ -34,7 +34,7 @@ function histologyObjectKey(preparation: Record<string, unknown> | null | undefi
   const parts = key.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
   // Only paths from the migrated histology content tree may be served.
-  if (!["electronograms/", "em/", "5_Фотографии препаратов/"].some((prefix) => key.startsWith(prefix))) return null;
+  if (!["electronograms/", "em/", "photos/", "5_Фотографии препаратов/"].some((prefix) => key.startsWith(prefix))) return null;
   return `histology/${key}`;
 }
 
@@ -213,7 +213,26 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
 
-    const key = histologyObjectKey(card.preparation as Record<string, unknown> | null);
+    let key = histologyObjectKey(card.preparation as Record<string, unknown> | null);
+    // The imported trainer JSON often keeps only a basename in imagePath. Resolve
+    // the canonical relative path through content_sources.source_key before giving up.
+    if (!key && card.source_key) {
+      const { data: source, error: sourceError } = await supabase.from("content_sources")
+        .select("source_path,file_id")
+        .eq("id", card.source_key)
+        .maybeSingle();
+      if (sourceError) throw sourceError;
+      if (source?.source_path) key = histologyObjectKey({ imagePath: source.source_path });
+      if (!key && source?.file_id) {
+        const { data: file, error: fileError } = await supabase.from("files")
+          .select("object_key,mime_type")
+          .eq("id", source.file_id)
+          .maybeSingle();
+        if (fileError) throw fileError;
+        const objectKey = typeof file?.object_key === "string" ? file.object_key.trim() : "";
+        if (objectKey.startsWith("histology/") && !objectKey.includes("..") && !objectKey.includes("\\\\")) key = objectKey;
+      }
+    }
     if (!key) {
       console.warn("[trainer-image] missing/invalid preparation image path", { cardId: card.id });
       const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Для изображения не задан корректный ключ хранилища", 503, rid);
