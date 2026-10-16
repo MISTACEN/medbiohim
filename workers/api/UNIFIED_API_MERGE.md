@@ -35,6 +35,13 @@ The current Hono Worker mounts auth/profile, dashboard, subjects/groups, schedul
 | Content/media downloads | Partial | Use private Blob/B2 streaming or signed URLs; preserve authorization and content type |
 | PHP-only long-tail endpoints | Not yet ported | Add endpoint-by-endpoint from the route audit; do not proxy arbitrary PHP paths as a permanent solution |
 
+## Live deployment blockers observed during merge
+
+- Cloudflare's current `medbiohim-api` live script settings do **not** yet list `MEDBIOHIM_UPSTREAM`; the source-level service binding is therefore not active in production until the correct Worker bundle/config is deployed.
+- The live `medbiohim-api-shadow` script exists, so it is a candidate compatibility target, but its route contracts must still be smoke-tested through the public API.
+- Vercel reported a build-rate-limit failure while these commits were being made. Do not treat source commits as proof of a healthy production deployment.
+- No secrets were read or changed as part of this merge.
+
 ## Acceptance gates
 
 1. Typecheck and tests pass for the unified Worker.
