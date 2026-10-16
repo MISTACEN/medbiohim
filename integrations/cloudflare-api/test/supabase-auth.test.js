@@ -1186,6 +1186,24 @@ test("progress reports no overall score when the student has no homework or atte
 });
 
 
+test("progress does not count missing homework as zero when attempts exist", async () => {
+  const result = await getSupabaseProgress(request("Bearer valid-user-token"), configured, {}, async (url) => {
+    if (String(url).includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+    const parsed = new URL(String(url));
+    if (parsed.pathname === "/rest/v1/group_memberships") return new Response(JSON.stringify([{ group_id: "group-1", groups: { id: "group-1", name: "МБХ-201", is_active: true } }]), { status: 200 });
+    if (parsed.pathname === "/rest/v1/homeworks") return new Response("[]", { status: 200 });
+    if (parsed.pathname === "/rest/v1/test_attempts") return new Response(JSON.stringify([
+      { id: "attempt-1", test_id: "test-1", status: "finished", score: 80, percent: 80, tests: { title: "Тест", subject_id: "subject-1" } },
+    ]), { status: 200 });
+    throw new Error("unexpected endpoint " + parsed.pathname);
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.homework.total, 0);
+  assert.equal(result.data.homework.percent, null);
+  assert.equal(result.data.tests.attempts, 1);
+  assert.equal(result.data.overall_pct, 100);
+});
+
 test("selected-group subject catalog also filters by the active group course", async () => {
   const groupId = "11111111-1111-4111-8111-111111111111";
   const result = await listSupabaseSubjects(request("Bearer valid-user-token"), configured, { group_id: groupId }, async (url) => {
