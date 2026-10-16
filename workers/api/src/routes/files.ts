@@ -59,8 +59,23 @@ async function readAccessibleFile(c: any, id: string) {
     return { response: c.json(body, status as 404), file: null };
   }
   const rawSpecialty = String(file.specialty_slug || "").trim();
-  const requiredSpecialty = rawSpecialty === "histology" || rawSpecialty === "mbh" ? "mbh" : rawSpecialty;
+  let requiredSpecialty = rawSpecialty === "histology" || rawSpecialty === "mbh" ? "mbh" : rawSpecialty;
   try {
+    if (!requiredSpecialty) {
+      const { data: materialLinks, error: materialError } = await supabase.from("materials").select("subject_id").eq("file_id", file.id);
+      if (materialError) throw materialError;
+      const subjectIds = (materialLinks || []).map((link: { subject_id: string | null }) => link.subject_id).filter((id: string | null): id is string => Boolean(id));
+      if (subjectIds.length) {
+        const { data: subjects, error: subjectError } = await supabase.from("subjects").select("slug,specialty_slug").in("id", subjectIds);
+        if (subjectError) throw subjectError;
+        const linkedSubjects = subjects || [];
+        if (linkedSubjects.some((subject: { slug?: string; specialty_slug?: string }) => subject.slug === "histology" || subject.specialty_slug === "mbh")) {
+          requiredSpecialty = "mbh";
+        } else {
+          requiredSpecialty = String(linkedSubjects.find((subject: { specialty_slug?: string }) => subject.specialty_slug)?.specialty_slug || "");
+        }
+      }
+    }
     if (!(await hasSpecialtyAccess(supabase, user.id, requiredSpecialty))) {
       const { body, status } = fail("FORBIDDEN", "Этот файл недоступен для вашей специальности", 403, rid);
       return { response: c.json(body, status as 403), file: null };
