@@ -11,14 +11,15 @@ plans.get("/subjects-catalog", requireAuth, async (c) => {
   try {
     const { data, error } = await supabase
       .from("subjects")
-      .select("id,slug,name,title,course,semester,specialty_slug")
+      .select("id,slug,name,short_name,course_number,semester,specialty_slug,control_type,credits,total_hours,color_hex")
       .eq("is_active", true)
       .limit(300);
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Каталог недоступен", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: data || [] }, rid));
+    const items = (data || []).map((item) => ({ ...item, title: item.short_name || item.name, course: item.course_number }));
+    return c.json(ok({ items }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Каталог недоступен", 503, rid);
     return c.json(body, status as 503);
@@ -59,10 +60,14 @@ plans.get("/subject-materials", requireAuth, async (c) => {
   const supabase = c.get("supabase");
   const subject = c.req.query("subject_id") || c.req.query("subject_slug");
   try {
-    let q = supabase.from("materials").select("id,title,type,subject_id,slug").limit(200);
+    let q = supabase.from("materials").select("id,title,type,subject_id,module_id,topic_id,file_id,external_url,content_html,source_key,order_index,is_published,created_at").eq("is_published", true).limit(200);
     if (subject) {
       if (/^[0-9a-f-]{36}$/i.test(subject)) q = q.eq("subject_id", subject);
-      else q = q.eq("subject_slug", subject);
+      else {
+        const { data: subjectRow } = await supabase.from("subjects").select("id").eq("slug", subject).maybeSingle();
+        if (subjectRow?.id) q = q.eq("subject_id", subjectRow.id);
+        else return c.json(ok({ items: [] }, rid));
+      }
     }
     const { data, error } = await q;
     if (error) {
