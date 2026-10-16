@@ -35,7 +35,7 @@ test("content import is bounded, allowlisted, dry-run capable, and histology sco
   const routes = await source("../src/routes/admin.ts");
   assert.match(routes, /total > 500/);
   assert.match(routes, /dry_run/);
-  assert.match(routes, /subject_slug === "histology" && specialty !== "mbh"/);
+  assert.match(routes, /subjectSlug === "histology" && specialty !== "mbh"/);
   assert.match(routes, /onConflict: "source_key"/);
 });
 
