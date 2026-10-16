@@ -5,7 +5,8 @@
  * Secrets (Cloudflare Dashboard → Worker → Settings → Variables):
  *   SUPABASE_URL, SUPABASE_ANON_KEY
  *   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
- *   OPENAI_API_KEY (optional)
+ *   OPENAI_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY (AI providers)
+ *   UPSTASH_BLOB_TOKEN (private histology media and user uploads)
  *   APP_ORIGIN, CORS_ORIGINS
  */
 import { Hono } from "hono";
