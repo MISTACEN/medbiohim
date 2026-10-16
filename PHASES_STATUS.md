@@ -2534,3 +2534,11 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Confirmed production build failure from the supplied Vercel log: root Next.js TypeScript check traversed `workers/api/src/index.ts` and failed resolving `hono`, which is intentionally a dependency of the separate `workers/api/package.json`, not the frontend root package.
 - Updated root `tsconfig.json` on `main` to exclude `workers/api/**` and `integrations/cloudflare-api/**` from the frontend project typecheck. These Cloudflare API projects retain their own TypeScript/build configuration and must be checked independently in their respective directories.
 - Commit: `02b586a68654a4d5d6a573bf474f8101a633f652`. This addresses the exact reported TypeScript error at source level; a successful Vercel build and login are not yet verified until the new deployment finishes and is smoke-tested.
+
+
+## Browser API log review — 2026-10-16
+
+- Reviewed uploaded `medbiohim-api-log.csv` (11 requests, timestamps 2026-10-16 06:32:17–06:32:40 UTC). `GET /auth/me`, `/dashboard`, `/subjects`, and `POST /presence/heartbeat` returned 200 through Cloudflare. This is evidence that a session was recognized for those calls; it does **not** prove the password-login request itself succeeded in this capture.
+- `GET /academic/state`, `/settings/account`, `/settings/telegram/status`, `/admin/overview`, and `/admin/announcements`, plus `/admin/users`, returned 501. `GET /groups` returned 503. All rows show `source=cloudflare` and `fallback=false`, so these errors were not recovered by the frontend's read-only SpaceWeb fallback.
+- This confirms an API route-parity/runtime issue after the frontend reaches Cloudflare, separate from the Vercel TypeScript build error. Do not treat 501 as invalid credentials. Compare each response contract against the frontend and deployed Worker before porting; protect admin endpoints with canonical role checks and do not weaken auth or RLS to silence errors.
+- The log contains no login POST, no response body/error code, and no login request ID; password-login success/failure cannot be inferred from this CSV alone. Live production fix remains unverified.
