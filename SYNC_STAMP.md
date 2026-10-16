@@ -503,3 +503,13 @@ See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Ful
 - NOT live/verified yet: migration has not been confirmed applied; real SpaceWeb API origin is not identified; Worker variable `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` must be set; PHP/Worker deploy and E2E tests remain pending.
 - Telegram-only sign-in is a separate pending phase. Do not claim full Telegram login yet: a linked Telegram ID does not itself create a valid Supabase Auth session.
 - Details and setup checklist: `docs/TELEGRAM-ACCOUNT-INTEGRATION-2026-10-11.md`.
+
+
+## Continuation stamp — subject plan RPC restoration (2026-10-17)
+
+- Source target: `main`; no new branch.
+- Supabase migration `20261017180000_student_subject_plan_rpc`: applied live and committed to source. Live function grants checked: anon denied, authenticated allowed; search_path empty; direct `site_content` RLS unchanged.
+- Code edited: `integrations/cloudflare-api/src/supabase-auth.js`, `integrations/cloudflare-api/src/index.js`, `workers/api/src/routes/plans.ts`, `src/app/subjects/[id]/page.tsx`; tests added in both Worker test paths.
+- Goal: restore complete plan payload from curated JSON and merge workload metadata into subject page; render histology micro-preparations and electronogram marker.
+- Local source verification: pending for the exact latest commit. Do not mark typecheck/tests or authenticated end-to-end acceptance green until run.
+- Deployment: latest documented blockers remain missing/empty `CLOUDFLARE_API_TOKEN` in Actions and Vercel production API HTTP 403. Live website fix is not confirmed.
