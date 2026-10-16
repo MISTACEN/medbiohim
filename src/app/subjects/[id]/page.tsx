@@ -238,7 +238,13 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
   // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.
   useEffect(() => {
-    if (!ticketBankId && subjectBanks.length) setTicketBankId(String(subjectBanks[0].id));
+    const firstAvailableBank = subjectBanks.find((bank: any) => Number(bank.count ?? 0) > 0);
+    setTicketBankId(firstAvailableBank ? String(firstAvailableBank.id) : "");
+    setTicketQuestions([]);
+    setTicketTitle("");
+    setTicketNote(null);
+    setReveal({});
+    // Reset the generated ticket when navigating between subjects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [banks, slug]);
 
