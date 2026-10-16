@@ -26,7 +26,7 @@ submissions.post("/:id/grade", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const db = c.get("supabase");
-  const id = c.req.param("id");
+  const id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID сдачи", 422, rid);
     return c.json(body, status as 422);
@@ -85,7 +85,7 @@ submissions.post("/:id/return", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const db = c.get("supabase");
-  const id = c.req.param("id");
+  const id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID сдачи", 422, rid);
     return c.json(body, status as 422);
