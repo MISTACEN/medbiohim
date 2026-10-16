@@ -3525,3 +3525,12 @@ The live schema and Worker contract were compared without modifying production. 
 - Worker TypeScript + 17/17 tests pass locally. Live route smoke still returns 501 for file metadata and admin audit, so these source changes are not yet live.
 - Current DB constraint `files_storage_provider_check` rejects `upstash_blob`; code uses allowed `unknown` until the additive constraint migration is applied. The migration file exists but was not applied; no constraint was bypassed.
 - Deployment still requires `CLOUDFLARE_API_TOKEN` in GitHub Actions. Do not call the SpaceWeb → Cloudflare sync complete until the latest Worker code is deployed and these routes return their expected authenticated behavior.
+
+
+## 2026-10-17 — live Cloudflare smoke and final deploy gate
+
+- Live no-auth smoke: account settings, preferences, Telegram status and academic state return 401 (protected routes are mounted). Telegram confirmation returns 503 `BOT_NOT_CONFIGURED` because the canonical API Worker lacks `TELEGRAM_WEBHOOK_SECRET`.
+- Live file metadata and admin storage audit still return 501; latest source handlers are locally typechecked/tested but not yet published.
+- Live health returns 200 but `redisConfigured:false` and `openaiConfigured:false`. Cloudflare binding inventory shows `UPSTASH_REDIS_REST_URL` and `SUPABASE_SERVICE_KEY` on the production API, but no `UPSTASH_REDIS_REST_TOKEN` or `TELEGRAM_WEBHOOK_SECRET`. Telegram Worker already has its webhook secret and the canonical confirmation URL; the same secret must be added to the API Worker via Cloudflare Dashboard.
+- Latest Worker deployment job: 17/17 tests passed, then Wrangler failed because `CLOUDFLARE_API_TOKEN` is empty in GitHub Actions. API, shadow and Telegram dry-runs pass locally; dry-run is not deployment.
+- Histology path/hash parity and the provider constraint extension remain open. No data objects were overwritten/deleted, no production traffic was switched, and no secrets were printed.
