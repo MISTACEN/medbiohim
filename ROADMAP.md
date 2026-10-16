@@ -3534,3 +3534,10 @@ The live schema and Worker contract were compared without modifying production. 
 - Live health returns 200 but `redisConfigured:false` and `openaiConfigured:false`. Cloudflare binding inventory shows `UPSTASH_REDIS_REST_URL` and `SUPABASE_SERVICE_KEY` on the production API, but no `UPSTASH_REDIS_REST_TOKEN` or `TELEGRAM_WEBHOOK_SECRET`. Telegram Worker already has its webhook secret and the canonical confirmation URL; the same secret must be added to the API Worker via Cloudflare Dashboard.
 - Latest Worker deployment job: 17/17 tests passed, then Wrangler failed because `CLOUDFLARE_API_TOKEN` is empty in GitHub Actions. API, shadow and Telegram dry-runs pass locally; dry-run is not deployment.
 - Histology path/hash parity and the provider constraint extension remain open. No data objects were overwritten/deleted, no production traffic was switched, and no secrets were printed.
+
+
+## 2026-10-17 — corrected live route observation
+
+- Latest live unauthenticated probes now return `401 UNAUTHORIZED` for `GET /api/v1/files/{id}` and `GET /api/v1/admin/files/audit`; those protected routes are mounted. The earlier 501 observation was from an older probe/version and is superseded.
+- `POST /api/v1/telegram/account-link/confirm` still returns `503 BOT_NOT_CONFIGURED`, so account-link confirmation cannot work until `TELEGRAM_WEBHOOK_SECRET` is added to the canonical API Worker.
+- The published Worker bundle contains the Telegram RPC and storage-audit code signatures, but GitHub Actions redeployment remains blocked because `CLOUDFLARE_API_TOKEN` is empty. Authenticated read/write tests are still required to prove runtime behavior end-to-end.
