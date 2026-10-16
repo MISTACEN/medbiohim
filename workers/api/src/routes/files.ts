@@ -155,9 +155,12 @@ files.post("/upload", requireAuth, async (c) => {
   }
 
   const key = `users/${user.id}/${crypto.randomUUID()}-${cleanName(originalName)}`;
+  let storedKey: string | null = null;
   try {
     const digest = await sha256Hex(file);
     await bucket.put(key, file, { contentType: file.type, cache: "no-store" });
+    storedKey = key;
+    const signed = await bucket.signedReadUrl(key);
     const { data: meta, error: insertError } = await supabase.from("files").insert({
       original_name: originalName,
       mime_type: file.type,
@@ -174,13 +177,17 @@ files.post("/upload", requireAuth, async (c) => {
     }).select("*").single();
     if (insertError || !meta) {
       try { await bucket.del(key); } catch { /* best-effort rollback of the binary object */ }
+      storedKey = null;
       console.error("[files:upload-metadata]", { code: insertError?.code, message: insertError?.message, requestId: rid });
-      const { body, status } = fail("DB_UNAVAILABLE", "Файл загружен не был сохранён в каталоге", 503, rid);
+      const { body, status } = fail("DB_UNAVAILABLE", "Файл не был сохранён в каталоге", 503, rid);
       return c.json(body, status as 503);
     }
-    const signed = await bucket.signedReadUrl(key);
+    storedKey = null;
     return c.json(ok({ file: meta, download: { status: "ready", url: signed.url, expires_in: 3600 } }, rid), 201);
   } catch (error) {
+    if (storedKey) {
+      try { await bucket.del(storedKey); } catch { /* best-effort rollback of the binary object */ }
+    }
     console.error("[files:upload]", { error: String(error), requestId: rid });
     const { body, status } = fail("UPLOAD_FAILED", "Не удалось сохранить файл", 502, rid);
     return c.json(body, status as 502);
