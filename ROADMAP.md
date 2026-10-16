@@ -3472,3 +3472,14 @@ The live schema and Worker contract were compared without modifying production. 
 - Private Upstash Blob `medbiohim-files`: 358 `histology/` objects / 432,658,572 bytes. SpaceWeb archive: 416 files / 146,911,169 bytes under `spaceweb_upload/content/histology/`. Counts differ and trees are not proven identical; exact missing count is unknown until path + SHA-256 manifest reconciliation. No objects deleted or overwritten.
 - Added [SpaceWeb → Cloudflare synchronization audit](docs/SPACEWEB-CLOUDFLARE-SYNC-STATUS-2026-10-17.md). Cloudflare R2 remains disabled; keep private Upstash Blob as active media storage, Supabase as relational/auth source of truth, and Redis for cache only.
 - **Gate before declaring synchronized:** configure the least-privilege GitHub Actions secret `CLOUDFLARE_API_TOKEN`; deploy exact tested source; run authenticated read/write smoke tests; compare histology manifests and upload only verified missing/changed objects. No production traffic switch or Telegram webhook change was made.
+
+
+## 2026-10-17 — Supabase user directory and group contract repair
+
+- Live Supabase audit confirmed the database already contains 5 users, 4 groups and 6 membership rows; this is not a missing-data problem.
+- Fixed Worker group/profile queries to use the real schema: `group_memberships.role_in_group` and `groups.course_number`; removed nonexistent `groups.course`, `groups.semester`, `group_memberships.role` and membership `updated_at` references from the affected routes.
+- Fixed admin group assignment to write only existing columns and activate the target membership before deactivating previous memberships.
+- Added production RLS migration `20261016160523_admin_user_directory_rls.sql`: only app admins can list/update the user directory and read/assign/revoke roles; existing self-only policies remain for normal users. Migration was applied to Supabase and policy presence verified.
+- Admin user endpoint now returns an explicit 503 when role/group joins fail instead of silently returning incomplete rows; admin UI reports failed Supabase loads instead of presenting a misleading empty list.
+- Verification: `workers/api npm run check` — TypeScript + 13/13 tests pass; frontend API failover tests — 9/9 pass; migration Worker — 390/390 pass; predeploy audit — PASS WITH WARNINGS (PHP CLI unavailable in the box). `workers/api npm run deploy:dry` passes.
+- **Not live-verified:** Cloudflare production Worker deployment remains blocked because GitHub Actions secret `CLOUDFLARE_API_TOKEN` is empty/unavailable. Do not claim the screenshot is fixed in production until the exact tested Worker is deployed and authenticated smoke tests pass.
