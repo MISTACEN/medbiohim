@@ -6,6 +6,7 @@ const settingsSource = await readFile(new URL("../src/routes/settings.ts", impor
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
+const telegramMigration = await readFile(new URL("../../database/migrations/20261017120000_telegram_account_linking_rpc.sql", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
 const authSource = await readFile(new URL("../src/routes/auth.ts", import.meta.url), "utf8");
 const meSource = await readFile(new URL("../src/routes/me.ts", import.meta.url), "utf8");
@@ -60,4 +61,15 @@ test("Telegram account linking is authenticated, webhook-secret protected, and d
   assert.ok(telegramSource.includes('SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SECRET_KEY'));
   assert.ok(telegramSource.includes('^[a-f0-9]{48}$'));
   assert.ok(!telegramSource.includes('console.log(token'));
+});
+
+test("Telegram account-link migration keeps tables private and grants only the intended RPCs", () => {
+  assert.ok(telegramMigration.includes("ALTER TABLE public.telegram_accounts ENABLE ROW LEVEL SECURITY"));
+  assert.ok(telegramMigration.includes("REVOKE ALL ON TABLE public.telegram_accounts FROM PUBLIC, anon, authenticated"));
+  assert.ok(telegramMigration.includes("create_my_telegram_link_token"));
+  assert.ok(telegramMigration.includes("get_my_telegram_account"));
+  assert.ok(telegramMigration.includes("unlink_my_telegram_account"));
+  assert.ok(telegramMigration.includes("confirm_telegram_account_link"));
+  assert.ok(telegramMigration.includes("GRANT EXECUTE ON FUNCTION public.confirm_telegram_account_link"));
+  assert.ok(telegramMigration.includes("SECURITY DEFINER"));
 });
