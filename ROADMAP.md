@@ -3638,3 +3638,17 @@ The live schema and Worker contract were compared without modifying production. 
 - Added a regression test for direct subject responses, workload fields and visible plan descriptions. Worker typecheck passes and all 21 tests pass.
 - Rebuilt from a clean `.next` directory after these UI changes: the full Next.js production build succeeds and generates all 44 static pages. Existing lint warnings remain.
 - Vercel's direct production-deployment API returned HTTP 403. The Vercel CLI fallback was checked but is logged out and has no credentials in the build environment. No credentials were requested in chat or added to source.
+
+
+## SpaceWeb → Cloudflare — scoped subject-plan restoration, 2026-10-17
+
+- [x] Applied additive Supabase RPC `public.medbiohim_get_student_subject_plan(text, integer, integer)` for the three allow-listed MBH plans (histology, physiology, organic/physical chemistry). It reads only the expected CMS key and returns the matching active subject workload fields.
+- [x] Require an authenticated caller plus active MBH group membership, or the canonical admin role. RPC privileges verified live: `anon` cannot execute; `authenticated` can. `search_path` is empty, and `site_content` RLS policies were not loosened.
+- [x] Port the curated-plan response into both Worker source paths; pass course/semester filters; normalize the chemistry slug alias; retain the curriculum fallback for unprovisioned RPC responses.
+- [x] Update the subject page to fill missing workload metadata from the plan response and render per-week histology preparation lists/electronogram flags.
+- [x] Add regression tests for the scoped RPC contract and source-grounded plan shape.
+- [ ] Run tests/typecheck against the exact latest main snapshot and review any failures; do not infer a pass from adding test cases.
+- [ ] Resolve deployment permissions: current notes record an empty/missing `CLOUDFLARE_API_TOKEN` in Actions and Vercel production deployment HTTP 403. Confirm actual Worker and frontend deployment versions before claiming the page is fixed live.
+- [ ] Signed-in smoke: histology 18 weeks, 144 h/4 credits, lecture+practice+preparations; physiology 18 weeks; chemistry 18-week plan. Then smoke-test billets, tests and material links.
+
+This pass writes directly to `main`; no branch or GitHub Actions workflow change was made.
