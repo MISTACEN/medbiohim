@@ -142,3 +142,11 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 - Fixed subject test catalog scoping: the Worker now returns canonical subject slug/course/semester metadata, and both subject pages query and match tests by canonical scope. This addresses the duplicate-slug / mismatched-subject-ID case that could make a populated subject appear to have no tests.
 - Fixed constrained-runner build fan-out with `experimental.cpus: 1`. Verified locally in the connected repository environment: Next.js production build passes; frontend `tsc --noEmit` passes; `npm run predeploy:audit` passes with one expected warning that PHP CLI is not installed; API failover tests pass 9/9; Worker typecheck and tests pass 18/18.
 - Current main includes these fixes. **Production rollout is still blocked, not complete:** Cloudflare deployment workflow fails because GitHub Actions `CLOUDFLARE_API_TOKEN` is empty; Vercel's deployment API returned HTTP 403 for production deployment creation. No secret values were added to source. Until those permissions/secrets are corrected and an authenticated smoke test runs, do not claim the new frontend/Worker code is live.
+
+
+### Live Cloudflare/Upstash check — 2026-10-17
+
+- Public Cloudflare API health returns HTTP 200, `mode=production`, and `supabaseConfigured=true`.
+- The same health response currently reports `redisConfigured=false` and `openaiConfigured=false`. The Worker secret-name audit shows `UPSTASH_REDIS_REST_URL` exists but `UPSTASH_REDIS_REST_TOKEN` and `OPENAI_API_KEY` are absent. Other model-provider secrets exist, but the OpenAI Platform key is not configured on this Worker.
+- Upstash Redis database `medbiohimcache` exists and is active on the free tier. The missing Worker secret is the remaining connection step; no credential was copied into source or printed in logs.
+- Cloudflare currently has a deployed production version, but the GitHub deploy workflow cannot reproduce that deployment until its Actions token is configured. Vercel project/deployment access also returns permission errors from the connected integration. Treat these as external deployment/configuration gates, not completed rollout.
