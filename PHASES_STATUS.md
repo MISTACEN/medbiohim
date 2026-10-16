@@ -2542,3 +2542,13 @@ This pass treats the existing frontend as the behavioral specification instead o
 - `GET /academic/state`, `/settings/account`, `/settings/telegram/status`, `/admin/overview`, and `/admin/announcements`, plus `/admin/users`, returned 501. `GET /groups` returned 503. All rows show `source=cloudflare` and `fallback=false`, so these errors were not recovered by the frontend's read-only SpaceWeb fallback.
 - This confirms an API route-parity/runtime issue after the frontend reaches Cloudflare, separate from the Vercel TypeScript build error. Do not treat 501 as invalid credentials. Compare each response contract against the frontend and deployed Worker before porting; protect admin endpoints with canonical role checks and do not weaken auth or RLS to silence errors.
 - The log contains no login POST, no response body/error code, and no login request ID; password-login success/failure cannot be inferred from this CSV alone. Live production fix remains unverified.
+
+
+## Worker build remediation from Claude patch review — 2026-10-16
+
+- Applied the safe portions of the supplied patch directly to `main` (no branch): normalized Hono route params to `string` before UUID/identifier validation in admin, attendance, homework, sessions, submissions, tests, trainings and preparation handlers; kept the production typecheck enabled rather than bypassing it.
+- Typed the enriched planner homework collection as `any[]` to avoid TypeScript narrowing failures on the enriched rows. The shared legacy planner JS import is now suppressed at the import declaration only; this is a temporary compatibility bridge, not a claim that the shared module has full type declarations.
+- Fixed a confirmed homework-list defect: overlapping group/personal queries are deduplicated by ID before sorting and progress joins.
+- Restored best-effort `POST /auth/logout` before local token clearing, and aligned the shadow Worker tests with current contracts: batch B2 signer import, settings API source inclusion, removed obsolete frontend `/schedule/entries` expectation, admin subject-slug casing, and group/subject POST validation expectations.
+- Supabase `authenticated` USAGE on `private` was reported as already applied by the user; this pass did not rerun or broaden grants. No RLS policies or role gates were weakened.
+- Validation limitation: repository edits were made through GitHub Contents API; no local install/build or production deployment was run in this pass. Do not mark Worker typecheck, full test suite, Vercel build, `/academic/state` live response, login, or trainer image delivery as verified until build/test/deployment checks complete. Keep the Vercel build-rate-limit blocker and live `UPSTASH_BLOB_TOKEN`/image logs as separate outstanding checks.
