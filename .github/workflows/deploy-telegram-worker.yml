@@ -1,0 +1,40 @@
+name: Deploy MEDBIOHIM Telegram Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/telegram-bot-cloudflare/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: medbiohim-telegram
+  cancel-in-progress: false
+
+jobs:
+  deploy-telegram:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/telegram-bot-cloudflare
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: integrations/telegram-bot-cloudflare/package.json
+      - name: Run Telegram Worker tests
+        run: npm test
+      - name: Build Worker without publishing
+        run: npx --yes wrangler@4.149.0 deploy --dry-run
+      - name: Deploy Telegram Worker
+        run: npx --yes wrangler@4.149.0 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: a7556b4deb0cc2bad2c6d6b1a7381601
