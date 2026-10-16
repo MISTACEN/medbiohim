@@ -2615,3 +2615,13 @@ This pass treats the existing frontend as the behavioral specification instead o
 - [x] Added source-contract regression test; Worker check passes (13/13), API failover tests pass (9/9), migration Worker tests pass (390/390), predeploy audit passes with a PHP CLI warning.
 - [ ] Deploy exact source to production Cloudflare and verify authenticated dashboard, group dropdown, admin user list, and assignment read-after-write. Blocked by missing `CLOUDFLARE_API_TOKEN` GitHub Actions secret.
 - [ ] Reconcile SpaceWeb histology archive and Upstash Blob path/hash manifests; do not declare full synchronization until exact match is verified.
+
+
+## 2026-10-17 — Telegram linking and sync continuation
+
+- Applied Supabase migration `telegram_account_linking_rpc_20261017`: private Telegram tables with RLS and explicit RPCs for user-scoped token creation/status/unlink plus service-role-only atomic webhook confirmation. Verified privileges and safe no-auth/invalid-token responses; no account rows were created.
+- Ported Telegram settings routes to the canonical Worker and mounted `POST /api/v1/telegram/account-link/confirm`. Telegram token is random 24-byte hex, only SHA-256 hash is persisted, expires after 10 minutes, and token creation is capped at five per user per 15 minutes. Webhook secret is checked before body processing; service-role confirmation RPC is not callable by authenticated/anon.
+- Pointed Telegram Worker config at the canonical Cloudflare confirmation URL. Added separate deploy workflows for the migration Worker and Telegram Worker. These are source/CI changes only; published Workers remain unsynchronized until the Actions secret `CLOUDFLARE_API_TOKEN` is configured.
+- Verified: canonical Worker typecheck + 14/14 tests; Telegram Worker 14/14 tests; migration Worker 390/390 tests; frontend failover 9/9 tests; Next.js production build passes with `CIRCLE_NODE_TOTAL=2`; local predeploy audit PASS with one warning (PHP CLI absent in sandbox). GitHub PHP syntax CI passed after fixes in `HomeworkRepository.php`, `AdminDatabaseManager.php`, and `AcademicContextResolver.php`; rerun after the latest Telegram changes is pending.
+- Required Cloudflare config before link flow can be live: set `TELEGRAM_WEBHOOK_SECRET` on `medbiohim-api` to the same value as the Telegram Worker secret; set `CLOUDFLARE_API_TOKEN` as a repository Actions secret; verify Upstash Redis URL/token and OpenAI configuration (active health still reports Redis/OpenAI unconfigured).
+- Media parity remains unproven: Blob has 358 `histology/` objects / 432,658,572 bytes; SpaceWeb archive has 416 files / 146,911,169 bytes. Do not infer an exact missing count; path/hash manifest reconciliation and verified delta upload are still required.
