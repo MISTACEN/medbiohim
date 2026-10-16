@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import dbAdmin from "./admin-database";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50,6 +51,12 @@ function pick(input: any, fields: string[]) {
 function validText(value: unknown, max: number) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max;
 }
+
+admin.get("/", requireAuth, async (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = url.pathname.replace(/\/?$/, "") + "/overview";
+  return admin.fetch(new Request(url.toString(), c.req.raw), c.env);
+});
 
 admin.get("/overview", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
@@ -583,5 +590,7 @@ admin.post("/content/package/import", requireAuth, async (c) => {
     return error(c, rid, 422, "VALIDATION_ERROR", message);
   }
 });
+
+admin.route("/database", dbAdmin);
 
 export default admin;
