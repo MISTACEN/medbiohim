@@ -3678,3 +3678,14 @@ No GitHub Actions workflow files or branch policy were changed.
 - [ ] **P1:** Build a real curriculum view: `/curriculum` redirects to `/academic` while 198 curriculum rows (178 active) exist.
 - [ ] Validate user-created homework/community/SRS/Telegram flows. Related user-content tables are empty today, which may be normal for a small group and is not itself proof of a missing feature.
 - [ ] Re-run authenticated end-to-end acceptance after the source fixes are deployed to the intended Vercel production + canonical Worker revision.
+
+
+## Follow-up implementation — materials API and curriculum view, 2026-10-17
+
+- [x] Reworked `workers/api/src/routes/materials.ts` to use the live `materials` columns, return only published rows, support `subject_slug` and title search, and enrich responses with subject/file/source metadata.
+- [x] Replaced nonexistent file URL columns with the actual `files` / `content_sources` schema and implemented authenticated private Upstash Blob file proxying for verified DB-derived keys.
+- [x] Fixed curriculum API ordering to use `order_index` and active records rather than nonexistent `sort_order`.
+- [x] Replaced `/curriculum` redirect with a real searchable/filterable curriculum view showing course, semester, control type, hours/credits from metadata, and per-student progress; progress writes through `PUT /api/v1/academic/state`.
+- [x] Added contract assertions for the materials and curriculum API/page.
+- [ ] Fresh typecheck/test run and authenticated runtime smoke test are still pending; Vercel status remains build-rate-limited, so do not claim production is updated.
+- [ ] Histology asset key reconciliation, lecture review/publication, and chemistry knowledgebase population remain open; these require source archive/object verification and should not be fabricated.
