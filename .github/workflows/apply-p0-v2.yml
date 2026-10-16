@@ -30,28 +30,38 @@ jobs:
           assert 'admin.put("/users/:id/academic"' in admin.read_text()
           PY
 
-      - name: Write groups.ts and subjects.ts from artifact mirrors in repo
+      - name: Write groups/subjects if payloads exist
+        continue-on-error: true
         run: |
-          # Prefer full files if present under scripts/p0
-          if [ -f scripts/p0/groups.ts ]; then cp scripts/p0/groups.ts workers/api/src/routes/groups.ts; fi
-          if [ -f scripts/p0/subjects.ts ]; then cp scripts/p0/subjects.ts workers/api/src/routes/subjects.ts; fi
-          # Fallback: decode b64 parts if present
           python3 << 'PY'
           import base64
           from pathlib import Path
           root = Path('scripts/p0')
           def join(prefix):
               parts = sorted(root.glob(prefix + '*.b64'))
-              if not parts: return None
+              if not parts:
+                  return None
               return ''.join(p.read_text().strip() for p in parts)
           for prefix, dest in [('g', 'workers/api/src/routes/groups.ts'), ('s', 'workers/api/src/routes/subjects.ts')]:
+              if (root / (prefix + 'roups.ts' if prefix=='g' else 'subjects.ts')).exists():
+                  pass
               raw = join(prefix)
-              if raw:
+              if not raw:
+                  print('skip', prefix)
+                  continue
+              try:
                   Path(dest).write_bytes(base64.b64decode(raw))
-                  print('decoded', dest)
-          for p in ['workers/api/src/routes/groups.ts', 'workers/api/src/routes/subjects.ts']:
-              t = Path(p).read_text()
-              print(p, 'len', len(t), 'export' , 'export default' in t)
+                  t = Path(dest).read_text()
+                  assert 'export default' in t
+                  print('ok', dest, len(t))
+              except Exception as e:
+                  print('fail', dest, e)
+          if (root / 'groups.ts').exists():
+              Path('workers/api/src/routes/groups.ts').write_text((root / 'groups.ts').read_text())
+              print('copied groups.ts')
+          if (root / 'subjects.ts').exists():
+              Path('workers/api/src/routes/subjects.ts').write_text((root / 'subjects.ts').read_text())
+              print('copied subjects.ts')
           PY
 
       - name: Commit
@@ -60,5 +70,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add workers/api/src/routes/admin.ts workers/api/src/routes/groups.ts workers/api/src/routes/subjects.ts || true
           git status
-          git commit -m "feat(api): P0 academic + groups/subjects CRUD" || exit 0
+          git commit -m "feat(api): P0 PUT /admin/users/:id/academic (+ groups/subjects if present)" || exit 0
           git push origin HEAD:main
