@@ -85,7 +85,7 @@ tests.get("/", requireAuth, async (c) => {
         const { body, status } = fail("DB_UNAVAILABLE", "Предметы тестов недоступны", 503, rid);
         return c.json(body, status as 503);
       }
-      if (!subjectId) subjectId = String(subjects?.[0]?.id || "");
+      if (subjects?.[0]?.id) subjectId = String(subjects[0].id);
     }
     let q = db.from("tests")
       .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index")
