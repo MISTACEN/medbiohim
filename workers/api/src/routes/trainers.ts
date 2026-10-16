@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Bucket } from "@upstash/blob";
+import { BlobError, Bucket } from "@upstash/blob";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
@@ -153,16 +153,21 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
       return c.json(body, status as 503);
     }
 
-    const image = await bucket.get(key);
-    if (!image) {
-      console.warn("[trainer-image] object not found", { cardId: card.id, key });
-      const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует в Upstash Blob", 404, rid);
-      return c.json(body, status as 404);
+    let image;
+    try {
+      image = await bucket.get(key);
+    } catch (error) {
+      if (BlobError.is(error) && error.code === "not_found") {
+        console.warn("[trainer-image] object not found", { cardId: card.id, key });
+        const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует в Upstash Blob", 404, rid);
+        return c.json(body, status as 404);
+      }
+      throw error;
     }
 
-    return new Response(image, {
+    return new Response(image.body, {
       headers: {
-        "content-type": imageContentType(key),
+        "content-type": image.contentType || imageContentType(key),
         "cache-control": "private, max-age=300",
         "x-content-type-options": "nosniff",
         "x-request-id": rid,
