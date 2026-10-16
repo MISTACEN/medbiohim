@@ -360,6 +360,11 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                         <b className="text-emerald-700">Практика:</b> {w.practice}
                       </div>
                     )}
+                    {w.description && (
+                      <div className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600">
+                        {w.description}
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>
