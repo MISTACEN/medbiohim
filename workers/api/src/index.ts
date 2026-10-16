@@ -48,6 +48,7 @@ import plans from "./routes/plans";
 import storage from "./routes/storage";
 import adminRoutes from "./routes/admin";
 import histology from "./routes/histology";
+import telegram from "./routes/telegram";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -130,6 +131,7 @@ v1.route("/progress", progress);
 v1.route("/srs", srs);
 v1.route("/sessions", sessions);
 v1.route("/settings", settings);
+v1.route("/telegram", telegram);
 v1.route("/presence", presence);
 v1.route("/community", community);
 v1.route("/calculators", calculators);
