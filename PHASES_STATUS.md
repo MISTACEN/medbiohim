@@ -2604,3 +2604,14 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Private Upstash Blob `medbiohim-files`: 358 `histology/` objects / 432,658,572 bytes. SpaceWeb archive: 416 files / 146,911,169 bytes under `spaceweb_upload/content/histology/`. Counts differ and trees are not proven identical; exact missing count is unknown until path + SHA-256 manifest reconciliation. No objects deleted or overwritten.
 - Added [SpaceWeb → Cloudflare synchronization audit](docs/SPACEWEB-CLOUDFLARE-SYNC-STATUS-2026-10-17.md). Cloudflare R2 remains disabled; keep private Upstash Blob as active media storage, Supabase as relational/auth source of truth, and Redis for cache only.
 - **Gate before declaring synchronized:** configure the least-privilege GitHub Actions secret `CLOUDFLARE_API_TOKEN`; deploy exact tested source; run authenticated read/write smoke tests; compare histology manifests and upload only verified missing/changed objects. No production traffic switch or Telegram webhook change was made.
+
+
+## 2026-10-17 — Supabase directory/group synchronization
+
+- [x] Confirmed live Supabase data exists (5 users / 4 groups / 6 membership rows).
+- [x] Fixed invalid group and membership column selections in `groups`, `auth/me`, `me`, `my`, and dashboard Worker routes.
+- [x] Added and applied `20261016160523_admin_user_directory_rls` for admin-only user directory and role management, retaining self-only access for non-admin users.
+- [x] Fixed admin assignment schema mismatch and reduced the chance of losing the previous membership if a new assignment fails.
+- [x] Added source-contract regression test; Worker check passes (13/13), API failover tests pass (9/9), migration Worker tests pass (390/390), predeploy audit passes with a PHP CLI warning.
+- [ ] Deploy exact source to production Cloudflare and verify authenticated dashboard, group dropdown, admin user list, and assignment read-after-write. Blocked by missing `CLOUDFLARE_API_TOKEN` GitHub Actions secret.
+- [ ] Reconcile SpaceWeb histology archive and Upstash Blob path/hash manifests; do not declare full synchronization until exact match is verified.
