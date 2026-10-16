@@ -407,7 +407,7 @@ final class AdminDatabaseManager
         for($i=0;$i<$len;$i++){
             $ch=$sql[$i];
             if($quote!==null){
-                if($ch==='\'){$i++;continue;}
+                if ($ch === '\\') { $i++; continue; }
                 if($ch===$quote){if($i+1<$len&&$sql[$i+1]===$quote){$i++;continue;}$quote=null;}
                 continue;
             }
