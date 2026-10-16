@@ -131,7 +131,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           const [pr, gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
             slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3) : Promise.resolve({ ok: false } as any),
             getSubjectGradebook(s.id),
-            listTests(s.id, user?.groupId),
+            listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3),
             listSubjectMaterials({ subjectId: s.id }),
             listTicketBanks(),
             getProgress(s.id, user?.groupId),
