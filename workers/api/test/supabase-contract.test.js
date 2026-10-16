@@ -6,6 +6,7 @@ const settingsSource = await readFile(new URL("../src/routes/settings.ts", impor
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
 const filesSource = await readFile(new URL("../src/routes/files.ts", import.meta.url), "utf8");
+const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const telegramMigration = await readFile(new URL("../../../database/migrations/20261017120000_telegram_account_linking_rpc.sql", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
@@ -104,4 +105,13 @@ test("files API persists metadata under the caller and enforces existing RLS acc
   assert.ok(filesSource.includes('group_memberships'));
   assert.ok(filesSource.includes('from("materials").select("subject_id")'));
   assert.ok(filesSource.includes('subject.slug === "histology" || subject.specialty_slug === "mbh"'));
+});
+
+test("admin file audit endpoints are strict-admin-only and non-destructive", () => {
+  assert.ok(adminSource.includes('admin.get("/files/capabilities", requireAuth'));
+  assert.ok(adminSource.includes('admin.get("/files/audit", requireAuth'));
+  assert.ok(adminSource.includes('gate(c, STRICT_ADMINS)'));
+  assert.ok(adminSource.includes('createServiceDb(c.env)'));
+  assert.ok(adminSource.includes('destructive_actions: false'));
+  assert.ok(adminSource.includes('physical_check: "not_run"'));
 });
