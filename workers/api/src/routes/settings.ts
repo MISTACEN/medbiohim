@@ -221,10 +221,50 @@ async function updateProfile(c: any) {
   }
 }
 
+async function changePassword(c: any) {
+  const rid = requestId();
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const input = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload as Record<string, unknown> : {};
+  const password = typeof input.password === "string" ? input.password : "";
+  if (password.length < 8 || password.length > 1024) {
+    const { body, status } = fail("VALIDATION_ERROR", "Пароль должен содержать не менее 8 символов", 400, rid);
+    return c.json(body, status as 400);
+  }
+  try {
+    const response = await fetch(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
+      method: "PUT",
+      headers: {
+        apikey: c.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${c.get("accessToken")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      const { body, status } = fail("PASSWORD_CHANGE_FAILED", "Supabase Auth не принял изменение пароля", 422, rid);
+      return c.json(body, status as 422);
+    }
+    return c.json(ok({ changed: true }, rid));
+  } catch (error) {
+    console.error("[settings:password]", { error: String(error), requestId: rid });
+    const { body, status } = fail("PASSWORD_CHANGE_FAILED", "Не удалось изменить пароль", 503, rid);
+    return c.json(body, status as 503);
+  }
+}
+
 settings.get("/", requireAuth, readPreferences);
 settings.patch("/", requireAuth, savePreferences); // Backward-compatible settings endpoint.
 settings.get("/account", requireAuth, readAccount);
 settings.patch("/profile", requireAuth, updateProfile);
+settings.post("/password", requireAuth, changePassword);
 settings.put("/preferences", requireAuth, savePreferences);
 
 export default settings;
