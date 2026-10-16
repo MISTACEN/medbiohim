@@ -49,11 +49,19 @@ storage.post("/upload", requireAuth, async (c) => {
     const { body, status } = fail("VALIDATION", "Ожидается multipart/form-data с полем file", 400, rid);
     return c.json(body, status as 400);
   }
-  const file = form.get("file");
-  if (!file || typeof file === "string") {
+  const fileValue: unknown = form.get("file");
+  if (
+    !fileValue ||
+    typeof fileValue !== "object" ||
+    !("size" in fileValue) ||
+    !("type" in fileValue) ||
+    !("name" in fileValue) ||
+    !("arrayBuffer" in fileValue)
+  ) {
     const { body, status } = fail("VALIDATION", "Файл не передан", 400, rid);
     return c.json(body, status as 400);
   }
+  const file = fileValue as File;
   if (file.size < 1 || file.size > MAX_UPLOAD_BYTES) {
     const { body, status } = fail("FILE_SIZE", "Размер файла должен быть от 1 байта до 12 МБ", 413, rid);
     return c.json(body, status as 413);
