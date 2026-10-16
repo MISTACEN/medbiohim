@@ -2552,3 +2552,15 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Restored best-effort `POST /auth/logout` before local token clearing, and aligned the shadow Worker tests with current contracts: batch B2 signer import, settings API source inclusion, removed obsolete frontend `/schedule/entries` expectation, admin subject-slug casing, and group/subject POST validation expectations.
 - Supabase `authenticated` USAGE on `private` was reported as already applied by the user; this pass did not rerun or broaden grants. No RLS policies or role gates were weakened.
 - Validation limitation: repository edits were made through GitHub Contents API; no local install/build or production deployment was run in this pass. Do not mark Worker typecheck, full test suite, Vercel build, `/academic/state` live response, login, or trainer image delivery as verified until build/test/deployment checks complete. Keep the Vercel build-rate-limit blocker and live `UPSTASH_BLOB_TOKEN`/image logs as separate outstanding checks.
+
+
+## 2026-10-16 — Supabase source-of-truth audit (Stage 1)
+
+- Read-only live audit completed for Supabase project `gnobvyjywtqbdfeejxmf`; detailed evidence: [docs/SUPABASE-SOURCE-OF-TRUTH-AUDIT-2026-10-16.md](docs/SUPABASE-SOURCE-OF-TRUTH-AUDIT-2026-10-16.md).
+- Observed 84 public tables, RLS enabled on all 84, 169 policies; latest registered migration `20261016075941`.
+- Confirmed settings API schema mismatch: Worker uses nonexistent `user_settings`; live schema has `user_preferences`.
+- Confirmed Telegram chat storage exists, but account/link-token tables do not; Telegram linkage needs an explicit schema/auth design before implementation.
+- Likely academic-state failure identified: Worker embeds `topics(title)` from `student_academic_states` despite polymorphic `target_id` and no FK to `topics`. Capture runtime error and fix with type-aware lookups.
+- Supabase advisors: one SECURITY DEFINER view finding, ten authenticated SECURITY DEFINER function warnings, and 44 unindexed-FK performance findings. These are queued for individual review; no security or index changes were made.
+- No schema/data mutation, secrets access, deployment, or traffic cutover in this audit.
+- Next: repair settings and academic state against live schema, then validate signed-in schedule/catalog/groups CRUD and API contract parity.
