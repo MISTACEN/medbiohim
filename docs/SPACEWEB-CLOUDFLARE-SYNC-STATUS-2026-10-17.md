@@ -218,3 +218,20 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 2. Use a legitimate signed-in MBH student session to verify HTTP 200 and the complete histology/physiology/chemistry plan shape, including hours, credits, control, lecture, practice and preparations.
 3. Deploy through the authorized integration only after CI and authenticated smoke checks pass; verify the live Worker version and frontend deployment before describing the screenshot issue as fixed.
 4. Continue comparing PHP versus Cloudflare routes one domain at a time; do not replace the canonical Worker with the alternate archive wholesale.
+
+
+## Additional pass — tests and question-bank API parity (2026-10-17)
+
+- PHP `GET /api/v1/tests/{id}` returns `test` and `questions`; Cloudflare's former handler returned only metadata even though the current frontend reads `detail.data.questions` and `detail.data.test.title`. Updated the canonical source route to restore the envelope.
+- Question detail returns only published, non-archived questions sorted by `test_questions.order_index`. Ordinary attempts omit the answer key and correctness flags from options; the explicit bank view retains answers for study mode.
+- Added subject-specialty access checks to test lists/details, actual subject-name metadata, course/semester validation, and the fail-closed unknown-slug behavior.
+- Added source-level contract assertions. **No fresh successful CI run for this exact route commit is established**: the reported Action runs have zero jobs, and Vercel check is failing.
+- Inspected the live Cloudflare bundle read-only: scoped subject-plan RPC marker is present, but the latest `stripOptionCorrectness`/bank-view handler is not. Therefore the tests fix is committed to `main`, not yet confirmed deployed.
+- Deployment status remains blocked: latest visible READY main frontend deploy is `a1b197...`; the later subject-page fix `5220d5...` has no matching Vercel deployment. Attempt to create a Preview returned HTTP 403 permission denied; prior Vercel status references the build-rate-limit gate. No production alias, DNS, or table policies were changed.
+
+### Updated acceptance order
+
+1. Obtain an authorized Vercel deploy path without changing or bypassing project protections.
+2. Run a fresh Worker typecheck/test job on current `main`; keep answers excluded from normal test mode.
+3. Publish the canonical Worker and frontend, then verify them through the normal authenticated app session.
+4. Only then mark the screenshots resolved; continue route-by-route PHP parity after subjects, tests, tickets and histology media.
