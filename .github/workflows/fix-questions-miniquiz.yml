@@ -1,1 +1,28 @@
-SEE_FILE
+name: Fix questions route
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore questions.ts from pre-placeholder commit
+        run: |
+          git show c6cefd4b68ec623e3c7e5a10b2182e1917a9ec65:workers/api/src/routes/questions.ts > workers/api/src/routes/questions.ts
+          wc -c workers/api/src/routes/questions.ts
+          grep -n "export default" workers/api/src/routes/questions.ts
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/routes/questions.ts
+          git commit -m "fix(api): restore questions.ts (undo PLACEHOLDER)" || exit 0
+          git push origin HEAD:main
