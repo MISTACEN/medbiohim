@@ -50,7 +50,7 @@ storage.post("/upload", requireAuth, async (c) => {
     return c.json(body, status as 400);
   }
   const file = form.get("file");
-  if (!(file instanceof File)) {
+  if (!file || typeof file === "string") {
     const { body, status } = fail("VALIDATION", "Файл не передан", 400, rid);
     return c.json(body, status as 400);
   }
