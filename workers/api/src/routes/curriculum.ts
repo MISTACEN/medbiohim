@@ -11,8 +11,11 @@ curriculum.get("/", requireAuth, async (c) => {
   try {
     const { data, error } = await supabase
       .from("curriculum_items")
-      .select("*")
-      .order("sort_order", { ascending: true })
+      .select("id,subject_id,module_id,topic_id,parent_id,academic_year_id,session_id,course_number,semester,item_type,title,description,planned_date,due_at,order_index,is_required,is_active,source,metadata,created_at,updated_at,subjects(name,slug,course_number,semester)")
+      .eq("is_active", true)
+      .order("course_number", { ascending: true })
+      .order("semester", { ascending: true })
+      .order("order_index", { ascending: true })
       .limit(1000);
     if (error) {
       const alt = await supabase.from("site_content").select("*").eq("type", "curriculum").limit(100);
