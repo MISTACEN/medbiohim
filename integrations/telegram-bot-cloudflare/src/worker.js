@@ -34,7 +34,7 @@ function versionButtons(env, path = "/login") {
   const target = (origin) => new URL(path, origin).toString();
   return [
     [{ text: "🔹 Войти — старый сайт", url: target(links.old) }],
-    [{ text: "🟢 Войти — новый сайт (main)", url: target(links.main) }],
+    [{ text: "🟢 Войти — новый сайт", url: target(links.main) }],
     [{ text: "🛟 Войти — старая SpaceWeb-версия", url: target(links.spaceweb) }],
   ];
 }
@@ -57,19 +57,19 @@ function commandResponse(text, env) {
   if (!command) return null;
   const commands = {
     start: {
-      text: "Привет! Я бот MEDBIOHIM. Выберите версию сайта для входа: старый сайт, актуальный main или резервную SpaceWeb-версию. После входа откройте Настройки → Telegram для привязки бота. До привязки личные данные не показываю. Команды доступны в меню бота.",
+      text: "Привет! Я бот MEDBIOHIM. Выберите версию сайта для входа: старый сайт, новый сайт или резервную SpaceWeb-версию. После входа откройте Настройки → Telegram для привязки бота. До привязки личные данные не показываю. Команды доступны в меню бота.",
       menu: true,
       buttons: [
         ...versionButtons(env),
-        [{ text: "🔗 Настройки и привязка (основной сайт)", url: new URL("/settings", links.main).toString() }],
+        [{ text: "🔗 Настройки и привязка ", url: new URL("/settings", links.main).toString() }],
       ],
     },
     help: {
-      text: "Выберите версию сайта кнопками ниже. Для привязки Telegram сначала войдите, затем откройте Настройки → Telegram. Команды: /site — сайты, /oldsite — старая версия, /main — актуальный main, /spaceweb — резервная SpaceWeb-версия, /login — вход, /schedule — расписание, /tests — тесты, /subjects — предметы, /materials — материалы, /homework — задания, /privacy — приватность.",
+      text: "Выберите версию сайта кнопками ниже. Для привязки Telegram сначала войдите, затем откройте Настройки → Telegram. Команды: /site — сайты, /oldsite — старая версия, /main — новый сайт, /spaceweb — резервная SpaceWeb-версия, /login — вход, /schedule — расписание, /tests — тесты, /subjects — предметы, /materials — материалы, /homework — задания, /privacy — приватность.",
       menu: true,
       buttons: [
         ...versionButtons(env),
-        [{ text: "🔗 Привязать Telegram (main)", url: new URL("/settings", links.main).toString() }],
+        [{ text: "🔗 Привязать Telegram ", url: new URL("/settings", links.main).toString() }],
       ],
     },
     homework: {
@@ -79,12 +79,12 @@ function commandResponse(text, env) {
       text: "Выберите сайт, который хотите открыть.",
       buttons: [
         [{ text: "🔹 Старый сайт", url: new URL("/", links.old).toString() }],
-        [{ text: "🟢 Новый сайт (main)", url: new URL("/", links.main).toString() }],
+        [{ text: "🟢 Новый сайт ", url: new URL("/", links.main).toString() }],
         [{ text: "🛟 Старая SpaceWeb-версия", url: new URL("/", links.spaceweb).toString() }],
       ],
     },
     oldsite: { text: "Старая версия MEDBIOHIM", url: new URL("/login", links.old).toString() },
-    main: { text: "Актуальный сайт из main", url: new URL("/login", links.main).toString() },
+    main: { text: "Новый сайт", url: new URL("/login", links.main).toString() },
     spaceweb: { text: "Старая SpaceWeb-версия", url: new URL("/login", links.spaceweb).toString() },
     login: {
       text: "Выберите, на какой версии сайта войти.",
@@ -94,7 +94,7 @@ function commandResponse(text, env) {
       text: "Выберите версию сайта для регистрации.",
       buttons: [
         [{ text: "🔹 Регистрация — старый сайт", url: new URL("/register", links.old).toString() }],
-        [{ text: "🟢 Регистрация — main", url: new URL("/register", links.main).toString() }],
+        [{ text: "🟢 Регистрация — новый сайт", url: new URL("/register", links.main).toString() }],
         [{ text: "🛟 Регистрация — SpaceWeb", url: new URL("/register", links.spaceweb).toString() }],
       ],
     },
@@ -167,7 +167,7 @@ async function sendTelegramMessage(env, chatId, response) {
           { command: "link", description: "Привязать Telegram к аккаунту" },
           { command: "site", description: "Выбрать версию сайта" },
           { command: "oldsite", description: "Старая версия сайта" },
-          { command: "main", description: "Актуальный сайт main" },
+          { command: "main", description: "Новый сайт" },
           { command: "spaceweb", description: "Резервная SpaceWeb-версия" },
           { command: "schedule", description: "Моё расписание" },
           { command: "homework", description: "Задания и домашняя работа" },
