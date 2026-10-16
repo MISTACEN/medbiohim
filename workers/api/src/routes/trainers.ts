@@ -35,7 +35,7 @@ function histologyObjectKey(preparation: Record<string, unknown> | null | undefi
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
   // Only paths from the migrated histology content tree may be served.
   if (!["electronograms/", "em/", "5_Фотографии препаратов/"].some((prefix) => key.startsWith(prefix))) return null;
-  return key;
+  return `histology/${key}`;
 }
 
 function mapTrainerCard(row: TrainerRow, orderIndex: number) {
