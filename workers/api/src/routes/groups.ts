@@ -34,7 +34,7 @@ groups.get("/", requireAuth, async (c) => {
   const membershipOnly = ["1", "true", "yes"].includes(String(c.req.query("mine") || "").toLowerCase());
   try {
     const codes = await roleCodes(c);
-    const isAdminLike = codes.includes("admin") || codes.includes("moderator");
+    const isAdminLike = codes.some((code) => MANAGERS.includes(code));
     if (isAdminLike && !membershipOnly) {
       let { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course_number,is_active").order("name", { ascending: true }).limit(500);
       if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
