@@ -33,7 +33,9 @@ academic.get("/state", requireAuth, async (c) => {
       db.from("user_topic_progress").select("topic_id,percent,status,last_activity_at,topics(title,module_id,modules(subject_id,subjects(name)))").eq("user_id", user.id).order("last_activity_at", { ascending: false }).limit(500),
       db.from("users").select("id,full_name,course_number,semester").eq("id", user.id).maybeSingle(),
     ]);
-    if (statesResult.error) throw statesResult.error;\n    if (progressResult.error) throw progressResult.error;\n    if (profileResult.error) throw profileResult.error;
+    if (statesResult.error) throw statesResult.error;
+    if (progressResult.error) throw progressResult.error;
+    if (profileResult.error) throw profileResult.error;
 
     // target_id is polymorphic (topic/subject/curriculum item), so PostgREST
     // cannot infer a topics relationship from student_academic_states.
