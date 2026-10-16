@@ -39,7 +39,7 @@ export function createAnonClient(env: Env): SupabaseClient {
 
 /** Optional admin client — only when service role is configured. Prefer RLS. */
 export function createServiceClient(env: Env): SupabaseClient | null {
-  const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key = (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || env.SUPABASE_SECRET_KEY)?.trim();
   if (!key) return null;
   const url = requireEnv(env, "SUPABASE_URL");
   if (!isHttpsUrl(url)) return null;
