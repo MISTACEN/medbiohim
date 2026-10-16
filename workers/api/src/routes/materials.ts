@@ -89,19 +89,20 @@ materials.get("/", requireAuth, async (c) => {
     return c.json(body, status as 400);
   }
   try {
-    let resolvedSubjectId = subjectId;
+    let resolvedSubjectIds: string[] | null = null;
     if (subjectSlug) {
-      const { data: subject, error } = await db.from("subjects").select("id")
-        .eq("slug", subjectSlug).eq("is_active", true).maybeSingle();
+      const { data: subjects, error } = await db.from("subjects").select("id")
+        .eq("slug", subjectSlug).eq("is_active", true).limit(100);
       if (error) throw error;
-      if (!subject) return c.json(ok({ items: [] }, rid));
-      resolvedSubjectId = String(subject.id);
+      resolvedSubjectIds = (subjects || []).map((subject: { id: string }) => String(subject.id)).filter(Boolean);
+      if (!resolvedSubjectIds.length) return c.json(ok({ items: [] }, rid));
     }
     let query = db.from("materials")
       .select("id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects(name,slug,course_number,semester,specialty_slug),files(id,original_name,mime_type,size_bytes,object_key,visibility,status,storage_provider,processing_status)")
       .eq("is_published", true)
       .order("order_index", { ascending: true }).order("created_at", { ascending: false }).limit(300);
-    if (resolvedSubjectId) query = query.eq("subject_id", resolvedSubjectId);
+    if (resolvedSubjectIds) query = query.in("subject_id", resolvedSubjectIds);
+    else if (subjectId) query = query.eq("subject_id", subjectId);
     if (search) query = query.ilike("title", `%${search.replace(/[%_]/g, "\\$&")}%`);
     const { data, error } = await query;
     if (error) throw error;
