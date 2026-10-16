@@ -70,8 +70,8 @@ function rewriteRequest(req: Request, pathname: string): Request {
   return new Request(url.toString(), init);
 }
 
-v1.get("/auth/me", (c) => me.fetch(rewriteRequest(c.req.raw, "/api/v1/me"), c.env));
-v1.post("/files/upload", (c) => storage.fetch(rewriteRequest(c.req.raw, "/api/v1/storage/upload"), c.env));
+v1.get("/auth/me", (c) => me.fetch(rewriteRequest(c.req.raw, "/"), c.env));
+v1.post("/files/upload", (c) => storage.fetch(rewriteRequest(c.req.raw, "/upload"), c.env));
 
 v1.route("/auth", auth);
 v1.route("/me", me);
