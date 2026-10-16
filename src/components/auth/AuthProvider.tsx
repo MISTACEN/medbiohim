@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearTokens, hasToken, me, refreshSession } from "@/lib/api";
+import { clearTokens, hasToken, logoutSession, me, refreshSession } from "@/lib/api";
 
 export type AppUser = {
   id: string;
@@ -107,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const logout = useCallback(() => {
+    logoutSession();
     clearTokens();
     setUser(null);
   }, []);
