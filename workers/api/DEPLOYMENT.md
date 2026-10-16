@@ -28,6 +28,7 @@ Storage and optional integrations:
 
 - `POST /api/v1/storage/upload`: authenticated multipart upload, form field `file`, maximum 12 MiB. Uploads are stored under `users/<authenticated-user-id>/...`; only JPEG, PNG, WebP, GIF, PDF, DOC/DOCX, and plain text are accepted.
 - `GET /api/v1/storage/signed-url?key=...`: returns a signed read URL only for the authenticated user's own uploads or keys under `histology/`.
+- `GET /api/v1/storage/object?key=...`: authenticated binary read for the same allowed key scope.
 - `DELETE /api/v1/storage/object?key=...`: deletes only the authenticated user's own uploads. Shared `histology/` objects cannot be deleted through this endpoint.
 
 Send the Supabase access token as `Authorization: Bearer <access-token>`. Configure `UPSTASH_BLOB_TOKEN` as a Cloudflare secret; do not put the token in frontend code, `wrangler.toml`, or Git history.
