@@ -402,13 +402,13 @@ admin.post("/telegram/set-webhook", requireAuth, async (c) => {
     response = await fetch("https://api.telegram.org/bot" + token + "/setWebhook", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url: explicitWebhookUrl || (origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"), allowed_updates: ["message","edited_message"], ...(secret ? { secret_token: secret } : {}) }),
+      body: JSON.stringify({ url: explicitWebhookUrl || (() => { try { const parsed = new URL(origin); if (parsed.pathname !== "/" && parsed.pathname !== "") return parsed.toString(); return origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"; } catch { return origin; } })(), allowed_updates: ["message","edited_message"], ...(secret ? { secret_token: secret } : {}) }),
       signal: AbortSignal.timeout(12000),
     });
   } catch { return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Не удалось связаться с Telegram"); }
   const result: any = await response.json().catch(() => ({}));
   if (!response.ok || result.ok !== true) return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Telegram отклонил настройку webhook");
-  return c.json(ok({ configured: true, url: explicitWebhookUrl || (origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook") }, rid));
+  return c.json(ok({ configured: true, url: explicitWebhookUrl || (() => { try { const parsed = new URL(origin); if (parsed.pathname !== "/" && parsed.pathname !== "") return parsed.toString(); return origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"; } catch { return origin; } })() }, rid));
 });
 
 // Admin content import: bounded, allowlisted and repeatable by source_key/primary key.
@@ -442,13 +442,39 @@ admin.post("/content/import", requireAuth, async (c) => {
         subjectCache.set(slug, String(matches[0].id));
         return String(matches[0].id);
       }
+      async function academicRef(table: "modules" | "topics", key: unknown) {
+        const value = String(key || "").trim();
+        if (!value) return null;
+        if (UUID.test(value)) {
+          const { data, error: lookupError } = await db.from(table).select("id").eq("id", value).maybeSingle();
+          if (lookupError) throw lookupError;
+          if (!data) throw new Error("academic mapping missing");
+          return String(data.id);
+        }
+        if (!/^[a-zA-Z0-9 _.-]{1,120}$/.test(value)) throw new Error("academic mapping invalid");
+        const { data: bySlug, error: slugError } = await db.from(table).select("id,slug,name").eq("slug", value).limit(2);
+        if (slugError) throw slugError;
+        let matches = bySlug || [];
+        if (!matches.length) {
+          const { data: byName, error: nameError } = await db.from(table).select("id,slug,name").eq("name", value).limit(2);
+          if (nameError) throw nameError;
+          matches = byName || [];
+        }
+        if (matches.length !== 1) throw new Error("academic mapping ambiguous or missing");
+        return String(matches[0].id);
+      }
       const mappedTests: any[] = [];
       const mappedQuestions: any[] = [];
       for (const row of tests) {
         if (!row || typeof row !== "object" || !validText(row.test_key, 180) || !validText(row.title, 500)) throw new Error("invalid test row");
         const sid = await subjectId(row.subject_key);
         if (!sid) throw new Error("subject missing");
-        mappedTests.push({ source_key: row.test_key, title: row.title, subject_id: sid, time_limit_sec: row.time_limit_sec == null || row.time_limit_sec === "" ? null : Number(row.time_limit_sec), max_attempts: row.max_attempts == null || row.max_attempts === "" ? 3 : Number(row.max_attempts), is_published: row.is_published === true || row.is_published === "true" });
+        const moduleId = await academicRef("modules", row.module_key);
+        const topicId = await academicRef("topics", row.topic_key);
+        const timeLimit = row.time_limit_sec == null || row.time_limit_sec === "" ? null : Number(row.time_limit_sec);
+        const maxAttempts = row.max_attempts == null || row.max_attempts === "" ? 3 : Number(row.max_attempts);
+        if ((timeLimit !== null && (!Number.isInteger(timeLimit) || timeLimit < 0 || timeLimit > 86400)) || !Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 100) throw new Error("invalid test limits");
+        mappedTests.push({ source_key: row.test_key, title: row.title, subject_id: sid, module_id: moduleId, topic_id: topicId, time_limit_sec: timeLimit, max_attempts: maxAttempts, is_published: row.is_published === true || row.is_published === "true" });
       }
       for (const row of questions) {
         if (!row || typeof row !== "object" || !validText(row.question_key, 180) || !validText(row.text, 30000)) throw new Error("invalid question row");
@@ -458,7 +484,11 @@ admin.post("/content/import", requireAuth, async (c) => {
         if (typeof options === "string" && options.trim()) { try { options = JSON.parse(options); } catch { throw new Error("invalid options JSON"); } }
         if (options == null || options === "") options = [];
         if (!Array.isArray(options)) throw new Error("invalid options");
-        mappedQuestions.push({ source_key: row.question_key, text: row.text, subject_id: sid, type: String(row.type || "open"), answer: String(row.answer || ""), options, difficulty: row.difficulty == null || row.difficulty === "" ? null : Number(row.difficulty), is_published: row.is_published === true || row.is_published === "true" });
+        const moduleId = await academicRef("modules", row.module_key);
+        const topicId = await academicRef("topics", row.topic_key);
+        const difficulty = row.difficulty == null || row.difficulty === "" ? null : Number(row.difficulty);
+        if (difficulty !== null && (!Number.isInteger(difficulty) || difficulty < 0 || difficulty > 10)) throw new Error("invalid difficulty");
+        mappedQuestions.push({ source_key: row.question_key, text: row.text, subject_id: sid, module_id: moduleId, topic_id: topicId, type: String(row.type || "open"), answer: String(row.answer || ""), options, difficulty, is_published: row.is_published === true || row.is_published === "true" });
       }
       if (dryRun) return c.json(ok({ dry_run: true, valid: true, counts: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length } }, rid));
       if (mappedQuestions.length) {
@@ -479,7 +509,7 @@ admin.post("/content/import", requireAuth, async (c) => {
       }
       return c.json(ok({ imported: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length }, dry_run: false }, rid), 201);
     } catch (e) {
-      const message = e instanceof Error && e.message.includes("subject") ? "Предмет не найден или его slug неоднозначен; укажите уникальный subject_key" : e instanceof Error && e.message.includes("options") ? "Поле options содержит некорректный JSON-массив" : "Пакет содержит некорректные строки или неизвестные ссылки";
+      const message = e instanceof Error && e.message.includes("subject") ? "Предмет не найден или его slug неоднозначен; укажите уникальный subject_key" : e instanceof Error && e.message.includes("academic") ? "Модуль или тема не найдены либо имеют неоднозначное имя" : e instanceof Error && e.message.includes("options") ? "Поле options содержит некорректный JSON-массив" : "Пакет содержит некорректные строки или неизвестные ссылки";
       return error(c, rid, 422, "VALIDATION_ERROR", message);
     }
   }
