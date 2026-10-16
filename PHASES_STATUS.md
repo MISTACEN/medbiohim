@@ -2691,3 +2691,11 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Histology still has published atlas/trainer and material data in Supabase. The 17 `histology_lectures` records are empty `written_lecture_stub` rows with no body text, so they were deliberately not published as if they were real lectures.
 - Worker API typecheck and 18/18 tests pass. Frontend `tsc --noEmit` passes. Next.js production build compiles and passes type/lint checks but the build worker then exits with `spawn ... EAGAIN` during static page generation in this execution environment; this is an environment resource failure, not a confirmed successful full build.
 - Production deployment and authenticated end-to-end UI verification remain pending; do not mark the live site as restored until the Cloudflare deploy gate is resolved and the pages are checked with an authenticated session.
+
+
+## Deployment gate after subject-content recovery
+
+- Latest source commit: `2457178c528d36ba119952c5e57ffeb548148ee1` on `main`.
+- GitHub source packaging and smoke workflows pass; the Worker code-check workflow is still running at last check. Cloudflare deployment workflows fail because `CLOUDFLARE_API_TOKEN` is missing/empty.
+- The latest visible Vercel production deployment is still on commit `b5b2ca908210a96fce78aa92c365e051fd60a0fa`; the Vercel connector denied creating a new production deployment with HTTP 403. Do not claim the latest frontend fix is live.
+- To finish the user-visible restoration, Vercel project deployment permission / Git integration must be restored, and the Cloudflare deploy token must be configured in GitHub Actions. No secrets should be pasted into chat.
