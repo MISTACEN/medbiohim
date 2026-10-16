@@ -84,3 +84,18 @@ The primary Worker now exposes the following homework lifecycle:
 - `POST /api/v1/homeworks/:id/progress`: records personal completion progress.
 
 Staff roles are read through `user_roles → roles(code)`. The API does not trust a client-supplied role. These routes are source changes on `main`; live database constraints, RLS, typecheck, and authenticated tests still need to be verified before production acceptance.
+
+
+## Tests, preparation, answers and learning sessions — 2026-10-16
+The canonical Worker routes now enforce these contracts:
+
+- `GET /api/v1/tests` and `GET /api/v1/tests/:id`: published test metadata only; answer keys are not selected.
+- `GET /api/v1/tests/attempts`: caller's own attempt history, safe fields only.
+- `POST /api/v1/tests/:id/start` and legacy alias `POST /api/v1/tests/:id/attempts`: server RPC only. There is no direct-table fallback that could bypass attempt limits/group context.
+- `POST /api/v1/tests/attempts/:id/answers`: validates IDs and payload size, calls `medbiohim_save_test_answer` with `p_answer_text`, and strips grading/key fields while the attempt is active.
+- `POST /api/v1/tests/attempts/:id/finish`: server-side finalization via `medbiohim_finish_test_attempt`.
+- `POST /api/v1/tests/attempts/:attemptId/answers/:questionId/regrade`: server RPC only; deployment must provide the named RPC and authenticated-only grants.
+- `/api/v1/sessions`: restored legacy `learning_sessions` list/create/get/patch contract. Every read/write is filtered by authenticated `user_id`; client cannot set ownership.
+- `/api/v1/trainings`: validates status, UUID, answer index, skip flag, answer type and size before invoking the protected `histology_training_*` RPCs. No table fallback is used for mutation.
+
+Important limitation: legacy preparation mode endpoints (`/tests/:id/preparation/start`, `/tests/preparation/:id`, PATCH/save answer, finish) are **not yet fully ported**. Do not claim complete legacy route parity or production acceptance until those handlers are implemented, RPC signatures are verified against Supabase, and typecheck + authenticated smoke tests pass.
