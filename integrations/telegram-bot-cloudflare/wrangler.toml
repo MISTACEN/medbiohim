@@ -5,6 +5,8 @@ workers_dev = true
 
 [vars]
 MEDBIOHIM_APP_URL = "https://medbiohim.vercel.app"
+MEDBIOHIM_MAIN_APP_URL = "https://medbiohim-git-main-mistacen1.vercel.app"
+MEDBIOHIM_SPACEWEB_APP_URL = "https://medbiohim-git-spaceweb-backend-mistacen1.vercel.app"
 # Optional: TELEGRAM_BOT_USERNAME = "your_bot_username"
 # Optional: TELEGRAM_HOMEWORK_WEBHOOK_URL = "https://your-php-api.example/api/v1/telegram/webhook"
 # Required for account linking: set as a Worker variable after confirming the real SpaceWeb API origin.
