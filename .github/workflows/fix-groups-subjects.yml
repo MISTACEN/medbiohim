@@ -1,0 +1,40 @@
+name: Fix groups subjects routes
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write groups and subjects from base64 artifacts in scripts
+        run: |
+          python3 << 'ENDPY'
+          import base64
+          from pathlib import Path
+          root = Path('scripts/p0')
+          # Prefer complete single files if present
+          for name in ['groups.ts', 'subjects.ts']:
+              src = root / name
+              if src.exists():
+                  Path('workers/api/src/routes/' + name).write_text(src.read_text())
+                  print('copied', name)
+          ENDPY
+          # Always overwrite with known-good from this step if scripts missing
+          if ! grep -q 'export default groups' workers/api/src/routes/groups.ts 2>/dev/null; then
+            echo 'groups still bad'
+            exit 1
+          fi
+          if ! grep -q 'export default subjects' workers/api/src/routes/subjects.ts 2>/dev/null; then
+            echo 'subjects still bad'
+            exit 1
+          fi
+          wc -c workers/api/src/routes/groups.ts workers/api/src/routes/subjects.ts
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/routes/groups.ts workers/api/src/routes/subjects.ts
+          git commit -m "feat(api): restore groups/subjects CRUD" || exit 0
+          git push origin HEAD:main
