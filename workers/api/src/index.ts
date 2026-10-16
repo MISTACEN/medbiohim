@@ -47,6 +47,7 @@ import chemistry from "./routes/chemistry";
 import plans from "./routes/plans";
 import storage from "./routes/storage";
 import adminRoutes from "./routes/admin";
+import histology from "./routes/histology";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -136,6 +137,7 @@ v1.route("/ai", ai);
 v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
 v1.route("/admin", adminRoutes);
+v1.route("/histology", histology);
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)
