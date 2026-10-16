@@ -2481,3 +2481,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 - `homework.ts` now includes schedule/subject relations and student task creation with optional schedule-entry linkage.
 - Security checks in source: group membership for planner/attendance and for linked homework; attendance statuses allow present/excused/sick/unexcused.
 - Status: source implemented, **not runtime verified**. CI status for latest commit reports Vercel build-rate-limit failure. Worker typecheck, tests, RLS and authenticated smoke tests remain TODO.
+
+
+## 2026-10-16 — Homework lifecycle
+- Source changes on `main`: `homework.ts`, new `submissions.ts`, route mount in `index.ts`, merge documentation.
+- Implemented: create, scoped listing, submit, view submissions, staff grade, return for revision, personal progress.
+- Authorization: user identity from auth middleware; roles resolved through `user_roles → roles(code)`; student submission and listing scoped to group membership/ownership.
+- Status: source committed; typecheck, live Supabase RLS/schema validation, and authenticated smoke tests are still pending. Not marked production-complete.
