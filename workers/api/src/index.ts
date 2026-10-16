@@ -83,12 +83,16 @@ v1.use("*", async (c, next) => {
 function rewriteRequest(req: Request, pathname: string): Request {
   const url = new URL(req.url);
   url.pathname = pathname;
-  const init: RequestInit = {
+  const init: RequestInit & { duplex?: "half" } = {
     method: req.method,
     headers: req.headers,
     redirect: req.redirect,
   };
-  if (req.method !== "GET" && req.method !== "HEAD") init.body = req.body;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    init.body = req.body;
+    // Required by Cloudflare Workers / Fetch when body is a stream.
+    init.duplex = "half";
+  }
   return new Request(url.toString(), init);
 }
 
