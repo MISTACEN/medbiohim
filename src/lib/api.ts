@@ -485,6 +485,7 @@ export function peekTrainerImageUrl(id: string): string | null {
   const userScope=cacheUserScope();
   return userScope===null?null:trainerImageCache.get(`${userScope}|${String(id)}`)??null;
 }
+export function logoutSession():void{const t=getToken();if(!t||typeof window==="undefined")return;try{void fetch(`${API_URL}/auth/logout`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json","Authorization":`Bearer ${t}`},body:"{}",cache:"no-store",keepalive:true}).catch(()=>{})}catch{}}
 export async function login(email:string,password:string){return api<any>("/auth/login",{method:"POST",body:JSON.stringify({email,password})})}
 export async function recoverPassword(email:string){return api<any>("/auth/recover",{method:"POST",body:JSON.stringify({email})})}
 export async function me(){return api<any>("/auth/me")}
