@@ -409,7 +409,10 @@ export default {
         slug = String(match?.subject_slug || match?.slug || "").trim();
       }
       if (!slug) return withCors(success({ lesson: null, weeks: [], plan_meta: null }), origin);
-      const planResult = await getSupabaseSubjectPlan(request, slug, env);
+      const planResult = await getSupabaseSubjectPlan(request, slug, env, {
+        course: url.searchParams.get("course"),
+        semester: url.searchParams.get("semester"),
+      });
       if (!planResult.ok) return withCors(json({ ok: false, error: { code: planResult.code, message: planResult.message }, requestId: crypto.randomUUID() }, planResult.status), origin);
       const plan = planResult.data?.plan || null;
       const weeks = Array.isArray(plan?.weeks) ? plan.weeks : [];
@@ -758,7 +761,10 @@ export default {
       let slug;
       try { slug = decodeURIComponent(subjectPlanMatch[1]); }
       catch { return withCors(json({ ok: false, error: { code: "VALIDATION_ERROR", message: "Invalid subject slug" }, requestId: crypto.randomUUID() }, 422), origin); }
-      const result = await getSupabaseSubjectPlan(request, slug, env);
+      const result = await getSupabaseSubjectPlan(request, slug, env, {
+        course: url.searchParams.get("course"),
+        semester: url.searchParams.get("semester"),
+      });
       if (!result.ok) {
         return withCors(json({ ok: false, error: { code: result.code, message: result.message }, requestId: crypto.randomUUID() }, result.status), origin);
       }
