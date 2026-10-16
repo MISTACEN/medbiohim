@@ -564,6 +564,8 @@ admin.post("/content/package/import", requireAuth, async (c) => {
         const copy = { ...row };
         for (const field of ["created_by","updated_by","actor_user_id","user_id","owner_id"]) delete copy[field];
         if (["materials","tests","trainer_cards"].includes(key) && !copy.subject_id && packageSubjectId) copy.subject_id = packageSubjectId;
+        if (key === "trainer_cards") { if (!copy.subject_slug) copy.subject_slug = subjectSlug; if (!copy.specialty_slug) copy.specialty_slug = specialty; }
+        if (key === "questions" && !copy.subject_slug) copy.subject_slug = subjectSlug;
         if (subjectSlug === "histology") {
           if (key === "trainer_cards" && (copy.specialty_slug || specialty) !== "mbh") throw new Error("histology scope");
           if (key === "questions" && copy.subject_slug && copy.subject_slug !== "histology") throw new Error("histology scope");
