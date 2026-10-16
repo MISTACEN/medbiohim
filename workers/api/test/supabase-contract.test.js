@@ -35,7 +35,7 @@ test("materials API uses real Supabase columns and serves private files through 
   assert.ok(!materialsSource.includes("published_at"));
   assert.ok(!materialsSource.includes("summary"));
   assert.ok(materialsSource.includes('from("content_sources")'));
-  assert.ok(materialsSource.includes('from("files")'));
+  assert.ok(materialsSource.includes("files(id,original_name,mime_type,size_bytes,object_key"));
   assert.ok(materialsSource.includes('new Bucket({ token, enableTelemetry: false, cache: "no-store" })'));
   assert.ok(materialsSource.includes('materials.get("/:id/file", requireAuth'));
   assert.ok(materialsSource.includes('.eq("is_published", true)'));
