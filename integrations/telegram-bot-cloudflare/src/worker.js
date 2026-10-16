@@ -25,7 +25,6 @@ function appLinks(env) {
   return {
     old: safeAppOrigin(env.MEDBIOHIM_APP_URL, DEFAULT_APP_ORIGIN),
     main: safeAppOrigin(env.MEDBIOHIM_MAIN_APP_URL, "https://medbiohim-git-main-mistacen1.vercel.app"),
-    spaceweb: safeAppOrigin(env.MEDBIOHIM_SPACEWEB_APP_URL, "https://medbiohim-git-spaceweb-backend-mistacen1.vercel.app"),
   };
 }
 
@@ -33,9 +32,8 @@ function versionButtons(env, path = "/login") {
   const links = appLinks(env);
   const target = (origin) => new URL(path, origin).toString();
   return [
-    [{ text: "🔹 Войти — старый сайт", url: target(links.old) }],
-    [{ text: "🟢 Войти — новый сайт", url: target(links.main) }],
-    [{ text: "🛟 Войти — старая SpaceWeb-версия", url: target(links.spaceweb) }],
+    [{ text: "🔹 Старая версия", url: target(links.old) }],
+    [{ text: "🟢 Новая версия", url: target(links.main) }],
   ];
 }
 
@@ -57,20 +55,14 @@ function commandResponse(text, env) {
   if (!command) return null;
   const commands = {
     start: {
-      text: "Привет! Я бот MEDBIOHIM. Выберите версию сайта для входа: старый сайт, новый сайт или резервную SpaceWeb-версию. После входа откройте Настройки → Telegram для привязки бота. До привязки личные данные не показываю. Команды доступны в меню бота.",
+      text: "Привет! Я бот MEDBIOHIM. Выберите старую или новую версию сайта. После входа откройте Настройки → Telegram для привязки бота. До привязки личные данные не показываю. Команды доступны в меню бота.",
       menu: true,
-      buttons: [
-        ...versionButtons(env),
-        [{ text: "🔗 Настройки и привязка ", url: new URL("/settings", links.main).toString() }],
-      ],
+      buttons: versionButtons(env),
     },
     help: {
-      text: "Выберите версию сайта кнопками ниже. Для привязки Telegram сначала войдите, затем откройте Настройки → Telegram. Команды: /site — сайты, /oldsite — старая версия, /main — новый сайт, /spaceweb — резервная SpaceWeb-версия, /login — вход, /schedule — расписание, /tests — тесты, /subjects — предметы, /materials — материалы, /homework — задания, /privacy — приватность.",
+      text: "Выберите старую или новую версию сайта кнопками ниже. Для привязки Telegram сначала войдите, затем откройте Настройки → Telegram. Команды: /site — выбор версии, /oldsite — старая версия, /main — новая версия, /login — вход, /schedule — расписание, /tests — тесты, /subjects — предметы, /materials — материалы, /homework — задания, /privacy — приватность.",
       menu: true,
-      buttons: [
-        ...versionButtons(env),
-        [{ text: "🔗 Привязать Telegram ", url: new URL("/settings", links.main).toString() }],
-      ],
+      buttons: versionButtons(env),
     },
     homework: {
       text: "Чтобы бот мог разобрать задание, оно должно быть отправлено в подключённую учебную группу, где настроен импорт MEDBIOHIM. Можно прислать текст, фото или документ; подпишите предмет/срок, если они не очевидны. Проверьте результат в платформе. В личном чате эта команда ничего не импортирует.",
@@ -78,14 +70,12 @@ function commandResponse(text, env) {
     site: {
       text: "Выберите сайт, который хотите открыть.",
       buttons: [
-        [{ text: "🔹 Старый сайт", url: new URL("/", links.old).toString() }],
-        [{ text: "🟢 Новый сайт ", url: new URL("/", links.main).toString() }],
-        [{ text: "🛟 Старая SpaceWeb-версия", url: new URL("/", links.spaceweb).toString() }],
+        [{ text: "🔹 Старая версия", url: new URL("/", links.old).toString() }],
+        [{ text: "🟢 Новая версия", url: new URL("/", links.main).toString() }],
       ],
     },
     oldsite: { text: "Старая версия MEDBIOHIM", url: new URL("/login", links.old).toString() },
     main: { text: "Новый сайт", url: new URL("/login", links.main).toString() },
-    spaceweb: { text: "Старая SpaceWeb-версия", url: new URL("/login", links.spaceweb).toString() },
     login: {
       text: "Выберите, на какой версии сайта войти.",
       buttons: versionButtons(env),
@@ -93,9 +83,8 @@ function commandResponse(text, env) {
     register: {
       text: "Выберите версию сайта для регистрации.",
       buttons: [
-        [{ text: "🔹 Регистрация — старый сайт", url: new URL("/register", links.old).toString() }],
-        [{ text: "🟢 Регистрация — новый сайт", url: new URL("/register", links.main).toString() }],
-        [{ text: "🛟 Регистрация — SpaceWeb", url: new URL("/register", links.spaceweb).toString() }],
+        [{ text: "🔹 Старая версия", url: new URL("/register", links.old).toString() }],
+        [{ text: "🟢 Новая версия", url: new URL("/register", links.main).toString() }],
       ],
     },
     link: { text: "Чтобы привязать Telegram, войдите в MEDBIOHIM и откройте Настройки → Telegram.", path: "/settings" },
@@ -168,7 +157,6 @@ async function sendTelegramMessage(env, chatId, response) {
           { command: "site", description: "Выбрать версию сайта" },
           { command: "oldsite", description: "Старая версия сайта" },
           { command: "main", description: "Новый сайт" },
-          { command: "spaceweb", description: "Резервная SpaceWeb-версия" },
           { command: "schedule", description: "Моё расписание" },
           { command: "homework", description: "Задания и домашняя работа" },
           { command: "tests", description: "Тесты и билеты" },
