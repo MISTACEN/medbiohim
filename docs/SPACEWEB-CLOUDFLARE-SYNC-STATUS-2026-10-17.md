@@ -209,12 +209,12 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 - Added/applied the narrow `medbiohim_get_student_subject_plan` RPC. It is restricted to the supported plan slugs and returns the matching active subject's name, course, semester, control type, hours and credits together with the original weekly JSON.
 - Verified live function privilege flags: no `anon` execution, `authenticated` execution allowed, empty function `search_path`; confirmed existing `site_content` policies remain unchanged.
 - Updated `integrations/cloudflare-api` to call the RPC first, forward `course`/`semester`, normalize the chemistry slug alias, and keep the curriculum fallback. Updated `workers/api` to use the same scoped RPC contract. Updated the subject UI to recover missing metadata and display per-week micro-preparations/electronogram markers.
-- Added regression tests for RPC response shape, filters, preparation data and unchanged RLS intent. **Test results are pending**; these authored assertions are not evidence that the modified source already passed CI.
+- Added regression tests for RPC response shape, filters, preparation data and unchanged RLS intent. CI on `faa36cf1f5501064fac762a29a5e48c1684bd952` passed: API Worker suite 391 tests / 0 failures, Next.js production build passed, optional integrations checks passed. This does not establish live authenticated end-to-end success.
 - Deployment remains blocked/unverified according to the latest inventory: `CLOUDFLARE_API_TOKEN` was empty/missing in Actions; Vercel production deploy API returned HTTP 403. No production routing or DNS change was attempted.
 
 ### Acceptance gate
 
-1. Run `workers/api` typecheck/tests and `integrations/cloudflare-api` test suite against the exact latest `main` revision.
+1. [x] CI: `MEDBIOHIM code checks` and optional integrations checks passed on the latest source commit in this pass; API Worker suite reported 391 tests / 0 failures.
 2. Use a legitimate signed-in MBH student session to verify HTTP 200 and the complete histology/physiology/chemistry plan shape, including hours, credits, control, lecture, practice and preparations.
 3. Deploy through the authorized integration only after CI and authenticated smoke checks pass; verify the live Worker version and frontend deployment before describing the screenshot issue as fixed.
 4. Continue comparing PHP versus Cloudflare routes one domain at a time; do not replace the canonical Worker with the alternate archive wholesale.
