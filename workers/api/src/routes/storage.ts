@@ -22,7 +22,7 @@ function getBucket(env: Env): Bucket | null {
 function safeKey(value: string | null): string | null {
   if (!value || value.length > 500) return null;
   if (value.startsWith("/") || value.includes("\\") || value.split("/").some((part) => part === "." || part === "..")) return null;
-  if (!/^[a-zA-Z0-9/_ .-]+$/.test(value)) return null;
+  if (/[\u0000-\u001f\u007f]/u.test(value)) return null;
   return value;
 }
 
