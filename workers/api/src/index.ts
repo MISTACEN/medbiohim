@@ -3,7 +3,7 @@
  * SINGLE canonical production Worker (medbiohim-api).
  *
  * Do not maintain a parallel student API in integrations/cloudflare-api or artifacts.
- * Shadow (medbiohim-api-shadow) remains only as MEDBIOHIM_UPSTREAM fallback for true 501s.
+ * Shadow (medbiohim-api-shadow) remains only as MEDBIOHIM_UPSTREAM fallback for true 501s.\n * Telegram account-link confirmation is secret-checked and delegates atomic writes to a service-only RPC.
  */
 import { Hono } from "hono";
 import type { Env } from "./env";
