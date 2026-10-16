@@ -423,7 +423,7 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
     const resolvedCourse =
       courseNumber != null && Number.isFinite(courseNumber)
         ? courseNumber
-        : group.course_number ?? group.course ?? null;
+        : group.course_number ?? null;
     if (resolvedSemester != null) userPatch.semester = resolvedSemester;
     if (resolvedCourse != null) userPatch.course_number = resolvedCourse;
 
