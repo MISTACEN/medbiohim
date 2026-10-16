@@ -2790,3 +2790,15 @@ Next: run canonical Worker typecheck/tests plus the integration Worker tests, in
 - 🔴 **Live activation pending:** live `medbiohim-api` contains the scoped subject-plan RPC but lacks the newest test-question response handler, so the source fix is not yet present in the inspected deployed bundle. Vercel preview creation was rejected with 403; existing status points at the build-rate-limit gate.
 
 Next: get an authorized Vercel deployment path, verify typecheck and tests against current main, deploy canonical Worker and frontend, then smoke-test Histology plan (18 weeks / 144 h / 4 credits), billets, test mode, study-bank answers and preparation sessions with a legitimate MBH student session.
+
+
+## Supabase → site parity audit (2026-10-17)
+
+- 🟢 **Audit saved:** [docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md](docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md). This pass inspected live schema/counts and source only; it did not change Supabase data/RLS or production routing.
+- 🔴 **P0 materials API schema mismatch:** `materials.ts` selects `slug`, `summary`, `published_at`, which are absent from the live `materials` schema. 80 published inline-content records exist, none linked to file_id/external_url. Fix the query and confirm with signed-in smoke tests.
+- 🔴 **P0 histology media:** 206 published trainer cards, 206 missing `source_file_id`; `histology_assets` 0 rows; `files` 1 row; 261 content_sources and none linked to files. Media object presence/key mapping remains an unresolved blocker.
+- 🟡 **P1 lecture visibility:** 17 histology lecture records, 0 published.
+- 🟡 **P1 chemistry knowledgebase:** molecules/aliases/properties/reactions/steps/sources/spectra/questions all empty; only 8 functional groups and 7 topics stored. Current chemistry resolver uses an external route, not these local tables.
+- 🟡 **P1 curriculum UI:** 198 curriculum items (178 active), but `/curriculum` redirects to `/academic` rather than showing the curriculum tree/list.
+- 🟡 Homework/community/SRS/Telegram account tables are empty; validate creation/linking workflows before treating that as a missing implementation.
+- 🔒 No data, RLS, secrets, or deployment settings were modified.
