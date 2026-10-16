@@ -16,6 +16,11 @@ export type Env = {
   // Upstash Blob (private object storage)
   UPSTASH_BLOB_TOKEN?: string;
 
+  // Telegram bot administration (secrets must be configured in Cloudflare, never committed)
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  TELEGRAM_WEBHOOK_ORIGIN?: string;
+
   // AI providers configured from Worker secrets
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
