@@ -8,17 +8,32 @@ const lectures = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 lectures.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const subjectId = c.req.query("subject_id");
+  const subject = c.req.query("subject_id") || c.req.query("subject_slug");
   try {
-    let q = supabase.from("lectures").select("id,title,subject_id,slug,summary,published_at,order_index").order("order_index", { ascending: true }).limit(300);
-    if (subjectId) q = q.eq("subject_id", subjectId);
+    let q = supabase
+      .from("histology_lectures")
+      .select("id,subject_slug,specialty_scope,title,kind,prep_names,linked_prep_ids,body_markdown,description_algorithm_ref,is_published,created_at,updated_at")
+      .eq("is_published", true)
+      .order("created_at", { ascending: true })
+      .limit(300);
+    if (subject) {
+      if (/^[0-9a-f-]{36}$/i.test(subject)) {
+        const { data: subjectRow } = await supabase.from("subjects").select("slug").eq("id", subject).maybeSingle();
+        if (!subjectRow?.slug) return c.json(ok({ items: [] }, rid));
+        q = q.eq("subject_slug", subjectRow.slug);
+      } else {
+        q = q.eq("subject_slug", subject);
+      }
+    }
     const { data, error } = await q;
     if (error) {
+      console.error("[lectures:list]", error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Лекции недоступны", 503, rid);
       return c.json(body, status as 503);
     }
     return c.json(ok({ items: data || [] }, rid));
-  } catch {
+  } catch (error) {
+    console.error("[lectures:list]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Лекции недоступны", 503, rid);
     return c.json(body, status as 503);
   }
@@ -29,11 +44,14 @@ lectures.get("/:id", requireAuth, async (c) => {
   const supabase = c.get("supabase");
   const id = c.req.param("id") || "";
   try {
-    const isUuid = /^[0-9a-f-]{36}$/i.test(id);
-    let q = supabase.from("lectures").select("*").limit(1);
-    q = isUuid ? q.eq("id", id) : q.eq("slug", id);
-    const { data, error } = await q.maybeSingle();
+    const { data, error } = await supabase
+      .from("histology_lectures")
+      .select("id,subject_slug,specialty_scope,title,kind,prep_names,linked_prep_ids,body_markdown,description_algorithm_ref,is_published,created_at,updated_at")
+      .eq("id", id)
+      .eq("is_published", true)
+      .maybeSingle();
     if (error) {
+      console.error("[lectures:detail]", error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Лекция недоступна", 503, rid);
       return c.json(body, status as 503);
     }
@@ -42,7 +60,8 @@ lectures.get("/:id", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
     return c.json(ok(data, rid));
-  } catch {
+  } catch (error) {
+    console.error("[lectures:detail]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Лекция недоступна", 503, rid);
     return c.json(body, status as 503);
   }
