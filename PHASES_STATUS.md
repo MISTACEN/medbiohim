@@ -2634,3 +2634,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Fixed a real media importer bug: `content/histology/5_Фотографии препаратов/...` paths now retain the `5_Фотографии препаратов/` segment. The importer still refuses conflicting normalized paths instead of overwriting.
 - Full Next.js production build PASS with `CIRCLE_NODE_TOTAL=2`; full predeploy audit PASS with one environment warning (PHP CLI is absent from the sandbox; PHP syntax runs in GitHub CI). Optional-integrations CI passed after the importer fix.
 - Supabase Telegram RPC migration is live and permission checks passed. The latest canonical API and Telegram Workers still have not deployed because GitHub Actions lacks `CLOUDFLARE_API_TOKEN`; the active Cloudflare Worker must not be described as synchronized until deploy and live smoke checks succeed.
+
+
+
+### Additional checks
+- [x] Added GET `/settings/preferences` compatibility route required by the frontend.
+- [x] Current tests: Worker 15/15, frontend failover 9/9, migration Worker 390/390; Next.js build and predeploy audit pass with PHP CLI warning; Worker dry-run passes.
+- [ ] Live Cloudflare still serves 501 on GET `/api/v1/settings/preferences`; primary deployment is older than current `main` and GitHub Actions has no `CLOUDFLARE_API_TOKEN` value. This remains a deployment gate, not a code-test failure.
