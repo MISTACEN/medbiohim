@@ -23,6 +23,9 @@ function normalizeRpc(c: any, rid: string, data: any, fallback: string) {
     const { body, status: responseStatus } = fail(code, String(data.message || fallback).slice(0, 240), status, rid);
     return c.json(body, responseStatus as any);
   }
+  if (data && typeof data === "object" && data.ok === true && data.data && typeof data.data === "object" && !Array.isArray(data.data)) {
+    return c.json(ok(data.data, rid));
+  }
   if (data == null || typeof data !== "object" || Array.isArray(data)) {
     const { body, status } = fail("TRAINING_UNAVAILABLE", fallback, 503, rid);
     return c.json(body, status as 503);
