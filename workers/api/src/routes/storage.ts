@@ -99,6 +99,38 @@ storage.get("/signed-url", requireAuth, async (c) => {
   }
 });
 
+
+storage.get("/object", requireAuth, async (c) => {
+  const rid = requestId();
+  const bucket = getBucket(c.env);
+  const key = safeKey(c.req.query("key") ?? null);
+  if (!bucket) {
+    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    return c.json(body, status as 503);
+  }
+  if (!key || !canReadKey(key, c.get("user").id)) {
+    const { body, status } = fail("INVALID_KEY", "Недопустимый ключ файла", 400, rid);
+    return c.json(body, status as 400);
+  }
+  try {
+    const object = await bucket.get(key);
+    if (!object) {
+      const { body, status } = fail("NOT_FOUND", "Файл не найден", 404, rid);
+      return c.json(body, status as 404);
+    }
+    return new Response(object as BodyInit, {
+      headers: {
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  } catch (error) {
+    console.error("[storage:get]", error);
+    const { body, status } = fail("STORAGE_ERROR", "Не удалось прочитать файл", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
 storage.delete("/object", requireAuth, async (c) => {
   const rid = requestId();
   const bucket = getBucket(c.env);
