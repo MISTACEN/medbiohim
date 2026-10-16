@@ -3666,3 +3666,15 @@ This pass writes directly to `main`; no branch or GitHub Actions workflow change
 - [ ] Latest Vercel main deployment visible to the integration is `a1b1978...`; the subject UI merge/preparations update `5220d5...` has no matching deployment. Preview creation returned Vercel 403 (project deployment permission); existing deploy status also reports build-rate-limit. Get project/team deployment permission restored, then deploy and smoke-test.
 
 No GitHub Actions workflow files or branch policy were changed.
+
+
+## Supabase → site parity audit — 2026-10-17
+
+- [x] Read-only inventory of live Supabase tables/data and the current frontend/Worker source completed. Full report: [docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md](docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md).
+- [ ] **P0:** Fix `workers/api/src/routes/materials.ts`: its list query references `slug`, `summary`, and `published_at`, absent from live `public.materials`. 80 published inline-content rows exist, but the API list is expected to fail.
+- [ ] **P0:** Complete private histology media reconciliation: all 206 published trainer cards lack `source_file_id`; `histology_assets` is empty and `content_sources.file_id` is null on all 261 rows. Verify actual Blob/B2 objects and mapping.
+- [ ] **P1:** Review 17 histology lecture rows; 0 are published.
+- [ ] **P1:** Populate/explicitly defer chemistry structured knowledge: molecule, aliases, properties, reactions, steps, sources, spectra, and chemical questions all have 0 rows; only 8 functional groups and 7 topics exist.
+- [ ] **P1:** Build a real curriculum view: `/curriculum` redirects to `/academic` while 198 curriculum rows (178 active) exist.
+- [ ] Validate user-created homework/community/SRS/Telegram flows. Related user-content tables are empty today, which may be normal for a small group and is not itself proof of a missing feature.
+- [ ] Re-run authenticated end-to-end acceptance after the source fixes are deployed to the intended Vercel production + canonical Worker revision.
