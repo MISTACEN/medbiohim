@@ -2672,3 +2672,9 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Latest live unauthenticated probes now return `401 UNAUTHORIZED` for `GET /api/v1/files/{id}` and `GET /api/v1/admin/files/audit`; those protected routes are mounted. The earlier 501 observation was from an older probe/version and is superseded.
 - `POST /api/v1/telegram/account-link/confirm` still returns `503 BOT_NOT_CONFIGURED`, so account-link confirmation cannot work until `TELEGRAM_WEBHOOK_SECRET` is added to the canonical API Worker.
 - The published Worker bundle contains the Telegram RPC and storage-audit code signatures, but GitHub Actions redeployment remains blocked because `CLOUDFLARE_API_TOKEN` is empty. Authenticated read/write tests are still required to prove runtime behavior end-to-end.
+
+
+## SpaceWeb fallback/deploy status (2026-10-17)
+
+- `deploy-backend.yml` failed at FTP root discovery because the expected `backend/public/index.php` was not found under any verified candidate root. No FTP upload/deployment was performed; the remote path was not guessed.
+- Keep SpaceWeb fallback-only. Before changing that workflow, confirm the actual remote document root and compare its contents with the repo/archive. Cloudflare route coverage and media parity are tracked in `docs/SPACEWEB-CLOUDFLARE-SYNC-STATUS-2026-10-17.md`.
