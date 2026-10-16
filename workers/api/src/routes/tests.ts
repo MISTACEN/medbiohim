@@ -15,7 +15,7 @@ function safeAttempt(row: any) {
   for (const field of SAFE_ATTEMPT_FIELDS) if (row && Object.prototype.hasOwnProperty.call(row, field)) out[field] = row[field];
   return out;
 }
-function rpcResult(c: any, rid: string, data: any, error: any, fallback: string, attemptKey?: string) {
+function rpcResult(c: any, rid: string, data: any, error: any, fallback: string, attemptKey?: string, hideAnswerGrade = false) {
   if (error) {
     const status = error.code === "PGRST116" ? 404 : 503;
     const { body, status: st } = fail(status === 404 ? "NOT_FOUND" : "TEST_OPERATION_UNAVAILABLE", status === 404 ? "Запись не найдена" : fallback, status, rid);
@@ -34,23 +34,34 @@ function rpcResult(c: any, rid: string, data: any, error: any, fallback: string,
   if (data.ok === true && data.data && typeof data.data === "object") {
     const result = { ...data.data };
     if (attemptKey && result[attemptKey]) {
-      const attempt = { ...result[attemptKey] };
-      delete attempt.question_snapshot;
-      for (const key of ["correct_answer", "answer_key", "question_snapshot"]) delete attempt[key];
-      result[attemptKey] = safeAttempt(attempt);
+      const value = { ...result[attemptKey] };
+      if (attemptKey === "attempt") {
+        delete value.question_snapshot;
+        for (const key of ["correct_answer", "answer_key", "question_snapshot"]) delete value[key];
+        result[attemptKey] = safeAttempt(value);
+      } else {
+        if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback"]) delete value[key];
+        result[attemptKey] = value;
+      }
     }
+    if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback", "question_snapshot"]) delete result[key];
     return c.json(ok(result, rid));
   }
   // Older RPC deployments returned the data object directly. Filter any attempt object
   // before returning it; never fall back to direct table inserts or client-side grading.
   const result = { ...data };
   if (attemptKey && result[attemptKey]) {
-    const attempt = { ...result[attemptKey] };
-    delete attempt.question_snapshot;
-    for (const key of ["correct_answer", "answer_key", "question_snapshot"]) delete attempt[key];
-    result[attemptKey] = safeAttempt(attempt);
+    const value = { ...result[attemptKey] };
+    if (attemptKey === "attempt") {
+      delete value.question_snapshot;
+      for (const key of ["correct_answer", "answer_key", "question_snapshot"]) delete value[key];
+      result[attemptKey] = safeAttempt(value);
+    } else {
+      if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback"]) delete value[key];
+      result[attemptKey] = value;
+    }
   }
-  for (const key of ["correct_answer", "answer_key", "authoritative_answer", "question_snapshot"]) delete result[key];
+  if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback", "question_snapshot"]) delete result[key];
   return c.json(ok(result, rid));
 }
 
@@ -173,9 +184,7 @@ tests.post("/attempts/:id/answers", requireAuth, async (c) => {
       const { body, status } = fail("ANSWER_SAVE_ERROR", "Не удалось сохранить ответ", 503, rid);
       return c.json(body, status as 503);
     }
-    const response = rpcResult(c, rid, data, null, "Не удалось сохранить ответ", "answer");
-    // The RPC is authoritative for grading, but grading data is withheld until finish.
-    return response;
+    return rpcResult(c, rid, data, null, "Не удалось сохранить ответ", "answer", true);
   } catch {
     const { body, status } = fail("ANSWER_SAVE_ERROR", "Не удалось сохранить ответ", 503, rid);
     return c.json(body, status as 503);
