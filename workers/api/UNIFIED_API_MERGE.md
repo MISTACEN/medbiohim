@@ -37,8 +37,8 @@ The current Hono Worker mounts auth/profile, dashboard, subjects/groups, schedul
 
 ## Live deployment blockers observed during merge
 
-- Cloudflare's current `medbiohim-api` live script settings do **not** yet list `MEDBIOHIM_UPSTREAM`; the source-level service binding is therefore not active in production until the correct Worker bundle/config is deployed.
-- The live `medbiohim-api-shadow` script exists, so it is a candidate compatibility target, but its route contracts must still be smoke-tested through the public API.
+- Cloudflare's current `medbiohim-api` live settings now list the service binding `MEDBIOHIM_UPSTREAM → medbiohim-api-shadow`.
+- The binding configuration is present, but this alone does not prove that the latest GitHub source is the active Worker bundle or that every legacy route works. Route-contract smoke tests through the public API are still required.
 - Vercel reported a build-rate-limit failure while these commits were being made. Do not treat source commits as proof of a healthy production deployment.
 - No secrets were read or changed as part of this merge.
 
