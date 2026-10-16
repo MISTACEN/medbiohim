@@ -118,11 +118,7 @@ v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
 
 // Flat catalog/plan aliases used by frontend
-v1.get("/subjects-catalog", async (c) => {
-  const url = new URL(c.req.url);
-  url.pathname = "/api/v1/subjects-catalog";
-  return plans.fetch(new Request(url.toString(), c.req.raw), c.env);
-});
+v1.get("/subjects-catalog", (c) => plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env));
 v1.route("/", plans);
 
 v1.all("*", (c) => {
