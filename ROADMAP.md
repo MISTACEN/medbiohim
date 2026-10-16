@@ -3647,7 +3647,7 @@ The live schema and Worker contract were compared without modifying production. 
 - [x] Port the curated-plan response into both Worker source paths; pass course/semester filters; normalize the chemistry slug alias; retain the curriculum fallback for unprovisioned RPC responses.
 - [x] Update the subject page to fill missing workload metadata from the plan response and render per-week histology preparation lists/electronogram flags.
 - [x] Add regression tests for the scoped RPC contract and source-grounded plan shape.
-- [ ] Run tests/typecheck against the exact latest main snapshot and review any failures; do not infer a pass from adding test cases.
+- [x] GitHub CI on source commit `faa36cf1f5501064fac762a29a5e48c1684bd952`: `MEDBIOHIM code checks` passed, the API Worker suite reported 391 tests / 0 failures, Next.js production build passed, and optional integrations checks passed. This validates source/CI only, not a live authenticated request.
 - [ ] Resolve deployment permissions: current notes record an empty/missing `CLOUDFLARE_API_TOKEN` in Actions and Vercel production deployment HTTP 403. Confirm actual Worker and frontend deployment versions before claiming the page is fixed live.
 - [ ] Signed-in smoke: histology 18 weeks, 144 h/4 credits, lecture+practice+preparations; physiology 18 weeks; chemistry 18-week plan. Then smoke-test billets, tests and material links.
 
