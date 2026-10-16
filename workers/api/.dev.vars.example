@@ -7,6 +7,9 @@ SUPABASE_ANON_KEY=your_anon_or_publishable_key
 # Service role: only for admin paths that must bypass RLS. Prefer user JWT + RLS.
 SUPABASE_SERVICE_ROLE_KEY=
 
+# --- Upstash Blob (private files/media) ---
+UPSTASH_BLOB_TOKEN=your_upstash_blob_token
+
 # --- Upstash Redis (cache + rate limit) ---
 UPSTASH_REDIS_REST_URL=https://YOUR_REDIS.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_token
