@@ -24,9 +24,25 @@ export default function SubjectTestsPage({ params }: { params: Promise<{ id: str
       const p = await params;
       if (cancelled) return;
       setSubjectId(p.id);
-      const [subject, rows] = await Promise.all([getSubject(p.id), listTests(p.id, user?.groupId)]);
+      const subject = await getSubject(p.id);
       if (cancelled) return;
-      if (subject.ok) setSubjectName(subject.data.subject?.name || "Тесты");
+      const selected = subject.ok ? subject.data.subject : null;
+      if (selected?.name) setSubjectName(selected.name);
+      const name = String(selected?.name || "").toLowerCase().trim();
+      const slug = selected?.slug || ({
+        "гистология, цитология": "histology",
+        "гистология": "histology",
+        "физиология": "physiology",
+        "органическая и физическая химия": "chemistry_organic_physical",
+      } as Record<string, string>)[name] || "";
+      const rows = await listTests(
+        selected?.id || p.id,
+        user?.groupId,
+        slug,
+        Number(selected?.course_number ?? 2),
+        Number(selected?.semester ?? 3),
+      );
+      if (cancelled) return;
       if (rows.ok) setTests(rows.data.items || []);
       else setError(rows.error.message);
       setLoading(false);
