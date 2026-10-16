@@ -27,7 +27,7 @@ test("admin transport diagnostics are backed by a server-side canonical role che
   assert.ok(route.includes('rolesUrl.searchParams.set("select", "roles(code)")'));
   assert.match(route, /x-mbh-transport-diagnostics/);
   assert.match(route, /x-mbh-transport-source/);
-  assert.match(route, /INSECURE_BACKEND_ORIGIN/);
+  assert.ok(route.includes("const SAFE_SPACEWEB_ORIGIN"));
   assert.doesNotMatch(route, /user_metadata\s*\.\s*role/);
 });
 
