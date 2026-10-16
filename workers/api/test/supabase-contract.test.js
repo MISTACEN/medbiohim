@@ -1,9 +1,3 @@
-  assert.match(settingsSource, /settings\\.post\\("\/password", requireAuth, changePassword\\)/);
-  assert.match(settingsSource, /settings\\.post\\("\/identities\/link", requireAuth, startIdentityLink\\)/);
-  assert.match(settingsSource, /settings\\.post\\("\/identities\/unlink", requireAuth, unlinkIdentity\\)/);
-  assert.match(settingsSource, /identities\.some\(/);
-  assert.match(settingsSource, /identities\.length <= 1/);
-  assert.match(settingsSource, /JSON\\.stringify\\(\\{ password \\}\\)/);
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -17,8 +11,14 @@ test("settings API uses the canonical Supabase preferences table", () => {
   assert.match(settingsSource, /settings\.get\("\/account", requireAuth, readAccount\)/);
   assert.match(settingsSource, /settings\.put\("\/preferences", requireAuth, savePreferences\)/);
   assert.match(settingsSource, /settings\.patch\("\/profile", requireAuth, updateProfile\)/);
+  assert.match(settingsSource, /settings\.post\("\/password", requireAuth, changePassword\)/);
+  assert.match(settingsSource, /settings\.post\("\/identities\/link", requireAuth, startIdentityLink\)/);
+  assert.match(settingsSource, /settings\.post\("\/identities\/unlink", requireAuth, unlinkIdentity\)/);
   assert.match(settingsSource, /from\("users"\)\.update\(patch\)\.eq\("id", user\.id\)\.select\("id"\)\.maybeSingle\(\)/);
   assert.match(settingsSource, /authUrl = new URL\("\/auth\/v1\/user", c\.env\.SUPABASE_URL\)/);
+  assert.match(settingsSource, /identities\.some\(/);
+  assert.match(settingsSource, /identities\.length <= 1/);
+  assert.match(settingsSource, /JSON\.stringify\(\{ password \}\)/);
 });
 
 test("academic state does not embed topics through polymorphic target_id", () => {
@@ -32,4 +32,6 @@ test("academic state does not embed topics through polymorphic target_id", () =>
   );
   assert.match(academicSource, /from\("topics"\)\.select\("id,title"\)\.in\("id", topicIds\)/);
   assert.match(academicSource, /state\.target_type === "topic"/);
+  assert.match(academicSource, /if \(progressResult\.error\) throw progressResult\.error/);
+  assert.match(academicSource, /if \(profileResult\.error\) throw profileResult\.error/);
 });
