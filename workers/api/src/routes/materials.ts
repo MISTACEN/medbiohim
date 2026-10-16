@@ -14,7 +14,7 @@ function getBlobBucket(env: Env): Bucket | null {
 
 function safeObjectKey(value: unknown): string {
   const key = String(value || "").trim();
-  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\\\") || /[?#\\u0000-\\u001f]/.test(key)) return "";
+  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[?#\u0000-\u001f]/.test(key)) return "";
   const parts = key.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return "";
   return key;
