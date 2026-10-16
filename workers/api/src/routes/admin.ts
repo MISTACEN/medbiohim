@@ -29,10 +29,10 @@ async function hasRole(c: any, allowed: string[]) {
 async function gate(c: any, allowed = MANAGERS) {
   try {
     if (await hasRole(c, allowed)) return true;
-    error(c, requestId(), 403, "FORBIDDEN", "Недостаточно прав для административной операции");
+    c.res = error(c, requestId(), 403, "FORBIDDEN", "Недостаточно прав для административной операции");
     return false;
   } catch {
-    error(c, requestId(), 503, "ROLE_CHECK_UNAVAILABLE", "Не удалось проверить административные права");
+    c.res = error(c, requestId(), 503, "ROLE_CHECK_UNAVAILABLE", "Не удалось проверить административные права");
     return false;
   }
 }
