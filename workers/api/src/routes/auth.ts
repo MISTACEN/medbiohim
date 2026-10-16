@@ -77,7 +77,7 @@ auth.post("/login", async (c) => {
       const { body: b, status } = fail("INVALID_CREDENTIALS", "Неверный email или пароль", 401, rid);
       return c.json(b, status as 401);
     }
-    return c.json(ok({ session: normalizeSession(data.session) }, rid));
+    const session = normalizeSession(data.session);\n    // Keep tokens at the top level for the existing frontend client, while preserving the normalized session object.\n    return c.json(ok({ ...session, session }, rid));
   } catch {
     const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
     return c.json(b, status as 503);
@@ -94,7 +94,7 @@ auth.post("/register", async (c) => {
     return c.json(body, status as 429);
   }
 
-  const body = await readJson<{ email?: string; password?: string; name?: string }>(c);
+  const body = await readJson<{ email?: string; password?: string; name?: string; full_name?: string }>(c);
   if (!body?.email || !body?.password) {
     const { body: b, status } = fail("VALIDATION", "Укажите email и пароль", 400, rid);
     return c.json(b, status as 400);
@@ -110,7 +110,7 @@ auth.post("/register", async (c) => {
       email: String(body.email).trim().toLowerCase(),
       password: String(body.password),
       options: {
-        data: { name: body.name ? String(body.name).trim().slice(0, 120) : undefined },
+        data: { name: (body.name || body.full_name) ? String(body.name || body.full_name).trim().slice(0, 120) : undefined },
         emailRedirectTo: `${(c.env.APP_ORIGIN || "").replace(/\/$/, "")}/auth/callback`,
       },
     });
