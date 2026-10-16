@@ -133,7 +133,7 @@ tests.get("/attempts", requireAuth, async (c) => {
 });
 
 tests.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID теста");
   try {
     const { data, error } = await db.from("tests")
@@ -166,11 +166,11 @@ async function startAttempt(c: any, rid: string, testId: string) {
     return c.json(body, status as 503);
   }
 }
-tests.post("/:id/start", requireAuth, async (c) => startAttempt(c, requestId(), c.req.param("id")));
-tests.post("/:id/attempts", requireAuth, async (c) => startAttempt(c, requestId(), c.req.param("id")));
+tests.post("/:id/start", requireAuth, async (c) => startAttempt(c, requestId(), (c.req.param("id") ?? "")));
+tests.post("/:id/attempts", requireAuth, async (c) => startAttempt(c, requestId(), (c.req.param("id") ?? "")));
 
 tests.post("/attempts/:id/answers", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID попытки");
   let p: any;
   try { p = await c.req.json(); } catch { return invalid(c, rid, "Некорректный JSON"); }
@@ -195,7 +195,7 @@ tests.post("/attempts/:id/answers", requireAuth, async (c) => {
 });
 
 tests.post("/attempts/:id/finish", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID попытки");
   try {
     const { data, error } = await db.rpc("medbiohim_finish_test_attempt", { p_attempt_id: id });
@@ -207,7 +207,7 @@ tests.post("/attempts/:id/finish", requireAuth, async (c) => {
 });
 
 tests.post("/attempts/:attemptId/answers/:questionId/regrade", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), attemptId = c.req.param("attemptId"), questionId = c.req.param("questionId");
+  const rid = requestId(), db = c.get("supabase"), attemptId = (c.req.param("attemptId") ?? ""), questionId = (c.req.param("questionId") ?? "");
   if (!UUID.test(attemptId) || !UUID.test(questionId)) return invalid(c, rid, "Некорректный ID попытки или вопроса");
   try {
     const { data, error } = await db.rpc("medbiohim_regrade_test_answer", { p_attempt_id: attemptId, p_question_id: questionId });
