@@ -591,6 +591,7 @@ export async function getSubject(id:string){return apiCached<any>(`/subjects/${i
 export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return apiCached<any>(`/materials${q.toString()?`?${q}`:""}`)}
 export async function syncAcademicState(){return api<any>("/academic/sync",{method:"POST",body:"{}"})}
 export async function getAcademicState(){return api<AcademicState>("/academic/state")}
+export async function saveAcademicState(payload:Record<string,unknown>){return api<any>("/academic/state",{method:"PUT",body:JSON.stringify(payload)})}
 export async function generateAcademicAiPlan(){return api<{plan:any;items:any[];source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
 
 export type AdminDatabaseConnection = {
