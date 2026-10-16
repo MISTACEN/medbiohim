@@ -3493,3 +3493,12 @@ The live schema and Worker contract were compared without modifying production. 
 - Verified: canonical Worker typecheck + 14/14 tests; Telegram Worker 14/14 tests; migration Worker 390/390 tests; frontend failover 9/9 tests; Next.js production build passes with `CIRCLE_NODE_TOTAL=2`; local predeploy audit PASS with one warning (PHP CLI absent in sandbox). GitHub PHP syntax CI passed after fixes in `HomeworkRepository.php`, `AdminDatabaseManager.php`, and `AcademicContextResolver.php`; rerun after the latest Telegram changes is pending.
 - Required Cloudflare config before link flow can be live: set `TELEGRAM_WEBHOOK_SECRET` on `medbiohim-api` to the same value as the Telegram Worker secret; set `CLOUDFLARE_API_TOKEN` as a repository Actions secret; verify Upstash Redis URL/token and OpenAI configuration (active health still reports Redis/OpenAI unconfigured).
 - Media parity remains unproven: Blob has 358 `histology/` objects / 432,658,572 bytes; SpaceWeb archive has 416 files / 146,911,169 bytes. Do not infer an exact missing count; path/hash manifest reconciliation and verified delta upload are still required.
+
+
+## 2026-10-17 — latest verification delta
+
+- `workers/api`: TypeScript + 15/15 tests PASS in the sandbox, including Telegram RPC contract and migration fixture checks.
+- `integrations/cloudflare-api`: 390/390 tests PASS; Telegram Worker 14/14 PASS; legacy Telegram bot 15/15 PASS; frontend API failover 9/9 PASS; histology importer 6/6 PASS.
+- Fixed a real media importer bug: `content/histology/5_Фотографии препаратов/...` paths now retain the `5_Фотографии препаратов/` segment. The importer still refuses conflicting normalized paths instead of overwriting.
+- Full Next.js production build PASS with `CIRCLE_NODE_TOTAL=2`; full predeploy audit PASS with one environment warning (PHP CLI is absent from the sandbox; PHP syntax runs in GitHub CI). Optional-integrations CI passed after the importer fix.
+- Supabase Telegram RPC migration is live and permission checks passed. The latest canonical API and Telegram Workers still have not deployed because GitHub Actions lacks `CLOUDFLARE_API_TOKEN`; the active Cloudflare Worker must not be described as synchronized until deploy and live smoke checks succeed.
