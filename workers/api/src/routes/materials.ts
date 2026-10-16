@@ -115,7 +115,7 @@ materials.get("/", requireAuth, async (c) => {
 });
 
 materials.get("/:id/file-url", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = String(c.req.param("id") || "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID материала", 400, rid);
     return c.json(body, status as 400);
@@ -153,7 +153,7 @@ materials.get("/:id/file-url", requireAuth, async (c) => {
 });
 
 materials.get("/:id/file", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = String(c.req.param("id") || "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID материала", 400, rid);
     return c.json(body, status as 400);
@@ -189,7 +189,7 @@ materials.get("/:id/file", requireAuth, async (c) => {
         object = await bucket.get(candidate);
         if (object) { key = candidate; break; }
       } catch (e) {
-        if (!(e instanceof BlobError && (e as { status?: number }).status === 404)) throw e;
+        if (!(BlobError.is(e) && e.code === "not_found")) throw e;
       }
     }
     if (!object) {
@@ -212,7 +212,7 @@ materials.get("/:id/file", requireAuth, async (c) => {
 });
 
 materials.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = String(c.req.param("id") || "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID материала", 400, rid);
     return c.json(body, status as 400);
