@@ -63,6 +63,8 @@ def media_target(name: str) -> Path | None:
             rel = decoded[len(marker):]
             safe = safe_relative(rel)
             if safe and safe.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
+                if marker == "content/histology/5_Фотографии препаратов/":
+                    return Path("histology") / "5_Фотографии препаратов" / safe
                 return Path("histology") / safe
     for marker in EM_MARKERS:
         if decoded.startswith(marker):
