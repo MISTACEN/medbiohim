@@ -36,12 +36,14 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Test Cloudflare-first fallback policy
         run: npm run test:api-failover
-      - name: Verify Vercel API proxy supports Cloudflare-only migration mode
+      - name: Verify Vercel API proxy uses production Cloudflare and HTTPS-only fallback
         run: |
           set -euo pipefail
           test -f src/app/api/v1/'[...path]'/route.ts
           test ! -f api/index.php
-          grep -q 'MEDBIOHIM_API_MODE' src/app/api/v1/'[...path]'/route.ts
+          grep -q 'DEFAULT_CLOUDFLARE_API_ORIGIN' src/app/api/v1/'[...path]'/route.ts
+          grep -q 'u.protocol === "https:"' src/app/api/v1/'[...path]'/route.ts
+          ! grep -q 'medbiohim-api-shadow' src/app/api/v1/'[...path]'/route.ts
           grep -q 'CLOUDFLARE_API_ORIGIN' src/app/api/v1/'[...path]'/route.ts
           grep -q 'SPACEWEB_API_ORIGIN' src/app/api/v1/'[...path]'/route.ts
           grep -q 'NEXT_PUBLIC_API_URL' .env.example
