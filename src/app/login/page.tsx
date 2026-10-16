@@ -44,15 +44,20 @@ export default function LoginPage() {
         setError(mapLoginError(res.error.code, res.error.message));
         return;
       }
-      const session = res.data.session ?? res.data;
-      if (session.access_token) {
-        setTokens(session.access_token, session.refresh_token);
+      const payload = res.data as any;
+      const session = payload?.session ?? payload?.data?.session ?? payload?.data ?? payload;
+      const accessToken = session?.access_token ?? session?.accessToken ?? payload?.access_token ?? payload?.accessToken;
+      const refreshToken = session?.refresh_token ?? session?.refreshToken ?? payload?.refresh_token ?? payload?.refreshToken;
+      if (typeof accessToken === "string" && accessToken.length > 0) {
+        setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
         window.location.href = "/";
         return;
       }
-      setError(res.data.needs_email_confirm
-        ? "Аккаунт ещё не подтверждён. Откройте письмо Supabase и подтвердите email, затем войдите снова."
-        : "Сервер авторизации не вернул сессию. Проверьте подтверждение email в Supabase или повторите вход.");
+      if (payload?.needs_email_confirm || payload?.needs_email_confirmation) {
+        setError("Аккаунт ещё не подтверждён. Откройте письмо Supabase и подтвердите email, затем войдите снова.");
+      } else {
+        setError(`API вернул успешный ответ без access_token. Это не подтверждает проблему с email; вероятно, версия API не совпадает с контрактом сайта. Код запроса: ${res.requestId || "не указан"}.`);
+      }
     } catch {
       setError("Не удалось связаться с API.");
     } finally {
