@@ -115,6 +115,9 @@ test("subject content routes resolve duplicate slugs by semester and return test
   assert.ok(testsSource.includes('c.req.query("subject_slug")'));
   assert.ok(testsSource.includes('subjectId = String(subjects[0].id)'));
   assert.ok(testsSource.includes('questions_count: counts.get(String(item.id)) || 0'));
+  assert.ok(testsSource.includes('subject_slug: subjectSlug || null'));
+  assert.ok(testsSource.includes('course_number: course || null'));
+  assert.ok(testsSource.includes('semester: semester || null'));
 });
 
 test("admin file audit endpoints are strict-admin-only and non-destructive", () => {
