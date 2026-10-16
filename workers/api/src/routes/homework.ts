@@ -25,17 +25,31 @@ const STAFF_ROLES = new Set(["teacher", "moderator", "admin"]);
 homework.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
-  const supabase = c.get("supabase");
+  const db = c.get("supabase");
   try {
-    const { data, error } = await supabase.from("homeworks")
+    const { data: memberships, error: membershipError } = await db.from("group_memberships")
+      .select("group_id,groups(is_active)").eq("user_id", user.id).eq("is_active", true).limit(100);
+    if (membershipError) throw membershipError;
+    const groupIds = [...new Set((memberships || [])
+      .filter((m: any) => relation(m.groups)?.is_active !== false)
+      .map((m: any) => String(m.group_id)).filter((id: string) => UUID.test(id)))];
+    const queries: any[] = [];
+    if (groupIds.length) queries.push(db.from("homeworks")
       .select("*,subjects(name,slug,color_hex),schedule_entries(id,date,start_time,end_time,subject_name)")
-      .order("due_at", { ascending: true }).limit(500);
-    if (error) {
-      const { body, status } = fail("DB_UNAVAILABLE", "Задания недоступны", 503, rid);
-      return c.json(body, status as 503);
-    }
-    return c.json(ok({ items: data || [], user_id: user.id }, rid));
-  } catch {
+      .in("group_id", groupIds).order("due_at", { ascending: true }).limit(500));
+    queries.push(db.from("homeworks")
+      .select("*,subjects(name,slug,color_hex),schedule_entries(id,date,start_time,end_time,subject_name)")
+      .is("group_id", null).eq("created_by", user.id).order("due_at", { ascending: true }).limit(500));
+    const results = await Promise.all(queries);
+    const failed = results.find((result: any) => result.error);
+    if (failed) throw failed.error;
+    const unique = new Map<string, any>();
+    for (const result of results) for (const row of result.data || []) unique.set(String(row.id), row);
+    const items = [...unique.values()].sort((a: any, b: any) =>
+      String(a.due_at || a.due_date || "9999-12-31").localeCompare(String(b.due_at || b.due_date || "9999-12-31")));
+    return c.json(ok({ items, user_id: user.id }, rid));
+  } catch (error) {
+    console.error("[homeworks:list]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Задания недоступны", 503, rid);
     return c.json(body, status as 503);
   }
