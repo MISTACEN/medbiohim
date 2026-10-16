@@ -387,7 +387,7 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
   try {
     const { data: group, error: groupError } = await db
       .from("groups")
-      .select("id,name,code,course,course_number,semester,is_active")
+      .select("id,name,code,course_number,is_active")
       .eq("id", groupId)
       .maybeSingle();
     if (groupError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось проверить группу");
@@ -405,7 +405,7 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
     if (existing?.id) {
       const { error: mErr } = await db
         .from("group_memberships")
-        .update({ is_active: true, role_in_group: "student", updated_at: new Date().toISOString() })
+        .update({ is_active: true, role_in_group: "student" })
         .eq("id", existing.id);
       if (mErr) return error(c, rid, 503, "DB_ERROR", "Не удалось обновить членство в группе");
     } else {
@@ -419,7 +419,7 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
     }
 
     const userPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    const resolvedSemester = semester != null && Number.isFinite(semester) ? semester : group.semester ?? null;
+    const resolvedSemester = semester != null && Number.isFinite(semester) ? semester : null;
     const resolvedCourse =
       courseNumber != null && Number.isFinite(courseNumber)
         ? courseNumber
@@ -444,8 +444,9 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
             id: group.id,
             name: group.name,
             code: group.code,
-            course: group.course ?? group.course_number ?? null,
-            semester: group.semester ?? null,
+            course: group.course_number ?? null,
+            course_number: group.course_number ?? null,
+            semester: resolvedSemester,
           },
           semester: userRow?.semester ?? resolvedSemester,
           course_number: userRow?.course_number ?? resolvedCourse,
