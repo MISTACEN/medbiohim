@@ -44,12 +44,15 @@ export default function LoginPage() {
         setError(mapLoginError(res.error.code, res.error.message));
         return;
       }
-      if (res.data.access_token) {
-        setTokens(res.data.access_token, res.data.refresh_token);
+      const session = res.data.session ?? res.data;
+      if (session.access_token) {
+        setTokens(session.access_token, session.refresh_token);
         window.location.href = "/";
         return;
       }
-      setError("Сервер не вернул токен. Проверьте подтверждение email в Supabase.");
+      setError(res.data.needs_email_confirm
+        ? "Аккаунт ещё не подтверждён. Откройте письмо Supabase и подтвердите email, затем войдите снова."
+        : "Сервер авторизации не вернул сессию. Проверьте подтверждение email в Supabase или повторите вход.");
     } catch {
       setError("Не удалось связаться с API.");
     } finally {
