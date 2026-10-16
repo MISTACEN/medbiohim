@@ -201,3 +201,20 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 - Added a regression test for direct subject responses, workload fields and visible plan descriptions. Worker typecheck passes and all 21 tests pass.
 - Rebuilt from a clean `.next` directory after these UI changes: the full Next.js production build succeeds and generates all 44 static pages. Existing lint warnings remain.
 - Vercel's direct production-deployment API returned HTTP 403. The Vercel CLI fallback was checked but is logged out and has no credentials in the build environment. No credentials were requested in chat or added to source.
+
+
+## Continued pass — full subject-plan contract and RLS-safe access (2026-10-17)
+
+- Recovered why the Cloudflare subject page can lack the full SpaceWeb plan: `curriculum_items` contains lecture rows, while the original `site_content` plan JSON retains lecture + practice + weekly histology preparations. Direct student reads of `site_content` remain denied by design.
+- Added/applied the narrow `medbiohim_get_student_subject_plan` RPC. It is restricted to the supported plan slugs and returns the matching active subject's name, course, semester, control type, hours and credits together with the original weekly JSON.
+- Verified live function privilege flags: no `anon` execution, `authenticated` execution allowed, empty function `search_path`; confirmed existing `site_content` policies remain unchanged.
+- Updated `integrations/cloudflare-api` to call the RPC first, forward `course`/`semester`, normalize the chemistry slug alias, and keep the curriculum fallback. Updated `workers/api` to use the same scoped RPC contract. Updated the subject UI to recover missing metadata and display per-week micro-preparations/electronogram markers.
+- Added regression tests for RPC response shape, filters, preparation data and unchanged RLS intent. **Test results are pending**; these authored assertions are not evidence that the modified source already passed CI.
+- Deployment remains blocked/unverified according to the latest inventory: `CLOUDFLARE_API_TOKEN` was empty/missing in Actions; Vercel production deploy API returned HTTP 403. No production routing or DNS change was attempted.
+
+### Acceptance gate
+
+1. Run `workers/api` typecheck/tests and `integrations/cloudflare-api` test suite against the exact latest `main` revision.
+2. Use a legitimate signed-in MBH student session to verify HTTP 200 and the complete histology/physiology/chemistry plan shape, including hours, credits, control, lecture, practice and preparations.
+3. Deploy through the authorized integration only after CI and authenticated smoke checks pass; verify the live Worker version and frontend deployment before describing the screenshot issue as fixed.
+4. Continue comparing PHP versus Cloudflare routes one domain at a time; do not replace the canonical Worker with the alternate archive wholesale.
