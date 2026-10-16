@@ -140,7 +140,7 @@ homework.post("/:id/submit", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const db = c.get("supabase");
-  const id = ((c.req.param("id") ?? "") ?? "");
+  const id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID задания", 422, rid);
     return c.json(body, status as 422);
@@ -218,7 +218,7 @@ homework.get("/:id/submissions", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const db = c.get("supabase");
-  const id = ((c.req.param("id") ?? "") ?? "");
+  const id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID задания", 422, rid);
     return c.json(body, status as 422);
@@ -265,7 +265,7 @@ homework.post("/:id/progress", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const supabase = c.get("supabase");
-  const id = ((c.req.param("id") ?? "") ?? "");
+  const id = (c.req.param("id") ?? "");
   let payload: { progress?: number; status?: string; completed?: boolean } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
