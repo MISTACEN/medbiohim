@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const materialsSource = await readFile(new URL("../src/routes/materials.ts", import.meta.url), "utf8");
+const trainersSource = await readFile(new URL("../src/routes/trainers.ts", import.meta.url), "utf8");
 const curriculumSource = await readFile(new URL("../src/routes/curriculum.ts", import.meta.url), "utf8");
 const curriculumPageSource = await readFile(new URL("../../../src/app/curriculum/page.tsx", import.meta.url), "utf8");
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
@@ -27,6 +28,15 @@ const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import
 const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
 const studentSubjectPlanMigration = await readFile(new URL("../../../database/migrations/20261017180000_student_subject_plan_rpc.sql", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
+
+test("histology trainer images resolve basename-only cards through content_sources", () => {
+  assert.ok(trainersSource.includes('"photos/"'));
+  assert.ok(trainersSource.includes('from("content_sources")'));
+  assert.ok(trainersSource.includes('.eq("id", card.source_key)'));
+  assert.ok(trainersSource.includes('histologyObjectKey({ imagePath: source.source_path })'));
+  assert.ok(trainersSource.includes('from("files")'));
+  assert.ok(trainersSource.includes('card.is_published'));
+});
 
 test("materials API uses real Supabase columns and serves private files through the configured Blob bucket", () => {
   for (const column of ["module_id", "topic_id", "file_id", "external_url", "content_html", "order_index", "is_published", "source_key"]) {
