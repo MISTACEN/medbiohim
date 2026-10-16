@@ -2564,3 +2564,5 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Supabase advisors: one SECURITY DEFINER view finding, ten authenticated SECURITY DEFINER function warnings, and 44 unindexed-FK performance findings. These are queued for individual review; no security or index changes were made.
 - No schema/data mutation, secrets access, deployment, or traffic cutover in this audit.
 - Next: repair settings and academic state against live schema, then validate signed-in schedule/catalog/groups CRUD and API contract parity.
+
+- **Migration parity remains unverified:** live Supabase reports migration `20261016075941` (`grant_private_schema_usage_to_authenticated`), but code search did not locate the migration file and the conventional `supabase/migrations/` path returned 404. Locate the repo's actual migration directory and compare all versions before applying further DDL; do not replay grants blindly. Details in the audit report.
