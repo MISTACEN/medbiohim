@@ -3402,3 +3402,10 @@ The current Worker already validates homework attachment IDs, caller ownership/s
 - Login now distinguishes Supabase `email_not_confirmed` from invalid credentials and shows an actionable confirmation message; the actual user account state still must be checked in Supabase if login continues to fail.
 - Telegram `/start`, `/help`, `/site`, `/login`, and `/register` now offer exactly two destinations: the old site `medbiohim.vercel.app` and the new `main` deployment `medbiohim-git-main-mistacen1.vercel.app`. The SpaceWeb deployment is intentionally not exposed as a third button.
 - Added/updated regression assertions for the three Telegram links. Test execution and Cloudflare Worker deployment are not confirmed in this change; Vercel status checks may be blocked by the existing build-rate-limit.
+
+
+## Vercel build unblock — 2026-10-16
+
+- Confirmed production build failure from the supplied Vercel log: root Next.js TypeScript check traversed `workers/api/src/index.ts` and failed resolving `hono`, which is intentionally a dependency of the separate `workers/api/package.json`, not the frontend root package.
+- Updated root `tsconfig.json` on `main` to exclude `workers/api/**` and `integrations/cloudflare-api/**` from the frontend project typecheck. These Cloudflare API projects retain their own TypeScript/build configuration and must be checked independently in their respective directories.
+- Commit: `02b586a68654a4d5d6a573bf474f8101a633f652`. This addresses the exact reported TypeScript error at source level; a successful Vercel build and login are not yet verified until the new deployment finishes and is smoke-tested.
