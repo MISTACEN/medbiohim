@@ -163,6 +163,7 @@ async function sendTelegramMessage(env, chatId, response) {
         body: JSON.stringify({ commands: [
           { command: "start", description: "Начать и открыть меню" },
           { command: "login", description: "Войти или зарегистрироваться" },
+          { command: "register", description: "Создать аккаунт" },
           { command: "link", description: "Привязать Telegram к аккаунту" },
           { command: "site", description: "Выбрать версию сайта" },
           { command: "oldsite", description: "Старая версия сайта" },
