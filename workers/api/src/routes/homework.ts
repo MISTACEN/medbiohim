@@ -68,7 +68,7 @@ homework.post("/", requireAuth, async (c) => {
 
     if (scheduleEntryId) {
       const { data: entry, error: entryError } = await db.from("schedule_entries")
-        .select("id,subject_id,schedule_id,schedules!inner(id,group_id,is_active)")
+        .select("id,date,subject_id,schedule_id,schedules!inner(id,group_id,is_active)")
         .eq("id", scheduleEntryId).maybeSingle();
       if (entryError) throw entryError;
       const schedule = relation((entry as any)?.schedules);
@@ -82,15 +82,16 @@ homework.post("/", requireAuth, async (c) => {
       }
       groupId = String(schedule.group_id);
       subjectId = subjectId || (entry as any).subject_id || null;
+      if (!dueDate && (entry as any).date) dueDate = String((entry as any).date).slice(0, 10);
     } else if (groupId && !memberGroupIds.includes(groupId)) {
       const { body, status } = fail("FORBIDDEN", "Вы не состоите в выбранной учебной группе", 403, rid);
       return c.json(body, status as 403);
     }
 
     const insert: Record<string, unknown> = {
-      title, description, due_at: dueAt, due_date: dueDate,
+      title, description, due_at: dueAt || (dueDate ? dueDate + " 23:59:00" : null), due_date: dueDate,
       subject_id: subjectId, group_id: groupId, schedule_entry_id: scheduleEntryId,
-      created_by: user.id, created_by_role: "student",
+      created_by: user.id, created_by_role: "student", status: "open",
     };
     const { data, error } = await db.from("homeworks").insert(insert).select("*,subjects(name,slug,color_hex),schedule_entries(id,date,start_time,end_time,subject_name)").maybeSingle();
     if (error) {
@@ -109,33 +110,70 @@ homework.post("/", requireAuth, async (c) => {
 homework.post("/:id/submit", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
-  const supabase = c.get("supabase");
+  const db = c.get("supabase");
   const id = c.req.param("id");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID задания", 422, rid);
     return c.json(body, status as 422);
   }
-  let payload: Record<string, unknown> = {};
+  let payload: Record<string, unknown>;
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
   }
+  const textAnswer = payload.text_answer == null ? (payload.content ?? payload.body ?? null) : payload.text_answer;
+  if (textAnswer !== null && String(textAnswer).length > 50000) {
+    const { body, status } = fail("PAYLOAD_TOO_LARGE", "Ответ слишком длинный", 413, rid);
+    return c.json(body, status as 413);
+  }
+  const fileId = payload.file_id == null || payload.file_id === "" ? null : String(payload.file_id);
+  if (fileId && !UUID.test(fileId)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный file_id", 422, rid);
+    return c.json(body, status as 422);
+  }
   try {
-    const { data: homeworkRow, error: homeworkError } = await supabase.from("homeworks").select("id,group_id").eq("id", id).maybeSingle();
-    if (homeworkError) throw homeworkError;
-    if (!homeworkRow) {
+    const { data: task, error: taskError } = await db.from("homeworks")
+      .select("id,group_id,status").eq("id", id).maybeSingle();
+    if (taskError) throw taskError;
+    if (!task) {
       const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
       return c.json(body, status as 404);
     }
-    const { data, error } = await supabase.from("homework_submissions").insert({
-      homework_id: id, user_id: user.id, content: payload.content ?? payload.body ?? null, status: "submitted",
-    }).select("*").maybeSingle();
-    if (error) {
-      const { body, status } = fail("SUBMISSION_FAILED", "Не удалось отправить работу", 503, rid);
-      return c.json(body, status as 503);
+    if (task.group_id) {
+      const { data: membership, error: membershipError } = await db.from("group_memberships")
+        .select("group_id").eq("user_id", user.id).eq("group_id", task.group_id).eq("is_active", true).limit(1);
+      if (membershipError) throw membershipError;
+      if (!membership?.length) {
+        const { body, status } = fail("FORBIDDEN", "Задание недоступно в вашей учебной группе", 403, rid);
+        return c.json(body, status as 403);
+      }
     }
-    return c.json(ok(data, rid), 201);
-  } catch {
+    const { data: existing, error: existingError } = await db.from("homework_submissions")
+      .select("id,status").eq("homework_id", id).eq("user_id", user.id).order("created_at", { ascending: false }).limit(10);
+    if (existingError) throw existingError;
+    const locked = (existing || []).some((row: any) => ["submitted", "pending", "awaiting_review", "on_review"].includes(String(row.status || "").toLowerCase()));
+    if (locked) {
+      const { body, status } = fail("SUBMISSION_LOCKED", "Работа уже сдана и ожидает проверки", 409, rid);
+      return c.json(body, status as 409);
+    }
+    if (fileId) {
+      const { data: file, error: fileError } = await db.from("files").select("id,uploaded_by,owner_id").eq("id", fileId).maybeSingle();
+      if (fileError) throw fileError;
+      const owner = String(file?.uploaded_by || file?.owner_id || "");
+      if (!file || (owner && owner !== user.id)) {
+        const { body, status } = fail("FORBIDDEN", "Файл недоступен в контексте этого задания", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    const { data, error } = await db.from("homework_submissions").insert({
+      homework_id: id, user_id: user.id, text_answer: textAnswer == null ? null : String(textAnswer),
+      file_id: fileId, status: "submitted", submitted_at: new Date().toISOString(),
+    }).select("*").maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("submission not returned");
+    return c.json(ok({ submission: data }, rid), 201);
+  } catch (error) {
+    console.error("[homework:submit]", error);
     const { body, status } = fail("SUBMISSION_FAILED", "Не удалось отправить работу", 503, rid);
     return c.json(body, status as 503);
   }
