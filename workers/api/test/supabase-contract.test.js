@@ -16,6 +16,8 @@ const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url),
 const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
 const plansSource = await readFile(new URL("../src/routes/plans.ts", import.meta.url), "utf8");
 const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta.url), "utf8");
+const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
+const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
@@ -118,6 +120,16 @@ test("subject content routes resolve duplicate slugs by semester and return test
   assert.ok(testsSource.includes('subject_slug: subjectSlug || null'));
   assert.ok(testsSource.includes('course_number: course || null'));
   assert.ok(testsSource.includes('semester: semester || null'));
+});
+
+test("subject test pages keep catalog queries scoped to canonical subject, course, and semester", () => {
+  assert.ok(subjectPageSource.includes('String(t.subject_slug || "") === slug'));
+  assert.ok(subjectPageSource.includes('Number(t.course_number) === Number(subject?.course_number ?? 2)'));
+  assert.ok(subjectPageSource.includes('Number(t.semester) === Number(subject?.semester ?? 3)'));
+  assert.ok(subjectTestsPageSource.includes('const rows = await listTests('));
+  assert.ok(subjectTestsPageSource.includes('slug,'));
+  assert.ok(subjectTestsPageSource.includes('Number(selected?.course_number ?? 2)'));
+  assert.ok(subjectTestsPageSource.includes('Number(selected?.semester ?? 3)'));
 });
 
 test("admin file audit endpoints are strict-admin-only and non-destructive", () => {
