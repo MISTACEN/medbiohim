@@ -74,6 +74,11 @@ auth.post("/login", async (c) => {
       password: String(body.password),
     });
     if (error || !data.session) {
+      const authMessage = String(error?.message || "").toLowerCase();
+      if (error?.code === "email_not_confirmed" || authMessage.includes("email not confirmed")) {
+        const { body: b, status } = fail("EMAIL_NOT_CONFIRMED", "Подтвердите email по ссылке из письма Supabase", 401, rid);
+        return c.json(b, status as 401);
+      }
       const { body: b, status } = fail("INVALID_CREDENTIALS", "Неверный email или пароль", 401, rid);
       return c.json(b, status as 401);
     }
