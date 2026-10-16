@@ -2474,3 +2474,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Commit `8627b7c058434859824cb625dbba4aa296c79bc7` restores a **read-only** HTTPS SpaceWeb fallback for GET/HEAD/OPTIONS when Cloudflare is unavailable or returns a fallback-eligible server error. Mutating requests are deliberately not retried to avoid duplicate writes.
 - This is a containment fix, not proof that all routes are healthy. Verify Vercel has a valid HTTPS `SPACEWEB_API_ORIGIN` before expecting fallback to work. The available Vercel connector currently returns 403 for project runtime logs, so live production smoke testing is still pending.
 - Next: verify Vercel production deployment/build; then run authenticated smoke tests for login/me, dashboard, schedule, homework, trainer feed/images, tests/tickets and AI. Keep existing UI intact; no broad redesigns while restoring stability.
+
+
+## 2026-10-16 — Academic planner / attendance
+- Source committed on `main`: `planner.ts`, `academic.ts`, `attendance.ts`; `index.ts` mounts `/planner`, `/academic`, `/attendance`.
+- `homework.ts` now includes schedule/subject relations and student task creation with optional schedule-entry linkage.
+- Security checks in source: group membership for planner/attendance and for linked homework; attendance statuses allow present/excused/sick/unexcused.
+- Status: source implemented, **not runtime verified**. CI status for latest commit reports Vercel build-rate-limit failure. Worker typecheck, tests, RLS and authenticated smoke tests remain TODO.
