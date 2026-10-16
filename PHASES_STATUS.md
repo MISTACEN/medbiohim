@@ -2501,3 +2501,15 @@ This pass treats the existing frontend as the behavioral specification instead o
 - **Осталось проверить:** сборку (в том числе bundle JS compatibility module), typecheck и полный authenticated lifecycle через реальную Supabase-схему/RLS. Проверка не выполнена; production-ready не заявляется.
 
 - Добавлен `workers/api/test/contracts.test.js`: регрессионные проверки монтирования маршрутов, server-only RPC, старых preparation endpoints, owner-scoped `learning_sessions` и валидации тренировок. Файл добавлен, но тесты ещё не запускались: приватный GitHub checkout в runner недоступен без credentials; Vercel check остаётся `build-rate-limit`.
+
+
+## 2026-10-16 — Admin: questions, lectures, users, imports, Telegram
+
+- Подключён canonical `/api/v1/admin/*` через `workers/api/src/routes/admin.ts`; role codes читаются через `user_roles → roles(code)`, не из несуществующего `user_roles.role`.
+- Question management: `exam_questions` CRUD по legacy UI-контракту; `questions` bank edit с валидацией MCQ и best-effort snapshot в `content_versions`.
+- Lecture management: JSON source `site_content(key=lectures)`, PATCH/publish/reject/delete и OpenAI generation в черновик на ручную проверку.
+- User management: список, роли, active group; роль может назначать/снимать только admin. Добавлена защита от снятия собственной роли, если это последний admin.
+- Imports: поддержан frontend workbook payload `tests/questions/test_questions/dry_run` плюс ограниченный package import. Исторический histology scope закреплён как `subject_slug=histology`, `specialty_slug=mbh`.
+- Telegram: chats/bind/set-webhook; секреты не возвращаются в API response и не записываются в репозиторий.
+- Добавлен `workers/api/test/admin.test.js` для регрессионных контрактов. Тесты/typecheck не запускались: GitHub checkout в runner недоступен в этой сессии, статус CI для коммита `04a690aa` не содержит проверок. Реальный RLS/DB smoke не выполнялся.
+- Риск/следующий шаг: проверить точную схему Supabase (особенно `exam_questions`, `site_content`, `content_versions`, `modules/topics`, `telegram_bot_chats`), typecheck и import rollback. Не объявлять production-ready до этого.
