@@ -41,6 +41,7 @@ import calculators from "./routes/calculators";
 import ai from "./routes/ai";
 import chemistry from "./routes/chemistry";
 import plans from "./routes/plans";
+import storage from "./routes/storage";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -82,6 +83,7 @@ v1.route("/community", community);
 v1.route("/calculators", calculators);
 v1.route("/ai", ai);
 v1.route("/chemistry", chemistry);
+v1.route("/storage", storage);
 
 // Flat catalog/plan aliases used by frontend
 v1.get("/subjects-catalog", async (c) => {
