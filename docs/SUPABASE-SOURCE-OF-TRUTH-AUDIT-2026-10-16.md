@@ -64,3 +64,8 @@ The browser/API log recorded on 2026-10-16 showed Cloudflare responses (not fall
 - No local build/test suite or live signed-in HTTP smoke test was run in this audit pass.
 - No production deployment, schema change, RLS change, or storage upload was performed.
 - Vercel deployment readiness and live endpoint behavior remain separate release gates.
+
+
+## Migration parity caveat added after repository check
+
+The live Supabase migration registry reports `20261016075941` / `grant_private_schema_usage_to_authenticated`, but GitHub code search did not find that version/name and fetching the conventional path `supabase/migrations/20261016075941_grant_private_schema_usage_to_authenticated.sql` returned 404. This does **not** prove the file is absent from every possible migration directory, but it means migration parity is not yet verified. Before applying any next migration, locate the repository's actual migration directory and compare the full live migration list against tracked files; do not replay or recreate this grant based only on the live version label.
