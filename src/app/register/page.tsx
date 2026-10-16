@@ -45,8 +45,9 @@ export default function RegisterPage() {
         }
         return;
       }
-      if (res.data.access_token) {
-        setTokens(res.data.access_token, res.data.refresh_token || undefined);
+      const session = res.data.session ?? res.data;
+      if (session.access_token) {
+        setTokens(session.access_token, session.refresh_token || undefined);
         window.location.href = "/";
         return;
       }
