@@ -152,17 +152,43 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           ]);
           if (!cancelled && pr.ok) {
             const planData = pr.data.plan || pr.data;
+            const planSubject = pr.data.subject && typeof pr.data.subject === "object" ? pr.data.subject : {};
             const planWeeks = Array.isArray(planData.weeks) ? planData.weeks : (Array.isArray(planData.items) ? planData.items.map((item: any, index: number) => {
               const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
               const kind = String(item.item_type || "").toLowerCase();
               return {
                 ...item,
                 date: item.planned_date || metadata.date || null,
-                week: metadata.week ?? index + 1,
+                week: metadata.week ?? metadata.calendar_week ?? index + 1,
                 lecture: kind === "lecture" ? item.title : (metadata.lecture || item.title),
                 practice: ["practice", "lab", "seminar"].includes(kind) ? item.title : (metadata.practice || null),
+                preparations: Array.isArray(item.preparations) ? item.preparations : (Array.isArray(metadata.preparations) ? metadata.preparations : []),
               };
             }) : []);
+            // Some older API versions return the subject and plan as separate
+            // resources. Merge workload fields defensively so the page header
+            // never goes blank merely because one response omitted them.
+            const planSubjectFields: Record<string, unknown> = {
+              id: planSubject.id,
+              name: planSubject.name || (typeof planData.subject === "string" ? planData.subject : planData.title),
+              slug: planSubject.slug || planData.subject_slug || slug,
+              course_number: planSubject.course_number ?? planData.course_number ?? planData.course,
+              semester: planSubject.semester ?? planData.semester,
+              control_type: planSubject.control_type ?? planData.control ?? planData.control_type,
+              total_hours: planSubject.total_hours ?? planData.total_hours ?? planData.hours?.total,
+              credits: planSubject.credits ?? planData.credits,
+              lecture_hours: planSubject.lecture_hours ?? planData.hours?.lecture,
+              practice_hours: planSubject.practice_hours ?? planData.hours?.practice,
+              self_study_hours: planSubject.self_study_hours ?? planData.hours?.self_study,
+              description: planSubject.description ?? planData.description,
+            };
+            setSubject((current: any) => {
+              const merged = { ...(planSubject || {}), ...(current || {}) };
+              for (const [key, value] of Object.entries(planSubjectFields)) {
+                if ((merged[key] == null || merged[key] === "") && value != null && value !== "") merged[key] = value;
+              }
+              return merged;
+            });
             setPlan({ ...planData, weeks: planWeeks, control: planData.control || pr.data.plan_meta?.control });
           }
           if (!cancelled) {
@@ -374,9 +400,25 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                       </div>
                     )}
                     {w.practice && (
-                      <div className="text-sm">
+                      <div className="text-sm whitespace-pre-line">
                         <b className="text-emerald-700">Практика:</b> {w.practice}
                       </div>
+                    )}
+                    {Array.isArray(w.preparations) && w.preparations.length > 0 && (
+                      <div className="mt-2 text-xs leading-relaxed text-slate-600">
+                        <b className="text-slate-700">Микропрепараты:</b>
+                        <ol className="mt-1 list-decimal space-y-1 pl-5">
+                          {w.preparations.map((prep: any, j: number) => (
+                            <li key={prep?.id || (prep?.number != null ? String(prep.number) : "prep-" + j)}>
+                              {prep?.number != null ? String(prep.number) + ". " : ""}
+                              {typeof prep === "string" ? prep : (prep?.title || prep?.name || "Препарат")}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                    {w.electronograms === true && (
+                      <div className="mt-2 text-xs font-medium text-violet-700">К занятию есть электронограммы</div>
                     )}
                     {w.description && (
                       <div className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600">
