@@ -1,8 +1,8 @@
 /**
  * MEDBIOHIM API — Cloudflare Workers + Hono
- * Clean rewrite for frontend /api/v1 contract.
+ * Clean student-facing API for frontend /api/v1 contract.
  *
- * Secrets (Cloudflare Dashboard → Worker → Settings → Variables and Secrets):
+ * Secrets (Cloudflare Dashboard → Worker → Settings → Variables):
  *   SUPABASE_URL, SUPABASE_ANON_KEY
  *   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
  *   OPENAI_API_KEY (optional)
@@ -19,34 +19,82 @@ import auth from "./routes/auth";
 import me from "./routes/me";
 import dashboard from "./routes/dashboard";
 import subjects from "./routes/subjects";
+import groups from "./routes/groups";
+import schedule from "./routes/schedule";
+import curriculum from "./routes/curriculum";
+import homework from "./routes/homework";
+import lectures from "./routes/lectures";
+import materials from "./routes/materials";
+import tests from "./routes/tests";
+import my from "./routes/my";
+import questions from "./routes/questions";
+import search from "./routes/search";
+import trainings from "./routes/trainings";
+import trainers from "./routes/trainers";
+import progress from "./routes/progress";
+import srs from "./routes/srs";
+import sessions from "./routes/sessions";
+import settings from "./routes/settings";
+import presence from "./routes/presence";
+import community from "./routes/community";
+import calculators from "./routes/calculators";
+import ai from "./routes/ai";
+import chemistry from "./routes/chemistry";
+import plans from "./routes/plans";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", corsMiddleware);
 app.use("*", securityHeaders);
 app.use("*", async (c, next) => {
-  c.set("requestId" as never, requestId() as never);
+  const rid = requestId();
+  c.header("x-request-id", rid);
+  c.header("x-mbh-api-source", "cloudflare");
   await next();
-  c.res.headers.set("x-request-id", (c.get("requestId" as never) as string) || "");
-  c.res.headers.set("x-mbh-api-source", "cloudflare");
 });
 
-// Health (root + under /api/v1)
 app.route("/", health);
 
-// API v1
 const v1 = new Hono<{ Bindings: Env }>();
+
 v1.route("/auth", auth);
 v1.route("/me", me);
 v1.route("/dashboard", dashboard);
 v1.route("/subjects", subjects);
+v1.route("/groups", groups);
+v1.route("/schedule", schedule);
+v1.route("/curriculum", curriculum);
+v1.route("/homeworks", homework);
+v1.route("/lectures", lectures);
+v1.route("/materials", materials);
+v1.route("/tests", tests);
+v1.route("/my", my);
+v1.route("/questions", questions);
+v1.route("/search", search);
+v1.route("/trainings", trainings);
+v1.route("/trainers", trainers);
+v1.route("/progress", progress);
+v1.route("/srs", srs);
+v1.route("/sessions", sessions);
+v1.route("/settings", settings);
+v1.route("/presence", presence);
+v1.route("/community", community);
+v1.route("/calculators", calculators);
+v1.route("/ai", ai);
+v1.route("/chemistry", chemistry);
 
-// Placeholder for routes still to implement — explicit 501 so frontend can detect
+// Flat catalog/plan aliases used by frontend
+v1.get("/subjects-catalog", async (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = "/api/v1/subjects-catalog";
+  return plans.fetch(new Request(url.toString(), c.req.raw), c.env);
+});
+v1.route("/", plans);
+
 v1.all("*", (c) => {
-  const path = c.req.path;
   const { body, status } = fail(
     "ROUTE_NOT_IMPLEMENTED",
-    `Route not implemented yet: ${c.req.method} ${path}`,
+    `Route not implemented: ${c.req.method} ${c.req.path}`,
     501
   );
   return c.json(body, status as 501);
