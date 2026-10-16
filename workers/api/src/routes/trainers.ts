@@ -11,16 +11,55 @@ function getBlobBucket(env: Env): Bucket | null {
   return token ? new Bucket({ token, enableTelemetry: false, cache: "no-store" }) : null;
 }
 
-/** The DB stores paths relative to the migrated content/histology directory. */
-function histologyObjectKey(sourceKey: unknown): string | null {
-  if (typeof sourceKey !== "string") return null;
-  let key = sourceKey.trim().replace(/^\/content\/histology\//, "");
+type TrainerRow = {
+  id: string;
+  subject_slug?: string | null;
+  specialty_slug?: string | null;
+  mode_set?: string | null;
+  source_key?: string | null;
+  preparation?: Record<string, unknown> | null;
+  question?: Record<string, unknown> | null;
+  tags?: string[] | null;
+  difficulty?: number | null;
+  is_published?: boolean;
+};
+
+function histologyObjectKey(preparation: Record<string, unknown> | null | undefined): string | null {
+  if (!preparation) return null;
+  const imageUrl = typeof preparation.imageUrl === "string" ? preparation.imageUrl : "";
+  const imagePath = typeof preparation.imagePath === "string" ? preparation.imagePath : "";
+  let key = imageUrl || imagePath;
+  key = key.trim().replace(/^\/content\/histology\//, "");
   if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[\u0000-\u001f\u007f]/u.test(key)) return null;
   const parts = key.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
-  // Keep reads restricted to the known, shared histology media tree.
+  // Only paths from the migrated histology content tree may be served.
   if (!["electronograms/", "em/", "5_Фотографии препаратов/"].some((prefix) => key.startsWith(prefix))) return null;
   return key;
+}
+
+function mapTrainerCard(row: TrainerRow, orderIndex: number) {
+  const preparation = row.preparation || {};
+  const question = (row.question || {}) as { prompt?: unknown; mode?: unknown; options?: unknown };
+  const options = Array.isArray(question.options)
+    ? question.options.map((option: unknown, index: number) => {
+        const item = option as { id?: unknown; label?: unknown };
+        return { id: String(item.id ?? index), label: String(item.label ?? "") };
+      })
+    : [];
+  return {
+    id: row.id,
+    title: String(preparation.name || preparation.organ || question.prompt || "Карточка тренажёра"),
+    topic: Array.isArray(row.tags) ? String(row.tags[0] || row.subject_slug || "histology") : (row.subject_slug || "histology"),
+    kind: row.mode_set || String(question.mode || "identify"),
+    order_index: orderIndex,
+    has_image: Boolean(preparation.imageUrl || preparation.imagePath),
+    prompt: String(question.prompt || ""),
+    options,
+    preparation,
+    tags: row.tags || [],
+    difficulty: row.difficulty ?? null,
+  };
 }
 
 function imageContentType(key: string): string {
@@ -36,22 +75,26 @@ function imageContentType(key: string): string {
 trainers.get("/feed", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const limit = Math.min(Number(c.req.query("limit") || 30), 100);
+  const limit = Math.min(Math.max(Number(c.req.query("limit") || 30), 1), 100);
   const topic = c.req.query("topic");
   try {
-    let q = supabase
+    let query = supabase
       .from("trainer_feed_cards")
-      .select("id,title,topic,kind,order_index,has_image")
-      .order("order_index", { ascending: true })
+      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,created_at")
+      .eq("is_published", true)
+      .order("created_at", { ascending: true })
       .limit(limit);
-    if (topic) q = q.eq("topic", topic);
-    const { data, error } = await q;
+    if (topic) query = query.contains("tags", [topic]);
+    const { data, error } = await query;
     if (error) {
+      console.error("[trainers:feed]", error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: data || [] }, rid));
-  } catch {
+    const items = ((data || []) as TrainerRow[]).map((row, index) => mapTrainerCard(row, index));
+    return c.json(ok({ items }, rid));
+  } catch (error) {
+    console.error("[trainers:feed]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);
     return c.json(body, status as 503);
   }
@@ -60,20 +103,20 @@ trainers.get("/feed", requireAuth, async (c) => {
 trainers.get("/feed/:id", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const id = c.req.param("id");
   try {
-    // Never return answer keys before submission.
     const { data, error } = await supabase
       .from("trainer_feed_cards")
-      .select("id,title,topic,kind,prompt,options,has_image,order_index")
-      .eq("id", id)
+      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published")
+      .eq("id", c.req.param("id"))
+      .eq("is_published", true)
       .maybeSingle();
     if (error || !data) {
       const { body, status } = fail("NOT_FOUND", "Карточка не найдена", 404, rid);
       return c.json(body, status as 404);
     }
-    return c.json(ok(data, rid));
-  } catch {
+    return c.json(ok(mapTrainerCard(data as TrainerRow, 0), rid));
+  } catch (error) {
+    console.error("[trainers:feed-card]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Карточка недоступна", 503, rid);
     return c.json(body, status as 503);
   }
@@ -133,7 +176,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
   try {
     const { data: card, error } = await supabase
       .from("trainer_feed_cards")
-      .select("id,has_image,source_key")
+      .select("id,preparation,source_key,is_published")
       .eq("id", c.req.param("id"))
       .maybeSingle();
 
@@ -141,14 +184,14 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
       const { body, status } = fail("NOT_FOUND", "Карточка не найдена", 404, rid);
       return c.json(body, status as 404);
     }
-    if (!card.has_image) {
+    if (!card.is_published) {
       const { body, status } = fail("NOT_FOUND", "У карточки нет изображения", 404, rid);
       return c.json(body, status as 404);
     }
 
-    const key = histologyObjectKey(card.source_key);
+    const key = histologyObjectKey(card.preparation as Record<string, unknown> | null);
     if (!key) {
-      console.warn("[trainer-image] missing/invalid source_key", { cardId: card.id });
+      console.warn("[trainer-image] missing/invalid preparation image path", { cardId: card.id });
       const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Для изображения не задан корректный ключ хранилища", 503, rid);
       return c.json(body, status as 503);
     }
