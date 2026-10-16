@@ -1,0 +1,42 @@
+name: Deploy MEDBIOHIM Cloudflare migration Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/cloudflare-api/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: medbiohim-api-shadow
+  cancel-in-progress: false
+
+jobs:
+  deploy-shadow:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/cloudflare-api
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: integrations/cloudflare-api/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run migration Worker tests
+        run: npm test
+      - name: Build Worker without publishing
+        run: npx --yes wrangler@4.149.0 deploy --dry-run
+      - name: Deploy shadow Worker
+        run: npx --yes wrangler@4.149.0 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: a7556b4deb0cc2bad2c6d6b1a7381601
