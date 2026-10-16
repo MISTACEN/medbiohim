@@ -137,6 +137,8 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
   assert.ok(ticketsSource.includes('title.includes("экзаменационные препараты")'));
   assert.ok(apiClientSource.includes('apiCached("/tickets/banks")'));
   assert.ok(subjectPageSource.includes('disabled={Number(b.count ?? 0) <= 0}'));
+  assert.ok(subjectPageSource.includes('const firstAvailableBank = subjectBanks.find'));
+  assert.ok(subjectPageSource.includes('setTicketQuestions([])'));
   assert.ok(subjectPageSource.includes('(responseData?.id ? responseData : null)'));
   assert.ok(subjectPageSource.includes('const s: any = { ...(hit || {}), ...(subjectPayload || {}) };'));
   assert.ok(chemistryTicketMigration.includes("subject_slug='organic_chemistry'"));
