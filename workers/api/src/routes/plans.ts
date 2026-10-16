@@ -15,12 +15,18 @@ plans.get("/subjects-catalog", requireAuth, async (c) => {
       .eq("is_active", true)
       .limit(300);
     if (error) {
+      console.error("[plans:subjects-catalog]", error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Каталог недоступен", 503, rid);
       return c.json(body, status as 503);
     }
-    const items = (data || []).map((item) => ({ ...item, title: item.short_name || item.name, course: item.course_number }));
+    const items = (data || []).map((item) => ({
+      ...item,
+      title: item.short_name || item.name,
+      course: item.course_number,
+    }));
     return c.json(ok({ items }, rid));
-  } catch {
+  } catch (error) {
+    console.error("[plans:subjects-catalog]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Каталог недоступен", 503, rid);
     return c.json(body, status as 503);
   }
@@ -30,27 +36,75 @@ plans.get("/subject-plans", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   try {
-    const { data, error } = await supabase.from("subject_plans").select("slug,title,subject_slug").limit(200);
-    if (error) return c.json(ok({ items: [] }, rid));
-    return c.json(ok({ items: data || [] }, rid));
-  } catch {
-    return c.json(ok({ items: [] }, rid));
+    const { data, error } = await supabase
+      .from("curriculum_items")
+      .select("subject_id,course_number,semester,subjects(slug,name)")
+      .eq("is_active", true)
+      .limit(500);
+    if (error) {
+      console.error("[plans:list]", error.message);
+      const { body, status } = fail("DB_UNAVAILABLE", "Учебные планы недоступны", 503, rid);
+      return c.json(body, status as 503);
+    }
+    const unique = new Map<string, { slug: string; subject_slug: string; title: string; course: number | null; semester: number | null }>();
+    for (const row of data || []) {
+      const subject = row.subjects as unknown as { slug?: string | null; name?: string | null } | null;
+      if (!subject?.slug) continue;
+      if (!unique.has(subject.slug)) {
+        unique.set(subject.slug, {
+          slug: subject.slug,
+          subject_slug: subject.slug,
+          title: subject.name || subject.slug,
+          course: row.course_number ?? null,
+          semester: row.semester ?? null,
+        });
+      }
+    }
+    return c.json(ok({ items: [...unique.values()] }, rid));
+  } catch (error) {
+    console.error("[plans:list]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Учебные планы недоступны", 503, rid);
+    return c.json(body, status as 503);
   }
 });
 
 plans.get("/subject-plans/:slug", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const slug = c.req.param("slug");
+  const slug = c.req.param("slug") || "";
   try {
-    const { data, error } = await supabase.from("subject_plans").select("*").eq("slug", slug).maybeSingle();
-    if (error || !data) {
-      const { body, status } = fail("NOT_FOUND", "План не найден", 404, rid);
+    const { data: subject, error: subjectError } = await supabase
+      .from("subjects")
+      .select("id,slug,name,course_number,semester")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (subjectError || !subject) {
+      const { body, status } = fail("NOT_FOUND", "Учебный план не найден", 404, rid);
       return c.json(body, status as 404);
     }
-    return c.json(ok(data, rid));
-  } catch {
-    const { body, status } = fail("DB_UNAVAILABLE", "План недоступен", 503, rid);
+    const { data: items, error } = await supabase
+      .from("curriculum_items")
+      .select("id,title,description,item_type,planned_date,due_at,order_index,is_required,source,metadata,module_id,topic_id,course_number,semester")
+      .eq("subject_id", subject.id)
+      .eq("is_active", true)
+      .order("order_index", { ascending: true })
+      .limit(500);
+    if (error) {
+      console.error("[plans:detail]", error.message);
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось загрузить учебный план", 503, rid);
+      return c.json(body, status as 503);
+    }
+    return c.json(ok({
+      slug: subject.slug,
+      subject_slug: subject.slug,
+      title: subject.name,
+      course_number: subject.course_number,
+      semester: subject.semester,
+      items: items || [],
+    }, rid));
+  } catch (error) {
+    console.error("[plans:detail]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Учебный план недоступен", 503, rid);
     return c.json(body, status as 503);
   }
 });
@@ -60,22 +114,29 @@ plans.get("/subject-materials", requireAuth, async (c) => {
   const supabase = c.get("supabase");
   const subject = c.req.query("subject_id") || c.req.query("subject_slug");
   try {
-    let q = supabase.from("materials").select("id,title,type,subject_id,module_id,topic_id,file_id,external_url,content_html,source_key,order_index,is_published,created_at").eq("is_published", true).limit(200);
+    let query = supabase
+      .from("materials")
+      .select("id,title,type,subject_id,module_id,topic_id,file_id,external_url,content_html,source_key,order_index,is_published,created_at")
+      .eq("is_published", true)
+      .limit(200);
     if (subject) {
-      if (/^[0-9a-f-]{36}$/i.test(subject)) q = q.eq("subject_id", subject);
-      else {
+      if (/^[0-9a-f-]{36}$/i.test(subject)) {
+        query = query.eq("subject_id", subject);
+      } else {
         const { data: subjectRow } = await supabase.from("subjects").select("id").eq("slug", subject).maybeSingle();
-        if (subjectRow?.id) q = q.eq("subject_id", subjectRow.id);
-        else return c.json(ok({ items: [] }, rid));
+        if (!subjectRow?.id) return c.json(ok({ items: [] }, rid));
+        query = query.eq("subject_id", subjectRow.id);
       }
     }
-    const { data, error } = await q;
+    const { data, error } = await query.order("order_index", { ascending: true });
     if (error) {
+      console.error("[plans:materials]", error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Материалы недоступны", 503, rid);
       return c.json(body, status as 503);
     }
     return c.json(ok({ items: data || [] }, rid));
-  } catch {
+  } catch (error) {
+    console.error("[plans:materials]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Материалы недоступны", 503, rid);
     return c.json(body, status as 503);
   }
