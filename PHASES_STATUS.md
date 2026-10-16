@@ -2488,3 +2488,12 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Implemented: create, scoped listing, submit, view submissions, staff grade, return for revision, personal progress.
 - Authorization: user identity from auth middleware; roles resolved through `user_roles → roles(code)`; student submission and listing scoped to group membership/ownership.
 - Status: source committed; typecheck, live Supabase RLS/schema validation, and authenticated smoke tests are still pending. Not marked production-complete.
+
+
+## 2026-10-16 — Tests / preparation / answers / learning sessions
+- Реализовано в `workers/api/src/routes/tests.ts`: опубликованный каталог/метаданные тестов, история попыток текущего пользователя, старт, сохранение ответа через `medbiohim_save_test_answer`, завершение через `medbiohim_finish_test_attempt`, regrade через отдельную RPC. Прямой INSERT fallback для попытки удалён.
+- Ответ активной попытки очищается от ключей/оценки/feedback до завершения; поля попытки выдаются через allowlist.
+- Реализовано в `workers/api/src/routes/sessions.ts`: полный CRUD-контракт legacy `learning_sessions` (GET list, POST, GET by id, PATCH) с проверкой владельца в каждом запросе и валидацией полей.
+- Усилена валидация lifecycle тренажёров в `workers/api/src/routes/trainings.ts`; RPC остаётся обязательной границей доступа и проверки ответов.
+- **Не завершено:** старый режим подготовки `/tests/:id/preparation/start`, `/tests/preparation/:id`, PATCH-ответ и finish ещё требует отдельного порта. Не заявлять полную совместимость до этого.
+- **Проверка:** typecheck/тесты и живые RPC/RLS smoke не выполнены в этой сессии. Попытка клонировать приватный репозиторий в runner остановилась на отсутствии GitHub credentials; изменений окружения/деплоя не было.
