@@ -3613,3 +3613,12 @@ The live schema and Worker contract were compared without modifying production. 
 - Live Supabase verification after migration: histology has 18 restored plan rows, 206 trainer/atlas cards, 80 materials and 9 published tests; physiology has 18 restored plan rows, 2 published tests and 15 published question-bank items; organic/physical chemistry has 37 active curriculum rows and 22 published tests. Histology and chemistry test banks contain the source-backed sets already imported from the archive.
 - Worker API typecheck and all 20 Node tests pass; frontend `tsc --noEmit` passes. A full Next.js build has not been re-run in this pass.
 - Deployment remains the blocker: GitHub Actions deploy logs show `CLOUDFLARE_API_TOKEN` is empty, so Cloudflare Worker deploys cannot run from CI. Latest visible Vercel production deployment is still on commit `4e49160551c7b3b9616c7ca7329d946e1a1e145e`; the latest frontend plan-description change is not confirmed live. The source/data restoration is complete in GitHub + Supabase, but must not be called fully live until Vercel and Cloudflare deployments are verified.
+
+
+## Validation update — 2026-10-17
+
+- Re-ran a clean frontend production build after removing the previous `.next` output: **Next.js build completed successfully**, generated all 44 static pages and route manifests. Existing ESLint warnings remain; no build error remained on the clean run.
+- Worker validation: TypeScript check passes and all 20 Node tests pass. Frontend `npx tsc --noEmit` passes.
+- Vercel deployment remains blocked by permissions, not source compilation: creating a production deployment returned HTTP 403 (`You don't have permission to create a Production Deployment for this project`). The latest production deployment still points to `4e49160551c7b3b9616c7ca7329d946e1a1e145e`; commits after it, including the study-description renderer, are not verified live.
+- Cloudflare CI deployment remains blocked because `CLOUDFLARE_API_TOKEN` is empty in GitHub Actions. The authenticated Cloudflare connector can inspect the account, but deploying over the live Worker without preserving its secret bindings would risk breaking production; no direct replacement upload was attempted.
+- The `.vercel-redeploy-trigger` marker was updated on `main` to request a Git-integrated build. No newer production deployment was visible at the last check.
