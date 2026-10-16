@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Bucket } from "@upstash/blob";
+import { BlobError, Bucket } from "@upstash/blob";
 import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
@@ -67,9 +67,9 @@ storage.post("/upload", requireAuth, async (c) => {
   const cleanName = file.name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-100) || "upload.bin";
   const key = `users/${user.id}/${crypto.randomUUID()}-${cleanName}`;
   try {
-    await bucket.put(key, file);
-    const url = await bucket.signedReadUrl(key);
-    return c.json(ok({ key, url, name: file.name, size: file.size, content_type: file.type }, rid), 201);
+    await bucket.put(key, file, { contentType: file.type, cache: "no-store" });
+    const signed = await bucket.signedReadUrl(key);
+    return c.json(ok({ key, url: signed.url, expires_at: signed.expiresAt, name: file.name, size: file.size, content_type: file.type }, rid), 201);
   } catch (error) {
     console.error("[storage:upload]", error);
     const { body, status } = fail("STORAGE_ERROR", "Не удалось загрузить файл", 502, rid);
@@ -90,8 +90,8 @@ storage.get("/signed-url", requireAuth, async (c) => {
     return c.json(body, status as 400);
   }
   try {
-    const url = await bucket.signedReadUrl(key);
-    return c.json(ok({ key, url }, rid));
+    const signed = await bucket.signedReadUrl(key);
+    return c.json(ok({ key, url: signed.url, expires_at: signed.expiresAt }, rid));
   } catch (error) {
     console.error("[storage:signed-url]", error);
     const { body, status } = fail("STORAGE_ERROR", "Не удалось получить ссылку на файл", 502, rid);
@@ -114,17 +114,18 @@ storage.get("/object", requireAuth, async (c) => {
   }
   try {
     const object = await bucket.get(key);
-    if (!object) {
-      const { body, status } = fail("NOT_FOUND", "Файл не найден", 404, rid);
-      return c.json(body, status as 404);
-    }
-    return new Response(object as BodyInit, {
+    return new Response(object.body, {
       headers: {
+        "content-type": object.contentType || "application/octet-stream",
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
       },
     });
   } catch (error) {
+    if (BlobError.is(error) && error.code === "not_found") {
+      const { body, status } = fail("NOT_FOUND", "Файл не найден", 404, rid);
+      return c.json(body, status as 404);
+    }
     console.error("[storage:get]", error);
     const { body, status } = fail("STORAGE_ERROR", "Не удалось прочитать файл", 502, rid);
     return c.json(body, status as 502);
