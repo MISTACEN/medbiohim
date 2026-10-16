@@ -10,6 +10,8 @@ const BUILD_FINGERPRINT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.MEDBI
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Keep build worker fan-out bounded on free/low-memory CI runners.
+  experimental: { cpus: 1 },
   env: {
     NEXT_PUBLIC_API_URL: "/api/v1",
   },
