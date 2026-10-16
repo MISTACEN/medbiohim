@@ -3509,3 +3509,10 @@ The live schema and Worker contract were compared without modifying production. 
 - Added `GET /api/v1/settings/preferences` alias because the frontend calls that exact path; the canonical Worker previously implemented only GET `/settings/` and PUT `/settings/preferences`.
 - Worker contract suite is now 15/15 passing; frontend failover 9/9; migration Worker 390/390; Next.js production build and predeploy audit pass with the known PHP-CLI warning; Wrangler deploy dry-run passes (1,450.52 KiB / 275.75 KiB gzip).
 - Live probe still returns 501 for GET `/api/v1/settings/preferences`; Cloudflare primary Worker deployment timestamp remains `2026-10-16T16:08:07Z`, older than the latest source commits. GitHub Actions deploy job has an empty `CLOUDFLARE_API_TOKEN`. Source is corrected, but production is not yet synchronized.
+
+
+### Histology Blob path/hash reconciliation (2026-10-17)
+- Compared all 416 files in `spaceweb_upload/content/histology/` from the supplied SpaceWeb archive against the private Upstash Blob listing using path + MD5/ETag.
+- All canonical (non-`#U...` encoded-alias) paths match exact content hashes. All 234 unique source content hashes are present in Blob; no unique source image/document bytes are missing.
+- The 144 absent path keys are a duplicated legacy directory whose names are encoded as literal `#U...`; every one of their hashes exists at a canonical Blob key. Supabase `trainer_feed_cards`, `materials`, `content_sources`, and `files` have zero `#U` path references. One encoded alias path has a hash conflict, but the source bytes exist under canonical paths. No upload/overwrite/delete was performed because no canonical content was missing.
+- Blob also contains 58 `histology/source-materials/` objects not present in this archive; preserve these extras. Exact content coverage is verified, while the object-key tree intentionally differs for the obsolete encoded aliases.
