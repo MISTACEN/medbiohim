@@ -2513,3 +2513,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Telegram: chats/bind/set-webhook; секреты не возвращаются в API response и не записываются в репозиторий.
 - Добавлен `workers/api/test/admin.test.js` для регрессионных контрактов. Тесты/typecheck не запускались: GitHub checkout в runner недоступен в этой сессии, статус CI для коммита `04a690aa` не содержит проверок. Реальный RLS/DB smoke не выполнялся.
 - Риск/следующий шаг: проверить точную схему Supabase (особенно `exam_questions`, `site_content`, `content_versions`, `modules/topics`, `telegram_bot_chats`), typecheck и import rollback. Не объявлять production-ready до этого.
+
+## Auth token response + Telegram site chooser — 2026-10-16
+- Fixed the frontend/backend auth contract: login and registration now accept the token session nested under `data.session` as well as legacy top-level tokens; Cloudflare auth login returns top-level token fields plus the nested session for compatibility.
+- Registration API now accepts the frontend's `full_name` field as well as `name`, so the submitted display name is not silently discarded.
+- Login error text distinguishes an email-confirmation state when the API explicitly returns `needs_email_confirm`; an email confirmation setting itself still must be verified in Supabase if the account is unconfirmed.
+- Telegram `/start`, `/help`, `/site`, `/login`, and `/register` now offer three destinations: legacy production alias `medbiohim.vercel.app`, current `main` alias `medbiohim-git-main-mistacen1.vercel.app`, and the user-provided SpaceWeb fallback deployment `medbiohim-git-spaceweb-backend-mistacen1.vercel.app`. Native commands `/oldsite`, `/main`, and `/spaceweb` were added.
+- Added/updated regression assertions for the three Telegram links. Test execution and Cloudflare Worker deployment are not confirmed in this change; Vercel status checks may be blocked by the existing build-rate-limit.
