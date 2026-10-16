@@ -80,7 +80,7 @@ test("shows onboarding buttons and registers Telegram command menu", async (t) =
 });
 
 
-test("offers all three site versions from /site", async (t) => {
+test("offers only old and new site versions from /site", async (t) => {
   const oldFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     const payload = JSON.parse(init.body);
