@@ -12,7 +12,7 @@ attendance.post("/:entryId", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");
   const user = c.get("user");
-  const entryId = (c.req.param("entryId") ?? "");
+  const entryId = ((c.req.param("entryId") ?? "") ?? "");
   if (!UUID.test(entryId)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID занятия", 422, rid);
     return c.json(body, status as 422);
