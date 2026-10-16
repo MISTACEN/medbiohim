@@ -7,7 +7,7 @@ const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MANAGERS = ["admin", "moderator", "teacher"];
 const STRICT_ADMINS = ["admin"];
-const LECTURE_FIELDS = ["title","subject","subject_id","subject_slug","topic","lesson_type","body_md","body_html","summary","media","sources","attachments","related_learning","status","curriculum","generation"];
+const LECTURE_FIELDS = ["title","subject","subject_id","subject_slug","topic","lesson_type","body_md","body_html","summary","media","sources","attachments","related_learning","curriculum","generation"];
 const QUESTION_FIELDS = ["subject","subject_name","subject_slug","topic","type","text","answer","is_published","kind","for_exam","for_ticket"];
 const IMPORT_TABLES = new Set(["questions","tests","test_questions","materials","content_sources","trainer_feed_cards"]);
 
@@ -106,6 +106,34 @@ admin.delete("/questions/:id", requireAuth, async (c) => {
     if (!data) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
     return c.json(ok({ deleted: true }, rid));
   } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось удалить вопрос"); }
+});
+
+admin.put("/question-bank/:id", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id"), input = await bodyJson(c);
+  if (!await gate(c)) return;
+  if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID вопроса");
+  const type = String(input?.type || "");
+  const text = String(input?.text || "").trim();
+  const answer = input?.answer == null ? "" : String(input.answer);
+  let options = input?.options;
+  if (!validText(text, 30000)) return error(c, rid, 422, "VALIDATION_ERROR", "Текст вопроса обязателен");
+  if (!["mcq","multiple","open","short","number","ordering"].includes(type)) return error(c, rid, 422, "VALIDATION_ERROR", "Недопустимый тип вопроса");
+  if (type === "mcq" || type === "multiple") {
+    if (!Array.isArray(options) || options.length < 2 || options.length > 30) return error(c, rid, 422, "VALIDATION_ERROR", "Нужно от 2 до 30 вариантов ответа");
+    options = options.map((option: any) => typeof option === "string" ? { label: option.trim(), correct: false } : { label: String(option?.label || "").trim(), correct: option?.correct === true });
+    if (options.some((option: any) => !option.label) || !options.some((option: any) => option.correct)) return error(c, rid, 422, "VALIDATION_ERROR", "Укажите текст вариантов и хотя бы один правильный ответ");
+    if (type === "mcq" && options.filter((option: any) => option.correct).length !== 1) return error(c, rid, 422, "VALIDATION_ERROR", "Для одиночного выбора должен быть один правильный вариант");
+  } else if (options != null && !Array.isArray(options)) return error(c, rid, 422, "VALIDATION_ERROR", "options должен быть массивом");
+  try {
+    const { data: current, error: readError } = await db.from("questions").select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").eq("id", id).maybeSingle();
+    if (readError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить вопрос");
+    if (!current) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
+    const { error: versionError } = await db.from("content_versions").insert({ table_name: "questions", row_key: { id }, version_no: 1, data: current, source: "admin_ui", actor_user_id: c.get("user").id });
+    if (versionError) console.warn("[admin:question-version]", versionError.message);
+    const { data, error: writeError } = await db.from("questions").update({ type, text, answer, options: options || [], updated_at: new Date().toISOString() }).eq("id", id).select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
+    if (writeError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
+    return c.json(ok({ question: data }, rid));
+  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось выполнить операцию с вопросом"); }
 });
 
 // Lectures are stored in site_content.payload.items; keep the legacy JSON document contract.
@@ -265,13 +293,21 @@ admin.post("/users/roles", requireAuth, async (c) => {
     const { data: role, error: roleError } = await db.from("roles").select("id,code").eq("code", roleCode).maybeSingle();
     if (roleError || !role) return error(c, rid, 503, "ROLE_UNAVAILABLE", "Роль не найдена");
     if (action === "revoke" && roleCode === "admin" && userId === user.id) {
-      const { data: admins, error: adminError } = await db.from("user_roles").select("user_id,roles!inner(code)").eq("roles.code", "admin").limit(2);
+      const { data: allRoleRows, error: adminError } = await db.from("user_roles").select("user_id,roles(code)").limit(2000);
       if (adminError) return error(c, rid, 503, "ROLE_CHECK_UNAVAILABLE", "Не удалось проверить количество администраторов");
-      if ((admins || []).length <= 1) return error(c, rid, 409, "LAST_ADMIN", "Нельзя снять роль последнего администратора");
+      const adminIds = new Set((allRoleRows || []).filter((row: any) => {
+        const roleValue = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+        return roleValue?.code === "admin";
+      }).map((row: any) => row.user_id));
+      if (adminIds.size <= 1) return error(c, rid, 409, "LAST_ADMIN", "Нельзя снять роль последнего администратора");
     }
     if (action === "assign") {
-      const { error: writeError } = await db.from("user_roles").upsert({ user_id: userId, role_id: role.id }, { onConflict: "user_id,role_id", ignoreDuplicates: true });
-      if (writeError) return error(c, rid, 503, "ROLE_WRITE_FAILED", "Не удалось назначить роль");
+      const { data: existing, error: existingError } = await db.from("user_roles").select("user_id").eq("user_id", userId).eq("role_id", role.id).maybeSingle();
+      if (existingError) return error(c, rid, 503, "ROLE_WRITE_FAILED", "Не удалось проверить назначенную роль");
+      if (!existing) {
+        const { error: writeError } = await db.from("user_roles").insert({ user_id: userId, role_id: role.id });
+        if (writeError) return error(c, rid, 503, "ROLE_WRITE_FAILED", "Не удалось назначить роль");
+      }
     } else {
       const { error: writeError } = await db.from("user_roles").delete().eq("user_id", userId).eq("role_id", role.id);
       if (writeError) return error(c, rid, 503, "ROLE_WRITE_FAILED", "Не удалось снять роль");
