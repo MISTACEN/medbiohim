@@ -19,7 +19,8 @@ final class HomeworkRepository
     public function listForUser(string $userId, ?string $groupId = null): array
     {
         $stmt = $this->db->prepare(
-            'SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE \'Asia/Vladivostok\')::date) AS due_date, h.subject_id, h.group_id, h.schedule_entry_id, h.created_by, h.created_by_role,
+            <<<'SQL'
+            SELECT h.id, h.title, h.description, h.due_at, COALESCE(h.due_date,(h.due_at AT TIME ZONE 'Asia/Vladivostok')::date) AS due_date, h.subject_id, h.group_id, h.schedule_entry_id, h.created_by, h.created_by_role,
                     s.name AS subject_name, s.slug AS subject_slug, s.color_hex,
                     sub.id AS submission_id, sub.status AS submission_status,
                     sub.grade, sub.submitted_at,
@@ -47,15 +48,16 @@ final class HomeworkRepository
                 OR (:gid2 IS NOT NULL AND (h.group_id IS NULL OR h.group_id = :gid2))
              )
                AND (
-                    (COALESCE(s.slug, \'\') <> \'histology\' AND COALESCE(s.specialty_slug, \'\') <> \'mbh\')
+                    (COALESCE(s.slug, '') <> 'histology' AND COALESCE(s.specialty_slug, '') <> 'mbh')
                     OR EXISTS (
                         SELECT 1 FROM public.groups g_mbh
                         WHERE g_mbh.id = :gid_mbh
                           AND g_mbh.is_active = true
-                          AND g_mbh.specialty_slug = \'mbh\'
+                          AND g_mbh.specialty_slug = 'mbh'
                     )
                )
-             ORDER BY h.due_at NULLS LAST, h.created_at DESC'
+             ORDER BY h.due_at NULLS LAST, h.created_at DESC
+SQL
         );
         $stmt->execute(['uid_submission' => $userId, 'uid_progress' => $userId, 'uid2' => $userId, 'gid' => $groupId, 'gid2' => $groupId, 'gid_mbh' => $groupId]);
         $items = $stmt->fetchAll() ?: [];
