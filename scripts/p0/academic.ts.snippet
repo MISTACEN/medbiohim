@@ -1,0 +1,86 @@
+// Assign group / course / semester to a user (admin CMS).
+admin.put("/users/:id/academic", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase");
+  if (!await gate(c, STRICT_ADMINS)) return;
+  const userId = c.req.param("id") ?? "";
+  if (!UUID.test(userId)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID пользователя");
+  const input = await bodyJson(c);
+  if (!input) return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
+  const groupId = String(input.group_id || "").trim();
+  if (!UUID.test(groupId)) return error(c, rid, 422, "VALIDATION_ERROR", "group_id обязателен (UUID)");
+  const semester = input.semester != null ? Number(input.semester) : null;
+  const courseNumber = input.course_number != null ? Number(input.course_number) : input.course != null ? Number(input.course) : null;
+  try {
+    const { data: group, error: groupError } = await db
+      .from("groups")
+      .select("id,name,code,course,course_number,semester,is_active")
+      .eq("id", groupId)
+      .maybeSingle();
+    if (groupError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось проверить группу");
+    if (!group || group.is_active === false) return error(c, rid, 404, "NOT_FOUND", "Активная группа не найдена");
+
+    // Deactivate other memberships, upsert active for groupId
+    await db.from("group_memberships").update({ is_active: false }).eq("user_id", userId).eq("is_active", true);
+    const { data: existing } = await db
+      .from("group_memberships")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("group_id", groupId)
+      .limit(1)
+      .maybeSingle();
+    if (existing?.id) {
+      const { error: mErr } = await db
+        .from("group_memberships")
+        .update({ is_active: true, role: "student", updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      if (mErr) return error(c, rid, 503, "DB_ERROR", "Не удалось обновить членство в группе");
+    } else {
+      const { error: mErr } = await db.from("group_memberships").insert({
+        user_id: userId,
+        group_id: groupId,
+        role: "student",
+        is_active: true,
+      });
+      if (mErr) return error(c, rid, 503, "DB_ERROR", "Не удалось создать членство в группе");
+    }
+
+    const userPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const resolvedSemester = semester != null && Number.isFinite(semester) ? semester : group.semester ?? null;
+    const resolvedCourse =
+      courseNumber != null && Number.isFinite(courseNumber)
+        ? courseNumber
+        : group.course_number ?? group.course ?? null;
+    if (resolvedSemester != null) userPatch.semester = resolvedSemester;
+    if (resolvedCourse != null) userPatch.course_number = resolvedCourse;
+
+    const { data: userRow, error: userError } = await db
+      .from("users")
+      .update(userPatch)
+      .eq("id", userId)
+      .select("id,email,full_name,course_number,semester")
+      .maybeSingle();
+    if (userError) return error(c, rid, 503, "DB_ERROR", "Членство сохранено, но профиль users не обновлён");
+
+    return c.json(
+      ok(
+        {
+          user: userRow,
+          group_id: groupId,
+          group: {
+            id: group.id,
+            name: group.name,
+            code: group.code,
+            course: group.course ?? group.course_number ?? null,
+            semester: group.semester ?? null,
+          },
+          semester: userRow?.semester ?? resolvedSemester,
+          course_number: userRow?.course_number ?? resolvedCourse,
+        },
+        rid
+      )
+    );
+  } catch {
+    return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить академические данные");
+  }
+});
+
