@@ -64,7 +64,7 @@ test("shows onboarding buttons and registers Telegram command menu", async (t) =
     } else {
       assert.match(String(url), /bottest-token\/sendMessage$/);
       const payload = calls.at(-1).payload;
-      assert.match(payload.text, /привяжите этот чат/i);
+      assert.match(payload.text, /выберите версию сайта/i);
       assert.equal(payload.reply_markup.inline_keyboard.length, 4);
       assert.equal(payload.reply_markup.inline_keyboard[0][0].url, "https://medbiohim.vercel.app/login");
       assert.equal(payload.reply_markup.inline_keyboard[1][0].url, "https://medbiohim-git-main-mistacen1.vercel.app/login");
