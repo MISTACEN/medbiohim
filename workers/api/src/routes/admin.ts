@@ -127,7 +127,7 @@ admin.post("/questions", requireAuth, async (c) => {
   } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос"); }
 });
 admin.put("/questions/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = ((c.req.param("id") ?? "") ?? ""), input = await bodyJson(c);
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
   if (!await gate(c)) return;
   if (!UUID.test(id) && !/^[-a-zA-Z0-9_]{1,100}$/.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID вопроса");
   const patch = pick(input, QUESTION_FIELDS);
@@ -141,7 +141,7 @@ admin.put("/questions/:id", requireAuth, async (c) => {
   } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос"); }
 });
 admin.delete("/questions/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = ((c.req.param("id") ?? "") ?? "");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!await gate(c)) return;
   try {
     const { data, error: dbError } = await db.from("exam_questions").delete().eq("id", id).select("id").maybeSingle();
@@ -152,7 +152,7 @@ admin.delete("/questions/:id", requireAuth, async (c) => {
 });
 
 admin.put("/question-bank/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = ((c.req.param("id") ?? "") ?? ""), input = await bodyJson(c);
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
   if (!await gate(c)) return;
   if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID вопроса");
   const type = String(input?.type || "");
@@ -264,7 +264,7 @@ admin.post("/lectures/generate", requireAuth, async (c) => {
 });
 
 admin.patch("/lectures/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = ((c.req.param("id") ?? "") ?? ""), input = await bodyJson(c);
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
   if (!await gate(c)) return;
   const patch = pick(input, LECTURE_FIELDS);
   if (!Object.keys(patch).length) return error(c, rid, 422, "VALIDATION_ERROR", "Нет полей для обновления");
@@ -281,7 +281,7 @@ admin.patch("/lectures/:id", requireAuth, async (c) => {
 admin.post("/lectures/:id/publish", requireAuth, async (c) => setLectureStatus(c, "published", ["admin", "moderator"]));
 admin.post("/lectures/:id/reject", requireAuth, async (c) => setLectureStatus(c, "rejected", ["admin", "moderator"]));
 async function setLectureStatus(c: any, status: string, roles: string[]) {
-  const rid = requestId(), db = c.get("supabase"), id = ((c.req.param("id") ?? "") ?? ""), user = c.get("user");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), user = c.get("user");
   if (!await gate(c, roles)) return;
   try {
     const store = await readLectures(db), index = store.items.findIndex((x: any) => String(x.id) === id);
@@ -293,7 +293,7 @@ async function setLectureStatus(c: any, status: string, roles: string[]) {
   } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось изменить статус лекции"); }
 }
 admin.delete("/lectures/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = ((c.req.param("id") ?? "") ?? "");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!await gate(c, ["admin", "moderator"])) return;
   try {
     const store = await readLectures(db), items = store.items.filter((x: any) => String(x.id) !== id);
@@ -376,7 +376,7 @@ admin.get("/telegram/chats", requireAuth, async (c) => {
   } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить Telegram-чаты"); }
 });
 admin.post("/telegram/chats/:chatId/bind", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), chatId = ((c.req.param("chatId") ?? "") ?? ""), input = await bodyJson(c);
+  const rid = requestId(), db = c.get("supabase"), chatId = (c.req.param("chatId") ?? ""), input = await bodyJson(c);
   if (!await gate(c, ["admin","moderator"])) return;
   const groupId = String(input?.group_id || "");
   if (!/^-?\d{1,24}$/.test(chatId) || !UUID.test(groupId)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный chat ID или group_id");
