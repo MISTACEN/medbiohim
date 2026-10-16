@@ -11,10 +11,11 @@ const pass = (m) => console.log("[PASS] " + m);
 const warn = (m) => { warnings++; console.log("[WARN] " + m); };
 const fail = (m) => { failures++; console.error("[FAIL] " + m); };
 
-function run(command, args, label) {
+function run(command, args, label, extraEnv = {}) {
   const r = spawnSync(command, args, {
     cwd: root,
     stdio: "inherit",
+    env: { ...process.env, ...extraEnv },
     shell: process.platform === "win32"
   });
   if (r.status === 0) pass(label);
@@ -411,7 +412,7 @@ if ([contentRoutesPath, materialViewerPath].every(existsSync)) {
 
 console.log("\nProduction compilation:");
 run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "typecheck"], "TypeScript");
-run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], "Next.js production build");
+run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], "Next.js production build", { CIRCLE_NODE_TOTAL: process.env.CIRCLE_NODE_TOTAL || "2" });
 
 const php = spawnSync("php", ["-v"], {
   cwd: root,
