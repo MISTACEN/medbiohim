@@ -128,9 +128,97 @@ async function savePreferences(c: any) {
   }
 }
 
+async function updateProfile(c: any) {
+  const rid = requestId();
+  const user = c.get("user");
+  const supabase = c.get("supabase");
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Ожидался объект профиля", 400, rid);
+    return c.json(body, status as 400);
+  }
+
+  const input = payload as Record<string, unknown>;
+  const patch: Record<string, string> = {};
+  if (Object.prototype.hasOwnProperty.call(input, "full_name")) {
+    if (typeof input.full_name !== "string" || input.full_name.trim().length > 120) {
+      const { body, status } = fail("VALIDATION_ERROR", "Имя должно быть строкой до 120 символов", 400, rid);
+      return c.json(body, status as 400);
+    }
+    patch.full_name = input.full_name.trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "avatar_url")) {
+    if (typeof input.avatar_url !== "string" || input.avatar_url.trim().length > 2048) {
+      const { body, status } = fail("VALIDATION_ERROR", "Некорректный адрес аватара", 400, rid);
+      return c.json(body, status as 400);
+    }
+    const avatar = input.avatar_url.trim();
+    if (avatar) {
+      try {
+        if (new URL(avatar).protocol !== "https:") throw new Error("https required");
+      } catch {
+        const { body, status } = fail("VALIDATION_ERROR", "Аватар должен иметь HTTPS URL", 400, rid);
+        return c.json(body, status as 400);
+      }
+    }
+    patch.avatar_url = avatar;
+  }
+  const email = typeof input.email === "string" ? input.email.trim() : undefined;
+  if (input.email !== undefined && (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный email", 400, rid);
+    return c.json(body, status as 400);
+  }
+  if (Object.keys(patch).length === 0 && !email) {
+    const { body, status } = fail("VALIDATION_ERROR", "Нет полей для обновления", 400, rid);
+    return c.json(body, status as 400);
+  }
+
+  try {
+    // Update email through Supabase Auth so its confirmation/security flow remains authoritative.
+    if (email && email.toLowerCase() !== String(user.email || "").toLowerCase()) {
+      const authUrl = new URL("/auth/v1/user", c.env.SUPABASE_URL);
+      const authResponse = await fetch(authUrl, {
+        method: "PUT",
+        headers: {
+          apikey: c.env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${c.get("accessToken")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!authResponse.ok) {
+        const { body, status } = fail("PROFILE_UPDATE_FAILED", "Не удалось обновить email. Проверьте адрес и подтверждение в письме.", 422, rid);
+        return c.json(body, status as 422);
+      }
+    }
+
+    if (Object.keys(patch).length) {
+      const { error } = await supabase.from("users").update(patch).eq("id", user.id);
+      if (error) {
+        console.error("[settings:profile]", { code: error.code, message: error.message, requestId: rid });
+        const { body, status } = fail("PROFILE_UPDATE_FAILED", "Не удалось сохранить профиль", 503, rid);
+        return c.json(body, status as 503);
+      }
+    }
+    return await readAccount(c);
+  } catch (error) {
+    console.error("[settings:profile]", { error: String(error), requestId: rid });
+    const { body, status } = fail("PROFILE_UPDATE_FAILED", "Не удалось обновить профиль", 503, rid);
+    return c.json(body, status as 503);
+  }
+}
+
 settings.get("/", requireAuth, readPreferences);
 settings.patch("/", requireAuth, savePreferences); // Backward-compatible settings endpoint.
 settings.get("/account", requireAuth, readAccount);
+settings.patch("/profile", requireAuth, updateProfile);
 settings.put("/preferences", requireAuth, savePreferences);
 
 export default settings;
