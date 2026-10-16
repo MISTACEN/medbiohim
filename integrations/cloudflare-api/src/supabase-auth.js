@@ -1537,7 +1537,7 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
     }
     const scopedGroups = requestedGroup ? [requestedGroup] : groupIds;
     const selectHomework = "id,group_id,subject_id,title,description,due_at,due_date,status,created_by,created_by_role,created_at,schedule_entry_id,subjects(name,slug,color_hex)";
-    const homeworks = [];
+    let homeworks = [];
     if (scopedGroups.length) {
       const shared = await rows("homeworks", {
         select: selectHomework,
@@ -1837,12 +1837,15 @@ export async function getSupabaseProgress(request, env, filters = {}, fetcher = 
     const finishedStatuses = new Set(["submitted", "finished", "completed", "graded"]);
     const finished = attempts.filter((row) => finishedStatuses.has(String(row.status || "").toLowerCase())).length;
     const scores = attempts.map((row) => row.score).filter((value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value))).map(Number);
-    const hwPercent = homeworks.length ? Math.round(hwDone / homeworks.length * 100) : 0;
-    const parts = [hwPercent];
+    // Only include dimensions that have observations. An empty homework list is
+    // missing data, not a real 0% score; the same applies to test attempts.
+    const parts = [];
+    if (homeworks.length) parts.push(Math.round(hwDone / homeworks.length * 100));
     if (attempts.length) parts.push(Math.round(finished / attempts.length * 100));
-    const overall = homeworks.length || attempts.length
+    const overall = parts.length
       ? Math.round(parts.reduce((sum, value) => sum + value, 0) / parts.length)
       : null;
+    const hwPercent = homeworks.length ? Math.round(hwDone / homeworks.length * 100) : null;
     return { ok: true, data: {
       overall_pct: overall,
       homework: { total: homeworks.length, done: hwDone, percent: hwPercent, items: homeworks },
