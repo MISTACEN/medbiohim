@@ -3,14 +3,8 @@ import type { NextConfig } from "next";
 /**
  * Browser always calls same-origin /api/v1/* on the Vercel deployment.
  *
- * The App Router catch-all route at src/app/api/v1/[...path]/route.ts is the
- * single Vercel-side API entrypoint. It proxies to Cloudflare only when an
- * explicit production Worker origin is configured; the migration shadow is
- * never a production target. Without one, the proxy requires legacy PHP config
- * and fails closed when no safe HTTPS backend is configured.
- *
- * Do not add a second rewrite for /api/v1 here: keeping one proxy path avoids
- * route ambiguity and makes the Vercel -> Cloudflare architecture explicit.
+ * src/app/api/v1/[...path]/route.ts proxies exclusively to Cloudflare Workers
+ * (CLOUDFLARE_API_ORIGIN). SpaceWeb / legacy PHP is not used.
  */
 const BUILD_FINGERPRINT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.MEDBIOHIM_BUILD || "local";
 
@@ -34,13 +28,12 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-Medbiohim-Api-Mode",
-            value: "same-origin-backend-proxy",
+            value: "cloudflare-only",
           },
         ],
       },
     ];
   },
-  /** Старые пункты меню → Предметы; учебный план имеет собственную страницу. */
   async redirects() {
     return [
       { source: "/trainers", destination: "/subjects", permanent: false },
