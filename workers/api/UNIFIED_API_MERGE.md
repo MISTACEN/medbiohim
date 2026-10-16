@@ -69,3 +69,18 @@ Canonical Hono routes are now mounted in the primary API:
 - Group IDs supplied by clients are not trusted; planner, attendance and linked-task creation verify active membership.
 - The academic AI-plan endpoint is a rule-engine plan and is returned as `persisted: false`; persistence and LLM-backed planning are not claimed as implemented.
 - These are source changes on `main`. They are **not yet runtime-verified** against the deployed Worker or live Supabase schema. Typecheck, unit/contract tests, and authenticated smoke tests remain acceptance gates. In particular, validate actual RLS grants and relation names for `schedule_entries`, `homeworks`, `attendance_records`, and academic tables before treating these routes as production-complete.
+
+
+## Homework lifecycle — creation, submission and review (2026-10-16)
+
+The primary Worker now exposes the following homework lifecycle:
+
+- `POST /api/v1/homeworks`: create a student task, optionally linked to a timetable entry. Group/lesson context is checked against active membership; linked lesson supplies the subject and default due date. The archived attachment array contract is not yet fully implemented in this handler.
+- `GET /api/v1/homeworks`: returns group tasks for the caller's active groups and personal tasks created by the caller. It no longer intentionally lists every group's tasks globally.
+- `POST /api/v1/homeworks/:id/submit`: submits text and/or an owned uploaded file; checks group membership and blocks a second submission while the previous one is awaiting review.
+- `GET /api/v1/homeworks/:id/submissions`: students can see their own submissions; teacher/moderator/admin roles can see submissions for that task.
+- `POST /api/v1/submissions/:id/grade`: staff-only numeric grade (0–100) plus teacher comment; stores grader and timestamp.
+- `POST /api/v1/submissions/:id/return`: staff-only return for revision with a required explanation.
+- `POST /api/v1/homeworks/:id/progress`: records personal completion progress.
+
+Staff roles are read through `user_roles → roles(code)`. The API does not trust a client-supplied role. These routes are source changes on `main`; live database constraints, RLS, typecheck, and authenticated tests still need to be verified before production acceptance.
