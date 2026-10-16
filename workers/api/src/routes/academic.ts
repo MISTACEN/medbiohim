@@ -29,15 +29,34 @@ academic.get("/state", requireAuth, async (c) => {
   const user = c.get("user");
   try {
     const [statesResult, progressResult, profileResult] = await Promise.all([
-      db.from("student_academic_states").select("id,target_type,target_id,subject_id,learning_status,academic_status,execution_status,manual_override,note,last_result,last_result_max,updated_at,subjects(name),topics(title)").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(2000),
+      db.from("student_academic_states").select("id,target_type,target_id,subject_id,learning_status,academic_status,execution_status,manual_override,note,last_result,last_result_max,updated_at,subjects(name)").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(2000),
       db.from("user_topic_progress").select("topic_id,percent,status,last_activity_at,topics(title,module_id,modules(subject_id,subjects(name)))").eq("user_id", user.id).order("last_activity_at", { ascending: false }).limit(500),
       db.from("users").select("id,full_name,course_number,semester").eq("id", user.id).maybeSingle(),
     ]);
     if (statesResult.error) throw statesResult.error;
-    const states = (statesResult.data || []).map((s: any) => {
+
+    // target_id is polymorphic (topic/subject/curriculum item), so PostgREST
+    // cannot infer a topics relationship from student_academic_states.
+    // Resolve only topic targets with a separate, type-safe lookup.
+    const rawStates = statesResult.data || [];
+    const topicIds = [...new Set(rawStates
+      .filter((state: any) => state.target_type === "topic" && typeof state.target_id === "string")
+      .map((state: any) => state.target_id))];
+    const topicNames = new Map<string, string>();
+    if (topicIds.length) {
+      const { data: topics, error: topicsError } = await db.from("topics").select("id,title").in("id", topicIds);
+      if (topicsError) throw topicsError;
+      for (const topic of topics || []) topicNames.set(topic.id, topic.title || "");
+    }
+
+    const states = rawStates.map((s: any) => {
       const subject = Array.isArray(s.subjects) ? s.subjects[0] : s.subjects;
-      const topic = Array.isArray(s.topics) ? s.topics[0] : s.topics;
-      return { ...s, subject_name: subject?.name || "", topic_name: topic?.title || "", subjects: undefined, topics: undefined };
+      return {
+        ...s,
+        subject_name: subject?.name || "",
+        topic_name: s.target_type === "topic" ? topicNames.get(s.target_id) || "" : "",
+        subjects: undefined,
+      };
     });
     const topicProgress = (progressResult.data || []).map((p: any) => {
       const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics;
