@@ -2495,5 +2495,7 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Ответ активной попытки очищается от ключей/оценки/feedback до завершения; поля попытки выдаются через allowlist.
 - Реализовано в `workers/api/src/routes/sessions.ts`: полный CRUD-контракт legacy `learning_sessions` (GET list, POST, GET by id, PATCH) с проверкой владельца в каждом запросе и валидацией полей.
 - Усилена валидация lifecycle тренажёров в `workers/api/src/routes/trainings.ts`; RPC остаётся обязательной границей доступа и проверки ответов.
-- **Не завершено:** старый режим подготовки `/tests/:id/preparation/start`, `/tests/preparation/:id`, PATCH-ответ и finish ещё требует отдельного порта. Не заявлять полную совместимость до этого.
+- Подключён `workers/api/src/routes/preparation.ts` для старых путей start/resume, GET session, PATCH/save answer, finish, retry-grading и AI review. Он использует существующие серверные функции `integrations/cloudflare-api/src/planner.js`, которые собираются в canonical Worker, а не HTTP fallback к PHP/SpaceWeb/Shadow.
 - **Проверка:** typecheck/тесты и живые RPC/RLS smoke не выполнены в этой сессии. Попытка клонировать приватный репозиторий в runner остановилась на отсутствии GitHub credentials; изменений окружения/деплоя не было.
+
+- **Осталось проверить:** сборку (в том числе bundle JS compatibility module), typecheck и полный authenticated lifecycle через реальную Supabase-схему/RLS. Проверка не выполнена; production-ready не заявляется.
