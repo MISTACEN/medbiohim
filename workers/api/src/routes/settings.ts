@@ -429,6 +429,7 @@ async function unlinkTelegramAccount(c: any) {
 }
 
 settings.get("/", requireAuth, readPreferences);
+settings.get("/preferences", requireAuth, readPreferences);
 settings.patch("/", requireAuth, savePreferences); // Backward-compatible settings endpoint.
 settings.get("/account", requireAuth, readAccount);
 settings.get("/telegram/status", requireAuth, readTelegramStatus);
