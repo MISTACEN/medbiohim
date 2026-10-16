@@ -2446,3 +2446,13 @@ This pass treats the existing frontend as the behavioral specification instead o
 - [ ] Next frontend-contract gaps to inspect: `POST /files/upload`, `GET /groups/{id}`, `POST /groups/{id}/members`.
 
 **Implementation detail:** route is now registered, but functional regrading depends on the database RPC. A controlled 503 until that dependency exists is preferable to a fake success or client-side grading.
+
+
+## 2026-10-16 — Cloudflare-only backend deployment checkpoint
+
+- **Verified from live Cloudflare configuration:** `medbiohim-api` is currently a gateway Worker with `APP_ENV=production` and service binding `MEDBIOHIM_UPSTREAM → medbiohim-api-shadow`. It is not running `workers/api/src/index.ts` directly. Its current deployment is version `a78a8fc6-f9d1-42a6-8e2d-31fcecddc29e` at 100% traffic.
+- **Verified source of the intended API:** `workers/api` contains the Hono API entrypoint, route modules, `package.json` and `wrangler.toml`; the frontend proxy `src/app/api/v1/[...path]/route.ts` is configured for Cloudflare-only and defaults to `https://medbiohim-api.ryazansevegor.workers.dev/api/v1`.
+- **Blocking deployment gap:** the production Worker has no Supabase/Upstash/OpenAI bindings for the new API; the only non-secret var is `APP_ENV` and the service binding still targets Shadow. The Shadow Worker has some secret bindings, but no Redis REST token was confirmed. Secret values were not read or copied.
+- **Vercel scope check:** the `medbiohim` project exists under team `MISTACEN` (`prj_85Mu4sV2fNkF8OGdKl1f4Ua4aPdk`), but environment management calls in the available connector return `Project not found` when scoped to that team, while the unscoped read works. Existing `CLOUDFLARE_API_ORIGIN` and `MEDBIOHIM_API_MODE` values currently target Shadow for Preview only. No Production environment value was changed.
+- **Not completed in this pass:** direct deployment of the Hono bundle, secure binding installation, Vercel Production env update/redeploy, or live smoke tests. The connected Cloudflare API tool can inspect configuration but cannot fetch arbitrary public URLs for smoke tests, and no successful build/deploy was run. Do not mark Cloudflare-only production cutover complete until the direct Hono deployment and authenticated smoke suite pass.
+- **Next execution order:** deploy `workers/api` to `medbiohim-api` using a real build path (Workers Builds or Wrangler with authenticated credentials); install only verified secret values via the secret manager; test `/health`, `/api/v1/health`, auth, schedule/dashboard/homework and training lifecycle; then set Vercel Production `CLOUDFLARE_API_ORIGIN` to the verified Worker origin and redeploy. Keep PHP/SpaceWeb out of production and do not use Shadow as the production API.
