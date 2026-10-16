@@ -79,3 +79,8 @@ The live database contains users/groups/membership records. The blank group sele
 ## Histology importer follow-up
 
 - Fixed `tools/import_histology_media.py` so content-archive photo paths preserve the canonical `5_Фотографии препаратов/` directory rather than silently dropping it. This aligns the importer with the expected `histology/5_Фотографии препаратов/...` keys and existing metadata references. Regression tests now pass 6/6; conflicting normalized paths still fail closed instead of overwriting.
+
+
+
+### Latest verification
+The frontend also requests `GET /api/v1/settings/preferences`; this exact route has now been added to the canonical Worker. Source checks pass: Worker 15/15, frontend failover 9/9, migration Worker 390/390, Next.js build/predeploy audit pass with the PHP CLI warning, Wrangler dry-run pass. The live Worker still returns 501 for that GET route and its latest deployment is older than the source. The deploy workflow confirms the `CLOUDFLARE_API_TOKEN` Actions secret is empty. Until that secret is set and a deployment completes, these code fixes must be treated as committed-but-not-live.
