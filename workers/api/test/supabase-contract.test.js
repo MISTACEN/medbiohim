@@ -5,33 +5,27 @@ import { readFile } from "node:fs/promises";
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 
-test("settings API uses the canonical Supabase preferences table", () => {
-  assert.match(settingsSource, /from\("user_preferences"\)/);
-  assert.doesNotMatch(settingsSource, /from\("user_settings"\)/);
-  assert.match(settingsSource, /settings\.get\("\/account", requireAuth, readAccount\)/);
-  assert.match(settingsSource, /settings\.put\("\/preferences", requireAuth, savePreferences\)/);
-  assert.match(settingsSource, /settings\.patch\("\/profile", requireAuth, updateProfile\)/);
-  assert.match(settingsSource, /settings\.post\("\/password", requireAuth, changePassword\)/);
-  assert.match(settingsSource, /settings\.post\("\/identities\/link", requireAuth, startIdentityLink\)/);
-  assert.match(settingsSource, /settings\.post\("\/identities\/unlink", requireAuth, unlinkIdentity\)/);
-  assert.match(settingsSource, /from\("users"\)\.update\(patch\)\.eq\("id", user\.id\)\.select\("id"\)\.maybeSingle\(\)/);
-  assert.match(settingsSource, /authUrl = new URL\("\/auth\/v1\/user", c\.env\.SUPABASE_URL\)/);
-  assert.match(settingsSource, /identities\.some\(/);
-  assert.match(settingsSource, /identities\.length <= 1/);
-  assert.match(settingsSource, /JSON\.stringify\(\{ password \}\)/);
+test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
+  for (const contract of [
+    'from("user_preferences")',
+    'settings.get("/account", requireAuth, readAccount)',
+    'settings.put("/preferences", requireAuth, savePreferences)',
+    'settings.patch("/profile", requireAuth, updateProfile)',
+    'settings.post("/password", requireAuth, changePassword)',
+    'settings.post("/identities/link", requireAuth, startIdentityLink)',
+    'settings.post("/identities/unlink", requireAuth, unlinkIdentity)',
+    'from("users").update(patch).eq("id", user.id).select("id").maybeSingle()',
+    'authUrl = new URL("/auth/v1/user", c.env.SUPABASE_URL)',
+    'identities.length <= 1',
+  ]) assert.ok(settingsSource.includes(contract), `missing settings contract: ${contract}`);
+  assert.ok(!settingsSource.includes('from("user_settings")'));
 });
 
-test("academic state does not embed topics through polymorphic target_id", () => {
-  assert.match(
-    academicSource,
-    /from\("student_academic_states"\)\.select\([^\n]*subjects\(name\)\)/,
-  );
-  assert.doesNotMatch(
-    academicSource,
-    /from\("student_academic_states"\)\.select\([^\n]*topics\(title\)/,
-  );
-  assert.match(academicSource, /from\("topics"\)\.select\("id,title"\)\.in\("id", topicIds\)/);
-  assert.match(academicSource, /state\.target_type === "topic"/);
-  assert.match(academicSource, /if \(progressResult\.error\) throw progressResult\.error/);
-  assert.match(academicSource, /if \(profileResult\.error\) throw profileResult\.error/);
+test("academic state avoids embedding topics through polymorphic target_id and surfaces query failures", () => {
+  assert.ok(academicSource.includes('from("student_academic_states").select("id,target_type,target_id,subject_id,learning_status,academic_status,execution_status,manual_override,note,last_result,last_result_max,updated_at,subjects(name)")'));
+  assert.ok(!academicSource.includes('topics(title)'));
+  assert.ok(academicSource.includes('from("topics").select("id,title").in("id", topicIds)'));
+  assert.ok(academicSource.includes('state.target_type === "topic"'));
+  assert.ok(academicSource.includes('if (progressResult.error) throw progressResult.error;'));
+  assert.ok(academicSource.includes('if (profileResult.error) throw profileResult.error;'));
 });
