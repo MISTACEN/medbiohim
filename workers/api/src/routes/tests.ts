@@ -12,7 +12,7 @@ tests.get("/", requireAuth, async (c) => {
   try {
     let q = supabase
       .from("tests")
-      .select("id,title,subject_id,slug,question_count,duration_sec,is_published")
+      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index")
       .eq("is_published", true)
       .limit(200);
     if (subjectId) q = q.eq("subject_id", subjectId);
@@ -21,7 +21,8 @@ tests.get("/", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: data || [] }, rid));
+    const items = (data || []).map((item) => ({ ...item, duration_sec: item.time_limit_sec }));
+    return c.json(ok({ items }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
     return c.json(body, status as 503);
@@ -55,12 +56,12 @@ tests.get("/chemistry-master", requireAuth, async (c) => {
 tests.get("/:id", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const id = c.req.param("id");
+  const id = c.req.param("id") || "";
   try {
     // Never expose answer keys in list/detail for students
     const { data, error } = await supabase
       .from("tests")
-      .select("id,title,subject_id,slug,question_count,duration_sec,description,is_published")
+      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index")
       .eq("id", id)
       .maybeSingle();
     if (error) {
