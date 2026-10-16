@@ -108,7 +108,12 @@ tests.get("/", requireAuth, async (c) => {
       for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
     }
     return c.json(ok({ items: items.map((item: any) => ({
-      ...item, duration_sec: item.time_limit_sec, questions_count: counts.get(String(item.id)) || 0,
+      ...item,
+      subject_slug: subjectSlug || null,
+      course_number: course || null,
+      semester: semester || null,
+      duration_sec: item.time_limit_sec,
+      questions_count: counts.get(String(item.id)) || 0,
     })) }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
