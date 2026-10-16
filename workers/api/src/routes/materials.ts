@@ -14,10 +14,21 @@ function getBlobBucket(env: Env): Bucket | null {
 
 function safeObjectKey(value: unknown): string {
   const key = String(value || "").trim();
-  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[?#\u0000-\u001f]/.test(key)) return "";
+  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\\\") || /[?#\\u0000-\\u001f]/.test(key)) return "";
   const parts = key.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return "";
   return key;
+}
+
+function storageCandidates(objectKey: unknown, sourcePath: unknown): string[] {
+  const primary = safeObjectKey(objectKey);
+  const source = safeObjectKey(sourcePath);
+  return [...new Set([
+    primary,
+    source,
+    source ? "content/histology/" + source : "",
+    source ? "histology/" + source : "",
+  ].map(safeObjectKey).filter(Boolean))];
 }
 
 async function readMaterial(db: any, id: string) {
@@ -123,7 +134,7 @@ materials.get("/:id/file-url", requireAuth, async (c) => {
         .eq("id", data.source_key).maybeSingle();
       sourcePath = source?.source_path || null;
     }
-    const key = safeObjectKey(file?.object_key || sourcePath);
+    const key = storageCandidates(file?.object_key, sourcePath)[0] || "";
     return c.json(ok({
       url: null,
       mode: "proxy",
@@ -160,8 +171,8 @@ materials.get("/:id/file", requireAuth, async (c) => {
         .eq("id", data.source_key).maybeSingle();
       sourcePath = source?.source_path || null;
     }
-    const key = safeObjectKey(file?.object_key || sourcePath);
-    if (!key) {
+    const candidates = storageCandidates(file?.object_key, sourcePath);
+    if (!candidates.length) {
       const { body, status } = fail("FILE_NOT_LINKED", "У материала пока нет проверенной ссылки на файл", 404, rid);
       return c.json(body, status as 404);
     }
@@ -171,13 +182,14 @@ materials.get("/:id/file", requireAuth, async (c) => {
       return c.json(body, status as 503);
     }
     let object: any = null;
-    try { object = await bucket.get(key); }
-    catch (e) {
-      if (!(e instanceof BlobError && (e as { status?: number }).status === 404)) throw e;
-    }
-    if (!object && sourcePath && sourcePath !== key) {
-      try { object = await bucket.get(safeObjectKey(sourcePath)); }
-      catch (e) { if (!(e instanceof BlobError && (e as { status?: number }).status === 404)) throw e; }
+    let key = "";
+    for (const candidate of candidates) {
+      try {
+        object = await bucket.get(candidate);
+        if (object) { key = candidate; break; }
+      } catch (e) {
+        if (!(e instanceof BlobError && (e as { status?: number }).status === 404)) throw e;
+      }
     }
     if (!object) {
       const { body, status } = fail("FILE_NOT_FOUND", "Файл не найден в подключённом хранилище", 404, rid);
