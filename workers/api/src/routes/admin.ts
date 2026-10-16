@@ -321,7 +321,8 @@ admin.get("/users", requireAuth, async (c) => {
     let roleMap: Record<string, string[]> = {};
     if (ids.length) {
       const { data: roles, error: rolesError } = await db.from("user_roles").select("user_id,roles(code)").in("user_id", ids);
-      if (!rolesError) for (const row of roles || []) {
+      if (rolesError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить роли пользователей");
+      for (const row of roles || []) {
         const role = Array.isArray((row as any).roles) ? (row as any).roles[0] : (row as any).roles;
         (roleMap[(row as any).user_id] ||= []).push(String(role?.code || ""));
       }
@@ -329,7 +330,8 @@ admin.get("/users", requireAuth, async (c) => {
     const userIds = (data || []).map((u: any) => u.id).filter(Boolean);
     const groupMap: Record<string, any> = {};
     if (userIds.length) {
-      const { data: memberships } = await db.from("group_memberships").select("user_id,group_id,groups(name,code,course_number)").in("user_id", userIds).eq("is_active", true);
+      const { data: memberships, error: membershipsError } = await db.from("group_memberships").select("user_id,group_id,groups(name,code,course_number)").in("user_id", userIds).eq("is_active", true);
+      if (membershipsError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить группы пользователей");
       for (const membership of memberships || []) {
         const group = Array.isArray((membership as any).groups) ? (membership as any).groups[0] : (membership as any).groups;
         groupMap[(membership as any).user_id] = { group_id: (membership as any).group_id, group_name: group?.name || null, group_code: group?.code || null, course_number: group?.course_number || null };
