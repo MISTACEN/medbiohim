@@ -2527,3 +2527,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Login no longer incorrectly blames email confirmation when the API responds successfully but omits `access_token`; it displays a response-contract/deployment diagnostic and request ID. Explicit `needs_email_confirm` still gets the confirmation message.
 - Supabase project is `ACTIVE_HEALTHY`. Recent auth logs include successful password-token requests and `invalid_credentials` failures; the queried log window did not show `email_not_confirmed`. This does not identify the user's account without its email and does not prove the currently used site deployment is on the latest frontend.
 - Vercel deployment inspection was denied (403), so production deployment/build status is unverified. Do not mark the login issue resolved until the latest `main` deployment is ready and login is smoke-tested.
+
+
+## Vercel build unblock — 2026-10-16
+
+- Confirmed production build failure from the supplied Vercel log: root Next.js TypeScript check traversed `workers/api/src/index.ts` and failed resolving `hono`, which is intentionally a dependency of the separate `workers/api/package.json`, not the frontend root package.
+- Updated root `tsconfig.json` on `main` to exclude `workers/api/**` and `integrations/cloudflare-api/**` from the frontend project typecheck. These Cloudflare API projects retain their own TypeScript/build configuration and must be checked independently in their respective directories.
+- Commit: `02b586a68654a4d5d6a573bf474f8101a633f652`. This addresses the exact reported TypeScript error at source level; a successful Vercel build and login are not yet verified until the new deployment finishes and is smoke-tested.
