@@ -109,7 +109,20 @@ v1.get("/subjects-catalog", async (c) => {
 });
 v1.route("/", plans);
 
-v1.all("*", (c) => {
+v1.all("*", async (c) => {
+  // Single public API: preserve archived PHP/legacy-Worker contracts for route/method
+  // combinations not yet ported to the canonical Hono modules. Never use this for a
+  // route that matched an implemented handler, and never retry mutations elsewhere.
+  const legacy = c.env.MEDBIOHIM_UPSTREAM;
+  if (legacy) {
+    try {
+      return await legacy.fetch(c.req.raw);
+    } catch (error) {
+      console.error("[medbiohim-api:legacy-fallback]", error);
+      const { body, status } = fail("LEGACY_UPSTREAM_UNAVAILABLE", "Совместимый API временно недоступен", 502);
+      return c.json(body, status as 502);
+    }
+  }
   const { body, status } = fail(
     "ROUTE_NOT_IMPLEMENTED",
     `Route not implemented: ${c.req.method} ${c.req.path}`,
