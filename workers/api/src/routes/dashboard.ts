@@ -33,13 +33,14 @@ dashboard.get("/", requireAuth, async (c) => {
   try {
     const [p, m] = await Promise.all([
       db.from("users").select("id,email,full_name,display_name,avatar_url,course_number,semester").eq("id", user.id).maybeSingle(),
-      db.from("group_memberships").select("group_id,role,groups(id,name,specialty_slug,course,semester,is_active)").eq("user_id", user.id).eq("is_active", true).limit(50),
+      db.from("group_memberships").select("group_id,role_in_group,groups(id,name,specialty_slug,course_number,is_active)").eq("user_id", user.id).eq("is_active", true).limit(50),
     ]);
     if (p.data) profile = { ...profile, ...p.data };
+    if (m.error) { console.error("[dashboard:memberships]", m.error.message); degraded.push("groups"); }
     groups = (m.data || []).map((row: any) => {
       const g = rel(row.groups);
       if (!g || g.is_active === false) return null;
-      return { id: g.id, name: g.name, specialty_slug: g.specialty_slug, course: g.course, semester: g.semester };
+      return { id: g.id, name: g.name, specialty_slug: g.specialty_slug, course: g.course_number ?? null, semester: profile.semester ?? null, membership_role: row.role_in_group };
     }).filter(Boolean);
     groupIds = groups.map((g: any) => String(g.id));
   } catch { degraded.push("profile"); }
