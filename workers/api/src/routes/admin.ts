@@ -183,7 +183,7 @@ admin.get("/users", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   if (!await gate(c, STRICT_ADMINS)) return;
   try {
-    const { data, error: dbError } = await db.from("users").select("id,full_name,course_number,group_id,created_at").order("created_at", { ascending: false }).limit(100);
+    const { data, error: dbError } = await db.from("users").select("id,email,full_name,course_number,semester,created_at").order("created_at", { ascending: false }).limit(100);
     if (dbError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей");
     const ids = (data || []).map((u: any) => u.id).filter(Boolean);
     let roleMap: Record<string, string[]> = {};
@@ -194,7 +194,16 @@ admin.get("/users", requireAuth, async (c) => {
         (roleMap[(row as any).user_id] ||= []).push(String(role?.code || ""));
       }
     }
-    return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [] })) }, rid));
+    const userIds = (data || []).map((u: any) => u.id).filter(Boolean);
+    const groupMap: Record<string, any> = {};
+    if (userIds.length) {
+      const { data: memberships } = await db.from("group_memberships").select("user_id,group_id,groups(name,code,course_number)").in("user_id", userIds).eq("is_active", true);
+      for (const membership of memberships || []) {
+        const group = Array.isArray((membership as any).groups) ? (membership as any).groups[0] : (membership as any).groups;
+        groupMap[(membership as any).user_id] = { group_id: (membership as any).group_id, group_name: group?.name || null, group_code: group?.code || null, course_number: group?.course_number || null };
+      }
+    }
+    return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [], ...(groupMap[u.id] || {}) })) }, rid));
   } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей"); }
 });
 admin.post("/users/roles", requireAuth, async (c) => {
@@ -252,20 +261,21 @@ admin.post("/telegram/set-webhook", requireAuth, async (c) => {
   if (!await gate(c, STRICT_ADMINS)) return;
   const token = String(c.env.TELEGRAM_BOT_TOKEN || "").trim();
   const secret = String(c.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
-  const origin = String(c.env.TELEGRAM_WEBHOOK_ORIGIN || c.env.APP_ORIGIN || "").trim().replace(/\/$/, "");
-  if (!token || !origin) return error(c, rid, 503, "TELEGRAM_NOT_CONFIGURED", "Настройте Telegram Worker secrets и TELEGRAM_WEBHOOK_ORIGIN");
+  const origin = String(c.env.TELEGRAM_WEBHOOK_ORIGIN || "").trim().replace(/\/$/, "");
+  const explicitWebhookUrl = String(c.env.TELEGRAM_WEBHOOK_URL || "").trim();
+  if (!token || (!origin && !explicitWebhookUrl)) return error(c, rid, 503, "TELEGRAM_NOT_CONFIGURED", "Настройте TELEGRAM_BOT_TOKEN и TELEGRAM_WEBHOOK_URL (или TELEGRAM_WEBHOOK_ORIGIN)");
   let response: Response;
   try {
     response = await fetch("https://api.telegram.org/bot" + token + "/setWebhook", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url: origin + "/api/v1/telegram/webhook", allowed_updates: ["message","edited_message"], ...(secret ? { secret_token: secret } : {}) }),
+      body: JSON.stringify({ url: explicitWebhookUrl || (origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"), allowed_updates: ["message","edited_message"], ...(secret ? { secret_token: secret } : {}) }),
       signal: AbortSignal.timeout(12000),
     });
   } catch { return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Не удалось связаться с Telegram"); }
   const result: any = await response.json().catch(() => ({}));
   if (!response.ok || result.ok !== true) return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Telegram отклонил настройку webhook");
-  return c.json(ok({ configured: true, url: origin + "/api/v1/telegram/webhook" }, rid));
+  return c.json(ok({ configured: true, url: explicitWebhookUrl || (origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook") }, rid));
 });
 
 // Admin content import: bounded, allowlisted and repeatable by source_key/primary key.
@@ -286,11 +296,18 @@ admin.post("/content/import", requireAuth, async (c) => {
         const slug = String(key || "").trim();
         if (!slug) return null;
         if (subjectCache.has(slug)) return subjectCache.get(slug);
-        const { data, error: lookupError } = await db.from("subjects").select("id,slug,name").or("slug.eq." + slug + ",name.eq." + slug).limit(3);
-        if (lookupError) throw lookupError;
-        if (!data || data.length !== 1) throw new Error("subject mapping ambiguous or missing");
-        subjectCache.set(slug, String(data[0].id));
-        return String(data[0].id);
+        if (!/^[a-zA-Z0-9 _.-]{1,120}$/.test(slug)) throw new Error("subject mapping invalid");
+        const { data: bySlug, error: slugError } = await db.from("subjects").select("id,slug,name").eq("slug", slug).limit(2);
+        if (slugError) throw slugError;
+        let matches = bySlug || [];
+        if (matches.length === 0) {
+          const { data: byName, error: nameError } = await db.from("subjects").select("id,slug,name").eq("name", slug).limit(2);
+          if (nameError) throw nameError;
+          matches = byName || [];
+        }
+        if (matches.length !== 1) throw new Error("subject mapping ambiguous or missing");
+        subjectCache.set(slug, String(matches[0].id));
+        return String(matches[0].id);
       }
       const mappedTests: any[] = [];
       const mappedQuestions: any[] = [];
