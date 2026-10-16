@@ -71,6 +71,6 @@ test("Cloudflare defaults to the production API origin and never the migration s
   assert.ok(route.includes("const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN)"));
   assert.ok(route.includes("https://medbiohim-api.ryazansevegor.workers.dev/api/v1"));
   assert.ok(!route.includes("medbiohim-api-shadow"));
-  assert.ok(route.includes('origin.protocol === "https:"'));
+  assert.ok(route.includes("u.protocol === \"https:\""));
   assert.ok(route.includes('req.method.toUpperCase()'));
 });
