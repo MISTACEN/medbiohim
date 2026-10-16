@@ -3516,3 +3516,12 @@ The live schema and Worker contract were compared without modifying production. 
 - All canonical (non-`#U...` encoded-alias) paths match exact content hashes. All 234 unique source content hashes are present in Blob; no unique source image/document bytes are missing.
 - The 144 absent path keys are a duplicated legacy directory whose names are encoded as literal `#U...`; every one of their hashes exists at a canonical Blob key. Supabase `trainer_feed_cards`, `materials`, `content_sources`, and `files` have zero `#U` path references. One encoded alias path has a hash conflict, but the source bytes exist under canonical paths. No upload/overwrite/delete was performed because no canonical content was missing.
 - Blob also contains 58 `histology/source-materials/` objects not present in this archive; preserve these extras. Exact content coverage is verified, while the object-key tree intentionally differs for the obsolete encoded aliases.
+
+
+## 2026-10-17 — files and admin storage parity
+
+- Added canonical `/api/v1/files/upload`, `/api/v1/files/{id}`, and `/api/v1/files/{id}/download` handlers. Upload persists metadata in Supabase `files`, checks group access and MBH specialty access, and cleans up Blob objects if metadata/signing fails. Read/download relies on existing RLS and rejects files outside the user's allowed storage key scope.
+- Added strict-admin `/api/v1/admin/files/capabilities` and read-only `/api/v1/admin/files/audit`, including reference counts for materials, trainer cards, homework attachments and submissions. Cloudflare Worker image processing is explicitly reported unsupported rather than returning false capability claims.
+- Worker TypeScript + 17/17 tests pass locally. Live route smoke still returns 501 for file metadata and admin audit, so these source changes are not yet live.
+- Current DB constraint `files_storage_provider_check` rejects `upstash_blob`; code uses allowed `unknown` until the additive constraint migration is applied. The migration file exists but was not applied; no constraint was bypassed.
+- Deployment still requires `CLOUDFLARE_API_TOKEN` in GitHub Actions. Do not call the SpaceWeb → Cloudflare sync complete until the latest Worker code is deployed and these routes return their expected authenticated behavior.
