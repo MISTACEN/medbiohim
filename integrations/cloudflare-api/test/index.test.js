@@ -59,10 +59,9 @@ test("GET /api/v1/groups requires a verified bearer token", async () => {
   assert.equal((await response.json()).error.code, "UNAUTHORIZED");
 });
 
-test("POST /api/v1/groups is explicitly read-only on the shadow migration route", async () => {
+test("POST /api/v1/groups validates input before any database write", async () => {
   const response = await worker.fetch(request("/api/v1/groups", { method: "POST" }), {});
-  assert.equal(response.status, 405);
-  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+  assert.equal(response.status, 422);
 });
 
 test("GET /api/v1/subjects requires a bearer token", async () => {
@@ -71,10 +70,9 @@ test("GET /api/v1/subjects requires a bearer token", async () => {
   assert.equal((await response.json()).error.code, "UNAUTHORIZED");
 });
 
-test("POST /api/v1/subjects list is rejected with an explicit allowed method", async () => {
+test("POST /api/v1/subjects validates input before any database write", async () => {
   const response = await worker.fetch(request("/api/v1/subjects", { method: "POST" }), {});
-  assert.equal(response.status, 405);
-  assert.equal(response.headers.get("allow"), "GET, OPTIONS");
+  assert.equal(response.status, 422);
 });
 
 test("GET /api/v1/subjects/:id/gradebook requires a verified bearer token", async () => {
