@@ -17,7 +17,7 @@ me.get("/", requireAuth, async (c) => {
       supabase.from("user_roles").select("roles(code,name)").eq("user_id", user.id).limit(25),
       supabase
         .from("group_memberships")
-        .select("group_id, role, groups(id,name,specialty_slug,course,semester)")
+        .select("group_id,role_in_group,groups(id,name,specialty_slug,course_number,is_active)")
         .eq("user_id", user.id)
         .eq("is_active", true)
         .limit(50),
@@ -29,14 +29,19 @@ me.get("/", requireAuth, async (c) => {
       return list.map((x: any) => String(x?.code || "")).filter(Boolean);
     });
 
-    const groups = (groupsRes.data || []).map((row: any) => ({
-      id: row.groups?.id ?? row.group_id,
-      name: row.groups?.name,
-      specialty_slug: row.groups?.specialty_slug,
-      course: row.groups?.course,
-      semester: row.groups?.semester,
-      membership_role: row.role,
-    }));
+    const groups = (groupsRes.data || []).map((row: any) => {
+      const g = Array.isArray(row.groups) ? row.groups[0] : row.groups;
+      if (!g || g.is_active === false) return null;
+      return {
+        id: g.id ?? row.group_id,
+        name: g.name,
+        specialty_slug: g.specialty_slug,
+        course: g.course_number ?? null,
+        course_number: g.course_number ?? null,
+        semester: profileRes.data?.semester ?? null,
+        membership_role: row.role_in_group,
+      };
+    }).filter(Boolean);
 
     const current = groups[0] || null;
 
