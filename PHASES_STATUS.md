@@ -2641,3 +2641,9 @@ This pass treats the existing frontend as the behavioral specification instead o
 - [x] Added GET `/settings/preferences` compatibility route required by the frontend.
 - [x] Current tests: Worker 15/15, frontend failover 9/9, migration Worker 390/390; Next.js build and predeploy audit pass with PHP CLI warning; Worker dry-run passes.
 - [ ] Live Cloudflare still serves 501 on GET `/api/v1/settings/preferences`; primary deployment is older than current `main` and GitHub Actions has no `CLOUDFLARE_API_TOKEN` value. This remains a deployment gate, not a code-test failure.
+
+
+### Histology media sync result (2026-10-17)
+- [x] Reconciled 416 SpaceWeb archive files against private Blob by object path + MD5/ETag.
+- [x] All 234 unique source file contents exist in Blob; all canonical path keys match. The 144 missing keys are encoded `#U...` aliases with content already present at canonical paths; database content tables contain zero references to those aliases.
+- [x] Preserved 58 extra `histology/source-materials/` objects in Blob. No objects were deleted or overwritten.
