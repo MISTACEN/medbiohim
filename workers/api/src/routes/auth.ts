@@ -77,7 +77,9 @@ auth.post("/login", async (c) => {
       const { body: b, status } = fail("INVALID_CREDENTIALS", "Неверный email или пароль", 401, rid);
       return c.json(b, status as 401);
     }
-    const session = normalizeSession(data.session);\n    // Keep tokens at the top level for the existing frontend client, while preserving the normalized session object.\n    return c.json(ok({ ...session, session }, rid));
+    const session = normalizeSession(data.session);
+    // Keep tokens at the top level for the existing frontend client, while preserving the normalized session object.
+    return c.json(ok({ ...session, session }, rid));
   } catch {
     const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
     return c.json(b, status as 503);
