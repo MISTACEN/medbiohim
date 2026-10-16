@@ -1,0 +1,49 @@
+name: Restore schedule page
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore guarded schedule page from d534fce + apply meta guards
+        run: |
+          git show d534fce2998d39b0a344b49377ef151931d52eb9:src/app/schedule/page.tsx > /tmp/page.tsx
+          python3 << 'PY'
+          from pathlib import Path
+          text = Path("/tmp/page.tsx").read_text()
+          old1 = "      if (metaRes.ok) setMeta(metaRes.data);"
+          new1 = """      if (metaRes.ok && metaRes.data) {
+            const raw = metaRes.data as Partial<{ periods: unknown; duration_rules: unknown }> & Record<string, unknown>;
+            setMeta({
+              ...raw,
+              periods: Array.isArray(raw.periods) ? raw.periods : [],
+              duration_rules: Array.isArray(raw.duration_rules) ? raw.duration_rules : [],
+            } as ScheduleMeta);
+          }"""
+          old2 = "  const activePeriod = meta.periods.find((p: any) => p.start_date <= weekEnd && (!p.end_date || p.end_date >= weekStart));"
+          new2 = "  const periods = Array.isArray(meta?.periods) ? meta.periods : [];\n  const activePeriod = periods.find((p: any) => p.start_date <= weekEnd && (!p.end_date || p.end_date >= weekStart));"
+          assert old1 in text, "setMeta line missing"
+          assert old2 in text, "periods.find line missing"
+          Path("src/app/schedule/page.tsx").write_text(text.replace(old1, new1, 1).replace(old2, new2, 1))
+          print("restored", len(Path("src/app/schedule/page.tsx").read_text()), "chars")
+          PY
+
+      - name: Commit and push to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/schedule/page.tsx
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix(schedule): restore full calendar UI with defensive meta.periods guards"
+          git push origin HEAD:main
