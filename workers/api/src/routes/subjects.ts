@@ -20,7 +20,7 @@ async function isManager(c: any) {
 subjects.get("/", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
   const course = c.req.query("course"); const semester = c.req.query("semester");
-  let q = db.from("subjects").select("id,name,slug,course_number,semester,color_hex,is_active,specialty_slug").eq("is_active", true).order("name", { ascending: true }).limit(500);
+  let q = db.from("subjects").select("id,name,slug,course_number,semester,color_hex,is_active,specialty_slug,control_type,credits,total_hours,lecture_hours,practice_hours,self_study_hours").eq("is_active", true).order("name", { ascending: true }).limit(500);
   if (course) q = q.eq("course_number", Number(course));
   if (semester) q = q.eq("semester", Number(semester));
   const { data, error } = await q;
