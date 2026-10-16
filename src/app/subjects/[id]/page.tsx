@@ -38,7 +38,7 @@ const slugNames: Record<string, string> = {
   "гистология, цитология": "histology",
   гистология: "histology",
   физиология: "physiology",
-  "органическая и физическая химия": "organic_chemistry",
+  "органическая и физическая химия": "chemistry_organic_physical",
 };
 const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
 
@@ -129,7 +129,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         if (s?.id) {
           // Everything below is independent after the subject is known.
           const [pr, gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
-            slug ? getSubjectPlan(slug) : Promise.resolve({ ok: false } as any),
+            slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3) : Promise.resolve({ ok: false } as any),
             getSubjectGradebook(s.id),
             listTests(s.id, user?.groupId),
             listSubjectMaterials({ subjectId: s.id }),
@@ -138,7 +138,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             listMaterials(slug ? { subjectSlug: slug } : {}),
             listLectures(slug),
           ]);
-          if (!cancelled && pr.ok) setPlan(pr.data.plan);
+          if (!cancelled && pr.ok) setPlan({ ...(pr.data.plan || pr.data), weeks: pr.data.weeks || pr.data.plan?.weeks || pr.data.items || [], control: pr.data.control || pr.data.plan?.control });
           if (!cancelled) {
             setResourceErrors({
               ...(!pr.ok ? { plan: pr.error?.message || "Не удалось загрузить учебный план." } : {}),
