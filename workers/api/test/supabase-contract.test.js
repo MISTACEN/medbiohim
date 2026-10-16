@@ -141,6 +141,20 @@ test("student subject plans use the narrow RPC without loosening site_content RL
   assert.ok(subjectPageSource.includes("Микропрепараты:"));
 });
 
+test("test details preserve the PHP envelope and keep answer keys out of normal attempts", () => {
+  assert.ok(testsSource.includes('const bankView = c.req.query("view") === "bank"'));
+  assert.ok(testsSource.includes('return c.json(ok({ test, questions, source: "db", view: bankView ? "bank" : "test" }, rid))'));
+  assert.ok(testsSource.includes("function stripOptionCorrectness(options: unknown): unknown[]"));
+  assert.ok(testsSource.includes("if (bankView) item.answer = q.answer ?? null"));
+  assert.ok(testsSource.includes("options: bankView ? (Array.isArray(q.options) ? q.options : []) : stripOptionCorrectness(q.options)"));
+  assert.ok(testsSource.includes("async function accessibleSubjectIds"));
+  assert.ok(testsSource.includes("Этот тест недоступен для вашей специальности"));
+  assert.ok(testsSource.includes("subject_name: subject?.name || \"\""));
+  assert.ok(testsSource.includes("if (!subjects?.[0]?.id) return c.json(ok({ items: [] }, rid))"));
+  assert.ok(subjectTestsPageSource.includes("detail.data.questions || []"));
+  assert.ok(apiClientSource.includes('new URLSearchParams({view:"bank"})'));
+});
+
 test("ticket bank catalog reads canonical banks and generates source-backed questions without exam-mode answers", () => {
   assert.ok(ticketsSource.includes('tickets.get("/banks", requireAuth'));
   assert.ok(ticketsSource.includes('from("ticket_banks")'));
