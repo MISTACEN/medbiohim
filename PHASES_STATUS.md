@@ -2802,3 +2802,12 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - 🟡 **P1 curriculum UI:** 198 curriculum items (178 active), but `/curriculum` redirects to `/academic` rather than showing the curriculum tree/list.
 - 🟡 Homework/community/SRS/Telegram account tables are empty; validate creation/linking workflows before treating that as a missing implementation.
 - 🔒 No data, RLS, secrets, or deployment settings were modified.
+
+
+## Pass — materials API and curriculum parity (2026-10-17)
+
+- 🟢 **Source fixed on `main`:** materials list/detail now matches live Supabase columns; no longer selects missing `slug`, `summary`, or `published_at`. Filters published records and supports `subject_slug`/title search.
+- 🟢 **File API:** material file metadata now reads `files.object_key`, `files.mime_type`, and `content_sources.source_path`; binary route streams authenticated objects from Upstash Blob using a validated DB-derived key. Records without a verified key fail closed instead of exposing arbitrary storage paths.
+- 🟢 **Curriculum API/UI:** fixed `sort_order` → `order_index`, active-record filtering, and replaced the redirect with a real curriculum list, filters, metadata-based hour/credit summaries, and student-specific progress persistence.
+- 🟡 **Verification pending:** regression assertions committed, but fresh CI/typecheck and authenticated browser smoke test have not yet passed. Vercel's latest status is still build-rate-limit failure; live frontend/Worker may lag `main`.
+- 🔴 **Still open:** 206 trainer cards need verified file mapping; 17 histology lectures require content review before selective publication; chemistry molecule/reaction/question tables remain empty.
