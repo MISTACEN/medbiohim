@@ -784,6 +784,10 @@ admin.get("/files/audit", requireAuth, async (c) => {
         processing_files: processingFiles, failed_processing: failedProcessing,
       },
       items,
+      b2: { configured: false, scanned: 0, matched_metadata: 0, missing_db_objects: 0, orphan_objects: 0, scan_truncated: false, error: null },
+      upstash: { configured: Boolean(c.env.UPSTASH_BLOB_TOKEN), scan_performed: false, note: "metadata-only audit; no objects were mutated" },
+      physical_check: "not_run",
+      destructive_actions: false,
       limit,
     }, rid));
   } catch (auditError) {
