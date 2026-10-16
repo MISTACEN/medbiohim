@@ -130,7 +130,8 @@ final class AcademicContextResolver
 
         if ($groupId !== null && trim($groupId) !== '') {
             $groupId = trim($groupId);
-            $sql .= ' AND (
+            $sql .= <<<'SQL'
+            AND (
                 EXISTS (
                     SELECT 1
                     FROM public.schedule_entries se
@@ -158,7 +159,8 @@ final class AcademicContextResolver
                            OR subjects.specialty_slug = g.specialty_slug)
                       AND (COALESCE(subjects.slug, '') <> 'histology' OR g.specialty_slug = 'mbh')
                 )
-            )';
+            )
+SQL;
             $params['gid'] = $groupId;
             $params['gid2'] = $groupId;
             $params['d'] = ($date !== null && trim($date) !== '') ? trim($date) : null;
