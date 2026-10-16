@@ -138,6 +138,56 @@ admin.get("/lectures", requireAuth, async (c) => {
     return c.json(ok({ items, count: items.length }, rid));
   } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить лекции"); }
 });
+admin.post("/lectures/generate", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user"), input = await bodyJson(c);
+  if (!await gate(c)) return;
+  const subjectSlug = String(input?.subject_slug || "").trim();
+  const topic = String(input?.topic || "").trim();
+  const notes = String(input?.notes || "").trim().slice(0, 12000);
+  const imageUrl = String(input?.image_url || "").trim();
+  if (!/^[a-zA-Z0-9_-]{1,100}$/.test(subjectSlug) || !validText(topic, 500)) return error(c, rid, 422, "VALIDATION_ERROR", "subject_slug и topic обязательны");
+  if (imageUrl && !/^https:\/\//i.test(imageUrl)) return error(c, rid, 422, "VALIDATION_ERROR", "image_url должен использовать HTTPS");
+  const apiKey = String(c.env.OPENAI_API_KEY || "").trim();
+  if (!apiKey) return error(c, rid, 503, "AI_NOT_CONFIGURED", "Для генерации лекций настройте OPENAI_API_KEY в Cloudflare secrets");
+  let generated: any;
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: c.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: 0.35,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "Ты создаёшь проверяемый учебный черновик на русском языке. Не выдумывай источники и не выдавай сомнительные факты за достоверные. Верни JSON с ключами title, summary, body_md. body_md — структурированный Markdown с целями, основными разделами, кратким выводом и списком вопросов для самопроверки. Не включай HTML и внешние ссылки, если они не предоставлены." },
+          { role: "user", content: JSON.stringify({ subject_slug: subjectSlug, topic, notes, image_url: imageUrl || null, task: "Сгенерируй черновик лекции для последующей проверки человеком." }) }
+        ]
+      }),
+      signal: AbortSignal.timeout(25000)
+    });
+    const payload: any = await response.json().catch(() => ({}));
+    if (!response.ok) return error(c, rid, 502, "AI_GENERATION_FAILED", "AI-провайдер не смог сгенерировать лекцию");
+    generated = JSON.parse(String(payload.choices?.[0]?.message?.content || "{}"));
+    if (!validText(generated.title, 500) || !validText(generated.body_md, 40000)) throw new Error("invalid generated document");
+  } catch {
+    return error(c, rid, 502, "AI_GENERATION_FAILED", "Не удалось получить корректный черновик лекции");
+  }
+  try {
+    const store = await readLectures(db), now = new Date().toISOString();
+    const lecture = {
+      id: "lec-" + crypto.randomUUID().replace(/-/g, "").slice(0, 16),
+      title: String(generated.title).slice(0, 500), subject: subjectSlug, subject_slug: subjectSlug, topic,
+      lesson_type: "lecture", summary: String(generated.summary || "").slice(0, 3000), body_md: String(generated.body_md).slice(0, 40000),
+      body_html: "", media: imageUrl ? [{ type: "image", url: imageUrl }] : [], attachments: [], related_learning: { methodics: [], files: [], preparations: [], electronograms: [] },
+      status: "pending_review", created_by: user.id, reviewed_by: null, published_at: null, created_at: now, updated_at: now
+    };
+    await writeLectures(db, store, [...store.items, lecture]);
+    return c.json(ok({ lecture }, rid), 201);
+  } catch {
+    return error(c, rid, 503, "DB_ERROR", "Черновик создан, но не удалось сохранить лекцию");
+  }
+});
+
 admin.patch("/lectures/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = c.req.param("id"), input = await bodyJson(c);
   if (!await gate(c)) return;
