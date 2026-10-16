@@ -209,8 +209,12 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     const bankName = String(b.subject || b.subject_name || "").toLowerCase().trim();
     return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
   });
-  const subjectTests = tests.filter((t) => {
+  const subjectTests = tests.filter((t: any) => {
     if (t.subject_id && t.subject_id === subject?.id) return true;
+    const sameSubject = String(t.subject_slug || "") === slug;
+    const sameCourse = !t.course_number || Number(t.course_number) === Number(subject?.course_number ?? 2);
+    const sameSemester = !t.semester || Number(t.semester) === Number(subject?.semester ?? 3);
+    if (sameSubject && sameCourse && sameSemester) return true;
     if (histology && (t.subject_id === "histology" || /цитолог|эмбриолог|гистолог/i.test(String(t.title || t.name || "")))) return true;
     return false;
   });
