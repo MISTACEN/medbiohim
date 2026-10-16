@@ -45,5 +45,5 @@ test("group and profile APIs use real Supabase group-membership columns", () => 
   assert.ok(groupsSource.includes('select("id,name,code,specialty_slug,course_number,is_active")'));
   assert.ok(groupsSource.includes('select("group_id,role_in_group,groups(id,name,code,specialty_slug,course_number,is_active)")'));
   assert.ok(adminSource.includes('.select("id,name,code,course_number,is_active")'));
-  assert.ok(!adminSource.includes('updated_at: new Date().toISOString() })'));
+  assert.ok(!adminSource.includes(`role_in_group: "student", updated_at:`));
 });
