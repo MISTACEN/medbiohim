@@ -68,7 +68,7 @@ homework.post("/", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   const dueAt = payload?.due_at ? String(payload.due_at) : null;
-  const dueDate = payload?.due_date ? String(payload.due_date) : (dueAt && /^\d{4}-\d{2}-\d{2}/.test(dueAt) ? dueAt.slice(0, 10) : null);
+  let dueDate = payload?.due_date ? String(payload.due_date) : (dueAt && /^\d{4}-\d{2}-\d{2}/.test(dueAt) ? dueAt.slice(0, 10) : null);
   if ((dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) || (dueAt && Number.isNaN(Date.parse(dueAt)))) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный срок выполнения", 422, rid);
     return c.json(body, status as 422);
