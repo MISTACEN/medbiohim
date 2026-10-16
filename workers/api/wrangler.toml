@@ -1,7 +1,7 @@
 # MEDBIOHIM API — Cloudflare Workers
 # Secrets (Dashboard → Workers → medbiohim-api → Settings → Variables):
 #   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (optional, admin only)
-#   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+#   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_BLOB_TOKEN
 #   OPENAI_API_KEY (optional)
 #   APP_ORIGIN (e.g. https://medbiohim.vercel.app)
 # Never put secrets in this file.
