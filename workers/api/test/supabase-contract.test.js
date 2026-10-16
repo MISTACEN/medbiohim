@@ -13,6 +13,7 @@ const meSource = await readFile(new URL("../src/routes/me.ts", import.meta.url),
 const dashboardSource = await readFile(new URL("../src/routes/dashboard.ts", import.meta.url), "utf8");
 const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url), "utf8");
 const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
+const adminRlsMigration = await readFile(new URL("../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
   for (const contract of [
@@ -72,4 +73,18 @@ test("Telegram account-link migration keeps tables private and grants only the i
   assert.ok(telegramMigration.includes("confirm_telegram_account_link"));
   assert.ok(telegramMigration.includes("GRANT EXECUTE ON FUNCTION public.confirm_telegram_account_link"));
   assert.ok(telegramMigration.includes("SECURITY DEFINER"));
+});
+
+test("admin user directory RLS stays admin-only and does not disable RLS", () => {
+  for (const policy of [
+    "users_select_admin_v1",
+    "users_update_admin_v1",
+    "user_roles_select_admin_v1",
+    "user_roles_insert_admin_v1",
+    "user_roles_delete_admin_v1",
+  ]) assert.ok(adminRlsMigration.includes(policy), "missing admin RLS policy: " + policy);
+  assert.ok(adminRlsMigration.includes("TO authenticated"));
+  assert.ok(adminRlsMigration.includes("private.has_app_role((SELECT auth.uid()), 'admin')"));
+  assert.ok(!/DISABLE ROW LEVEL SECURITY/i.test(adminRlsMigration));
+  assert.ok(!/TO anon/i.test(adminRlsMigration));
 });
