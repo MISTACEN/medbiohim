@@ -395,15 +395,15 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
     if (groupError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось проверить группу");
     if (!group || group.is_active === false) return error(c, rid, 404, "NOT_FOUND", "Активная группа не найдена");
 
-    // Deactivate other memberships, upsert active for groupId
-    await db.from("group_memberships").update({ is_active: false }).eq("user_id", userId).eq("is_active", true);
-    const { data: existing } = await db
+    // Ensure the target membership is active before deactivating any previous membership.
+    const { data: existing, error: existingError } = await db
       .from("group_memberships")
       .select("id")
       .eq("user_id", userId)
       .eq("group_id", groupId)
       .limit(1)
       .maybeSingle();
+    if (existingError) return error(c, rid, 503, "DB_ERROR", "Не удалось проверить членство в группе");
     if (existing?.id) {
       const { error: mErr } = await db
         .from("group_memberships")
@@ -419,6 +419,13 @@ admin.put("/users/:id/academic", requireAuth, async (c) => {
       });
       if (mErr) return error(c, rid, 503, "DB_ERROR", "Не удалось создать членство в группе");
     }
+    const { error: deactivateError } = await db
+      .from("group_memberships")
+      .update({ is_active: false })
+      .eq("user_id", userId)
+      .neq("group_id", groupId)
+      .eq("is_active", true);
+    if (deactivateError) return error(c, rid, 503, "DB_ERROR", "Группа назначена, но не удалось закрыть прежнее членство");
 
     const userPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     const resolvedSemester = semester != null && Number.isFinite(semester) ? semester : null;
