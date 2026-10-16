@@ -1,7 +1,7 @@
 /** Typed environment bindings for the Worker. */
 export type Env = {
   // Compatibility service binding for legacy routes not yet ported to Hono.
-  MEDBIOHIM_UPSTREAM?: Fetcher;
+  MEDBIOHIM_UPSTREAM?: { fetch: (request: Request | string, init?: RequestInit) => Promise<Response> };
   // Supabase
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
