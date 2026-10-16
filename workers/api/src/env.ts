@@ -20,6 +20,7 @@ export type Env = {
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
   TELEGRAM_WEBHOOK_ORIGIN?: string;
+  TELEGRAM_WEBHOOK_URL?: string;
 
   // AI providers configured from Worker secrets
   OPENAI_API_KEY?: string;
