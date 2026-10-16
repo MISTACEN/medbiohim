@@ -27,7 +27,7 @@ lectures.get("/", requireAuth, async (c) => {
 lectures.get("/:id", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const id = c.req.param("id");
+  const id = c.req.param("id") || "";
   try {
     const isUuid = /^[0-9a-f-]{36}$/i.test(id);
     let q = supabase.from("lectures").select("*").limit(1);
