@@ -1,1 +1,1 @@
-PLACEHOLDER_WILL_FAIL
+@file:/home/workdir/artifacts/schedule-page-guarded.tsx
