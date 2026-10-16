@@ -1045,6 +1045,81 @@ test("subject plan catalog only returns site_content subject_plan keys", async (
   assert.deepEqual(Object.keys(result.data.plans), ["subject_plan:histology"]);
 });
 
+test("curated subject plan RPC preserves weekly lecture, practice, preparations and workload", async () => {
+  const calls = [];
+  const payload = {
+    plan: {
+      subject: "Гистология, цитология",
+      subject_slug: "histology",
+      course: 2,
+      semester: 3,
+      source_note: "Исходный учебный план",
+      weeks: [{
+        n: 1,
+        date: "2026-09-04",
+        lecture: "Введение в предмет. Цитология.",
+        practice: "Клеточная теория.",
+        preparations: [{ number: 1, title: "Клетка животная" }],
+        electronograms: false,
+      }],
+    },
+    subject: {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      slug: "histology",
+      name: "Гистология, цитология",
+      course_number: 2,
+      semester: 3,
+      control_type: "Зачет",
+      lecture_hours: 36,
+      practice_hours: 57,
+      self_study_hours: 51,
+      total_hours: 144,
+      credits: 4,
+    },
+    source: "site_content",
+  };
+  const result = await getSupabaseSubjectPlan(
+    request("Bearer valid-user-token"),
+    "histology",
+    configured,
+    { course: "2", semester: "3" },
+    async (input, init = {}) => {
+      const url = new URL(String(input));
+      calls.push({ url, init });
+      if (url.pathname === "/auth/v1/user") return new Response(JSON.stringify({ id: "user-1" }), { status: 200 });
+      if (url.pathname === "/rest/v1/rpc/medbiohim_get_student_subject_plan") {
+        assert.equal(init.method, "POST");
+        assert.equal(init.headers.authorization, "Bearer valid-user-token");
+        const body = JSON.parse(init.body);
+        assert.equal(body.p_subject_slug, "histology");
+        assert.equal(body.p_course_number, 2);
+        assert.equal(body.p_semester, 3);
+        return new Response(JSON.stringify(payload), { status: 200 });
+      }
+      if (url.pathname === "/rest/v1/group_memberships") {
+        return new Response(JSON.stringify([{
+          group_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          is_active: true,
+          groups: { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "МБХ-201", course_number: 2, specialty_slug: "mbh", is_active: true },
+        }]), { status: 200 });
+      }
+      if (url.pathname === "/rest/v1/schedules") return new Response(JSON.stringify([]), { status: 200 });
+      throw new Error("Unexpected upstream request " + url.pathname);
+    },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.data.source, "site_content");
+  assert.equal(result.data.plan.hours.total, 144);
+  assert.equal(result.data.plan.credits, 4);
+  assert.equal(result.data.plan.control, "Зачет");
+  assert.equal(result.data.plan.weeks.length, 1);
+  assert.equal(result.data.plan.weeks[0].lecture, "Введение в предмет. Цитология.");
+  assert.equal(result.data.plan.weeks[0].practice, "Клеточная теория.");
+  assert.deepEqual(result.data.plan.weeks[0].preparations, [{ number: 1, title: "Клетка животная" }]);
+  assert.equal(result.data.subject.name, "Гистология, цитология");
+  assert.ok(calls.some(({ url }) => url.pathname === "/rest/v1/rpc/medbiohim_get_student_subject_plan"));
+});
+
 test("subject plan is generated from live curriculum rows when no JSON plan exists", async () => {
   const subjectId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const groupId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
