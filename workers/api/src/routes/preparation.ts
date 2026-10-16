@@ -6,7 +6,7 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 // Reuse the archived, already hardened Supabase/RLS preparation implementation while
 // the API is consolidated into one Worker. This is bundled into this Worker, not a
 // runtime proxy to PHP/SpaceWeb or the Shadow Worker.
-// @ts-ignore — the compatibility module is JavaScript and has no declaration file.
+// @ts-ignore — shared legacy JavaScript module has no TypeScript declarations.
 import {
   startSupabasePreparation,
   getSupabasePreparation,
