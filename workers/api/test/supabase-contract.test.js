@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+const materialsSource = await readFile(new URL("../src/routes/materials.ts", import.meta.url), "utf8");
+const curriculumSource = await readFile(new URL("../src/routes/curriculum.ts", import.meta.url), "utf8");
+const curriculumPageSource = await readFile(new URL("../../../src/app/curriculum/page.tsx", import.meta.url), "utf8");
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
@@ -24,6 +27,31 @@ const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import
 const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
 const studentSubjectPlanMigration = await readFile(new URL("../../../database/migrations/20261017180000_student_subject_plan_rpc.sql", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
+
+test("materials API uses real Supabase columns and serves private files through the configured Blob bucket", () => {
+  for (const column of ["module_id", "topic_id", "file_id", "external_url", "content_html", "order_index", "is_published", "source_key"]) {
+    assert.ok(materialsSource.includes(column), `materials API should use canonical column: ${column}`);
+  }
+  assert.ok(!materialsSource.includes("published_at"));
+  assert.ok(!materialsSource.includes("summary"));
+  assert.ok(materialsSource.includes('from("content_sources")'));
+  assert.ok(materialsSource.includes('from("files")'));
+  assert.ok(materialsSource.includes('new Bucket({ token, enableTelemetry: false, cache: "no-store" })'));
+  assert.ok(materialsSource.includes('materials.get("/:id/file", requireAuth'));
+  assert.ok(materialsSource.includes('.eq("is_published", true)'));
+  assert.ok(materialsSource.includes('c.req.query("subject_slug")'));
+});
+
+test("curriculum API and page use canonical active curriculum data and persist per-student progress", () => {
+  assert.ok(curriculumSource.includes('.order("order_index", { ascending: true })'));
+  assert.ok(curriculumSource.includes('.eq("is_active", true)'));
+  assert.ok(!curriculumSource.includes('order("sort_order"'));
+  assert.ok(curriculumPageSource.includes("getCurriculum()"));
+  assert.ok(curriculumPageSource.includes("saveAcademicState("));
+  assert.ok(curriculumPageSource.includes('target_type: "curriculum_item"'));
+  assert.ok(curriculumPageSource.includes("metadata"));
+  assert.ok(!curriculumPageSource.includes('redirect("/academic")'));
+});
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
   for (const contract of [
