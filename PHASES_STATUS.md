@@ -2520,3 +2520,10 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Login now distinguishes Supabase `email_not_confirmed` from invalid credentials and shows an actionable confirmation message; the actual user account state still must be checked in Supabase if login continues to fail.
 - Telegram `/start`, `/help`, `/site`, `/login`, and `/register` now offer exactly two destinations: the old site `medbiohim.vercel.app` and the new `main` deployment `medbiohim-git-main-mistacen1.vercel.app`. The SpaceWeb deployment is intentionally not exposed as a third button.
 - Added/updated regression assertions for the three Telegram links. Test execution and Cloudflare Worker deployment are not confirmed in this change; Vercel status checks may be blocked by the existing build-rate-limit.
+
+
+## 2026-10-16 — Auth: missing access token diagnosis
+- Login and registration now accept session/token payloads in the canonical `{ data: { session } }`, `{ data: session }`, nested `data.data.session`, and camelCase token variants, without changing the server's security boundary.
+- Login no longer incorrectly blames email confirmation when the API responds successfully but omits `access_token`; it displays a response-contract/deployment diagnostic and request ID. Explicit `needs_email_confirm` still gets the confirmation message.
+- Supabase project is `ACTIVE_HEALTHY`. Recent auth logs include successful password-token requests and `invalid_credentials` failures; the queried log window did not show `email_not_confirmed`. This does not identify the user's account without its email and does not prove the currently used site deployment is on the latest frontend.
+- Vercel deployment inspection was denied (403), so production deployment/build status is unverified. Do not mark the login issue resolved until the latest `main` deployment is ready and login is smoke-tested.
