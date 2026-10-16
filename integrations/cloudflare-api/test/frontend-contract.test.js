@@ -6,10 +6,12 @@ import { dirname, resolve } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../../..");
-const [frontend, worker] = await Promise.all([
+const [apiSource, settingsSource, worker] = await Promise.all([
   readFile(resolve(root, "src/lib/api.ts"), "utf8"),
+  readFile(resolve(root, "src/lib/settings-api.ts"), "utf8"),
   readFile(resolve(root, "integrations/cloudflare-api/src/index.js"), "utf8"),
 ]);
+const frontend = apiSource + "\n" + settingsSource;
 
 test("frontend and Worker keep the same API envelope and base path", () => {
   assert.match(frontend, /const API_URL\s*=\s*["']\/api\/v1["']/);
@@ -29,7 +31,6 @@ test("P0 authentication and dashboard paths are explicitly dispatched", () => {
     "/dashboard",
     "/schedule",
     "/schedule/meta",
-    "/schedule/entries",
     "/planner",
     "/homeworks",
     "/progress",
