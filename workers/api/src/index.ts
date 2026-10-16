@@ -49,6 +49,7 @@ import ai from "./routes/ai";
 import chemistry from "./routes/chemistry";
 import plans from "./routes/plans";
 import storage from "./routes/storage";
+import adminRoutes from "./routes/admin";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -126,6 +127,7 @@ v1.route("/calculators", calculators);
 v1.route("/ai", ai);
 v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
+v1.route("/admin", adminRoutes);
 
 // Flat catalog/plan aliases used by frontend
 v1.get("/subjects-catalog", (c) => plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env));
