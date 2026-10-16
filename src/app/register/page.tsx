@@ -45,13 +45,16 @@ export default function RegisterPage() {
         }
         return;
       }
-      const session = res.data.session ?? res.data;
-      if (session.access_token) {
-        setTokens(session.access_token, session.refresh_token || undefined);
+      const payload = res.data as any;
+      const session = payload?.session ?? payload?.data?.session ?? payload?.data ?? payload;
+      const accessToken = session?.access_token ?? session?.accessToken ?? payload?.access_token ?? payload?.accessToken;
+      const refreshToken = session?.refresh_token ?? session?.refreshToken ?? payload?.refresh_token ?? payload?.refreshToken;
+      if (typeof accessToken === "string" && accessToken.length > 0) {
+        setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
         window.location.href = "/";
         return;
       }
-      if (res.data.needs_email_confirm) {
+      if (payload?.needs_email_confirm || payload?.needs_email_confirmation) {
         setInfo("Аккаунт создан. Подтвердите email или включите Auto Confirm в Supabase, затем войдите.");
         return;
       }
