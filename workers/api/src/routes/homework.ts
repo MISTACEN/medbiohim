@@ -7,6 +7,21 @@ const homework = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const relation = (value: any) => Array.isArray(value) ? value[0] : value;
 
+async function callerRoles(db: any, userId: string): Promise<string[]> {
+  const { data, error } = await db.from("user_roles").select("roles(code)").eq("user_id", userId).limit(25);
+  if (error) throw error;
+  const codes: string[] = [];
+  for (const row of data || []) {
+    const roleRows = Array.isArray(row?.roles) ? row.roles : row?.roles ? [row.roles] : [];
+    for (const role of roleRows) {
+      const code = String(role?.code || "").toLowerCase().trim();
+      if (code) codes.push(code);
+    }
+  }
+  return [...new Set(codes)];
+}
+const STAFF_ROLES = new Set(["teacher", "moderator", "admin"]);
+
 homework.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
@@ -175,6 +190,55 @@ homework.post("/:id/submit", requireAuth, async (c) => {
   } catch (error) {
     console.error("[homework:submit]", error);
     const { body, status } = fail("SUBMISSION_FAILED", "Не удалось отправить работу", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+
+/** Students can see only their own submissions; staff can review the task's submissions. */
+homework.get("/:id/submissions", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const db = c.get("supabase");
+  const id = c.req.param("id");
+  if (!UUID.test(id)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID задания", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    const { data: task, error: taskError } = await db.from("homeworks")
+      .select("id,group_id,created_by").eq("id", id).maybeSingle();
+    if (taskError) throw taskError;
+    if (!task) {
+      const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const roles = await callerRoles(db, user.id);
+    const isStaff = roles.some((role) => STAFF_ROLES.has(role));
+    if (!isStaff) {
+      if (task.group_id) {
+        const { data: membership, error: membershipError } = await db.from("group_memberships")
+          .select("group_id").eq("user_id", user.id).eq("group_id", task.group_id).eq("is_active", true).limit(1);
+        if (membershipError) throw membershipError;
+        if (!membership?.length) {
+          const { body, status } = fail("FORBIDDEN", "Задание недоступно в вашей учебной группе", 403, rid);
+          return c.json(body, status as 403);
+        }
+      } else if (String(task.created_by || "") !== user.id) {
+        const { body, status } = fail("FORBIDDEN", "Можно просматривать только собственные задания", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    let query = db.from("homework_submissions")
+      .select("id,homework_id,user_id,text_answer,file_id,status,grade,teacher_comment,submitted_at,graded_at,graded_by,created_at")
+      .eq("homework_id", id).order("submitted_at", { ascending: false }).limit(500);
+    if (!isStaff) query = query.eq("user_id", user.id);
+    const { data, error } = await query;
+    if (error) throw error;
+    return c.json(ok({ items: data || [], can_grade: isStaff }, rid));
+  } catch (error) {
+    console.error("[homework:submissions]", error);
+    const { body, status } = fail("SUBMISSIONS_UNAVAILABLE", "Не удалось загрузить сданные работы", 503, rid);
     return c.json(body, status as 503);
   }
 });
