@@ -206,8 +206,8 @@ async function updateProfile(c: any) {
     }
 
     if (Object.keys(patch).length) {
-      const { error } = await supabase.from("users").update(patch).eq("id", user.id);
-      if (error) {
+      const { data: updatedProfile, error } = await supabase.from("users").update(patch).eq("id", user.id).select("id").maybeSingle();
+      if (error || !updatedProfile) {
         console.error("[settings:profile]", { code: error.code, message: error.message, requestId: rid });
         const { body, status } = fail("PROFILE_UPDATE_FAILED", "Не удалось сохранить профиль", 503, rid);
         return c.json(body, status as 503);
