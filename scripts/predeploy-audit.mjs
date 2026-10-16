@@ -223,7 +223,7 @@ if (existsSync(proxyPathForHeaders)) {
   } else {
     fail("training response sanitizer or trainer 404 handling references an unavailable helper");
   }
-  if (text.includes('message: \\"Cloudflare API недоступен; безопасный резервный маршрут не дал ответа\\"') &&
+  if (text.includes('message: "Cloudflare API недоступен; безопасный резервный маршрут не дал ответа"') &&
       !text.includes('message: msg') && !text.includes('error: String(error)')) {
     pass("proxy 502 response does not expose raw upstream exception messages");
   } else {
@@ -233,7 +233,7 @@ if (existsSync(proxyPathForHeaders)) {
   if (text.includes('const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN)') &&
       text.includes('https://medbiohim-api.ryazansevegor.workers.dev/api/v1') &&
       !text.includes('medbiohim-api-shadow') &&
-      text.includes('u.protocol === \\"https:\\"') &&
+      text.includes('u.protocol === "https:"') &&
       text.includes('shouldFallbackFromCloudflare') &&
       text.includes('SAFE_SPACEWEB_ORIGIN')) {
     pass("Cloudflare defaults to the production Worker; legacy fallback is HTTPS-only and never targets shadow");
