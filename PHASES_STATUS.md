@@ -2499,3 +2499,5 @@ This pass treats the existing frontend as the behavioral specification instead o
 - **Проверка:** typecheck/тесты и живые RPC/RLS smoke не выполнены в этой сессии. Попытка клонировать приватный репозиторий в runner остановилась на отсутствии GitHub credentials; изменений окружения/деплоя не было.
 
 - **Осталось проверить:** сборку (в том числе bundle JS compatibility module), typecheck и полный authenticated lifecycle через реальную Supabase-схему/RLS. Проверка не выполнена; production-ready не заявляется.
+
+- Добавлен `workers/api/test/contracts.test.js`: регрессионные проверки монтирования маршрутов, server-only RPC, старых preparation endpoints, owner-scoped `learning_sessions` и валидации тренировок. Файл добавлен, но тесты ещё не запускались: приватный GitHub checkout в runner недоступен без credentials; Vercel check остаётся `build-rate-limit`.
