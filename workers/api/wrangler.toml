@@ -24,3 +24,17 @@ CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000"
 # ...
 
 # Local secrets: copy .dev.vars.example → .dev.vars (gitignored)
+
+# Legacy compatibility router: one public API origin while uncovered routes are ported.
+[[services]]
+binding = "MEDBIOHIM_UPSTREAM"
+service = "medbiohim-api-shadow"
+
+[env.production]
+name = "medbiohim-api"
+workers_dev = false
+vars = { APP_ENV = "production", CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000" }
+
+[[env.production.services]]
+binding = "MEDBIOHIM_UPSTREAM"
+service = "medbiohim-api-shadow"
