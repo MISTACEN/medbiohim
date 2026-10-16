@@ -22,6 +22,7 @@ const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
 const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
+const studentSubjectPlanMigration = await readFile(new URL("../../../database/migrations/20261017180000_student_subject_plan_rpc.sql", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
@@ -124,6 +125,20 @@ test("subject content routes resolve duplicate slugs by semester and return test
   assert.ok(testsSource.includes('subject_slug: subjectSlug || null'));
   assert.ok(testsSource.includes('course_number: course || null'));
   assert.ok(testsSource.includes('semester: semester || null'));
+});
+
+test("student subject plans use the narrow RPC without loosening site_content RLS", () => {
+  assert.ok(plansSource.includes('supabase.rpc("medbiohim_get_student_subject_plan"'));
+  assert.ok(plansSource.includes('allowedPlanSlugs'));
+  assert.ok(plansSource.includes('Array.isArray(sourcePlan.weeks)'));
+  assert.ok(plansSource.includes('preparations: Array.isArray(week?.preparations)'));
+  assert.ok(studentSubjectPlanMigration.includes("SECURITY DEFINER"));
+  assert.ok(studentSubjectPlanMigration.includes("REVOKE ALL ON FUNCTION public.medbiohim_get_student_subject_plan(text, integer, integer) FROM PUBLIC, anon"));
+  assert.ok(studentSubjectPlanMigration.includes("GRANT EXECUTE ON FUNCTION public.medbiohim_get_student_subject_plan(text, integer, integer) TO authenticated"));
+  assert.ok(studentSubjectPlanMigration.includes("active MBH membership required"));
+  assert.ok(!/DISABLE ROW LEVEL SECURITY|CREATE POLICY.*site_content/is.test(studentSubjectPlanMigration));
+  assert.ok(subjectPageSource.includes("planSubjectFields"));
+  assert.ok(subjectPageSource.includes("Микропрепараты:"));
 });
 
 test("ticket bank catalog reads canonical banks and generates source-backed questions without exam-mode answers", () => {
