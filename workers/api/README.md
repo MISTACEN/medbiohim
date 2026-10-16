@@ -1,6 +1,6 @@
 # MEDBIOHIM API (Cloudflare Workers)
 
-Чистый бэкенд для фронтенда. Контракт ответов совместим с `src/lib/api.ts`:
+Чистый student-facing бэкенд для фронтенда. Контракт:
 
 ```ts
 { ok: true, data: T, requestId: string }
@@ -9,100 +9,149 @@
 
 ## Стек
 
-- **Cloudflare Workers** + **Hono**
-- **Supabase** — Auth (JWT) + Postgres + RLS
-- **Upstash Redis** — rate limit / cache
-- **OpenAI** — опционально (ключ в secrets)
+- Cloudflare Workers + Hono
+- Supabase (Auth JWT + Postgres + RLS)
+- Upstash Redis (rate limit / presence)
+- OpenAI (опционально)
+- PubChem (chemistry resolve)
 
-## Быстрый старт (локально)
+## Быстрый старт
 
 ```bash
 cd workers/api
 npm install
-cp .dev.vars.example .dev.vars   # заполнить ключи
-npm run dev                      # http://127.0.0.1:8787
+cp .dev.vars.example .dev.vars
+npm run dev
 ```
-
-Проверка:
 
 ```bash
 curl http://127.0.0.1:8787/api/v1/health
-curl http://127.0.0.1:8787/api/v1/ping
 ```
 
-## Деплой
+## Secrets (Cloudflare Dashboard)
 
-```bash
-npm run deploy
-# или: npx wrangler deploy
-```
+Workers → **medbiohim-api** → Settings → Variables and Secrets:
 
-### Secrets в Cloudflare Dashboard
-
-Workers & Pages → **medbiohim-api** → Settings → Variables and Secrets:
-
-| Name | Type | Описание |
-|------|------|----------|
-| `SUPABASE_URL` | Secret | `https://xxx.supabase.co` |
-| `SUPABASE_ANON_KEY` | Secret | anon / publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Secret | только если нужны admin-обходы RLS |
-| `UPSTASH_REDIS_REST_URL` | Secret | Upstash Redis REST URL |
-| `UPSTASH_REDIS_REST_TOKEN` | Secret | Upstash token |
-| `OPENAI_API_KEY` | Secret | опционально |
-| `OPENAI_MODEL` | Var | например `gpt-4o-mini` |
-| `APP_ORIGIN` | Var | `https://medbiohim.vercel.app` |
-| `CORS_ORIGINS` | Var | список через запятую |
-| `APP_ENV` | Var | `production` |
-
-CLI:
+| Name | Type |
+|------|------|
+| `SUPABASE_URL` | Secret |
+| `SUPABASE_ANON_KEY` | Secret |
+| `SUPABASE_SERVICE_ROLE_KEY` | Secret (только admin, лучше не использовать) |
+| `UPSTASH_REDIS_REST_URL` | Secret |
+| `UPSTASH_REDIS_REST_TOKEN` | Secret |
+| `OPENAI_API_KEY` | Secret |
+| `OPENAI_MODEL` | Var (`gpt-4o-mini`) |
+| `APP_ORIGIN` | Var |
+| `CORS_ORIGINS` | Var |
+| `APP_ENV` | Var |
 
 ```bash
 npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_ANON_KEY
 npx wrangler secret put UPSTASH_REDIS_REST_URL
 npx wrangler secret put UPSTASH_REDIS_REST_TOKEN
-# …
+npx wrangler deploy
 ```
 
-## Реализованные маршруты
+## Student-facing маршруты
 
-| Method | Path | Auth |
-|--------|------|------|
-| GET | `/health`, `/api/v1/health`, `/api/v1`, `/api/v1/ping` | public |
-| POST | `/api/v1/auth/login` | public + rate limit |
-| POST | `/api/v1/auth/register` | public + rate limit |
-| POST | `/api/v1/auth/refresh` | public |
-| POST | `/api/v1/auth/logout` | bearer |
-| POST | `/api/v1/auth/recover` | public + rate limit |
-| GET | `/api/v1/auth/me` | bearer |
-| GET | `/api/v1/me` | bearer |
-| GET | `/api/v1/dashboard` | bearer |
-| GET | `/api/v1/subjects` | bearer |
-| GET | `/api/v1/subjects/:id` | bearer |
+### Public / meta
+| Method | Path |
+|--------|------|
+| GET | `/health`, `/api/v1/health`, `/api/v1`, `/api/v1/ping` |
+| GET | `/api/v1/chemistry/resolve?query=` |
 
-Остальные пути под `/api/v1/*` → `501 ROUTE_NOT_IMPLEMENTED` (можно добавлять по одному).
+### Auth
+| Method | Path |
+|--------|------|
+| POST | `/api/v1/auth/login` |
+| POST | `/api/v1/auth/register` |
+| POST | `/api/v1/auth/refresh` |
+| POST | `/api/v1/auth/logout` |
+| POST | `/api/v1/auth/recover` |
+| GET | `/api/v1/auth/me` |
+| GET | `/api/v1/me` |
 
-## Переключение фронта (Vercel)
+### Core learning
+| Method | Path |
+|--------|------|
+| GET | `/api/v1/dashboard` |
+| GET | `/api/v1/groups`, `/api/v1/groups/:id` |
+| GET | `/api/v1/subjects`, `/api/v1/subjects/:id` |
+| GET | `/api/v1/subjects-catalog` |
+| GET | `/api/v1/subject-plans`, `/api/v1/subject-plans/:slug` |
+| GET | `/api/v1/subject-materials` |
+| GET | `/api/v1/schedule`, `/api/v1/schedule/meta` |
+| GET | `/api/v1/curriculum` |
+| GET | `/api/v1/homeworks` |
+| POST | `/api/v1/homeworks/:id/submit` |
+| POST | `/api/v1/homeworks/:id/progress` |
+| GET | `/api/v1/lectures`, `/api/v1/lectures/:id` |
+| GET | `/api/v1/materials`, `/api/v1/materials/:id` |
+| GET | `/api/v1/materials/:id/file-url` |
+| GET | `/api/v1/materials/:id/file` *(501 until blob store)* |
 
-В Vercel Environment Variables:
+### Tests & questions
+| Method | Path |
+|--------|------|
+| GET | `/api/v1/tests` |
+| GET | `/api/v1/tests/curriculum-map` |
+| GET | `/api/v1/tests/chemistry-master` |
+| GET | `/api/v1/tests/:id` |
+| POST | `/api/v1/tests/:id/start` |
+| POST | `/api/v1/tests/:id/attempts` |
+| POST | `/api/v1/tests/attempts/:id/answers` |
+| POST | `/api/v1/tests/attempts/:id/finish` |
+| GET | `/api/v1/my/attempts` |
+| GET | `/api/v1/questions`, `/api/v1/questions/subjects` |
+| POST | `/api/v1/questions/:id/report` |
+| GET | `/api/v1/search` |
+
+### Trainer / histology
+| Method | Path |
+|--------|------|
+| GET | `/api/v1/trainings` |
+| POST | `/api/v1/trainings` |
+| GET | `/api/v1/trainings/:id` |
+| POST | `/api/v1/trainings/:id/answer` |
+| POST | `/api/v1/trainings/:id/complete` |
+| POST | `/api/v1/trainings/:id/cancel` |
+| GET | `/api/v1/trainers/feed` |
+| GET | `/api/v1/trainers/feed/:id` |
+| POST | `/api/v1/trainers/feed/answer` |
+| GET | `/api/v1/trainers/feed/:id/image` *(501 until blob)* |
+
+### Progress / SRS / sessions
+| Method | Path |
+|--------|------|
+| GET | `/api/v1/progress` |
+| GET | `/api/v1/srs`, `/api/v1/srs/due` |
+| POST | `/api/v1/srs/:id/review` |
+| GET/POST | `/api/v1/sessions` |
+
+### Other student
+| Method | Path |
+|--------|------|
+| GET/PATCH | `/api/v1/settings` |
+| POST | `/api/v1/presence/heartbeat` |
+| GET/POST | `/api/v1/community/posts` |
+| GET | `/api/v1/calculators` |
+| POST | `/api/v1/calculators/:id/compute` |
+| POST | `/api/v1/ai/chat` |
+
+Admin routes **не** включены намеренно.
+
+## Vercel cutover
 
 ```
 CLOUDFLARE_API_ORIGIN=https://medbiohim-api.<account>.workers.dev/api/v1
 MEDBIOHIM_API_MODE=cloudflare
 ```
 
-Или custom domain Worker, например `https://api.medbiohim.ru/api/v1`.
+## Замечания
 
-## Cloudflare Security (Dashboard)
-
-Рекомендуется:
-
-1. **WAF / Rate limiting** на `/api/v1/auth/*`
-2. **Bot Fight Mode** / Super Bot Fight (по необходимости)
-3. **SSL/TLS** Full (strict) при custom domain
-4. Не публиковать `SUPABASE_SERVICE_ROLE_KEY` в клиент
-
-## Дальше
-
-Добавлять маршруты в `src/routes/` и подключать в `src/index.ts`:
-`schedule`, `homework`, `tests`, `lectures`, `materials`, `trainings`, `search`, `settings`, `ai`, …
+1. Все защищённые маршруты используют **JWT пользователя + RLS** (anon key + Bearer).
+2. Ответы тестов / trainer не отдают answer keys до server-side RPC.
+3. Binary media (`/file`, trainer images) → `501` до привязки R2 или Upstash Blob.
+4. Имена таблиц/RPC должны совпадать с live Supabase; при расхождении править select/rpc в соответствующем `src/routes/*.ts`.
+5. Rate limit login/register/AI через Upstash; без Redis — fail-open в dev.
