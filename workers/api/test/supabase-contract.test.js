@@ -19,6 +19,7 @@ test("settings API uses the canonical Supabase preferences table and protects ac
   for (const contract of [
     'from("user_preferences")',
     'settings.get("/account", requireAuth, readAccount)',
+    'settings.get("/preferences", requireAuth, readPreferences)',
     'settings.put("/preferences", requireAuth, savePreferences)',
     'settings.patch("/profile", requireAuth, updateProfile)',
     'settings.post("/password", requireAuth, changePassword)',
