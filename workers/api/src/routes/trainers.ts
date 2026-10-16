@@ -239,16 +239,26 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
       return c.json(body, status as 503);
     }
 
-    let image;
-    try {
-      image = await bucket.get(key);
-    } catch (error) {
-      if (BlobError.is(error) && error.code === "not_found") {
-        console.warn("[trainer-image] object not found", { cardId: card.id, key });
-        const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует в Upstash Blob", 404, rid);
-        return c.json(body, status as 404);
+    let image: any = null;
+    let resolvedKey = "";
+    const candidates = [...new Set([
+      key,
+      key.startsWith("histology/") ? "content/" + key : "",
+      key.startsWith("histology/") ? "content/histology/" + key.slice("histology/".length) : "",
+    ].filter(Boolean))];
+    for (const candidate of candidates) {
+      try {
+        image = await bucket.get(candidate);
+        if (image) { resolvedKey = candidate; break; }
+      } catch (error) {
+        if (BlobError.is(error) && error.code === "not_found") continue;
+        throw error;
       }
-      throw error;
+    }
+    if (!image) {
+      console.warn("[trainer-image] object not found", { cardId: card.id, candidates });
+      const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует в Upstash Blob", 404, rid);
+      return c.json(body, status as 404);
     }
 
     return new Response(image.body, {
@@ -257,7 +267,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
         "cache-control": "private, max-age=300",
         "x-content-type-options": "nosniff",
         "x-request-id": rid,
-        "x-mbh-media-key": "upstash-blob",
+        "x-mbh-media-key": resolvedKey,
       },
     });
   } catch (error) {
