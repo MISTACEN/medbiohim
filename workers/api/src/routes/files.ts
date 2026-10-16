@@ -171,7 +171,7 @@ files.post("/upload", requireAuth, async (c) => {
       visibility,
       specialty_slug: specialtySlug || null,
       sha256: digest,
-      storage_provider: "upstash_blob",
+      // The live files_storage_provider_check still allows only b2/spaceweb/external/unknown.\n      // Keep the accepted value until the additive provider migration is applied.\n      storage_provider: "unknown",
       processing_status: "ready",
       status: "active",
     }).select("*").single();
