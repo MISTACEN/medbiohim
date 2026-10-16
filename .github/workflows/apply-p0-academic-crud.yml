@@ -1,0 +1,51 @@
+name: Apply P0 academic + groups/subjects CRUD
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct routes from scripts/p0
+        run: |
+          python3 << 'ENDPY'
+          import base64
+          from pathlib import Path
+
+          def join(prefix):
+              parts = sorted(Path('scripts/p0').glob(prefix + '*.b64'))
+              if not parts:
+                  raise SystemExit(f'missing {prefix}*.b64')
+              return ''.join(p.read_text().strip() for p in parts)
+
+          root = Path('scripts/p0')
+          Path('workers/api/src/routes/groups.ts').write_bytes(base64.b64decode(join('g')))
+          Path('workers/api/src/routes/subjects.ts').write_bytes(base64.b64decode(join('s')))
+          for p in ['workers/api/src/routes/groups.ts', 'workers/api/src/routes/subjects.ts']:
+              t = Path(p).read_text()
+              assert 'export default' in t and 'PLACEHOLDER' not in t
+              print('ok', p, len(t))
+
+          snippet = base64.b64decode((root / 'academic.b64').read_text().strip()).decode()
+          admin = Path('workers/api/src/routes/admin.ts')
+          t = admin.read_text()
+          if 'admin.put("/users/:id/academic"' not in t:
+              tg = '// Telegram chat management'
+              if tg in t:
+                  t = t.replace(tg, snippet + '\n' + tg, 1)
+              else:
+                  t = t.replace('admin.route("/database"', snippet + '\nadmin.route("/database"', 1)
+              admin.write_text(t)
+          assert 'admin.put("/users/:id/academic"' in admin.read_text()
+          print('admin academic ok', len(admin.read_text()))
+          ENDPY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/routes/groups.ts workers/api/src/routes/subjects.ts workers/api/src/routes/admin.ts
+          git status
+          git commit -m "feat(api): P0 academic assign + groups/subjects CRUD + admin list all groups" || exit 0
+          git push origin HEAD:main
