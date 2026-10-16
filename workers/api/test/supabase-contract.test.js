@@ -102,4 +102,6 @@ test("files API persists metadata under the caller and enforces existing RLS acc
   assert.ok(filesSource.includes('files_read_allowed') === false);
   assert.ok(filesSource.includes('hasSpecialtyAccess'));
   assert.ok(filesSource.includes('group_memberships'));
+  assert.ok(filesSource.includes('from("materials").select("subject_id")'));
+  assert.ok(filesSource.includes('subject.slug === "histology" || subject.specialty_slug === "mbh"'));
 });
