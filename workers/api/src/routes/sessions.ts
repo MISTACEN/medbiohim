@@ -80,7 +80,7 @@ sessions.post("/", requireAuth, async (c) => {
 });
 
 sessions.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(), user = c.get("user"), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), user = c.get("user"), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный id сессии");
   try {
     const { data, error } = await db.from("learning_sessions").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
@@ -100,7 +100,7 @@ sessions.get("/:id", requireAuth, async (c) => {
 });
 
 sessions.patch("/:id", requireAuth, async (c) => {
-  const rid = requestId(), user = c.get("user"), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), user = c.get("user"), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный id сессии");
   let p: Record<string, unknown>;
   try { p = await c.req.json(); } catch { return invalid(c, rid, "Тело запроса должно быть JSON-объектом"); }
