@@ -1,9 +1,37 @@
 import { Hono } from "hono";
+import { Bucket } from "@upstash/blob";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const trainers = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+
+function getBlobBucket(env: Env): Bucket | null {
+  const token = env.UPSTASH_BLOB_TOKEN?.trim();
+  return token ? new Bucket({ token, enableTelemetry: false, cache: "no-store" }) : null;
+}
+
+/** The DB stores paths relative to the migrated content/histology directory. */
+function histologyObjectKey(sourceKey: unknown): string | null {
+  if (typeof sourceKey !== "string") return null;
+  let key = sourceKey.trim().replace(/^\/content\/histology\//, "");
+  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[\u0000-\u001f\u007f]/u.test(key)) return null;
+  const parts = key.split("/");
+  if (parts.some((part) => !part || part === "." || part === "..")) return null;
+  // Keep reads restricted to the known, shared histology media tree.
+  if (!["electronograms/", "em/", "5_Фотографии препаратов/"].some((prefix) => key.startsWith(prefix))) return null;
+  return key;
+}
+
+function imageContentType(key: string): string {
+  const ext = key.split(".").pop()?.toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "gif") return "image/gif";
+  if (ext === "webp") return "image/webp";
+  if (ext === "svg") return "image/svg+xml";
+  return "application/octet-stream";
+}
 
 trainers.get("/feed", requireAuth, async (c) => {
   const rid = requestId();
@@ -34,7 +62,7 @@ trainers.get("/feed/:id", requireAuth, async (c) => {
   const supabase = c.get("supabase");
   const id = c.req.param("id");
   try {
-    // Hide answer until submitted
+    // Never return answer keys before submission.
     const { data, error } = await supabase
       .from("trainer_feed_cards")
       .select("id,title,topic,kind,prompt,options,has_image,order_index")
@@ -67,7 +95,6 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
     return c.json(body, status as 400);
   }
   try {
-    // Prefer scoring RPC if exists
     const { data, error } = await supabase.rpc("trainer_feed_submit_answer", {
       p_card_id: payload.card_id,
       p_answer: payload.answer ?? null,
@@ -96,14 +123,57 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
 
 trainers.get("/feed/:id/image", requireAuth, async (c) => {
   const rid = requestId();
-  // Binary images require Upstash Blob / R2 binding — placeholder
-  const { body, status } = fail(
-    "NOT_CONFIGURED",
-    "Изображения тренажёра требуют object storage (UPSTASH_BLOB_TOKEN / R2)",
-    501,
-    rid
-  );
-  return c.json(body, status as 501);
+  const supabase = c.get("supabase");
+  const bucket = getBlobBucket(c.env);
+  if (!bucket) {
+    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    return c.json(body, status as 503);
+  }
+
+  try {
+    const { data: card, error } = await supabase
+      .from("trainer_feed_cards")
+      .select("id,has_image,source_key")
+      .eq("id", c.req.param("id"))
+      .maybeSingle();
+
+    if (error || !card) {
+      const { body, status } = fail("NOT_FOUND", "Карточка не найдена", 404, rid);
+      return c.json(body, status as 404);
+    }
+    if (!card.has_image) {
+      const { body, status } = fail("NOT_FOUND", "У карточки нет изображения", 404, rid);
+      return c.json(body, status as 404);
+    }
+
+    const key = histologyObjectKey(card.source_key);
+    if (!key) {
+      console.warn("[trainer-image] missing/invalid source_key", { cardId: card.id });
+      const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Для изображения не задан корректный ключ хранилища", 503, rid);
+      return c.json(body, status as 503);
+    }
+
+    const image = await bucket.get(key);
+    if (!image) {
+      console.warn("[trainer-image] object not found", { cardId: card.id, key });
+      const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует в Upstash Blob", 404, rid);
+      return c.json(body, status as 404);
+    }
+
+    return new Response(image, {
+      headers: {
+        "content-type": imageContentType(key),
+        "cache-control": "private, max-age=300",
+        "x-content-type-options": "nosniff",
+        "x-request-id": rid,
+        "x-mbh-media-key": "upstash-blob",
+      },
+    });
+  } catch (error) {
+    console.error("[trainer-image]", error);
+    const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Не удалось получить изображение из хранилища", 503, rid);
+    return c.json(body, status as 503);
+  }
 });
 
 export default trainers;
