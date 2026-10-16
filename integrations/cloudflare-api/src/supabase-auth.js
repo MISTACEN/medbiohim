@@ -1557,6 +1557,14 @@ export async function listSupabaseHomeworks(request, env, filters = {}, fetcher 
       limit: "500",
     });
     homeworks.push(...personal);
+    // A homework item can be visible through both group and personal queries; return it once.
+    const seenHomeworkIds = new Set();
+    homeworks = homeworks.filter((row) => {
+      const id = String(row?.id || "");
+      if (!id || seenHomeworkIds.has(id)) return false;
+      seenHomeworkIds.add(id);
+      return true;
+    });
     homeworks.sort((a, b) => {
       const dateA = String(a.due_date || a.due_at || a.created_at || "");
       const dateB = String(b.due_date || b.due_at || b.created_at || "");
