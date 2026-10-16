@@ -11,7 +11,7 @@ test("settings API uses the canonical Supabase preferences table", () => {
   assert.match(settingsSource, /settings\.get\("\/account", requireAuth, readAccount\)/);
   assert.match(settingsSource, /settings\.put\("\/preferences", requireAuth, savePreferences\)/);
   assert.match(settingsSource, /settings\.patch\("\/profile", requireAuth, updateProfile\)/);
-  assert.match(settingsSource, /from\("users"\)\.update\(patch\)\.eq\("id", user\.id\)/);
+  assert.match(settingsSource, /from\("users"\)\.update\(patch\)\.eq\("id", user\.id\)\.select\("id"\)\.maybeSingle\(\)/);
   assert.match(settingsSource, /authUrl = new URL\("\/auth\/v1\/user", c\.env\.SUPABASE_URL\)/);
 });
 
