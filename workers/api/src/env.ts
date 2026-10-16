@@ -9,6 +9,9 @@ export type Env = {
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
 
+  // Upstash Blob (private object storage)
+  UPSTASH_BLOB_TOKEN?: string;
+
   // OpenAI
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
