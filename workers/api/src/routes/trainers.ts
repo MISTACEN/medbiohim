@@ -126,7 +126,7 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const supabase = c.get("supabase");
-  let payload: { card_id?: string; answer?: string } = {};
+  let payload: { card_id?: string; answer?: string; option_id?: string; answer_text?: string; is_skipped?: boolean; time_ms?: number } = {};
   try {
     payload = await c.req.json();
   } catch {
@@ -144,16 +144,40 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
     });
     if (!error && data) return c.json(ok(data, rid));
 
+    // Compatibility fallback for deployments without the scoring RPC.
+    // Correctness is computed server-side from the stored question JSON.
+    const { data: card, error: cardError } = await supabase
+      .from("trainer_feed_cards")
+      .select("question")
+      .eq("id", payload.card_id)
+      .eq("is_published", true)
+      .maybeSingle();
+    if (cardError || !card) {
+      const { body, status } = fail("NOT_FOUND", "Карточка тренажёра не найдена", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const answerValue = String(payload.option_id || payload.answer || payload.answer_text || "").trim();
+    const question = (card.question || {}) as { options?: unknown };
+    const options = Array.isArray(question.options) ? question.options as { id?: unknown; label?: unknown; correct?: unknown }[] : [];
+    const selected = options.find((option) =>
+      String(option.id ?? "") === answerValue || String(option.label ?? "").trim().toLocaleLowerCase() === answerValue.toLocaleLowerCase()
+    );
+    const isSkipped = payload.is_skipped === true || !answerValue;
     const { data: inserted, error: insErr } = await supabase
       .from("trainer_feed_answers")
       .insert({
         card_id: payload.card_id,
         user_id: user.id,
-        answer: payload.answer ?? null,
+        option_id: selected ? String(selected.id ?? "") : null,
+        answer_text: selected ? null : (answerValue || null),
+        is_skipped: isSkipped,
+        is_correct: isSkipped ? null : (selected ? Boolean(selected.correct) : false),
+        time_ms: Number.isFinite(payload.time_ms) ? Math.max(0, Math.min(3600000, Number(payload.time_ms))) : null,
       })
-      .select("id,card_id,is_correct,explanation")
+      .select("id,card_id,option_id,answer_text,is_correct,is_skipped,time_ms,created_at")
       .maybeSingle();
     if (insErr) {
+      console.error("[trainers:answer]", insErr.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить ответ", 503, rid);
       return c.json(body, status as 503);
     }
