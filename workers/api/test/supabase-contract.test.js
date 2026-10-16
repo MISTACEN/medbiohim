@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
+const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
+const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
 const authSource = await readFile(new URL("../src/routes/auth.ts", import.meta.url), "utf8");
 const meSource = await readFile(new URL("../src/routes/me.ts", import.meta.url), "utf8");
@@ -46,4 +48,16 @@ test("group and profile APIs use real Supabase group-membership columns", () => 
   assert.ok(groupsSource.includes('select("group_id,role_in_group,groups(id,name,code,specialty_slug,course_number,is_active)")'));
   assert.ok(adminSource.includes('.select("id,name,code,course_number,is_active")'));
   assert.ok(!adminSource.includes(`role_in_group: "student", updated_at:`));
+});
+
+test("Telegram account linking is authenticated, webhook-secret protected, and delegated to atomic RPCs", () => {
+  assert.ok(indexSource.includes('v1.route("/telegram", telegram)'));
+  assert.ok(settingsSource.includes('settings.get("/telegram/status", requireAuth, readTelegramStatus)'));
+  assert.ok(settingsSource.includes('settings.post("/telegram/link-start", requireAuth, startTelegramLink)'));
+  assert.ok(settingsSource.includes('settings.post("/telegram/unlink", requireAuth, unlinkTelegramAccount)'));
+  assert.ok(telegramSource.includes('x-telegram-bot-api-secret-token'));
+  assert.ok(telegramSource.includes('confirm_telegram_account_link'));
+  assert.ok(telegramSource.includes('SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SECRET_KEY'));
+  assert.ok(telegramSource.includes('^[a-f0-9]{48}$'));
+  assert.ok(!telegramSource.includes('console.log(token'));
 });
