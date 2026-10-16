@@ -3652,3 +3652,17 @@ The live schema and Worker contract were compared without modifying production. 
 - [ ] Signed-in smoke: histology 18 weeks, 144 h/4 credits, lecture+practice+preparations; physiology 18 weeks; chemistry 18-week plan. Then smoke-test billets, tests and material links.
 
 This pass writes directly to `main`; no branch or GitHub Actions workflow change was made.
+
+
+## SpaceWeb → Cloudflare — tests and question-bank parity, 2026-10-17
+
+- [x] Restore PHP-compatible `GET /api/v1/tests/{id}` response envelope: `test` plus ordered `questions`, which the existing test-taking and bank pages already expected.
+- [x] Keep answer security mode-specific: normal test-taking omits `answer` and option correctness markers; `?view=bank` is the explicit study surface that returns answers for the question bank.
+- [x] Apply subject-specialty membership filtering to test lists and test detail; if `subject_slug` cannot be resolved, return an empty scoped list rather than falling back to all tests.
+- [x] Populate `subject_name` and canonical course/semester metadata from the related subject; count only published, non-archived questions in each test.
+- [x] Add source-contract assertions for the response envelope and answer visibility.
+- [ ] Fresh CI for these latest test-route changes is not available in the current run results; validate typecheck/tests before production publication.
+- [ ] Live Worker bundle inspection confirms plan RPC is deployed, but the current `medbiohim-api` bundle does **not** contain the newest `stripOptionCorrectness`/bank-view route change yet. Do not call tests tab fixed in production.
+- [ ] Latest Vercel main deployment visible to the integration is `a1b1978...`; the subject UI merge/preparations update `5220d5...` has no matching deployment. Preview creation returned Vercel 403 (project deployment permission); existing deploy status also reports build-rate-limit. Get project/team deployment permission restored, then deploy and smoke-test.
+
+No GitHub Actions workflow files or branch policy were changed.
