@@ -3378,5 +3378,8 @@ The current Worker already validates homework attachment IDs, caller ownership/s
 - [x] Добавлены контракты истории попыток, безопасной метаинформации теста, завершения и повторной проверки ответа через allowlisted RPC.
 - [x] `/sessions` переведён на старый контракт `learning_sessions`: list/create/get/patch, поля `type/ref_id/title/status/current_index/answers/payload/score/finished_at`, ограничение по владельцу через JWT + user_id.
 - [x] Тренировки получили валидацию статусов/идентификаторов/ответов и нормализацию RPC-ошибок; прямого fallback-запроса к таблицам нет.
-- [ ] Полностью перенести legacy `/tests/{id}/preparation/start`, `/tests/preparation/{id}`, PATCH answer/save и finish с серверной проверкой и атомарным сохранением результатов.
+- [x] Подключены legacy preparation handlers: start/resume, get snapshot + answers, PATCH/save answer, finish, retry-grading и AI review; используется существующая реализация с Supabase JWT/RLS и server-side grading.
 - [ ] Проверить наличие RPC и их реальные сигнатуры в Supabase; прогнать typecheck и тесты на точном main; проверить authenticated smoke с JWT. До этого этап не считается production-ready.
+
+
+- [ ] Проверить typecheck и route tests на точном main; подтвердить реальные схемы/RPC и выполнить полный authenticated smoke (start → answer/save → reload → finish → review). До этих проверок весь этап остаётся реализованным в исходниках, но не production-accepted.
