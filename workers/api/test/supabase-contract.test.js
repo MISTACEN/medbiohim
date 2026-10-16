@@ -4,6 +4,12 @@ import { readFile } from "node:fs/promises";
 
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
+const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
+const authSource = await readFile(new URL("../src/routes/auth.ts", import.meta.url), "utf8");
+const meSource = await readFile(new URL("../src/routes/me.ts", import.meta.url), "utf8");
+const dashboardSource = await readFile(new URL("../src/routes/dashboard.ts", import.meta.url), "utf8");
+const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url), "utf8");
+const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
   for (const contract of [
@@ -28,4 +34,16 @@ test("academic state avoids embedding topics through polymorphic target_id and s
   assert.ok(academicSource.includes('state.target_type === "topic"'));
   assert.ok(academicSource.includes('if (progressResult.error) throw progressResult.error;'));
   assert.ok(academicSource.includes('if (profileResult.error) throw profileResult.error;'));
+});
+
+test("group and profile APIs use real Supabase group-membership columns", () => {
+  for (const source of [groupsSource, authSource, meSource, dashboardSource, mySource]) {
+    assert.ok(source.includes("role_in_group"), "membership role must use role_in_group");
+    assert.ok(source.includes("course_number"), "group course must use course_number");
+    assert.ok(!source.includes("groups(id,name,specialty_slug,course,semester"), "must not select nonexistent groups.course/semester columns");
+  }
+  assert.ok(groupsSource.includes('select("id,name,code,specialty_slug,course_number,is_active")'));
+  assert.ok(groupsSource.includes('select("group_id,role_in_group,groups(id,name,code,specialty_slug,course_number,is_active)")'));
+  assert.ok(adminSource.includes('.select("id,name,code,course_number,is_active")'));
+  assert.ok(!adminSource.includes('updated_at: new Date().toISOString() })'));
 });
