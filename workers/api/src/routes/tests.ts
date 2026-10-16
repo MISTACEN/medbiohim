@@ -40,11 +40,13 @@ function rpcResult(c: any, rid: string, data: any, error: any, fallback: string,
         for (const key of ["correct_answer", "answer_key", "question_snapshot"]) delete value[key];
         result[attemptKey] = safeAttempt(value);
       } else {
-        if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback"]) delete value[key];
+        for (const key of ["correct_answer", "answer_key", "authoritative_answer"]) delete value[key];
+        if (hideAnswerGrade) for (const key of ["is_correct", "score", "grading_status", "feedback"]) delete value[key];
         result[attemptKey] = value;
       }
     }
-    if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback", "question_snapshot"]) delete result[key];
+    for (const key of ["correct_answer", "answer_key", "authoritative_answer", "question_snapshot"]) delete result[key];
+  if (hideAnswerGrade) for (const key of ["is_correct", "score", "grading_status", "feedback"]) delete result[key];
     return c.json(ok(result, rid));
   }
   // Older RPC deployments returned the data object directly. Filter any attempt object
@@ -57,7 +59,8 @@ function rpcResult(c: any, rid: string, data: any, error: any, fallback: string,
       for (const key of ["correct_answer", "answer_key", "question_snapshot"]) delete value[key];
       result[attemptKey] = safeAttempt(value);
     } else {
-      if (hideAnswerGrade) for (const key of ["correct_answer", "answer_key", "authoritative_answer", "is_correct", "score", "grading_status", "feedback"]) delete value[key];
+      for (const key of ["correct_answer", "answer_key", "authoritative_answer"]) delete value[key];
+      if (hideAnswerGrade) for (const key of ["is_correct", "score", "grading_status", "feedback"]) delete value[key];
       result[attemptKey] = value;
     }
   }
