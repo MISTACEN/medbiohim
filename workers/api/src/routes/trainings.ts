@@ -63,7 +63,7 @@ trainings.post("/", requireAuth, async (c) => {
 });
 
 trainings.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return validation(c, rid, "Некорректный идентификатор тренировки");
   try {
     const { data, error } = await db.rpc("histology_training_get", { p_training_id: id });
@@ -76,7 +76,7 @@ trainings.get("/:id", requireAuth, async (c) => {
 });
 
 trainings.post("/:id/answer", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return validation(c, rid, "Некорректный идентификатор тренировки");
   let p: { order?: unknown; user_answer?: unknown; is_skipped?: unknown };
   try { p = await c.req.json(); } catch { return validation(c, rid, "Некорректный JSON"); }
@@ -104,7 +104,7 @@ trainings.post("/:id/answer", requireAuth, async (c) => {
 });
 
 trainings.post("/:id/complete", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return validation(c, rid, "Некорректный идентификатор тренировки");
   try {
     const { data, error } = await db.rpc("histology_training_complete", { p_training_id: id });
@@ -117,7 +117,7 @@ trainings.post("/:id/complete", requireAuth, async (c) => {
 });
 
 trainings.post("/:id/cancel", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = c.req.param("id");
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return validation(c, rid, "Некорректный идентификатор тренировки");
   try {
     const { data, error } = await db.rpc("histology_training_cancel", { p_training_id: id });
