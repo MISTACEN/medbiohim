@@ -99,3 +99,19 @@ The canonical Worker routes now enforce these contracts:
 - `/api/v1/trainings`: validates status, UUID, answer index, skip flag, answer type and size before invoking the protected `histology_training_*` RPCs. No table fallback is used for mutation.
 
 Legacy preparation mode routes are now mounted by `workers/api/src/routes/preparation.ts`: start/resume, GET session, PATCH/save answer, finish, retry-grading and AI review. The handler bundles the existing server-side implementation from `integrations/cloudflare-api/src/planner.js`; it does not forward requests to PHP/SpaceWeb or the Shadow Worker. Full route parity is **source-wired but not yet runtime-accepted** until the Worker bundle/typecheck succeeds and authenticated start → answer → reload → finish → review tests pass against live Supabase/RLS.
+
+
+## Administration routes — 2026-10-16
+
+The canonical Worker now mounts `/api/v1/admin/*` from `src/routes/admin.ts`:
+
+- `GET/POST /admin/questions`, `PUT/DELETE /admin/questions/:id`: legacy `exam_questions` admin editor.
+- `PUT /admin/question-bank/:id`: main `questions` bank editor; validates question type/options and attempts a `content_versions` snapshot before update.
+- `GET /admin/lectures`, `PATCH /admin/lectures/:id`, publish/reject/delete and `POST /admin/lectures/generate`: uses `site_content(key=lectures)`; generated lecture is saved as `pending_review` and requires human publication.
+- `GET /admin/users`, `POST /admin/users/roles`: admin-only role administration via `roles.code`; protects the last admin from self-revocation.
+- `POST /admin/content/import`: supports workbook payload `{tests,questions,test_questions,dry_run}` with bounded row counts and key resolution; `POST /admin/content/package/import` supports bounded upserts and the histology `mbh` scope.
+- `GET /admin/telegram/chats`, `POST /admin/telegram/chats/:chatId/bind`, `POST /admin/telegram/set-webhook`: bot token and webhook secret are Worker env values; an explicit full `TELEGRAM_WEBHOOK_URL` is preferred.
+
+All routes require a valid Supabase JWT plus an explicit role-code gate. Teachers/moderators may manage questions and edit lectures; user/role changes, import, content validation and webhook configuration are admin-only. Telegram chat binding is admin/moderator-only.
+
+Acceptance caveat: the handlers are committed but have not been typechecked or run against live Supabase/RLS in this session. The multi-table import is not transactional, so a late error can leave earlier upserts applied. Check schema/unique constraints, typecheck and the regression tests before enabling production traffic.
