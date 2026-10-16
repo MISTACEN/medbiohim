@@ -3502,3 +3502,10 @@ The live schema and Worker contract were compared without modifying production. 
 - Fixed a real media importer bug: `content/histology/5_Фотографии препаратов/...` paths now retain the `5_Фотографии препаратов/` segment. The importer still refuses conflicting normalized paths instead of overwriting.
 - Full Next.js production build PASS with `CIRCLE_NODE_TOTAL=2`; full predeploy audit PASS with one environment warning (PHP CLI is absent from the sandbox; PHP syntax runs in GitHub CI). Optional-integrations CI passed after the importer fix.
 - Supabase Telegram RPC migration is live and permission checks passed. The latest canonical API and Telegram Workers still have not deployed because GitHub Actions lacks `CLOUDFLARE_API_TOKEN`; the active Cloudflare Worker must not be described as synchronized until deploy and live smoke checks succeed.
+
+
+
+### Follow-up verification (2026-10-17)
+- Added `GET /api/v1/settings/preferences` alias because the frontend calls that exact path; the canonical Worker previously implemented only GET `/settings/` and PUT `/settings/preferences`.
+- Worker contract suite is now 15/15 passing; frontend failover 9/9; migration Worker 390/390; Next.js production build and predeploy audit pass with the known PHP-CLI warning; Wrangler deploy dry-run passes (1,450.52 KiB / 275.75 KiB gzip).
+- Live probe still returns 501 for GET `/api/v1/settings/preferences`; Cloudflare primary Worker deployment timestamp remains `2026-10-16T16:08:07Z`, older than the latest source commits. GitHub Actions deploy job has an empty `CLOUDFLARE_API_TOKEN`. Source is corrected, but production is not yet synchronized.
