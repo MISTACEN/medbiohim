@@ -203,7 +203,7 @@ files.get("/:id/download", requireAuth, async (c) => {
 
 files.get("/:id", requireAuth, async (c) => {
   const rid = requestId();
-  const access = await readAccessibleFile(c, c.req.param("id"));
+  const access = await readAccessibleFile(c, c.req.param("id") || "");
   if (access.response) return access.response;
   const file = { ...access.file };
   delete file.b2_file_id;
