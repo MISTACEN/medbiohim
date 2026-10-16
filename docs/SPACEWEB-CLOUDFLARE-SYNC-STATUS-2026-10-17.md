@@ -84,3 +84,9 @@ The live database contains users/groups/membership records. The blank group sele
 
 ### Latest verification
 The frontend also requests `GET /api/v1/settings/preferences`; this exact route has now been added to the canonical Worker. Source checks pass: Worker 15/15, frontend failover 9/9, migration Worker 390/390, Next.js build/predeploy audit pass with the PHP CLI warning, Wrangler dry-run pass. The live Worker still returns 501 for that GET route and its latest deployment is older than the source. The deploy workflow confirms the `CLOUDFLARE_API_TOKEN` Actions secret is empty. Until that secret is set and a deployment completes, these code fixes must be treated as committed-but-not-live.
+
+
+### Histology content coverage — hash-verified
+Compared the 416 files in the supplied `spaceweb_upload/content/histology/` archive against the private Upstash Blob listing using each object's MD5-like ETag and exact relative path. All **234 unique source contents** are represented in Blob, and all canonical non-encoded paths match exactly. The only 144 missing path keys belong to the old literal `#U...` encoded duplicate directory; every one of those contents exists under its canonical path. A query of `trainer_feed_cards`, `materials`, `content_sources`, and `files` found zero database references to `#U` aliases. One encoded alias key has a different hash, but the expected source bytes are already present under canonical paths. No uploads, overwrites, or deletions were performed. The 58 extra `histology/source-materials/` objects in Blob are not in this archive and were preserved.
+
+**Conclusion:** unique histology content bytes are synchronized; the object-key tree differs only for obsolete encoded aliases and additional source-materials. This content result is separate from the still-blocked Cloudflare Worker deployment needed to activate the Supabase/API code fixes.
