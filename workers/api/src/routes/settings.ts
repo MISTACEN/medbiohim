@@ -260,11 +260,121 @@ async function changePassword(c: any) {
   }
 }
 
+async function startIdentityLink(c: any) {
+  const rid = requestId();
+  let payload: unknown;
+  try { payload = await c.req.json(); } catch {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const input = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload as Record<string, unknown> : {};
+  const provider = typeof input.provider === "string" ? input.provider.trim().toLowerCase() : "";
+  const allowedProviders = new Set(["google", "custom:vk", "yandex", "github", "discord"]);
+  if (!allowedProviders.has(provider)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Провайдер не поддерживается", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const configuredOrigins = (c.env.CORS_ORIGINS || c.env.APP_ORIGIN || "")
+    .split(",").map((value: string) => value.trim()).filter(Boolean);
+  const fallbackOrigin = c.env.APP_ORIGIN || "https://medbiohim.vercel.app";
+  let redirectTo = fallbackOrigin;
+  if (typeof input.redirect_to === "string" && input.redirect_to.trim()) {
+    try {
+      const requested = new URL(input.redirect_to.trim());
+      const allowed = configuredOrigins.some((origin: string) => {
+        try { return new URL(origin).origin === requested.origin; } catch { return false; }
+      }) || requested.origin === new URL(fallbackOrigin).origin;
+      if (requested.protocol !== "https:" && requested.hostname !== "localhost") throw new Error("HTTPS required");
+      if (!allowed) throw new Error("Origin not allowed");
+      redirectTo = requested.toString();
+    } catch {
+      const { body, status } = fail("VALIDATION_ERROR", "Недопустимый адрес возврата", 400, rid);
+      return c.json(body, status as 400);
+    }
+  }
+  try {
+    const response = await fetch(new URL("/auth/v1/user/identities/authorize", c.env.SUPABASE_URL), {
+      method: "POST",
+      headers: {
+        apikey: c.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${c.get("accessToken")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ provider, redirect_to: redirectTo, skip_http_redirect: true }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const result = await response.json().catch(() => ({})) as Record<string, unknown>;
+    const url = typeof result.url === "string" ? result.url
+      : typeof result.authorize_url === "string" ? result.authorize_url : null;
+    if (!response.ok || !url) {
+      const { body, status } = fail("IDENTITY_LINK_FAILED", "Не удалось начать привязку способа входа", 502, rid);
+      return c.json(body, status as 502);
+    }
+    return c.json(ok({ url, provider, mode: "link" }, rid));
+  } catch (error) {
+    console.error("[settings:identity-link]", { error: String(error), requestId: rid });
+    const { body, status } = fail("IDENTITY_LINK_FAILED", "Не удалось начать привязку способа входа", 503, rid);
+    return c.json(body, status as 503);
+  }
+}
+
+async function unlinkIdentity(c: any) {
+  const rid = requestId();
+  let payload: unknown;
+  try { payload = await c.req.json(); } catch {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const input = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload as Record<string, unknown> : {};
+  const identityId = typeof input.identity_id === "string" ? input.identity_id.trim() : "";
+  const user = c.get("user");
+  const identities = Array.isArray(user.identities) ? user.identities : [];
+  if (!identityId || !identities.some((identity: any) => String(identity.identity_id || identity.id || "") === identityId)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Способ входа не найден у этого аккаунта", 400, rid);
+    return c.json(body, status as 400);
+  }
+  if (identities.length <= 1) {
+    const { body, status } = fail("LAST_IDENTITY", "Нельзя отвязать единственный способ входа", 409, rid);
+    return c.json(body, status as 409);
+  }
+  try {
+    const response = await fetch(new URL(`/auth/v1/user/identities/${encodeURIComponent(identityId)}`, c.env.SUPABASE_URL), {
+      method: "DELETE",
+      headers: {
+        apikey: c.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${c.get("accessToken")}`,
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      const { body, status } = fail("IDENTITY_UNLINK_FAILED", "Не удалось отвязать способ входа", 422, rid);
+      return c.json(body, status as 422);
+    }
+    const refreshed = await fetch(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
+      headers: { apikey: c.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${c.get("accessToken")}` },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (refreshed.ok) {
+      const freshUser = await refreshed.json().catch(() => null);
+      if (freshUser && typeof freshUser === "object") c.set("user", { ...user, ...freshUser } as typeof user);
+    }
+    return await readAccount(c);
+  } catch (error) {
+    console.error("[settings:identity-unlink]", { error: String(error), requestId: rid });
+    const { body, status } = fail("IDENTITY_UNLINK_FAILED", "Не удалось отвязать способ входа", 503, rid);
+    return c.json(body, status as 503);
+  }
+}
+
 settings.get("/", requireAuth, readPreferences);
 settings.patch("/", requireAuth, savePreferences); // Backward-compatible settings endpoint.
 settings.get("/account", requireAuth, readAccount);
 settings.patch("/profile", requireAuth, updateProfile);
 settings.post("/password", requireAuth, changePassword);
+settings.post("/identities/link", requireAuth, startIdentityLink);
+settings.post("/identities/unlink", requireAuth, unlinkIdentity);
 settings.put("/preferences", requireAuth, savePreferences);
 
 export default settings;
