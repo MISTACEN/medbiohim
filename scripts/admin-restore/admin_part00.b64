@@ -1,0 +1,7 @@
+import { Hono } from "hono";
+import type { Env } from "../env";
+import { ok, fail, requestId } from "../lib/response";
+import { requireAuth, type AuthVariables } from "../middleware/auth";
+import dbAdmin from "./admin-database";
+
+const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
