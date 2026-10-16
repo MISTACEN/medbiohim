@@ -3547,3 +3547,16 @@ The live schema and Worker contract were compared without modifying production. 
 
 - `deploy-backend.yml` failed at FTP root discovery because the expected `backend/public/index.php` was not found under any verified candidate root. No FTP upload/deployment was performed; the remote path was not guessed.
 - Keep SpaceWeb fallback-only. Before changing that workflow, confirm the actual remote document root and compare its contents with the repo/archive. Cloudflare route coverage and media parity are tracked in `docs/SPACEWEB-CLOUDFLARE-SYNC-STATUS-2026-10-17.md`.
+
+
+## 2026-10-17 — recovery of subject learning content
+
+- Recovered original SpaceWeb archive sources from `public_html-31(1).zip`; this is source-grounded restoration, not newly invented course content.
+- Fixed subject-plan lookup for duplicate subject slugs: it now accepts the selected course and semester and returns a `weeks` view compatible with the subject page. The frontend requests the canonical `chemistry_organic_physical` slug and renders returned plan items.
+- Fixed the subject test catalog to resolve the selected active subject by slug/course/semester, exclude archived tests, and include linked question counts.
+- Restored the 18 original semester-3 organic/physical chemistry schedule entries from `data/curriculum_master.json` into `curriculum_items` with their lecture, lab/practice and study guidance. These rows are tagged with stable `metadata.legacy_key` values to keep the migration idempotent.
+- Restored the 2 original physiology multiple-choice tests (blood and circulation) with all 7 source questions and answer options. Restored the original 8 open physiology ticket prompts to both the exam-ticket catalog and ordinary question bank; their answers remain blank because the source archive had no answers.
+- Live Supabase post-migration counts: physiology question bank 15 published items (8 restored open prompts + 7 MCQ items), exam-ticket prompts 8, tests 2, linked test questions 7; chemistry semester-3 curriculum has 37 active items, including 18 specifically tagged restored archive rows.
+- Histology still has published atlas/trainer and material data in Supabase. The 17 `histology_lectures` records are empty `written_lecture_stub` rows with no body text, so they were deliberately not published as if they were real lectures.
+- Worker API typecheck and 18/18 tests pass. Frontend `tsc --noEmit` passes. Next.js production build compiles and passes type/lint checks but the build worker then exits with `spawn ... EAGAIN` during static page generation in this execution environment; this is an environment resource failure, not a confirmed successful full build.
+- Production deployment and authenticated end-to-end UI verification remain pending; do not mark the live site as restored until the Cloudflare deploy gate is resolved and the pages are checked with an authenticated session.
