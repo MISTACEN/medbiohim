@@ -1,8 +1,10 @@
 # MEDBIOHIM API — Cloudflare Workers
 # Secrets (Dashboard → Workers → medbiohim-api → Settings → Variables):
-#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (optional, admin only)
+#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY (server-only RPC calls)
 #   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_BLOB_TOKEN
 #   OPENAI_API_KEY (optional)
+#   TELEGRAM_WEBHOOK_SECRET (same secret configured in integrations/telegram-bot-cloudflare)
+#   TELEGRAM_BOT_USERNAME (optional; defaults to MEDBIOCHIM_bot)
 #   APP_ORIGIN (e.g. https://medbiohim.vercel.app)
 # Never put secrets in this file.
 
