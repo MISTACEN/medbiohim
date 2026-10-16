@@ -24,8 +24,8 @@ Unauthenticated health checks returned HTTP 200 for both API Workers. The produc
 | `integrations/cloudflare-api`: node tests | 390/390 PASS |
 | Frontend Cloudflare/SpaceWeb failover contract | 9/9 PASS |
 | Migration Worker Wrangler dry-run | PASS; 823.54 KiB total / 137.79 KiB gzip |
-| Full local predeploy audit | all source-policy checks passed; Next build reached static-page generation but sandbox failed with `spawn /usr/local/bin/node EAGAIN`; full build not verified |
-| PHP syntax in CI | iterative fixes made; latest CI run is the authority while it completes |
+| Full local predeploy audit | PASS with one environment warning after setting `CIRCLE_NODE_TOTAL=2`; TypeScript and Next.js production build succeeded. PHP CLI is unavailable in the sandbox, so PHP syntax is verified by CI instead. |
+| PHP syntax in CI | PASS on commit `d8753b7c5b518279b79985313eb67b3e7bb3ec3b`; latest code-check rerun for the predeploy worker-limit adjustment is pending |
 | Production Worker deployment | BLOCKED: missing GitHub Actions secret `CLOUDFLARE_API_TOKEN` |
 | Authenticated production API smoke tests | NOT RUN: no test user session supplied |
 
