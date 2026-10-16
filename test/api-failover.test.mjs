@@ -24,7 +24,7 @@ test("admin transport diagnostics are backed by a server-side canonical role che
   const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
   assert.match(route, /async function isCanonicalAdminRequest\(req: NextRequest\)/);
   assert.match(route, /auth\/v1\/user/);
-  assert.match(route, /select", "roles\(code\)"/);
+  assert.ok(route.includes('rolesUrl.searchParams.set("select", "roles(code)")'));
   assert.match(route, /x-mbh-transport-diagnostics/);
   assert.match(route, /x-mbh-transport-source/);
   assert.match(route, /INSECURE_BACKEND_ORIGIN/);
@@ -65,7 +65,7 @@ test("falls back to SpaceWeb when shared-homework attachments are explicitly uns
 });
 
 
-test("Cloudflare requires explicit opt-in and a production origin, never the migration shadow", async () => {
+test("Cloudflare defaults to the production API origin and never the migration shadow", async () => {
   const fs = await import("node:fs/promises");
   const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
   assert.match(route, /process\.env\.CLOUDFLARE_API_ORIGIN \?\? \(isVercelDeployment \? DEFAULT_CLOUDFLARE_API_ORIGIN : ""\)/);
