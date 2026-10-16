@@ -3361,3 +3361,12 @@ The current Worker already validates homework attachment IDs, caller ownership/s
 - [x] Allow student-created tasks and validate any linked lesson against active group membership.
 - [ ] Run Worker typecheck and automated route tests; Vercel is currently blocked by build-rate-limit.
 - [ ] Verify authenticated live smoke tests and actual Supabase RLS/table relations before production-complete status.
+
+
+## 2026-10-16 — Задания: создание, сдача и проверка
+- [x] Создание задания студентом с необязательной привязкой к занятию.
+- [x] Ограничение списка заданий активными группами пользователя и его личными заданиями.
+- [x] Сдача текста/файла, проверка членства группы и блокировка повторной сдачи на проверку.
+- [x] Просмотр сданных работ и выставление оценки/комментария преподавателем или администратором.
+- [x] Возврат работы на доработку с обязательным комментарием.
+- [ ] Проверить Worker typecheck, RLS/схему БД и авторизованные сценарии на развернутом API.
