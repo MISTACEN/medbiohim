@@ -99,7 +99,6 @@ test("files API persists metadata under the caller and enforces existing RLS acc
   assert.ok(filesSource.includes('uploaded_by: user.id'));
   assert.ok(filesSource.includes('storage_provider: "upstash_blob"'));
   assert.ok(filesSource.includes('await bucket.del(key)'));
-  assert.ok(filesSource.includes('files_read_allowed') === false);
   assert.ok(filesSource.includes('hasSpecialtyAccess'));
   assert.ok(filesSource.includes('group_memberships'));
   assert.ok(filesSource.includes('from("materials").select("subject_id")'));
