@@ -60,6 +60,22 @@ app.route("/", health);
 
 const v1 = new Hono<{ Bindings: Env }>();
 
+// Run canonical Hono handlers first; if a handler explicitly returns 501, try the
+// legacy compatibility Worker with a cloned request. This keeps the public API
+// unified while missing route contracts are ported. Never retry ordinary 4xx/5xx.
+v1.use("*", async (c, next) => {
+  const legacyRequest = c.req.raw.clone();
+  await next();
+  if (c.res.status !== 501 || !c.env.MEDBIOHIM_UPSTREAM) return;
+  try {
+    return await c.env.MEDBIOHIM_UPSTREAM.fetch(legacyRequest);
+  } catch (error) {
+    console.error("[medbiohim-api:legacy-fallback]", error);
+    const { body, status } = fail("LEGACY_UPSTREAM_UNAVAILABLE", "Совместимый API временно недоступен", 502);
+    return c.json(body, status as 502);
+  }
+});
+
 // Compatibility aliases from the archived PHP/legacy Cloudflare API.
 // Keep these aliases in the same Worker so the frontend has one canonical API origin.
 function rewriteRequest(req: Request, pathname: string): Request {
@@ -109,20 +125,7 @@ v1.get("/subjects-catalog", async (c) => {
 });
 v1.route("/", plans);
 
-v1.all("*", async (c) => {
-  // Single public API: preserve archived PHP/legacy-Worker contracts for route/method
-  // combinations not yet ported to the canonical Hono modules. Never use this for a
-  // route that matched an implemented handler, and never retry mutations elsewhere.
-  const legacy = c.env.MEDBIOHIM_UPSTREAM;
-  if (legacy) {
-    try {
-      return await legacy.fetch(c.req.raw);
-    } catch (error) {
-      console.error("[medbiohim-api:legacy-fallback]", error);
-      const { body, status } = fail("LEGACY_UPSTREAM_UNAVAILABLE", "Совместимый API временно недоступен", 502);
-      return c.json(body, status as 502);
-    }
-  }
+v1.all("*", (c) => {
   const { body, status } = fail(
     "ROUTE_NOT_IMPLEMENTED",
     `Route not implemented: ${c.req.method} ${c.req.path}`,
