@@ -15,6 +15,47 @@ function safeAttempt(row: any) {
   for (const field of SAFE_ATTEMPT_FIELDS) if (row && Object.prototype.hasOwnProperty.call(row, field)) out[field] = row[field];
   return out;
 }
+
+async function accessibleSubjectIds(db: any, userId: string, subjectIds: string[]): Promise<Set<string>> {
+  const ids = Array.from(new Set(subjectIds.filter(Boolean)));
+  if (!ids.length) return new Set();
+  const { data: subjects, error: subjectError } = await db
+    .from("subjects").select("id,specialty_slug").in("id", ids);
+  if (subjectError) throw subjectError;
+  const subjectById = new Map((subjects || []).map((row: any) => [String(row.id), row]));
+  const needsMembership = (subjects || []).some((row: any) => String(row.specialty_slug || "").trim() !== "");
+  let specialties = new Set<string>();
+  if (needsMembership) {
+    const { data: memberships, error: membershipError } = await db
+      .from("group_memberships")
+      .select("group_id,groups(specialty_slug,is_active)")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .limit(100);
+    if (membershipError) throw membershipError;
+    specialties = new Set((memberships || []).flatMap((row: any) => {
+      const group = Array.isArray(row.groups) ? row.groups[0] : row.groups;
+      const specialty = String(group?.specialty_slug || "").trim().toLowerCase();
+      return group?.is_active === true && specialty ? [specialty] : [];
+    }));
+  }
+  return new Set(ids.filter((id) => {
+    const subject: any = subjectById.get(id);
+    if (!subject) return false;
+    const specialty = String(subject.specialty_slug || "").trim().toLowerCase();
+    return !specialty || specialties.has(specialty);
+  }));
+}
+
+function stripOptionCorrectness(options: unknown): unknown[] {
+  if (!Array.isArray(options)) return [];
+  return options.map((option: any) => {
+    if (!option || typeof option !== "object" || Array.isArray(option)) return option;
+    const safe = { ...option };
+    for (const key of ["correct", "is_correct", "isCorrect", "answer", "is_answer", "isAnswer"]) delete safe[key];
+    return safe;
+  });
+}
 function rpcResult(c: any, rid: string, data: any, error: any, fallback: string, attemptKey?: string, hideAnswerGrade = false) {
   if (error) {
     const status = error.code === "PGRST116" ? 404 : 503;
@@ -69,52 +110,73 @@ function rpcResult(c: any, rid: string, data: any, error: any, fallback: string,
 }
 
 tests.get("/", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase");
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user");
   let subjectId = c.req.query("subject_id") || "";
-  const subjectSlug = c.req.query("subject_slug") || "";
-  const course = Number(c.req.query("course") || 0);
-  const semester = Number(c.req.query("semester") || 0);
+  const subjectSlug = String(c.req.query("subject_slug") || "").trim().toLowerCase();
+  const rawCourse = c.req.query("course");
+  const rawSemester = c.req.query("semester");
+  const course = rawCourse ? Number(rawCourse) : 0;
+  const semester = rawSemester ? Number(rawSemester) : 0;
+  if (subjectId && !UUID.test(subjectId)) return invalid(c, rid, "Некорректный ID предмета");
+  if ((rawCourse && (!Number.isInteger(course) || course < 1 || course > 8)) ||
+      (rawSemester && (!Number.isInteger(semester) || semester < 1 || semester > 16))) {
+    return invalid(c, rid, "Некорректный курс или семестр");
+  }
   try {
-    if (subjectId && !UUID.test(subjectId)) return invalid(c, rid, "Некорректный ID предмета");
     if (subjectSlug) {
       let subjectQuery = db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true);
       if (course > 0) subjectQuery = subjectQuery.eq("course_number", course);
       if (semester > 0) subjectQuery = subjectQuery.eq("semester", semester);
-      const { data: subjects, error: subjectError } = await subjectQuery.order("course_number").order("semester").limit(1);
+      const { data: subjects, error: subjectError } = await subjectQuery
+        .order("course_number", { ascending: true }).order("semester", { ascending: true }).limit(1);
       if (subjectError) {
         const { body, status } = fail("DB_UNAVAILABLE", "Предметы тестов недоступны", 503, rid);
         return c.json(body, status as 503);
       }
-      if (subjects?.[0]?.id) subjectId = String(subjects[0].id);
+      // An unresolved subject slug must never turn a scoped query into an all-tests query.
+      if (!subjects?.[0]?.id) return c.json(ok({ items: [] }, rid));
+      subjectId = String(subjects[0].id);
     }
     let q = db.from("tests")
-      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index")
-      .eq("is_published", true).is("archived_at", null).limit(200);
+      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index,subjects(name,slug,course_number,semester)")
+      .eq("is_published", true).is("archived_at", null)
+      .order("order_index", { ascending: true }).order("created_at", { ascending: false }).limit(200);
     if (subjectId) q = q.eq("subject_id", subjectId);
     const { data, error } = await q;
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
       return c.json(body, status as 503);
     }
-    const items = data || [];
+    const initialItems = data || [];
+    const scopedIds = initialItems.map((item: any) => String(item.subject_id || "")).filter(Boolean);
+    const allowedSubjectIds = await accessibleSubjectIds(db, user.id, scopedIds);
+    const items = initialItems.filter((item: any) => !item.subject_id || allowedSubjectIds.has(String(item.subject_id)));
     const ids = items.map((item: any) => item.id).filter(Boolean);
     const counts = new Map<string, number>();
     if (ids.length) {
-      const { data: links, error: linkError } = await db.from("test_questions").select("test_id").in("test_id", ids);
+      const { data: links, error: linkError } = await db.from("test_questions")
+        .select("test_id,questions!inner(id,is_published,archived_at)")
+        .in("test_id", ids)
+        .eq("questions.is_published", true)
+        .is("questions.archived_at", null);
       if (linkError) {
         const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
         return c.json(body, status as 503);
       }
       for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
     }
-    return c.json(ok({ items: items.map((item: any) => ({
-      ...item,
-      subject_slug: subjectSlug || null,
-      course_number: course || null,
-      semester: semester || null,
-      duration_sec: item.time_limit_sec,
-      questions_count: counts.get(String(item.id)) || 0,
-    })) }, rid));
+    return c.json(ok({ items: items.map((item: any) => {
+      const subject = Array.isArray(item.subjects) ? item.subjects[0] : item.subjects;
+      return {
+        ...item,
+        subject_name: subject?.name || "",
+        subject_slug: subjectSlug || subject?.slug || null,
+        course_number: course || subject?.course_number || null,
+        semester: semester || subject?.semester || null,
+        duration_sec: item.time_limit_sec,
+        questions_count: counts.get(String(item.id)) || 0,
+      };
+    }) }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Тесты недоступны", 503, rid);
     return c.json(body, status as 503);
@@ -164,12 +226,13 @@ tests.get("/attempts", requireAuth, async (c) => {
 });
 
 tests.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID теста");
+  const bankView = c.req.query("view") === "bank";
   try {
     const { data, error } = await db.from("tests")
       .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index")
-      .eq("id", id).eq("is_published", true).maybeSingle();
+      .eq("id", id).eq("is_published", true).is("archived_at", null).maybeSingle();
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Тест недоступен", 503, rid);
       return c.json(body, status as 503);
@@ -178,7 +241,43 @@ tests.get("/:id", requireAuth, async (c) => {
       const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
       return c.json(body, status as 404);
     }
-    return c.json(ok({ ...data, duration_sec: data.time_limit_sec }, rid));
+    if (data.subject_id) {
+      const allowed = await accessibleSubjectIds(db, user.id, [String(data.subject_id)]);
+      if (!allowed.has(String(data.subject_id))) {
+        const { body, status } = fail("FORBIDDEN", "Этот тест недоступен для вашей специальности", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    const { data: links, error: linkError } = await db.from("test_questions")
+      .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,archived_at,topic:topics(title))")
+      .eq("test_id", id)
+      .order("order_index", { ascending: true });
+    if (linkError) {
+      const { body, status } = fail("DB_UNAVAILABLE", "Состав теста временно недоступен", 503, rid);
+      return c.json(body, status as 503);
+    }
+    const questions = (links || []).flatMap((link: any) => {
+      const q = Array.isArray(link.question) ? link.question[0] : link.question;
+      if (!q || q.is_published !== true || q.archived_at != null) return [];
+      const topic = Array.isArray(q.topic) ? q.topic[0] : q.topic;
+      const item: Record<string, unknown> = {
+        id: q.id,
+        subject_id: q.subject_id,
+        module_id: q.module_id,
+        topic_id: q.topic_id,
+        topic_title: topic?.title || null,
+        type: q.type,
+        text: q.text,
+        body: q.text,
+        options: bankView ? (Array.isArray(q.options) ? q.options : []) : stripOptionCorrectness(q.options),
+        difficulty: q.difficulty ?? null,
+      };
+      // Answers/correct option markers are available only in the dedicated study bank view.
+      if (bankView) item.answer = q.answer ?? null;
+      return [item];
+    });
+    const test = { ...data, duration_sec: data.time_limit_sec };
+    return c.json(ok({ test, questions, source: "db", view: bankView ? "bank" : "test" }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Тест недоступен", 503, rid);
     return c.json(body, status as 503);
