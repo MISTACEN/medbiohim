@@ -185,3 +185,10 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 - Vercel deployment remains blocked by permissions, not source compilation: creating a production deployment returned HTTP 403 (`You don't have permission to create a Production Deployment for this project`). The latest production deployment still points to `4e49160551c7b3b9616c7ca7329d946e1a1e145e`; commits after it, including the study-description renderer, are not verified live.
 - Cloudflare CI deployment remains blocked because `CLOUDFLARE_API_TOKEN` is empty in GitHub Actions. The authenticated Cloudflare connector can inspect the account, but deploying over the live Worker without preserving its secret bindings would risk breaking production; no direct replacement upload was attempted.
 - The `.vercel-redeploy-trigger` marker was updated on `main` to request a Git-integrated build. No newer production deployment was visible at the last check.
+
+
+### Root cause of blank subject tabs — 2026-10-17
+
+- Found the primary UI contract mismatch behind the blank subject header/plan: Cloudflare `GET /subjects/:id` returns the subject row directly, while the frontend only read `response.data.subject`. That left `subject` undefined and skipped all follow-up requests for plan, tests, ticket banks, materials, and progress. The subject page now accepts both the direct Cloudflare shape and the wrapped legacy SpaceWeb shape, merging the catalog row as a fallback.
+- Added a regression assertion for this response-shape mismatch. Latest local verification after the fix: Worker typecheck/tests pass 20/20, frontend typecheck passes, and a clean Next.js production build passes.
+- This fix is committed on `main`; production Vercel still reports the older `4e491605...` build, so the repaired subject page cannot be considered live until Vercel deployment access is restored.
