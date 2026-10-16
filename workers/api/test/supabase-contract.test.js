@@ -1,4 +1,8 @@
   assert.match(settingsSource, /settings\\.post\\("\/password", requireAuth, changePassword\\)/);
+  assert.match(settingsSource, /settings\\.post\\("\/identities\/link", requireAuth, startIdentityLink\\)/);
+  assert.match(settingsSource, /settings\\.post\\("\/identities\/unlink", requireAuth, unlinkIdentity\\)/);
+  assert.match(settingsSource, /identities\.some\(/);
+  assert.match(settingsSource, /identities\.length <= 1/);
   assert.match(settingsSource, /JSON\\.stringify\\(\\{ password \\}\\)/);
 import test from "node:test";
 import assert from "node:assert/strict";
