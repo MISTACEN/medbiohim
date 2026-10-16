@@ -511,5 +511,5 @@ See [`docs/UNFINISHED-REGISTRY.md`](docs/UNFINISHED-REGISTRY.md), section “Ful
 - Supabase migration `20261017180000_student_subject_plan_rpc`: applied live and committed to source. Live function grants checked: anon denied, authenticated allowed; search_path empty; direct `site_content` RLS unchanged.
 - Code edited: `integrations/cloudflare-api/src/supabase-auth.js`, `integrations/cloudflare-api/src/index.js`, `workers/api/src/routes/plans.ts`, `src/app/subjects/[id]/page.tsx`; tests added in both Worker test paths.
 - Goal: restore complete plan payload from curated JSON and merge workload metadata into subject page; render histology micro-preparations and electronogram marker.
-- Local source verification: pending for the exact latest commit. Do not mark typecheck/tests or authenticated end-to-end acceptance green until run.
+- CI source verification: `MEDBIOHIM code checks` passed on `faa36cf1f5501064fac762a29a5e48c1684bd952`; API Worker suite reported 391 tests / 0 failures, Next.js production build passed, optional integrations checks passed. Live authenticated end-to-end acceptance remains pending.
 - Deployment: latest documented blockers remain missing/empty `CLOUDFLARE_API_TOKEN` in Actions and Vercel production API HTTP 403. Live website fix is not confirmed.
