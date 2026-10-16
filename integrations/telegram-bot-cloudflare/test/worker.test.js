@@ -65,8 +65,10 @@ test("shows onboarding buttons and registers Telegram command menu", async (t) =
       assert.match(String(url), /bottest-token\/sendMessage$/);
       const payload = calls.at(-1).payload;
       assert.match(payload.text, /привяжите этот чат/i);
-      assert.equal(payload.reply_markup.inline_keyboard.length, 3);
-      assert.equal(payload.reply_markup.inline_keyboard[1][0].url, "https://medbiohim.vercel.app/login");
+      assert.equal(payload.reply_markup.inline_keyboard.length, 4);
+      assert.equal(payload.reply_markup.inline_keyboard[0][0].url, "https://medbiohim.vercel.app/login");
+      assert.equal(payload.reply_markup.inline_keyboard[1][0].url, "https://medbiohim-git-main-mistacen1.vercel.app/login");
+      assert.equal(payload.reply_markup.inline_keyboard[2][0].url, "https://medbiohim-git-spaceweb-backend-mistacen1.vercel.app/login");
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
   };
@@ -76,6 +78,24 @@ test("shows onboarding buttons and registers Telegram command menu", async (t) =
   }), baseEnv);
   assert.equal(response.status, 200);
   assert.equal(calls.length, 2);
+});
+
+
+test("offers all three site versions from /site", async (t) => {
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const payload = JSON.parse(init.body);
+    assert.equal(payload.reply_markup.inline_keyboard.length, 3);
+    assert.equal(payload.reply_markup.inline_keyboard[0][0].url, "https://medbiohim.vercel.app/");
+    assert.equal(payload.reply_markup.inline_keyboard[1][0].url, "https://medbiohim-git-main-mistacen1.vercel.app/");
+    assert.equal(payload.reply_markup.inline_keyboard[2][0].url, "https://medbiohim-git-spaceweb-backend-mistacen1.vercel.app/");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  t.after(() => { globalThis.fetch = oldFetch; });
+  const response = await handleRequest(request("/api/webhook", {
+    body: { update_id: 11, message: { text: "/site", chat: { id: 42, type: "private" } } },
+  }), baseEnv);
+  assert.equal(response.status, 200);
 });
 
 test("sends /schedule reply with canonical site link", async (t) => {
