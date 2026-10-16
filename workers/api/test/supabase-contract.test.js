@@ -19,6 +19,8 @@ const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta
 const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
 const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
+const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
+const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
@@ -132,6 +134,9 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
   assert.ok(ticketsSource.includes('mode === "practice" ? { answer, has_answer: Boolean(answer.trim()) } : {}'));
   assert.ok(ticketsSource.includes('title.includes("ситуационные задачи")'));
   assert.ok(ticketsSource.includes('title.includes("экзаменационные препараты")'));
+  assert.ok(apiClientSource.includes('apiCached("/tickets/banks")'));
+  assert.ok(chemistryTicketMigration.includes("subject_slug='organic_chemistry'"));
+  assert.ok(chemistryTicketMigration.includes("SET subject_slug='chemistry_organic_physical'"));
 });
 
 test("subject test pages keep catalog queries scoped to canonical subject, course, and semester", () => {
