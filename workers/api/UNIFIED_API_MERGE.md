@@ -15,9 +15,11 @@ The current Hono Worker mounts auth/profile, dashboard, subjects/groups, schedul
 
 ## Compatibility work committed
 
-- `GET /api/v1/auth/me` now delegates to the canonical authenticated `/api/v1/me` handler.
-- `POST /api/v1/files/upload` now delegates to the authenticated Upstash Blob upload handler at `/api/v1/storage/upload`.
-- These are aliases only; they do not create a second database or duplicate writes.
+- `GET /api/v1/auth/me` delegates to the canonical authenticated `/api/v1/me` handler.
+- `POST /api/v1/files/upload` delegates to the authenticated Upstash Blob upload handler at `/api/v1/storage/upload`.
+- The Hono Worker now has a typed `MEDBIOHIM_UPSTREAM` service binding to `medbiohim-api-shadow`. Unmatched methods/routes and explicit `501` responses are passed to that compatibility Worker through the same public API origin. A cloned request is used so a handler can inspect the body without consuming the fallback request.
+- Ordinary validation/auth/database errors (400/401/403/404/409/422/503 etc.) are not silently retried against the legacy Worker. This avoids masking real errors or duplicating writes.
+- Wrangler config declares the service binding for both default and production environments. The target Worker must exist and its binding must be present in the deployed environment.
 
 ## Still to port/verify before calling the merge complete
 
@@ -41,4 +43,4 @@ The current Hono Worker mounts auth/profile, dashboard, subjects/groups, schedul
 4. No secret/service-role key is returned to clients; all writes check user ownership or server-side admin role.
 5. No route is marked “complete” based only on compilation or a 200 health response.
 
-**Status:** merge in progress. The Worker now has a single canonical entrypoint and the first compatibility aliases, but this register deliberately does not claim full PHP/legacy parity until the remaining route families and live tests pass.
+**Status:** unified public API routing is implemented in source; full source consolidation and PHP/legacy parity remain in progress. The current design uses the canonical Hono Worker first and the archived Worker as a compatibility service for uncovered routes. Do not call the migration complete until deployment config and authenticated route-contract smoke tests pass.
