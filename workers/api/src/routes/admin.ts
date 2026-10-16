@@ -563,9 +563,9 @@ admin.post("/content/package/import", requireAuth, async (c) => {
         return copy;
       });
       const conflict = key === "test_questions" ? "test_id,question_id" : key === "sources" ? "id" : key === "materials" || key === "tests" ? "source_key" : "id";
-      const { data, error: dbError } = await db.from(table).upsert(safeRows, { onConflict: conflict, ignoreDuplicates: false }).select("id");
+      const { error: dbError } = await db.from(table).upsert(safeRows, { onConflict: conflict, ignoreDuplicates: false });
       if (dbError) return error(c, rid, 503, "IMPORT_FAILED", "Импорт прерван на наборе " + key + "; проверьте схему/уникальные ключи");
-      stats[key] = (data || []).length;
+      stats[key] = safeRows.length;
     }
     return c.json(ok({ imported: stats, total }, rid), 201);
   } catch (e) {
