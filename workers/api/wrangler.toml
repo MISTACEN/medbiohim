@@ -1,0 +1,26 @@
+# MEDBIOHIM API — Cloudflare Workers
+# Secrets (Dashboard → Workers → medbiohim-api → Settings → Variables):
+#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (optional, admin only)
+#   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+#   OPENAI_API_KEY (optional)
+#   APP_ORIGIN (e.g. https://medbiohim.vercel.app)
+# Never put secrets in this file.
+
+name = "medbiohim-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# workers.dev subdomain; bind custom domain in Dashboard if needed
+workers_dev = true
+
+[vars]
+APP_ENV = "production"
+# Public non-secret defaults only
+CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000"
+
+# Optional: bind Cloudflare Rate Limiting rules in Dashboard and reference here later
+# [[unsafe.bindings]]
+# ...
+
+# Local secrets: copy .dev.vars.example → .dev.vars (gitignored)

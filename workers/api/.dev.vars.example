@@ -1,0 +1,26 @@
+# Local development secrets for `wrangler dev`
+# Copy to .dev.vars and fill values. Never commit .dev.vars.
+
+# --- Supabase ---
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=your_anon_or_publishable_key
+# Service role: only for admin paths that must bypass RLS. Prefer user JWT + RLS.
+SUPABASE_SERVICE_ROLE_KEY=
+
+# --- Upstash Redis (cache + rate limit) ---
+UPSTASH_REDIS_REST_URL=https://YOUR_REDIS.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+
+# --- OpenAI (optional AI features) ---
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+
+# --- App ---
+APP_ORIGIN=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000,https://medbiohim.vercel.app
+
+# --- Optional Cloudflare / Vercel / GitHub (placeholders) ---
+# CLOUDFLARE_ACCOUNT_ID=
+# CLOUDFLARE_API_TOKEN=
+# VERCEL_TOKEN=
+# GITHUB_TOKEN=
