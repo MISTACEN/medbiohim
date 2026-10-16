@@ -54,3 +54,14 @@ The alternate archive `medbiohim-cloudflare-api 2.zip` is not a drop-in replacem
 5. Reconcile remaining PHP-only/admin routes one by one. Keep HTTP SpaceWeb as a forbidden credentialed fallback; only HTTPS legacy origins are eligible for safe read fallback.
 6. Keep production traffic and Telegram webhook configuration unchanged until the above acceptance gates pass.
 
+
+
+## 2026-10-17 follow-up — Supabase admin directory and group schema
+
+The live database contains users/groups/membership records. The blank group selector and incomplete user directory were caused by schema mismatches in Worker queries plus RLS policies that only allowed each user to read their own `users` and `user_roles` rows.
+
+- Worker routes now use `group_memberships.role_in_group` and `groups.course_number`; nonexistent `groups.course`, `groups.semester`, `group_memberships.role`, and membership `updated_at` fields were removed from the affected paths.
+- Applied migration `20261016160523_admin_user_directory_rls`, which grants admin-only SELECT/UPDATE on `public.users` and admin-only SELECT/INSERT/DELETE on `public.user_roles`. RLS stays enabled; normal users retain their self-only policies.
+- Admin endpoint now reports role/membership query errors instead of silently omitting those data. The admin page surfaces API errors for group/subject/user loads.
+- Checks: Worker TypeScript + 13 tests pass; frontend failover 9 tests pass; migration Worker 390 tests pass; predeploy audit passes with warning because PHP CLI is unavailable in the runner; Worker deploy dry-run passes.
+- Production deployment is still blocked by the missing/empty GitHub Actions secret `CLOUDFLARE_API_TOKEN`. The code fix is in `main`, but must not be described as live until deployment and authenticated read-after-write smoke tests succeed.
