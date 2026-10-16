@@ -3629,3 +3629,12 @@ The live schema and Worker contract were compared without modifying production. 
 - Found the primary UI contract mismatch behind the blank subject header/plan: Cloudflare `GET /subjects/:id` returns the subject row directly, while the frontend only read `response.data.subject`. That left `subject` undefined and skipped all follow-up requests for plan, tests, ticket banks, materials, and progress. The subject page now accepts both the direct Cloudflare shape and the wrapped legacy SpaceWeb shape, merging the catalog row as a fallback.
 - Added a regression assertion for this response-shape mismatch. Latest local verification after the fix: Worker typecheck/tests pass 20/20, frontend typecheck passes, and a clean Next.js production build passes.
 - This fix is committed on `main`; production Vercel still reports the older `4e491605...` build, so the repaired subject page cannot be considered live until Vercel deployment access is restored.
+
+
+## Subject page contract fix — 2026-10-17
+
+- Found and fixed the root response-shape mismatch on the subject tests page: Cloudflare's `GET /subjects/:id` returns the subject row directly, while the page only read `data.subject`. It now accepts the direct row and legacy wrapped shapes.
+- Added workload fields (`control_type`, credits, total/lecture/practice/self-study hours) to the subjects catalog response, so the page can still show the academic load if it must fall back to the catalog.
+- Added a regression test for direct subject responses, workload fields and visible plan descriptions. Worker typecheck passes and all 21 tests pass.
+- Rebuilt from a clean `.next` directory after these UI changes: the full Next.js production build succeeds and generates all 44 static pages. Existing lint warnings remain.
+- Vercel's direct production-deployment API returned HTTP 403. The Vercel CLI fallback was checked but is logged out and has no credentials in the build environment. No credentials were requested in chat or added to source.
