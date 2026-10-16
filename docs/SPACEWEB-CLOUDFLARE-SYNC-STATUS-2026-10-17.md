@@ -105,3 +105,8 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 - `GET /api/v1/files/{id}` and `GET /api/v1/admin/files/audit` return `401 UNAUTHORIZED` without a bearer token, confirming the protected routes are mounted. Authenticated data-level checks are still pending.
 - Health remains `200`; it reports `redisConfigured:false` and `openaiConfigured:false`. Cloudflare binding inventory shows the production API has `UPSTASH_REDIS_REST_URL` and `SUPABASE_SERVICE_KEY`, but no `UPSTASH_REDIS_REST_TOKEN` or `TELEGRAM_WEBHOOK_SECRET`. The Telegram Worker has `TELEGRAM_WEBHOOK_SECRET` and the correct confirmation URL. Copy the same Telegram secret into the API Worker; do not paste it into chat.
 - The latest deployment job passed all 17 Worker tests and then failed at Wrangler because `CLOUDFLARE_API_TOKEN` is empty in GitHub Actions. The live script contains the Telegram RPC and storage-audit code signatures, but automated redeployment is still blocked and full source/runtime parity is not independently proven.
+
+## SpaceWeb deployment note
+
+- The existing `deploy-backend.yml` run failed during FTP site-root discovery: none of the candidate roots contained the expected `backend/public/index.php`. No deployment was performed. I did not guess a different remote path or upload files to an unverified directory.
+- This means the old SpaceWeb deploy automation is also not currently a verified sync path. Cloudflare should remain the target runtime, and SpaceWeb should remain fallback-only until its exact remote root is confirmed. The source and archive manifest must be compared before any legacy media copy.
