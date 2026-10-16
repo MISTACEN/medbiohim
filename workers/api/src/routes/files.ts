@@ -174,7 +174,7 @@ files.post("/upload", requireAuth, async (c) => {
 
 files.get("/:id/download", requireAuth, async (c) => {
   const rid = requestId();
-  const access = await readAccessibleFile(c, c.req.param("id"));
+  const access = await readAccessibleFile(c, c.req.param("id") || "");
   if (access.response) return access.response;
   const file = access.file;
   const key = typeof file.object_key === "string" ? file.object_key : "";
