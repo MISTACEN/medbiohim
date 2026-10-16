@@ -3383,3 +3383,15 @@ The current Worker already validates homework attachment IDs, caller ownership/s
 
 
 - [ ] Проверить typecheck и route tests на точном main; подтвердить реальные схемы/RPC и выполнить полный authenticated smoke (start → answer/save → reload → finish → review). До этих проверок весь этап остаётся реализованным в исходниках, но не production-accepted.
+
+
+## 2026-10-16 — Администрирование в canonical Cloudflare API
+
+- [x] Добавлен `workers/api/src/routes/admin.ts`, подключён на `/api/v1/admin/*`; все маршруты требуют проверенный Supabase JWT и проверяют `user_roles → roles(code)`.
+- [x] Банк экзаменационных вопросов: список/фильтры, создание, изменение, удаление; редактор основного `questions` банка поддерживает валидацию вариантов и версионирование через `content_versions`.
+- [x] Лекции: чтение/фильтрация, редактирование JSON-документа `site_content(key=lectures)`, publish/reject/delete и генерация черновика через OpenAI с обязательным статусом `pending_review`.
+- [x] Пользователи: список с ролями/учебной группой; назначение и снятие ролей только администратором; защита от снятия собственной роли у последнего администратора.
+- [x] Импорт данных: контракт XLSX-конвертера `{tests,questions,test_questions,dry_run}`, разрешение предметов/модулей/тем, лимит 500 строк, dry-run, идемпотентные upsert по source keys; отдельный ограниченный import package с histology scope `specialty_slug=mbh`.
+- [x] Telegram: список чатов, привязка к активной группе, настройка webhook; токен/secret только из Cloudflare Worker env, явный `TELEGRAM_WEBHOOK_URL` поддержан.
+- [ ] Не принято в production: typecheck и tests не запускались; необходимо проверить RLS, имена/уникальность столбцов и реальную Supabase-схему. Импорт нескольких таблиц пока не транзакционный: при ошибке позднего набора предыдущие upsert уже могут быть сохранены.
+- [ ] Проверить настройки Worker secrets: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_WEBHOOK_URL` (рекомендуется полный URL текущего Telegram Worker endpoint); `OPENAI_API_KEY` для генерации лекций.
