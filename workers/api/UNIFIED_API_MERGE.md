@@ -51,3 +51,21 @@ The current Hono Worker mounts auth/profile, dashboard, subjects/groups, schedul
 5. No route is marked “complete” based only on compilation or a 200 health response.
 
 **Status:** unified public API routing is implemented in source; full source consolidation and PHP/legacy parity remain in progress. The current design uses the canonical Hono Worker first and the archived Worker as a compatibility service for uncovered routes. Do not call the migration complete until deployment config and authenticated route-contract smoke tests pass.
+
+
+## Academic / planner / attendance implementation (2026-10-16)
+
+Canonical Hono routes are now mounted in the primary API:
+
+- `GET /api/v1/planner?group_id=&from=YYYY-MM-DD&to=YYYY-MM-DD`: validates the user's active group membership and returns tasks, attendance, recovery summaries, and `lessons`. Each lesson contains its linked tasks; task rows preserve `schedule_entry_id`.
+- `POST /api/v1/attendance/:entryId`: validates the lesson belongs to an active schedule of one of the user's groups, then creates/updates only that user's attendance record. Allowed statuses: `present`, `excused`, `sick`, `unexcused`.
+- `POST /api/v1/academic/sync`, `GET /api/v1/academic/state`, `PUT /api/v1/academic/state`, `POST /api/v1/academic/ai-plan`: sync tries known RPC names, state read/write is scoped to the authenticated user, and study plan generation currently uses deterministic rules (no LLM invocation).
+- `POST /api/v1/homeworks`: students can add a personal or group task. If `schedule_entry_id` is supplied, the API checks membership and derives/validates the lesson's group and subject before insert. `GET /api/v1/homeworks` now returns subject and linked lesson details.
+
+### Data semantics and verification status
+
+- Schedule/task linkage uses the existing `homeworks.schedule_entry_id` foreign-key relationship; it does not copy or fabricate timetable entries.
+- Attendance is separate from online presence heartbeats.
+- Group IDs supplied by clients are not trusted; planner, attendance and linked-task creation verify active membership.
+- The academic AI-plan endpoint is a rule-engine plan and is returned as `persisted: false`; persistence and LLM-backed planning are not claimed as implemented.
+- These are source changes on `main`. They are **not yet runtime-verified** against the deployed Worker or live Supabase schema. Typecheck, unit/contract tests, and authenticated smoke tests remain acceptance gates. In particular, validate actual RLS grants and relation names for `schedule_entries`, `homeworks`, `attendance_records`, and academic tables before treating these routes as production-complete.
