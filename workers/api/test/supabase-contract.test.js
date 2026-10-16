@@ -162,8 +162,8 @@ test("subject content routes resolve duplicate slugs by semester and return test
   assert.ok(testsSource.includes('subjectId = String(subjects[0].id)'));
   assert.ok(testsSource.includes('questions_count: counts.get(String(item.id)) || 0'));
   assert.ok(testsSource.includes("subject_slug: subjectSlug || subject?.slug || null"));
-  assert.ok(testsSource.includes('course_number: course || null'));
-  assert.ok(testsSource.includes('semester: semester || null'));
+  assert.ok(testsSource.includes('course_number: course || subject?.course_number || null'));
+  assert.ok(testsSource.includes('semester: semester || subject?.semester || null'));
 });
 
 test("student subject plans use the narrow RPC without loosening site_content RLS", () => {
