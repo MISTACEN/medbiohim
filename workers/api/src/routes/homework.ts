@@ -162,11 +162,15 @@ homework.post("/:id/submit", requireAuth, async (c) => {
   }
   try {
     const { data: task, error: taskError } = await db.from("homeworks")
-      .select("id,group_id,status").eq("id", id).maybeSingle();
+      .select("id,group_id,status,created_by").eq("id", id).maybeSingle();
     if (taskError) throw taskError;
     if (!task) {
       const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
       return c.json(body, status as 404);
+    }
+    if (!task.group_id && String(task.created_by || "") !== user.id) {
+      const { body, status } = fail("FORBIDDEN", "Личное задание недоступно для сдачи другим пользователям", 403, rid);
+      return c.json(body, status as 403);
     }
     if (task.group_id) {
       const { data: membership, error: membershipError } = await db.from("group_memberships")
