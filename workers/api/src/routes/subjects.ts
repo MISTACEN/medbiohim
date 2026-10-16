@@ -12,8 +12,8 @@ subjects.get("/", requireAuth, async (c) => {
   const semester = c.req.query("semester");
 
   try {
-    let q = supabase.from("subjects").select("id,slug,name,title,course,semester,specialty_slug,is_active").eq("is_active", true).limit(200);
-    if (course) q = q.eq("course", Number(course));
+    let q = supabase.from("subjects").select("id,slug,name,short_name,course_number,semester,specialty_slug,is_active,control_type,credits,total_hours,color_hex").eq("is_active", true).limit(200);
+    if (course) q = q.eq("course_number", Number(course));
     if (semester) q = q.eq("semester", Number(semester));
 
     const { data, error } = await q;
@@ -21,7 +21,8 @@ subjects.get("/", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Каталог предметов недоступен", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: data || [], total: (data || []).length }, rid));
+    const items = (data || []).map((item) => ({ ...item, title: item.short_name || item.name, course: item.course_number }));
+    return c.json(ok({ items, total: items.length }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Каталог предметов недоступен", 503, rid);
     return c.json(body, status as 503);
