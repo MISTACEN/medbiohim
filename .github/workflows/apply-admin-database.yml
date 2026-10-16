@@ -13,7 +13,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Write admin-database.ts from artifacts pattern (inline min)
+      - name: Write admin-database.ts
         run: |
           cat > workers/api/src/routes/admin-database.ts << 'EOF'
           import { Hono } from "hono";
@@ -164,11 +164,11 @@ jobs:
           
           export default dbAdmin;
           EOF
-          # strip leading spaces from heredoc indent
           sed -i 's/^          //' workers/api/src/routes/admin-database.ts
           wc -c workers/api/src/routes/admin-database.ts
+          head -5 workers/api/src/routes/admin-database.ts
 
-      - name: Mount database router + hub aliases on admin.ts
+      - name: Mount database router on admin.ts
         run: |
           python3 << 'PY'
           from pathlib import Path
@@ -181,28 +181,29 @@ jobs:
               )
           if 'route("/database"' not in text:
               text = text.replace("export default admin;", 'admin.route("/database", dbAdmin);\n\nexport default admin;')
-          # Hub GET /
-          if 'admin.get("/", requireAuth' not in text:
+          if 'admin.get("/", requireAuth' not in text and 'admin.get("/overview"' in text:
               text = text.replace(
                   'admin.get("/overview", requireAuth',
-                  '''admin.get("/", requireAuth, async (c) => {\n  // alias overview for CMS hub\n  return admin.fetch(new Request(new URL("/overview", c.req.url), c.req.raw), c.env);\n});\n\nadmin.get("/overview", requireAuth'''
+                  'admin.get("/", requireAuth, async (c) => {\n  const url = new URL(c.req.url);\n  url.pathname = url.pathname.replace(/\\/?$/, "") + "/overview";\n  return admin.fetch(new Request(url.toString(), c.req.raw), c.env);\n});\n\nadmin.get("/overview", requireAuth',
               )
           p.write_text(text)
-          print("admin.ts", len(text), "has db", 'admin-database' in text)
+          assert 'admin-database' in text
+          print("admin.ts ok", len(text))
           PY
 
       - name: Restore questions if placeholder
+        continue-on-error: true
         run: |
           if grep -q PLACEHOLDER workers/api/src/routes/questions.ts 2>/dev/null; then
-            git show c6cefd4b68ec623e3c7e5a10b2182e1917a9ec65:workers/api/src/routes/questions.ts > workers/api/src/routes/questions.ts
-            echo "restored questions"
+            git show c6cefd4b68ec623e3c7e5a10b2182e1917a9ec65:workers/api/src/routes/questions.ts > workers/api/src/routes/questions.ts || true
+            echo "tried restore questions"
           fi
 
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add workers/api/src/routes/admin-database.ts workers/api/src/routes/admin.ts workers/api/src/routes/questions.ts
+          git add workers/api/src/routes/admin-database.ts workers/api/src/routes/admin.ts workers/api/src/routes/questions.ts || true
           git status
           git commit -m "feat(api): admin database browser + hub mount" || exit 0
           git push origin HEAD:main
