@@ -47,7 +47,7 @@ planner.get("/", requireAuth, async (c) => {
       }
     } else if (groups.length > 1) {
       const { body, status } = fail("GROUP_REQUIRED", "Выберите учебную группу", 409, rid);
-      return c.json({ ...body, details: { groups: groups.map((g: any) => ({ id: g.group_id, name: g.name, code: g.code })) } as any, status as 409);
+      return c.json({ ...body, details: { groups: groups.map((g: any) => ({ id: g.group_id, name: g.name, code: g.code })) } }, status as 409);
     } else group = groups[0];
 
     let hwQuery = db.from("homeworks")
