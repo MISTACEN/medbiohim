@@ -28,6 +28,19 @@ subjects.get("/", requireAuth, async (c) => {
   return c.json(ok({ items: data || [] }, rid));
 });
 
+subjects.get("/:id/gradebook", requireAuth, async (c) => {
+  const rid = requestId();
+  const id = String(c.req.param("id") ?? "");
+  return c.json(ok({
+    subject_id: id,
+    entries: [],
+    students: [],
+    columns: [],
+    degraded: true,
+    service_notice: "Журнал оценок пока в режиме совместимости (пустая выписка).",
+  }, rid));
+});
+
 subjects.get("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   const { data, error } = await db.from("subjects").select("*").eq("id", id).maybeSingle();
