@@ -1,10 +1,19 @@
-# MEDBIOHIM API — Cloudflare Workers
+# =============================================================================
+# PRODUCTION API WORKER — medbiohim-api ONLY
+# Topology (LOCKED): docs/WORKERS-TOPOLOGY.md
+#
+#   medbiohim-api          = единственный прод API  (этот файл)
+#   medbiohim-api-shadow   = fallback MEDBIOHIM_UPSTREAM only — не развивать как прод
+#   medbiohim-telegram     = бот, не HTTP API сайта
+#
+# Vercel / фронт → https://medbiohim-api.*.workers.dev/api/v1
+# НЕ деплоить этот код под именем shadow. НЕ ждать прод от shadow Builds.
+# =============================================================================
 # Secrets (Dashboard → Workers → medbiohim-api → Settings → Variables):
-#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY (server-only RPC calls)
+#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY
 #   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_BLOB_TOKEN
 #   OPENAI_API_KEY (optional)
-#   TELEGRAM_WEBHOOK_SECRET (same secret configured in integrations/telegram-bot-cloudflare)
-#   TELEGRAM_BOT_USERNAME (optional; defaults to MEDBIOCHIM_bot)
+#   TELEGRAM_WEBHOOK_SECRET, TELEGRAM_BOT_USERNAME (optional)
 #   APP_ORIGIN (e.g. https://medbiohim.vercel.app)
 # Never put secrets in this file.
 
@@ -13,21 +22,13 @@ main = "src/index.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# workers.dev subdomain; bind custom domain in Dashboard if needed
 workers_dev = true
 
 [vars]
 APP_ENV = "production"
-# Public non-secret defaults only
 CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000"
 
-# Optional: bind Cloudflare Rate Limiting rules in Dashboard and reference here later
-# [[unsafe.bindings]]
-# ...
-
-# Local secrets: copy .dev.vars.example → .dev.vars (gitignored)
-
-# Legacy compatibility router: one public API origin while uncovered routes are ported.
+# Fallback only for routes still 501 on this Worker. Not a second production API.
 [[services]]
 binding = "MEDBIOHIM_UPSTREAM"
 service = "medbiohim-api-shadow"
