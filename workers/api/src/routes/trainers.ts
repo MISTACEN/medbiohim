@@ -28,8 +28,14 @@ function histologyObjectKey(preparation: Record<string, unknown> | null | undefi
   if (!preparation) return null;
   const imageUrl = typeof preparation.imageUrl === "string" ? preparation.imageUrl : "";
   const imagePath = typeof preparation.imagePath === "string" ? preparation.imagePath : "";
-  let key = imageUrl || imagePath;
-  key = key.trim().replace(/^\/content\/histology\//, "");
+  let key = (imagePath || imageUrl).trim().replace(/\\\\/g, "/");
+  // Imported packages may store paths relative to the repository root, the
+  // content directory, or the already-migrated Blob prefix. Normalize these
+  // equivalent forms before validating the strict histology-only allowlist.
+  key = key
+    .replace(/^\.\//, "")
+    .replace(/^\/?content\/histology\//, "")
+    .replace(/^histology\//, "");
   if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[\u0000-\u001f\u007f]/u.test(key)) return null;
   const parts = key.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
