@@ -3701,3 +3701,16 @@ No GitHub Actions workflow files or branch policy were changed.
 - [ ] Frontend production is still not confirmed; Vercel status continues to report the build-rate-limit gate. The new curriculum page will appear only after a successful frontend deployment.
 - [ ] Histology lectures remain unpublished because all 17 records are empty stubs (`body_markdown` length 0); do not publish blank lecture records. Chemistry knowledge tables remain unpopulated pending verified source import.
 
+
+
+
+## Shared media storage — SpaceWeb to Upstash Blob, 2026-10-17
+
+- [x] Cloudflare Worker has an admin-only `POST /api/v1/storage/histology-import` endpoint that writes local SpaceWeb media to the existing private Upstash Blob bucket under canonical `histology/` keys. It rejects non-admins, path traversal and unsupported extensions; existing objects are skipped unless overwrite is explicitly enabled.
+- [x] SpaceWeb PHP has `UpstashBlobProxy` to read private objects through the authenticated Worker `/api/v1/storage/object` route. Histology source files, textbook PDFs and material viewer now prefer the shared bucket and retain local-disk fallback during migration.
+- [x] Added resumable CLI migration script `backend/scripts/migrate-histology-to-upstash.php` with dry-run, skip-existing default and explicit `--overwrite`. Local files are not deleted.
+- [x] Added contract tests for admin gating, object-key restrictions, proxy configuration and migration script.
+- [ ] Configure `MEDBIOHIM_CLOUDFLARE_API_URL` on SpaceWeb to the canonical Worker API base ending in `/api/v1`; provide a current admin access token only in the SpaceWeb environment as `MEDBIOHIM_MIGRATION_BEARER_TOKEN` while running the CLI migration.
+- [ ] Run migration dry-run, then upload and verify all images/PDFs/docs. Only after checking the Upstash object inventory and live pages should the local `content/histology` directory be removed from future deployment bundles. Do not delete local originals during initial sync.
+- [ ] Supabase `content_sources.source_path` remains the source metadata; actual media bytes stay in Upstash Blob. Do not store binary media in Redis key-value or duplicate image bytes in Postgres.
+
