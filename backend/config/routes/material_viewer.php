@@ -211,6 +211,22 @@ return static function (Router $router): void {
             $root = rtrim((string)$root, '/\\');
             $candidate = $root . '/' . preg_replace('#^content/histology/#', '', $relative);
 
+            // Shared Upstash Blob is canonical; local disk remains a migration fallback.
+            $remoteRelative = ltrim(preg_replace('#^content/histology/#', '', $relative) ?? $relative, '/');
+            $remoteExt = strtolower(pathinfo($remoteRelative, PATHINFO_EXTENSION));
+            $remoteMime = trim((string)($row['mime_type'] ?? ''));
+            if ($remoteMime === '') {
+                $remoteMime = match ($remoteExt) {
+                    'jpg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif',
+                    'webp' => 'image/webp', 'pdf' => 'application/pdf',
+                    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'doc' => 'application/msword', 'html' => 'text/html; charset=utf-8',
+                    default => 'application/octet-stream',
+                };
+            }
+            $remoteKey = 'histology/' . $remoteRelative;
+            \\Medbiohim\\Services\\UpstashBlobProxy::emit($req, $remoteKey, $remoteMime, basename($remoteRelative));
+
             if (!is_file($candidate)) {
                 Response::error(
                     'NOT_FOUND',
