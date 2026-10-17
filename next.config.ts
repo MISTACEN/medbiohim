@@ -39,6 +39,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/trainers", destination: "/subjects", permanent: false },
+      { source: "/me", destination: "/settings", permanent: false },
     ];
   },
 };
