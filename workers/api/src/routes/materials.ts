@@ -236,7 +236,8 @@ materials.get("/", requireAuth, async (c) => {
     }
     if (type) query = query.eq("type", type);
     if (searchQuery) {
-      const escapedSearch = searchQuery.replace(/[\\%_]/g, "\\    if (type) query = query.eq("type", type);
+      query = query.ilike("title", "%" + searchQuery + "%");
+    }
     const { data, error } = await query;");
       query = query.ilike("title", `%${escapedSearch}%`);
     }
