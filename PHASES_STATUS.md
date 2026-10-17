@@ -2872,3 +2872,10 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - [x] Reconciled all remaining null section IDs using the original preparation names and current histology topic taxonomy: **178/178** MBH preparations now have a section ID.
 - [x] Migration updated and reapplied successfully; no question IDs, ticket banks or other subjects were modified.
 - [ ] Continue with source-document review for the 3 unpublished lecture records and signed-in file/UI verification.
+
+
+### Histology Blob reconciliation — 2026-10-17
+
+- [x] Verified all 206 published atlas/preparation/electronogram asset keys against the live Blob inventory: 206/206 exact matches.
+- [x] Verified all 80 published histology material source paths against live Blob objects using Worker-compatible candidate-key resolution: 80/80 found.
+- [ ] Complete authenticated file download and signed-in UI acceptance; inventory matching is not an end-to-end browser test.
