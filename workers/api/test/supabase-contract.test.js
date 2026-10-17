@@ -10,6 +10,7 @@ const settingsSource = await readFile(new URL("../src/routes/settings.ts", impor
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
 const filesSource = await readFile(new URL("../src/routes/files.ts", import.meta.url), "utf8");
+const storageSource = await readFile(new URL("../src/routes/storage.ts", import.meta.url), "utf8");
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const telegramMigration = await readFile(new URL("../../../database/migrations/20261017120000_telegram_account_linking_rpc.sql", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
@@ -228,6 +229,28 @@ test("subject detail accepts the Cloudflare response shape and preserves workloa
   assert.ok(subjectTestsPageSource.includes("subject.data.subject || subject.data.item || (subject.data.id ? subject.data : null)"));
   assert.ok(subjectsRouteSource.includes("total_hours,lecture_hours,practice_hours,self_study_hours"));
   assert.ok(subjectPageSource.includes("w.description"));
+});
+
+test("SpaceWeb histology media migration uses the shared private Upstash Blob bucket", () => {
+  assert.ok(storageSource.includes('storage.post("/histology-import", requireAuth'));
+  assert.ok(storageSource.includes('roles.includes("admin")'));
+  assert.ok(storageSource.includes('key.startsWith("histology/")'));
+  assert.ok(storageSource.includes('await bucket.put(key, fileValue'));
+  assert.ok(storageSource.includes('storage.get("/object", requireAuth'));
+});
+
+test("SpaceWeb reads shared histology media through the authenticated Cloudflare proxy", async () => {
+  const proxy = await readFile(new URL("../../../backend/src/Services/UpstashBlobProxy.php", import.meta.url), "utf8");
+  const sourceRoute = await readFile(new URL("../../../backend/config/routes/histology_sources.php", import.meta.url), "utf8");
+  const materialRoute = await readFile(new URL("../../../backend/config/routes/material_viewer.php", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../../backend/scripts/migrate-histology-to-upstash.php", import.meta.url), "utf8");
+  assert.ok(proxy.includes("MEDBIOHIM_CLOUDFLARE_API_URL"));
+  assert.ok(proxy.includes("/storage/object?key="));
+  assert.ok(sourceRoute.includes("UpstashBlobProxy::emit"));
+  assert.ok(materialRoute.includes("UpstashBlobProxy::emit"));
+  assert.ok(migration.includes("/storage/histology-import"));
+  assert.ok(migration.includes("--dry-run"));
+  assert.ok(migration.includes("--overwrite"));
 });
 
 test("admin file audit endpoints are strict-admin-only and non-destructive", () => {
