@@ -24,24 +24,99 @@ type TrainerRow = {
   is_published?: boolean;
 };
 
-function histologyObjectKey(preparation: Record<string, unknown> | null | undefined): string | null {
-  if (!preparation) return null;
-  const imageUrl = typeof preparation.imageUrl === "string" ? preparation.imageUrl : "";
-  const imagePath = typeof preparation.imagePath === "string" ? preparation.imagePath : "";
-  let key = (imageUrl || imagePath).trim();
-  // Imported packages may store paths relative to the repository root, the
-  // content directory, or the already-migrated Blob prefix. Normalize these
-  // equivalent forms before validating the strict histology-only allowlist.
-  key = key
+function cleanLegacyPath(value: string): string {
+  return String(value || "")
+    .trim()
     .replace(/^\.\//, "")
-    .replace(/^\/?content\/histology\//, "")
+    .replace(/^\/+/, "")
+    .replace(/^content\/histology\//, "")
     .replace(/^histology\//, "");
-  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[\u0000-\u001f\u007f]/u.test(key)) return null;
+}
+
+function safeObjectKey(value: string): string {
+  const key = String(value || "").trim();
+  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[?#\u0000-\u001f\u007f]/u.test(key)) return "";
   const parts = key.split("/");
-  if (parts.some((part) => !part || part === "." || part === "..")) return null;
-  // Only paths from the migrated histology content tree may be served.
-  if (!["electronograms/", "em/", "photos/", "5_Фотографии препаратов/"].some((prefix) => key.startsWith(prefix))) return null;
-  return `histology/${key}`;
+  if (parts.some((part) => !part || part === "." || part === "..")) return "";
+  return key;
+}
+
+/** Expand relative/absolute paths into bare + histology/ + content/histology/ forms. */
+function withHistologyPrefixes(relativeOrAbsolute: string): string[] {
+  const keys: string[] = [];
+  const add = (v: string) => {
+    const k = safeObjectKey(v);
+    if (k && !keys.includes(k)) keys.push(k);
+  };
+  const raw = String(relativeOrAbsolute || "").trim().replace(/^\/+/, "");
+  if (!raw) return keys;
+  add(raw);
+  const stripped = cleanLegacyPath(raw);
+  if (stripped) {
+    add(stripped);
+    add("histology/" + stripped);
+    add("content/histology/" + stripped);
+  }
+  return keys;
+}
+
+/**
+ * Ordered Blob object keys for a trainer card.
+ * Live bucket uses histology/… prefix (verified: histology/electronograms/images/apoptoz.png = 200).
+ * Cards often store only a basename in preparation.imagePath — expand under photo roots.
+ */
+function trainerImageCandidateKeys(card: {
+  source_key?: string | null;
+  mode_set?: string | null;
+  preparation?: Record<string, unknown> | null;
+}, fileObjectKey: string | null = null): string[] {
+  const keys: string[] = [];
+  const add = (v: string) => {
+    for (const k of withHistologyPrefixes(v)) {
+      if (!keys.includes(k)) keys.push(k);
+    }
+  };
+
+  if (fileObjectKey) {
+    add(fileObjectKey);
+    return keys;
+  }
+
+  if (card.source_key) add(String(card.source_key));
+
+  const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
+  const imagePath = cleanLegacyPath(String(preparation.imagePath || ""));
+  const imageUrl = cleanLegacyPath(String(preparation.imageUrl || ""));
+  add(imagePath);
+  add(imageUrl);
+
+  const base = (imagePath || imageUrl).split("/").pop() || "";
+  if (base && !base.includes("..")) {
+    if (card.mode_set === "electronogram") {
+      add("electronograms/images/" + base);
+      add("em/" + base);
+    }
+    // preparation (and unknown mode): try SpaceWeb photo tree
+    if (card.mode_set === "preparation" || !card.mode_set) {
+      const photoRoot = "5_Фотографии препаратов/";
+      const subfolders = [
+        "",
+        "частная гистология/",
+        "цитология, эмбриология и общая гистология/",
+        "стом. гистология/",
+      ];
+      if (imagePath.includes("/")) add(photoRoot + imagePath);
+      if (imageUrl.includes("/")) add(photoRoot + imageUrl);
+      for (const sub of subfolders) add(photoRoot + sub + base);
+    }
+  }
+  return keys;
+}
+
+/** Strict single-key helper kept for has_image mapping. */
+function histologyObjectKey(preparation: Record<string, unknown> | null | undefined): string | null {
+  const keys = trainerImageCandidateKeys({ preparation, mode_set: null }, null);
+  return keys.find((k) => k.startsWith("histology/")) || keys[0] || null;
 }
 
 function mapTrainerCard(row: TrainerRow, orderIndex: number) {
@@ -71,6 +146,7 @@ function mapTrainerCard(row: TrainerRow, orderIndex: number) {
 function imageContentType(key: string): string {
   const ext = key.split(".").pop()?.toLowerCase();
   if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
   if (ext === "png") return "image/png";
   if (ext === "gif") return "image/gif";
   if (ext === "webp") return "image/webp";
@@ -96,8 +172,6 @@ trainers.get("/feed", requireAuth, async (c) => {
       return next.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
     };
     let { data, error } = await applyFilters(supabase.from("trainer_feed_cards").select(select));
-    // Published study cards are intentionally readable. If a user-scoped query
-    // fails, retry the same published-only query with the server-only client.
     if (error) {
       console.warn("[trainers:feed] user-scoped query failed; trying published-only service query", error.message);
       const { createServiceClient } = await import("../lib/supabase");
@@ -166,8 +240,6 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
     });
     if (!error && data) return c.json(ok(data, rid));
 
-    // Compatibility fallback for deployments without the scoring RPC.
-    // Correctness is computed server-side from the stored question JSON.
     const { data: card, error: cardError } = await supabase
       .from("trainer_feed_cards")
       .select("question")
@@ -222,7 +294,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
   try {
     const { data: card, error } = await supabase
       .from("trainer_feed_cards")
-      .select("id,preparation,source_key,is_published")
+      .select("id,preparation,source_key,mode_set,is_published")
       .eq("id", c.req.param("id"))
       .maybeSingle();
 
@@ -235,27 +307,37 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
 
-    let key = histologyObjectKey(card.preparation as Record<string, unknown> | null);
-    // The imported trainer JSON often keeps only a basename in imagePath. Resolve
-    // the canonical relative path through content_sources.source_key before giving up.
-    if (!key && card.source_key) {
+    let fileObjectKey: string | null = null;
+    if (card.source_key) {
       const { data: source, error: sourceError } = await supabase.from("content_sources")
         .select("source_path,file_id")
         .eq("id", card.source_key)
         .maybeSingle();
       if (sourceError) throw sourceError;
-      if (source?.source_path) key = histologyObjectKey({ imagePath: source.source_path });
-      if (!key && source?.file_id) {
+      if (source?.file_id) {
         const { data: file, error: fileError } = await supabase.from("files")
           .select("object_key,mime_type")
           .eq("id", source.file_id)
           .maybeSingle();
         if (fileError) throw fileError;
         const objectKey = typeof file?.object_key === "string" ? file.object_key.trim() : "";
-        if (objectKey.startsWith("histology/") && !objectKey.includes("..") && !objectKey.includes("\\") && !/[?#\u0000-\u001f\u007f]/u.test(objectKey)) key = objectKey;
+        if (objectKey) fileObjectKey = objectKey;
+      }
+      if (source?.source_path && !(card.preparation as any)?.imagePath) {
+        card.preparation = { ...(card.preparation as object || {}), imagePath: source.source_path };
       }
     }
-    if (!key) {
+
+    const candidates = trainerImageCandidateKeys(
+      {
+        source_key: card.source_key,
+        mode_set: (card as any).mode_set ?? null,
+        preparation: card.preparation as Record<string, unknown> | null,
+      },
+      fileObjectKey,
+    );
+
+    if (!candidates.length) {
       console.warn("[trainer-image] missing/invalid preparation image path", { cardId: card.id });
       const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Для изображения не задан корректный ключ хранилища", 503, rid);
       return c.json(body, status as 503);
@@ -263,11 +345,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
 
     let image: any = null;
     let resolvedKey = "";
-    const candidates = [...new Set([
-      key,
-      key.startsWith("histology/") ? "content/" + key : "",
-      key.startsWith("histology/") ? "content/histology/" + key.slice("histology/".length) : "",
-    ].filter(Boolean))];
+    const key = candidates[0];
 
     // The histology bucket has been intentionally made public. Try its canonical
     // object URL first so image delivery does not depend on the Blob SDK's
