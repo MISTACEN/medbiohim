@@ -1,9 +1,21 @@
+# =============================================================================
+# SHADOW ONLY — NOT PRODUCTION
+# Topology (LOCKED): docs/WORKERS-TOPOLOGY.md
+#
+#   medbiohim-api          = единственный прод API  (workers/api/)
+#   medbiohim-api-shadow   = этот Worker — только fallback MEDBIOHIM_UPSTREAM
+#   medbiohim-telegram     = бот
+#
+# Не слать сюда Vercel CLOUDFLARE_API_ORIGIN.
+# Успешный Cloudflare Build этого Worker ≠ прод обновлён.
+# Правки student/admin API — в workers/api/, не здесь.
+# =============================================================================
+
 name = "medbiohim-api-shadow"
 main = "src/index.js"
 compatibility_date = "2026-10-11"
 workers_dev = true
 
-# Keep safe runtime logs and traces enabled so upstream failures can be diagnosed.
 [observability]
 enabled = true
 head_sampling_rate = 1
@@ -15,9 +27,6 @@ head_sampling_rate = 1
 persist = true
 destinations = ["cloudflare"]
 
-# The Worker is named shadow and reports APP_ENV=shadow. The public Vercel API
-# has been observed sending production requests here, but route parity is partial.
-# Keep the diagnostic label until the missing routes and acceptance checks are done.
 [vars]
 APP_ENV = "shadow"
 MEDBIOHIM_APP_ORIGIN = "https://medbiohim.vercel.app"
@@ -29,11 +38,9 @@ OPENROUTER_MODEL = "google/gemini-2.5-flash"
 GEMINI_MODEL = "gemini-2.0-flash"
 GIGACHAT_MODEL = "GigaChat"
 UPSTASH_REDIS_REST_URL = "https://rare-oyster-230342.upstash.io"
-B2_BUCKET = "medbiohim-files" # Legacy object-storage fallback only; not Cloudflare R2.
+B2_BUCKET = "medbiohim-files"
 AUTH_RATE_LIMIT_ENFORCEMENT_VERIFIED = "true"
 
-# Cloudflare native rate limiting. Keys are client IPs in src/index.js.
-# Keep thresholds conservative until authenticated production behavior is validated.
 [[ratelimits]]
 name = "AUTH_LOGIN_LIMITER"
 namespace_id = "1001"
@@ -44,10 +51,4 @@ name = "AUTH_REGISTER_LIMITER"
 namespace_id = "1002"
 simple = { limit = 3, period = 60 }
 
-# Required Worker secrets — add through Cloudflare Dashboard/Wrangler, never commit values:
-# B2_KEY_ID, B2_APPLICATION_KEY
-# UPSTASH_BLOB_TOKEN, UPSTASH_REDIS_REST_TOKEN
-# OPENAI_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY
-# GEMINI_API_KEY (region-gated), GIGACHAT_CREDENTIALS (or GIGACHAT_AUTH_KEY)
-# SUPABASE_URL and SUPABASE_ANON_KEY are already provisioned.
-# Never configure service-role keys, DB passwords, or AI secrets in frontend variables.
+# Secrets via Dashboard only — never commit values.
