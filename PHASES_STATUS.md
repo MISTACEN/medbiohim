@@ -2896,3 +2896,24 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - [x] Verified all 206 published atlas/preparation/electronogram asset keys against the live Blob inventory: 206/206 exact matches.
 - [x] Verified all 80 published histology material source paths against live Blob objects using Worker-compatible candidate-key resolution: 80/80 found.
 - [ ] Complete authenticated file download and signed-in UI acceptance; inventory matching is not an end-to-end browser test.
+
+
+## Current histology restoration checkpoint — 2026-10-17
+
+**Done and data-verified**
+- [x] Rebuilt the published MBH preparation catalogue from the existing trainer feed: 178 published preparations, every row has a category and image path/URL.
+- [x] Built the Supabase media index: 206 published histology assets (178 preparations + 28 electronograms). Cross-check against Upstash Blob inventory found all 206 exact keys; image binaries remain in Blob.
+- [x] Published and normalized the 163 source-backed closed-type cytology/embryology questions after validating five options and a valid answer index for each. An exact text answer was converted to the option index that matches it.
+- [x] Verified the existing 80 published histology materials each resolve to an existing object in Upstash Blob (80/80). No source material binaries were copied into Postgres.
+- [x] Fixed the frontend/backend contract for materials: support subject_slug and subjectSlug, title search, duplicate subject slugs, subject-materials duplicate-slug lookup, and the frontend's ?subject= lecture alias.
+- [x] Return database-derived plan_status and actual module/topic labels from trainer-feed API so the UI can distinguish 169 plan-linked cards from 37 outside the current plan without fabricating a status.
+- [x] Current main Worker deployment run [39039083471](https://github.com/MISTACEN/medbiohim/actions/runs/39039083471) passed typecheck and Worker tests and deployed canonical medbiohim-api. Code checks [39039083347](https://github.com/MISTACEN/medbiohim/actions/runs/39039083347) and smoke [39039083333](https://github.com/MISTACEN/medbiohim/actions/runs/39039083333) passed.
+
+**Not done / still needs source review**
+- [ ] Add source-backed descriptions and diagnostic captions to the 178 light-microscopy preparations. Most archive cards have no captions; keep the current images and question choices, and do not invent labels where the original files do not support them.
+- [ ] Keep 4 incomplete lecture records unpublished (stomatology blank; nerve tissue, cardiovascular and endocrine have only partial notes or placeholders) until complete study content is sourced.
+- [ ] Signed-in UI acceptance remains pending: confirm Materials list/search/categories, photo viewer and zoom, all 28 EM captions, source document downloads, test attempt start/save/finish, and trainer answer submission using the actual student session.
+- [ ] Keep the duplicate histology subject row untouched until every FK and progress record is audited.
+- [ ] Rotate the previously exposed Upstash Blob credential as a separate secret-management follow-up; replacement belongs only in the secure secrets store.
+
+Continue on main with no branches. SpaceWeb remains frozen. Do not state authenticated browser acceptance is complete based only on CI and deployment metadata.
