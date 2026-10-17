@@ -58,3 +58,9 @@ Scope: read-only audit of live Supabase project `gnobvyjywtqbdfeejxmf`, frontend
 ## Limitations
 
 This is a source/schema/data audit, not a full authenticated browser end-to-end run. No secrets were read or printed. No Supabase data or policies were modified.
+
+## Follow-up correction — 2026-10-17
+
+The earlier materials-route warning above describes an older source snapshot and is superseded by the current `workers/api/src/routes/materials.ts`. Current code selects canonical live columns (`module_id`, `topic_id`, `file_id`, `external_url`, `content_html`, `order_index`, `is_published`, `source_key`) and no longer selects the nonexistent `slug`, `summary`, or `published_at` columns. The repository's `workers/api/test/supabase-contract.test.js` explicitly checks this contract. Authenticated live list/detail/file smoke tests are still required before declaring the materials flow verified.
+
+The latest live Supabase snapshot confirms 80 published materials, 206 trainer cards with 0 `source_file_id` links, and 1 `files` row. Thus the material metadata listing contract has been corrected in source, while physical-file linkage remains a separate unresolved task.
