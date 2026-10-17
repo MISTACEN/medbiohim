@@ -292,13 +292,38 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
   }
 
   try {
-    const { data: card, error } = await supabase
+    let cardResult = await supabase
       .from("trainer_feed_cards")
       .select("id,preparation,source_key,mode_set,is_published")
       .eq("id", c.req.param("id"))
+      .eq("is_published", true)
       .maybeSingle();
 
-    if (error || !card) {
+    // The feed can be served through the service-role fallback when user-scoped
+    // RLS hides trainer cards. Image resolution must use the same fallback or it
+    // incorrectly reports 404 for cards that are present in the feed.
+    if (cardResult.error || !cardResult.data) {
+      const { createServiceClient } = await import("../lib/supabase");
+      const service = createServiceClient(c.env);
+      if (service) {
+        const fallback = await service
+          .from("trainer_feed_cards")
+          .select("id,preparation,source_key,mode_set,is_published")
+          .eq("id", c.req.param("id"))
+          .eq("is_published", true)
+          .maybeSingle();
+        if (!fallback.error && fallback.data) cardResult = fallback;
+        else if (fallback.error) console.error("[trainer-image:service-fallback]", fallback.error.message);
+      }
+    }
+
+    const { data: card, error } = cardResult;
+    if (error) {
+      console.error("[trainer-image:card-query]", error.message);
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось получить карточку изображения", 503, rid);
+      return c.json(body, status as 503);
+    }
+    if (!card) {
       const { body, status } = fail("NOT_FOUND", "Карточка не найдена", 404, rid);
       return c.json(body, status as 404);
     }
