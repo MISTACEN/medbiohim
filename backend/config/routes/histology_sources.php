@@ -99,7 +99,7 @@ return static function (Router $router): void {
         }
 
         try {
-            $apiBase = rtrim((string) \Medbiohim\Support\\Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', ''), '/');
+            $apiBase = rtrim((string) \Medbiohim\Support\\Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', 'https://medbiohim-api.ryazansevegor.workers.dev/api/v1'), '/');
             $bearer = $req->bearerToken();
             if ($apiBase !== '' && $bearer) {
                 $remote = \Medbiohim\Support\\HttpClient::request('GET', $apiBase . '/histology/source-materials?folder=' . rawurlencode($folder), null, [
