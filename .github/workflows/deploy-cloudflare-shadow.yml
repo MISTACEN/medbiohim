@@ -1,3 +1,9 @@
+# SHADOW ONLY — does NOT update production API.
+# Topology: docs/WORKERS-TOPOLOGY.md
+#   medbiohim-api        = PROD  → deploy-medbiohim-api.yml / workers/api
+#   medbiohim-api-shadow = this workflow — fallback MEDBIOHIM_UPSTREAM only
+# A green run here is NOT a production cutover.
+
 name: Deploy MEDBIOHIM Cloudflare migration Worker
 
 on:
@@ -35,7 +41,7 @@ jobs:
         run: npm test
       - name: Build Worker without publishing
         run: npx --yes wrangler@4.149.0 deploy --dry-run
-      - name: Deploy shadow Worker
+      - name: Deploy shadow Worker (NOT production)
         run: npx --yes wrangler@4.149.0 deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
