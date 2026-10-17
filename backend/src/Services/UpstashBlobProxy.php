@@ -17,7 +17,7 @@ final class UpstashBlobProxy
     /** @return array{body:string,status:int}|null */
     public static function fetch(Request $request, string $objectKey): ?array
     {
-        $base = rtrim((string) Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', ''), '/');
+        $base = rtrim((string) Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', 'https://medbiohim-api.ryazansevegor.workers.dev/api/v1'), '/');
         $token = $request->bearerToken();
         $key = trim($objectKey);
         if ($base === '' || !$token || $key === '' || !str_starts_with($key, 'histology/')) {
