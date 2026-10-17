@@ -23,7 +23,7 @@ final class UpstashBlobProxy
         if ($base === '' || !$token || $key === '' || !str_starts_with($key, 'histology/')) {
             return null;
         }
-        if (strlen($key) > 1024 || str_contains($key, '\\\\') || str_contains($key, '..')
+        if (strlen($key) > 1024 || str_contains($key, '\\') || str_contains($key, '..')
             || preg_match('/[?#\\x00-\\x1F\\x7F]/', $key)) {
             return null;
         }
