@@ -263,7 +263,7 @@ plans.get("/subject-plans/:slug", requireAuth, async (c) => {
 plans.get("/subject-materials", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const subject = c.req.query("subject_id") || c.req.query("subject_slug");
+  const subject = c.req.query("subject_id") || c.req.query("subject_slug") || c.req.query("subject");
   try {
     let query = supabase
       .from("materials")
@@ -274,9 +274,22 @@ plans.get("/subject-materials", requireAuth, async (c) => {
       if (/^[0-9a-f-]{36}$/i.test(subject)) {
         query = query.eq("subject_id", subject);
       } else {
-        const { data: subjectRow } = await supabase.from("subjects").select("id").eq("slug", subject).maybeSingle();
-        if (!subjectRow?.id) return c.json(ok({ items: [] }, rid));
-        query = query.eq("subject_id", subjectRow.id);
+        // Legacy subject slugs are not unique. Include materials linked to
+        // every matching catalog row instead of letting maybeSingle() hide them.
+        const { data: subjectRows, error: subjectError } = await supabase
+          .from("subjects")
+          .select("id")
+          .eq("slug", subject);
+        if (subjectError) {
+          console.error("[plans:materials:subject-scope]", subjectError.message);
+          const { body, status } = fail("DB_UNAVAILABLE", "Не удалось определить предмет материалов", 503, rid);
+          return c.json(body, status as 503);
+        }
+        const subjectIds = [...new Set((subjectRows || [])
+          .map((row: { id?: unknown }) => String(row.id || ""))
+          .filter((id: string) => /^[0-9a-f-]{36}$/i.test(id)))];
+        if (!subjectIds.length) return c.json(ok({ items: [] }, rid));
+        query = query.in("subject_id", subjectIds);
       }
     }
     const { data, error } = await query.order("order_index", { ascending: true });
