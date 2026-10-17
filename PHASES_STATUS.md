@@ -2832,3 +2832,14 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - 🟡 Not yet live-verified: set `MEDBIOHIM_CLOUDFLARE_API_URL` on SpaceWeb, run the migration, and verify object coverage. Do not remove local media before verification.
 - 🟡 Keep Supabase for metadata and relationships; Upstash Blob stores bytes; Redis key-value is for cache/temporary data, not image storage.
 
+## Synchronization checkpoint — 2026-10-17 01:00 UTC
+
+- [x] Inspected GitHub `main`, live Supabase migration/table inventory, Upstash Redis, private Blob bucket, and Cloudflare Worker deployment metadata.
+- [x] Applied reviewed Supabase migration `files_upstash_blob_provider_20261017`; confirmed constraint allows `upstash_blob`.
+- [x] Added missing `UPSTASH_REDIS_REST_TOKEN` secret binding to canonical Worker `medbiohim-api` without exposing the token in Git; Cloudflare reports a new 100%-traffic version. Redis SET/GET/TTL/DEL connectivity check passed and temporary key was removed.
+- [x] Confirmed private Upstash Blob bucket `medbiohim-files` has histology objects; preserved all objects and 21 existing Redis deployment-stamp keys.
+- [ ] Run authenticated production smoke tests for dashboard, schedule, materials, curriculum, test bank, trainer image retrieval, upload/download and admin CRUD.
+- [ ] Reconcile all 206 trainer cards to verified private Blob object keys; current DB has 0 cards with `source_file_id` and only 1 row in `files`.
+- [ ] Investigate failures in GitHub Actions runs `38988446386`, `38988445718`, and `38988445019` before rerunning those patch workflows.
+- [ ] Verify canonical Worker runtime health and actual Supabase read-after-write behavior; deployment metadata alone is not acceptance evidence.
+- [ ] Keep all work on `main`; SpaceWeb remains frozen and production routing unchanged.
