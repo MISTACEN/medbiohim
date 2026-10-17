@@ -2865,3 +2865,10 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - [ ] Resolve 31 missing preparation section IDs from the canonical preparation package.
 - [ ] Expand the 3 unpublished/incomplete lecture records from the original source documents; don't promote short fragments as complete lectures.
 - [ ] Verify actual Blob object existence and authenticated material-file downloads, then perform signed-in UI acceptance.
+
+
+### Preparation section mapping — 2026-10-17
+
+- [x] Reconciled all remaining null section IDs using the original preparation names and current histology topic taxonomy: **178/178** MBH preparations now have a section ID.
+- [x] Migration updated and reapplied successfully; no question IDs, ticket banks or other subjects were modified.
+- [ ] Continue with source-document review for the 3 unpublished lecture records and signed-in file/UI verification.
