@@ -2811,3 +2811,13 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - 🟢 **Curriculum API/UI:** fixed `sort_order` → `order_index`, active-record filtering, and replaced the redirect with a real curriculum list, filters, metadata-based hour/credit summaries, and student-specific progress persistence.
 - 🟡 **Verification pending:** regression assertions committed, but fresh CI/typecheck and authenticated browser smoke test have not yet passed. Vercel's latest status is still build-rate-limit failure; live frontend/Worker may lag `main`.
 - 🔴 **Still open:** 206 trainer cards need verified file mapping; 17 histology lectures require content review before selective publication; chemistry molecule/reaction/question tables remain empty.
+
+
+## Verification update — Supabase parity fixes (2026-10-17)
+
+- 🟢 **Worker typecheck + tests passed** on commit `1cc34f0`: API typecheck successful; `npm test` successful, including materials, curriculum and histology trainer-image contract tests.
+- 🔴 **Cloudflare production deploy did not run:** the deploy job failed at `npx wrangler deploy` because `CLOUDFLARE_API_TOKEN` is missing in GitHub Actions. The deployment step was reached after passing typecheck/tests but cannot publish without the secret.
+- 🔴 **Vercel frontend deploy remains blocked** by the existing build-rate-limit status; no claim that `/curriculum` is live in production.
+- 🟢 Source fixes on `main`: materials schema/Blob file proxy, duplicate subject slug filtering, curriculum page and status persistence, trainer image resolution via `content_sources.source_path` with legacy Blob key fallbacks.
+- 🟡 Histology lectures were checked directly: all 17 records have empty `body_markdown`, so remain unpublished intentionally. Chemistry structured knowledgebase still needs verified content import.
+
