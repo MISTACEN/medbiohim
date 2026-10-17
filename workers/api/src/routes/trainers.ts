@@ -53,8 +53,8 @@ function withHistologyPrefixes(relativeOrAbsolute: string): string[] {
   add(raw);
   const stripped = cleanLegacyPath(raw);
   if (stripped) {
+    add("histology/" + stripped); // live public bucket layout
     add(stripped);
-    add("histology/" + stripped);
     add("content/histology/" + stripped);
   }
   return keys;
@@ -145,7 +145,6 @@ function mapTrainerCard(row: TrainerRow, orderIndex: number) {
 
 function imageContentType(key: string): string {
   const ext = key.split(".").pop()?.toLowerCase();
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
   if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
   if (ext === "png") return "image/png";
   if (ext === "gif") return "image/gif";
@@ -308,10 +307,14 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
     }
 
     let fileObjectKey: string | null = null;
-    if (card.source_key) {
+    const sourceKey = typeof card.source_key === "string" ? card.source_key.trim() : "";
+    // Many EM cards store a Blob-relative path in source_key (not a content_sources UUID).
+    // Only query content_sources when the key looks like a UUID — otherwise path lookup throws / 22P02.
+    const sourceKeyLooksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sourceKey);
+    if (sourceKeyLooksLikeUuid) {
       const { data: source, error: sourceError } = await supabase.from("content_sources")
         .select("source_path,file_id")
-        .eq("id", card.source_key)
+        .eq("id", sourceKey)
         .maybeSingle();
       if (sourceError) throw sourceError;
       if (source?.file_id) {
@@ -347,10 +350,6 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
     let resolvedKey = "";
     const key = candidates[0];
 
-    // The histology bucket has been intentionally made public. Try its canonical
-    // object URL first so image delivery does not depend on the Blob SDK's
-    // authenticated object lookup behavior. Encode each path segment separately
-    // because migrated filenames include spaces and Cyrillic characters.
     const publicBlobBase = "https://b8a4f9f853fa.blob.upstash.io";
     for (const candidate of candidates) {
       const publicUrl = `${publicBlobBase}/${candidate.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
@@ -364,6 +363,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
               "x-content-type-options": "nosniff",
               "x-request-id": rid,
               "x-mbh-media-key": candidate,
+              "x-mbh-image-resolver": "v2",
             },
           });
         }
@@ -388,6 +388,9 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
     if (!image) {
       console.warn("[trainer-image] object not found", { cardId: card.id, candidates });
       const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует в Upstash Blob", 404, rid);
+      if (body && typeof body === "object" && (body as any).error) {
+        (body as any).error.details = { resolver: "v2", tried: candidates.slice(0, 12) };
+      }
       return c.json(body, status as 404);
     }
 
@@ -398,6 +401,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
         "x-content-type-options": "nosniff",
         "x-request-id": rid,
         "x-mbh-media-key": resolvedKey,
+        "x-mbh-image-resolver": "v2",
       },
     });
   } catch (error) {
