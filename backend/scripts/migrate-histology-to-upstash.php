@@ -80,8 +80,8 @@ foreach ($iterator as $fileInfo) {
     }
 
     $mime = 'application/octet-stream';
-    if (class_exists(\\finfo::class)) {
-        $finfo = new \\finfo(FILEINFO_MIME_TYPE);
+    if (class_exists(\finfo::class)) {
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $detected = $finfo->file($path);
         if (is_string($detected) && $detected !== '') $mime = $detected;
     }
