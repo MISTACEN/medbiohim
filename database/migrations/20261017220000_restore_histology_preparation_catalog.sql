@@ -191,3 +191,23 @@ set
   updated_at=now()
 from bodies b
 where l.id=b.lecture_id;
+
+
+-- Fill section IDs that the legacy preparation package left blank, using the
+-- original preparation names/folders and the same topic taxonomy as lecture stubs.
+update public.histology_preparations
+set section_id = case
+  when title ilike 'Клетка%' or title ilike '%включения%' or title ilike '%Комплекс Гольджи%' then 'cytology'
+  when title ilike 'Эмбриология%' then 'embryology'
+  when title ilike 'Эмбриогенез.Плацента%' or title ilike 'Эмбриогенез. Молочная железа%' then 'reproductive'
+  when title ilike 'Эпителий%' then 'epithelium'
+  when title ilike 'Соед.тк%' or title ilike 'Хрящ.тк%' then 'connective'
+  when title ilike 'Мышечная тк%' or title ilike 'Костная тк%' or title ilike 'Трубчатая кость%' then 'bone_muscle'
+  when title ilike 'Нервная тк%' then 'nerve_tissue'
+  when title ilike 'Анализаторы%' then 'nervous_system'
+  when title ilike 'Кроветворение%' then 'hematopoiesis'
+  when title ilike 'Пищеварительный канал%' then 'gi'
+  else section_id
+end,
+updated_at=now()
+where subject_slug='histology' and 'mbh'=any(specialty_scope) and section_id is null;
