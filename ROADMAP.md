@@ -3722,3 +3722,13 @@ No GitHub Actions workflow files or branch policy were changed.
 - Upstash Blob bucket `medbiohim-files` is private and contains histology objects. Redis currently contains 21 legacy deployment-stamp keys; these were preserved, not deleted or rewritten.
 - **Still open:** no authenticated browser acceptance was performed; 206 trainer cards have `source_file_id IS NULL`, and the `files` table contains one row, so Blob object existence does not prove every trainer card resolves correctly. Canonical Worker has not been verified with a live authenticated request in this pass. The latest 3 manually dispatched schema/UI patch workflows failed; inspect their logs before retrying. Production UI/API behavior is not declared fully synchronized.
 - Continue directly on `main`. Keep SpaceWeb frozen. Do not change production routing, reseed content, or delete Redis/Blob objects as part of reconciliation.
+
+
+## Histology content restoration — 2026-10-17 (MBH)
+
+- Restored the published MBH histology preparation catalog from the existing trainer feed: **178/178 preparations** now exist in `histology_preparations`, all published, each with a media path and legacy URL. Existing IDs and non-null section assignments were preserved; no other subjects were changed.
+- Populated `histology_assets` with **206/206 published media records** (178 light-microscopy preparations + 28 electronograms), pointing to canonical Upstash Blob object keys. Binary bytes remain in Blob; Postgres stores metadata only.
+- Added idempotent migration `database/migrations/20261017220000_restore_histology_preparation_catalog.sql` directly to `main`. The live data was restored and count-checked against the existing 206 published `trainer_feed_cards`.
+- Existing source-backed test sets were checked: the 96-question cytology collection, 67-question embryology collection and 163-question mixed collection already exist; they were not duplicated. The old 20-question cytology/embryology tests were preserved.
+- Remaining: resolve section IDs for the currently unclassified preparations; replace the 17 empty/unpublished lecture stubs with source-grounded content from the uploaded histology methodical documents; reconcile all 80 materials with their source files; verify every asset key against the Blob inventory and run authenticated UI smoke tests. Do not mark the lectures complete or publish blank stubs.
+- This is a database/source restoration pass, not a claim that every section is verified in the production UI. Continue on `main`, do not create branches, and do not modify SpaceWeb.
