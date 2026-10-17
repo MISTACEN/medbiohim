@@ -2843,3 +2843,15 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - [ ] Investigate failures in GitHub Actions runs `38988446386`, `38988445718`, and `38988445019` before rerunning those patch workflows.
 - [ ] Verify canonical Worker runtime health and actual Supabase read-after-write behavior; deployment metadata alone is not acceptance evidence.
 - [ ] Keep all work on `main`; SpaceWeb remains frozen and production routing unchanged.
+
+
+## Histology restoration pass — 2026-10-17
+
+- [x] Restore 178 MBH histology preparations from the already-published trainer catalog; all 178 are published and have `media_path` + `media_url`.
+- [x] Index 206 histology assets in Supabase (178 preparations + 28 electronograms); all 206 are published and have a storage key. Binary files remain in Upstash Blob.
+- [x] Add idempotent migration `database/migrations/20261017220000_restore_histology_preparation_catalog.sql` on `main`; no new branch and no other subject data changed.
+- [x] Confirm source-backed cytology/embryology test collections already exist (96, 67 and mixed 163 questions); avoid duplicate import and preserve existing 20-question tests.
+- [ ] Fill missing section IDs for unclassified preparations and verify storage keys against Blob inventory.
+- [ ] Replace 17 empty unpublished lecture stubs with source-grounded content from the histology methodical documents; publish only after content review.
+- [ ] Reconcile 80 histology materials with their file/source records and test authenticated UI access.
+- [ ] Run signed-in acceptance for atlas, micropreparations, electronograms, test bank and lecture/material links. Database counts alone are not proof of live UI acceptance.
