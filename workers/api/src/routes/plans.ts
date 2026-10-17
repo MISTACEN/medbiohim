@@ -5,6 +5,42 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const plans = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
+// Compatibility alias used by older clients — same data as GET /curriculum
+plans.get("/plans", requireAuth, async (c) => {
+  const rid = requestId();
+  const supabase = c.get("supabase");
+  try {
+    let { data, error } = await supabase
+      .from("curriculum_items")
+      .select("id,subject_id,module_id,topic_id,course_number,semester,item_type,title,description,planned_date,due_at,order_index,is_required,is_active,source,metadata,subjects(name,slug,course_number,semester)")
+      .eq("is_active", true)
+      .order("course_number", { ascending: true })
+      .order("semester", { ascending: true })
+      .order("order_index", { ascending: true })
+      .limit(1000);
+    if (error) {
+      console.warn("[plans:/plans]", String(error.message || "").slice(0, 160));
+      const plain = await supabase
+        .from("curriculum_items")
+        .select("id,subject_id,module_id,topic_id,course_number,semester,item_type,title,description,planned_date,due_at,order_index,is_required,is_active,source,metadata")
+        .eq("is_active", true)
+        .order("course_number", { ascending: true })
+        .order("semester", { ascending: true })
+        .order("order_index", { ascending: true })
+        .limit(1000);
+      data = plain.data;
+      error = plain.error;
+    }
+    if (error) {
+      return c.json(ok({ items: [], degraded: true, service_notice: "Учебный план временно недоступен.", source: "supabase_curriculum" }, rid));
+    }
+    return c.json(ok({ items: data || [], count: (data || []).length, source: "supabase_curriculum" }, rid));
+  } catch (err) {
+    console.error("[plans:/plans]", err);
+    return c.json(ok({ items: [], degraded: true, service_notice: "Учебный план временно недоступен.", source: "supabase_curriculum" }, rid));
+  }
+});
+
 plans.get("/subjects-catalog", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
@@ -88,8 +124,6 @@ plans.get("/subject-plans/:slug", requireAuth, async (c) => {
   }
 
   try {
-    // Curated PHP plans are private in site_content. Read only the allow-listed
-    // plan via an authenticated RPC; never grant students direct CMS table access.
     if (allowedPlanSlugs.has(slug)) {
       const { data: restored, error: rpcError } = await supabase.rpc("medbiohim_get_student_subject_plan", {
         p_subject_slug: slug,
@@ -101,8 +135,6 @@ plans.get("/subject-plans/:slug", requireAuth, async (c) => {
           const { body, status } = fail("FORBIDDEN", "Доступ к учебному плану доступен участникам МБХ", 403, rid);
           return c.json(body, status as 403);
         }
-        // Keep the live curriculum fallback usable while an older Worker/RPC
-        // version is being synchronized; do not fall back on explicit denial.
         console.error("[plans:student-rpc]", {
           code: String(rpcError.code || "").slice(0, 32),
         });
