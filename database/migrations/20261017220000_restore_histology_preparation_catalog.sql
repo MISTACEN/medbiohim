@@ -144,3 +144,50 @@ on conflict (id) do update set
   preparation_id=excluded.preparation_id,
   is_published=true,
   updated_at=now();
+
+
+-- Restore source-backed lecture bodies from the existing study-table materials.
+-- Publish only substantive notes; short/incomplete sources remain unpublished for review.
+with mapping(lecture_id, source_keys) as (
+  values
+    ('lec-hist-cytology',array['histology-zip-scheme-1']::text[]),
+    ('lec-hist-embryology',array['histology-zip-scheme-2','histology-zip-scheme-27']::text[]),
+    ('lec-hist-epithelium',array['histology-zip-scheme-3']::text[]),
+    ('lec-hist-connective',array['histology-zip-scheme-5','histology-zip-scheme-6']::text[]),
+    ('lec-hist-bone_muscle',array['histology-zip-scheme-7','histology-zip-scheme-8']::text[]),
+    ('lec-hist-hematopoiesis',array['histology-zip-scheme-4','histology-zip-scheme-15','histology-zip-scheme-16']::text[]),
+    ('lec-hist-nerve_tissue',array['histology-zip-scheme-9']::text[]),
+    ('lec-hist-nervous_system',array['histology-zip-scheme-10','histology-zip-scheme-11','histology-zip-scheme-12','histology-zip-scheme-13']::text[]),
+    ('lec-hist-cvs',array['histology-zip-scheme-14']::text[]),
+    ('lec-hist-gi',array['histology-zip-scheme-19','histology-zip-scheme-20']::text[]),
+    ('lec-hist-glands',array['histology-zip-scheme-21']::text[]),
+    ('lec-hist-respiratory',array['histology-zip-scheme-22']::text[]),
+    ('lec-hist-skin',array['histology-zip-scheme-23']::text[]),
+    ('lec-hist-urinary',array['histology-zip-scheme-24']::text[]),
+    ('lec-hist-reproductive',array['histology-zip-scheme-25','histology-zip-scheme-26']::text[]),
+    ('lec-hist-endocrine',array['histology-zip-scheme-17']::text[])
+),
+bodies as (
+  select
+    m.lecture_id,
+    string_agg(
+      '# '||mat.title||E'\n\n'||regexp_replace(coalesce(mat.content_html,''),'<[^>]*>','','g'),
+      E'\n\n---\n\n' order by mat.order_index,mat.title
+    ) as body,
+    string_agg(mat.title,', ' order by mat.order_index,mat.title) as source_titles
+  from mapping m
+  join public.materials mat on mat.source_key=any(m.source_keys)
+  join public.subjects s on s.id=mat.subject_id and s.slug='histology'
+  where mat.is_published=true and coalesce(mat.content_html,'')<>''
+  group by m.lecture_id
+)
+update public.histology_lectures l
+set
+  body_markdown='## Конспект по материалам учебного архива'||E'\n\n'||b.body||
+    E'\n\n---\n\nИсточник: сохранённые материалы MEDBIOHIM — '||b.source_titles||
+    '. Текст перенесён из исходных учебных таблиц; задания вида «заполнить таблицу» требуют самостоятельной проработки.',
+  kind=case when length(b.body)>=500 then 'written_lecture' else 'written_lecture_stub' end,
+  is_published=(length(b.body)>=500),
+  updated_at=now()
+from bodies b
+where l.id=b.lecture_id;
