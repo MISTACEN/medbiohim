@@ -42,6 +42,12 @@ return static function (Router $router): void {
                 return;
             }
 
+            $mime = trim((string)($row['mime_type'] ?? '')) ?: 'application/octet-stream';
+            $remoteKey = 'histology/source-materials/' . $relative;
+            if (\\Medbiohim\\Services\\UpstashBlobProxy::emit($req, $remoteKey, $mime, basename($relative))) {
+                return;
+            }
+
             $root = rtrim((string)(getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology')), '/');
             $path = realpath($root . '/source-materials/' . $relative);
             $rootReal = realpath($root . '/source-materials');
