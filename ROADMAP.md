@@ -3732,3 +3732,12 @@ No GitHub Actions workflow files or branch policy were changed.
 - Existing source-backed test sets were checked: the 96-question cytology collection, 67-question embryology collection and 163-question mixed collection already exist; they were not duplicated. The old 20-question cytology/embryology tests were preserved.
 - Remaining: resolve section IDs for the currently unclassified preparations; replace the 17 empty/unpublished lecture stubs with source-grounded content from the uploaded histology methodical documents; reconcile all 80 materials with their source files; verify every asset key against the Blob inventory and run authenticated UI smoke tests. Do not mark the lectures complete or publish blank stubs.
 - This is a database/source restoration pass, not a claim that every section is verified in the production UI. Continue on `main`, do not create branches, and do not modify SpaceWeb.
+
+
+### Histology content fill — source-backed lecture restoration (2026-10-17)
+
+- Applied the committed migration `restore_histology_preparation_catalog` to Supabase successfully; re-running it is safe.
+- Post-migration checks: `histology_preparations` = **178 published / 178 with media paths**; `histology_assets` = **206 published / 206 with storage paths**; source feed remains 178 preparations + 28 electronograms.
+- Restored lecture bodies from existing source-backed study tables in `materials.content_html`: **13 of 17 lectures now published**, and **16 of 17 have non-empty bodies**. The 3 still unpublished are intentionally held back: nerve tissue and cardiovascular notes are too short to treat as complete lecture content, endocrine source is only a fragment, and the stomatology lecture has no matching substantive source in the study tables.
+- All **80/80 published histology materials** have matching `content_sources` metadata by `source_key`. File IDs are still absent, so real authenticated downloads/object-key verification remain a separate gate; do not claim them verified yet.
+- Still open: restore the 31 preparations with missing `section_id` from the canonical source package; enrich the 3 incomplete lectures from the original source documents; verify all object keys against the Blob inventory; test materials/downloads and the atlas/lecture UI with a signed-in MBH account.
