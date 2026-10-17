@@ -3793,3 +3793,10 @@ No GitHub Actions workflow files or branch policy were changed.
 - [ ] Keep previously exposed Upstash Blob token rotation on the follow-up list; never place the replacement token in source control or chat.
 
 Continue directly on main; no branches and no SpaceWeb deployment. Supabase is the metadata/relationship source of truth; Upstash Blob stores media and source files; Redis remains cache-only.
+
+
+### Follow-up: full atlas payload cap — 2026-10-17
+- [x] Raised the authenticated trainer-feed limit cap from 100 to 250 because both histology UI consumers request up to 500 while the database contains 206 published cards. The previous cap could silently return only 100 cards; the new cap allows all 206 cards in one request while retaining a bounded limit and offset pagination.
+- [x] Added a regression assertion for the 250-item cap and offset pagination.
+- [x] Current Worker deploy [39039681372](https://github.com/MISTACEN/medbiohim/actions/runs/39039681372) passed typecheck and Worker tests and deployed to the canonical production Worker. Cloudflare shows active version c22fabea-7290-49c9-9ac7-83315ba17fc2 at 100% traffic.
+- [ ] The full UI list is not considered signed-in browser-accepted until the user session confirms 206 cards, image viewing, and the current-plan/all-materials toggle.
