@@ -1,3 +1,10 @@
+# Sole production API deploy.
+# Topology: docs/WORKERS-TOPOLOGY.md
+#   medbiohim-api        = PROD (this workflow → workers/api → name medbiohim-api)
+#   medbiohim-api-shadow = fallback only (deploy-cloudflare-shadow.yml)
+#   medbiohim-telegram   = bot only
+# Shadow/Telegram Builds do NOT update production API.
+
 name: Deploy MEDBIOHIM API to Cloudflare
 
 on:
@@ -42,7 +49,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Deploy production Worker
+      - name: Deploy production Worker (medbiohim-api ONLY)
         run: npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
