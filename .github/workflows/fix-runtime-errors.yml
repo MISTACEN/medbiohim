@@ -1,0 +1,126 @@
+name: Fix runtime errors
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Soft-fail academic state + /me redirect + settings guards
+        run: |
+          python3 << 'PY'
+          from pathlib import Path
+
+          # --- academic.ts ---
+          p = Path("workers/api/src/routes/academic.ts")
+          t = p.read_text()
+          t = t.replace(
+              """    if (statesResult.error) throw statesResult.error;\n    if (progressResult.error) throw progressResult.error;\n    if (profileResult.error) throw profileResult.error;""",
+              """    if (statesResult.error) console.error("[academic:state:states]", statesResult.error.message);\n    if (progressResult.error) console.error("[academic:state:progress]", progressResult.error.message);\n    if (profileResult.error) console.error("[academic:state:profile]", profileResult.error.message);\n    const statesOk = !statesResult.error;\n    const progressOk = !progressResult.error;""",
+              1,
+          )
+          t = t.replace(
+              "const rawStates = statesResult.data || [];",
+              "const rawStates = statesOk ? (statesResult.data || []) : [];",
+              1,
+          )
+          t = t.replace(
+              "if (topicsError) throw topicsError;",
+              'if (topicsError) console.error("[academic:state:topics]", topicsError.message);',
+              1,
+          )
+          t = t.replace(
+              "const topicProgress = (progressResult.data || []).map((p: any) => {",
+              "const topicProgress = (progressOk ? (progressResult.data || []) : []).map((p: any) => {",
+              1,
+          )
+          # soft catch for GET /state only (first occurrence after state handler)
+          soft = '''  } catch (error) {
+    console.error("[academic:state]", error);
+    return c.json(ok({
+      profile: { id: user.id },
+      metrics: { closed: 0, in_progress: 0, not_started: 0, debts: 0, tracked: 0 },
+      states: [], topic_progress: [], debts: [], upcoming: [], weak_topics: [],
+      recommendations: [], generated_at: new Date().toISOString(),
+      degraded: true,
+      service_notice: "Академическое состояние временно недоступно",
+    }, rid));
+  }
+});'''
+          hard = '''  } catch (error) {
+    console.error("[academic:state]", error);
+    const { body, status } = fail("ACADEMIC_STATE_ERROR", "Состояние учебного плана временно недоступно", 503, rid);
+    return c.json(body, status as 503);
+  }
+});'''
+          if hard in t:
+              t = t.replace(hard, soft, 1)
+              print("academic catch soft")
+          else:
+              print("academic catch pattern missing")
+          p.write_text(t)
+
+          # --- next.config.ts ---
+          nc = Path("next.config.ts")
+          n = nc.read_text()
+          if 'source: "/me"' not in n:
+              n = n.replace(
+                  '{ source: "/trainers", destination: "/subjects", permanent: false },',
+                  '{ source: "/trainers", destination: "/subjects", permanent: false },\n      { source: "/me", destination: "/settings", permanent: false },',
+                  1,
+              )
+              nc.write_text(n)
+              print("me redirect")
+          else:
+              print("me redirect exists")
+
+          # --- settings page ---
+          sp = Path("src/app/settings/page.tsx")
+          s = sp.read_text()
+          s2 = s.replace(
+              "const identities = account?.identities || [];",
+              "const identities = Array.isArray(account?.identities) ? account.identities : [];",
+              1,
+          )
+          s2 = s2.replace(
+              "(account?.providers_available || [",
+              "(Array.isArray(account?.providers_available) ? account.providers_available : [",
+              1,
+          )
+          # fix closing for providers if we broke syntax - check
+          if s2 != s:
+              sp.write_text(s2)
+              print("settings guards")
+          else:
+              print("settings already guarded or pattern differ")
+
+          # --- home: force Array.isArray on recommendations/debts ---
+          home = Path("src/app/page.tsx")
+          h = home.read_text()
+          h2 = h.replace(
+              "const recs = (academic?.recommendations || []).slice(0, 3);",
+              "const recs = (Array.isArray(academic?.recommendations) ? academic!.recommendations : []).slice(0, 3);",
+              1,
+          )
+          h2 = h2.replace(
+              "{academic?.debts?.length ? (",
+              "{(Array.isArray(academic?.debts) && academic!.debts.length) ? (",
+              1,
+          )
+          if h2 != h:
+              home.write_text(h2)
+              print("home guards")
+          print("done")
+          PY
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/routes/academic.ts next.config.ts src/app/settings/page.tsx src/app/page.tsx
+          git status
+          git commit -m "fix: academic soft-fail, /me→settings, UI map guards" || exit 0
+          git push origin HEAD:main
