@@ -2917,3 +2917,11 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - [ ] Rotate the previously exposed Upstash Blob credential as a separate secret-management follow-up; replacement belongs only in the secure secrets store.
 
 Continue on main with no branches. SpaceWeb remains frozen. Do not state authenticated browser acceptance is complete based only on CI and deployment metadata.
+
+
+## Follow-up — full trainer-feed coverage, 2026-10-17
+
+- [x] Fixed a second catalog truncation: the frontend requests up to 500 cards, but the Worker previously capped results at 100. The cap is now 250 (enough for the current 206 published cards) and still supports offset pagination.
+- [x] Added a source-contract regression assertion for the 250 cap and pagination range.
+- [x] Cloudflare production deployment [39039681372](https://github.com/MISTACEN/medbiohim/actions/runs/39039681372) passed TypeScript checks and Worker tests; active canonical Worker version is c22fabea-7290-49c9-9ac7-83315ba17fc2 at 100% traffic.
+- [ ] Signed-in UI check remains pending: confirm all 206 cards load in both atlas and materials contexts, with 178 preparation images, 28 electronograms, the intended plan filter, and retry/zoom behavior.
