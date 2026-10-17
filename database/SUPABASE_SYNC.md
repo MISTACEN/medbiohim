@@ -93,3 +93,17 @@ php backend/scripts/migrate_json_to_supabase.php
 ```
 
 Do not delete/archive the JSON source until row counts and application behaviour have been verified.
+
+## Current synchronization status — 2026-10-17
+
+This section supersedes the earlier snapshots above where they conflict with newer live inspection. The active API target is Cloudflare Worker `medbiohim-api`, not the legacy PHP API. SpaceWeb is frozen; do not deploy to it or use it as an active runtime.
+
+- Supabase project `gnobvyjywtqbdfeejxmf` is the relational source of truth. Current verified counts include subjects 114, schedule_entries 342, questions 875, exam_questions 884, tests 36, materials 80 (all published), curriculum_items 198, trainer_feed_cards 206, files 1.
+- Migration `files_upstash_blob_provider_20261017` was applied successfully and is recorded remotely as `20261017005831`; the live `files_storage_provider_check` constraint now permits `upstash_blob`.
+- Private Upstash Blob bucket `medbiohim-files` contains histology objects. Keep the bucket private and preserve all existing objects while reconciling object keys to Supabase metadata.
+- Upstash Redis `medbiohimcache` is active in EU. A live SET/GET/TTL/DEL connectivity test succeeded and the temporary check key was deleted. The canonical Worker was missing `UPSTASH_REDIS_REST_TOKEN`; it has now been installed as a Cloudflare secret binding. The newest Worker deployment record shows 100% traffic on the new version. Redis remains cache/temporary state only.
+- Redis had 21 legacy `mbhdeploy:v1:*` deployment-stamp keys; they were preserved.
+- Important unresolved parity gap: all 206 trainer cards currently have `source_file_id IS NULL`, and `public.files` has one row. Existing Blob objects alone do not prove every card can resolve/download its correct image. Build a verified manifest and reconcile card-to-object mapping before marking media complete.
+- No authenticated browser end-to-end tests were run in this pass. Do not mark dashboard, schedule CRUD, tests, materials, curriculum, upload/download, or admin CRUD as fully accepted until real authenticated requests pass.
+
+Migration safety remains in force: compare remote migration history and live schema before applying additional DDL. Do not blindly run a full historical migration directory or reseed existing content.
