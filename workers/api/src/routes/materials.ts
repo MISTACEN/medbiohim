@@ -200,7 +200,7 @@ async function fetchBlobObject(bucket: Bucket, candidates: string[]) {
 materials.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");
-  const subjectId = c.req.query("subject_id") || c.req.query("subject");
+  const subjectId = c.req.query("subject_id") || c.req.query("subject") || c.req.query("subject_slug");
   const type = c.req.query("type");
   try {
     let query = db
@@ -214,9 +214,23 @@ materials.get("/", requireAuth, async (c) => {
     if (subjectId) {
       if (UUID.test(subjectId)) query = query.eq("subject_id", subjectId);
       else {
-        const { data: sub } = await db.from("subjects").select("id").eq("slug", subjectId).maybeSingle();
-        if (!sub?.id) return c.json(ok({ items: [] }, rid));
-        query = query.eq("subject_id", sub.id);
+        // Subject slugs are not unique in the legacy catalog. Resolve every
+        // matching row instead of maybeSingle(), which silently produced an
+        // empty materials list when Supabase returned multiple subject IDs.
+        const { data: subjects, error: subjectError } = await db
+          .from("subjects")
+          .select("id")
+          .eq("slug", subjectId);
+        if (subjectError) {
+          console.error("[materials:subject-scope]", subjectError.message);
+          const { body, status } = fail("DB_UNAVAILABLE", "Не удалось определить предмет материалов", 503, rid);
+          return c.json(body, status as 503);
+        }
+        const subjectIds = [...new Set((subjects || [])
+          .map((subject: { id?: unknown }) => String(subject.id || ""))
+          .filter((id: string) => UUID.test(id)))];
+        if (!subjectIds.length) return c.json(ok({ items: [] }, rid));
+        query = query.in("subject_id", subjectIds);
       }
     }
     if (type) query = query.eq("type", type);
