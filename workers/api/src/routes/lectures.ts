@@ -8,7 +8,7 @@ const lectures = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 lectures.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const subject = c.req.query("subject_id") || c.req.query("subject_slug");
+  const subject = c.req.query("subject_id") || c.req.query("subject_slug") || c.req.query("subject");
   try {
     let q = supabase
       .from("histology_lectures")
