@@ -225,7 +225,7 @@ return static function (Router $router): void {
                 };
             }
             $remoteKey = 'histology/' . $remoteRelative;
-            \\Medbiohim\\Services\\UpstashBlobProxy::emit($req, $remoteKey, $remoteMime, basename($remoteRelative));
+            \Medbiohim\Services\\UpstashBlobProxy::emit($req, $remoteKey, $remoteMime, basename($remoteRelative));
 
             if (!is_file($candidate)) {
                 Response::error(
