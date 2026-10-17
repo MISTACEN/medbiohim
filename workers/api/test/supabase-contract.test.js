@@ -20,6 +20,7 @@ const dashboardSource = await readFile(new URL("../src/routes/dashboard.ts", imp
 const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url), "utf8");
 const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
 const plansSource = await readFile(new URL("../src/routes/plans.ts", import.meta.url), "utf8");
+const lecturesSource = await readFile(new URL("../src/routes/lectures.ts", import.meta.url), "utf8");
 const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta.url), "utf8");
 const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
 const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
@@ -54,8 +55,26 @@ test("materials API uses real Supabase columns and serves private files through 
   assert.ok(materialsSource.includes('materials.get("/:id/file", requireAuth'));
   assert.ok(materialsSource.includes('.eq("is_published", true)'));
   assert.ok(materialsSource.includes('c.req.query("subject_slug")'));
+  assert.ok(materialsSource.includes('c.req.query("subjectSlug")'));
+  assert.ok(materialsSource.includes('c.req.query("q")'));
+  assert.ok(materialsSource.includes('.ilike("title"'));
   assert.ok(materialsSource.includes('.in("subject_id", subjectIds)'));
   assert.ok(!materialsSource.includes('.eq("slug", subjectId).maybeSingle()'));
+});
+
+test("subject materials and lectures accept frontend query aliases and resolve duplicate slugs", () => {
+  assert.ok(plansSource.includes('c.req.query("subject_slug")'));
+  assert.ok(plansSource.includes('c.req.query("subject")'));
+  assert.ok(plansSource.includes('.in("subject_id", subjectIds)'));
+  assert.ok(!plansSource.includes('.eq("slug", subject).maybeSingle()'));
+  assert.ok(lecturesSource.includes('c.req.query("subject")'));
+});
+
+test("trainer feed returns plan mappings used by histology material filtering", () => {
+  assert.ok(trainersSource.includes("plan_status: row.plan_status || null"));
+  assert.ok(trainersSource.includes("plan_module_title: moduleRow?.title || null"));
+  assert.ok(trainersSource.includes("plan_topic_title: topicRow?.title || null"));
+  assert.ok(trainersSource.includes("modules(title),topics(title)"));
 });
 
 test("curriculum API and page use canonical active curriculum data and persist per-student progress", () => {
