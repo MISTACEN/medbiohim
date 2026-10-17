@@ -56,6 +56,15 @@ return static function (Router $router): void {
                 (new AcademicContextResolver())->assertGroupMember($req->user->id, $fileGroupId);
             }
 
+            if (!empty($row['file_object_key']) && str_starts_with((string)$row['file_object_key'], 'histology/')) {
+                Response::success([
+                    'url' => null,
+                    'mode' => 'authenticated_binary',
+                    'path' => '/api/v1/materials/' . rawurlencode($id) . '/file',
+                ], $req->requestId);
+                return;
+            }
+
             if (!empty($row['file_object_key'])) {
                 $storage = new B2Storage();
                 if ($storage->isConfigured()) {
@@ -150,6 +159,12 @@ return static function (Router $router): void {
 
             // Canonical uploaded files: keep the original object private and
             // generate a short-lived B2 download URL only after access checks.
+            if (!empty($row['file_object_key']) && str_starts_with((string)$row['file_object_key'], 'histology/')) {
+                $mime = trim((string)($row['file_mime_type'] ?? $row['mime_type'] ?? '')) ?: 'application/octet-stream';
+                $name = trim((string)($row['file_original_name'] ?? $row['title'] ?? basename((string)$row['file_object_key'])));
+                \\Medbiohim\\Services\UpstashBlobProxy::emit($req, (string)$row['file_object_key'], $mime, $name);
+            }
+
             if (!empty($row['file_object_key'])) {
                 $storage = new B2Storage();
                 if ($storage->isConfigured()) {
