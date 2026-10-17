@@ -2821,3 +2821,14 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - 🟢 Source fixes on `main`: materials schema/Blob file proxy, duplicate subject slug filtering, curriculum page and status persistence, trainer image resolution via `content_sources.source_path` with legacy Blob key fallbacks.
 - 🟡 Histology lectures were checked directly: all 17 records have empty `body_markdown`, so remain unpublished intentionally. Chemistry structured knowledgebase still needs verified content import.
 
+
+
+
+## Shared media storage update — 2026-10-17
+
+- 🟢 Added admin-only Cloudflare import endpoint for SpaceWeb local histology assets into the existing private Upstash Blob bucket.
+- 🟢 SpaceWeb routes now prefer shared Upstash media through the Cloudflare API, preserving local disk as a safe fallback during rollout.
+- 🟢 Added CLI migration tool with dry-run/skip-existing/overwrite modes and contract tests.
+- 🟡 Not yet live-verified: set `MEDBIOHIM_CLOUDFLARE_API_URL` on SpaceWeb, run the migration, and verify object coverage. Do not remove local media before verification.
+- 🟡 Keep Supabase for metadata and relationships; Upstash Blob stores bytes; Redis key-value is for cache/temporary data, not image storage.
+
