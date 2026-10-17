@@ -43,9 +43,14 @@ return static function (Router $router): void {
             }
 
             $mime = trim((string)($row['mime_type'] ?? '')) ?: 'application/octet-stream';
-            $remoteKey = 'histology/source-materials/' . $relative;
-            if (\Medbiohim\Services\UpstashBlobProxy::emit($req, $remoteKey, $mime, basename($relative))) {
-                return;
+            $remoteKeys = [
+                'histology/source-materials/' . $relative,
+                'histology/' . $relative,
+            ];
+            foreach (array_unique($remoteKeys) as $remoteKey) {
+                if (\Medbiohim\Services\UpstashBlobProxy::emit($req, $remoteKey, $mime, basename($relative))) {
+                    return;
+                }
             }
 
             $root = rtrim((string)(getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology')), '/');
@@ -183,8 +188,14 @@ return static function (Router $router): void {
         }
 
         try {
-            $remoteKey = 'histology/source-materials/' . $relative;
-            \Medbiohim\Services\UpstashBlobProxy::emit($req, $remoteKey, 'application/pdf', $filename);
+            $remoteKeys = [
+                'histology/source-materials/' . $relative,
+                'histology/' . $relative,
+                'histology/Учебники/' . $filename,
+            ];
+            foreach (array_unique($remoteKeys) as $remoteKey) {
+                \Medbiohim\Services\UpstashBlobProxy::emit($req, $remoteKey, 'application/pdf', $filename);
+            }
 
             $root = rtrim((string)(getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology')), '/\\');
             $rootReal = realpath($root . '/source-materials');
