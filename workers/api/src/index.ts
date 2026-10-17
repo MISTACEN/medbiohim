@@ -3,7 +3,8 @@
  * SINGLE canonical production Worker (medbiohim-api).
  *
  * Do not maintain a parallel student API in integrations/cloudflare-api or artifacts.
- * Shadow (medbiohim-api-shadow) remains only as MEDBIOHIM_UPSTREAM fallback for true 501s.\n * Telegram account-link confirmation is secret-checked and delegates atomic writes to a service-only RPC.
+ * Shadow (medbiohim-api-shadow) remains only as MEDBIOHIM_UPSTREAM fallback for true 501s.
+ * Telegram account-link confirmation is secret-checked and delegates atomic writes to a service-only RPC.
  */
 import { Hono } from "hono";
 import type { Env } from "./env";
@@ -93,7 +94,6 @@ function rewriteRequest(req: Request, pathname: string): Request {
   };
   if (req.method !== "GET" && req.method !== "HEAD") {
     init.body = req.body;
-    // Required by Cloudflare Workers / Fetch when body is a stream.
     init.duplex = "half";
   }
   return new Request(url.toString(), init);
@@ -112,6 +112,8 @@ v1.route("/groups", groups);
 v1.route("/schedule", schedule);
 v1.route("/lesson-plan", lessonPlan);
 v1.route("/curriculum", curriculum);
+// Alias: some clients call /plans — map to curriculum (avoid 501)
+v1.get("/plans", (c) => curriculum.fetch(rewriteRequest(c.req.raw, "/"), c.env));
 v1.route("/homeworks", homework);
 v1.route("/homework", homework);
 v1.route("/submissions", submissions);
