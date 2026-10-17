@@ -54,6 +54,8 @@ test("materials API uses real Supabase columns and serves private files through 
   assert.ok(materialsSource.includes('materials.get("/:id/file", requireAuth'));
   assert.ok(materialsSource.includes('.eq("is_published", true)'));
   assert.ok(materialsSource.includes('c.req.query("subject_slug")'));
+  assert.ok(materialsSource.includes('.in("subject_id", subjectIds)'));
+  assert.ok(!materialsSource.includes('.eq("slug", subjectId).maybeSingle()'));
 });
 
 test("curriculum API and page use canonical active curriculum data and persist per-student progress", () => {
