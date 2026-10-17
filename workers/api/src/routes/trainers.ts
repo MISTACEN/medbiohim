@@ -65,6 +65,7 @@ function withHistologyPrefixes(relativeOrAbsolute: string): string[] {
  * Live bucket uses histology/… prefix (verified: histology/electronograms/images/apoptoz.png = 200).
  * Cards often store only a basename in preparation.imagePath — expand under photo roots.
  */
+// roots include "photos/" for legacy aliases
 function trainerImageCandidateKeys(card: {
   source_key?: string | null;
   mode_set?: string | null;
