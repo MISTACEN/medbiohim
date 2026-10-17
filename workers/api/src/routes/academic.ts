@@ -33,21 +33,20 @@ academic.get("/state", requireAuth, async (c) => {
       db.from("user_topic_progress").select("topic_id,percent,status,last_activity_at,topics(title,module_id,modules(subject_id,subjects(name)))").eq("user_id", user.id).order("last_activity_at", { ascending: false }).limit(500),
       db.from("users").select("id,full_name,course_number,semester").eq("id", user.id).maybeSingle(),
     ]);
-    if (statesResult.error) throw statesResult.error;
-    if (progressResult.error) throw progressResult.error;
-    if (profileResult.error) throw profileResult.error;
+    if (statesResult.error) console.error("[academic:state:states]", statesResult.error.message);
+    if (progressResult.error) console.error("[academic:state:progress]", progressResult.error.message);
+    if (profileResult.error) console.error("[academic:state:profile]", profileResult.error.message);
+    const statesOk = !statesResult.error;
+    const progressOk = !progressResult.error;
 
-    // target_id is polymorphic (topic/subject/curriculum item), so PostgREST
-    // cannot infer a topics relationship from student_academic_states.
-    // Resolve only topic targets with a separate, type-safe lookup.
-    const rawStates = statesResult.data || [];
+    const rawStates = statesOk ? (statesResult.data || []) : [];
     const topicIds = [...new Set(rawStates
       .filter((state: any) => state.target_type === "topic" && typeof state.target_id === "string")
       .map((state: any) => state.target_id))];
     const topicNames = new Map<string, string>();
     if (topicIds.length) {
       const { data: topics, error: topicsError } = await db.from("topics").select("id,title").in("id", topicIds);
-      if (topicsError) throw topicsError;
+      if (topicsError) console.error("[academic:state:topics]", topicsError.message);
       for (const topic of topics || []) topicNames.set(topic.id, topic.title || "");
     }
 
@@ -60,7 +59,7 @@ academic.get("/state", requireAuth, async (c) => {
         subjects: undefined,
       };
     });
-    const topicProgress = (progressResult.data || []).map((p: any) => {
+    const topicProgress = (progressOk ? (progressResult.data || []) : []).map((p: any) => {
       const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics;
       const module = Array.isArray(topic?.modules) ? topic.modules[0] : topic?.modules;
       const subject = Array.isArray(module?.subjects) ? module.subjects[0] : module?.subjects;
@@ -98,8 +97,14 @@ academic.get("/state", requireAuth, async (c) => {
       debts, upcoming, weak_topics: weak, recommendations: recommendations.slice(0, 40), generated_at: new Date().toISOString() }, rid));
   } catch (error) {
     console.error("[academic:state]", error);
-    const { body, status } = fail("ACADEMIC_STATE_ERROR", "Состояние учебного плана временно недоступно", 503, rid);
-    return c.json(body, status as 503);
+    return c.json(ok({
+      profile: { id: user.id },
+      metrics: { closed: 0, in_progress: 0, not_started: 0, debts: 0, tracked: 0 },
+      states: [], topic_progress: [], debts: [], upcoming: [], weak_topics: [],
+      recommendations: [], generated_at: new Date().toISOString(),
+      degraded: true,
+      service_notice: "Академическое состояние временно недоступно",
+    }, rid));
   }
 });
 
