@@ -28,7 +28,7 @@ function histologyObjectKey(preparation: Record<string, unknown> | null | undefi
   if (!preparation) return null;
   const imageUrl = typeof preparation.imageUrl === "string" ? preparation.imageUrl : "";
   const imagePath = typeof preparation.imagePath === "string" ? preparation.imagePath : "";
-  let key = (imagePath || imageUrl).trim();
+  let key = (imageUrl || imagePath).trim();
   // Imported packages may store paths relative to the repository root, the
   // content directory, or the already-migrated Blob prefix. Normalize these
   // equivalent forms before validating the strict histology-only allowlist.
