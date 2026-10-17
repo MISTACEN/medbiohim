@@ -44,7 +44,7 @@ return static function (Router $router): void {
 
             $mime = trim((string)($row['mime_type'] ?? '')) ?: 'application/octet-stream';
             $remoteKey = 'histology/source-materials/' . $relative;
-            if (\\Medbiohim\\Services\\UpstashBlobProxy::emit($req, $remoteKey, $mime, basename($relative))) {
+            if (\Medbiohim\Services\\UpstashBlobProxy::emit($req, $remoteKey, $mime, basename($relative))) {
                 return;
             }
 
@@ -99,10 +99,10 @@ return static function (Router $router): void {
         }
 
         try {
-            $apiBase = rtrim((string) \\Medbiohim\\Support\\Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', ''), '/');
+            $apiBase = rtrim((string) \Medbiohim\Support\\Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', ''), '/');
             $bearer = $req->bearerToken();
             if ($apiBase !== '' && $bearer) {
-                $remote = \\Medbiohim\\Support\\HttpClient::request('GET', $apiBase . '/histology/source-materials?folder=' . rawurlencode($folder), null, [
+                $remote = \Medbiohim\Support\\HttpClient::request('GET', $apiBase . '/histology/source-materials?folder=' . rawurlencode($folder), null, [
                     'Authorization: Bearer ' . $bearer,
                     'Accept: application/json',
                 ], 20);
@@ -184,7 +184,7 @@ return static function (Router $router): void {
 
         try {
             $remoteKey = 'histology/source-materials/' . $relative;
-            \\Medbiohim\\Services\\UpstashBlobProxy::emit($req, $remoteKey, 'application/pdf', $filename);
+            \Medbiohim\Services\\UpstashBlobProxy::emit($req, $remoteKey, 'application/pdf', $filename);
 
             $root = rtrim((string)(getenv('HISTOLOGY_MEDIA_ROOT') ?: (__DIR__ . '/../../../content/histology')), '/\\');
             $rootReal = realpath($root . '/source-materials');
