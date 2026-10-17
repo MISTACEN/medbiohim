@@ -76,23 +76,39 @@ trainers.get("/feed", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   const limit = Math.min(Math.max(Number(c.req.query("limit") || 30), 1), 100);
+  const offset = Math.max(0, Number(c.req.query("offset") || 0));
+  const subject = c.req.query("subject");
+  const specialty = c.req.query("specialty");
   const topic = c.req.query("topic");
   try {
-    let query = supabase
-      .from("trainer_feed_cards")
-      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,created_at")
-      .eq("is_published", true)
-      .order("created_at", { ascending: true })
-      .limit(limit);
-    if (topic) query = query.contains("tags", [topic]);
-    const { data, error } = await query;
+    const select = "id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,created_at";
+    const applyFilters = (query: any) => {
+      let next = query.eq("is_published", true);
+      if (subject) next = next.eq("subject_slug", subject);
+      if (specialty) next = next.eq("specialty_slug", specialty);
+      if (topic) next = next.contains("tags", [topic]);
+      return next.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
+    };
+    let { data, error } = await applyFilters(supabase.from("trainer_feed_cards").select(select));
+    // Published study cards are intentionally readable. If a user-scoped query
+    // fails, retry the same published-only query with the server-only client.
+    if (error) {
+      console.warn("[trainers:feed] user-scoped query failed; trying published-only service query", error.message);
+      const { createServiceClient } = await import("../lib/supabase");
+      const service = createServiceClient(c.env);
+      if (service) {
+        const fallback = await applyFilters(service.from("trainer_feed_cards").select(select));
+        data = fallback.data;
+        error = fallback.error;
+      }
+    }
     if (error) {
       console.error("[trainers:feed]", error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);
       return c.json(body, status as 503);
     }
-    const items = ((data || []) as TrainerRow[]).map((row, index) => mapTrainerCard(row, index));
-    return c.json(ok({ items }, rid));
+    const items = ((data || []) as TrainerRow[]).map((row, index) => mapTrainerCard(row, offset + index));
+    return c.json(ok({ items, limit, offset, source: "supabase" }, rid));
   } catch (error) {
     console.error("[trainers:feed]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);
