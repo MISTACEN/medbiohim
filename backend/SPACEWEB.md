@@ -18,3 +18,15 @@ Login rate limit: 10 / 5 min / IP.
 **[backend/MODULE-INTEGRATION.md](./MODULE-INTEGRATION.md)**
 
 Перед добавлением нового модуля сначала сверяться с этим документом.
+
+## Shared histology media: SpaceWeb → Upstash Blob
+
+The canonical bytes store is the existing **private Upstash Blob** bucket. Supabase keeps metadata/relations; do not store binary photos in Redis key-value or Postgres. SpaceWeb may use its local media directory only as a migration fallback.
+
+1. Set `MEDBIOHIM_CLOUDFLARE_API_URL=https://medbiohim-api.ryazansevegor.workers.dev/api/v1` in the runtime environment (this is the default if omitted).
+2. For the one-time CLI import, set `MEDBIOHIM_MIGRATION_BEARER_TOKEN` to a current admin access token in the environment only. Never commit it or place it in public files.
+3. Run `php backend/scripts/migrate-histology-to-upstash.php --dry-run` first, then run without arguments to upload missing objects. Existing object keys are skipped by default.
+4. Use `--overwrite` only if intentionally replacing matching objects. The script never deletes local files.
+5. Verify the output summary and test the authenticated histology source, textbook PDF, material viewer and trainer images. Only then remove local media from future deploy archives.
+
+The Worker import route is admin-only and accepts only files under `histology/` (maximum 25 MiB each). If Worker deployment has not completed, the script will fail safely and local SpaceWeb media remains available.
