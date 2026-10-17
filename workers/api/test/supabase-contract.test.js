@@ -75,6 +75,8 @@ test("trainer feed returns plan mappings used by histology material filtering", 
   assert.ok(trainersSource.includes("plan_module_title: moduleRow?.title || null"));
   assert.ok(trainersSource.includes("plan_topic_title: topicRow?.title || null"));
   assert.ok(trainersSource.includes("modules(title),topics(title)"));
+  assert.ok(trainersSource.includes('Math.min(Math.max(Number(c.req.query("limit") || 30), 1), 250)'));
+  assert.ok(trainersSource.includes(".range(offset, offset + limit - 1)"));
 });
 
 test("curriculum API and page use canonical active curriculum data and persist per-student progress", () => {
