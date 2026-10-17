@@ -29,7 +29,7 @@ if (!extension_loaded('curl')) {
     exit(2);
 }
 
-$base = rtrim((string) Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', ''), '/');
+$base = rtrim((string) Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', 'https://medbiohim-api.ryazansevegor.workers.dev/api/v1'), '/');
 $token = (string) Env::get('MEDBIOHIM_MIGRATION_BEARER_TOKEN', '');
 $root = rtrim((string) Env::get('HISTOLOGY_MEDIA_ROOT', dirname(__DIR__) . '/content/histology'), '/\\');
 $dryRun = in_array('--dry-run', $argv, true);
