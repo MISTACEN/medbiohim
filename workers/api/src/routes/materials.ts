@@ -200,8 +200,9 @@ async function fetchBlobObject(bucket: Bucket, candidates: string[]) {
 materials.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");
-  const subjectId = c.req.query("subject_id") || c.req.query("subject") || c.req.query("subject_slug");
+  const subjectId = c.req.query("subject_id") || c.req.query("subject") || c.req.query("subject_slug") || c.req.query("subjectSlug");
   const type = c.req.query("type");
+  const searchQuery = String(c.req.query("q") || c.req.query("search") || "").trim().slice(0, 120);
   try {
     let query = db
       .from("materials")
@@ -234,6 +235,11 @@ materials.get("/", requireAuth, async (c) => {
       }
     }
     if (type) query = query.eq("type", type);
+    if (searchQuery) {
+      const escapedSearch = searchQuery.replace(/[\\%_]/g, "\\    if (type) query = query.eq("type", type);
+    const { data, error } = await query;");
+      query = query.ilike("title", `%${escapedSearch}%`);
+    }
     const { data, error } = await query;
     if (error) {
       console.error("[materials:list]", error.message);
