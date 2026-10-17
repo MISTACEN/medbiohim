@@ -3,6 +3,7 @@ import { BlobError, Bucket } from "@upstash/blob";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
 
 const materials = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -13,35 +14,136 @@ function getBlobBucket(env: Env): Bucket | null {
 }
 
 function safeObjectKey(value: unknown): string {
-  const key = String(value || "").trim();
-  if (!key || key.length > 1024 || key.startsWith("/") || key.includes("\\") || /[?#\u0000-\u001f]/.test(key)) return "";
+  const key = String(value || "").trim().replace(/\\/g, "/");
+  if (!key || key.length > 1024 || key.startsWith("/") || /[?#\u0000-\u001f]/.test(key)) return "";
   const parts = key.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return "";
   return key;
 }
 
-function storageCandidates(objectKey: unknown, sourcePath: unknown): string[] {
-  const primary = safeObjectKey(objectKey);
-  const source = safeObjectKey(sourcePath);
-  return [...new Set([
-    primary,
-    source,
-    source ? "content/histology/" + source : "",
-    source ? "histology/" + source : "",
-  ].map(safeObjectKey).filter(Boolean))];
+function cleanLegacyPath(value: string): string {
+  return String(value || "")
+    .trim()
+    .replace(/^\/+/, "")
+    .replace(/^content\/histology\//, "")
+    .replace(/^histology\//, "");
+}
+
+function withHistologyPrefixes(relativeOrAbsolute: string): string[] {
+  const keys: string[] = [];
+  const add = (v: string) => {
+    const k = safeObjectKey(v);
+    if (k && !keys.includes(k)) keys.push(k);
+  };
+  const raw = String(relativeOrAbsolute || "").trim().replace(/^\/+/, "");
+  if (!raw) return keys;
+  add(raw);
+  const stripped = cleanLegacyPath(raw);
+  if (stripped) {
+    add(stripped);
+    add("histology/" + stripped);
+    add("content/histology/" + stripped);
+  }
+  return keys;
+}
+
+/** Port of artifacts materialSourceCandidateKeys — zip schemes, photos, electronogram docx, textbooks. */
+function materialSourceCandidateKeys(sourcePath = "", fileObjectKey: string | null = null): string[] {
+  const keys: string[] = [];
+  const add = (v: string) => {
+    for (const k of withHistologyPrefixes(v)) {
+      if (!keys.includes(k)) keys.push(k);
+    }
+  };
+  if (fileObjectKey) add(fileObjectKey);
+  const path = String(sourcePath || "").trim().replace(/\\/g, "/");
+  if (!path) return keys;
+  const leaf = path.split("/").pop() || "";
+  add(path);
+  if (path.startsWith("photos/")) {
+    add(path.slice("photos/".length));
+    for (const folder of [
+      "5_Фотографии препаратов/стом. гистология/",
+      "5_Фотографии препаратов/цитология, эмбриология и общая гистология/",
+      "5_Фотографии препаратов/частная гистология/",
+    ]) {
+      add(folder + leaf);
+    }
+  }
+  if (path.startsWith("content/histology/") || path.startsWith("histology/")) {
+    add(cleanLegacyPath(path));
+  }
+  if (path.startsWith("electronograms/docx/") || path.startsWith("1_Экзаменационные электронограммы_")) {
+    add("electronograms/docx/" + leaf);
+  }
+  if (
+    path &&
+    !path.startsWith("source-materials/") &&
+    !path.startsWith("electronograms/") &&
+    !path.startsWith("em/") &&
+    !path.startsWith("5_Фотографии препаратов/") &&
+    !path.startsWith("photos/") &&
+    !path.startsWith("histology/") &&
+    !path.startsWith("content/histology/") &&
+    !path.startsWith("1_Экзаменационные электронограммы_")
+  ) {
+    add("source-materials/" + path);
+    add("histology/source-materials/" + path);
+    add("content/histology/source-materials/" + path);
+  }
+  return keys;
 }
 
 async function readMaterial(db: any, id: string) {
-  return db.from("materials")
-    .select("id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects(name,slug,course_number,semester,specialty_slug),files(id,original_name,mime_type,size_bytes,object_key,visibility,status,storage_provider,processing_status)")
-    .eq("id", id).eq("is_published", true).maybeSingle();
+  return db
+    .from("materials")
+    .select(
+      "id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects(name,slug,course_number,semester,specialty_slug),files(id,original_name,mime_type,size_bytes,object_key,visibility,status,storage_provider,processing_status)",
+    )
+    .eq("id", id)
+    .eq("is_published", true)
+    .maybeSingle();
+}
+
+async function resolveSourceMeta(db: any, env: Env, sourceKey: string | null | undefined) {
+  const key = String(sourceKey || "").trim();
+  if (!key) return { sourcePath: null as string | null, mime: null as string | null, title: null as string | null };
+
+  const looksLikePath = key.includes("/") || /\.(docx?|pdf|pptx?|xlsx?|gif|png|jpe?g|zip)$/i.test(key);
+
+  const loadById = async (client: any) => {
+    if (looksLikePath) return null;
+    const { data } = await client
+      .from("content_sources")
+      .select("id,title,source_path,mime_type,file_id")
+      .eq("id", key)
+      .maybeSingle();
+    return data;
+  };
+
+  let data = await loadById(db);
+  if (!data && !looksLikePath) {
+    const service = createServiceClient(env);
+    if (service) data = await loadById(service);
+  }
+
+  if (data?.source_path) {
+    return {
+      sourcePath: String(data.source_path),
+      mime: data.mime_type ? String(data.mime_type) : null,
+      title: data.title ? String(data.title) : null,
+    };
+  }
+  if (looksLikePath) return { sourcePath: key, mime: null, title: null };
+  return { sourcePath: key, mime: null, title: null };
 }
 
 async function attachSource(db: any, rows: any[]) {
   const keys = [...new Set(rows.map((row) => String(row.source_key || "")).filter(Boolean))];
   const sourcesById = new Map<string, any>();
   if (keys.length) {
-    const { data, error } = await db.from("content_sources")
+    const { data, error } = await db
+      .from("content_sources")
       .select("id,title,source_path,mime_type,original_format,source_archive,note,file_id")
       .in("id", keys);
     if (!error) for (const source of data || []) sourcesById.set(String(source.id), source);
@@ -52,61 +154,80 @@ async function attachSource(db: any, rows: any[]) {
     const source = sourcesById.get(String(row.source_key || ""));
     return {
       ...row,
-      subject_name: subject?.name || "",
-      subject_slug: subject?.slug || null,
-      course_number: subject?.course_number ?? null,
-      semester: subject?.semester ?? null,
-      subjects: undefined,
-      files: undefined,
-      source: source ? {
-        id: source.id,
-        name: source.title || file?.original_name || "",
-        mime_type: source.mime_type || source.original_format || file?.mime_type || null,
-        source_path: source.source_path || null,
-        source_archive: source.source_archive || null,
-        file_id: source.file_id || row.file_id || file?.id || null,
-        download_url: null,
-      } : file ? {
-        id: file.id, name: file.original_name || row.title,
-        mime_type: file.mime_type || null, source_path: null,
-        file_id: file.id, download_url: null,
-      } : null,
-      file_name: file?.original_name || null,
-      file_mime_type: file?.mime_type || null,
-      object_key: file?.object_key || null,
+      subjects: subject || null,
+      files: file || null,
+      source: source
+        ? {
+            id: source.id,
+            title: source.title,
+            source_path: source.source_path,
+            mime_type: source.mime_type,
+            original_format: source.original_format,
+            source_archive: source.source_archive,
+            note: source.note,
+            file_id: source.file_id || row.file_id || file?.id || null,
+            download_url: null,
+          }
+        : file
+          ? {
+              id: file.id,
+              title: file.original_name,
+              source_path: file.object_key,
+              mime_type: file.mime_type,
+              file_id: file.id,
+              download_url: null,
+            }
+          : null,
     };
   });
+}
+
+async function fetchBlobObject(bucket: Bucket, candidates: string[]) {
+  for (const candidate of candidates) {
+    try {
+      const object = await bucket.get(candidate);
+      if (object) return { object, key: candidate };
+    } catch (e) {
+      if (BlobError.is(e) && ((e as { code?: string }).code === "not_found" || (e as { status?: number }).status === 404)) {
+        continue;
+      }
+      throw e;
+    }
+  }
+  return null;
 }
 
 materials.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");
-  const subjectId = String(c.req.query("subject_id") || "").trim();
-  const subjectSlug = String(c.req.query("subject_slug") || "").trim().toLowerCase();
-  const search = String(c.req.query("q") || "").trim().slice(0, 120);
-  if (subjectId && !UUID.test(subjectId)) {
-    const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID предмета", 400, rid);
-    return c.json(body, status as 400);
-  }
+  const subjectId = c.req.query("subject_id") || c.req.query("subject");
+  const type = c.req.query("type");
   try {
-    let resolvedSubjectIds: string[] | null = null;
-    if (subjectSlug) {
-      const { data: subjects, error } = await db.from("subjects").select("id")
-        .eq("slug", subjectSlug).eq("is_active", true).limit(100);
-      if (error) throw error;
-      resolvedSubjectIds = (subjects || []).map((subject: { id: string }) => String(subject.id)).filter(Boolean);
-      if (!resolvedSubjectIds.length) return c.json(ok({ items: [] }, rid));
-    }
-    let query = db.from("materials")
-      .select("id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects(name,slug,course_number,semester,specialty_slug),files(id,original_name,mime_type,size_bytes,object_key,visibility,status,storage_provider,processing_status)")
+    let query = db
+      .from("materials")
+      .select(
+        "id,subject_id,module_id,topic_id,type,title,file_id,external_url,content_html,order_index,is_published,created_at,updated_at,source_key,subjects(name,slug,course_number,semester,specialty_slug),files(id,original_name,mime_type,size_bytes,object_key,visibility,status,storage_provider,processing_status)",
+      )
       .eq("is_published", true)
-      .order("order_index", { ascending: true }).order("created_at", { ascending: false }).limit(300);
-    if (resolvedSubjectIds) query = query.in("subject_id", resolvedSubjectIds);
-    else if (subjectId) query = query.eq("subject_id", subjectId);
-    if (search) query = query.ilike("title", `%${search.replace(/[%_]/g, "\\$&")}%`);
+      .order("order_index", { ascending: true })
+      .limit(500);
+    if (subjectId) {
+      if (UUID.test(subjectId)) query = query.eq("subject_id", subjectId);
+      else {
+        const { data: sub } = await db.from("subjects").select("id").eq("slug", subjectId).maybeSingle();
+        if (!sub?.id) return c.json(ok({ items: [] }, rid));
+        query = query.eq("subject_id", sub.id);
+      }
+    }
+    if (type) query = query.eq("type", type);
     const { data, error } = await query;
-    if (error) throw error;
-    return c.json(ok({ items: await attachSource(db, data || []) }, rid));
+    if (error) {
+      console.error("[materials:list]", error.message);
+      const { body, status } = fail("DB_UNAVAILABLE", "Материалы недоступны", 503, rid);
+      return c.json(body, status as 503);
+    }
+    const items = await attachSource(db, data || []);
+    return c.json(ok({ items }, rid));
   } catch (error) {
     console.error("[materials:list]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Материалы недоступны", 503, rid);
@@ -115,7 +236,9 @@ materials.get("/", requireAuth, async (c) => {
 });
 
 materials.get("/:id/file-url", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = String(c.req.param("id") || "");
+  const rid = requestId();
+  const db = c.get("supabase");
+  const id = String(c.req.param("id") || "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID материала", 400, rid);
     return c.json(body, status as 400);
@@ -129,22 +252,24 @@ materials.get("/:id/file-url", requireAuth, async (c) => {
     }
     const file = Array.isArray(data.files) ? data.files[0] : data.files;
     const subject = Array.isArray(data.subjects) ? data.subjects[0] : data.subjects;
-    let sourcePath: string | null = null;
-    if (data.source_key) {
-      const { data: source } = await db.from("content_sources").select("source_path,file_id")
-        .eq("id", data.source_key).maybeSingle();
-      sourcePath = source?.source_path || null;
-    }
-    const key = storageCandidates(file?.object_key, sourcePath)[0] || "";
-    return c.json(ok({
-      url: null,
-      mode: "proxy",
-      object_key: key || null,
-      mime_type: file?.mime_type || null,
-      file_name: file?.original_name || data.title,
-      subject_slug: subject?.slug || null,
-      available: Boolean(key),
-    }, rid));
+    const meta = await resolveSourceMeta(db, c.env, data.source_key);
+    const candidates = materialSourceCandidateKeys(meta.sourcePath || "", file?.object_key || null);
+    return c.json(
+      ok(
+        {
+          url: null,
+          mode: "proxy",
+          proxy_path: `/api/v1/materials/${id}/file`,
+          object_key: candidates[0] || null,
+          candidates_count: candidates.length,
+          mime_type: file?.mime_type || meta.mime || null,
+          file_name: file?.original_name || meta.title || data.title,
+          subject_slug: subject?.slug || null,
+          available: candidates.length > 0,
+        },
+        rid,
+      ),
+    );
   } catch (error) {
     console.error("[materials:file-url]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Файл недоступен", 503, rid);
@@ -153,7 +278,9 @@ materials.get("/:id/file-url", requireAuth, async (c) => {
 });
 
 materials.get("/:id/file", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = String(c.req.param("id") || "");
+  const rid = requestId();
+  const db = c.get("supabase");
+  const id = String(c.req.param("id") || "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID материала", 400, rid);
     return c.json(body, status as 400);
@@ -166,13 +293,8 @@ materials.get("/:id/file", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
     const file = Array.isArray(data.files) ? data.files[0] : data.files;
-    let sourcePath: string | null = null;
-    if (data.source_key) {
-      const { data: source } = await db.from("content_sources").select("source_path,file_id")
-        .eq("id", data.source_key).maybeSingle();
-      sourcePath = source?.source_path || null;
-    }
-    const candidates = storageCandidates(file?.object_key, sourcePath);
+    const meta = await resolveSourceMeta(db, c.env, data.source_key);
+    const candidates = materialSourceCandidateKeys(meta.sourcePath || "", file?.object_key || null);
     if (!candidates.length) {
       const { body, status } = fail("FILE_NOT_LINKED", "У материала пока нет проверенной ссылки на файл", 404, rid);
       return c.json(body, status as 404);
@@ -182,28 +304,30 @@ materials.get("/:id/file", requireAuth, async (c) => {
       const { body, status } = fail("SOURCE_STORAGE_NOT_CONFIGURED", "Приватное хранилище файлов не настроено", 503, rid);
       return c.json(body, status as 503);
     }
-    let object: any = null;
-    let key = "";
-    for (const candidate of candidates) {
-      try {
-        object = await bucket.get(candidate);
-        if (object) { key = candidate; break; }
-      } catch (e) {
-        if (!(BlobError.is(e) && e.code === "not_found")) throw e;
-      }
-    }
-    if (!object) {
-      const { body, status } = fail("FILE_NOT_FOUND", "Файл не найден в подключённом хранилище", 404, rid);
+    const hit = await fetchBlobObject(bucket, candidates);
+    if (!hit) {
+      const { body, status } = fail(
+        "FILE_NOT_FOUND",
+        "Файл не найден в Upstash Blob. Нужно загрузить source-materials (docx/pdf) из архива content/histology.",
+        404,
+        rid,
+      );
       return c.json(body, status as 404);
     }
-    const name = String(file?.original_name || data.title || "material").replace(/[^\x20-\x7E]/g, "_").replace(/["\\;]/g, "_");
-    return new Response(object.body, { status: 200, headers: {
-      "content-type": file?.mime_type || object.contentType || "application/octet-stream",
-      "content-disposition": `inline; filename="${name}"`,
-      "cache-control": "private, max-age=300",
-      "x-request-id": rid,
-      "x-mbh-blob-key": key,
-    }});
+    const name = String(file?.original_name || meta.title || data.title || "material")
+      .replace(/[^\x20-\x7E]/g, "_")
+      .replace(/["\\;]/g, "_");
+    return new Response(hit.object.body, {
+      status: 200,
+      headers: {
+        "content-type": file?.mime_type || meta.mime || hit.object.contentType || "application/octet-stream",
+        "content-disposition": `inline; filename="${name}"`,
+        "cache-control": "private, max-age=300",
+        "x-request-id": rid,
+        "x-mbh-blob-key": hit.key,
+        "x-mbh-file-resolver": "materials-v2",
+      },
+    });
   } catch (error) {
     console.error("[materials:file]", error);
     const { body, status } = fail("FILE_UNAVAILABLE", "Не удалось загрузить файл материала", 503, rid);
@@ -212,7 +336,9 @@ materials.get("/:id/file", requireAuth, async (c) => {
 });
 
 materials.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), id = String(c.req.param("id") || "");
+  const rid = requestId();
+  const db = c.get("supabase");
+  const id = String(c.req.param("id") || "");
   if (!UUID.test(id)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID материала", 400, rid);
     return c.json(body, status as 400);
@@ -225,9 +351,9 @@ materials.get("/:id", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
     const [item] = await attachSource(db, [data]);
-    return c.json(ok(item, rid));
+    return c.json(ok({ item }, rid));
   } catch (error) {
-    console.error("[materials:detail]", error);
+    console.error("[materials:get]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Материал недоступен", 503, rid);
     return c.json(body, status as 503);
   }
