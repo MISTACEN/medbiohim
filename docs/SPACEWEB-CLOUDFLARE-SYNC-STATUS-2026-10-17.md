@@ -235,3 +235,13 @@ Compared the 416 files in the supplied `spaceweb_upload/content/histology/` arch
 2. Run a fresh Worker typecheck/test job on current `main`; keep answers excluded from normal test mode.
 3. Publish the canonical Worker and frontend, then verify them through the normal authenticated app session.
 4. Only then mark the screenshots resolved; continue route-by-route PHP parity after subjects, tests, tickets and histology media.
+
+## Live re-check — 2026-10-17 01:02 UTC (supersedes earlier secret/deploy observations)
+
+- Cloudflare account inventory confirms `medbiohim-api` and `medbiohim-api-shadow` still exist. The canonical `medbiohim-api` now has a bound `UPSTASH_REDIS_REST_TOKEN` secret (secret value is not stored in Git). Cloudflare created deployment `e3468edf-484d-4551-837d-3c5be7402ce4` at `2026-10-17T00:59:10Z`, with version `9c3a033c-5a68-440e-89e6-07d57b22dbf5` receiving 100% traffic. This deployment was triggered by the secret binding update; it is not proof of full API acceptance.
+- Upstash Redis `medbiohimcache` answered PING and passed a temporary SET/GET/TTL/DEL check; the test key was deleted. 21 pre-existing `mbhdeploy:v1:*` keys were preserved. Do not confuse those old deployment stamps with active cache contents.
+- Private Upstash Blob bucket `medbiohim-files` currently lists 358 objects under `histology/`. Object count is not a hash-level parity check and does not prove every published card points to a valid object.
+- Supabase migration `files_upstash_blob_provider_20261017` was applied and recorded as `20261017005831`; the `files_storage_provider_check` constraint now allows `upstash_blob`.
+- Latest live counts: 80 published materials, 206 trainer cards with 0 `source_file_id` links, and 1 row in `files`. Trainer card ↔ object mapping remains an explicit blocker.
+- The newest three workflow runs for `apply-p0-academic-crud.yml`, `apply-p0-embedded.yml`, and `apply-p1-ui-schedule-db.yml` failed on push. Their failures must be diagnosed before those workflows are retried; do not treat their presence as successful schema/UI synchronization.
+- All work remains on `main`; SpaceWeb stays frozen. Authenticated production smoke tests were not run, so do not declare full end-to-end parity or a production cutover.
