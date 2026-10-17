@@ -10,7 +10,7 @@ plans.get("/plans", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   try {
-    let { data, error } = await supabase
+    let { data, error }: { data: any[] | null; error: any } = await supabase
       .from("curriculum_items")
       .select("id,subject_id,module_id,topic_id,course_number,semester,item_type,title,description,planned_date,due_at,order_index,is_required,is_active,source,metadata,subjects(name,slug,course_number,semester)")
       .eq("is_active", true)
