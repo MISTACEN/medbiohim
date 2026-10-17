@@ -162,7 +162,7 @@ return static function (Router $router): void {
             if (!empty($row['file_object_key']) && str_starts_with((string)$row['file_object_key'], 'histology/')) {
                 $mime = trim((string)($row['file_mime_type'] ?? $row['mime_type'] ?? '')) ?: 'application/octet-stream';
                 $name = trim((string)($row['file_original_name'] ?? $row['title'] ?? basename((string)$row['file_object_key'])));
-                \\Medbiohim\\Services\UpstashBlobProxy::emit($req, (string)$row['file_object_key'], $mime, $name);
+                \Medbiohim\Services\UpstashBlobProxy::emit($req, (string)$row['file_object_key'], $mime, $name);
             }
 
             if (!empty($row['file_object_key'])) {
