@@ -3741,3 +3741,10 @@ No GitHub Actions workflow files or branch policy were changed.
 - Restored lecture bodies from existing source-backed study tables in `materials.content_html`: **13 of 17 lectures now published**, and **16 of 17 have non-empty bodies**. The 3 still unpublished are intentionally held back: nerve tissue and cardiovascular notes are too short to treat as complete lecture content, endocrine source is only a fragment, and the stomatology lecture has no matching substantive source in the study tables.
 - All **80/80 published histology materials** have matching `content_sources` metadata by `source_key`. File IDs are still absent, so real authenticated downloads/object-key verification remain a separate gate; do not claim them verified yet.
 - Still open: restore the 31 preparations with missing `section_id` from the canonical source package; enrich the 3 incomplete lectures from the original source documents; verify all object keys against the Blob inventory; test materials/downloads and the atlas/lecture UI with a signed-in MBH account.
+
+
+### Histology section classification — 2026-10-17
+
+- [x] Classified the restored MBH preparation catalog by topic using source preparation names and the existing lecture taxonomy. Current verified count: **178/178 preparations have a section ID**, all published and media-linked.
+- [x] Updated the idempotent migration and reapplied it successfully; the classification update is included in the migration for repeatability.
+- [ ] Continue source-file/object verification and finish the 3 unpublished lecture records before declaring histology fully populated.
