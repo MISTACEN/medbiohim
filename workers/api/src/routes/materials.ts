@@ -238,9 +238,6 @@ materials.get("/", requireAuth, async (c) => {
     if (searchQuery) {
       query = query.ilike("title", "%" + searchQuery + "%");
     }
-    const { data, error } = await query;");
-      query = query.ilike("title", `%${escapedSearch}%`);
-    }
     const { data, error } = await query;
     if (error) {
       console.error("[materials:list]", error.message);
