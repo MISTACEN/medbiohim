@@ -3748,3 +3748,10 @@ No GitHub Actions workflow files or branch policy were changed.
 - [x] Classified the restored MBH preparation catalog by topic using source preparation names and the existing lecture taxonomy. Current verified count: **178/178 preparations have a section ID**, all published and media-linked.
 - [x] Updated the idempotent migration and reapplied it successfully; the classification update is included in the migration for repeatability.
 - [ ] Continue source-file/object verification and finish the 3 unpublished lecture records before declaring histology fully populated.
+
+
+### Histology media inventory cross-check — 2026-10-17
+
+- [x] Compared all **206 published asset storage paths** against the live Upstash Blob object inventory: **206/206 exact key matches**, 0 missing keys.
+- [x] Compared all **80 published histology material source paths** against Blob objects using the same path-prefix rules as the Worker material resolver: **80/80 found**, 0 missing source objects.
+- [ ] Authenticated download/UI smoke remains pending; key existence does not prove that every signed-in browser request succeeds.
