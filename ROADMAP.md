@@ -3689,3 +3689,15 @@ No GitHub Actions workflow files or branch policy were changed.
 - [x] Added contract assertions for the materials and curriculum API/page.
 - [ ] Fresh typecheck/test run and authenticated runtime smoke test are still pending; Vercel status remains build-rate-limited, so do not claim production is updated.
 - [ ] Histology asset key reconciliation, lecture review/publication, and chemistry knowledgebase population remain open; these require source archive/object verification and should not be fabricated.
+
+
+## Implementation results — materials, curriculum and histology media resolver, 2026-10-17
+
+- [x] Materials API uses the actual live Supabase schema, published filtering, title search, subject slug filtering across duplicate active subject slugs, source metadata, and private Blob proxy candidates.
+- [x] Curriculum endpoint now orders active records by `order_index`; `/curriculum` is a real searchable/filterable UI and writes individual student status through the protected academic-state endpoint.
+- [x] Histology trainer image handler resolves basename-only image paths through `content_sources.source_path`, accepts the canonical `photos/` folder, and tries legacy Blob key prefixes.
+- [x] Worker TypeScript typecheck and `npm test` passed on the latest tested code commit (`1cc34f0`). The contract tests cover the material schema, curriculum progress, and histology image resolution.
+- [ ] **Production Worker deployment is blocked by repository configuration:** the deploy workflow reaches `npx wrangler deploy` but fails because `CLOUDFLARE_API_TOKEN` is not available in GitHub Actions. Configure this secret in repository Actions secrets; do not put the token in source code.
+- [ ] Frontend production is still not confirmed; Vercel status continues to report the build-rate-limit gate. The new curriculum page will appear only after a successful frontend deployment.
+- [ ] Histology lectures remain unpublished because all 17 records are empty stubs (`body_markdown` length 0); do not publish blank lecture records. Chemistry knowledge tables remain unpopulated pending verified source import.
+
