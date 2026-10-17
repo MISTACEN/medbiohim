@@ -289,7 +289,9 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
             },
           });
         }
-        if (publicResponse.status === 404) continue;
+        if (publicResponse.status === 404) {
+          console.warn("[trainer-image] public URL returned 404; falling back to authenticated Blob SDK", { cardId: card.id, key: candidate });
+        }
       } catch (error) {
         console.warn("[trainer-image] public Blob URL lookup failed; trying authenticated SDK", {
           cardId: card.id,
