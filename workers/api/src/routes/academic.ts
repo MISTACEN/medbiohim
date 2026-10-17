@@ -34,8 +34,8 @@ academic.get("/state", requireAuth, async (c) => {
       db.from("users").select("id,full_name,course_number,semester").eq("id", user.id).maybeSingle(),
     ]);
     if (statesResult.error) console.error("[academic:state:states]", statesResult.error.message);
-    if (progressResult.error) console.error("[academic:state:progress]", progressResult.error.message);
-    if (profileResult.error) console.error("[academic:state:profile]", profileResult.error.message);
+    if (progressResult.error) throw progressResult.error;
+    if (profileResult.error) throw profileResult.error;
     const statesOk = !statesResult.error;
     const progressOk = !progressResult.error;
 
