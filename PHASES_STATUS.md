@@ -2855,3 +2855,13 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 - [ ] Replace 17 empty unpublished lecture stubs with source-grounded content from the histology methodical documents; publish only after content review.
 - [ ] Reconcile 80 histology materials with their file/source records and test authenticated UI access.
 - [ ] Run signed-in acceptance for atlas, micropreparations, electronograms, test bank and lecture/material links. Database counts alone are not proof of live UI acceptance.
+
+
+### Histology follow-up — lecture/source verification (2026-10-17)
+
+- [x] Applied the idempotent `restore_histology_preparation_catalog` Supabase migration successfully.
+- [x] Rechecked counts: 178/178 preparations published with media paths; 206/206 assets published with storage paths; 13/17 lectures published from source-backed study tables; 16/17 lecture bodies non-empty.
+- [x] Confirmed all 80 published histology materials resolve to a `content_sources` metadata row via `source_key`.
+- [ ] Resolve 31 missing preparation section IDs from the canonical preparation package.
+- [ ] Expand the 3 unpublished/incomplete lecture records from the original source documents; don't promote short fragments as complete lectures.
+- [ ] Verify actual Blob object existence and authenticated material-file downloads, then perform signed-in UI acceptance.
