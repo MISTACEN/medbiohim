@@ -3772,3 +3772,24 @@ No GitHub Actions workflow files or branch policy were changed.
 - [x] Compared all **206 published asset storage paths** against the live Upstash Blob object inventory: **206/206 exact key matches**, 0 missing keys.
 - [x] Compared all **80 published histology material source paths** against Blob objects using the same path-prefix rules as the Worker material resolver: **80/80 found**, 0 missing source objects.
 - [ ] Authenticated download/UI smoke remains pending; key existence does not prove that every signed-in browser request succeeds.
+
+
+## Histology content restoration — 2026-10-17 (latest verified pass)
+
+### Completed in Supabase + main Worker
+- Restored the MBH histology preparation catalogue idempotently from published trainer cards: **178/178 light-microscopy preparations** are published, categorized, and have both media_path and media_url.
+- Created **206/206 published histology_assets** metadata records: 178 preparation images linked to preparation IDs + 28 electronograms. Every storage_path was compared with the existing Upstash Blob inventory; **206/206 exact object paths exist**. Binary files remain in Blob, not PostgreSQL.
+- Validated the closed-type cytology/embryology source set: **163 questions** have five options and valid answer indexes, and the complete set is published. One answer stored as exact answer text was normalized to its matching option index. A separate 163-row no-source copy is an exact duplicate of the published bank and remains unpublished.
+- Confirmed the histology materials collection has **80 published items** and every item’s source file resolves against the current Upstash Blob inventory (80/80). Existing material content is preserved.
+- Fixed API issues affecting the existing frontend: /materials accepts both snake_case and camelCase subject filters (subject_slug/subjectSlug) and title search; /materials and /subject-materials resolve all subject rows when duplicate histology slugs exist; /lectures accepts the frontend’s subject alias.
+- Trainer feed/detail now returns real curriculum mapping fields (plan_status, module/topic titles and IDs). This is required because the histology materials UI hides cards explicitly marked outside the current plan unless “show all” is selected; status now comes from actual linked database relations rather than an artificial default.
+- **Production Worker:** current GitHub Actions run [39039083471](https://github.com/MISTACEN/medbiohim/actions/runs/39039083471) passed typecheck, API tests, and deployed only the canonical medbiohim-api Worker. Cloudflare reports active version 403466bf-8029-473b-9e8d-817c51eecd47 at 100% traffic. [Code checks](https://github.com/MISTACEN/medbiohim/actions/runs/39039083347) and [smoke workflow](https://github.com/MISTACEN/medbiohim/actions/runs/39039083333) passed.
+
+### Still open — do not imply complete
+- [ ] Enrich the 178 light-microscopy preparations with source-backed captions / diagnostic landmarks. Their existing image and identification-question paths work, but most preparation cards do not contain captions; **do not invent microscopic labels** where the archived source does not identify them.
+- [ ] Review the 4 lecture records that remain unpublished: the stomatology lecture is blank; nerve tissue, cardiovascular, and endocrine records only contain incomplete study prompts/metadata. Keep them unpublished until full source-backed notes are restored.
+- [ ] Authenticated end-to-end acceptance in the actual signed-in MEDBIOHIM UI still needs a user-session check for the materials tab, filtering, image viewer/zoom, source document preview/download, trainer answers and test-taking. Current CI + Worker deployment are verified, but I did not use a student session for browser acceptance.
+- [ ] Keep the duplicate legacy subject row for now; do not merge/delete subject IDs during content restoration without auditing foreign keys and user progress.
+- [ ] Keep previously exposed Upstash Blob token rotation on the follow-up list; never place the replacement token in source control or chat.
+
+Continue directly on main; no branches and no SpaceWeb deployment. Supabase is the metadata/relationship source of truth; Upstash Blob stores media and source files; Redis remains cache-only.
