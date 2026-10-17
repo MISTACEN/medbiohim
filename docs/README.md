@@ -4,6 +4,7 @@
 
 | Документ | Назначение |
 |----------|------------|
+| **[WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md)** | **LOCKED:** `medbiohim-api` = единственный прод API; shadow = fallback only |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура (Vercel + SpaceWeb + Supabase + Cloudflare) |
 | [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md) | **Полный инвентарь PHP API** — сверка с Cloudflare |
 | [STATUS.md](STATUS.md) | Текущий статус, блокеры, cutover gates |
@@ -14,11 +15,22 @@
 | [chemical-engine.md](chemical-engine.md) | Chemical engine (PubChem и т.д.) |
 | [dev-notes.md](dev-notes.md) | Технические правила разработки |
 
+## Workers (кратко)
+
+```
+medbiohim-api          = единственный прод API   (workers/api/)
+medbiohim-api-shadow   = fallback MEDBIOHIM_UPSTREAM only
+medbiohim-telegram     = бот, не API сайта
+```
+
+Подробно: [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md).
+
 ## Интеграции
 
 - [../integrations/browser-extension/README.md](../integrations/browser-extension/README.md)
 - [../integrations/telegram-bot/README.md](../integrations/telegram-bot/README.md)
-- [../integrations/cloudflare-api/](../integrations/cloudflare-api/) — Worker API (shadow)
+- [../workers/api/](../workers/api/) — **production** Worker API (`medbiohim-api`)
+- [../integrations/cloudflare-api/](../integrations/cloudflare-api/) — **shadow only** (`medbiohim-api-shadow`)
 - [../integrations/telegram-bot-cloudflare/](../integrations/telegram-bot-cloudflare/) — Telegram Worker
 
 ## История / аудиты
