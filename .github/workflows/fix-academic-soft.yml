@@ -1,0 +1,59 @@
+name: Fix academic soft
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Soft-fail academic state
+        run: |
+          python3 << 'PY'
+          from pathlib import Path
+          p = Path("workers/api/src/routes/academic.ts")
+          t = p.read_text()
+          t = t.replace(
+              "    if (statesResult.error) throw statesResult.error;\n    if (progressResult.error) throw progressResult.error;\n    if (profileResult.error) throw profileResult.error;",
+              "    if (statesResult.error) console.error(\"[academic:state:states]\", statesResult.error.message);\n    if (progressResult.error) console.error(\"[academic:state:progress]\", progressResult.error.message);\n    if (profileResult.error) console.error(\"[academic:state:profile]\", profileResult.error.message);\n    const statesOk = !statesResult.error;\n    const progressOk = !progressResult.error;",
+          )
+          t = t.replace("const rawStates = statesResult.data || [];", "const rawStates = statesOk ? (statesResult.data || []) : [];")
+          t = t.replace("if (topicsError) throw topicsError;", "if (topicsError) console.error(\"[academic:state:topics]\", topicsError.message);")
+          t = t.replace(
+              "const topicProgress = (progressResult.data || []).map((p: any) => {",
+              "const topicProgress = (progressOk ? (progressResult.data || []) : []).map((p: any) => {",
+          )
+          hard = '''  } catch (error) {
+    console.error("[academic:state]", error);
+    const { body, status } = fail("ACADEMIC_STATE_ERROR", "Состояние учебного плана временно недоступно", 503, rid);
+    return c.json(body, status as 503);
+  }
+});'''
+          soft = '''  } catch (error) {
+    console.error("[academic:state]", error);
+    return c.json(ok({
+      profile: { id: user.id },
+      metrics: { closed: 0, in_progress: 0, not_started: 0, debts: 0, tracked: 0 },
+      states: [], topic_progress: [], debts: [], upcoming: [], weak_topics: [],
+      recommendations: [], generated_at: new Date().toISOString(),
+      degraded: true,
+      service_notice: "Академическое состояние временно недоступно",
+    }, rid));
+  }
+});'''
+          if hard not in t:
+              raise SystemExit("hard catch not found")
+          t = t.replace(hard, soft, 1)
+          p.write_text(t)
+          assert "statesOk" in p.read_text()
+          assert "degraded: true" in p.read_text()
+          print("ok", p.stat().st_size)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/routes/academic.ts
+          git commit -m "fix(api): academic/state soft-fail empty payload instead of 503" || exit 0
+          git push origin HEAD:main
