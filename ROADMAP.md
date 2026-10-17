@@ -3714,3 +3714,11 @@ No GitHub Actions workflow files or branch policy were changed.
 - [ ] Run migration dry-run, then upload and verify all images/PDFs/docs. Only after checking the Upstash object inventory and live pages should the local `content/histology` directory be removed from future deployment bundles. Do not delete local originals during initial sync.
 - [ ] Supabase `content_sources.source_path` remains the source metadata; actual media bytes stay in Upstash Blob. Do not store binary media in Redis key-value or duplicate image bytes in Postgres.
 
+## Synchronization checkpoint — 2026-10-17 01:00 UTC
+
+- Confirmed repository branch is `main`; latest inspected commit before this checkpoint was `b19b3964cc3699dfa6c17a6285b5a1ef30a3ab29`. No feature branch created.
+- Live Supabase project `gnobvyjywtqbdfeejxmf` reports 114 subjects, 342 schedule entries, 875 questions, 884 exam questions, 36 tests, 80 published materials, 206 trainer cards, and 198 curriculum items. The current remote migration history includes the newly applied `files_upstash_blob_provider_20261017` migration (`20261017005831`); `public.files.storage_provider` now permits `upstash_blob`.
+- Canonical Cloudflare Worker `medbiohim-api` has a verified `UPSTASH_REDIS_REST_TOKEN` secret binding and a new 100%-traffic deployment created at `2026-10-17T00:59:10Z`. Secret values are not stored in Git. The Upstash Redis connectivity test (SET/GET/TTL/DEL) passed and the temporary key was deleted.
+- Upstash Blob bucket `medbiohim-files` is private and contains histology objects. Redis currently contains 21 legacy deployment-stamp keys; these were preserved, not deleted or rewritten.
+- **Still open:** no authenticated browser acceptance was performed; 206 trainer cards have `source_file_id IS NULL`, and the `files` table contains one row, so Blob object existence does not prove every trainer card resolves correctly. Canonical Worker has not been verified with a live authenticated request in this pass. The latest 3 manually dispatched schema/UI patch workflows failed; inspect their logs before retrying. Production UI/API behavior is not declared fully synchronized.
+- Continue directly on `main`. Keep SpaceWeb frozen. Do not change production routing, reseed content, or delete Redis/Blob objects as part of reconciliation.
