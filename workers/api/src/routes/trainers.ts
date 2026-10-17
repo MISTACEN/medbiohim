@@ -21,6 +21,11 @@ type TrainerRow = {
   question?: Record<string, unknown> | null;
   tags?: string[] | null;
   difficulty?: number | null;
+  plan_module_id?: string | null;
+  plan_topic_id?: string | null;
+  plan_status?: string | null;
+  modules?: { title?: string | null } | Array<{ title?: string | null }> | null;
+  topics?: { title?: string | null } | Array<{ title?: string | null }> | null;
   is_published?: boolean;
 };
 
@@ -129,8 +134,15 @@ function mapTrainerCard(row: TrainerRow, orderIndex: number) {
         return { id: String(item.id ?? index), label: String(item.label ?? "") };
       })
     : [];
+  const moduleRow = Array.isArray(row.modules) ? row.modules[0] : row.modules;
+  const topicRow = Array.isArray(row.topics) ? row.topics[0] : row.topics;
   return {
     id: row.id,
+    plan_module_id: row.plan_module_id || null,
+    plan_topic_id: row.plan_topic_id || null,
+    plan_status: row.plan_status || null,
+    plan_module_title: moduleRow?.title || null,
+    plan_topic_title: topicRow?.title || null,
     title: String(preparation.name || preparation.organ || question.prompt || "Карточка тренажёра"),
     topic: Array.isArray(row.tags) ? String(row.tags[0] || row.subject_slug || "histology") : (row.subject_slug || "histology"),
     kind: row.mode_set || String(question.mode || "identify"),
@@ -163,7 +175,7 @@ trainers.get("/feed", requireAuth, async (c) => {
   const specialty = c.req.query("specialty");
   const topic = c.req.query("topic");
   try {
-    const select = "id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,created_at";
+    const select = "id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,created_at,plan_module_id,plan_topic_id,plan_status,modules(title),topics(title)";
     const applyFilters = (query: any) => {
       let next = query.eq("is_published", true);
       if (subject) next = next.eq("subject_slug", subject);
@@ -202,7 +214,7 @@ trainers.get("/feed/:id", requireAuth, async (c) => {
   try {
     const { data, error } = await supabase
       .from("trainer_feed_cards")
-      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published")
+      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,plan_module_id,plan_topic_id,plan_status,modules(title),topics(title)")
       .eq("id", c.req.param("id"))
       .eq("is_published", true)
       .maybeSingle();
