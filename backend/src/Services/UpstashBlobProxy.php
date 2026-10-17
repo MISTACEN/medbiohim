@@ -43,7 +43,7 @@ final class UpstashBlobProxy
                     'key' => $key,
                 ]);
             }
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Logger::error('upstash_blob_proxy_failed', [
                 'key' => $key,
                 'error' => $e->getMessage(),
@@ -59,7 +59,7 @@ final class UpstashBlobProxy
 
         $safeMime = preg_match('#^[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+(?:;\\s*charset=[a-zA-Z0-9._-]+)?$#', $mime)
             ? $mime : 'application/octet-stream';
-        $safeName = str_replace(["\\r", "\\n", '"', '\\\\'], '', basename($filename));
+        $safeName = str_replace(["\r", "\n", '"', '\\'], '', basename($filename));
         header('Content-Type: ' . $safeMime);
         header('Content-Disposition: inline; filename="' . ($safeName !== '' ? $safeName : 'media.bin') . '"');
         header('Cache-Control: private, max-age=300');
