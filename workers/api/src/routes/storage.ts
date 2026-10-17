@@ -85,6 +85,58 @@ storage.post("/upload", requireAuth, async (c) => {
   }
 });
 
+storage.post("/histology-import", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const db = c.get("supabase");
+  const bucket = getBucket(c.env);
+  if (!bucket) return c.json(fail("NOT_CONFIGURED", "Upstash Blob не настроен", 503, rid).body, 503);
+
+  // Import is deliberately restricted to administrators; never trust a client-supplied path alone.
+  const { data: roleRows, error: roleError } = await db.from("user_roles")
+    .select("roles(code)").eq("user_id", user.id).limit(20);
+  if (roleError) return c.json(fail("ROLE_CHECK_UNAVAILABLE", "Не удалось проверить права", 503, rid).body, 503);
+  const roles = (roleRows || []).map((row: any) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return String(role?.code || "");
+  });
+  if (!roles.includes("admin")) return c.json(fail("FORBIDDEN", "Импорт доступен только администратору", 403, rid).body, 403);
+
+  let form: FormData;
+  try { form = await c.req.formData(); }
+  catch { return c.json(fail("VALIDATION", "Ожидается multipart/form-data", 400, rid).body, 400); }
+  const fileValue: any = form.get("file");
+  const key = safeKey(String(form.get("key") || ""));
+  const overwrite = String(form.get("overwrite") || "") === "1";
+  if (!key || !key.startsWith("histology/") || key.length > 1024) {
+    return c.json(fail("INVALID_KEY", "Разрешены только ключи histology/", 400, rid).body, 400);
+  }
+  if (!fileValue || typeof fileValue !== "object" || typeof fileValue.arrayBuffer !== "function" || typeof fileValue.size !== "number") {
+    return c.json(fail("VALIDATION", "Файл не передан", 400, rid).body, 400);
+  }
+  if (fileValue.size < 1 || fileValue.size > 25 * 1024 * 1024) {
+    return c.json(fail("FILE_SIZE", "Размер файла должен быть до 25 МБ", 413, rid).body, 413);
+  }
+  const allowedExt = /\.(?:jpe?g|png|gif|webp|bmp|pdf|docx?|txt|md|json)$/i;
+  if (!allowedExt.test(key)) return c.json(fail("FILE_TYPE", "Тип файла не разрешён", 415, rid).body, 415);
+  try {
+    if (!overwrite) {
+      try {
+        const existing = await bucket.get(key);
+        if (existing) return c.json(ok({ key, status: "already_exists", size: fileValue.size }, rid));
+      } catch (error) {
+        if (!(BlobError.is(error) && error.code === "not_found")) throw error;
+      }
+    }
+    const contentType = String(fileValue.type || "application/octet-stream").slice(0, 120);
+    await bucket.put(key, fileValue, { contentType, cache: "no-store" });
+    return c.json(ok({ key, status: "uploaded", size: fileValue.size, content_type: contentType }, rid), 201);
+  } catch (error) {
+    console.error("[storage:histology-import]", error);
+    return c.json(fail("STORAGE_ERROR", "Не удалось импортировать файл в Upstash Blob", 502, rid).body, 502);
+  }
+});
+
 storage.get("/signed-url", requireAuth, async (c) => {
   const rid = requestId();
   const bucket = getBucket(c.env);
