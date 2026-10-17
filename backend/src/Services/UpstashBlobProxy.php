@@ -20,7 +20,7 @@ final class UpstashBlobProxy
         $base = rtrim((string) Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', ''), '/');
         $token = $request->bearerToken();
         $key = trim($objectKey);
-        if ($base === '' || $token === '' || $key === '' || !str_starts_with($key, 'histology/')) {
+        if ($base === '' || !$token || $key === '' || !str_starts_with($key, 'histology/')) {
             return null;
         }
         if (strlen($key) > 1024 || str_contains($key, '\\\\') || str_contains($key, '..')
