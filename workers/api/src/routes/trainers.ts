@@ -268,7 +268,35 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
       key.startsWith("histology/") ? "content/" + key : "",
       key.startsWith("histology/") ? "content/histology/" + key.slice("histology/".length) : "",
     ].filter(Boolean))];
+
+    // The histology bucket has been intentionally made public. Try its canonical
+    // object URL first so image delivery does not depend on the Blob SDK's
+    // authenticated object lookup behavior. Encode each path segment separately
+    // because migrated filenames include spaces and Cyrillic characters.
+    const publicBlobBase = "https://b8a4f9f853fa.blob.upstash.io";
     for (const candidate of candidates) {
+      const publicUrl = `${publicBlobBase}/${candidate.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
+      try {
+        const publicResponse = await fetch(publicUrl, { redirect: "follow" });
+        if (publicResponse.ok && publicResponse.body) {
+          return new Response(publicResponse.body, {
+            headers: {
+              "content-type": publicResponse.headers.get("content-type") || imageContentType(candidate),
+              "cache-control": "public, max-age=3600",
+              "x-content-type-options": "nosniff",
+              "x-request-id": rid,
+              "x-mbh-media-key": candidate,
+            },
+          });
+        }
+        if (publicResponse.status === 404) continue;
+      } catch (error) {
+        console.warn("[trainer-image] public Blob URL lookup failed; trying authenticated SDK", {
+          cardId: card.id,
+          key: candidate,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       try {
         image = await bucket.get(candidate);
         if (image) { resolvedKey = candidate; break; }
