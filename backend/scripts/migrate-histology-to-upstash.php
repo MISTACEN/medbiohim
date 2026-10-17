@@ -17,9 +17,8 @@ declare(strict_types=1);
  */
 require_once dirname(__DIR__) . '/src/Bootstrap.php';
 
-use Medbiohim\Support\Env;
 
-Env::load(dirname(__DIR__) . '/.env');
+\Medbiohim\Support\Env::load(dirname(__DIR__) . '/.env');
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);
     exit("Not found\n");
@@ -29,9 +28,9 @@ if (!extension_loaded('curl')) {
     exit(2);
 }
 
-$base = rtrim((string) Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', 'https://medbiohim-api.ryazansevegor.workers.dev/api/v1'), '/');
-$token = (string) Env::get('MEDBIOHIM_MIGRATION_BEARER_TOKEN', '');
-$root = rtrim((string) Env::get('HISTOLOGY_MEDIA_ROOT', dirname(__DIR__) . '/content/histology'), '/\\');
+$base = rtrim((string) \Medbiohim\Support\Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', 'https://medbiohim-api.ryazansevegor.workers.dev/api/v1'), '/');
+$token = (string) \Medbiohim\Support\Env::get('MEDBIOHIM_MIGRATION_BEARER_TOKEN', '');
+$root = rtrim((string) \Medbiohim\Support\Env::get('HISTOLOGY_MEDIA_ROOT', dirname(__DIR__) . '/content/histology'), '/\\');
 $dryRun = in_array('--dry-run', $argv, true);
 $overwrite = in_array('--overwrite', $argv, true);
 
