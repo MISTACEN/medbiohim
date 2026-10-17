@@ -30,7 +30,11 @@ if (!extension_loaded('curl')) {
 
 $base = rtrim((string) \Medbiohim\Support\Env::get('MEDBIOHIM_CLOUDFLARE_API_URL', 'https://medbiohim-api.ryazansevegor.workers.dev/api/v1'), '/');
 $token = (string) \Medbiohim\Support\Env::get('MEDBIOHIM_MIGRATION_BEARER_TOKEN', '');
-$root = rtrim((string) \Medbiohim\Support\Env::get('HISTOLOGY_MEDIA_ROOT', dirname(__DIR__) . '/content/histology'), '/\\');
+$defaultRoot = dirname(__DIR__) . '/content/histology';
+if (!is_dir($defaultRoot) && is_dir(dirname(__DIR__) . '/spaceweb_upload/content/histology')) {
+    $defaultRoot = dirname(__DIR__) . '/spaceweb_upload/content/histology';
+}
+$root = rtrim((string) \Medbiohim\Support\Env::get('HISTOLOGY_MEDIA_ROOT', $defaultRoot), '/\\');
 $dryRun = in_array('--dry-run', $argv, true);
 $overwrite = in_array('--overwrite', $argv, true);
 
