@@ -169,7 +169,7 @@ function imageContentType(key: string): string {
 trainers.get("/feed", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const limit = Math.min(Math.max(Number(c.req.query("limit") || 30), 1), 100);
+  const limit = Math.min(Math.max(Number(c.req.query("limit") || 30), 1), 250);
   const offset = Math.max(0, Number(c.req.query("offset") || 0));
   const subject = c.req.query("subject");
   const specialty = c.req.query("specialty");
