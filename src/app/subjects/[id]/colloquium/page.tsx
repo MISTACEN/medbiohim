@@ -88,8 +88,8 @@ const situationalTasks: SituationalTask[] = [
 
 type BankQuestion = { id: number; module: string; question: string; answer: string; why: string; number?: number; options?: { number: number; text: string }[]; correct?: number[]; whyLabel?: string };
 const testModules = [
-  { id: "intro", title: "Контрольные вопросы с ответами", range: "1–36" },
   ...physiologyTestData.map(section => ({ id: section.id, title: section.title, range: `1–${section.questions.length}` })),
+  { id: "intro", title: "Контрольные вопросы (без вариантов)", range: "1–36" },
 ];
 const introTestBank: BankQuestion[] = [
 { id:1,module:"intro",question:"Основоположник теории функциональных систем:",answer:"П.К. Анохин.",why:"Он разработал концепцию функциональных систем, объединённых ради полезного результата."},
@@ -156,7 +156,7 @@ export default function PhysiologyColloquiumPage({ params }: { params: Promise<{
   const [search, setSearch] = useState("");
   const [opened, setOpened] = useState<Record<number, boolean>>({});
   const [view, setView] = useState<"topics" | "questions" | "tasks" | "quiz" | "testBank">("topics");
-  const [activeTestModule, setActiveTestModule] = useState("intro");
+  const [activeTestModule, setActiveTestModule] = useState("cell");
   const [bankAnswers, setBankAnswers] = useState<Record<number, number[]>>({});
   const [bankChecked, setBankChecked] = useState(false);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -185,7 +185,7 @@ export default function PhysiologyColloquiumPage({ params }: { params: Promise<{
     {view==="testBank" && <section className="space-y-4">
       <div className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h2 className="font-bold text-slate-900">Банк тестовых заданий</h2><p className="mt-1 text-sm leading-5 text-slate-600">Вопросы из методички представлены с исходными вариантами. Выбери ответ в каждом задании, затем нажми «Проверить ответы». Вопросы с несколькими правильными вариантами отмечены отдельно.</p></div>
+          <div><h2 className="font-bold text-slate-900">Банк тестовых заданий</h2><p className="mt-1 text-sm leading-5 text-slate-600">Основной режим — тест с выбором ответа: выбери вариант в каждом задании и нажми «Проверить ответы». Вопросы с несколькими правильными вариантами отмечены отдельно. 36 контрольных вопросов без исходных вариантов вынесены в отдельный раздел в конце списка.</p></div>
           <span className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-extrabold text-indigo-700">{testBank.length} заданий</span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">{testModules.map(m=><button key={m.id} onClick={()=>{setActiveTestModule(m.id);setBankAnswers({});setBankChecked(false);}} className={"rounded-lg border px-3 py-2 text-xs font-bold "+(activeTestModule===m.id?"border-indigo-500 bg-indigo-50 text-indigo-700":"border-slate-200 text-slate-600")}>{m.title} · {m.range}</button>)}</div>
