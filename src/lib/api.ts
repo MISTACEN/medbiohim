@@ -389,7 +389,7 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
         signal:AbortSignal.timeout(15000),
       });
       if(!res.ok)return null;
-      const parsed=await res.json() as {ok?:boolean;data?:{url?:string|null;mode?:string}};
+      const parsed=await res.json() as {ok?:boolean;data?:{url?:string|null;mode?:string;expires_in?:number}};
       if(!parsed?.ok)return null;
       return parsed.data ?? null;
     };
@@ -397,9 +397,11 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
     let token=getToken();
     let meta=await negotiate(token);
     if(meta?.url){
-      // B2 presigned URLs expire; never keep them in the in-memory cache.
-      if(meta.mode!=="presigned") return cacheForCurrentUser(meta.url);
-      return meta.url;
+      // B2 presigned URLs and Upstash Blob signedReadUrl links expire.
+      // Never cache signed or explicitly expiring URLs: reopen through the API
+      // to mint a fresh signature after navigation or the five-minute TTL.
+      if(meta.mode==="presigned" || meta.mode==="upstash-blob" || Number(meta.expires_in)>0) return meta.url;
+      return cacheForCurrentUser(meta.url);
     }
 
     if(!meta){
@@ -408,8 +410,9 @@ export async function getMaterialFileUrl(id:string):Promise<string|null>{
         token=access;
         meta=await negotiate(access);
         if(meta?.url){
-          if(meta.mode!=="presigned") return cacheForCurrentUser(meta.url);
-          return meta.url;
+          // Apply the same expiry rule after refreshing the access token.
+          if(meta.mode==="presigned" || meta.mode==="upstash-blob" || Number(meta.expires_in)>0) return meta.url;
+          return cacheForCurrentUser(meta.url);
         }
       }
     }
