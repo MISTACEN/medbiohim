@@ -1,0 +1,7 @@
+-- See the applied Supabase migration `add_core_histology_study_notes` for the
+-- complete source of the six original MBH histology study notes. This marker
+-- file documents the data change in Git without reapplying the inserts twice.
+-- Stable IDs used: histology-mbh-study-cytology-core,
+-- histology-mbh-study-epithelium-core, histology-mbh-study-connective-core,
+-- histology-mbh-study-blood-core, histology-mbh-study-muscle-core,
+-- histology-mbh-study-nervous-core.
