@@ -3840,3 +3840,13 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - [x] Removed auth only from the image-byte route; it uses server-side metadata lookup and still resolves only published cards with validated storage keys. Feed, answer submission, and other protected routes remain authenticated.
 - [x] Added a regression contract test for the public route.
 - [ ] Confirm canonical `medbiohim-api` deployment and verify an unauthenticated image request returns image bytes in production. A source commit alone is not acceptance evidence.
+
+
+## 2026-10-19 — Физиология: вкладка «Коллоквиум»
+- [x] Добавлен отдельный маршрут `/subjects/[id]/colloquium` для самоподготовки по физиологии.
+- [x] Материал разделён на тематические блоки: мембрана и потенциалы; законы раздражения; нервные волокна и нейроны; синапсы; мышцы.
+- [x] Добавлены контрольные вопросы с ответами и объяснениями простыми словами, раскрываемые карточками.
+- [x] Добавлен интерактивный тест с проверкой результата и пояснениями.
+- [x] В карточке физиологии добавлена вкладка «Коллоквиум».
+- [ ] Проверить сборку и маршрут в развёрнутом окружении; затем расширить тестовый банк ситуационными задачами и исходными тестами из пособия.
+- Примечание: содержание вопросов 1–28 опирается на предоставленный материал; вопросы 29–38 структурированы по перечню контрольных вопросов из того же материала, а не представлены как дословные ответы из источника.
