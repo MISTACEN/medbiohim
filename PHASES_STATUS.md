@@ -2963,3 +2963,10 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - 🟢 Added source-contract tests and configured `UPSTASH_BLOB_PUBLIC_BASE_URL` in production Wrangler vars.
 - 🟡 Waiting on production workflow status and live URL verification. `medbiohim-api-shadow` is not production and its successful build is not proof.
 - 🔴 Full recovery of every micropreparation, 28 electronograms and Materials documents is not marked complete until production requests return real bytes with correct MIME types.
+## 2026-10-18 — Production Worker deployment
+
+- 🟢 Fixed the actual production typecheck blocker in `workers/api/src/routes/materials.ts` (invalid escaped slash regex, `TS1109`).
+- 🟢 Production GitHub Actions job passed: typecheck → tests → deploy. Source commit: `80a2dfa9bca7796a73a242fc056cd7355dad7669`.
+- 🟢 Cloudflare production Worker `medbiohim-api` version `50d1b57d-1da2-43a4-9951-0dbe89b090bd` is deployed at 100% traffic; `UPSTASH_BLOB_PUBLIC_BASE_URL` is confirmed in its settings as `https://b8a4f9f853fa.blob.upstash.io`.
+- 🟢 Local source-snapshot validation: typecheck passed, 32/32 tests passed.
+- 🟡 Final content verification pending: this tool environment blocks direct HTTP to the Worker and public Blob endpoint. Must still smoke-test authorized image/PDF/DOC/DOCX responses and all 28 electronograms from the live site before claiming every file is verified.
