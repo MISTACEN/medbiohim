@@ -3825,3 +3825,10 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - Materials file route now tries the same public Blob endpoint using validated candidate keys and preserves declared MIME metadata for objects served as `application/octet-stream`; Supabase publication/auth checks remain in place.
 - Added contract tests for the public Blob path and configured the endpoint in production Wrangler vars.
 - **Pending verification:** CI typecheck/tests and live `medbiohim-api` deployment must pass. Do not infer production success from shadow deployment. Public endpoint object reads and all 28 electronograms still require live authenticated route checks.
+## 2026-10-18 — Production deploy completed: public Upstash Blob media
+
+- Fixed the production build blocker found in Cloudflare/GitHub job logs: an over-escaped trailing-slash regex in `workers/api/src/routes/materials.ts` caused `TS1109: Expression expected`. Corrected to `replace(/\\/+$/, "")`.
+- Production workflow for commit `80a2dfa9bca7796a73a242fc056cd7355dad7669` passed typecheck, tests, and the production deploy step.
+- Cloudflare confirms `medbiohim-api` is now on version `50d1b57d-1da2-43a4-9951-0dbe89b090bd` at 100% traffic. The production Worker binding `UPSTASH_BLOB_PUBLIC_BASE_URL` is set to `https://b8a4f9f853fa.blob.upstash.io`; `UPSTASH_BLOB_TOKEN` remains configured as an optional fallback. Shadow remains a service-binding fallback, not the production target.
+- Local worker checks on the source snapshot: TypeScript typecheck passed; all 32 Node tests passed.
+- Remaining verification limit: this environment cannot make direct HTTP requests to the Worker or public Blob host, so it cannot independently confirm byte responses for each published micropreparation/electronogram/material. The authenticated Worker proxy code is deployed, but do not mark every object verified until a browser/smoke test confirms real bytes and MIME types.
