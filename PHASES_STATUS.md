@@ -2951,3 +2951,8 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - Не выполнен production UI smoke test после изменения данных.
 - Добавлены и применены 9 пакетов по 20 помеченных учебных ответов по гистологии; все сохранены отдельными идемпотентными SQL-миграциями в main. Ответы явно помечены как дополнения MEDBIOHIM, исходные поля source сохранены. Сейчас заполнено 237 из 466 экзаменационных записей: 180 новых учебных конспектов и 57 исходных ответов.
 - Дальше: продолжить ответы следующими небольшими проверяемыми партиями; сверить storage_path с Blob, затем проверить интерфейсы материалов/атласа/тестов без массовой публикации неподтверждённых ответов.
+## 2026-10-18 — Media URL cache fix and production verification gate
+
+- 🟢 Frontend fix committed directly to `main`: signed Upstash Blob/B2 URLs and any URL with positive `expires_in` are not stored in the in-memory material URL cache, including after token refresh.
+- 🟡 Cloudflare secret inventory confirms a `UPSTASH_BLOB_TOKEN` binding exists on both the production and shadow Workers; the secret value was not read. Binding existence alone is not a successful storage read.
+- 🔴 End-to-end media incident remains open: connected Blob object inventory returned an authorization error, and this environment cannot make direct public HTTP requests. Must still verify 206/206 histology cards, 28 electronograms, materials images/PDF/DOC/DOCX, post-navigation/reload behavior, and production deployment status before claiming restoration.
