@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BookOpen, CheckCircle2, ChevronDown, CircleHelp, GraduationCap, RotateCcw } from "lucide-react";
 
 type Question = { id: number; topic: string; title: string; answer: string; simple: string };
@@ -74,7 +74,7 @@ export default function PhysiologyColloquiumPage({ params }: { params: Promise<{
   const [view, setView] = useState<"topics" | "questions" | "quiz">("topics");
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [checked, setChecked] = useState(false);
-  useState(() => { void params.then(p => setSubjectId(p.id)); });
+  useEffect(() => { let cancelled = false; void params.then(p => { if (!cancelled) setSubjectId(p.id); }); return () => { cancelled = true; }; }, [params]);
   const filtered = useMemo(() => questions.filter(q => (activeTopic === "all" || q.topic === activeTopic) && (!search || (q.title + " " + q.answer).toLowerCase().includes(search.toLowerCase()))), [activeTopic, search]);
   const score = quiz.reduce((n, q, i) => n + (answers[i] === q.correct ? 1 : 0), 0);
   return <div className="mx-auto max-w-6xl space-y-6">
