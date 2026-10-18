@@ -3812,3 +3812,9 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - [ ] Осталось проверить прямой доступ к Upstash Blob: интеграционный список объектов временно вернул отказ авторизации токена, поэтому полная сверка каждого storage_path с объектом Blob не подтверждена.
 - [x] Добавлены 180 помеченных учебных ответов к экзаменационным вопросам по гистологии (9 партий по 20); каждая партия сохранена идемпотентной миграцией в main и применена. Всего заполнено 237 ответов из 466 записей (180 дополнительных конспектов MEDBIOHIM + 57 исходных ответов).
 - [ ] Следующий шаг: продолжить ответы следующими небольшими проверяемыми партиями и затем проверить реальные экраны «Материалы», «Тесты и билеты», «Атлас/микропрепараты» в production.
+## 2026-10-18 — Material media URL expiry regression
+
+- Fixed on `main` in commit `4a586bbaa2962d1ef1b611c48e027fee40219493`: `getMaterialFileUrl()` no longer caches URLs returned as `mode=presigned`, `mode=upstash-blob`, or with a positive `expires_in`.
+- Applied the same rule to the normal negotiation and access-token-refresh branches. Reopening an image/PDF/DOC/DOCX requests a fresh URL instead of reusing a 5-minute signature.
+- Live atlas restoration is **not yet verified**: Worker secrets inventory confirms `UPSTASH_BLOB_TOKEN` is configured on `medbiohim-api` and `medbiohim-api-shadow`, but presence does not prove the token can read the intended bucket. A direct object-list attempt through the connected Blob management tool was rejected as unauthorized. Need authenticated production checks for all 206 published cards (including 28 electronograms), plus material file URLs and browser navigation/reload.
+- Do not mark media migration complete until the production image route returns actual image bytes/redirects and PDF/DOC/DOCX files open for an authorized MBH user. No secrets were read or printed.
