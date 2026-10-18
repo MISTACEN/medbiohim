@@ -2956,3 +2956,10 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - 🟢 Frontend fix committed directly to `main`: signed Upstash Blob/B2 URLs and any URL with positive `expires_in` are not stored in the in-memory material URL cache, including after token refresh.
 - 🟡 Cloudflare secret inventory confirms a `UPSTASH_BLOB_TOKEN` binding exists on both the production and shadow Workers; the secret value was not read. Binding existence alone is not a successful storage read.
 - 🔴 End-to-end media incident remains open: connected Blob object inventory returned an authorization error, and this environment cannot make direct public HTTP requests. Must still verify 206/206 histology cards, 28 electronograms, materials images/PDF/DOC/DOCX, post-navigation/reload behavior, and production deployment status before claiming restoration.
+## 2026-10-18 — Public Blob route restoration
+
+- 🟢 Code updated on `main` under `workers/api/` (the canonical production Worker): atlas images and material files now prefer the public Upstash Blob endpoint `https://b8a4f9f853fa.blob.upstash.io`.
+- 🟢 Public object reads no longer require a valid `UPSTASH_BLOB_TOKEN`; token-based SDK remains optional fallback. Worker routes still authenticate and resolve published Supabase records before proxying bytes.
+- 🟢 Added source-contract tests and configured `UPSTASH_BLOB_PUBLIC_BASE_URL` in production Wrangler vars.
+- 🟡 Waiting on production workflow status and live URL verification. `medbiohim-api-shadow` is not production and its successful build is not proof.
+- 🔴 Full recovery of every micropreparation, 28 electronograms and Materials documents is not marked complete until production requests return real bytes with correct MIME types.
