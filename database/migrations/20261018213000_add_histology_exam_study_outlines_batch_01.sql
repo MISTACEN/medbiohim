@@ -28,6 +28,6 @@ update public.exam_questions q
 set answer = s.answer,
     updated_at = now()
 from supplemental_answers s
-where q.id = s.id
+where q.id = s.id::uuid
   and q.subject_slug = 'histology'
   and nullif(btrim(q.answer), '') is null;
