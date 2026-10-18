@@ -322,7 +322,7 @@ materials.get("/:id/file", requireAuth, async (c) => {
       .replace(/["\\;]/g, "_");
     const publicBlobBase = (c.env.UPSTASH_BLOB_PUBLIC_BASE_URL || "https://b8a4f9f853fa.blob.upstash.io")
       .trim()
-      .replace(/\\/+$/, "");
+      .replace(/\/+$/, "");
 
     // Public Blob is the primary read path. The endpoint remains authenticated
     // and the material is checked in Supabase before any object bytes are proxied.
