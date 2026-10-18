@@ -655,7 +655,7 @@ export async function adminDatabaseDelete(id:string,table:string,key:Record<stri
 }
 export async function adminDatabaseSql(id:string,sql:string,confirmed=false): Promise<any> {
   return api("/admin/database/" + encodeURIComponent(id) + "/sql",{
-    method:"POST",body:JSON.stringify({sql,confirmed}),
+    method:"POST",body:JSON.stringify({sql,confirm:confirmed}),
   }) as any;
 }
 
@@ -675,15 +675,16 @@ export type SubjectPlanWeek = any;
 export type TelegramAdminChat = any;
 export type TrainerFeedCard = any;
 
+const ADMIN_DB_ID = "supabase_primary";
 export async function adminDbAudit(limit = 200): Promise<any> { return api("/admin/db/audit?limit=" + encodeURIComponent(String(limit))) as any; }
 export async function adminRollbackAudit(id:string): Promise<any> { return api(`/admin/db/audit/${encodeURIComponent(id)}/rollback`, {method:"POST",body:"{}"}) as any; }
-export async function adminDbDelete(table:string,id:string): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
-export async function adminDbDeleteByKey(table:string,key:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/row", { method:"DELETE", body:JSON.stringify({key}) }) as any; }
-export async function adminDbInsert(table:string,row:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table), { method:"POST", body:JSON.stringify(row) }) as any; }
-export async function adminDbList(table:string,limit=200): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "?limit=" + encodeURIComponent(String(limit))) as any; }
-export async function adminDbMeta(..._args: any[]): Promise<any> { return api("/admin/db/meta") as any; }
-export async function adminDbUpdate(table:string,id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
-export async function adminDbUpdateByKey(table:string,key:Record<string,unknown>,payload:Record<string,unknown>): Promise<any> { return api("/admin/db/" + encodeURIComponent(table) + "/row", { method:"PATCH", body:JSON.stringify({key,row:payload}) }) as any; }
+export async function adminDbDelete(table:string,id:string): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/rows/${encodeURIComponent(table)}?id=${encodeURIComponent(id)}`, { method:"DELETE" }) as any; }
+export async function adminDbDeleteByKey(table:string,key:Record<string,unknown>): Promise<any> { return adminDbDelete(table, String(key.id || "")); }
+export async function adminDbInsert(table:string,row:Record<string,unknown>): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/rows/${encodeURIComponent(table)}`, { method:"POST", body:JSON.stringify(row) }) as any; }
+export async function adminDbList(table:string,limit=200): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/rows/${encodeURIComponent(table)}?limit=${encodeURIComponent(String(limit))}`) as any; }
+export async function adminDbMeta(..._args: any[]): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/tables`) as any; }
+export async function adminDbUpdate(table:string,id:string,payload:Record<string,unknown>): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/rows/${encodeURIComponent(table)}`, { method:"PATCH", body:JSON.stringify({id,patch:payload}) }) as any; }
+export async function adminDbUpdateByKey(table:string,key:Record<string,unknown>,payload:Record<string,unknown>): Promise<any> { return adminDbUpdate(table, String(key.id || ""), payload); }
 export async function adminBindTelegramChat(chatId:string|number,groupId:string): Promise<any> { return api("/admin/telegram/chats/" + encodeURIComponent(String(chatId)) + "/bind", { method:"POST", body:JSON.stringify({group_id:groupId}) }) as any; }
 export async function adminContentArchive(table:string,id:string): Promise<any> { return api("/admin/content/archive", { method:"POST", body:JSON.stringify({table,id}) }) as any; }
 export async function adminContentMove(table:string,id:string,payload:Record<string,unknown>={}): Promise<any> { return api("/admin/content/move", { method:"POST", body:JSON.stringify({table,id,...payload}) }) as any; }

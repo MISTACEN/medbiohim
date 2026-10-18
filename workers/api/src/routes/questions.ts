@@ -10,16 +10,34 @@ questions.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   const subject = c.req.query("subject") || c.req.query("subject_slug");
-  const limit = Math.min(Number(c.req.query("limit") || 50), 100);
+  const explicitSubjectId = c.req.query("subject_id") || "";
+  const limit = Math.min(Math.max(Number(c.req.query("limit") || 50), 1), 100);
+  const offset = Math.min(Math.max(Number(c.req.query("offset") || 0), 0), 100000);
+  const searchTerm = String(c.req.query("q") || "").trim().slice(0, 160);
+  const kind = String(c.req.query("kind") || "").trim();
   try {
-    let q = supabase.from("questions").select("id,stem,subject_slug,subject_id,type,difficulty,is_published").eq("is_published", true).limit(limit);
-    if (subject) q = q.eq("subject_slug", subject);
-    const { data, error } = await q;
+    let subjectId = explicitSubjectId && UUID.test(explicitSubjectId) ? explicitSubjectId : subject && UUID.test(subject) ? subject : "";
+    if (explicitSubjectId && !UUID.test(explicitSubjectId)) {
+      const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID предмета", 422, rid);
+      return c.json(body, status as 422);
+    }
+    if (subject && !subjectId) {
+      const { data: subjects, error: subjectError } = await supabase.from("subjects").select("id").eq("slug", subject).eq("is_active", true).limit(2);
+      if (subjectError) throw subjectError;
+      if ((subjects || []).length > 1) return c.json(ok({ items: [], ambiguous_subject: true }, rid));
+      subjectId = String(subjects?.[0]?.id || "");
+      if (!subjectId) return c.json(ok({ items: [] }, rid));
+    }
+    let q = supabase.from("questions").select("id,text,answer,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+    if (subjectId) q = q.eq("subject_id", subjectId);
+    if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
+    if (kind) q = q.eq("type", kind);
+    const { data, error, count } = await q;
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Вопросы недоступны", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: data || [] }, rid));
+    return c.json(ok({ items: (data || []).map((row: any) => ({ ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()), answer: c.req.query("include_answer") === "1" ? row.answer : undefined })), total: count || 0, limit, offset }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Вопросы недоступны", 503, rid);
     return c.json(body, status as 503);
@@ -30,12 +48,17 @@ questions.get("/subjects", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   try {
-    const { data, error } = await supabase.from("questions").select("subject_slug").eq("is_published", true).limit(1000);
-    if (error) return c.json(ok({ items: [] }, rid));
-    const set = new Set((data || []).map((r: any) => r.subject_slug).filter(Boolean));
-    return c.json(ok({ items: [...set] }, rid));
-  } catch {
-    return c.json(ok({ items: [] }, rid));
+    const { data: questionsRows, error: questionsError } = await supabase.from("questions").select("subject_id").eq("is_published", true).is("archived_at", null).limit(1000);
+    if (questionsError) throw questionsError;
+    const ids = [...new Set((questionsRows || []).map((row: any) => String(row.subject_id || "")).filter(Boolean))];
+    if (!ids.length) return c.json(ok({ items: [] }, rid));
+    const { data, error } = await supabase.from("subjects").select("id,slug").in("id", ids).eq("is_active", true).not("slug", "is", null);
+    if (error) throw error;
+    return c.json(ok({ items: (data || []).filter((row: any) => row.slug).map((row: any) => ({ subject_id: row.id, subject_slug: row.slug })) }, rid));
+  } catch (error) {
+    console.error("[questions:subjects]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Список предметов недоступен", 503, rid);
+    return c.json(body, status as 503);
   }
 });
 
@@ -50,7 +73,7 @@ questions.get("/mini-quiz", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
-    const { data, error } = await supabase.from("questions").select("id,stem,options,type,subject_id,subject_slug,is_published").in("id", ids).eq("is_published", true).limit(20);
+    const { data, error } = await supabase.from("questions").select("id,text,options,type,subject_id,is_published").in("id", ids).eq("subject_id", subjectId).eq("is_published", true).is("archived_at", null).limit(20);
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Mini-quiz unavailable", 503, rid);
       return c.json(body, status as 503);
@@ -65,7 +88,7 @@ questions.get("/mini-quiz", requireAuth, async (c) => {
         index,
         label: String(opt?.label ?? opt ?? ""),
       }));
-      return { id: row.id, stem: row.stem, type: row.type, subject_id: row.subject_id, options: publicOptions };
+      return { id: row.id, stem: row.text, type: row.type, subject_id: row.subject_id, options: publicOptions };
     });
     return c.json(ok({ items }, rid));
   } catch {
@@ -99,12 +122,16 @@ questions.post("/mini-quiz/check", requireAuth, async (c) => {
     }
     if (!Array.isArray(options)) options = [];
     let correct: number[] = [];
-    const answer = data.answer;
+    let answer: any = data.answer;
+    if (typeof answer === "string") {
+      try { answer = JSON.parse(answer); } catch { if (/^\d+$/.test(answer.trim())) answer = Number(answer.trim()); }
+    }
     if (Array.isArray(answer)) {
       correct = answer.map((v: any) => Number(v)).filter((n: number) => Number.isInteger(n) && n >= 0 && n < options.length);
     } else if (typeof answer === "number" && Number.isInteger(answer) && answer >= 0 && answer < options.length) {
       correct = [answer];
     }
+    if (!correct.length) correct = options.flatMap((option: any, index: number) => option && typeof option === "object" && option.correct === true ? [index] : []);
     const selectedSorted = [...selected].sort((a, b) => a - b);
     const correctSorted = [...correct].sort((a, b) => a - b);
     const isCorrect = selectedSorted.length === correctSorted.length && selectedSorted.every((v, i) => v === correctSorted[i]);
@@ -112,6 +139,34 @@ questions.post("/mini-quiz/check", requireAuth, async (c) => {
   } catch {
     const { body: b, status } = fail("DB_UNAVAILABLE", "Check failed", 503, rid);
     return c.json(b, status as 503);
+  }
+});
+
+questions.get("/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  const id = c.req.param("id") || "";
+  if (!UUID.test(id)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID вопроса", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    const { data, error } = await c.get("supabase").from("questions")
+      .select("id,text,answer,options,type,difficulty,subject_id,module_id,topic_id,is_published,archived_at,topics(title),subjects(name,slug)")
+      .eq("id", id).eq("is_published", true).is("archived_at", null).maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      const { body, status } = fail("NOT_FOUND", "Вопрос не найден", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const topic = Array.isArray((data as any).topics) ? (data as any).topics[0] : (data as any).topics;
+    const subject = Array.isArray((data as any).subjects) ? (data as any).subjects[0] : (data as any).subjects;
+    const question = { ...data, stem: (data as any).text, topic: topic?.title || "", subject_name: subject?.name || "", subject_slug: subject?.slug || null,
+      has_answer: Boolean(String((data as any).answer || "").trim()) };
+    return c.json(ok({ question }, rid));
+  } catch (error) {
+    console.error("[questions:detail]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Вопрос временно недоступен", 503, rid);
+    return c.json(body, status as 503);
   }
 });
 

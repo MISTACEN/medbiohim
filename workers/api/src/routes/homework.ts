@@ -190,10 +190,9 @@ homework.post("/:id/submit", requireAuth, async (c) => {
       return c.json(body, status as 409);
     }
     if (fileId) {
-      const { data: file, error: fileError } = await db.from("files").select("id,uploaded_by,owner_id").eq("id", fileId).maybeSingle();
+      const { data: file, error: fileError } = await db.from("files").select("id,uploaded_by").eq("id", fileId).maybeSingle();
       if (fileError) throw fileError;
-      const owner = String(file?.uploaded_by || file?.owner_id || "");
-      if (!file || (owner && owner !== user.id)) {
+      if (!file || String(file.uploaded_by || "") !== user.id) {
         const { body, status } = fail("FORBIDDEN", "Файл недоступен в контексте этого задания", 403, rid);
         return c.json(body, status as 403);
       }

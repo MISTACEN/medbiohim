@@ -514,7 +514,13 @@ export default function PreparationPage() {
             {unresolved ? "↻ Ответ сохранён, но автоматическая проверка ещё не завершена" : correct ? "✓ Ответ засчитан" : "✗ Ответ не засчитан"}
             {serverGrading?.grading_source === "ai" ? <div className="mt-1 text-xs">Проверка смысла через ИИ</div> : null}
             {serverGrading?.grading_feedback ? <div className="mt-1 text-sm">{String(serverGrading.grading_feedback)}</div> : null}
-            <div className="mt-1 text-sm">Эталон: <ChemRichText text={String(q.answer || "—")} className="mt-1 whitespace-pre-wrap" /></div>
+            {q.answer != null && String(q.answer).trim() !== "" ? (
+              <div className="mt-1 text-sm">Эталон: <ChemRichText text={String(q.answer)} className="mt-1 whitespace-pre-wrap" /></div>
+            ) : session?.status === "completed" ? (
+              <div className="mt-1 text-sm">Эталон для этого вопроса не заполнен.</div>
+            ) : (
+              <div className="mt-1 text-xs opacity-75">Эталон будет показан после завершения подготовки.</div>
+            )}
             {unresolved ? (
               <button type="button" disabled={loading} onClick={() => void retryPreparationGrading(session.id, q.id).then((r) => {
                 if (r.ok && r.data?.items?.[0]) setGrading((g) => ({ ...g, [q.id]: r.data.items[0] }));

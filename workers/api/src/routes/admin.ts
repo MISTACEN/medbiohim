@@ -933,6 +933,65 @@ admin.post("/schedule/import", requireAuth, async (c) => {
 });
 
 
+admin.get("/announcements", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await gate(c, STRICT_ADMINS))) return c.res;
+  try {
+    const { data, error: readError } = await c.get("supabase").from("site_content").select("payload").eq("key", "announcements").maybeSingle();
+    if (readError) throw readError;
+    const payload = data?.payload;
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
+    return c.json(ok({ items }, rid));
+  } catch (cause) {
+    console.error("[admin:announcements:list]", cause);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить объявления");
+  }
+});
+
+admin.post("/announcements", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await gate(c, STRICT_ADMINS))) return c.res;
+  const input = await bodyJson(c);
+  if (!validText(input?.title, 200) || !validText(input?.body, 5000)) return error(c, rid, 422, "VALIDATION_ERROR", "Укажите заголовок и текст объявления");
+  const db = c.get("supabase");
+  try {
+    const { data: current, error: readError } = await db.from("site_content").select("payload").eq("key", "announcements").maybeSingle();
+    if (readError) throw readError;
+    const payload = current?.payload;
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
+    const item = { id: crypto.randomUUID(), title: input.title.trim(), body: input.body.trim(), pinned: input.pinned === true, created_at: new Date().toISOString() };
+    const nextPayload = Array.isArray(payload) ? [...items, item] : { ...(payload && typeof payload === "object" ? payload : {}), items: [...items, item] };
+    const { error: writeError } = await db.from("site_content").upsert({ key: "announcements", payload: nextPayload, updated_at: item.created_at }, { onConflict: "key" });
+    if (writeError) throw writeError;
+    return c.json(ok({ item }, rid), 201);
+  } catch (cause) {
+    console.error("[admin:announcements:create]", cause);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось опубликовать объявление");
+  }
+});
+
+admin.delete("/announcements/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await gate(c, STRICT_ADMINS))) return c.res;
+  const id = c.req.param("id");
+  const db = c.get("supabase");
+  try {
+    const { data: current, error: readError } = await db.from("site_content").select("payload").eq("key", "announcements").maybeSingle();
+    if (readError) throw readError;
+    const payload = current?.payload;
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
+    const nextItems = items.filter((item: any) => String(item?.id || "") !== id);
+    if (nextItems.length === items.length) return error(c, rid, 404, "NOT_FOUND", "Объявление не найдено");
+    const nextPayload = Array.isArray(payload) ? nextItems : { ...payload, items: nextItems };
+    const { error: writeError } = await db.from("site_content").upsert({ key: "announcements", payload: nextPayload, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (writeError) throw writeError;
+    return c.json(ok({ deleted: true, id }, rid));
+  } catch (cause) {
+    console.error("[admin:announcements:delete]", cause);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось удалить объявление");
+  }
+});
+
 admin.route("/database", dbAdmin);
 
 export default admin;
