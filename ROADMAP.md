@@ -3800,3 +3800,14 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - [x] Added a regression assertion for the 250-item cap and offset pagination.
 - [x] Current Worker deploy [39039681372](https://github.com/MISTACEN/medbiohim/actions/runs/39039681372) passed typecheck and Worker tests and deployed to the canonical production Worker. Cloudflare shows active version c22fabea-7290-49c9-9ac7-83315ba17fc2 at 100% traffic.
 - [ ] The full UI list is not considered signed-in browser-accepted until the user session confirms 206 cards, image viewing, and the current-plan/all-materials toggle.
+
+
+## 2026-10-18 — восстановление наполнения гистологии
+
+- [x] Восстановлен каталог 178 опубликованных препаратов гистологии для специальности MBH; у всех записей заполнены media_path и media_url и назначена тематическая секция.
+- [x] Создан индекс 206 опубликованных медиа-объектов: 178 микропрепаратов и 28 электронограмм; бинарные файлы остаются в Upstash Blob, Supabase хранит метаданные и ключи.
+- [x] Проверен банк закрытых тестов по цитологии и эмбриологии: 163 вопроса опубликованы; у каждого есть 5 вариантов и валидный индекс правильного ответа. Проверка выявила один ответ, сохранённый текстом; он нормализован к индексу варианта.
+- [x] Восстановлены и опубликованы 4 учебных конспекта: нервная ткань, сердечно-сосудистая система, эндокринная система и орофациальная/стоматологическая гистология. Дополнительные объяснения явно отделены от исходных архивных выдержек.
+- [x] Все 17 записей histology_lectures для MBH теперь опубликованы; все существующие linked_prep_ids сопоставляются с каталогом препаратов.
+- [ ] Осталось проверить прямой доступ к Upstash Blob: интеграционный список объектов временно вернул отказ авторизации токена, поэтому полная сверка каждого storage_path с объектом Blob не подтверждена.
+- [ ] Следующий шаг: расширить и проверить ответы к экзаменационным вопросам, затем проверить реальные экраны «Материалы», «Тесты и билеты», «Атлас/микропрепараты» в production.
