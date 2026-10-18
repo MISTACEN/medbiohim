@@ -533,7 +533,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             </header>
             <div className="p-5 text-sm">
               {activeMaterial.html || activeMaterial.content ? (
-                <ChemRichText html={String(activeMaterial.html || activeMaterial.content)} />
+                <ChemRichText text={String(activeMaterial.html || activeMaterial.content)} asHtml />
               ) : activeMaterial.body ? (
                 <div className="whitespace-pre-wrap">{stripHtml(activeMaterial.body)}</div>
               ) : (
