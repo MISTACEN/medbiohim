@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ExternalLink, FileQuestion, FolderOpen, GraduationCap, ListChecks, Microscope, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
-import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import { useAuth } from "@/components/auth/AuthProvider";
+import PhysiologyColloquium from "@/components/physiology/PhysiologyColloquium";
 
 type Subject = {
   id: string;
@@ -24,9 +24,9 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "progress";
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "progress" | "colloquium";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress"];
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress", "colloquium"];
 
 function normalizeTab(v: string) {
   if (v === "cards") return "trainers" as TabId;
@@ -58,7 +58,7 @@ function stripHtml(html?: string | null) {
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, loading: authLoading } = useAuth();
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
+  const [, setModules] = useState<Module[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
   const [gradebook, setGradebook] = useState<any[]>([]);
   const [tests, setTests] = useState<ApiTest[]>([]);
@@ -72,9 +72,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const [resourceErrors, setResourceErrors] = useState<Record<string, string>>({});
   const [subjectId, setSubjectId] = useState("");
   const [tab, setTab] = useState<TabId>("plan");
-  // Материалы: модальное чтение без перехода со страницы предмета.
   const [activeMaterial, setActiveMaterial] = useState<any | null>(null);
-  // Билеты: встроенный генератор.
   const [ticketBankId, setTicketBankId] = useState("");
   const [ticketCount, setTicketCount] = useState(3);
   const [ticketMode, setTicketMode] = useState<"practice" | "exam">("exam");
@@ -109,8 +107,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         const p = await params;
         if (cancelled) return;
         setSubjectId(p.id);
-        // Catalog and subject are independent: start both requests immediately
-        // so Vercel -> SpaceWeb latency does not create a waterfall.
         const [cat, r] = await Promise.all([listSubjectsCatalog(), getSubject(p.id)]);
         const hit = cat.ok
           ? cat.data.items.find((x: any) => x.id === p.id || x.slug === p.id) ||
@@ -122,10 +118,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           setLoading(false);
           return;
         }
-        // Cloudflare returns the subject row directly; the legacy SpaceWeb
-        // contract may wrap it as { subject, modules }. Accept both shapes and
-        // retain the catalog row as a safe fallback so a shape mismatch cannot
-        // blank the entire subject page.
         const responseData: any = r.ok ? r.data : null;
         const subjectPayload = responseData?.subject || responseData?.item ||
           (responseData?.id ? responseData : null);
@@ -139,9 +131,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         setModules(Array.isArray(moduleRows) ? (moduleRows as Module[]) : []);
         const slug = slugNames[(s?.name || "").toLowerCase()] || s?.slug || "";
         if (s?.id) {
-          // Render the core subject view as soon as its plan and test catalog
-          // arrive. Slow auxiliary panels (progress, tickets, media and CMS)
-          // should not leave the whole subject page on a skeleton.
           const planRequest = slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3) : Promise.resolve({ ok: false } as any);
           const testsRequest = listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3);
           const auxiliaryRequest = Promise.all([
@@ -169,9 +158,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 preparations: Array.isArray(item.preparations) ? item.preparations : (Array.isArray(metadata.preparations) ? metadata.preparations : []),
               };
             }) : []);
-            // Some older API versions return the subject and plan as separate
-            // resources. Merge workload fields defensively so the page header
-            // never goes blank merely because one response omitted them.
             const planSubjectFields: Record<string, unknown> = {
               id: planSubject.id,
               name: planSubject.name || (typeof planData.subject === "string" ? planData.subject : planData.title),
@@ -240,11 +226,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
   const course = subject?.course_number ?? 2;
   const sem = subject?.semester ?? 3;
-  // The route id is usually a UUID. Resolve the canonical slug from the
-  // subject's own slug/name first so banks and linked views don't get filtered
-  // by that UUID.
   const slug = resolveSubjectSlug(subject?.slug || "", subject?.name) || resolveSubjectSlug(subjectId, subject?.name);
   const histology = slug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
+  const physiology = slug === "physiology" || /физиолог/i.test(subject?.name || "");
   const query = new URLSearchParams({
     subject: subjectId,
     subject_slug: slug,
@@ -273,7 +257,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
   });
 
-  // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.
   useEffect(() => {
     const firstAvailableBank = subjectBanks.find((bank: any) => Number(bank.count ?? 0) > 0);
     setTicketBankId(firstAvailableBank ? String(firstAvailableBank.id) : "");
@@ -281,7 +264,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     setTicketTitle("");
     setTicketNote(null);
     setReveal({});
-    // Reset the generated ticket when navigating between subjects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [banks, slug]);
 
@@ -304,6 +286,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "plan", label: "Учебный план", Icon: GraduationCap },
     { id: "tickets", label: "Билеты", Icon: FileQuestion },
     { id: "tests", label: "Тесты", Icon: FileQuestion },
+    { id: "colloquium", label: "Коллоквиум", Icon: GraduationCap },
     { id: "practice", label: "База вопросов", Icon: ListChecks },
     { id: "lectures", label: "Лекции", Icon: BookOpen },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
@@ -344,30 +327,23 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               (subject.control_type === "exam" ? "Экзамен" : subject.control_type === "credit" ? "Зачёт" : subject.control_type)
             : ""}
         </p>
+        {(subject?.total_hours != null || subject?.credits != null) && (
+          <p className="mt-1 text-sm text-slate-500">
+            Учебная нагрузка:
+            {subject?.total_hours != null ? ` ${subject.total_hours} ч` : ""}
+            {subject?.credits != null ? ` · ${subject.credits} з.е.` : ""}
+          </p>
+        )}
       </header>
 
-      <section className="card border-indigo-100 bg-indigo-50/40 p-4">
-        <div className="flex flex-wrap gap-2 text-sm">
-          <b>Учебная нагрузка:</b>
-          {subject?.total_hours != null && <span>{subject.total_hours} ч</span>}
-          {subject?.credits != null && <span>· {subject.credits} з.е.</span>}
-        </div>
-        {gradebook.length > 0 && (
-          <div className="mt-2 text-sm text-slate-600">
-            <b>Для зачётки:</b>{" "}
-            {gradebook.map((g: any, i: number) => (
-              <span key={i}>
-                {i ? " · " : ""}
-                {g.display_name}
-                {g.hours != null ? " (" + g.hours + (g.credits != null ? "/" + g.credits : " ч") + ")" : ""}
-              </span>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <nav className="mobile-scroll-x flex flex-nowrap gap-2 overflow-x-auto pb-1 md:flex-wrap" role="tablist" aria-label="Разделы предмета">
-        {nav.map(({ id, label, Icon }) => {
+      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Разделы предмета">
+        {nav
+          .filter((item) => {
+            if (item.id === "trainer" && !histology) return false;
+            if (item.id === "colloquium" && !physiology) return false;
+            return true;
+          })
+          .map(({ id, label, Icon }) => {
           const active = tab === id;
           return (
             <button
@@ -380,7 +356,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition " +
                 (active
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
+                  : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50")
               }
             >
               <Icon className="h-4 w-4" />
@@ -388,342 +364,160 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             </button>
           );
         })}
-      </nav>
+      </div>
 
-      <div role="tabpanel" className="min-h-[12rem]">
+      <div className="min-h-64">
         {tab === "plan" && (
-          <section className="card p-5">
+          <section className="card space-y-4 p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : resourceErrors.plan || "План ещё не загружен."}
-            </p>
-            {plan?.weeks?.length ? (
-              <div className="mt-4 grid gap-3">
-                {(plan.weeks as SubjectPlanWeek[]).map((w: any, i: number) => (
-                  <article key={i} className="rounded-xl border bg-slate-50 p-4">
-                    <div className="text-xs text-slate-400">
-                      {w.date || ""}
-                      {w.week != null ? " · неделя " + w.week : ""}
-                    </div>
-                    {w.lecture && (
-                      <div className="mt-2 text-sm">
-                        <b className="text-indigo-700">Лекция:</b> {w.lecture}
-                      </div>
-                    )}
-                    {w.practice && (
-                      <div className="text-sm whitespace-pre-line">
-                        <b className="text-emerald-700">Практика:</b> {w.practice}
-                      </div>
-                    )}
-                    {Array.isArray(w.preparations) && w.preparations.length > 0 && (
-                      <div className="mt-2 text-xs leading-relaxed text-slate-600">
-                        <b className="text-slate-700">Микропрепараты:</b>
-                        <ol className="mt-1 list-decimal space-y-1 pl-5">
-                          {w.preparations.map((prep: any, j: number) => (
-                            <li key={prep?.id || (prep?.number != null ? String(prep.number) : "prep-" + j)}>
-                              {prep?.number != null ? String(prep.number) + ". " : ""}
-                              {typeof prep === "string" ? prep : (prep?.title || prep?.name || "Препарат")}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-                    {w.electronograms === true && (
-                      <div className="mt-2 text-xs font-medium text-violet-700">К занятию есть электронограммы</div>
-                    )}
-                    {w.description && (
-                      <div className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600">
-                        {w.description}
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            ) : modules.length ? (
-              <div className="mt-4 space-y-2">
-                {modules.map((m, i) => (
-                  <details key={m.id || i} className="rounded-xl border" open={i === 0}>
-                    <summary className="cursor-pointer px-4 py-3 font-semibold">{m.title || "Модуль " + (i + 1)}</summary>
-                    <div className="border-t px-4 py-2 text-sm">
-                      {(m.topics || []).map((tp, j) => (
-                        <div key={tp.id || j} className="border-b py-2 last:border-0">
-                          {tp.title}
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            ) : null}
+            {resourceErrors.plan && <p className="text-sm text-amber-700">{resourceErrors.plan}</p>}
+            {plan?.control && <p className="text-sm text-slate-600">{String(plan.control)} · {plan.weeks?.length || 0} занятий</p>}
+            <div className="space-y-3">
+              {(plan?.weeks || []).map((w: SubjectPlanWeek, i: number) => (
+                <article key={i} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                  <p className="text-xs font-semibold text-indigo-600">
+                    {w.date ? String(w.date) : ""}{w.week != null ? ` · неделя ${w.week}` : ""}
+                  </p>
+                  {w.lecture && <p className="mt-1 text-sm"><b>Лекция:</b> {w.lecture}</p>}
+                  {w.practice && <p className="mt-1 text-sm"><b>Практика:</b> {w.practice}</p>}
+                </article>
+              ))}
+              {!plan?.weeks?.length && !resourceErrors.plan && (
+                <p className="text-sm text-slate-500">План пока пуст.</p>
+              )}
+            </div>
           </section>
         )}
 
+        {tab === "colloquium" && physiology && (
+          <PhysiologyColloquium />
+        )}
+
         {tab === "tickets" && (
-          <section className="card p-5">
+          <section className="card space-y-4 p-5">
             <h2 className="text-lg font-bold">Билеты</h2>
-            <p className="mt-1 text-sm text-slate-500">Генератор билетов прямо здесь — никуда переходить не нужно. Билеты отдельный банк, с SRS не смешиваются.</p>
-            {ticketBankAvailable(slug) && subjectBanks.length ? (
-              <>
-                <div className="mt-4 grid gap-3 md:grid-cols-4">
-                  <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm md:col-span-2"
-                    value={ticketBankId}
-                    onChange={(e) => setTicketBankId(e.target.value)}
-                  >
-                    {subjectBanks.map((b: any) => (
-                      <option key={b.id} value={b.id} disabled={Number(b.count ?? 0) <= 0}>
-                        {b.title} ({Number(b.count ?? 0) > 0 ? b.count : "нет опубликованных вопросов"})
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                    value={ticketCount}
-                    onChange={(e) => setTicketCount(Number(e.target.value))}
-                  >
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>{n} вопрос(а)</option>
-                    ))}
-                  </select>
-                  <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                    value={ticketMode}
-                    onChange={(e) => setTicketMode(e.target.value as "practice" | "exam")}
-                  >
-                    <option value="practice">Практика (с эталоном)</option>
+            {resourceErrors.tickets && <p className="text-sm text-amber-700">{resourceErrors.tickets}</p>}
+            {!ticketBankAvailable(slug) && (
+              <p className="text-sm text-slate-500">Для этого предмета банк билетов пока не подключён.</p>
+            )}
+            {ticketBankAvailable(slug) && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-end gap-3">
+                  <label className="text-sm">
+                    Вопросов
+                    <input type="number" min={1} max={20} value={ticketCount} onChange={(e) => setTicketCount(Number(e.target.value) || 3)} className="ml-2 w-16 rounded-lg border px-2 py-1" />
+                  </label>
+                  <select value={ticketMode} onChange={(e) => setTicketMode(e.target.value as "practice" | "exam")} className="rounded-lg border px-2 py-1 text-sm">
                     <option value="exam">Экзамен</option>
+                    <option value="practice">Практика</option>
                   </select>
-                  <button
-                    type="button"
-                    className="btn-primary inline-flex items-center justify-center gap-2 text-sm md:col-span-4"
-                    onClick={() => void genTicket()}
-                    disabled={ticketBusy || !ticketBankId}
-                  >
-                    {ticketBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    Сгенерировать билет
+                  <button type="button" disabled={!ticketBankId || ticketBusy} onClick={genTicket} className="btn-primary text-sm">
+                    {ticketBusy ? "Генерация…" : "Сгенерировать билет"}
                   </button>
                 </div>
-                {ticketNote && <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{ticketNote}</div>}
-                {ticketQuestions.length > 0 && (
-                  <>
-                    {ticketTitle && <h3 className="mt-5 text-base font-semibold">{ticketTitle}</h3>}
-                    <ol className="mt-3 space-y-4">
-                      {ticketQuestions.map((qq: any, idx: number) => (
-                        <li key={qq.id || idx} className="rounded-xl border bg-slate-50 p-4">
-                          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Вопрос {idx + 1}{qq.subject ? ` · ${qq.subject}` : ""}</div>
-                          <div className="mt-2 font-medium leading-snug">
-                            <ChemRichText text={String(qq.text || "")} />
-                          </div>
-                          {ticketMode === "practice" && (qq.answer || qq.has_answer) && (
-                            <div className="mt-3">
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1 text-sm text-indigo-600"
-                                onClick={() => setReveal((r) => ({ ...r, [qq.id]: !r[qq.id] }))}
-                              >
-                                <Eye className="h-4 w-4" />
-                                {reveal[qq.id] ? "Скрыть эталон" : "Показать эталон"}
-                              </button>
-                              {reveal[qq.id] && (
-                                <div className="mt-2 rounded-xl bg-white p-3 text-sm text-slate-700">
-                                  <ChemRichText text={String(qq.answer || "")} asHtml />
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ol>
-                  </>
-                )}
-              </>
-            ) : (
-              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                {resourceErrors.tickets || "Банк билетов для этого предмета пока не подключён."}
-              </p>
+                {ticketNote && <p className="text-sm text-rose-600">{ticketNote}</p>}
+                {ticketTitle && <p className="text-sm font-semibold">{ticketTitle}</p>}
+                <ul className="space-y-2">
+                  {ticketQuestions.map((q: any, i: number) => (
+                    <li key={q.id || i} className="rounded-xl border border-slate-100 p-3 text-sm">
+                      <p className="font-medium">{i + 1}. {q.question || q.text || q.title}</p>
+                      {(q.answer || q.explanation) && (
+                        <button type="button" className="mt-1 text-xs text-indigo-600" onClick={() => setReveal((r) => ({ ...r, [String(q.id || i)]: !r[String(q.id || i)] }))}>
+                          {reveal[String(q.id || i)] ? "Скрыть" : "Показать ответ"}
+                        </button>
+                      )}
+                      {reveal[String(q.id || i)] && <p className="mt-2 text-slate-600">{q.answer || q.explanation}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </section>
         )}
 
         {tab === "tests" && (
           <section className="card space-y-4 p-5">
-            <div>
-              <h2 className="text-lg font-bold">Тесты</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {histology
-                  ? "Закрытые тесты по цитологии и эмбриологии + банк предмета. Режим выбирается кнопкой на карточке."
-                  : "Все тесты предмета — сразу с кнопками режима, без перехода в общий раздел."}
-              </p>
-            </div>
-            {subjectTests.length > 0 ? (
-              <>
-              <div className="flex flex-wrap gap-2">
-                <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/tests"} className="btn-primary inline-flex items-center gap-2 text-sm">
-                  <ListChecks className="h-4 w-4" /> Открыть весь раздел тестов
-                </Link>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {subjectTests.map((t) => (
-                  <div key={t.id} className="rounded-xl border bg-slate-50 p-4">
-                    <div className="font-semibold">{t.title || t.name || "Тест"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">Подготовка</Link>
-                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id) + "?mode=exam"} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300">Экзамен</Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              </>
-            ) : (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                {resourceErrors.tests || "Опубликованных тестов для этого предмета пока нет."}
-              </p>
-            )}
+            <h2 className="text-lg font-bold">Тесты</h2>
+            {resourceErrors.tests && <p className="text-sm text-amber-700">{resourceErrors.tests}</p>}
+            <ul className="space-y-2">
+              {subjectTests.map((t: any) => (
+                <li key={t.id}>
+                  <Link href={`/tests/${t.id}?${query}`} className="block rounded-xl border border-slate-100 p-3 text-sm hover:border-indigo-200 hover:bg-indigo-50/50">
+                    <span className="font-semibold">{t.title || t.name}</span>
+                    {t.questions_count != null && <span className="ml-2 text-slate-500">{t.questions_count} вопр.</span>}
+                  </Link>
+                </li>
+              ))}
+              {!subjectTests.length && !resourceErrors.tests && <p className="text-sm text-slate-500">Тестов пока нет.</p>}
+            </ul>
           </section>
         )}
 
         {tab === "practice" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Практика</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {histology ? "Микропрепараты, электронограммы и задания МБХ." : "Темы и практические задания предмета."}
-            </p>
-            {modules.length > 0 && (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {modules.slice(0, 6).map((m, i) => (
-                  <div key={m.id || i} className="rounded-xl border p-3 text-sm font-medium">
-                    {m.title}
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={"/practice?" + query}
-                className="btn-primary inline-flex"
-              >
-                Открыть базу вопросов
-              </Link>
-              {histology && (
-                <button type="button" onClick={() => selectTab("trainers")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
-                  Открыть тренажёр
-                </button>
-              )}
-            </div>
+          <section className="card space-y-4 p-5">
+            <h2 className="text-lg font-bold">База вопросов</h2>
+            <p className="text-sm text-slate-600">Открой практику по предмету для работы с банком вопросов.</p>
+            <Link href={`/practice?${query}`} className="btn-primary inline-flex text-sm">Перейти к практике</Link>
           </section>
         )}
 
         {tab === "lectures" && (
-          <section className="card p-5">
+          <section className="card space-y-4 p-5">
             <h2 className="text-lg font-bold">Лекции</h2>
-            <p className="mt-1 text-sm text-slate-500">Лекции этого предмета — открываются в один клик.</p>
-            {subjectLectures.length > 0 ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {subjectLectures.map((lec: any) => (
-                  <Link
-                    key={lec.id}
-                    href={"/lectures/" + encodeURIComponent(lec.id)}
-                    className="flex gap-3 rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold leading-snug">{lec.title}</div>
-                      {lec.summary && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{lec.summary}</p>}
-                    </div>
+            <ul className="space-y-2">
+              {subjectLectures.map((l: any) => (
+                <li key={l.id}>
+                  <Link href={`/lectures/${l.id}`} className="block rounded-xl border border-slate-100 p-3 text-sm hover:border-indigo-200">
+                    {l.title || l.name}
                   </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Опубликованных лекций по этому предмету пока нет.
-              </p>
-            )}
+                </li>
+              ))}
+              {!subjectLectures.length && <p className="text-sm text-slate-500">Лекций пока нет.</p>}
+            </ul>
           </section>
         )}
 
         {tab === "materials" && (
-          histology ? (
-            <HistologyMaterials />
-          ) : (
-            <section className="card p-5">
-              <h2 className="text-lg font-bold">Материалы</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {materialsRich.length
-                  ? materialsRich.length + " материалов — читаются прямо здесь, оригинал доступен отдельно."
-                  : "Материалы пока не найдены."}
-              </p>
-              {materialsRich.length > 0 && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {materialsRich.map((m: any) => (
-                    <article key={m.id} className="rounded-xl border bg-slate-50 p-4">
-                      <div className="font-semibold leading-snug">{m.title}</div>
-                      <div className="mt-1 text-xs text-slate-500">{materialTypeLabel(m.type)}{m.source?.name ? " · " + m.source.name : ""}</div>
-                      {stripHtml(m.content_html) && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{stripHtml(m.content_html)}</p>}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" className="btn-primary text-xs" onClick={() => setActiveMaterial(m)}>Читать</button>
-                        {m.source?.download_url ? (
-                          <a href={m.source.download_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-                            <ExternalLink className="h-3.5 w-3.5" /> Исходник
-                          </a>
-                        ) : null}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-          )
+          <section className="card space-y-4 p-5">
+            <h2 className="text-lg font-bold">Материалы</h2>
+            <ul className="space-y-2">
+              {[...materials, ...materialsRich].map((m: any, i: number) => (
+                <li key={m.id || i}>
+                  <button type="button" onClick={() => setActiveMaterial(m)} className="w-full rounded-xl border border-slate-100 p-3 text-left text-sm hover:border-indigo-200">
+                    <span className="font-semibold">{m.title || m.name}</span>
+                    <span className="ml-2 text-xs text-slate-500">{materialTypeLabel(m.type || m.material_type)}</span>
+                  </button>
+                </li>
+              ))}
+              {!materials.length && !materialsRich.length && <p className="text-sm text-slate-500">Материалов пока нет.</p>}
+            </ul>
+          </section>
         )}
 
-        {tab === "trainer" && (
-          histology ? (
-            <HistologyTrainer embedded />
-          ) : (
-            <section className="card p-5">
-              <h2 className="text-lg font-bold">Микропрепараты</h2>
-              <p className="mt-1 text-sm text-slate-500">Для этого предмета микропрепараты пока не подключены.</p>
-            </section>
-          )
+        {tab === "trainer" && histology && (
+          <HistologyTrainer embedded />
         )}
 
         {tab === "trainers" && (
-          histology ? (
-            <SubjectTrainersHub lectureHref={`/subjects/${encodeURIComponent(subjectId)}?tab=lectures`} />
-          ) : (
-            <section className="card p-5">
-              <h2 className="text-lg font-bold">Тренажёры</h2>
-              <p className="mt-1 text-sm text-slate-500">Для этого предмета тренажёры пока не подключены.</p>
-            </section>
-          )
+          <SubjectTrainersHub lectureHref="?tab=lectures" />
         )}
 
         {tab === "progress" && (
-          <section className="card p-5">
+          <section className="card space-y-4 p-5">
             <h2 className="text-lg font-bold">Прогресс</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-slate-50 p-4">
-                <div className="text-xs text-slate-500">Общий</div>
-                <b className="text-2xl">{progress?.overall_pct != null ? Math.round(progress.overall_pct) + "%" : "—"}</b>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <div className="text-xs text-slate-500">Тесты</div>
-                <b className="text-2xl">{tests.length}</b>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <div className="text-xs text-slate-500">Материалы</div>
-                <b className="text-2xl">{materials.length}</b>
-              </div>
-            </div>
-            {tests.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {tests.slice(0, 6).map((t) => (
-                  <Link key={t.id} href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50">
-                    {t.title || t.name || "Тест"} · {t.questions_count || 0} вопросов
-                  </Link>
-                ))}
+            {progress ? (
+              <pre className="overflow-auto rounded-xl bg-slate-50 p-3 text-xs">{JSON.stringify(progress, null, 2)}</pre>
+            ) : (
+              <p className="text-sm text-slate-500">Данных прогресса пока нет.</p>
+            )}
+            {gradebook?.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold">Журнал</h3>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {gradebook.map((g: any, i: number) => (
+                    <li key={i}>{g.title || g.name || JSON.stringify(g)}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </section>
@@ -731,21 +525,17 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
       </div>
 
       {activeMaterial && (
-        <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6" onMouseDown={() => setActiveMaterial(null)}>
-          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
-            <header className="flex items-start justify-between gap-4 border-b px-5 py-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{subject?.name} · {materialTypeLabel(activeMaterial.type)}</div>
-                <h2 className="mt-1 text-xl font-extrabold text-slate-900">{activeMaterial.title}</h2>
-                {activeMaterial.source?.name && <div className="mt-1 text-xs text-slate-500">Исходный файл: {activeMaterial.source.name}</div>}
-              </div>
-              <button type="button" className="rounded-xl p-2 hover:bg-slate-100" onClick={() => setActiveMaterial(null)} aria-label="Закрыть"><X className="h-5 w-5" /></button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center" onClick={() => setActiveMaterial(null)}>
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <header className="flex items-center justify-between border-b px-5 py-4">
+              <h3 className="text-lg font-bold">{activeMaterial.title || activeMaterial.name}</h3>
+              <button type="button" onClick={() => setActiveMaterial(null)} aria-label="Закрыть"><X className="h-5 w-5" /></button>
             </header>
-            <div className="min-h-0 flex-1 overflow-auto p-5">
-              {activeMaterial.content_html ? (
-                <article className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: activeMaterial.content_html }} />
-              ) : activeMaterial.external_url ? (
-                <iframe src={activeMaterial.external_url} title={activeMaterial.title} className="h-full min-h-[60vh] w-full rounded-xl border" />
+            <div className="p-5 text-sm">
+              {activeMaterial.html || activeMaterial.content ? (
+                <ChemRichText text={String(activeMaterial.html || activeMaterial.content)} asHtml />
+              ) : activeMaterial.body ? (
+                <div className="whitespace-pre-wrap">{stripHtml(activeMaterial.body)}</div>
               ) : (
                 <div className="rounded-2xl bg-slate-50 p-8 text-sm text-slate-500">У этого материала пока нет преобразованного текста.</div>
               )}
