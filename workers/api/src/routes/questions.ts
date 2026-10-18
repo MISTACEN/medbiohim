@@ -22,11 +22,21 @@ questions.get("/", requireAuth, async (c) => {
       return c.json(body, status as 422);
     }
     if (subject && !subjectId) {
-      const { data: subjects, error: subjectError } = await supabase.from("subjects").select("id").eq("slug", subject).eq("is_active", true).limit(2);
+      // A slug can intentionally identify the same subject across courses or
+      // semesters. A UUID still narrows to one row; a slug searches all active rows.
+      const { data: subjects, error: subjectError } = await supabase.from("subjects").select("id").eq("slug", subject).eq("is_active", true).limit(100);
       if (subjectError) throw subjectError;
-      if ((subjects || []).length > 1) return c.json(ok({ items: [], ambiguous_subject: true }, rid));
-      subjectId = String(subjects?.[0]?.id || "");
-      if (!subjectId) return c.json(ok({ items: [] }, rid));
+      const subjectIds = [...new Set((subjects || []).map((row: any) => String(row.id || "")).filter((id: string) => UUID.test(id)))];
+      if (!subjectIds.length) return c.json(ok({ items: [], total: 0, limit, offset }, rid));
+      subjectId = subjectIds.length === 1 ? subjectIds[0] : "";
+      if (subjectIds.length > 1) {
+        let q = supabase.from("questions").select("id,text,answer,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).in("subject_id", subjectIds).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+        if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
+        if (kind) q = q.eq("type", kind);
+        const { data, error, count } = await q;
+        if (error) throw error;
+        return c.json(ok({ items: (data || []).map((row: any) => ({ ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()), answer: c.req.query("include_answer") === "1" ? row.answer : undefined })), total: count || 0, limit, offset }, rid));
+      }
     }
     let q = supabase.from("questions").select("id,text,answer,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
     if (subjectId) q = q.eq("subject_id", subjectId);

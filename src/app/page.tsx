@@ -354,8 +354,7 @@ export default function DashboardPage() {
             <span>
               {!apiTransport ? "проверяем источник…" :
                 apiTransport.source === "cloudflare" ? "Cloudflare" :
-                apiTransport.source === "spaceweb" ? "SpaceWeb (legacy)" :
-                apiTransport.source === "spaceweb-fallback" || apiTransport.source === "compatibility-fallback" ? "резервный маршрут: SpaceWeb" :
+              apiTransport.source.includes("fallback") ? "совместимый резервный маршрут Cloudflare" :
                 apiTransport.source === "cloudflare-unavailable" ? "Cloudflare недоступен" :
                 apiTransport.source === "unavailable" ? "бэкенд не настроен" : "источник не определён"}
             </span>

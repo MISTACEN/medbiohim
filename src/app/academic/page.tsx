@@ -16,6 +16,7 @@ function eventTitle(e: Record<string,unknown>) {
 
 export default function AcademicPage() {
   const [state,setState]=useState<AcademicState|null>(null);
+  const [planItems,setPlanItems]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [generating,setGenerating]=useState(false);
   const [syncing,setSyncing]=useState(false);
@@ -24,7 +25,14 @@ export default function AcademicPage() {
   const load=useCallback(async()=>{
     setLoading(true); setError(null);
     const r=await getAcademicState();
-    if(r.ok) setState(r.data); else setError(r.error.message);
+    if(r.ok) setState({ ...r.data, session: r.data.session ?? null,
+      plan: r.data.plan ?? { available: false, items: 0, concrete_items: 0 },
+      metrics: r.data.metrics ?? { closed: 0, in_progress: 0, not_started: 0, debts: 0, tracked: 0 },
+      debts: Array.isArray(r.data.debts) ? r.data.debts : [],
+      upcoming: Array.isArray(r.data.upcoming) ? r.data.upcoming : [],
+      weak_topics: Array.isArray(r.data.weak_topics) ? r.data.weak_topics : [],
+      recommendations: Array.isArray(r.data.recommendations) ? r.data.recommendations : [],
+    }); else setError(r.error.message);
     setLoading(false);
   },[]);
 
@@ -40,7 +48,11 @@ export default function AcademicPage() {
   const makePlan=async()=>{
     setGenerating(true); setError(null);
     const r=await generateAcademicAiPlan();
-    if(r.ok) setState(r.data.source_state); else setError(r.error.message);
+    if(r.ok) {
+      setPlanItems(Array.isArray(r.data.items) ? r.data.items : []);
+      if(r.data.source_state) setState({ ...r.data.source_state, plan: r.data.source_state.plan ?? state?.plan ?? { available: false, items: 0, concrete_items: 0 } });
+      else await load();
+    } else setError(r.error.message);
     setGenerating(false);
   };
 
@@ -86,6 +98,14 @@ export default function AcademicPage() {
           ["Отслеживается",state.metrics.tracked]
         ].map(([k,v])=><div key={String(k)} className="rounded-2xl border bg-white p-4 shadow-sm"><div className="text-2xl font-bold text-slate-900">{String(v)}</div><div className="text-xs text-slate-500">{String(k)}</div></div>)}
       </section>
+
+      {planItems.length > 0 && <section className="rounded-2xl border bg-white p-5 shadow-sm">
+        <h2 className="font-semibold">План ближайших учебных шагов</h2>
+        <ol className="mt-3 space-y-2">{planItems.map((item,i)=><li key={String(item.target_id||i)} className="rounded-xl border p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Шаг {item.order_index || i+1}</div>
+          <div className="mt-1 font-medium">{String(item.title || "Продолжить подготовку")}</div>
+        </li>)}</ol>
+      </section>}
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">

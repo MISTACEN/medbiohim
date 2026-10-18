@@ -1,76 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isHttpsOrigin, shouldFallbackFromCloudflare } from "../src/lib/api-failover.mjs";
+import fs from "node:fs/promises";
 
-function req(method, path = "/api/v1/homeworks") {
-  return new Request("https://app.example.test" + path, { method });
-}
-function res(status, code = "") {
-  return new Response(JSON.stringify({ ok: false, error: { code } }), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
+const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
 
-test("only HTTPS SpaceWeb origins are eligible for credentialed failover", () => {
-  assert.equal(isHttpsOrigin("https://spaceweb.example/api/v1"), true);
-  assert.equal(isHttpsOrigin("http://spaceweb.example/api/v1"), false);
-  assert.equal(isHttpsOrigin("not a URL"), false);
-  assert.equal(isHttpsOrigin(undefined), false);
+test("Vercel production API proxy targets the canonical Cloudflare Worker", () => {
+  assert.match(route, /DEFAULT_CLOUDFLARE_API_ORIGIN = "https:\/\/medbiohim-api\.ryazansevegor\.workers\.dev\/api\/v1"/);
+  assert.match(route, /process\.env\.CLOUDFLARE_API_ORIGIN \|\| DEFAULT_CLOUDFLARE_API_ORIGIN/);
+  assert.match(route, /x-medbiohim-proxy", "cloudflare-only"/);
+  assert.doesNotMatch(route, /SPACEWEB_API_ORIGIN|SAFE_SPACEWEB_ORIGIN|spaceweb-fallback|api-shadow/);
 });
 
-test("admin transport diagnostics are backed by a server-side canonical role check", async () => {
-  const fs = await import("node:fs/promises");
-  const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
-  assert.match(route, /async function isCanonicalAdminRequest\(req: NextRequest\)/);
-  assert.match(route, /auth\/v1\/user/);
-  assert.ok(route.includes('rolesUrl.searchParams.set("select", "roles(code)")'));
-  assert.match(route, /x-mbh-transport-diagnostics/);
-  assert.match(route, /x-mbh-transport-source/);
-  assert.ok(route.includes("const SAFE_SPACEWEB_ORIGIN"));
-  assert.doesNotMatch(route, /user_metadata\s*\.\s*role/);
+test("Cloudflare API proxy returns a clear upstream failure without legacy fallback", () => {
+  assert.match(route, /if \(!upstream\)/);
+  assert.match(route, /Cloudflare API недоступен/);
+  assert.match(route, /source = "cloudflare-unavailable"/);
 });
 
-test("falls back when Cloudflare explicitly marks a route not migrated", async () => {
-  assert.equal(await shouldFallbackFromCloudflare(req("POST"), res(501, "ROUTE_NOT_MIGRATED")), true);
-});
-
-test("falls back for server errors on read-only requests", async () => {
-  assert.equal(await shouldFallbackFromCloudflare(req("GET"), res(503, "DB_UNAVAILABLE")), true);
-  assert.equal(await shouldFallbackFromCloudflare(req("HEAD"), res(502, "UPSTREAM")), true);
-  assert.equal(await shouldFallbackFromCloudflare(req("OPTIONS"), res(504, "TIMEOUT")), true);
-});
-
-test("does not retry generic or ambiguous failed writes", async () => {
-  assert.equal(await shouldFallbackFromCloudflare(req("POST"), res(502, "UPSTREAM")), false);
-  assert.equal(await shouldFallbackFromCloudflare(req("PATCH"), res(503, "DB_UNAVAILABLE")), false);
-  assert.equal(await shouldFallbackFromCloudflare(req("DELETE"), res(500, "INTERNAL")), false);
-});
-
-test("allows safe auth fallback only for explicit pre-operation configuration guards", async () => {
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/auth/login"), res(503, "RATE_LIMIT_NOT_CONFIGURED")), true);
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/auth/refresh"), res(503, "AUTH_NOT_CONFIGURED")), true);
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/auth/login"), res(503, "DB_UNAVAILABLE")), false);
-});
-
-test("allows upload fallback only when the Worker returns before processing due to missing storage", async () => {
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/files/upload"), res(503, "STORAGE_NOT_CONFIGURED")), true);
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/files/upload"), res(503, "DB_UNAVAILABLE")), false);
-});
-
-
-test("falls back to SpaceWeb when shared-homework attachments are explicitly unsupported before writes", async () => {
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/homeworks"), res(503, "HOMEWORK_ATTACHMENTS_NOT_CONFIGURED")), true);
-  assert.equal(await shouldFallbackFromCloudflare(req("POST", "/api/v1/homeworks"), res(503, "DB_UNAVAILABLE")), false);
-});
-
-
-test("Cloudflare defaults to the production API origin and never the migration shadow", async () => {
-  const fs = await import("node:fs/promises");
-  const route = await fs.readFile(new URL("../src/app/api/v1/[...path]/route.ts", import.meta.url), "utf8");
-  assert.ok(route.includes("const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN)"));
-  assert.ok(route.includes("https://medbiohim-api.ryazansevegor.workers.dev/api/v1"));
-  assert.ok(!route.includes("medbiohim-api-shadow"));
-  assert.ok(route.includes("u.protocol === \"https:\""));
-  assert.ok(route.includes('req.method.toUpperCase()'));
+test("Cloudflare proxy preserves caller request context and uses a bounded timeout", () => {
+  assert.match(route, /const init = requestInit\(req, bodyBuffer, 18000\)/);
+  assert.match(route, /\["content-type", "authorization", "accept", "x-request-id"\]/);
+  assert.match(route, /export const maxDuration = 30/);
 });

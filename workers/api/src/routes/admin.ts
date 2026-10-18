@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
 import dbAdmin from "./admin-database";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -51,6 +52,29 @@ function pick(input: any, fields: string[]) {
 }
 function validText(value: unknown, max: number) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max;
+}
+// The route has already enforced the strict admin role before these helpers run.
+// Use the user's RLS client first; use the service client only if that scoped call
+// fails, so an RLS policy rollout cannot strand the admin dashboard.
+async function readAnnouncements(c: any) {
+  const read = (db: any) => db.from("site_content").select("payload").eq("key", "announcements").maybeSingle();
+  let result = await read(c.get("supabase"));
+  if (result.error) {
+    const service = createServiceClient(c.env);
+    if (service) result = await read(service);
+  }
+  if (result.error) throw result.error;
+  return result.data?.payload;
+}
+async function writeAnnouncements(c: any, payload: unknown, updatedAt: string) {
+  const write = (db: any) => db.from("site_content")
+    .upsert({ key: "announcements", payload, updated_at: updatedAt }, { onConflict: "key" });
+  let result = await write(c.get("supabase"));
+  if (result.error) {
+    const service = createServiceClient(c.env);
+    if (service) result = await write(service);
+  }
+  if (result.error) throw result.error;
 }
 
 admin.get("/", requireAuth, async (c) => {
@@ -937,9 +961,7 @@ admin.get("/announcements", requireAuth, async (c) => {
   const rid = requestId();
   if (!(await gate(c, STRICT_ADMINS))) return c.res;
   try {
-    const { data, error: readError } = await c.get("supabase").from("site_content").select("payload").eq("key", "announcements").maybeSingle();
-    if (readError) throw readError;
-    const payload = data?.payload;
+    const payload = await readAnnouncements(c);
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
     return c.json(ok({ items }, rid));
   } catch (cause) {
@@ -953,16 +975,12 @@ admin.post("/announcements", requireAuth, async (c) => {
   if (!(await gate(c, STRICT_ADMINS))) return c.res;
   const input = await bodyJson(c);
   if (!validText(input?.title, 200) || !validText(input?.body, 5000)) return error(c, rid, 422, "VALIDATION_ERROR", "Укажите заголовок и текст объявления");
-  const db = c.get("supabase");
   try {
-    const { data: current, error: readError } = await db.from("site_content").select("payload").eq("key", "announcements").maybeSingle();
-    if (readError) throw readError;
-    const payload = current?.payload;
+    const payload = await readAnnouncements(c);
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
     const item = { id: crypto.randomUUID(), title: input.title.trim(), body: input.body.trim(), pinned: input.pinned === true, created_at: new Date().toISOString() };
     const nextPayload = Array.isArray(payload) ? [...items, item] : { ...(payload && typeof payload === "object" ? payload : {}), items: [...items, item] };
-    const { error: writeError } = await db.from("site_content").upsert({ key: "announcements", payload: nextPayload, updated_at: item.created_at }, { onConflict: "key" });
-    if (writeError) throw writeError;
+    await writeAnnouncements(c, nextPayload, item.created_at);
     return c.json(ok({ item }, rid), 201);
   } catch (cause) {
     console.error("[admin:announcements:create]", cause);
@@ -974,17 +992,13 @@ admin.delete("/announcements/:id", requireAuth, async (c) => {
   const rid = requestId();
   if (!(await gate(c, STRICT_ADMINS))) return c.res;
   const id = c.req.param("id");
-  const db = c.get("supabase");
   try {
-    const { data: current, error: readError } = await db.from("site_content").select("payload").eq("key", "announcements").maybeSingle();
-    if (readError) throw readError;
-    const payload = current?.payload;
+    const payload = await readAnnouncements(c);
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
     const nextItems = items.filter((item: any) => String(item?.id || "") !== id);
     if (nextItems.length === items.length) return error(c, rid, 404, "NOT_FOUND", "Объявление не найдено");
     const nextPayload = Array.isArray(payload) ? nextItems : { ...payload, items: nextItems };
-    const { error: writeError } = await db.from("site_content").upsert({ key: "announcements", payload: nextPayload, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (writeError) throw writeError;
+    await writeAnnouncements(c, nextPayload, new Date().toISOString());
     return c.json(ok({ deleted: true, id }, rid));
   } catch (cause) {
     console.error("[admin:announcements:delete]", cause);

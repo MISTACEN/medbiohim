@@ -1,7 +1,7 @@
 # Sole production API deploy.
 # Topology: docs/WORKERS-TOPOLOGY.md
 #   medbiohim-api        = PROD (this workflow → workers/api → name medbiohim-api)
-#   medbiohim-api-shadow = fallback only (deploy-cloudflare-shadow.yml)
+#   medbiohim-api-shadow = legacy fallback (manual workflow only)
 #   medbiohim-telegram   = bot only
 # Shadow/Telegram Builds do NOT update production API.
 

@@ -3,112 +3,21 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { rateLimit } from "../lib/redis";
+// @ts-ignore Shared JavaScript AI provider implementation bundled by Wrangler.
+import { generateAiCompletion, getAiProviderStatus } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
 
 const ai = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 type ProviderResult = { text: string; provider: string; model: string };
 
-function configuredProviders(env: Env): string[] {
-  const preferred = (env.AI_CHAT_PRIMARY_PROVIDER || "auto").toLowerCase();
-  const order = ["groq", "openrouter", "mistral", "gemini", "openai"];
-  const keys: Record<string, string | undefined> = {
-    groq: env.GROQ_API_KEY,
-    openrouter: env.OPENROUTER_API_KEY,
-    mistral: env.MISTRAL_API_KEY,
-    gemini: env.GEMINI_API_KEY,
-    openai: env.OPENAI_API_KEY,
-  };
-  const available = order.filter((name) => Boolean(keys[name]?.trim()));
-  if (preferred !== "auto" && keys[preferred]?.trim()) {
-    return [preferred, ...available.filter((name) => name !== preferred)];
-  }
-  return available;
-}
-
-function providerModel(env: Env, provider: string): string {
-  if (provider === "groq") return env.GROQ_MODEL || "llama-3.3-70b-versatile";
-  if (provider === "openrouter") return env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
-  if (provider === "mistral") return env.MISTRAL_MODEL || "mistral-small-latest";
-  if (provider === "gemini") return env.GEMINI_MODEL || "gemini-2.5-flash";
-  return env.OPENAI_MODEL || "gpt-4o-mini";
-}
-
-async function callProvider(env: Env, provider: string, messages: ChatMessage[]): Promise<ProviderResult> {
-  const model = providerModel(env, provider);
-  if (provider === "gemini") {
-    const key = env.GEMINI_API_KEY?.trim();
-    if (!key) throw new Error("provider_not_configured");
-    const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n");
-    const contents = messages.filter((m) => m.role !== "system").map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-          contents,
-          generationConfig: { temperature: 0.35, maxOutputTokens: 1200 },
-        }),
-        signal: AbortSignal.timeout(60000),
-      }
-    );
-    if (!response.ok) throw new Error(`provider_http_${response.status}`);
-    const data = await response.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
-    if (!text) throw new Error("provider_empty_response");
-    return { text, provider, model };
-  }
-
-  const key = provider === "groq" ? env.GROQ_API_KEY?.trim()
-    : provider === "openrouter" ? env.OPENROUTER_API_KEY?.trim()
-    : provider === "mistral" ? env.MISTRAL_API_KEY?.trim()
-    : env.OPENAI_API_KEY?.trim();
-  if (!key) throw new Error("provider_not_configured");
-  const baseUrl = provider === "groq" ? (env.GROQ_BASE_URL || "https://api.groq.com/openai/v1")
-    : provider === "openrouter" ? (env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1")
-    : provider === "mistral" ? (env.MISTRAL_BASE_URL || "https://api.mistral.ai/v1")
-    : "https://api.openai.com/v1";
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${key}`,
-      "content-type": "application/json",
-      ...(provider === "openrouter" ? { "HTTP-Referer": env.APP_ORIGIN || "https://medbiohim.vercel.app", "X-Title": "MEDBIOHIM" } : {}),
-    },
-    body: JSON.stringify({ model, messages, temperature: 0.35, max_tokens: 1200 }),
-    signal: AbortSignal.timeout(60000),
-  });
-  if (!response.ok) throw new Error(`provider_http_${response.status}`);
-  const data = await response.json() as { choices?: { message?: { content?: string | null } }[] };
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error("provider_empty_response");
-  return { text, provider, model };
-}
-
 async function generate(env: Env, messages: ChatMessage[], requested?: string): Promise<ProviderResult> {
-  const available = configuredProviders(env);
-  if (!available.length) throw new Error("no_provider_configured");
-  const explicit = requested && requested !== "auto" ? requested.toLowerCase() : null;
-  const order = explicit ? available.filter((provider) => provider === explicit) : available;
-  if (!order.length) throw new Error("requested_provider_not_configured");
-  let lastError: unknown;
-  for (const provider of order) {
-    try {
-      return await callProvider(env, provider, messages.slice(-42).map((message) => ({
-        role: message.role,
-        content: message.content.slice(0, 12000),
-      })));
-    } catch (error) {
-      lastError = error;
-      console.warn("[ai:provider-failed]", { provider, reason: error instanceof Error ? error.message : "unknown" });
-      if (explicit) break;
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("all_providers_failed");
+  const system = messages.find((message) => message.role === "system");
+  const context = [...(system ? [system] : []), ...messages.filter((message) => message.role !== "system").slice(-23)];
+  const result = await generateAiCompletion(env, context.map((message) => ({
+    role: message.role,
+    content: message.content.slice(0, 12000),
+  })), requested || "auto");
+  return { text: result.content, provider: result.provider, model: result.model };
 }
 
 function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gigachat" {
@@ -122,16 +31,7 @@ function systemPrompt(subjectSlug?: string | null): string {
 }
 
 ai.get("/providers", requireAuth, async (c) => {
-  const env = c.env;
-  const providers = [
-    { id: "auto", name: "Автоматический выбор", available: configuredProviders(env).length > 0 },
-    { id: "groq", name: "Groq", available: Boolean(env.GROQ_API_KEY?.trim()) },
-    { id: "openrouter", name: "OpenRouter", available: Boolean(env.OPENROUTER_API_KEY?.trim()) },
-    { id: "mistral", name: "Mistral", available: Boolean(env.MISTRAL_API_KEY?.trim()) },
-    { id: "gemini", name: "Gemini", available: Boolean(env.GEMINI_API_KEY?.trim()) },
-    { id: "openai", name: "OpenAI", available: Boolean(env.OPENAI_API_KEY?.trim()) },
-  ];
-  return c.json(ok({ providers }, requestId()));
+  return c.json(ok(getAiProviderStatus(c.env), requestId()));
 });
 
 ai.get("/conversations", requireAuth, async (c) => {
@@ -272,10 +172,12 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
     console.error("[ai:message-generation]", { reason });
-    const status = reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
+    const reportedStatus = Number((error as any)?.status);
+    const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
+      : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
     const { body, status: responseStatus } = fail(
-      status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM",
-      status === 503 ? "Не настроен доступный AI-провайдер" : "AI-провайдеры временно недоступны",
+      String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")),
+      error instanceof Error ? error.message : status === 503 ? "Не настроен доступный AI-провайдер" : "AI-провайдеры временно недоступны",
       status,
       rid
     );
@@ -358,8 +260,10 @@ ai.post("/chat", requireAuth, async (c) => {
     return c.json(ok({ message: { role: "assistant", content: result.text }, provider: result.provider, model: result.model }, rid));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
-    const status = reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
-    const { body, status: responseStatus } = fail(status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM", status === 503 ? "Не настроен доступный AI-провайдер" : "AI-провайдеры временно недоступны", status, rid);
+    const reportedStatus = Number((error as any)?.status);
+    const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
+      : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
+    const { body, status: responseStatus } = fail(String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")), error instanceof Error ? error.message : status === 503 ? "Не настроен доступный AI-провайдер" : "AI-провайдеры временно недоступны", status, rid);
     return c.json(body, responseStatus as 502 | 503);
   }
 });

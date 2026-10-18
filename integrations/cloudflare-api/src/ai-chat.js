@@ -277,6 +277,10 @@ function getAiCompletionCandidates(env, preferredProvider) {
   if (preferred !== "auto" && index < 0) return [];
   return candidates;
 }
+function aiTimeoutMs(cfg) {
+  const remaining = Number(cfg?.deadline || 0) - Date.now();
+  return Math.max(1, Math.min(7000, remaining || 7000));
+}
 async function callGeminiCompletion(cfg, messages, fetcher) {
   const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
   const contents = messages.filter((message) => message.role === "user" || message.role === "assistant").map((message) => ({
@@ -295,7 +299,7 @@ async function callGeminiCompletion(cfg, messages, fetcher) {
         generationConfig: { temperature: 0.25, maxOutputTokens: 2500 },
       }),
       redirect: "error",
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch {
     throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
@@ -331,7 +335,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher) {
         },
         body: new URLSearchParams({ scope: cfg.scope || "GIGACHAT_API_PERS" }),
         redirect: "error",
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
       });
     } catch {
       throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
@@ -351,7 +355,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher) {
       headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ model: cfg.model, temperature: 0.25, max_tokens: 2500, messages }),
       redirect: "error",
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch {
     throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
@@ -383,7 +387,7 @@ async function callAiCompletion(cfg, messages, fetcher) {
       },
       body: JSON.stringify({ model: cfg.model, temperature: 0.25, max_tokens: 2500, messages }),
       redirect: "error",
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch {
     throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
@@ -435,9 +439,11 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
   }
 
   let lastError = null;
+  const deadline = Date.now() + 16_000;
   for (const candidate of candidates) {
     try {
-      return await callAiCompletion(candidate, safeMessages, fetcher);
+      if (deadline - Date.now() <= 250) break;
+      return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher);
     } catch (error) {
       lastError = error;
     }

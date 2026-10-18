@@ -22,18 +22,17 @@ search.get("/", requireAuth, async (c) => {
     const results: any[] = [];
     if (!type || type === "all" || type === "questions") {
       let subjectId = "";
+      let subjectIds: string[] = [];
       if (subjectSlug) {
-        const { data: subjects, error } = await db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true).limit(2);
+        const { data: subjects, error } = await db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true).limit(100);
         if (error) throw error;
-        if ((subjects || []).length > 1) {
-          const { body, status } = fail("AMBIGUOUS_SUBJECT", "По указанному предмету есть несколько совпадений", 409, rid);
-          return c.json(body, status as 409);
-        }
-        subjectId = String(subjects?.[0]?.id || "");
+        subjectIds = [...new Set((subjects || []).map((row: any) => String(row.id || "")).filter(Boolean))];
+        subjectId = subjectIds.length === 1 ? subjectIds[0] : "";
       }
-      if (!subjectSlug || subjectId) {
+      if (!subjectSlug || subjectId || subjectIds.length > 1) {
         let query = db.from("questions").select("id,text,answer,subject_id,type,topic_id,subjects(name,slug),topics(title)").eq("is_published", true).ilike("text", `%${q}%`).limit(limit);
         if (subjectId) query = query.eq("subject_id", subjectId);
+        else if (subjectIds.length > 1) query = query.in("subject_id", subjectIds);
         const { data, error } = await query;
         if (error) throw error;
         for (const row of data || []) {
@@ -54,15 +53,11 @@ search.get("/", requireAuth, async (c) => {
     if (!type || type === "all" || type === "materials") {
       let query = db.from("materials").select("id,title,subject_id,subjects(name,slug)").eq("is_published", true).ilike("title", `%${q}%`).limit(limit);
       if (subjectSlug) {
-        const { data: subjects, error } = await db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true).limit(2);
+        const { data: subjects, error } = await db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true).limit(100);
         if (error) throw error;
-        if ((subjects || []).length > 1) {
-          const { body, status } = fail("AMBIGUOUS_SUBJECT", "По указанному предмету есть несколько совпадений", 409, rid);
-          return c.json(body, status as 409);
-        }
-        const subjectId = String(subjects?.[0]?.id || "");
-        if (!subjectId) return c.json(ok({ items: [], query: q, total: 0, facets: { subjects: [], types: {} } }, rid));
-        query = query.eq("subject_id", subjectId);
+        const subjectIds = [...new Set((subjects || []).map((row: any) => String(row.id || "")).filter(Boolean))];
+        if (!subjectIds.length) return c.json(ok({ items: [], query: q, total: 0, facets: { subjects: [], types: {} } }, rid));
+        query = subjectIds.length === 1 ? query.eq("subject_id", subjectIds[0]) : query.in("subject_id", subjectIds);
       }
       const { data, error } = await query;
       if (error) throw error;

@@ -14,7 +14,7 @@ chemistry.get("/resolve", async (c) => {
   }
 
   try {
-    const searchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName,Title/JSON`;
+    const searchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/property/MolecularFormula,MolecularWeight,ConnectivitySMILES,IsomericSMILES,IUPACName,Title/JSON`;
     const res = await fetch(searchUrl, {
       signal: AbortSignal.timeout(10000),
       headers: { Accept: "application/json" },
@@ -39,12 +39,19 @@ chemistry.get("/resolve", async (c) => {
             cid,
             name: prop.Title || prop.IUPACName || query,
             formula: prop.MolecularFormula,
-            weight: prop.MolecularWeight,
-            smiles: prop.CanonicalSMILES,
-            iupac: prop.IUPACName,
-            image: cid
-              ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG`
-              : null,
+            molecularWeight: prop.MolecularWeight == null ? undefined : Number(prop.MolecularWeight),
+            canonicalSmiles: prop.ConnectivitySMILES || prop.CanonicalSMILES,
+            isomericSmiles: prop.IsomericSMILES || prop.CanonicalSMILES,
+            image2dUrl: cid ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG` : undefined,
+            image3dUrl: cid ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/SDF?record_type=3d` : undefined,
+            provenance: {
+              source: "pubchem",
+              sourceId: cid == null ? undefined : String(cid),
+              sourceUrl: cid ? `https://pubchem.ncbi.nlm.nih.gov/compound/${cid}` : undefined,
+              retrievedAt: new Date().toISOString(),
+              representation: "2d",
+              label: "PubChem",
+            },
           },
         },
         rid

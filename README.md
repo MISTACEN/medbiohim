@@ -2,7 +2,7 @@
 
 Образовательная платформа для медико-биологической химии и смежных дисциплин.
 
-**Стек:** Next.js (Vercel) · PHP API (SpaceWeb) · Supabase · миграция API на Cloudflare Workers.
+**Стек:** Next.js (Vercel) · Cloudflare Workers API · Supabase · Upstash.
 
 ## Быстрый старт
 
@@ -10,20 +10,22 @@
 
 ```bash
 npm install
-cp .env.example .env.local   # заполнить NEXT_PUBLIC_* и SPACEWEB_API_ORIGIN
+cp .env.example .env.local   # заполнить NEXT_PUBLIC_* и CLOUDFLARE_API_ORIGIN
 npm run dev
 ```
 
 - Браузер ходит на `/api/v1/*` (same-origin).
-- Vercel-прокси пересылает запросы на SpaceWeb (`SPACEWEB_API_ORIGIN`).
+- Vercel-прокси пересылает запросы только в production Cloudflare Worker.
 
-### Backend (SpaceWeb)
+### Legacy backend (SpaceWeb)
 
 ```bash
 cd backend
 cp .env.example .env         # DB_URL, Supabase keys, B2 и т.д.
 # Document root на хостинге: backend/public/
 ```
+
+PHP backend оставлен в репозитории для миграционной совместимости и не обслуживает production API.
 
 Папка `backend/data/` должна быть writable (если ещё используется).
 
@@ -59,7 +61,7 @@ Production-трафик на Cloudflare **не переключён**.
 ## Frontend (repo root) → Vercel
 Next.js App Router.
 - Browser API base: `/api/v1`
-- Vercel server-side proxy: Cloudflare is selected only by explicit Preview opt-in or `MEDBIOHIM_API_MODE=cloudflare` with a production Worker origin; the migration shadow is rejected. The legacy PHP origin remains a temporary fallback and must use HTTPS.
+- Vercel server-side proxy sends production API requests only to `medbiohim-api` on Cloudflare. SpaceWeb PHP is retained as migration/reference code and is not an API fallback.
 - Chemistry (на main): `/chemistry`, `/api/chemistry/resolve`, `/api/chemistry/health` — см. [docs/chemical-engine.md](docs/chemical-engine.md)
 - **Strict TypeScript**: see **[docs/dev-notes.md](docs/dev-notes.md)**.
 

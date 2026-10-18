@@ -92,13 +92,39 @@ academic.get("/state", requireAuth, async (c) => {
     for (const p of weak) recommendations.push({ priority: Number(p.percent) < 40 ? "high" : "normal",
       action_type: "study", title: "Повторить: " + (p.subject_name || "Предмет") + " — " + (p.topic_name || "тема"),
       reason: "Учебный прогресс ниже 70%.", subject_id: p.subject_id ?? null, topic_id: p.topic_id });
-    return c.json(ok({ profile: profileResult.data || { id: user.id }, metrics: { closed, in_progress: inProgress,
+    const profile: any = profileResult.data || { id: user.id };
+    let plan = { available: false, items: 0, concrete_items: 0 };
+    try {
+      const hasCourse = Number.isFinite(Number(profile.course_number)) && Number(profile.course_number) > 0;
+      const hasSemester = Number.isFinite(Number(profile.semester)) && Number(profile.semester) > 0;
+      let query = db.from("curriculum_items").select("id", { count: "exact", head: true }).eq("is_active", true);
+      if (hasCourse) query = query.eq("course_number", Number(profile.course_number));
+      if (hasSemester) query = query.eq("semester", Number(profile.semester));
+      let curriculum = await query;
+      let scoped = true;
+      if (!curriculum.error && Number(curriculum.count || 0) === 0 && (hasCourse || hasSemester)) {
+        curriculum = await db.from("curriculum_items").select("id", { count: "exact", head: true }).eq("is_active", true);
+        scoped = false;
+      }
+      if (!curriculum.error && Number(curriculum.count || 0) > 0) {
+        let requiredQuery = db.from("curriculum_items").select("id", { count: "exact", head: true }).eq("is_active", true).eq("is_required", true);
+        if (scoped && hasCourse) requiredQuery = requiredQuery.eq("course_number", Number(profile.course_number));
+        if (scoped && hasSemester) requiredQuery = requiredQuery.eq("semester", Number(profile.semester));
+        const required = await requiredQuery;
+        plan = { available: true, items: Number(curriculum.count), concrete_items: required.error ? 0 : Number(required.count || 0) };
+      }
+    } catch (error) {
+      console.warn("[academic:state:curriculum]", error instanceof Error ? error.message : "unavailable");
+    }
+    return c.json(ok({ profile, session: null, plan, metrics: { closed, in_progress: inProgress,
       not_started: notStarted, debts: debts.length, tracked: states.length }, states, topic_progress: topicProgress,
       debts, upcoming, weak_topics: weak, recommendations: recommendations.slice(0, 40), generated_at: new Date().toISOString() }, rid));
   } catch (error) {
     console.error("[academic:state]", error);
     return c.json(ok({
       profile: { id: user.id },
+      session: null,
+      plan: { available: false, items: 0, concrete_items: 0 },
       metrics: { closed: 0, in_progress: 0, not_started: 0, debts: 0, tracked: 0 },
       states: [], topic_progress: [], debts: [], upcoming: [], weak_topics: [],
       recommendations: [], generated_at: new Date().toISOString(),

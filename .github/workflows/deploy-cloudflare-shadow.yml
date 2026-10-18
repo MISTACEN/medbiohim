@@ -1,17 +1,10 @@
-# SHADOW ONLY — does NOT update production API.
-# Topology: docs/WORKERS-TOPOLOGY.md
-#   medbiohim-api        = PROD  → deploy-medbiohim-api.yml / workers/api
-#   medbiohim-api-shadow = this workflow — fallback MEDBIOHIM_UPSTREAM only
-# A green run here is NOT a production cutover.
+# MANUAL LEGACY COMPATIBILITY WORKER — never auto-deploy from main.
+# Production updates go only through deploy-medbiohim-api.yml.
 
-name: Deploy MEDBIOHIM Cloudflare migration Worker
+name: Manually deploy MEDBIOHIM legacy compatibility Worker
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "integrations/cloudflare-api/**"
 
 permissions:
   contents: read

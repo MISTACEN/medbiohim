@@ -38,6 +38,14 @@ export type Env = {
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
   GIGACHAT_CREDENTIALS?: string;
+  GIGACHAT_AUTH_KEY?: string;
+  GIGACHAT_ACCESS_TOKEN?: string;
+  GIGACHAT_MODEL?: string;
+  GIGACHAT_SCOPE?: string;
+  LLM_PRIMARY_API_KEY?: string;
+  AI_BACKEND_REGION?: string;
+  GEMINI_VERCEL_PROXY_URL?: string;
+  GEMINI_VERCEL_PROXY_SECRET?: string;
   AI_CHAT_PRIMARY_PROVIDER?: string;
 
   // App

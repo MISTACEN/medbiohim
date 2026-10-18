@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shouldFallbackFromCloudflare } from "@/lib/api-failover.mjs";
 import { protectTrainingPayload } from "@/lib/training-payload-sanitizer.mjs";
 
 const DEFAULT_CLOUDFLARE_API_ORIGIN = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1";
 const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN).trim().replace(/\/$/, "");
-const SPACEWEB_ORIGIN = (process.env.SPACEWEB_API_ORIGIN || "").trim().replace(/\/$/, "");
-const SAFE_SPACEWEB_ORIGIN = (() => {
-  try {
-    const u = new URL(SPACEWEB_ORIGIN);
-    return u.protocol === "https:" ? u.toString().replace(/\/$/, "") : "";
-  } catch {
-    return "";
-  }
-})();
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Several authenticated Worker routes perform multiple Supabase/Blob calls.
+// Keep the proxy alive long enough for those bounded upstream operations.
+export const maxDuration = 30;
 
 function bearer(req: NextRequest) {
   const value = req.headers.get("authorization") || "";
@@ -80,67 +73,29 @@ function requestInit(req: NextRequest, bodyBuffer: ArrayBuffer | null, timeoutMs
   };
 }
 
-async function fetchSpaceweb(req: NextRequest, sub: string, search: string, init: RequestInit): Promise<Response | null> {
-  if (!SAFE_SPACEWEB_ORIGIN || !["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase())) return null;
-  const targets = [
-    `${SAFE_SPACEWEB_ORIGIN}/${sub}${search}`,
-    ...(SAFE_SPACEWEB_ORIGIN.endsWith("/api/v1")
-      ? [`${SAFE_SPACEWEB_ORIGIN.slice(0, -"/api/v1".length)}/public/api/v1/${sub}${search}`]
-      : []),
-  ];
-  for (let i = 0; i < targets.length; i += 1) {
-    try {
-      const response = await fetch(targets[i], { ...init, signal: AbortSignal.timeout(10000) });
-      if (response.status !== 404 || i === targets.length - 1) return response;
-    } catch {
-      // Read-only fallback may safely try the alternate legacy route.
-    }
-  }
-  return null;
-}
-
 async function proxy(req: NextRequest, pathParts: string[]) {
   const sub = pathParts.join("/");
   const url = new URL(req.url);
-  const safeRead = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
   let bodyBuffer: ArrayBuffer | null = null;
   if (!["GET", "HEAD"].includes(req.method.toUpperCase())) bodyBuffer = await req.arrayBuffer();
-  const init = requestInit(req, bodyBuffer, 8000);
+  const init = requestInit(req, bodyBuffer, 18000);
 
   let upstream: Response | null = null;
   let source = "cloudflare";
   if (CLOUDFLARE_UPSTREAM) {
     try {
-      const response = await fetch(`${CLOUDFLARE_UPSTREAM}/${sub}${url.search}`, init);
-      const fallbackNeeded = safeRead ? await shouldFallbackFromCloudflare(req, response) : false;
-      if (fallbackNeeded && SAFE_SPACEWEB_ORIGIN) {
-        const fallback = await fetchSpaceweb(req, sub, url.search, init);
-        if (fallback) {
-          upstream = fallback;
-          source = "spaceweb-fallback";
-        } else {
-          upstream = response;
-        }
-      } else {
-        upstream = response;
-      }
+      upstream = await fetch(`${CLOUDFLARE_UPSTREAM}/${sub}${url.search}`, init);
     } catch {
-      if (safeRead) {
-        upstream = await fetchSpaceweb(req, sub, url.search, init);
-        source = upstream ? "spaceweb-fallback" : "cloudflare-unavailable";
-      } else {
-        source = "cloudflare-unavailable";
-      }
+      source = "cloudflare-unavailable";
     }
-  } else if (safeRead) {
-    upstream = await fetchSpaceweb(req, sub, url.search, init);
-    source = upstream ? "spaceweb-fallback" : "cloudflare-unavailable";
+  } else {
+    source = "cloudflare-unavailable";
   }
 
   if (!upstream) {
     const failed = NextResponse.json({
       ok: false,
-      error: { code: "UPSTREAM", message: "Cloudflare API недоступен; безопасный резервный маршрут не дал ответа" },
+      error: { code: "UPSTREAM", message: "Cloudflare API недоступен" },
       requestId: "proxy",
     }, { status: 502 });
     return withTransportDiagnostics(req, failed, source);
@@ -163,7 +118,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     const value = upstream.headers.get(h);
     if (value) out.headers.set(h, value);
   }
-  out.headers.set("x-medbiohim-proxy", source === "cloudflare" ? "cloudflare-primary" : "safe-read-fallback");
+  out.headers.set("x-medbiohim-proxy", "cloudflare-only");
   return withTransportDiagnostics(req, out, source);
 }
 

@@ -9,7 +9,7 @@
 | Worker | URL | Код в репо | Роль |
 |--------|-----|------------|------|
 | **`medbiohim-api`** | `https://medbiohim-api.ryazansevegor.workers.dev` | `workers/api/` (Hono + TypeScript) | **Единственный production API** |
-| **`medbiohim-api-shadow`** | `https://medbiohim-api-shadow.ryazansevegor.workers.dev` | `integrations/cloudflare-api/` (JS monolith) | Только **fallback** через service binding `MEDBIOHIM_UPSTREAM` |
+| **`medbiohim-api-shadow`** | `https://medbiohim-api-shadow.ryazansevegor.workers.dev` | `integrations/cloudflare-api/` (JS monolith) | Legacy fallback через service binding; **manual deploy only** |
 | **`medbiohim-telegram`** | `medbiohim-telegram.ryazansevegor.workers.dev` | `integrations/telegram-bot-cloudflare/` | Telegram-бот, **не** HTTP API сайта |
 
 ```
@@ -21,7 +21,7 @@ Browser → Vercel /api/v1/* → medbiohim-api (PROD)
 
 1. **Vercel / фронт** всегда указывают на **`medbiohim-api`**, никогда на shadow.
 2. **Правки student/admin API** — только в `workers/api/`. Деплой: workflow `Deploy MEDBIOHIM API to Cloudflare` (typecheck + tests → `wrangler deploy` → имя `medbiohim-api`).
-3. **Shadow не развивать** как второй прод. Не мержить туда «полный» API. Не ждать от shadow gradebook / trainers images / schedule.
+3. **Shadow не является вторым production deploy.** Push в `main` его не обновляет; ручной workflow оставлен только для обслуживания legacy fallback.
 4. Успешный билд **shadow** или **telegram** ≠ прод обновлён. Смотреть статус **`medbiohim-api`**.
 5. Telegram — отдельный Worker; коммиты в `workers/api` не должны требовать правок telegram.
 6. Локальные артефакты (`artifacts/medbiohim-cloudflare-api/`, `artifacts/medbiohim-cf-push/`) — **не** auto-deploy, не прод.
@@ -50,5 +50,5 @@ Browser → Vercel /api/v1/* → medbiohim-api (PROD)
 
 - `workers/api/wrangler.toml` — `name = "medbiohim-api"` + binding `MEDBIOHIM_UPSTREAM` → shadow
 - `.github/workflows/deploy-medbiohim-api.yml` — единственный прод-деплой API
-- `.github/workflows/deploy-cloudflare-shadow.yml` — только shadow
+- `.github/workflows/deploy-cloudflare-shadow.yml` — ручное обслуживание legacy fallback; не срабатывает при push в `main`
 - `integrations/cloudflare-api/wrangler.toml` — `name = "medbiohim-api-shadow"`

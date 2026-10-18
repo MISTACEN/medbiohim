@@ -10,8 +10,9 @@ The working test environment may contain temporary keys used for pre-deployment 
 
 The platform is split into:
 - Browser-safe / Vercel client: NEXT_PUBLIC_*.
-- Vercel server: proxy and optional Gemini proxy settings.
-- SpaceWeb/PHP server: database, Supabase server credentials, B2, AI providers, CORS, and runtime secrets.
+- Vercel server: Cloudflare-only API proxy and optional Gemini proxy settings.
+- Cloudflare Worker: Supabase, Upstash, AI providers, CORS, and runtime secrets.
+- Legacy SpaceWeb/PHP server: retained for migration/reference; not used by the production API proxy.
 - Legacy optional integrations: Firebase compatibility variables.
 
 ## Frontend / Vercel
@@ -22,14 +23,11 @@ The platform is split into:
 | NEXT_PUBLIC_SUPABASE_URL | Supabase project URL for client-side Supabase usage. |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Publishable/legacy anon key; browser-safe by design, subject to RLS. |
 | NEXT_PUBLIC_APP_NAME | Frontend application name. |
-| SPACEWEB_API_ORIGIN | Server-only Vercel → SpaceWeb PHP API target; must use valid HTTPS when carrying authenticated traffic. |
-| CLOUDFLARE_API_ORIGIN | Server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. Vercel production/preview default to `https://medbiohim-api.ryazansevegor.workers.dev/api/v1` when unset; set `MEDBIOHIM_API_MODE=legacy` only for an intentional rollback. The migration shadow hostname is rejected in Production. |
-| MEDBIOHIM_CF_FIRST | Preview-only opt-in. When exactly `true`, request Cloudflare first and use safe SpaceWeb fallback cases. Keep `false` in Production until the canary is accepted. |
-| MEDBIOHIM_API_MODE | Production cutover switch. Set to `cloudflare` only after a production Worker and parity checks are ready; otherwise the proxy uses legacy mode and requires a valid HTTPS `SPACEWEB_API_ORIGIN`. |
+| CLOUDFLARE_API_ORIGIN | Server-only Cloudflare Worker API base, including `/api/v1`; HTTPS only. Defaults to `https://medbiohim-api.ryazansevegor.workers.dev/api/v1`. Production proxy never retries against SpaceWeb. |
 | GEMINI_API_KEY | Optional Vercel-side Gemini key for the proxy route. |
 | GEMINI_VERCEL_PROXY_SECRET | Optional server-to-server secret protecting the Gemini proxy. |
 
-## SpaceWeb / PHP
+## Legacy SpaceWeb / PHP
 
 ### Supabase and PostgreSQL
 
@@ -95,4 +93,4 @@ DB_CREDENTIALS_KEY — server-side key used to encrypt external PostgreSQL/MySQL
 
 ## 2026-10-15 — Vercel API routing default
 
-Vercel Production and Preview no longer require `SPACEWEB_API_ORIGIN` just to serve browser API calls. When `CLOUDFLARE_API_ORIGIN` is unset, the proxy uses the public `medbiohim-api` gateway and enables Cloudflare-first routing. `MEDBIOHIM_API_MODE=legacy` is the explicit rollback switch; it requires a valid HTTPS `SPACEWEB_API_ORIGIN`. Local development stays explicit and is not silently pointed at a remote service. This restores API connectivity for migrated routes but does not imply that every Worker route is migrated; `501 ROUTE_NOT_MIGRATED` remains a separate parity gap.
+Production and Preview call the Cloudflare `medbiohim-api` Worker directly through the Vercel same-origin proxy. SpaceWeb is not a runtime fallback. Unported routes must be implemented in the canonical Worker or its Cloudflare compatibility binding; they must not silently switch to PHP.

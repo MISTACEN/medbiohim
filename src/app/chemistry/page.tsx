@@ -36,9 +36,19 @@ export default function ChemistryPage() {
     try {
       const response = await fetch(`/api/v1/chemistry/resolve?query=${encodeURIComponent(query)}`);
       const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error || "Не удалось найти вещество");
-      if (!data.molecule) throw new Error("Вещество не найдено");
-      setMolecule(data.molecule);
+      const payload = data?.data ?? data;
+      if (!response.ok || data?.error) throw new Error(data?.error?.message || data?.error || "Не удалось найти вещество");
+      const raw = payload?.molecule;
+      if (!raw) throw new Error("Вещество не найдено");
+      const normalized: ChemicalMolecule = {
+        ...raw,
+        molecularWeight: raw.molecularWeight ?? raw.weight,
+        canonicalSmiles: raw.canonicalSmiles ?? raw.smiles,
+        isomericSmiles: raw.isomericSmiles ?? raw.smiles,
+        image2dUrl: raw.image2dUrl ?? raw.image,
+        provenance: raw.provenance ?? { source: "pubchem", label: "PubChem" },
+      };
+      setMolecule(normalized);
       setTab("2d");
     } catch (e) {
       setMolecule(null);
