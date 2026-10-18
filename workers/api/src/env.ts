@@ -15,6 +15,8 @@ export type Env = {
 
   // Upstash Blob (private object storage)
   UPSTASH_BLOB_TOKEN?: string;
+  // Public Upstash Blob endpoint used for authenticated Worker-side media proxying.
+  UPSTASH_BLOB_PUBLIC_BASE_URL?: string;
 
   // Telegram bot administration (secrets must be configured in Cloudflare, never committed)
   TELEGRAM_BOT_TOKEN?: string;
