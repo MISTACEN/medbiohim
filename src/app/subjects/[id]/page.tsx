@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ExternalLink, FileQuestion, FolderOpen, GraduationCap, ListChecks, Microscope, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
-import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import { useAuth } from "@/components/auth/AuthProvider";
 import PhysiologyColloquium from "@/components/physiology/PhysiologyColloquium";
 
@@ -496,7 +495,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
 
         {tab === "trainer" && histology && (
-          <HistologyTrainer subjectId={subject?.id} />
+          <HistologyTrainer embedded />
         )}
 
         {tab === "trainers" && (
