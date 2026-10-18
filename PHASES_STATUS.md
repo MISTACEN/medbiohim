@@ -2970,3 +2970,11 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - 🟢 Cloudflare production Worker `medbiohim-api` version `50d1b57d-1da2-43a4-9951-0dbe89b090bd` is deployed at 100% traffic; `UPSTASH_BLOB_PUBLIC_BASE_URL` is confirmed in its settings as `https://b8a4f9f853fa.blob.upstash.io`.
 - 🟢 Local source-snapshot validation: typecheck passed, 32/32 tests passed.
 - 🟡 Final content verification pending: this tool environment blocks direct HTTP to the Worker and public Blob endpoint. Must still smoke-test authorized image/PDF/DOC/DOCX responses and all 28 electronograms from the live site before claiming every file is verified.
+
+
+## 2026-10-18 — Public trainer image access incident
+
+- [x] Root cause found in canonical `workers/api/src/routes/trainers.ts`: `GET /feed/:id/image` had `requireAuth`, which caused unauthenticated direct links to return `UNAUTHORIZED`.
+- [x] Removed `requireAuth` from that image-only handler; it looks up server-side metadata and serves only published-card media through validated candidate keys. Other trainer endpoints keep their existing authentication.
+- [x] Added a contract test guarding the public image route and added `docs/PUBLIC-TRAINER-IMAGE-ACCESS-FIX-2026-10-18.md`.
+- [ ] Production deploy and anonymous live image-byte verification pending; do not call this fully resolved until the canonical Worker is deployed and tested.
