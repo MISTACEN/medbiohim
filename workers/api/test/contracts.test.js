@@ -56,6 +56,10 @@ test("histology atlas proxies public Upstash Blob objects without requiring a pr
   const trainers = await source("../src/routes/trainers.ts");
   assert.match(trainers, /UPSTASH_BLOB_PUBLIC_BASE_URL\s*\|\|\s*"https:\/\/b8a4f9f853fa\.blob\.upstash\.io"/);
   assert.match(trainers, /publicResponse\.ok && publicResponse\.body/);
+  const imageRoute = trainers.slice(trainers.indexOf('trainers.get("/feed/:id/image"'));
+  assert.ok(imageRoute.length > 0, "public trainer image route exists");
+  assert.doesNotMatch(imageRoute, /trainers\.get\("\/feed\/:id\/image",\s*requireAuth/);
+  assert.match(imageRoute, /createServiceClient\(c\.env\) \|\| createAnonClient\(c\.env\)/);
   assert.match(trainers, /const bucket = getBlobBucket\(c\.env\);/);
   assert.doesNotMatch(trainers, /if \(!bucket\)\s*\{\s*const \{ body, status \} = fail\("NOT_CONFIGURED"/);
   assert.match(trainers, /add\("histology\/" \+ stripped\)/);
