@@ -43,8 +43,13 @@ subjects.get("/:id/gradebook", requireAuth, async (c) => {
 
 subjects.get("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
-  const { data, error } = await db.from("subjects").select("*").eq("id", id).maybeSingle();
+  const query = UUID.test(id)
+    ? db.from("subjects").select("*").eq("id", id).limit(2)
+    : db.from("subjects").select("*").eq("slug", id).eq("is_active", true).limit(2);
+  const { data: rows, error } = await query;
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subject unavailable", 503, rid); return c.json(body, status as 503); }
+  if ((rows || []).length > 1) { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }
+  const data = rows?.[0];
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
   return c.json(ok(data, rid));
 });

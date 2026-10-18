@@ -47,13 +47,15 @@ dashboard.get("/", requireAuth, async (c) => {
 
   try {
     if (groupIds.length) {
-      const { data: sch } = await db.from("schedules").select("id").in("group_id", groupIds).eq("is_active", true).limit(50);
+      const { data: sch, error: scheduleError } = await db.from("schedules").select("id").in("group_id", groupIds).eq("is_active", true).limit(50);
+      if (scheduleError) throw scheduleError;
       const ids = (sch || []).map((s: any) => s.id);
       if (ids.length) {
-        const { data: entries } = await db.from("schedule_entries")
+        const { data: entries, error: entriesError } = await db.from("schedule_entries")
           .select("id,date,start_time,end_time,subject_id,subject_name,subject_slug,type,building,room,is_cancelled,is_makeup")
           .in("schedule_id", ids).gte("date", from).lte("date", to)
           .order("date", { ascending: true }).order("start_time", { ascending: true }).limit(300);
+        if (entriesError) throw entriesError;
         schedule = (entries || []).map((e: any) => ({ ...e, start_time: String(e.start_time || "").slice(0, 5), end_time: String(e.end_time || "").slice(0, 5) }));
       }
     }
@@ -61,8 +63,9 @@ dashboard.get("/", requireAuth, async (c) => {
 
   try {
     let q = db.from("homeworks").select("id,title,description,due_at,due_date,subject_id,group_id,status,subjects(name,slug)").order("due_date", { ascending: true }).limit(150);
-    q = groupIds.length ? q.or(`group_id.is.null,group_id.in.(${groupIds.join(",")}`) : q.is("group_id", null);
-    const { data: rows } = await q;
+    q = groupIds.length ? q.or(`group_id.is.null,group_id.in.(${groupIds.join(",")})`) : q.is("group_id", null);
+    const { data: rows, error } = await q;
+    if (error) throw error;
     homeworks = (rows || []).map((h: any) => {
       const s = rel(h.subjects);
       return { id: h.id, title: h.title, description: h.description, due_at: h.due_at, due_date: h.due_date, subject_id: h.subject_id, subject_name: s?.name, my_status: h.status || "assigned", status: h.status || "assigned" };
@@ -70,12 +73,14 @@ dashboard.get("/", requireAuth, async (c) => {
   } catch { degraded.push("homeworks"); }
 
   try {
-    const { data } = await db.from("tests").select("id,title,subject_id,time_limit_sec,is_published,created_at").eq("is_published", true).order("created_at", { ascending: false }).limit(80);
+    const { data, error } = await db.from("tests").select("id,title,subject_id,time_limit_sec,is_published,created_at").eq("is_published", true).order("created_at", { ascending: false }).limit(80);
+    if (error) throw error;
     tests = data || [];
   } catch { degraded.push("tests"); }
 
   try {
-    const { data } = await db.from("site_content").select("key,payload").in("key", ["announcements", "site"]).limit(5);
+    const { data, error } = await db.from("site_content").select("key,payload").in("key", ["announcements", "site"]).limit(5);
+    if (error) throw error;
     for (const row of data || []) {
       if (row.key === "announcements") {
         const p = row.payload as any;

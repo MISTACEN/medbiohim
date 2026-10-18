@@ -225,6 +225,47 @@ tests.get("/attempts", requireAuth, async (c) => {
   }
 });
 
+tests.get("/:id/bank-progress", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user");
+  const testId = String(c.req.param("id") || "");
+  const groupId = String(c.req.query("group_id") || "");
+  if (!UUID.test(testId) || (groupId && !UUID.test(groupId))) return invalid(c, rid, "Некорректный ID теста или группы");
+  try {
+    if (groupId) {
+      const { data: membership, error } = await db.from("group_memberships").select("group_id").eq("user_id", user.id).eq("group_id", groupId).eq("is_active", true).limit(1);
+      if (error) throw error;
+      if (!membership?.length) {
+        const { body, status } = fail("FORBIDDEN", "Вы не состоите в указанной учебной группе", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    const { data: test, error: testError } = await db.from("tests").select("id").eq("id", testId).eq("is_published", true).is("archived_at", null).maybeSingle();
+    if (testError) throw testError;
+    if (!test) {
+      const { body, status } = fail("NOT_FOUND", "Тест не найден", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const { data: links, error: linksError } = await db.from("test_questions").select("question_id,questions!inner(id,is_published,archived_at)").eq("test_id", testId).eq("questions.is_published", true).is("questions.archived_at", null);
+    if (linksError) throw linksError;
+    const questionIds = [...new Set((links || []).map((row: any) => String(row.question_id)).filter(Boolean))];
+    if (!questionIds.length) return c.json(ok({ total: 0, answered: 0, correct: 0, remaining: 0, completed: true }, rid));
+    const { data: results, error: resultsError } = await db.from("test_preparation_results")
+      .select("question_id,is_correct,answered_at").eq("test_id", testId).eq("user_id", user.id)
+      .in("question_id", questionIds).not("answered_at", "is", null).order("answered_at", { ascending: false }).limit(5000);
+    if (resultsError) throw resultsError;
+    const latest = new Map<string, any>();
+    for (const result of results || []) if (!latest.has(String(result.question_id))) latest.set(String(result.question_id), result);
+    const answered = latest.size;
+    const total = questionIds.length;
+    const correct = [...latest.values()].filter((result: any) => result.is_correct === true).length;
+    return c.json(ok({ total, answered, correct, remaining: Math.max(0, total - answered), completed: answered >= total }, rid));
+  } catch (error) {
+    console.error("[tests:bank-progress]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Прогресс банка временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 tests.get("/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID теста");
