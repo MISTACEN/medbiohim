@@ -24,9 +24,9 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "progress";
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "progress" | "colloquium";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress"];
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress", "colloquium"];
 
 function normalizeTab(v: string) {
   if (v === "cards") return "trainers" as TabId;
@@ -310,6 +310,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "trainer", label: "Микропрепараты", Icon: Microscope },
     { id: "trainers", label: "Тренажёры", Icon: ListChecks },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
+    ...(slug === "physiology" ? [{ id: "colloquium" as TabId, label: "Коллоквиум", Icon: GraduationCap }] : []),
   ];
 
   if (loading) return (
@@ -391,6 +392,12 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
       </nav>
 
       <div role="tabpanel" className="min-h-[12rem]">
+        {tab === "colloquium" && slug === "physiology" && (
+          <section className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div><h2 className="text-lg font-bold">Коллоквиум по физиологии возбудимых систем</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Контрольные вопросы по темам, ответы, объяснения простыми словами и проверочный тест для самоподготовки.</p></div>
+            <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/colloquium"} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700">Открыть коллоквиум <ExternalLink className="ml-2 h-4 w-4" /></Link>
+          </section>
+        )}
         {tab === "plan" && (
           <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
