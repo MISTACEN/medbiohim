@@ -3818,3 +3818,10 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - Applied the same rule to the normal negotiation and access-token-refresh branches. Reopening an image/PDF/DOC/DOCX requests a fresh URL instead of reusing a 5-minute signature.
 - Live atlas restoration is **not yet verified**: Worker secrets inventory confirms `UPSTASH_BLOB_TOKEN` is configured on `medbiohim-api` and `medbiohim-api-shadow`, but presence does not prove the token can read the intended bucket. A direct object-list attempt through the connected Blob management tool was rejected as unauthorized. Need authenticated production checks for all 206 published cards (including 28 electronograms), plus material file URLs and browser navigation/reload.
 - Do not mark media migration complete until the production image route returns actual image bytes/redirects and PDF/DOC/DOCX files open for an authorized MBH user. No secrets were read or printed.
+## 2026-10-18 — Restore public Upstash Blob media path
+
+- Production target is `workers/api/` → `medbiohim-api`; `medbiohim-api-shadow` remains fallback only.
+- Production API now proxies published trainer images through `UPSTASH_BLOB_PUBLIC_BASE_URL` (default `https://b8a4f9f853fa.blob.upstash.io`) before optional private-SDK fallback; the handler no longer requires `UPSTASH_BLOB_TOKEN` merely to serve public objects.
+- Materials file route now tries the same public Blob endpoint using validated candidate keys and preserves declared MIME metadata for objects served as `application/octet-stream`; Supabase publication/auth checks remain in place.
+- Added contract tests for the public Blob path and configured the endpoint in production Wrangler vars.
+- **Pending verification:** CI typecheck/tests and live `medbiohim-api` deployment must pass. Do not infer production success from shadow deployment. Public endpoint object reads and all 28 electronograms still require live authenticated route checks.
