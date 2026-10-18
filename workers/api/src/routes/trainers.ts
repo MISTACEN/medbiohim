@@ -3,6 +3,7 @@ import { BlobError, Bucket } from "@upstash/blob";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createAnonClient, createServiceClient } from "../lib/supabase";
 
 const trainers = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -294,11 +295,13 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
   }
 });
 
-trainers.get("/feed/:id/image", requireAuth, async (c) => {
+trainers.get("/feed/:id/image", async (c) => {
   const rid = requestId();
-  const supabase = c.get("supabase");
-  // Public Blob reads do not require UPSTASH_BLOB_TOKEN. The Worker still
-  // authenticates the user and resolves a published card before proxying bytes.
+  // Public media endpoint: only published cards can resolve to image bytes.
+  // Prefer the server-only service client for metadata lookups; fall back to anon + RLS.
+  const supabase = createServiceClient(c.env) || createAnonClient(c.env);
+  // Public Blob reads do not require UPSTASH_BLOB_TOKEN. This route intentionally
+  // does not require a user session: it exposes bytes only for published cards.
   // Keep the SDK as a compatibility fallback only.
   const bucket = getBlobBucket(c.env);
 
