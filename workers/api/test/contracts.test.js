@@ -58,7 +58,7 @@ test("histology atlas proxies public Upstash Blob objects without requiring a pr
   assert.match(trainers, /publicResponse\.ok && publicResponse\.body/);
   assert.match(trainers, /const bucket = getBlobBucket\(c\.env\);/);
   assert.doesNotMatch(trainers, /if \(!bucket\)\s*\{\s*const \{ body, status \} = fail\("NOT_CONFIGURED"/);
-  assert.match(trainers, /histology\/\s*\+\s*stripped/);
+  assert.match(trainers, /add\("histology\/" \+ stripped\)/);
   assert.match(trainers, /electronograms\/images\/\s*\+\s*base/);
 });
 
