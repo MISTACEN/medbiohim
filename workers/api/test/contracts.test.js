@@ -59,7 +59,7 @@ test("histology atlas proxies public Upstash Blob objects without requiring a pr
   assert.match(trainers, /const bucket = getBlobBucket\(c\.env\);/);
   assert.doesNotMatch(trainers, /if \(!bucket\)\s*\{\s*const \{ body, status \} = fail\("NOT_CONFIGURED"/);
   assert.match(trainers, /add\("histology\/" \+ stripped\)/);
-  assert.match(trainers, /electronograms\/images\/\s*\+\s*base/);
+  assert.match(trainers, /add\("electronograms\/images\/" \+ base\)/);
 });
 
 test("materials proxy public Upstash Blob files and retain MIME metadata fallback", async () => {
