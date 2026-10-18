@@ -297,11 +297,10 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
 trainers.get("/feed/:id/image", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
+  // Public Blob reads do not require UPSTASH_BLOB_TOKEN. The Worker still
+  // authenticates the user and resolves a published card before proxying bytes.
+  // Keep the SDK as a compatibility fallback only.
   const bucket = getBlobBucket(c.env);
-  if (!bucket) {
-    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
-    return c.json(body, status as 503);
-  }
 
   try {
     let cardResult = await supabase
@@ -388,7 +387,7 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
     let resolvedKey = "";
     const key = candidates[0];
 
-    const publicBlobBase = "https://b8a4f9f853fa.blob.upstash.io";
+    const publicBlobBase = (c.env.UPSTASH_BLOB_PUBLIC_BASE_URL || "https://b8a4f9f853fa.blob.upstash.io").trim().replace(/\/+$/, "");
     for (const candidate of candidates) {
       const publicUrl = `${publicBlobBase}/${candidate.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
       try {
@@ -415,12 +414,20 @@ trainers.get("/feed/:id/image", requireAuth, async (c) => {
           error: error instanceof Error ? error.message : String(error),
         });
       }
-      try {
-        image = await bucket.get(candidate);
-        if (image) { resolvedKey = candidate; break; }
-      } catch (error) {
-        if (BlobError.is(error) && error.code === "not_found") continue;
-        throw error;
+      if (bucket) {
+        try {
+          image = await bucket.get(candidate);
+          if (image) { resolvedKey = candidate; break; }
+        } catch (error) {
+          if (BlobError.is(error) && error.code === "not_found") continue;
+          // Public reads are the primary path; an invalid/expired private token
+          // must not prevent already-public objects from being served.
+          console.warn("[trainer-image] authenticated Blob fallback failed", {
+            cardId: card.id,
+            key: candidate,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
     if (!image) {
