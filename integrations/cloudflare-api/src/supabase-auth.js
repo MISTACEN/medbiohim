@@ -256,8 +256,11 @@ export async function refreshSupabaseSession(refreshToken, env, fetcher = fetch)
     logAuthRedirect("refreshSupabaseSession", response, endpoint);
     return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth returned an unexpected redirect");
   }
-  if (response.status === 400 || response.status === 401 || response.status === 403) {
-    return failure(401, "AUTH_REFRESH_FAILED", "Could not refresh session");
+  if (response.status === 400 || response.status === 401) {
+    // Supabase uses 400/401 for a refresh token it has explicitly rejected.
+    // Keep this distinct from 5xx/network failures so clients can retain a
+    // still-valid session during an Auth outage.
+    return failure(401, "INVALID_REFRESH", "Could not refresh session");
   }
   if (!response.ok) {
     return failure(502, "AUTH_UPSTREAM_ERROR", "Supabase Auth is temporarily unavailable");

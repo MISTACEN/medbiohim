@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearTokens, hasToken, logoutSession, me, refreshSession } from "@/lib/api";
+import { clearTokens, hasRefreshToken, hasToken, logoutSession, me, refreshSession } from "@/lib/api";
 
 export type AppUser = {
   id: string;
@@ -46,7 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!hasToken()) {
-      const refreshed = await refreshSession();
+      let refreshed = await refreshSession();
+      if (!refreshed.ok && isTemporaryAuthFailure(refreshed.error.code)) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        refreshed = await refreshSession();
+      }
       if (!refreshed.ok) {
         setUser(null);
         setLoading(false);
@@ -54,9 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     try {
-      const res = await me();
+      let res = await me();
+      if (!res.ok && isTemporaryAuthFailure(res.error.code)) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        res = await me();
+      }
       if (!res.ok) {
-        clearTokens();
+        // A service/database outage must not turn into an accidental logout.
+        // Invalid refresh tokens are cleared by the API client; an access-only
+        // invalid session cannot be recovered and should be removed here.
+        if (res.error.code === "UNAUTHORIZED" && !hasRefreshToken()) clearTokens();
         setUser(null);
         return;
       }
@@ -95,7 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         groups,
       });
     } catch {
-      clearTokens();
+      // Keep the stored credentials when profile loading fails unexpectedly.
+      // A later navigation/reload can recover after the API comes back.
       setUser(null);
     } finally {
       setLoading(false);
@@ -118,6 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+function isTemporaryAuthFailure(code: string): boolean {
+  return ["NETWORK", "BAD_RESPONSE", "AUTH_UPSTREAM", "AUTH_ERROR", "DB_UNAVAILABLE", "UPSTREAM"].includes(code);
 }
 
 export function useAuth() {

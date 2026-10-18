@@ -297,7 +297,7 @@ test("refresh maps invalid tokens and hides upstream details", async () => {
     new Response("invalid", { status: 400 })
   );
   assert.equal(invalid.status, 401);
-  assert.equal(invalid.code, "AUTH_REFRESH_FAILED");
+  assert.equal(invalid.code, "INVALID_REFRESH");
   const failed = await refreshSupabaseSession("token", configured, async () =>
     new Response("sensitive upstream details", { status: 503 })
   );

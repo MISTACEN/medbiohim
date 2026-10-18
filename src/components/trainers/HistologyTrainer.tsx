@@ -51,6 +51,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [section, setSection] = useState<"atlas" | "trainer">("atlas");
   const [atlasTopic, setAtlasTopic] = useState<string>("");
+  const [atlasSort, setAtlasSort] = useState<"plan" | "name-asc" | "name-desc">("plan");
   const [lightbox, setLightbox] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -238,6 +239,8 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     const within = (a: any, b: any) => {
       const ea = isElectronogramCard(a), eb = isElectronogramCard(b);
       const byName = String(a.preparation?.name || "").localeCompare(String(b.preparation?.name || ""), "ru");
+      if (atlasSort === "name-asc") return byName;
+      if (atlasSort === "name-desc") return -byName;
       if (ea !== eb) return ea ? 1 : -1;
       if (ea && eb) return emPlanRank(a) - emPlanRank(b) || byName;
       return byName;
@@ -245,7 +248,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     return Array.from(map.entries())
       .sort((a, b) => compareLessons(a[0], b[0]))
       .map(([title, items]) => [title, items.sort(within)] as [string, any[]]);
-  }, [atlasItems, atlasTopic]);
+  }, [atlasItems, atlasTopic, atlasSort]);
 
   const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
   const hasMoreHistory = sessions.length > 4;
@@ -305,6 +308,19 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
                     <button key={tg} type="button" onClick={() => setAtlasTopic(atlasTopic === tg ? "" : tg)} className={"rounded-xl border px-3 py-2 text-sm " + (atlasTopic === tg ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>{topicLabel(tg)}</button>
                   ))}
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="histology-atlas-sort" className="text-sm font-semibold">Сортировка препаратов</label>
+                <select
+                  id="histology-atlas-sort"
+                  value={atlasSort}
+                  onChange={(event) => setAtlasSort(event.target.value as typeof atlasSort)}
+                  className="rounded-xl border bg-white px-3 py-2 text-sm"
+                >
+                  <option value="plan">По плану занятий</option>
+                  <option value="name-asc">По названию: А—Я</option>
+                  <option value="name-desc">По названию: Я—А</option>
+                </select>
               </div>
             </section>
             {atlasByTopic.length === 0 ? (

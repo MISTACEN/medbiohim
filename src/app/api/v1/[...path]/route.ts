@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { protectTrainingPayload } from "@/lib/training-payload-sanitizer.mjs";
 
 const DEFAULT_CLOUDFLARE_API_ORIGIN = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1";
-const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN).trim().replace(/\/$/, "");
+function secureCloudflareOrigin(value: string): string {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash ||
+        !url.pathname.replace(/\/$/, "").endsWith("/api/v1")) return "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+const CLOUDFLARE_UPSTREAM = secureCloudflareOrigin(process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN);
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 

@@ -43,6 +43,7 @@ export function clearTokens(){
   clearUserScopedCaches();
 }
 export function hasToken(){return !!getToken()}
+export function hasRefreshToken(){return !!getRefreshToken()}
 async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{
   const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};
   const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;
@@ -225,7 +226,17 @@ async function refreshAccessToken(): Promise<string | null> {
         signal: AbortSignal.timeout(10000),
       });
       const rt = await rr.text();
-      if (!rr.ok) return null;
+      if (!rr.ok) {
+        // Supabase refresh tokens may remain valid while Auth is unavailable.
+        // Clear the session only when the endpoint explicitly rejects it.
+        if (rr.status === 401) {
+          try {
+            const failure = JSON.parse(rt) as { error?: { code?: string } };
+            if (failure?.error?.code === "INVALID_REFRESH") clearTokens();
+          } catch {}
+        }
+        return null;
+      }
       const parsed = JSON.parse(rt) as {data?:{access_token?:string;refresh_token?:string}};
       const access = parsed.data?.access_token;
       if (!access) return null;
@@ -247,7 +258,6 @@ export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResu
     if(res.status===401 && path!=="/auth/refresh"){
       const access = await refreshAccessToken();
       if(access) ({res,text}=await request<T>(path,options,access));
-      else if (getRefreshToken()) clearTokens();
     }
     try {
       return JSON.parse(text) as ApiResult<T>;

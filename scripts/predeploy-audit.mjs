@@ -94,8 +94,8 @@ else pass("no literal escaped-newline source artifacts");
 const proxyPath = join(root, "src/app/api/v1/[...path]/route.ts");
 if (existsSync(proxyPath)) {
   const proxy = await readFile(proxyPath, "utf8");
-  if (proxy.includes("SPACEWEB_API_ORIGIN")) pass("Vercel -> SpaceWeb proxy contract present");
-  else fail("SPACEWEB_API_ORIGIN is not referenced by the Vercel API proxy");
+  if (proxy.includes("CLOUDFLARE_API_ORIGIN") && proxy.includes("cloudflare-only")) pass("Vercel -> Cloudflare-only API proxy contract present");
+  else fail("Vercel API proxy is not pinned to the Cloudflare-only contract");
 }
 
 const apiClientPath = join(root, "src/lib/api.ts");
@@ -224,22 +224,21 @@ if (existsSync(proxyPathForHeaders)) {
   } else {
     fail("training response sanitizer or trainer 404 handling references an unavailable helper");
   }
-  if (text.includes('message: "Cloudflare API недоступен; безопасный резервный маршрут не дал ответа"') &&
+  if (text.includes('message: "Cloudflare API недоступен"') &&
       !text.includes('message: msg') && !text.includes('error: String(error)')) {
     pass("proxy 502 response does not expose raw upstream exception messages");
   } else {
     fail("proxy 502 response may expose internal upstream exception details");
   }
 
-  if (text.includes('const CLOUDFLARE_UPSTREAM = (process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN)') &&
+  if (text.includes('const CLOUDFLARE_UPSTREAM = secureCloudflareOrigin(process.env.CLOUDFLARE_API_ORIGIN || DEFAULT_CLOUDFLARE_API_ORIGIN)') &&
       text.includes('https://medbiohim-api.ryazansevegor.workers.dev/api/v1') &&
       !text.includes('medbiohim-api-shadow') &&
-      text.includes('u.protocol === "https:"') &&
-      text.includes('shouldFallbackFromCloudflare') &&
-      text.includes('SAFE_SPACEWEB_ORIGIN')) {
-    pass("Cloudflare defaults to the production Worker; legacy fallback is HTTPS-only and never targets shadow");
+      text.includes('url.protocol !== "https:"') &&
+      text.includes('url.username || url.password')) {
+    pass("Cloudflare defaults to the canonical production Worker and rejects insecure proxy origins");
   } else {
-    fail("Cloudflare production origin or HTTPS-only legacy fallback guard is missing");
+    fail("Cloudflare production origin or HTTPS-only proxy origin guard is missing");
   }
 
   if (text.includes('async function isCanonicalAdminRequest') &&

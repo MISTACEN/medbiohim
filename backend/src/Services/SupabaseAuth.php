@@ -87,8 +87,14 @@ final class SupabaseAuth
             'apikey: ' . $this->apiKey(),
             'Authorization: Bearer ' . $this->apiKey(),
         ]);
-        if ($res['status'] === 0 || $res['status'] >= 400 || $res['json'] === null) {
-            return ['ok' => false, 'code' => 'AUTH_REFRESH_FAILED', 'message' => 'Could not refresh session', 'status' => 401];
+        if ($res['status'] === 400 || $res['status'] === 401) {
+            return ['ok' => false, 'code' => 'INVALID_REFRESH', 'message' => 'Could not refresh session', 'status' => 401];
+        }
+        if ($res['status'] === 0 || $res['status'] >= 500 || $res['status'] === 403 || $res['json'] === null) {
+            return ['ok' => false, 'code' => 'AUTH_UPSTREAM_ERROR', 'message' => 'Supabase Auth is temporarily unavailable', 'status' => 502];
+        }
+        if ($res['status'] >= 400) {
+            return ['ok' => false, 'code' => 'AUTH_UPSTREAM_ERROR', 'message' => 'Supabase Auth rejected the refresh request', 'status' => 502];
         }
         return ['ok' => true, 'data' => $this->normalizeSession($res['json'])];
     }
