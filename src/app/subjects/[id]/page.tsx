@@ -139,17 +139,21 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         setModules(Array.isArray(moduleRows) ? (moduleRows as Module[]) : []);
         const slug = slugNames[(s?.name || "").toLowerCase()] || s?.slug || "";
         if (s?.id) {
-          // Everything below is independent after the subject is known.
-          const [pr, gb, tt, mm, bb, pg, mr, ll] = await Promise.all([
-            slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3) : Promise.resolve({ ok: false } as any),
+          // Render the core subject view as soon as its plan and test catalog
+          // arrive. Slow auxiliary panels (progress, tickets, media and CMS)
+          // should not leave the whole subject page on a skeleton.
+          const planRequest = slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3) : Promise.resolve({ ok: false } as any);
+          const testsRequest = listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3);
+          const auxiliaryRequest = Promise.all([
             getSubjectGradebook(s.id),
-            listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3),
             listSubjectMaterials({ subjectId: s.id }),
             listTicketBanks(),
             getProgress(s.id, user?.groupId),
             listMaterials(slug ? { subjectSlug: slug } : {}),
             listLectures(slug),
           ]);
+          const [pr, tt] = await Promise.all([planRequest, testsRequest]);
+          if (cancelled) return;
           if (!cancelled && pr.ok) {
             const planData = pr.data.plan || pr.data;
             const planSubject = pr.data.subject && typeof pr.data.subject === "object" ? pr.data.subject : {};
@@ -195,10 +199,17 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             setResourceErrors({
               ...(!pr.ok ? { plan: pr.error?.message || "Не удалось загрузить учебный план." } : {}),
               ...(!tt.ok ? { tests: tt.error?.message || "Не удалось загрузить тесты." } : {}),
-              ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
             });
-            if (gb.ok) setGradebook(gb.data.items || []);
             if (tt.ok) setTests(tt.data.items || []);
+            setLoading(false);
+          }
+          const [gb, mm, bb, pg, mr, ll] = await auxiliaryRequest;
+          if (!cancelled) {
+            setResourceErrors((current) => ({
+              ...current,
+              ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
+            }));
+            if (gb.ok) setGradebook(gb.data.items || []);
             if (mm.ok) setMaterials(mm.data.items || []);
             if (bb.ok) setBanks(bb.data.items || []);
             if (pg.ok) setProgress(pg.data);
