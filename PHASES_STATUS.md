@@ -2978,3 +2978,14 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - [x] Removed `requireAuth` from that image-only handler; it looks up server-side metadata and serves only published-card media through validated candidate keys. Other trainer endpoints keep their existing authentication.
 - [x] Added a contract test guarding the public image route and added `docs/PUBLIC-TRAINER-IMAGE-ACCESS-FIX-2026-10-18.md`.
 - [ ] Production deploy and anonymous live image-byte verification pending; do not call this fully resolved until the canonical Worker is deployed and tested.
+
+
+## 2026-10-19 — Физиология / коллоквиум
+**Статус: интерфейс и учебный контент добавлены в main; production-проверка ещё не выполнена.**
+- [x] Создана страница `src/app/subjects/[id]/colloquium/page.tsx`.
+- [x] Добавлена вкладка «Коллоквиум» в страницу предмета для физиологии.
+- [x] Разделы: мембрана и потенциалы; законы раздражения; нервные волокна и нейроны; синапсы; мышцы.
+- [x] 38 карточек вопросов; ответы и пояснения раскрываются по нажатию.
+- [x] Добавлен тест из 10 вопросов с проверкой и обратной связью.
+- [ ] Запустить typecheck/build и проверить страницу на production после деплоя.
+- [ ] Дополнить раздел ситуационными задачами и полным тестовым банком из пособия; для вопросов 29–38 заменить обзорные ответы на точные формулировки источника, когда исходный раздел доступен.
