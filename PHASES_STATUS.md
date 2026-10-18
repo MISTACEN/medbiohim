@@ -2925,3 +2925,20 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - [x] Added a source-contract regression assertion for the 250 cap and pagination range.
 - [x] Cloudflare production deployment [39039681372](https://github.com/MISTACEN/medbiohim/actions/runs/39039681372) passed TypeScript checks and Worker tests; active canonical Worker version is c22fabea-7290-49c9-9ac7-83315ba17fc2 at 100% traffic.
 - [ ] Signed-in UI check remains pending: confirm all 206 cards load in both atlas and materials contexts, with 178 preparation images, 28 electronograms, the intended plan filter, and retry/zoom behavior.
+
+
+## Обновление 2026-10-18: наполнение гистологии
+
+**Готово и проверено по Supabase:**
+- Каталог препаратов: 178/178 опубликованы, у всех заполнены media_path и media_url, у всех назначена секция.
+- Индекс медиа: 206/206 опубликованы, storage_path заполнен; 178 связаны с препаратами, остальные 28 — электронограммы.
+- Закрытые тесты «Цитология и эмбриология»: 163/163 опубликованы, валидный индекс ответа и 5 вариантов у каждого.
+- Конспекты гистологии для MBH: 17/17 опубликованы; 17 содержат более 500 символов.
+- Четыре конспекта дополнены учебным материалом и опубликованы: нервная ткань, сердечно-сосудистая система, эндокринная система, орофациальная/стоматологическая гистология.
+- Экзаменационные вопросы: 466 записей, 366 опубликованы, только 57 имеют заполненный answer. 100 непубликованных записей проверены как дубликаты уже опубликованных формулировок и оставлены непубликованными, чтобы не засорять банк.
+- Пять существующих ticket_banks не изменялись.
+
+**Не подтверждено / осталось:**
+- Upstash Blob list API на момент проверки вернул отказ авторизации токена интеграции; содержимое bucket не менялось. Поэтому не утверждаем, что каждый storage_path был отдельно проверен по Blob API.
+- Не выполнен production UI smoke test после изменения данных.
+- Дальше: сверить storage_path, проверить интерфейсы материалов/атласа/тестов, затем проработать ответы к экзаменационным вопросам без массовой публикации неподтверждённых ответов.
