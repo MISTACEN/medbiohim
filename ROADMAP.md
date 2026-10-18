@@ -3832,3 +3832,11 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - Cloudflare confirms `medbiohim-api` is now on version `50d1b57d-1da2-43a4-9951-0dbe89b090bd` at 100% traffic. The production Worker binding `UPSTASH_BLOB_PUBLIC_BASE_URL` is set to `https://b8a4f9f853fa.blob.upstash.io`; `UPSTASH_BLOB_TOKEN` remains configured as an optional fallback. Shadow remains a service-binding fallback, not the production target.
 - Local worker checks on the source snapshot: TypeScript typecheck passed; all 32 Node tests passed.
 - Remaining verification limit: this environment cannot make direct HTTP requests to the Worker or public Blob host, so it cannot independently confirm byte responses for each published micropreparation/electronogram/material. The authenticated Worker proxy code is deployed, but do not mark every object verified until a browser/smoke test confirms real bytes and MIME types.
+
+
+## 2026-10-18 — Public trainer image access
+
+- [x] Root cause identified: `GET /api/v1/trainers/feed/:id/image` was registered with `requireAuth`, so direct browser navigation returned `UNAUTHORIZED` before Blob lookup.
+- [x] Removed auth only from the image-byte route; it uses server-side metadata lookup and still resolves only published cards with validated storage keys. Feed, answer submission, and other protected routes remain authenticated.
+- [x] Added a regression contract test for the public route.
+- [ ] Confirm canonical `medbiohim-api` deployment and verify an unauthenticated image request returns image bytes in production. A source commit alone is not acceptance evidence.
