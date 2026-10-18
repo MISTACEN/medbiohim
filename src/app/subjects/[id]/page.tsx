@@ -58,7 +58,7 @@ function stripHtml(html?: string | null) {
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, loading: authLoading } = useAuth();
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
+  const [, setModules] = useState<Module[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
   const [gradebook, setGradebook] = useState<any[]>([]);
   const [tests, setTests] = useState<ApiTest[]>([]);
@@ -499,7 +499,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
 
         {tab === "trainers" && (
-          <SubjectTrainersHub subjectSlug={slug} subjectName={subject?.name || ""} subjectId={subject?.id} />
+          <SubjectTrainersHub lectureHref="?tab=lectures" />
         )}
 
         {tab === "progress" && (
