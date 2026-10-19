@@ -7,7 +7,10 @@
 | **[WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md)** | **LOCKED:** `medbiohim-api` = единственный прод API; shadow = fallback only |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура (Vercel + SpaceWeb + Supabase + Cloudflare) |
 | [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md) | **Полный инвентарь PHP API** — сверка с Cloudflare |
-| [STATUS.md](STATUS.md) | Текущий статус, блокеры, cutover gates |
+| [STATUS.md](STATUS.md) | Исторический снимок от 2026-10-15; проверять дату перед использованием |
+| [API-ROUTE-PARITY-AUDIT-2026-10-19.md](API-ROUTE-PARITY-AUDIT-2026-10-19.md) | Текущая статическая матрица API-маршрутов |
+| [WORKFLOW-CLEANUP-AUDIT-2026-10-19.md](WORKFLOW-CLEANUP-AUDIT-2026-10-19.md) | Риски ручных GitHub Actions |
+| [REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](REPOSITORY-CLEANUP-AUDIT-2026-10-19.md) | Общий аудит файлов и инфраструктуры |
 | [../BRANCHES.md](../BRANCHES.md) | Правила веток main / spaceweb-backend / beta |
 | [ACTIVE-EXPERIMENTS.md](ACTIVE-EXPERIMENTS.md) | Что крутится на beta |
 | [platform-concept-medbiohim.md](platform-concept-medbiohim.md) | Учебная концепция (предмет → разделы) |
