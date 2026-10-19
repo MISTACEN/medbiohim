@@ -29,7 +29,7 @@ Do not dispatch these to test them. Before retiring any, compare their generated
 - `smoke.yml`: main push, manual and scheduled smoke; read-only permission.
 - `deploy-medbiohim-api.yml`: canonical production Worker deploy; typecheck/tests before deploy, read-only contents permission.
 - `deploy-cloudflare-shadow.yml`: manual-only shadow deploy; keep while canonical 501 fallback remains.
-- `package-archives.yml` and `build-spaceweb-archive.yml`: partially overlapping archive jobs; compare consumers before merging/disabling either.
+- `package-archives.yml`: retained as the generic source/backend archive workflow. `build-spaceweb-archive.yml` was removed on 2026-10-20 after confirming it only packaged a legacy SpaceWeb artifact and had no consumers in source/workflows.
 
 ## Run history limitation
 
@@ -54,3 +54,9 @@ CI follow-up (2026-10-19): the predeploy audit's signed-URL cache assertion was 
 ## Follow-up — 2026-10-20
 
 The code-check, smoke, source-package, and Cloudflare deploy workflows for the API priority fix succeeded. The four legacy `apply-*` / `fix-*` workflow runs that show as failed for the latest commits had **zero jobs**, so no steps ran. They remain do-not-dispatch until each source-mutating script is audited. The root lockfile was added and the latest code-check run passed.
+
+
+## Follow-up — 2026-10-20
+
+- Removed `.github/workflows/build-spaceweb-archive.yml` in commit `6d5ede307f6e0020d47f65f402fb0b60e7bb74f8`. The generic `package-archives.yml` continues to produce a backend archive, so no backup packaging capability was lost.
+- Temporary Google Drive histology media is live: Worker deploy and code checks passed; all 206 published card image routes returned HTTP 200 with image bytes (178 preparations + 28 electronograms). Details: [production media audit](PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md).

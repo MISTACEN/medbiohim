@@ -26,12 +26,12 @@ The following `workflow_dispatch` workflows grant `contents: write`, modify sour
 
 - `package-archives.yml` builds full-source and backend ZIP artifacts on non-Markdown pushes; it explicitly excludes environment files and validates archive contents.
 - `build-spaceweb-archive.yml` builds a separate backend-only SpaceWeb archive, also excluding environment files. It does not deploy to SpaceWeb. It is legacy packaging and should be considered redundant for the current Cloudflare-only production topology, but removal is deferred until confirming nobody relies on its artifacts.
-- These two archive workflows overlap on backend packaging. Neither should be treated as a production deployment workflow.
+- `package-archives.yml` remains the generic full-source/backend artifact workflow. The redundant `build-spaceweb-archive.yml` was removed in commit `6d5ede307f6e0020d47f65f402fb0b60e7bb74f8` after confirming no source/workflow consumes its artifact name. Neither workflow was a production deployment workflow.
 
 ## Placeholder and missing workflow
 
 - `.github/workflows/apply-p0-embedded.yml` is absent on current `main` (GitHub contents API returned 404); no deletion needed.
-- `.github/workflows/_questions.b64` was previously observed as a tiny file and remains a cleanup candidate only after confirming no workflow/script references it.
+- `.github/workflows/_questions.b64` is absent from current `main` (404); code search returns only documentation mentions, so no further cleanup is needed.
 
 ## Scope and safety
 
@@ -39,3 +39,8 @@ The following `workflow_dispatch` workflows grant `contents: write`, modify sour
 - No workflow files were deleted or rewritten in this audit.
 - No Supabase migrations or data were changed.
 - The next safe step is to add dry-run/patch previews and stale-source guards to the manual workflows, then consolidate duplicate workflows only after a diff against the currently deployed Worker.
+
+
+## Follow-up — 2026-10-20
+
+The temporary Google Drive resolver is now deployed in canonical Worker `medbiohim-api`. Live production smoke verified **206/206** histology image routes return HTTP 200 image bytes (178 preparations + 28 electronograms); deployment [39270945145](https://github.com/MISTACEN/medbiohim/actions/runs/39270945145), code checks [39270945030](https://github.com/MISTACEN/medbiohim/actions/runs/39270945030). The resolver is restricted to published `histology/mbh` cards.

@@ -163,3 +163,10 @@ CI follow-up: the stale private-media cache assertion in `scripts/predeploy-audi
 - Добавлен `package-lock.json`: локальный `npm ci`, frontend typecheck/build и Worker 35 тестов проходят; npm audit сообщает 0 уязвимостей. Production Vercel deployment для commit `b62aa4ad8634423eac07b547dee2021c8574c7e4` имеет READY.
 - Сопоставление гистологии: 206/206 карточек имеют соответствующий путь в `histology_assets`, но Blob inventory/signing недоступны из-за отклонённого bucket token, а production отдаёт 206/206 404. Физическое наличие объектов не подтверждено.
 - Authenticated student/admin CRUD не запускался без тестовой сессии. Production data не изменялись.
+
+
+## Follow-up verification — 2026-10-20
+
+- `.github/workflows/_questions.b64` is already absent from current `main`; a fresh code search finds only documentation references. It is not an outstanding file-deletion task.
+- `.github/workflows/build-spaceweb-archive.yml` was removed after checking its only output artifact had no source/workflow consumers. `package-archives.yml` still produces a generic backend archive, so the backup artifact function remains.
+- Histology temporary media was recovered through the shared Google Drive folder: 178/178 original photos and 28/28 electronogram previews are mapped; the canonical Worker was deployed and all 206 production image endpoints returned HTTP 200 with image bytes. See [media audit](PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md).
