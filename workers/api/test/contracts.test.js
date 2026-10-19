@@ -83,3 +83,37 @@ test("materials proxy public Upstash Blob files and retain MIME metadata fallbac
   assert.match(env, /UPSTASH_BLOB_PUBLIC_BASE_URL\?: string/);
   assert.match(wrangler, /UPSTASH_BLOB_PUBLIC_BASE_URL = "https:\/\/b8a4f9f853fa\.blob\.upstash\.io"/);
 });
+
+test("admin parity routes used by the frontend are mounted with safe table-backed handlers", async () => {
+  const admin = await source("../src/routes/admin.ts");
+  const parity = await source("../src/routes/admin-parity.ts");
+  assert.match(admin, /admin\.route\("\/", adminParity\)/);
+  for (const contract of [
+    'parity.get("/community"',
+    'parity.patch("/community/:id"',
+    'parity.delete("/community/:id"',
+    'parity.get("/homeworks"',
+    'parity.post("/homeworks"',
+    'parity.delete("/homeworks/:id"',
+    'parity.get("/materials"',
+    'parity.delete("/materials/:id"',
+    'parity.get("/problem-center"',
+    'parity.post("/problem-center/work"',
+    'parity.patch("/problem-center/work/:id"',
+    'parity.patch("/question-reports/:id"',
+    'parity.put("/site"',
+    'parity.post("/content/archive"',
+    'parity.post("/content/move"',
+    'parity.get("/db/audit"',
+    'parity.post("/db/audit/:id/rollback"',
+  ]) assert.ok(parity.includes(contract), "missing route contract: " + contract);
+  assert.match(parity, /FILE_IN_USE/);
+  assert.match(parity, /HOMEWORK_HAS_ACTIVITY/);
+  assert.match(parity, /PINNING_NOT_SUPPORTED/);
+});
+
+test("content importer returns the response fields expected by the admin UI", async () => {
+  const admin = await source("../src/routes/admin.ts");
+  assert.match(admin, /dry_run:\s*true,\s*valid:\s*true,\s*errors:\s*\[\]/);
+  assert.match(admin, /created:\s*\{\s*tests:\s*mappedTests\.length/);
+});

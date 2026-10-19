@@ -5,6 +5,7 @@ import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
 import dbAdmin from "./admin-database";
+import adminParity from "./admin-parity";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -619,7 +620,7 @@ admin.post("/content/import", requireAuth, async (c) => {
         if (difficulty !== null && (!Number.isInteger(difficulty) || difficulty < 0 || difficulty > 10)) throw new Error("invalid difficulty");
         mappedQuestions.push({ source_key: row.question_key, text: row.text, subject_id: sid, module_id: moduleId, topic_id: topicId, type: String(row.type || "open"), answer: String(row.answer || ""), options, difficulty, is_published: row.is_published === true || row.is_published === "true" });
       }
-      if (dryRun) return c.json(ok({ dry_run: true, valid: true, counts: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length } }, rid));
+      if (dryRun) return c.json(ok({ dry_run: true, valid: true, errors: [], counts: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length } }, rid));
       if (mappedQuestions.length) {
         const { error: writeError } = await db.from("questions").upsert(mappedQuestions, { onConflict: "source_key" });
         if (writeError) return error(c, rid, 503, "IMPORT_FAILED", "Не удалось импортировать вопросы; проверьте уникальность source_key");
@@ -636,7 +637,7 @@ admin.post("/content/import", requireAuth, async (c) => {
         const { error: linkError } = await db.from("test_questions").upsert({ test_id: test.id, question_id: question.id, order_index: Number(link.order_index || 0) }, { onConflict: "test_id,question_id" });
         if (linkError) return error(c, rid, 503, "IMPORT_FAILED", "Не удалось связать вопросы с тестами");
       }
-      return c.json(ok({ imported: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length }, dry_run: false }, rid), 201);
+      return c.json(ok({ created: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length }, imported: { tests: mappedTests.length, questions: mappedQuestions.length, test_questions: links.length }, dry_run: false }, rid), 201);
     } catch (e) {
       const message = e instanceof Error && e.message.includes("subject") ? "Предмет не найден или его slug неоднозначен; укажите уникальный subject_key" : e instanceof Error && e.message.includes("academic") ? "Модуль или тема не найдены либо имеют неоднозначное имя" : e instanceof Error && e.message.includes("options") ? "Поле options содержит некорректный JSON-массив" : "Пакет содержит некорректные строки или неизвестные ссылки";
       return error(c, rid, 422, "VALIDATION_ERROR", message);
@@ -1007,5 +1008,6 @@ admin.delete("/announcements/:id", requireAuth, async (c) => {
 });
 
 admin.route("/database", dbAdmin);
+admin.route("/", adminParity);
 
 export default admin;
