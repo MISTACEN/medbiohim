@@ -66,3 +66,8 @@ No backend tree is safe to remove yet. Documentation correction and workflow har
 - Added admin endpoints for community moderation, homework list/create/safe-delete, file-backed materials list/safe-delete, problem-center/report/work management, site settings, content archive/move, and content-version audit/rollback.
 - All new routes return 401 without a token, confirming auth middleware is attached. This is route registration evidence only; authenticated create/update flows remain unverified without a test session.
 - Histology media remains blocked: all 206 published card image routes returned 404. See [production route and media audit](PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md).
+
+
+## Follow-up schema-contract fix (2026-10-20)
+
+Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `normal`, `high`, and `urgent`, while both admin API validators only permitted the first three. The canonical Worker now accepts `urgent` on create and update; the route contract test asserts the API's allowed list. No database changes were needed. CI must pass before treating this code fix as verified.

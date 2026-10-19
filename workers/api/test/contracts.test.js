@@ -110,6 +110,7 @@ test("admin parity routes used by the frontend are mounted with safe table-backe
   assert.match(parity, /FILE_IN_USE/);
   assert.match(parity, /HOMEWORK_HAS_ACTIVITY/);
   assert.match(parity, /PINNING_NOT_SUPPORTED/);
+  assert.match(parity, /\["low", "normal", "high", "urgent"\]/);
 });
 
 test("content importer returns the response fields expected by the admin UI", async () => {

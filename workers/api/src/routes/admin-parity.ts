@@ -348,7 +348,7 @@ parity.post("/problem-center/work", requireAuth, async (c) => {
   if (questionId && !UUID.test(questionId)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Некорректный question_id");
   if (reportId && !UUID.test(reportId)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Некорректный report_id");
   const priority = String(input.priority || "normal");
-  if (!["low", "normal", "high"].includes(priority)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Некорректный приоритет");
+  if (!["low", "normal", "high", "urgent"].includes(priority)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Некорректный приоритет");
   const db = dbFor(c), user = c.get("user"), now = new Date().toISOString();
   try {
     const { data, error } = await db.from("content_work_items").insert({
@@ -380,7 +380,7 @@ parity.patch("/problem-center/work/:id", requireAuth, async (c) => {
     patch.completed_at = input.status === "done" ? new Date().toISOString() : null;
   }
   if (input.priority !== undefined) {
-    if (!["low", "normal", "high"].includes(String(input.priority))) return responseError(c, rid, 422, "VALIDATION_ERROR", "Недопустимый приоритет");
+    if (!["low", "normal", "high", "urgent"].includes(String(input.priority))) return responseError(c, rid, 422, "VALIDATION_ERROR", "Недопустимый приоритет");
     patch.priority = String(input.priority);
   }
   if (input.title !== undefined) {

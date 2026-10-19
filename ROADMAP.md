@@ -3910,3 +3910,8 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - Histology media remains a P1 blocker: 206/206 published card image endpoints return 404; Upstash Blob listing credential is rejected. No content rows were deleted.
 - P2 cleanup removes only two confirmed placeholders: `.github/workflows/apply-p0-embedded.yml` and `.github/workflows/_questions.b64`. All other backend trees, migrations, assets and referenced snippets remain preserved.
 - Detailed reports: [production smoke/media](docs/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md), [migration reconciliation](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md), [cleanup decisions](docs/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md).
+
+
+## Follow-up schema-contract fix (2026-10-20)
+
+Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `normal`, `high`, and `urgent`, while both admin API validators only permitted the first three. The canonical Worker now accepts `urgent` on create and update; the route contract test asserts the API's allowed list. No database changes were needed. CI must pass before treating this code fix as verified.
