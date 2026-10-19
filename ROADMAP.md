@@ -3891,3 +3891,11 @@ Continue directly on main; no branches and no SpaceWeb deployment. Supabase is t
 - [x] Четыре исходных раздела с 253 заданиями расположены первыми; открытые контрольные вопросы оставлены в конце и явно помечены «без вариантов», чтобы не выдавать их за тест с выбором ответа.
 - [x] Сохранены исходные варианты и ключи; выбор radio/checkbox, проверка, подсветка и подсчёт результата остаются без изменений.
 - [ ] Проверить production-деплой и интерактивность в опубликованном браузере после коммита.
+
+
+## 2026-10-19 — Аудит репозитория и очистка
+- [x] Проведена первичная инвентаризация GitHub tree, deployment, ключевых архитектурных документов, GitHub Actions, Supabase migration ledger и загруженных архивов.
+- [x] Отчёт сохранён: [docs/REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](docs/REPOSITORY-CLEANUP-AUDIT-2026-10-19.md).
+- [x] Найдены конфликтующие описания production API, параллельные backend-деревья, workflows с правом автоматического push в main, placeholder workflow и migration-source drift.
+- [x] На этом этапе файлы, SQL, данные и production-конфигурация не удалялись и не менялись; аудит не трактуется как разрешение на удаление.
+- [ ] Дальше: route parity frontend → canonical Worker → shadow → PHP, проверка ссылок/запусков workflows, сверка SQL с remote ledger, затем таблица KEEP/ARCHIVE/REMOVE с доказательствами.
