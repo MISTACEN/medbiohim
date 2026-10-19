@@ -143,3 +143,12 @@ Remote Supabase ledger: 148 applied records. SQL хранится сразу в 
 - Shared API client comment: `68f7dbc52353940a185b98cf02d70179156180ed`
 
 Это статическая проверка. Production Worker bundle, authenticated RLS, Blob object reads и browser UI не объявляются подтверждёнными только на основании исходников.
+
+
+## Дополнение 4 — live route/media/migration checks (2026-10-19)
+
+- Production route and media smoke: [PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md](PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md).
+- Migration ledger reconciliation: [MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md).
+- Added admin route parity module and fixed the Hono finalized-response fallback; Cloudflare version 81 deployed successfully.
+- Found a source/history mismatch: 148 live migration records versus 139 repository SQL files; only 6 exact version+name matches and 101 ledger names without an exact current basename. No SQL was run or deleted.
+- Tested all 206 published histology image endpoints; 0 returned image bytes, all 206 returned 404. Bucket listing credential is rejected. Do not call the atlas restored until objects are revalidated.

@@ -3041,3 +3041,14 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - [!] Несколько manual GitHub Actions имеют `contents: write` и могут восстанавливать старые файлы/пушить прямо в main; не запускать до ревизии.
 - [!] Supabase remote migration ledger и SQL source files не образуют очевидный единый поток; запрещена слепая миграционная очистка или `supabase db push` до сверки.
 - [ ] Ничего не удалено. Следующий этап — сверка всех frontend/API маршрутов и доказательная матрица KEEP/ARCHIVE/REMOVE.
+
+
+## Checkpoint 2026-10-19 — P1 route/deploy + migration/media audit
+
+- Canonical `medbiohim-api` production version 81 deployed successfully; shadow fallback now replaces the finalized Hono response for HTTP 501.
+- Added admin parity endpoints for community, homework, file-backed materials, problem center, site settings, content archive/move, and content-version audit/rollback. New routes return 401 when called without a token.
+- Local Worker `npm run check`: 35/35 tests pass. Smoke and Worker deploy workflows succeeded. The frontend predeploy audit had one stale string assertion; the check has been corrected to verify actual signed-URL cache behavior.
+- Live Supabase migration reconciliation: 148 applied records, 139 SQL files, 6 exact version+name matches, 101 ledger records without an exact basename. No migrations were applied or deleted.
+- Histology media remains a P1 blocker: 206/206 published card image endpoints return 404; Upstash Blob listing credential is rejected. No content rows were deleted.
+- P2 cleanup removes only two confirmed placeholders: `.github/workflows/apply-p0-embedded.yml` and `.github/workflows/_questions.b64`. All other backend trees, migrations, assets and referenced snippets remain preserved.
+- Detailed reports: [production smoke/media](docs/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md), [migration reconciliation](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md), [cleanup decisions](docs/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md).

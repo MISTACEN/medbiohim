@@ -30,3 +30,8 @@ These are review candidates, not bulk-fix instructions. Do not drop unused index
 2. Enable compromised-password protection after checking auth-flow error handling.
 3. Prioritize unindexed foreign keys by measured query workload; reconcile each proposed index with existing indexes and migration history.
 4. Reconcile remote migration version/name to repository SQL file and schema object before any migration push.
+
+
+## Migration-source reconciliation
+
+See [MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md). The live ledger contains 148 applied records, while current `main` contains 139 SQL files and only 6 exact version+name matches. This is source-history drift, not a license to reset or push migrations.

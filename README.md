@@ -80,3 +80,10 @@ Next.js App Router.
 - Supabase — единственный canonical source of truth для данных.
 - Секреты в Git не класть.
 - Cutover production на Cloudflare — только после явной сверки по [SPACEWEB-API-INVENTORY](docs/SPACEWEB-API-INVENTORY.md) и smoke-тестов.
+
+
+## Актуальные аудиты (2026-10-19)
+
+- [Production API и медиа гистологии](docs/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md)
+- [Сверка migration ledger](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md)
+- [Решения по очистке KEEP / ARCHIVE / REMOVE](docs/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md)

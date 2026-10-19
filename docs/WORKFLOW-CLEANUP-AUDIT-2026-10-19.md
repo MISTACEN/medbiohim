@@ -21,7 +21,7 @@ Do not dispatch these to test them. Before retiring any, compare their generated
 
 ## Invalid workflow candidate
 
-`.github/workflows/apply-p0-embedded.yml` contains only `PLACEHOLDER_TOO_LARGE_USE_SCRIPTS` (33 bytes), not valid YAML. It is a removal candidate after checking references; it was not removed in this pass.
+`.github/workflows/apply-p0-embedded.yml` contains only `PLACEHOLDER_TOO_LARGE_USE_SCRIPTS` (33 bytes), not valid YAML. It had no current source/workflow references and was removed in the cleanup commit; Git history retains the placeholder.
 
 ## Workflows to retain
 
@@ -41,3 +41,8 @@ Historical docs report October 10 jobs failed before steps (`runner_id: 0`, no r
 2. Replace their behavior with reviewed source commits and tests, then retire the workflows.
 3. Check GitHub runner availability and obtain a real successful CI run before counting tests as passed.
 4. Keep shadow and PHP reference code until route/data parity is demonstrated.
+
+
+## Live push-run check (2026-10-19)
+
+The current push created failed runs for several legacy manual workflow files, but the GitHub Actions API returned **zero jobs** for those runs (no steps executed). The canonical API deployment and smoke workflow succeeded. The invalid placeholder `apply-p0-embedded.yml` was removed; the remaining manual workflows and their snippets are retained until each can be retired safely.

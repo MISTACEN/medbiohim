@@ -113,12 +113,10 @@ if (existsSync(apiClientPath)) {
 const privateMediaCacheContract = apiClientPath;
 if (existsSync(privateMediaCacheContract)) {
   const apiClient = await readFile(privateMediaCacheContract, "utf8");
-  if (apiClient.includes('meta.mode!=="presigned"') &&
-      apiClient.includes("function clearUserScopedCaches()") &&
-      apiClient.includes("trainerImageCache.clear()") &&
-      apiClient.includes("materialFileCache.clear()") &&
-      apiClient.includes("trainerCardCache.clear()") &&
-      apiClient.includes("cache: \"no-store\"")) {
+  const clearsUserScopedCaches = ["function clearUserScopedCaches()", "trainerImageCache.clear()", "materialFileCache.clear()", "trainerCardCache.clear()"].every((marker) => apiClient.includes(marker));
+  const doesNotCacheSignedUrls = apiClient.includes('if(meta.mode==="presigned" || meta.mode==="upstash-blob" || Number(meta.expires_in)>0) return meta.url;');
+  const bypassesHttpCache = apiClient.includes('cache:"no-store"');
+  if (clearsUserScopedCaches && doesNotCacheSignedUrls && bypassesHttpCache) {
     pass("private trainer/material caches are user-scoped and signed URLs are not cached");
   } else {
     fail("private media cache isolation or presigned URL expiry guard is missing");
