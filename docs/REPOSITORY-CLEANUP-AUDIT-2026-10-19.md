@@ -116,3 +116,10 @@ Remote Supabase ledger: 148 applied records. SQL хранится сразу в 
 - Не выполнен checksum-by-checksum diff всех локальных архивов и production Blob objects.
 - Не проверено, что каждая таблица с нулём строк действительно не используется.
 - Текущая инвентаризация не является разрешением на удаление каких-либо файлов.
+
+
+## Дополнение — frontend API client (проверено 2026-10-19)
+
+- `src/lib/api.ts` начинается комментарием `API client for SpaceWeb backend`, а stale-cache comment говорит о `SpaceWeb/Supabase`; фактический `src/app/api/v1/[...path]/route.ts` сейчас проксирует только на canonical Cloudflare origin и при недоступности возвращает 502, не переключая запросы на PHP.
+- Это ещё один признак, что миграционные комментарии не обновлены. Не удалять сам `api.ts`: это основной клиент с авторизацией, refresh, кэшированием и диагностикой; исправить только неточные комментарии после полного route audit.
+- Canonical Worker `workers/api/src/index.ts` содержит fallback на shadow только при статусе 501 через service binding. Поэтому правильная фактическая схема: Browser → Vercel same-origin proxy → `medbiohim-api` → (только для 501) `medbiohim-api-shadow`. PHP/SpaceWeb не является Vercel runtime fallback в текущем коде.
