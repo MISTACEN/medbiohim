@@ -3032,3 +3032,12 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - [x] Исправлен выбор стартового раздела банка: теперь сразу показываются вопросы с вариантами ответа.
 - [x] Разделы 253 исходных тестовых заданий стоят перед 36 открытыми контрольными вопросами; последний раздел явно помечен как не multiple-choice.
 - [ ] Browser smoke-test опубликованной страницы после deployment.
+
+
+## 2026-10-19 — Контрольная точка аудита репозитория
+- [x] Инвентаризация main: 835 файлов, 26 workflow YAML, 46 frontend page routes, 41 canonical Worker route; 86 Supabase tables, RLS enabled на всех просмотренных таблицах.
+- [x] Создан отчёт [REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](docs/REPOSITORY-CLEANUP-AUDIT-2026-10-19.md).
+- [!] Документы README/STATUS/ARCHITECTURE и legacy Worker README противоречат актуальной топологии `medbiohim-api` production + shadow fallback.
+- [!] Несколько manual GitHub Actions имеют `contents: write` и могут восстанавливать старые файлы/пушить прямо в main; не запускать до ревизии.
+- [!] Supabase remote migration ledger и SQL source files не образуют очевидный единый поток; запрещена слепая миграционная очистка или `supabase db push` до сверки.
+- [ ] Ничего не удалено. Следующий этап — сверка всех frontend/API маршрутов и доказательная матрица KEEP/ARCHIVE/REMOVE.
