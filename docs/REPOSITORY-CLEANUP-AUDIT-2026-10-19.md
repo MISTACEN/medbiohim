@@ -123,3 +123,23 @@ Remote Supabase ledger: 148 applied records. SQL хранится сразу в 
 - `src/lib/api.ts` начинается комментарием `API client for SpaceWeb backend`, а stale-cache comment говорит о `SpaceWeb/Supabase`; фактический `src/app/api/v1/[...path]/route.ts` сейчас проксирует только на canonical Cloudflare origin и при недоступности возвращает 502, не переключая запросы на PHP.
 - Это ещё один признак, что миграционные комментарии не обновлены. Не удалять сам `api.ts`: это основной клиент с авторизацией, refresh, кэшированием и диагностикой; исправить только неточные комментарии после полного route audit.
 - Canonical Worker `workers/api/src/index.ts` содержит fallback на shadow только при статусе 501 через service binding. Поэтому правильная фактическая схема: Browser → Vercel same-origin proxy → `medbiohim-api` → (только для 501) `medbiohim-api-shadow`. PHP/SpaceWeb не является Vercel runtime fallback в текущем коде.
+
+
+## Дополнение 2 — route parity (2026-10-19)
+
+Добавлен отдельный отчёт [API-ROUTE-PARITY-AUDIT-2026-10-19.md](API-ROUTE-PARITY-AUDIT-2026-10-19.md). Проверены текущие исходники `src/lib/api.ts`, `src/app/api/v1/[...path]/route.ts`, `workers/api/src/index.ts`, ключевые canonical route modules и старые route inventories.
+
+Подтверждено:
+- Vercel proxy не имеет PHP fallback: он отправляет запросы только в `CLOUDFLARE_API_ORIGIN` и при сетевой ошибке возвращает 502.
+- Canonical Worker прокидывает в shadow только HTTP 501 через `MEDBIOHIM_UPSTREAM`. Следовательно, shadow остаётся runtime dependency, пока неизвестные/неперенесённые маршруты возвращают 501.
+- Frontend действительно вызывает trainer feed/card/answer/image, material file-url/file, histology source-file, file upload/download. В canonical source найдены соответствующие handlers.
+- Оба роутера `preparation` и `tests` монтируются на `/tests`; нужно отдельно протестировать пересекающиеся пути и precedence.
+- README исправлен: убрана противоречивая старая цепочка через SpaceWeb и список веток; описана схема через canonical Worker и 501-only shadow fallback.
+- Устаревший комментарий в `src/lib/api.ts` исправлен. Сам клиент оставлен.
+
+Коммиты аудита на `main`:
+- Route parity report: `3c0262a7d62533fbcda0dc11f913a155defeb706`
+- README topology correction: `4512300edadb102949acf0a45d243f4f4a6edcb3`
+- Shared API client comment: `68f7dbc52353940a185b98cf02d70179156180ed`
+
+Это статическая проверка. Production Worker bundle, authenticated RLS, Blob object reads и browser UI не объявляются подтверждёнными только на основании исходников.
