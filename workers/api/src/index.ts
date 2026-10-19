@@ -73,7 +73,10 @@ v1.use("*", async (c, next) => {
   await next();
   if (c.res.status !== 501 || !c.env.MEDBIOHIM_UPSTREAM) return;
   try {
-    return await c.env.MEDBIOHIM_UPSTREAM.fetch(legacyRequest);
+    // Hono has already finalized the downstream response after `next()`.
+    // Assign the fallback response to c.res so it actually replaces the 501.
+    c.res = await c.env.MEDBIOHIM_UPSTREAM.fetch(legacyRequest);
+    return c.res;
   } catch (error) {
     console.error("[medbiohim-api:legacy-fallback]", error);
     const { body, status } = fail(
@@ -81,7 +84,8 @@ v1.use("*", async (c, next) => {
       "Совместимый API временно недоступен",
       502
     );
-    return c.json(body, status as 502);
+    c.res = c.json(body, status as 502);
+    return c.res;
   }
 });
 
