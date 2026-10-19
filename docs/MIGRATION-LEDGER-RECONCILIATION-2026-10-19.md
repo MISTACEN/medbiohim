@@ -38,3 +38,10 @@ These counts are evidence of source-history drift, not proof that 101 database c
 Machine-readable files:
 - [MIGRATION-LEDGER-MAP-2026-10-19.csv](MIGRATION-LEDGER-MAP-2026-10-19.csv) — 148 ledger records and source candidates.
 - [SQL-SOURCE-INVENTORY-2026-10-19.csv](SQL-SOURCE-INVENTORY-2026-10-19.csv) — 139 SQL files and exact ledger-name/version matches.
+
+
+## Follow-up checks — 2026-10-20
+
+The 206 published trainer cards now have exact matches against `histology_assets.storage_path` when considering the stored `source_key`, `imagePath`, `imageUrl`, and the canonical `histology/` prefix (28/28 electronograms; 178/178 preparations). This verifies the metadata mapping, not the physical Blob object. The Upstash bucket object-list and download-signing APIs still reject the bucket token, and the live image routes return 404. No migration was run.
+
+Root `package-lock.json` was added and verified with `npm ci --ignore-scripts --offline`, TypeScript, and Next.js production build. See commit `b62aa4ad8634423eac07b547dee2021c8574c7e4`.

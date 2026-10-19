@@ -54,3 +54,12 @@ The Upstash Blob object-list operation also rejected its listing credential with
 1. Run authenticated student and admin journeys with a dedicated test account/session.
 2. Restore a valid Upstash Blob token and reconcile all 206 cards against object keys, MIME types and hashes.
 3. Validate admin create/update/rollback operations with a test account against staging/test rows before declaring full UI/data parity.
+
+
+## Audit continuation — 2026-10-20
+
+- Admin work-item priority now matches the live database constraint: `low | normal | high | urgent`. This fixes the previous API/database contract mismatch. Cloudflare deploy run [39266773713](https://github.com/MISTACEN/medbiohim/actions/runs/39266773713), smoke [39266773720](https://github.com/MISTACEN/medbiohim/actions/runs/39266773720), and code checks [39266773762](https://github.com/MISTACEN/medbiohim/actions/runs/39266773762) passed for the code change. Production Worker version 83 is active.
+- Added root `package-lock.json` in commit `b62aa4ad8634423eac07b547dee2021c8574c7e4`. `npm ci --ignore-scripts --offline`, frontend TypeScript, Next.js production build, and Worker 35-test suite passed in the audit environment; npm reported 0 vulnerabilities. Vercel production deployment [dpl_B81XfzaUQWoWckgqSjUyLfXLdxCf](https://vercel.com/mistacen1/medbiohim/B81XfzaUQWoWckgqSjUyLfXLdxCf) is READY, and code checks [39267516188](https://github.com/MISTACEN/medbiohim/actions/runs/39267516188) passed.
+- Live schema check confirms the expected admin tables/columns exist, including `site_content(key,payload,updated_at)`, `content_versions`, `homework_attachments`, and `homework_progress`. The DB permits `urgent` priority, which motivated the fix.
+- Histology reconciliation improved: all 206 published cards (178 preparation + 28 electronograms) have an exact matching `histology_assets.storage_path` among their source/image path variants. However, `files.object_key` has no direct matches, and all 206 production image endpoints still return `MEDIA_NOT_FOUND`/404. Upstash Blob object listing and signed URL generation fail with `The bucket token was rejected`. This confirms the DB mapping metadata is present, but **does not prove the underlying Blob objects exist**. No cards/assets were deleted or rewritten.
+- The latest production smoke still reports health 200 and expected 401 for unauthenticated protected student/admin routes. Authenticated CRUD flows remain unverified because no test session was available.
