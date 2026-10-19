@@ -4,6 +4,12 @@ import { readFile } from "node:fs/promises";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+test("501 fallback replaces Hono's finalized response with the shadow response", async () => {
+  const index = await source("../src/index.ts");
+  assert.match(index, /c\.res\s*=\s*await c\.env\.MEDBIOHIM_UPSTREAM\.fetch\(legacyRequest\)/);
+  assert.match(index, /c\.res\s*=\s*c\.json\(body, status as 502\)/);
+});
+
 test("canonical API mounts test-preparation handlers before test routes", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import preparation from "\.\/routes\/preparation"/);
