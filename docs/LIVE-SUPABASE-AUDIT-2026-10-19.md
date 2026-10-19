@@ -35,3 +35,8 @@ These are review candidates, not bulk-fix instructions. Do not drop unused index
 ## Migration-source reconciliation
 
 See [MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md). The live ledger contains 148 applied records, while current `main` contains 139 SQL files and only 6 exact version+name matches. This is source-history drift, not a license to reset or push migrations.
+
+
+Machine-readable mapping files are also committed:
+- [MIGRATION-LEDGER-MAP-2026-10-19.csv](MIGRATION-LEDGER-MAP-2026-10-19.csv) — all 148 live records with exact name/version match status and source candidates.
+- [SQL-SOURCE-INVENTORY-2026-10-19.csv](SQL-SOURCE-INVENTORY-2026-10-19.csv) — all 139 SQL files and their exact ledger-name/version matches.

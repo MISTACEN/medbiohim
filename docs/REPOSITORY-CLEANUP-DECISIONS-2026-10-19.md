@@ -4,7 +4,7 @@ This is the evidence-based decision list after static source review, production 
 
 | Decision | Item | Evidence / condition |
 |---|---|---|
-| **KEEP** | `workers/api/` | Canonical production source; version 81 deployed successfully. |
+| **KEEP** | `workers/api/` | Canonical production source; version 82 active at 100% traffic. |
 | **KEEP** | `integrations/cloudflare-api/` | Still used as the 501-only shadow fallback; retain until exact route/data parity is proven. |
 | **KEEP** | `backend/` and PHP route sources | Useful reference for legacy contracts; do not remove before authenticated parity checks. |
 | **KEEP** | `database/migrations/`, `supabase/migrations/`, `backend/database/migrations/` | 148 live ledger records do not map one-to-one to current filenames. No migration deletion or push is safe yet. |

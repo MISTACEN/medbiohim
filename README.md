@@ -86,4 +86,6 @@ Next.js App Router.
 
 - [Production API и медиа гистологии](docs/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md)
 - [Сверка migration ledger](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md)
+- [CSV: 148 записей migration ledger](docs/MIGRATION-LEDGER-MAP-2026-10-19.csv)
+- [CSV: инвентарь SQL-файлов](docs/SQL-SOURCE-INVENTORY-2026-10-19.csv)
 - [Решения по очистке KEEP / ARCHIVE / REMOVE](docs/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md)

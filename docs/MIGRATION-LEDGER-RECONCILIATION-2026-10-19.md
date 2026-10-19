@@ -33,3 +33,8 @@ These counts are evidence of source-history drift, not proof that 101 database c
 ## Decision
 
 **Do not run `supabase db push`, reset migration history, or delete SQL files.** Next, build a per-entry reconciliation workbook: ledger version/name → candidate source file(s) → content hash → created/altered schema objects → current object definition → verified/unknown. Resolve the historical source gaps before any schema cleanup or new additive migration.
+
+
+Machine-readable files:
+- [MIGRATION-LEDGER-MAP-2026-10-19.csv](MIGRATION-LEDGER-MAP-2026-10-19.csv) — 148 ledger records and source candidates.
+- [SQL-SOURCE-INVENTORY-2026-10-19.csv](SQL-SOURCE-INVENTORY-2026-10-19.csv) — 139 SQL files and exact ledger-name/version matches.

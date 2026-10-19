@@ -149,6 +149,9 @@ Remote Supabase ledger: 148 applied records. SQL хранится сразу в 
 
 - Production route and media smoke: [PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md](PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md).
 - Migration ledger reconciliation: [MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md).
-- Added admin route parity module and fixed the Hono finalized-response fallback; Cloudflare version 81 deployed successfully.
+- Added admin route parity module and fixed the Hono finalized-response fallback; Cloudflare version 82 is active at 100% traffic; deploy workflow succeeded.
 - Found a source/history mismatch: 148 live migration records versus 139 repository SQL files; only 6 exact version+name matches and 101 ledger names without an exact current basename. No SQL was run or deleted.
 - Tested all 206 published histology image endpoints; 0 returned image bytes, all 206 returned 404. Bucket listing credential is rejected. Do not call the atlas restored until objects are revalidated.
+
+
+CI follow-up: the stale private-media cache assertion in `scripts/predeploy-audit.mjs` was corrected to match the actual implementation; frontend code-check run [39256338205](https://github.com/MISTACEN/medbiohim/actions/runs/39256338205) passed. Vercel production deployment for commit `0dfee6556a927d2b23183a94222b2d5fa59639fc` is READY.

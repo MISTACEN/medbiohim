@@ -4,7 +4,7 @@ Read-only production smoke tests plus deployment/source checks. Route fallback a
 
 ## Deployment and health
 
-- Canonical Worker: `medbiohim-api`, production version 81 created at 2026-10-19T12:49:01Z.
+- Canonical Worker: `medbiohim-api`, production version 82 is currently active (100% traffic, created at 2026-10-19T12:50:05Z); version 81 was the first deployment of the same route changes.
 - GitHub deployment workflow: [run 39254961127](https://github.com/MISTACEN/medbiohim/actions/runs/39254961127) — success.
 - Smoke workflow: [run 39254961228](https://github.com/MISTACEN/medbiohim/actions/runs/39254961228) — success.
 - `GET https://medbiohim.vercel.app/api/v1/health` returns HTTP 200 and identifies `service=medbiohim-api`, `mode=production`, `env=production`, `supabaseConfigured=true`, `redisConfigured=true`, `openaiConfigured=false`.

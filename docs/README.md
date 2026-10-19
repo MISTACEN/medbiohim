@@ -12,6 +12,8 @@
 | [LIVE-SUPABASE-AUDIT-2026-10-19.md](LIVE-SUPABASE-AUDIT-2026-10-19.md) | Live-миграции, RLS и Security/Performance Advisor |
 | [PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md](PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md) | Production API smoke и 206 карточек гистологии |
 | [MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md) | Сверка 148 migration ledger записей с SQL файлами |
+| [MIGRATION-LEDGER-MAP-2026-10-19.csv](MIGRATION-LEDGER-MAP-2026-10-19.csv) | Все 148 записей ledger и кандидаты исходных файлов |
+| [SQL-SOURCE-INVENTORY-2026-10-19.csv](SQL-SOURCE-INVENTORY-2026-10-19.csv) | Инвентарь 139 SQL-файлов и их связь с ledger |
 | [REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md](REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md) | KEEP / ARCHIVE / REMOVE с доказательствами |
 | [WORKFLOW-CLEANUP-AUDIT-2026-10-19.md](WORKFLOW-CLEANUP-AUDIT-2026-10-19.md) | Риски ручных GitHub Actions |
 | [REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](REPOSITORY-CLEANUP-AUDIT-2026-10-19.md) | Общий аудит файлов и инфраструктуры |

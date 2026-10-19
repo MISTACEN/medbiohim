@@ -46,3 +46,6 @@ Historical docs report October 10 jobs failed before steps (`runner_id: 0`, no r
 ## Live push-run check (2026-10-19)
 
 The current push created failed runs for several legacy manual workflow files, but the GitHub Actions API returned **zero jobs** for those runs (no steps executed). The canonical API deployment and smoke workflow succeeded. The invalid placeholder `apply-p0-embedded.yml` was removed; the remaining manual workflows and their snippets are retained until each can be retired safely.
+
+
+CI follow-up (2026-10-19): the predeploy audit's signed-URL cache assertion was corrected to verify the actual no-store/expiry logic. Frontend code-check run [39256338205](https://github.com/MISTACEN/medbiohim/actions/runs/39256338205) succeeded. The two placeholder files listed in the cleanup decision report were removed; the other source-mutating workflows remain untouched.

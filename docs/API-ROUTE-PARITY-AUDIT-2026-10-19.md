@@ -61,7 +61,7 @@ No backend tree is safe to remove yet. Documentation correction and workflow har
 
 ## Live deployment and route regression update (2026-10-19)
 
-- Canonical Worker production version 81 is deployed; GitHub deploy run [39254961127](https://github.com/MISTACEN/medbiohim/actions/runs/39254961127) succeeded.
+- Canonical Worker production version 82 is active at 100% traffic; GitHub deploy run [39254961127](https://github.com/MISTACEN/medbiohim/actions/runs/39254961127) succeeded.
 - Fixed the Hono 501 fallback: the service-binding response is now assigned to `c.res`, so it replaces the finalized canonical response. Live smoke now receives the shadow response for an unimplemented path.
 - Added admin endpoints for community moderation, homework list/create/safe-delete, file-backed materials list/safe-delete, problem-center/report/work management, site settings, content archive/move, and content-version audit/rollback.
 - All new routes return 401 without a token, confirming auth middleware is attached. This is route registration evidence only; authenticated create/update flows remain unverified without a test session.
