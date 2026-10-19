@@ -9,6 +9,7 @@
 | [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md) | **Полный инвентарь PHP API** — сверка с Cloudflare |
 | [STATUS.md](STATUS.md) | Исторический снимок от 2026-10-15; проверять дату перед использованием |
 | [API-ROUTE-PARITY-AUDIT-2026-10-19.md](API-ROUTE-PARITY-AUDIT-2026-10-19.md) | Текущая статическая матрица API-маршрутов |
+| [LIVE-SUPABASE-AUDIT-2026-10-19.md](LIVE-SUPABASE-AUDIT-2026-10-19.md) | Live-миграции, RLS и Security/Performance Advisor |
 | [WORKFLOW-CLEANUP-AUDIT-2026-10-19.md](WORKFLOW-CLEANUP-AUDIT-2026-10-19.md) | Риски ручных GitHub Actions |
 | [REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](REPOSITORY-CLEANUP-AUDIT-2026-10-19.md) | Общий аудит файлов и инфраструктуры |
 | [../BRANCHES.md](../BRANCHES.md) | Правила веток main / spaceweb-backend / beta |
