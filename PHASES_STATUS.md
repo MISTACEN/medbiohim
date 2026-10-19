@@ -3066,3 +3066,11 @@ Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `n
 - Live schema check confirms the expected admin tables/columns exist, including `site_content(key,payload,updated_at)`, `content_versions`, `homework_attachments`, and `homework_progress`. The DB permits `urgent` priority, which motivated the fix.
 - Histology reconciliation improved: all 206 published cards (178 preparation + 28 electronograms) have an exact matching `histology_assets.storage_path` among their source/image path variants. However, `files.object_key` has no direct matches, and all 206 production image endpoints still return `MEDIA_NOT_FOUND`/404. Upstash Blob object listing and signed URL generation fail with `The bucket token was rejected`. This confirms the DB mapping metadata is present, but **does not prove the underlying Blob objects exist**. No cards/assets were deleted or rewritten.
 - The latest production smoke still reports health 200 and expected 401 for unauthenticated protected student/admin routes. Authenticated CRUD flows remain unverified because no test session was available.
+
+
+## Гистология — временный источник изображений Google Drive (2026-10-20)
+
+- Пока Upstash Blob отклоняет токен bucket, добавлен временный источник медиа через публичную папку Google Drive. Маршрут применяется строго к опубликованным карточкам `histology/mbh`, не к другим предметам.
+- Индекс `workers/api/src/data/histology-drive-index.json`: **178/178 фотографий препаратов** и 31 исходный DOCX электронограмм. Проверено напрямую: 178/178 изображений скачиваются с типом image/*; превью Google Drive для 28/28 электронограмм возвращают image/*.
+- Worker: typecheck OK, **36/36 тестов**, Wrangler dry-run OK. Продакшен ещё требуется проверить после автоматического деплоя: все 206 маршрутов картинок должны вернуть HTTP 200 с image bytes.
+- Источник временный и публичный. После подтверждённого восстановления постоянного хранилища нужно вернуть основной путь и удалить Drive-индекс/временный resolver.

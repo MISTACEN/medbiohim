@@ -63,3 +63,14 @@ The Upstash Blob object-list operation also rejected its listing credential with
 - Live schema check confirms the expected admin tables/columns exist, including `site_content(key,payload,updated_at)`, `content_versions`, `homework_attachments`, and `homework_progress`. The DB permits `urgent` priority, which motivated the fix.
 - Histology reconciliation improved: all 206 published cards (178 preparation + 28 electronograms) have an exact matching `histology_assets.storage_path` among their source/image path variants. However, `files.object_key` has no direct matches, and all 206 production image endpoints still return `MEDIA_NOT_FOUND`/404. Upstash Blob object listing and signed URL generation fail with `The bucket token was rejected`. This confirms the DB mapping metadata is present, but **does not prove the underlying Blob objects exist**. No cards/assets were deleted or rewritten.
 - The latest production smoke still reports health 200 and expected 401 for unauthenticated protected student/admin routes. Authenticated CRUD flows remain unverified because no test session was available.
+
+
+## Temporary histology media source — Google Drive (2026-10-20)
+
+- Upstash Blob remains unavailable because the bucket credential is rejected. Histology image delivery now has a Google Drive fallback, restricted in code to published cards with `subject_slug=histology` and `specialty_slug=mbh`; no other subjects use this source.
+- The public shared folder `1qCrL_CjLBmAgVNDhdlm8_zUqRYU-xQa1` was crawled read-only: 16 folders and 487 files in the shared tree. The checked-in index `workers/api/src/data/histology-drive-index.json` contains exactly 178 original preparation images and 31 electronogram DOCX files.
+- Direct Google Drive image downloads returned image bytes for **178/178** preparation files. Google Drive thumbnail endpoint returned image bytes for **28/28** electronogram cards matched by Russian title to their DOCX source. Three titles have duplicate DOCX entries; resolver selects the first folder-order match.
+- Worker implementation prefers Google Drive for matching histology cards, serves original image bytes for preparation photos, and serves Drive-generated PNG thumbnails for electronogram DOCX files. If Drive fails, it falls back to the existing Blob path. Published-card semantics remain unchanged.
+- Local Worker validation: typecheck passed, **36/36 tests passed**, Wrangler deploy dry-run passed (bundle 1,914.87 KiB / gzip 327.04 KiB).
+- **Production deployment and Vercel → Worker image smoke are pending at this checkpoint.** Do not describe this as production-fixed until the deployed Worker returns 200 image bytes for all 206 card routes.
+- The Drive index is a snapshot; refresh it if the folder's files/IDs change. Since this is temporary public media, anyone with access to the shared Drive folder may fetch these files. Remove the Drive fallback and index only after Upstash/B2 replacement is actually verified.

@@ -4,6 +4,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createAnonClient, createServiceClient } from "../lib/supabase";
+import histologyDriveIndex from "../data/histology-drive-index.json";
 
 const trainers = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -157,6 +158,70 @@ function mapTrainerCard(row: TrainerRow, orderIndex: number) {
   };
 }
 
+type HistologyDriveItem = { path: string; name: string; id: string; kind: "image" | "document"; mime: string };
+const HISTOLOGY_DRIVE_ITEMS = (histologyDriveIndex as { items: HistologyDriveItem[] }).items;
+
+function normalizeDriveValue(value: string): string {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/\\/g, "/")
+    .replace(/^\/+|^\.\//g, "")
+    .replace(/^content\/histology\//i, "")
+    .replace(/^histology\//i, "")
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("ru-RU")
+    .trim();
+}
+
+function normalizeDriveTitle(value: string): string {
+  return normalizeDriveValue(value)
+    .replace(/\.docx$/i, "")
+    .replace(/[()!.,:;—–-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Resolve public Drive files from a checked-in index generated from the shared histology folder. */
+function findHistologyDriveItem(
+  card: { mode_set?: string | null; preparation?: Record<string, unknown> | null },
+  candidates: string[],
+): HistologyDriveItem | null {
+  const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
+  if (card.mode_set === "electronogram") {
+    const title = String(preparation.name || preparation.organ || "").trim();
+    if (!title) return null;
+    return HISTOLOGY_DRIVE_ITEMS.find((item) =>
+      item.kind === "document" && normalizeDriveTitle(item.name) === normalizeDriveTitle(title)
+    ) || null;
+  }
+
+  const imageItems = HISTOLOGY_DRIVE_ITEMS.filter((item) => item.kind === "image");
+  const driveCandidates = [
+    ...candidates,
+    String(preparation.imagePath || ""),
+    String(preparation.imageUrl || ""),
+  ].filter(Boolean);
+  // Prefer full relative paths so duplicate basenames in different folders remain unambiguous.
+  for (const candidate of driveCandidates) {
+    const normalized = normalizeDriveValue(cleanLegacyPath(candidate));
+    if (!normalized.includes("/")) continue;
+    const found = imageItems.find((item) => normalizeDriveValue(item.path) === normalized);
+    if (found) return found;
+  }
+
+  // Last resort: accept a basename only if it is unique in the shared folder index.
+  const basenames = new Set<string>();
+  for (const candidate of driveCandidates) {
+    const basename = normalizeDriveValue(cleanLegacyPath(candidate).split("/").pop() || "");
+    if (basename) basenames.add(basename);
+  }
+  for (const basename of basenames) {
+    const matches = imageItems.filter((item) => normalizeDriveValue(item.name) === basename);
+    if (matches.length === 1) return matches[0];
+  }
+  return null;
+}
+
 function imageContentType(key: string): string {
   const ext = key.split(".").pop()?.toLowerCase();
   if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
@@ -308,7 +373,7 @@ trainers.get("/feed/:id/image", async (c) => {
   try {
     let cardResult = await supabase
       .from("trainer_feed_cards")
-      .select("id,preparation,source_key,mode_set,is_published")
+      .select("id,subject_slug,specialty_slug,preparation,source_key,mode_set,is_published")
       .eq("id", c.req.param("id"))
       .eq("is_published", true)
       .maybeSingle();
@@ -322,7 +387,7 @@ trainers.get("/feed/:id/image", async (c) => {
       if (service) {
         const fallback = await service
           .from("trainer_feed_cards")
-          .select("id,preparation,source_key,mode_set,is_published")
+          .select("id,subject_slug,specialty_slug,preparation,source_key,mode_set,is_published")
           .eq("id", c.req.param("id"))
           .eq("is_published", true)
           .maybeSingle();
@@ -379,6 +444,52 @@ trainers.get("/feed/:id/image", async (c) => {
       },
       fileObjectKey,
     );
+
+    // Temporary migration path: public Google Drive is the active histology source
+    // while the Upstash Blob bucket credential is unavailable. Image files are
+    // served at original resolution; electronogram DOCX files use Drive thumbnails.
+    const isHistologyDriveCard =
+      String((card as any).subject_slug || "") === "histology" &&
+      String((card as any).specialty_slug || "") === "mbh";
+    const driveItem = isHistologyDriveCard
+      ? findHistologyDriveItem(
+          { mode_set: (card as any).mode_set ?? null, preparation: card.preparation as Record<string, unknown> | null },
+          candidates,
+        )
+      : null;
+    if (driveItem) {
+      const driveUrl = driveItem.kind === "image"
+        ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(driveItem.id)}`
+        : `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveItem.id)}&sz=w1600`;
+      try {
+        const driveResponse = await fetch(driveUrl, { redirect: "follow" });
+        const driveContentType = driveResponse.headers.get("content-type") || driveItem.mime;
+        if (driveResponse.ok && driveResponse.body && driveContentType.toLowerCase().startsWith("image/")) {
+          return new Response(driveResponse.body, {
+            headers: {
+              "content-type": driveContentType,
+              "cache-control": "public, max-age=3600, s-maxage=86400",
+              "x-content-type-options": "nosniff",
+              "x-request-id": rid,
+              "x-mbh-media-key": driveItem.path,
+              "x-mbh-image-resolver": "google-drive-temporary",
+            },
+          });
+        }
+        console.warn("[trainer-image:google-drive] image unavailable; falling back to Blob", {
+          cardId: card.id,
+          driveFileId: driveItem.id,
+          status: driveResponse.status,
+          contentType: driveContentType,
+        });
+      } catch (driveError) {
+        console.warn("[trainer-image:google-drive] fetch failed; falling back to Blob", {
+          cardId: card.id,
+          driveFileId: driveItem.id,
+          error: driveError instanceof Error ? driveError.message : String(driveError),
+        });
+      }
+    }
 
     if (!candidates.length) {
       console.warn("[trainer-image] missing/invalid preparation image path", { cardId: card.id });

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const materialsSource = await readFile(new URL("../src/routes/materials.ts", import.meta.url), "utf8");
 const trainersSource = await readFile(new URL("../src/routes/trainers.ts", import.meta.url), "utf8");
+const histologyDriveIndexSource = await readFile(new URL("../src/data/histology-drive-index.json", import.meta.url), "utf8");
 const curriculumSource = await readFile(new URL("../src/routes/curriculum.ts", import.meta.url), "utf8");
 const curriculumPageSource = await readFile(new URL("../../../src/app/curriculum/page.tsx", import.meta.url), "utf8");
 const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
@@ -41,6 +42,22 @@ test("histology trainer images resolve basename-only cards through content_sourc
   assert.ok(trainersSource.includes('from("files")'));
   assert.ok(trainersSource.includes('card.is_published'));
   assert.ok(trainersSource.includes("trainerImageCandidateKeys"));
+});
+
+test("histology temporary Google Drive index covers all original preparation photos and electronogram documents", () => {
+  const index = JSON.parse(histologyDriveIndexSource);
+  assert.equal(index.folderId, "1qCrL_CjLBmAgVNDhdlm8_zUqRYU-xQa1");
+  assert.equal(index.items.filter((item) => item.kind === "image").length, 178);
+  assert.equal(index.items.filter((item) => item.kind === "document").length, 31);
+  assert.ok(index.items.every((item) => /^[A-Za-z0-9_-]{20,}$/.test(item.id)));
+  assert.ok(trainersSource.includes('import histologyDriveIndex from "../data/histology-drive-index.json"'));
+  assert.ok(trainersSource.includes("findHistologyDriveItem"));
+  assert.ok(trainersSource.includes("google-drive-temporary"));
+  assert.ok(trainersSource.includes('String((card as any).subject_slug || "") === "histology"'));
+  assert.ok(trainersSource.includes('String((card as any).specialty_slug || "") === "mbh"'));
+  assert.ok(trainersSource.includes('https://drive.google.com/uc?export=download&id='));
+  assert.ok(trainersSource.includes('https://drive.google.com/thumbnail?id='));
+  assert.ok(trainersSource.includes('card.mode_set === "electronogram"'));
 });
 
 test("materials API uses real Supabase columns and serves private files through the configured Blob bucket", () => {
