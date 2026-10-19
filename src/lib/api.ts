@@ -1,4 +1,4 @@
-/** API client for SpaceWeb backend — restored exports for Vercel. */
+/** Shared same-origin API client for the Vercel `/api/v1` proxy. */
 const API_URL="/api/v1";
 export type ApiSuccess<T>={ok:true;data:T;requestId:string;stale?:boolean};
 export type ApiError={ok:false;error:{code:string;message:string;details?:unknown};requestId:string};
