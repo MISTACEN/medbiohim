@@ -3933,5 +3933,5 @@ Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `n
 - [x] Сопоставить 28 электронограмм по названию с исходными DOCX; 28/28 thumbnail URL отдают изображения.
 - [x] Ограничить новый resolver только `subject_slug=histology`, `specialty_slug=mbh`.
 - [x] Worker typecheck, 36 тестов и Wrangler dry-run проходят.
-- [ ] Дождаться автоматического production deploy и проверить все 206 маршрутов через `https://medbiohim.vercel.app/api/v1/trainers/feed/{id}/image`.
+- [x] Production deploy и code checks завершились успешно; все 206 маршрутов через `https://medbiohim.vercel.app/api/v1/trainers/feed/{id}/image` вернули HTTP 200 с image bytes (178 фото + 28 электронограмм).
 - [ ] Вернуть постоянное хранилище после восстановления Upstash или проверки альтернативного постоянного источника; до этого не удалять исходные записи и Drive-индекс.

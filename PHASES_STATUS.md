@@ -3072,5 +3072,5 @@ Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `n
 
 - Пока Upstash Blob отклоняет токен bucket, добавлен временный источник медиа через публичную папку Google Drive. Маршрут применяется строго к опубликованным карточкам `histology/mbh`, не к другим предметам.
 - Индекс `workers/api/src/data/histology-drive-index.json`: **178/178 фотографий препаратов** и 31 исходный DOCX электронограмм. Проверено напрямую: 178/178 изображений скачиваются с типом image/*; превью Google Drive для 28/28 электронограмм возвращают image/*.
-- Worker: typecheck OK, **36/36 тестов**, Wrangler dry-run OK. Продакшен ещё требуется проверить после автоматического деплоя: все 206 маршрутов картинок должны вернуть HTTP 200 с image bytes.
+- Worker: typecheck OK, **36/36 тестов**, Wrangler dry-run OK. Production deploy и code-check CI прошли: [deploy](https://github.com/MISTACEN/medbiohim/actions/runs/39270945145), [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/39270945030). Проверены все 206 production-маршрутов: **206/206 HTTP 200**, image bytes (image/jpeg/image/png), ошибок нет; в выборочной проверке SHA-256 совпал с прямой выдачей Google Drive.
 - Источник временный и публичный. После подтверждённого восстановления постоянного хранилища нужно вернуть основной путь и удалить Drive-индекс/временный resolver.
