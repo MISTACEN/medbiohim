@@ -49,7 +49,7 @@ Vercel proxy (`src/app/api/v1/[...path]/route.ts`) не переключает �
 | [docs/README.md](docs/README.md) | Карта всей документации |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура |
 | [docs/SPACEWEB-API-INVENTORY.md](docs/SPACEWEB-API-INVENTORY.md) | **Полный список API SpaceWeb** (для сверки с Cloudflare) |
-| [docs/STATUS.md](docs/STATUS.md) | Текущий статус и блокеры |
+| [docs/STATUS.md](docs/STATUS.md) | Исторический статус-снимок от 2026-10-15 и блокеры |
 | [backend/MODULE-INTEGRATION.md](backend/MODULE-INTEGRATION.md) | Как добавлять новые модули в PHP |
 
 ## Frontend (repo root) → Vercel
