@@ -29,24 +29,18 @@ PHP backend оставлен в репозитории для миграцион
 
 Папка `backend/data/` должна быть writable (если ещё используется).
 
-### Цепочка запросов (production сейчас)
+### Цепочка запросов (архитектура в исходниках `main`)
 
 ```
-Browser → Vercel /api/v1 → SpaceWeb PHP /api/v1 → Supabase
+Browser → Vercel /api/v1 → medbiohim-api (Cloudflare)
+                              └─ только HTTP 501 → MEDBIOHIM_UPSTREAM → medbiohim-api-shadow
 ```
 
-Параллельно идёт shadow-миграция на Cloudflare Workers (`integrations/cloudflare-api/`).
-Production-трафик на Cloudflare **не переключён**.
+Vercel proxy (`src/app/api/v1/[...path]/route.ts`) не переключает запросы на PHP: при недоступности Cloudflare он возвращает 502. Canonical Worker (`workers/api/`) отправляет ответы 501 в shadow Worker через service binding. Поэтому shadow пока остаётся зависимостью до завершения route parity и проверки реального production bundle. Актуальная матрица: [API route parity audit](docs/API-ROUTE-PARITY-AUDIT-2026-10-19.md).
 
-## Ветки
+## Рабочий процесс
 
-| Ветка | Роль |
-|-------|------|
-| `main` | Прод, source of truth, Vercel production |
-| `spaceweb-backend` | Совместимость/фиксы текущего PHP на SpaceWeb |
-| `beta` | Эксперименты, не деплоить как prod |
-
-Подробно: [BRANCHES.md](BRANCHES.md).
+Рабочие изменения выполняются непосредственно в `main`. Не запускайте старые ручные workflow, которые восстанавливают файлы из исторических commit или делают push в `main`, пока они не прошли отдельный аудит.
 
 ## Документация
 
