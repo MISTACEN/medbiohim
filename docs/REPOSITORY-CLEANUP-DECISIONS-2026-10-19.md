@@ -19,3 +19,12 @@ This is the evidence-based decision list after static source review, production 
 | **NOT YET SAFE TO REMOVE** | Empty Supabase tables, 66 advisor-reported unused indexes, old PHP migration files | Must be checked against foreign keys, RPCs, query workload, historical migration source and frontend references first. |
 
 No database tables, migrations, user content, or media records were deleted. Only the two confirmed placeholder files listed above are removed by the accompanying cleanup commit.
+
+
+## Дополнение 2026-10-20
+
+| Decision | Item | Evidence / condition |
+|---|---|---|
+| **KEEP** | `package-lock.json` | Newly committed; `npm ci`, typecheck, build and CI pass; locks dependency resolution for Vercel/local installs. |
+| **KEEP / blocker** | Histology Blob metadata and cards | 206/206 card paths match `histology_assets`, but Blob inventory/signing token is rejected and public image routes return 404; retain records until object existence is proven and media restored. |
+| **DO NOT DISPATCH** | Legacy `apply-*` / `fix-*` GitHub workflows | Failed runs returned zero jobs; scripts can mutate and push source when successfully dispatched. |

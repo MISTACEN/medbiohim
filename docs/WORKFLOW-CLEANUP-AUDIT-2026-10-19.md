@@ -49,3 +49,8 @@ The current push created failed runs for several legacy manual workflow files, b
 
 
 CI follow-up (2026-10-19): the predeploy audit's signed-URL cache assertion was corrected to verify the actual no-store/expiry logic. Frontend code-check run [39256338205](https://github.com/MISTACEN/medbiohim/actions/runs/39256338205) succeeded. The two placeholder files listed in the cleanup decision report were removed; the other source-mutating workflows remain untouched.
+
+
+## Follow-up — 2026-10-20
+
+The code-check, smoke, source-package, and Cloudflare deploy workflows for the API priority fix succeeded. The four legacy `apply-*` / `fix-*` workflow runs that show as failed for the latest commits had **zero jobs**, so no steps ran. They remain do-not-dispatch until each source-mutating script is audited. The root lockfile was added and the latest code-check run passed.

@@ -155,3 +155,11 @@ Remote Supabase ledger: 148 applied records. SQL хранится сразу в 
 
 
 CI follow-up: the stale private-media cache assertion in `scripts/predeploy-audit.mjs` was corrected to match the actual implementation; frontend code-check run [39256338205](https://github.com/MISTACEN/medbiohim/actions/runs/39256338205) passed. Vercel production deployment for commit `0dfee6556a927d2b23183a94222b2d5fa59639fc` is READY.
+
+
+## Дополнение 5 — проверка 2026-10-20
+
+- Исправлен API-контракт приоритета работ: база разрешает `urgent`, прежний Worker API отклонял его. Исправлены оба валидатора и добавлена проверка контракта; Worker version 83 активен, CI/smoke прошли.
+- Добавлен `package-lock.json`: локальный `npm ci`, frontend typecheck/build и Worker 35 тестов проходят; npm audit сообщает 0 уязвимостей. Production Vercel deployment для commit `b62aa4ad8634423eac07b547dee2021c8574c7e4` имеет READY.
+- Сопоставление гистологии: 206/206 карточек имеют соответствующий путь в `histology_assets`, но Blob inventory/signing недоступны из-за отклонённого bucket token, а production отдаёт 206/206 404. Физическое наличие объектов не подтверждено.
+- Authenticated student/admin CRUD не запускался без тестовой сессии. Production data не изменялись.
