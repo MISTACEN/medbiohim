@@ -52,6 +52,31 @@ export function canonicalSubjectSlug(raw?: string | null): string {
   return s;
 }
 
+const SUBJECT_DISPLAY_NAMES: Record<string, string> = {
+  histology: "Гистология",
+  physiology: "Физиология",
+  organic_chemistry: "Органическая химия",
+  inorganic_chemistry: "Неорганическая химия",
+  optics: "Оптика",
+  informatics: "Информатика",
+  it_health: "ИТ в здравоохранении",
+  probability: "Теория вероятностей",
+  history_medicine: "История медицины",
+  philosophy: "Философия",
+  first_aid: "Первая помощь",
+  physical_education: "Физическая культура",
+  biology: "Биология",
+  physics: "Физика",
+  math: "Математика",
+  history: "История",
+};
+
+export function subjectDisplayName(slug?: string | null, fallback?: string | null): string {
+  const canonical = canonicalSubjectSlug(slug);
+  const fallbackName = (fallback || "").trim();
+  return SUBJECT_DISPLAY_NAMES[canonical] || fallbackName || canonical.replace(/_/g, " ") || "Без предмета";
+}
+
 export function subjectSlugMatches(a?: string | null, b?: string | null): boolean {
   const ca = canonicalSubjectSlug(a);
   const cb = canonicalSubjectSlug(b);
