@@ -40,7 +40,7 @@ function SrsPanel() {
     setError(null);
     const [sumRes, dueRes] = await Promise.all([
       srsSummary(),
-      srsDue(25, undefined, "histology", selectedScope),
+      srsDue(25, "histology", selectedScope),
     ]);
     setLoading(false);
     if (!sumRes.ok) {
@@ -62,7 +62,7 @@ function SrsPanel() {
   async function loadMore() {
     if (scope === "personal" || busy) return;
     setBusy(true);
-    const res = await srsEnsure(20, undefined, "histology");
+    const res = await srsEnsure(20, "histology");
     setBusy(false);
     if (!res.ok) {
       setError(res.error.message);

@@ -64,6 +64,25 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
   const [draft, setDraft] = useState<{ text: string; answer: string; options: EditOption[] } | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [context, setContext] = useState<{ subject: string; module: string; topic: string; mode: string; count: number }>({
+    subject: "",
+    module: "",
+    topic: "",
+    mode: "",
+    count: 10,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = new URLSearchParams(window.location.search);
+    setContext({
+      subject: query.get("subject") || "",
+      module: query.get("module") || "",
+      topic: query.get("topic") || "",
+      mode: query.get("mode") || "",
+      count: Math.max(1, Math.min(200, Number(query.get("count")) || 10)),
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,12 +131,15 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
   const topicOptions = useMemo(() => Array.from(new Set(questions.map((q) => q.topicTitle).filter(Boolean))) as string[], [questions]);
   const visibleQuestions = useMemo(() => topicFilter === "all" ? questions : questions.filter((q) => q.topicTitle === topicFilter), [questions, topicFilter]);
 
-  const modeLinks = useMemo(() => ({
-    practice: `/tests/preparation/${encodeURIComponent(testId)}?mode=prepare&count=10`,
-    solve: `/tests/preparation/${encodeURIComponent(testId)}?mode=solve&count=10`,
-    exam: `/tests/preparation/${encodeURIComponent(testId)}?mode=exam&count=10`,
-    sequential: `/tests/preparation/${encodeURIComponent(testId)}?flow=sequential&mode=prepare`,
-  }), [testId]);
+  const modeLinks = useMemo(() => {
+    const suffix = context.subject ? `&subject=${encodeURIComponent(context.subject)}` : "";
+    return {
+      practice: `/tests/preparation/${encodeURIComponent(testId)}?mode=prepare&count=${context.count}${suffix}`,
+      solve: `/tests/preparation/${encodeURIComponent(testId)}?mode=solve&count=${context.count}${suffix}`,
+      exam: `/tests/preparation/${encodeURIComponent(testId)}?mode=exam&count=${context.count}${suffix}`,
+      sequential: `/tests/preparation/${encodeURIComponent(testId)}?flow=sequential&mode=prepare${suffix}`,
+    };
+  }, [testId, context.subject, context.count]);
 
   if (!hasToken()) {
     return (
@@ -228,6 +250,19 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
         <p className="mt-2 text-sm text-slate-600">
           {questions.length} вопросов. Здесь можно изучить весь банк с ответами или выбрать режим прохождения.
         </p>
+        {(context.subject || context.module || context.topic) && (
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            {context.subject && (
+              <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-indigo-700 shadow-sm">{context.subject}</span>
+            )}
+            {context.module && context.module !== context.subject && (
+              <span className="rounded-full bg-white px-2.5 py-1 text-slate-600 shadow-sm">{context.module}</span>
+            )}
+            {context.topic && (
+              <span className="rounded-full bg-white px-2.5 py-1 text-slate-600 shadow-sm">{context.topic}</span>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="card space-y-4 p-5">

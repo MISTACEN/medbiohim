@@ -10,6 +10,7 @@ import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
+import TestsHub from "@/components/tests/TestsHub";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type Subject = {
@@ -257,15 +258,6 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     if (bankSlug) return bankSlug === slug;
     const bankName = String(b.subject || b.subject_name || "").toLowerCase().trim();
     return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
-  });
-  const subjectTests = tests.filter((t: any) => {
-    if (t.subject_id && t.subject_id === subject?.id) return true;
-    const sameSubject = String(t.subject_slug || "") === slug;
-    const sameCourse = !t.course_number || Number(t.course_number) === Number(subject?.course_number ?? 2);
-    const sameSemester = !t.semester || Number(t.semester) === Number(subject?.semester ?? 3);
-    if (sameSubject && sameCourse && sameSemester) return true;
-    if (histology && (t.subject_id === "histology" || /цитолог|эмбриолог|гистолог/i.test(String(t.title || t.name || "")))) return true;
-    return false;
   });
   const subjectLectures = lectures.filter((l) => {
     const ls = String(l?.subject || "").toLowerCase().trim();
@@ -553,41 +545,14 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         )}
 
         {tab === "tests" && (
-          <section className="card space-y-4 p-5">
-            <div>
-              <h2 className="text-lg font-bold">Тесты</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {histology
-                  ? "Закрытые тесты по цитологии и эмбриологии + банк предмета. Режим выбирается кнопкой на карточке."
-                  : "Все тесты предмета — сразу с кнопками режима, без перехода в общий раздел."}
-              </p>
-            </div>
-            {subjectTests.length > 0 ? (
-              <>
-              <div className="flex flex-wrap gap-2">
-                <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/tests"} className="btn-primary inline-flex items-center gap-2 text-sm">
-                  <ListChecks className="h-4 w-4" /> Открыть весь раздел тестов
-                </Link>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {subjectTests.map((t) => (
-                  <div key={t.id} className="rounded-xl border bg-slate-50 p-4">
-                    <div className="font-semibold">{t.title || t.name || "Тест"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{t.questions_count || 0} вопросов</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id)} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">Подготовка</Link>
-                      <Link href={"/tests/preparation/" + encodeURIComponent(t.id) + "?mode=exam"} className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300">Экзамен</Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              </>
-            ) : (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                {resourceErrors.tests || "Опубликованных тестов для этого предмета пока нет."}
-              </p>
-            )}
-          </section>
+          <TestsHub
+            subjectId={subject?.id || subjectId}
+            subjectSlug={slug}
+            subjectName={subject?.name}
+            course={subject?.course_number ?? 2}
+            semester={subject?.semester ?? 3}
+            embedded
+          />
         )}
 
         {tab === "practice" && (
@@ -681,6 +646,14 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                   ))}
                 </div>
               )}
+              {!materialsRich.length && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={"/practice?" + query} className="btn-primary inline-flex">Открыть базу вопросов</Link>
+                  <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+                    Перейти к тестам
+                  </button>
+                </div>
+              )}
             </section>
           )
         )}
@@ -691,7 +664,15 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           ) : (
             <section className="card p-5">
               <h2 className="text-lg font-bold">Микропрепараты</h2>
-              <p className="mt-1 text-sm text-slate-500">Для этого предмета микропрепараты пока не подключены.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Для этого предмета микропрепараты пока не подключены. Потренируйтесь на вопросах с эталонами или запустите тест.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link href={"/practice?" + query} className="btn-primary inline-flex">Открыть базу вопросов</Link>
+                <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+                  Перейти к тестам
+                </button>
+              </div>
             </section>
           )
         )}
@@ -702,7 +683,15 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           ) : (
             <section className="card p-5">
               <h2 className="text-lg font-bold">Тренажёры</h2>
-              <p className="mt-1 text-sm text-slate-500">Для этого предмета тренажёры пока не подключены.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Интерактивные тренажёры по этому предмету пока не подключены. Можно отработать материал в базе вопросов или в тестах.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link href={"/practice?" + query} className="btn-primary inline-flex">Открыть базу вопросов</Link>
+                <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+                  Перейти к тестам
+                </button>
+              </div>
             </section>
           )
         )}

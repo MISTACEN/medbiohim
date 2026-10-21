@@ -245,7 +245,12 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
       </div>
       {images.length > 0 ? (
         <div className="mt-8 space-y-6 border-t pt-7">
-          {images.map((src, index) => <img key={index} src={src} alt="" className="mx-auto max-h-[70vh] rounded-xl border object-contain" />)}
+          {images.map((src, index) => {
+            // The image list comes from a parsed DOCX/HTML document and has no
+            // stable dimensions, so next/image's layout model does not fit here.
+            // eslint-disable-next-line @next/next/no-img-element
+            return <img key={index} src={src} alt="" className="mx-auto max-h-[70vh] rounded-xl border object-contain" />;
+          })}
         </div>
       ) : null}
     </article>
