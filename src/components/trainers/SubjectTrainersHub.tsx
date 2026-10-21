@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, Brain, Check, Droplets, Flame, Loader2, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, BookOpen, Brain, Check, ChevronRight, Droplets, Flame, Loader2, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
@@ -35,7 +35,7 @@ function SrsPanel() {
   const [back, setBack] = useState("");
   const [adding, setAdding] = useState(false);
 
-  async function refresh(selectedScope: "shared" | "personal" = scope) {
+  const refresh = useCallback(async (selectedScope: "shared" | "personal") => {
     setLoading(true);
     setError(null);
     const [sumRes, dueRes] = await Promise.all([
@@ -55,9 +55,9 @@ function SrsPanel() {
     setQueue(dueRes.data.items || []);
     setIdx(0);
     setFlipped(false);
-  }
+  }, []);
 
-  useEffect(() => { void refresh("shared"); }, []);
+  useEffect(() => { void refresh("shared"); }, [refresh]);
 
   async function loadMore() {
     if (scope === "personal" || busy) return;
@@ -220,7 +220,7 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
             <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Учебный план → лекция → практика</p>
             <h2 className="mt-1 text-xl font-extrabold text-slate-950">Тренажёры по темам гистологии</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Тренажёры сгруппированы по теме занятия. Новые упражнения будут добавляться внутрь соответствующей темы, а не отдельными пунктами навигации.
+              Отработайте лейкоцитарную формулу, возрастные нормы, микропрепараты и ответы по смыслу. Все упражнения собраны по теме занятия.
             </p>
           </div>
         </div>
@@ -235,7 +235,7 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
             <div className="border-b border-[var(--border)] p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wide text-indigo-600">Тема 1 · доступные тренажёры</div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-indigo-600">Тема занятия · доступные тренажёры</div>
                   <h3 className="mt-1 text-lg font-extrabold text-slate-950">Кровь и лимфа</h3>
                   <p className="mt-1 text-sm leading-5 text-[var(--muted)]">Лекция 5 · ткани внутренней среды · практические занятия № 12–13</p>
                 </div>
@@ -258,6 +258,7 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
                     <span className="mt-1 block font-bold leading-5 text-slate-900">{label}</span>
                     <span className="mt-1 block text-sm leading-5 text-slate-600">{description}</span>
                   </span>
+                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500" />
                 </button>
               ))}
             </div>
@@ -273,9 +274,10 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
               <span className="block font-extrabold text-slate-900">Карточки SRS · интервальное повторение</span>
               <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">Общая и личная колоды для повторения терминов и фактов по гистологии. Это отдельный инструмент повторения, а не ещё одна лекционная тема.</span>
             </span>
+            <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
           </button>
           <p className="px-1 text-xs leading-5 text-[var(--muted)]">
-            Сейчас доступны упражнения по теме «Кровь и лимфа». По мере появления проверенных материалов новые темы появятся отдельными блоками с привязкой к соответствующим лекциям.
+            Сейчас доступны упражнения по теме «Кровь и лимфа». Новые темы появятся здесь по мере публикации проверенных материалов.
           </p>
         </div>
       ) : (
