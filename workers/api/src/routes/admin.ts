@@ -5,6 +5,7 @@ import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
 import dbAdmin from "./admin-database";
+import adminColloquium from "./admin-colloquium";
 import adminParity from "./admin-parity";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -1008,6 +1009,7 @@ admin.delete("/announcements/:id", requireAuth, async (c) => {
 });
 
 admin.route("/database", dbAdmin);
+admin.route("/colloquium", adminColloquium);
 admin.route("/", adminParity);
 
 export default admin;

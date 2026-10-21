@@ -779,3 +779,49 @@ export async function adminImportCurriculumXlsx(file:File){const fd=new FormData
 
 export async function adminFileAudit(limit = 200): Promise<any> { return api("/admin/files/audit?limit=" + encodeURIComponent(String(limit))) as any; }
 export async function adminMediaCapabilities(): Promise<any> { return api("/admin/files/capabilities") as any; }
+
+export type ColloquiumApiPayload = {
+  settings: import("@/lib/physiology-colloquium/settings").ColloquiumSettings;
+  content: import("@/lib/physiology-colloquium/settings").ColloquiumContentSnapshot | null;
+  updated_at?: string | null;
+  content_updated_at?: string | null;
+  source?: "site_content" | "defaults";
+  degraded?: boolean;
+};
+
+export async function getColloquium(subject: string): Promise<ApiResult<ColloquiumApiPayload>> {
+  return api<ColloquiumApiPayload>("/colloquium/" + encodeURIComponent(subject));
+}
+
+export async function adminGetColloquium(subject: string): Promise<ApiResult<ColloquiumApiPayload>> {
+  return api<ColloquiumApiPayload>("/admin/colloquium/" + encodeURIComponent(subject));
+}
+
+export type ColloquiumListItem = {
+  subject: string;
+  updated_at: string | null;
+};
+
+export async function adminListColloquium(): Promise<ApiResult<{ items: ColloquiumListItem[] }>> {
+  return api<{ items: ColloquiumListItem[] }>("/admin/colloquium");
+}
+
+export async function adminSaveColloquium(
+  subject: string,
+  payload: {
+    settings?: import("@/lib/physiology-colloquium/settings").ColloquiumSettings;
+    content?: import("@/lib/physiology-colloquium/settings").ColloquiumContentSnapshot;
+    previous_subject?: string;
+  },
+): Promise<ApiResult<ColloquiumApiPayload>> {
+  return api<ColloquiumApiPayload>("/admin/colloquium/" + encodeURIComponent(subject), {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminResetColloquium(subject: string): Promise<ApiResult<{ deleted: boolean }>> {
+  return api<{ deleted: boolean }>("/admin/colloquium/" + encodeURIComponent(subject), {
+    method: "DELETE",
+  });
+}
