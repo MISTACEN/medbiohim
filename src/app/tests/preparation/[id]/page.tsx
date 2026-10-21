@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -9,6 +10,8 @@ import {
   startPreparation,
   getPreparation,
   getBankProgress,
+  getTest,
+  getSubject,
   savePreparation,
   finishPreparation,
   preparationAiReview,
@@ -71,7 +74,9 @@ export default function PreparationPage() {
   const [mode, setMode] = useState<"full" | "count" | "sequential" | null>(null);
   const [limit, setLimit] = useState(10);
   const [bankProgress, setBankProgress] = useState<any>(null);
+  const [meta, setMeta] = useState<{ title: string; subject: string } | null>(null);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const subjectParam = search.get("subject") || "";
   const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
     (search.get("mode") as any) === "exam"
       ? "exam"
@@ -133,7 +138,31 @@ export default function PreparationPage() {
     setLimit(n);
     setExperience(requested === "exam" ? "exam" : requested === "solve" ? "solve" : "prepare");
     void begin(flow === "sequential" ? "sequential" : "count", flow === "sequential" ? undefined : n);
+    // The URL is the only trigger for auto-start; `begin` is intentionally not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, mode, authLoading, user?.groupId]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    let cancelled = false;
+    void (async () => {
+      const result: any = await getTest(id, user?.groupId);
+      if (cancelled || !result?.ok) return;
+      const test = result.data?.test || {};
+      const title = String(test.title || "");
+      let subject = String(test.subject_name || subjectParam || "");
+      if (!subject && test.subject_id) {
+        const subjectResult: any = await getSubject(String(test.subject_id));
+        if (!cancelled && subjectResult?.ok) {
+          const payload: any = subjectResult.data;
+          const selected = payload?.subject || payload?.item || payload;
+          subject = String(selected?.name || "");
+        }
+      }
+      if (!cancelled) setMeta({ title, subject });
+    })().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [id, authLoading, user?.groupId, subjectParam]);
 
   function queueSave(payload: Record<string, unknown>, onError?: (message: string) => void) {
     const task = saveQueue.current.then(async () => {
@@ -229,39 +258,74 @@ export default function PreparationPage() {
     router.push("/tests");
   }
 
+  function startExperience(next: "prepare" | "solve" | "exam", startMode: "full" | "count" | "sequential" = "count") {
+    setExperience(next);
+    void begin(startMode, startMode === "count" ? limit : undefined);
+  }
+
   if (!mode)
     return (
       <div className="mx-auto max-w-3xl space-y-5">
         <LoadingBar active={loading} />
+        <Link href="/tests" className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline">
+          ← К тестам
+        </Link>
         <div>
-          {mode === "sequential" && bankProgress && (
-            <div className="mb-2 inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-              Банк: {bankProgress.answered ?? 0} / {bankProgress.total ?? questions.length}
-              {bankProgress.completed ? " · пройден полностью" : ""}
-            </div>
-          )}
-          <h1 className="page-title">Гистология · проверка знаний</h1>
-          <p className="page-subtitle">Выберите объём. Режим «весь банк» проходит вопросы подряд в исходном порядке и фиксирует прогресс по всему банку.</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{meta?.subject || "Проверка знаний"}</p>
+          <h1 className="page-title">{meta?.title || "Тест"}</h1>
+          <p className="page-subtitle">Выберите режим прохождения. Настройки действуют только для этого банка.</p>
         </div>
         {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
-        <div className="card space-y-4 p-6">
-          <button disabled={loading} onClick={() => void begin("sequential")} className="btn-primary w-full">
-            Пройти весь банк подряд
-          </button>
-          <button disabled={loading} onClick={() => void begin("full")} className="rounded-xl border px-4 py-2 font-semibold w-full">
-            Полный тест в случайном порядке
-          </button>
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { id: "prepare" as const, title: "Подготовка", desc: "Проверка сразу после каждого ответа" },
+            { id: "solve" as const, title: "Решение", desc: "Проверка после завершения" },
+            { id: "exam" as const, title: "Экзамен", desc: "Без эталонов до конца" },
+          ].map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              disabled={loading}
+              onClick={() => startExperience(option.id, "count")}
+              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40 disabled:opacity-50"
+            >
+              <span className="block font-extrabold text-slate-900">{option.title}</span>
+              <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">{option.desc}</span>
+              <span className="mt-3 inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">
+                {limit} случайных вопросов
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="card space-y-4 p-5">
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold text-slate-800">Сколько случайных вопросов</span>
             <input
               type="number"
               min={1}
               max={200}
               value={limit}
-              onChange={(e) => setLimit(Math.max(1, Number(e.target.value) || 1))}
-              className="w-24 rounded-xl border px-3 py-2"
+              onChange={(e) => setLimit(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
+              className="w-24 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2"
             />
-            <button disabled={loading} onClick={() => void begin("count", limit)} className="rounded-xl border px-4 py-2 font-semibold">
-              Случайные N вопросов
+            <span className="text-xs text-[var(--muted)]">если вопросов в банке меньше — будут использованы все</span>
+          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => startExperience("prepare", "sequential")}
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 disabled:opacity-50"
+            >
+              Пройти весь банк подряд
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => startExperience("prepare", "full")}
+              className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-50"
+            >
+              Полный тест в случайном порядке
             </button>
           </div>
         </div>
@@ -275,7 +339,9 @@ export default function PreparationPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          {meta?.subject && <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{meta.subject}</p>}
           <h1 className="page-title">Тест завершён — ответы зафиксированы</h1>
+          {meta?.title && <p className="mt-1 text-sm font-semibold text-slate-700">{meta.title}</p>}
           <p className="page-subtitle">
             Правильно {stats.stats?.correct ?? 0} из {stats.stats?.total ?? 0} · {stats.stats?.percent ?? 0}%.
             Изменить ответы больше нельзя, ниже — разбор.
@@ -368,6 +434,7 @@ export default function PreparationPage() {
   const unresolved = serverGrading && serverGrading.is_correct == null;
   const answeredCount = Object.keys(checked).length;
   const isLast = idx === questions.length - 1;
+  const experienceLabel = experience === "exam" ? "Экзамен" : experience === "solve" ? "Решение" : "Подготовка";
 
   function toggleOption(label: string) {
     if (checked[q.id]) return;
@@ -387,9 +454,13 @@ export default function PreparationPage() {
       <LoadingBar active={loading} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="page-title">
-            {experience === "exam" ? "Экзамен" : experience === "solve" ? "Решение" : "Подготовка"}
-          </h1>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {meta?.subject && (
+              <span className="text-xs font-bold uppercase tracking-wide text-indigo-600">{meta.subject}</span>
+            )}
+            <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">{experienceLabel}</span>
+          </div>
+          <h1 className="page-title">{meta?.title || "Тест"}</h1>
           <p className="page-subtitle">
             Вопрос {idx + 1} из {questions.length} · отвечено {answeredCount}
             {mode === "sequential" ? " · проход всего банка" : ""}
