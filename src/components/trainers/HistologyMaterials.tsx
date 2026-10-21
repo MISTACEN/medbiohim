@@ -435,6 +435,14 @@ export default function HistologyMaterials() {
           <div>
             <h2 className="text-lg font-bold">Материалы по гистологии</h2>
             <p className="mt-1 text-sm text-slate-500">Только текущий 3 семестр по умолчанию. Следующий семестр остаётся в архиве и не смешивается с текущими материалами.</p>
+            <a
+              href="https://drive.google.com/drive/folders/1qCrL_CjLBmAgVNDhdlm8_zUqRYU-xQa1?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+            >
+              <FileDown className="h-4 w-4" /> Открыть резервные материалы на Google Диске
+            </a>
           </div>
           <label className="relative w-full sm:w-80">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
