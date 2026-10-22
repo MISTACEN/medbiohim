@@ -3099,3 +3099,11 @@ Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `n
 - `admin-schedule.ts`: параметры маршрутов приводятся к строке; аналитика расписания считается в Worker вместо несуществующего `.group()` и опечатки `schedule_id`.
 - Тесты: устаревшие проверки страниц предметов обновлены под текущий `TestsHub` (передача subject/course/semester), а не под удалённый код.
 - Проверено: `workers/api npm run check` — typecheck чистый, **40/40 тестов**, `wrangler deploy --dry-run` успешно. Deploy не выполнялся.
+
+## Деплой в main и production-проверка (2026-10-22)
+
+- Коммиты `cf9aade1` (контракты SRS/notes/presence, лабораторные, починка Worker) и `95b5bf9b` (монтирование `admin-schedule` под `/admin`) запушены в `main`; GitHub Actions задеплоил `medbiohim-api`, Vercel — фронтенд.
+- Production-проверка без токена: `/labs/templates`, `/srs/summary`, `/srs/cards`, `/srs/ensure`, `/srs/review`, `/notes` (GET/POST), `/admin/presence`, `/admin/questions`, `POST /admin/content/package/import`, `POST /admin/schedule/save`, `/admin/schedule/versions/:id`, `PATCH /homeworks/:id`, `/materials/:id/file-url` — все отвечают **401**, а не 501, то есть маршруты живые.
+- Устранён двойной префикс: `admin-schedule` теперь монтируется на `/admin`, поэтому `/admin/schedule/analytics|versions|save|entries` резолвятся один раз (до фикса — `/admin/schedule/schedule/...`).
+- Vercel `/labs` отдаёт 200. Полный сценарий «студент проходит лабораторную» и админские операции с токеном не проверены: нужна авторизованная сессия.
+- Локальный dev на `:3106` не запущен (порт свободен); ошибка 500 на `/login` была из остановленного сервера — нужен повторный `npm run dev`.
