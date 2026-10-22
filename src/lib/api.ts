@@ -779,3 +779,11 @@ export async function adminImportCurriculumXlsx(file:File){const fd=new FormData
 
 export async function adminFileAudit(limit = 200): Promise<any> { return api("/admin/files/audit?limit=" + encodeURIComponent(String(limit))) as any; }
 export async function adminMediaCapabilities(): Promise<any> { return api("/admin/files/capabilities") as any; }
+
+// ---- Attestations (colloquium / exam / credit / test / control) ----
+export async function listAttestations(subjectSlug?:string,type?:string){const q=new URLSearchParams();if(subjectSlug)q.set("subject_slug",subjectSlug);if(type)q.set("type",type);return api<any>(`/attestations${q.toString()?`?${q}`:""}`)}
+export async function getAttestation(subjectSlug:string,slug:string){return api<any>(`/attestations/${encodeURIComponent(subjectSlug)}/${encodeURIComponent(slug)}`)}
+export async function adminListAttestations(subjectSlug?:string){const q=subjectSlug?`?subject_slug=${encodeURIComponent(subjectSlug)}`:"";return api<any>(`/admin/attestations${q}`)}
+export async function adminGetAttestation(subjectSlug:string,slug:string){return api<any>(`/admin/attestations/${encodeURIComponent(subjectSlug)}/${encodeURIComponent(slug)}`)}
+export async function adminSaveAttestation(subjectSlug:string,slug:string,payload:unknown){return api<any>(`/admin/attestations/${encodeURIComponent(subjectSlug)}/${encodeURIComponent(slug)}`,{method:"PUT",body:JSON.stringify(payload)})}
+export async function adminDeleteAttestation(subjectSlug:string,slug:string){return api<any>(`/admin/attestations/${encodeURIComponent(subjectSlug)}/${encodeURIComponent(slug)}`,{method:"DELETE"})}

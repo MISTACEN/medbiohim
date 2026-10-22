@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEDBIOHIM Importer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 380px; padding: 16px; color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+    }
+    .header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .logo {
+      width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+      color: #fff; font-weight: 700; font-size: 13px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    }
+    .title { font-size: 15px; font-weight: 700; }
+    .subtitle { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: 5px; }
+    input {
+      width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+      font-size: 12px; outline: none; background: #fff;
+    }
+    input:focus { border-color: #a5b4fc; }
+    .hint { font-size: 10px; color: #94a3b8; line-height: 1.5; margin-top: 6px; }
+    button {
+      width: 100%; padding: 9px 12px; border: 0; border-radius: 9px; font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: background .15s;
+    }
+    button:disabled { opacity: .45; cursor: default; }
+    .primary { background: #4f46e5; color: #fff; }
+    .primary:hover:not(:disabled) { background: #4338ca; }
+    .ghost { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+    .ghost:hover:not(:disabled) { background: #f1f5f9; }
+    .row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .hidden { display: none !important; }
+    .status { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 8px; }
+    .status.error { color: #e11d48; }
+    .status.ok { color: #059669; }
+    .preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .preview-head b { font-size: 12px; }
+    .counter { font-size: 10px; color: #64748b; }
+    .items { max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+    .item { display: flex; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+    .item:last-child { border-bottom: 0; }
+    .item input { width: 14px; height: 14px; margin-top: 3px; }
+    .item-title { font-size: 12px; font-weight: 500; line-height: 1.4; }
+    .item-meta { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+    .badge { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 1px 5px; border-radius: 999px; background: #eef2ff; color: #4338ca; margin-right: 4px; }
+    progress { width: 100%; height: 6px; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo">MB</div>
+    <div>
+      <div class="title">MEDBIOHIM Importer</div>
+      <div class="subtitle" id="source-label">ЕИОС · NeoFamily · Школа Сеченова</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <label class="label" for="api-base">Адрес API</label>
+    <input id="api-base" type="url" placeholder="https://medbiohim-api.ryazansevegor.workers.dev/api/v1" />
+    <label class="label" style="margin-top:10px" for="token-input">Токен доступа</label>
+    <input id="token-input" type="password" placeholder="Вставьте access token из MEDBIOHIM" />
+    <div class="row" style="margin:10px 0 0">
+      <button id="save-settings-btn" class="primary" type="button">Сохранить</button>
+    </div>
+    <p class="hint">Токен хранится только в вашем браузере (chrome.storage) и отправляется лишь на указанный API. Ничего не импортируется без нажатия кнопки.</p>
+    <p id="settings-status" class="status"></p>
+  </div>
+
+  <div class="row">
+    <button id="analyze-btn" class="primary" type="button">Разобрать страницу</button>
+    <button id="open-platform-btn" class="ghost" type="button">Открыть раздел</button>
+  </div>
+
+  <section id="preview-section" class="hidden">
+    <div class="card">
+      <div class="preview-head">
+        <b>Выберите материалы</b>
+        <span id="items-counter" class="counter">0 из 0</span>
+      </div>
+      <div id="preview-container" class="items"></div>
+      <div class="row" style="margin:8px 0 0">
+        <button id="import-all-btn" class="primary" type="button">Импортировать выбранное</button>
+        <button id="close-preview-btn" class="ghost" type="button">Отмена</button>
+      </div>
+      <progress id="progress" class="hidden" max="100" value="0"></progress>
+      <p id="import-status" class="status"></p>
+    </div>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

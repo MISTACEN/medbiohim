@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
@@ -12,6 +12,7 @@ import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import TestsHub from "@/components/tests/TestsHub";
 import Labs from "@/components/Labs";
+import AttestationList from "@/components/attestations/AttestationList";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type Subject = {
@@ -26,9 +27,9 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "progress" | "colloquium";
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "progress" | "colloquium";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "progress", "colloquium"];
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "progress", "colloquium"];
 
 function normalizeTab(v: string) {
   if (v === "cards") return "trainers" as TabId;
@@ -303,6 +304,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "trainer", label: "Микропрепараты", Icon: Microscope },
     { id: "trainers", label: "Тренажёры", Icon: ListChecks },
     { id: "labs", label: "Лабораторные", Icon: FlaskConical },
+    { id: "attestations", label: "Аттестации", Icon: ClipboardList },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
     ...(slug === "physiology" ? [{ id: "colloquium" as TabId, label: "Коллоквиум", Icon: GraduationCap }] : []),
   ];
@@ -707,6 +709,21 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </p>
             </div>
             <Labs subject={slug} />
+          </section>
+        )}
+
+        {tab === "attestations" && (
+          <section className="space-y-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600">
+                <ClipboardList className="h-4 w-4" /> Аттестации
+              </div>
+              <h2 className="mt-1.5 font-serif text-xl font-semibold">Коллоквиумы, экзамены, зачёты и контрольные</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                Открывайте аттестацию по этапам: теория с конспектом ответа, проверяемые тесты и задачи с эталонным решением. Прогресс сохраняется автоматически.
+              </p>
+            </div>
+            <AttestationList subjectSlug={slug} subjectName={subject?.name} />
           </section>
         )}
 

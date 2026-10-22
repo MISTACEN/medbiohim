@@ -55,6 +55,9 @@ import histology from "./routes/histology";
 import files from "./routes/files";
 import telegram from "./routes/telegram";
 import labs from "./routes/labs";
+import attestations from "./routes/attestations";
+import adminAttestations from "./routes/admin-attestations";
+import integrations from "./routes/integrations";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -155,8 +158,11 @@ v1.route("/files", files);
 v1.route("/admin", adminRoutes);
 // admin-schedule declares its own "/schedule/..." paths, so it mounts on /admin.
 v1.route("/admin", adminSchedule);
+v1.route("/admin", adminAttestations);
 v1.route("/histology", histology);
 v1.route("/labs", labs);
+v1.route("/attestations", attestations);
+v1.route("/integrations", integrations);
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)

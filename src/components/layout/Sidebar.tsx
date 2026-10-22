@@ -38,6 +38,7 @@ const navItems = [
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
   { href: "/chemistry", label: "Химия", icon: FlaskConical },
   { href: "/labs", label: "Лабораторные", icon: FlaskConical },
+  { href: "/attestations", label: "Аттестации", icon: ClipboardList },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
 ];
 

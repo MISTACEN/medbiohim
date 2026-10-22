@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3, Flag, Pencil, Save, X, Database, Activity } from "lucide-react";
+import { CalendarDays, LayoutDashboard, BookOpen, Users, FileText, ShieldCheck, Settings2, Plus, Trash2, Ticket, Grid3X3, Flag, Pencil, Save, X, Database, Activity, ClipboardList } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
 import { adminOverview, adminUpdateSite, adminListAnnouncements, adminCreateAnnouncement, adminDeleteAnnouncement, adminListUsers, adminSetUserRole, listGroups, listSubjects, adminListSchedule, adminSaveSchedule, createGroup, createSubject, updateGroup, deleteGroup, updateSubject, deleteSubject, hasToken, api, type ScheduleItem } from "@/lib/api";
@@ -163,6 +163,7 @@ export default function AdminPage() {
           <Link href="/admin/questions" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Ticket className="h-4 w-4" />Экзаменационные билеты</Link>
           <Link href="/tests" className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-left text-sm font-semibold text-emerald-800"><span className="h-2 w-2 rounded-full bg-emerald-500" />Банк вопросов тестов</Link>
           <Link href="/admin/lectures" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><BookOpen className="h-4 w-4" />AI-лекции</Link>
+          <Link href="/admin/attestations" className="flex w-full items-center gap-3 rounded-xl bg-violet-50 px-3 py-2.5 text-left text-sm font-semibold text-violet-700"><ClipboardList className="h-4 w-4" />Аттестации</Link>
           <Link href="/admin/database" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-sm font-semibold text-indigo-700"><Database className="h-4 w-4" />База данных / SQL</Link>
           <Link href="/admin/api-logs" className="flex w-full items-center gap-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-left text-sm font-semibold text-emerald-800"><Activity className="h-4 w-4" />Журнал API</Link>
           <Link href="/admin/tools" className="flex w-full items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700"><Settings2 className="h-4 w-4" />Импорт / tools</Link>

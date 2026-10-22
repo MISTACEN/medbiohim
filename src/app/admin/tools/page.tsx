@@ -7,6 +7,7 @@ import {
   Activity,
   BookOpen,
   CalendarDays,
+  ClipboardList,
   GraduationCap,
   HardDrive,
   FileSpreadsheet,
@@ -169,6 +170,9 @@ export default function AdminToolsPage() {
             </Link>
             <Link href="/admin/lectures" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700">
               <BookOpen className="h-4 w-4" /> AI-лекции
+            </Link>
+            <Link href="/admin/attestations" className="mt-1 flex w-full items-center gap-3 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-semibold text-violet-700">
+              <ClipboardList className="h-4 w-4" /> Аттестации и коллоквиумы
             </Link>
           </div>
         </aside>

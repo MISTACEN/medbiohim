@@ -1,0 +1,68 @@
+name: Build browser extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "browser-extension/**"
+      - "public/downloads/medbiohim-importer.zip"
+      - ".github/workflows/deploy-browser-extension.yml"
+  pull_request:
+    paths:
+      - "browser-extension/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: browser-extension
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-extension/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify manifest references exist in dist
+        run: |
+          node -e "
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('dist/manifest.json', 'utf8'));
+          const refs = [
+            manifest.background?.service_worker,
+            manifest.action?.default_popup,
+            ...(manifest.content_scripts || []).flatMap((entry) => [...(entry.js || []), ...(entry.css || [])]),
+          ].filter(Boolean);
+          const missing = refs.filter((file) => !fs.existsSync('dist/' + file));
+          if (missing.length) {
+            console.error('Missing files referenced by manifest:', missing.join(', '));
+            process.exit(1);
+          }
+          console.log('Manifest references OK:', refs.join(', '));
+          "
+
+      - name: Package download
+        run: npm run package
+
+      - name: Check committed download is up to date
+        working-directory: .
+        run: |
+          if ! git diff --quiet -- public/downloads/medbiohim-importer.zip; then
+            echo "::warning::public/downloads/medbiohim-importer.zip is stale — run npm run package in browser-extension and commit it."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medbiohim-importer
+          path: browser-extension/dist
+          if-no-files-found: error

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ExternalPlatforms from "@/components/university/ExternalPlatforms";
 import {
   AlertCircle,
   ArrowUpRight,
@@ -12,7 +13,6 @@ import {
   ClipboardCheck,
   ExternalLink,
   FileText,
-  FlaskConical,
   GraduationCap,
   Info,
   Landmark,
@@ -21,7 +21,6 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  Stethoscope,
 } from "lucide-react";
 
 type Faculty = {
@@ -136,26 +135,7 @@ const OFFICIAL_LINKS = [
   },
 ] as const;
 
-const EXTERNAL_PLATFORMS = [
-  {
-    title: "NeoFamily Lab",
-    href: "https://lab.neofamily.ru/",
-    description:
-      "Интерактивные симуляции, анимации и тренажёры по биологии, химии и русскому языку. Полезны как образец наглядных заданий.",
-    note: "Внешняя платформа. Не является сервисом ДВГМУ; материалы принадлежат правообладателям.",
-    tags: ["Симуляции", "Тренажёры", "Биология", "Химия"],
-    icon: FlaskConical,
-  },
-  {
-    title: "Школа Сеченова",
-    href: "https://школасеченова.рф/",
-    description:
-      "Уроки по предметам медвуза, AI-тьютор, клинические задачи, интервальное повторение и калькуляторы. Используем как источник UX-идей.",
-    note: "Внешняя платформа с платным доступом. MEDBIOHIM не обходит оплату и не копирует закрытые материалы.",
-    tags: ["AI-тьютор", "Клинические задачи", "SRS", "Калькуляторы"],
-    icon: Stethoscope,
-  },
-] as const;
+
 
 const FEED_TABS = [
   { id: "news", label: "Новости" },
@@ -523,32 +503,7 @@ export default function UniversityPage() {
         )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {EXTERNAL_PLATFORMS.map((platform) => {
-          const Icon = platform.icon;
-          return (
-            <a key={platform.href} href={platform.href} target="_blank" rel="noreferrer" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-violet-200 hover:shadow-md">
-              <div className="flex items-start justify-between gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-500">Внешняя платформа</span>
-              </div>
-              <h2 className="mt-3 text-lg font-semibold text-slate-900 group-hover:text-violet-700">{platform.title}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600">{platform.description}</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {platform.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">{tag}</span>
-                ))}
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-slate-400">{platform.note}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-700">
-                Открыть <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
-            </a>
-          );
-        })}
-      </section>
+      <ExternalPlatforms />
 
       <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

@@ -1,0 +1,175 @@
+/**
+ * EIOS Content Analyzer
+ * Detects and extracts structured data from FESMU/EIOS pages
+ */
+
+const ANALYZER = {
+  // Selectors for common EIOS page patterns
+  SELECTORS: {
+    announcements: '.announcement-item, .news-card, [data-test="announcement"]',
+    announcementTitle: 'h3, h2, .title, h4',
+    announcementDate: '.date, time, .timestamp, .publish-date',
+    announcementBody: 'p, .content, .description, .text',
+    
+    calendarEvents: '.calendar-event, .event-card, [data-test="event"]',
+    eventTitle: 'h4, .event-title, .name',
+    eventDate: '.event-date, .when, .time, time',
+    eventLocation: '.location, .place, .room',
+    
+    documents: '.document-link, .file-link, a[href*=".pdf"], a[href*=".doc"]',
+    docTitle: '.doc-name, span:nth-child(1)',
+    docUrl: 'a[href$=".pdf"], a[href$=".doc"], a[href*="/download"]'
+  },
+  
+  /**
+   * Extract announcements from current page
+   */
+  extractAnnouncements() {
+    const items = document.querySelectorAll(this.SELECTORS.announcements);
+    if (!items.length) return [];
+    
+    return Array.from(items).map(item => {
+      const titleEl = item.querySelector(this.SELECTORS.announcementTitle);
+      const dateEl = item.querySelector(this.SELECTORS.announcementDate);
+      const bodyEl = item.querySelector(this.SELECTORS.announcementBody);
+      
+      return {
+        type: 'announcement',
+        title: titleEl?.textContent?.trim() || '',
+        content: bodyEl?.textContent?.trim() || '',
+        date: this.parseDate(dateEl?.textContent),
+        source_url: window.location.href,
+        extracted_at: new Date().toISOString(),
+        original_hash: this.computeHash(titleEl?.textContent + bodyEl?.textContent)
+      };
+    }).filter(item => item.title || item.content);
+  },
+  
+  /**
+   * Extract calendar events from current page
+   */
+  extractCalendarEvents() {
+    const items = document.querySelectorAll(this.SELECTORS.calendarEvents);
+    if (!items.length) return [];
+    
+    return Array.from(items).map(item => {
+      const titleEl = item.querySelector(this.SELECTORS.eventTitle);
+      const dateEl = item.querySelector(this.SELECTORS.eventDate);
+      const locEl = item.querySelector(this.SELECTORS.eventLocation);
+      
+      return {
+        type: 'calendar_event',
+        title: titleEl?.textContent?.trim() || '',
+        date: this.parseDate(dateEl?.textContent),
+        location: locEl?.textContent?.trim() || '',
+        source_url: window.location.href,
+        extracted_at: new Date().toISOString(),
+        original_hash: this.computeHash(titleEl?.textContent + dateEl?.textContent)
+      };
+    }).filter(item => item.title && item.date);
+  },
+  
+  /**
+   * Extract documents from current page
+   */
+  extractDocuments() {
+    const links = document.querySelectorAll(this.SELECTORS.documents);
+    if (!links.length) return [];
+    
+    return Array.from(links).map(link => {
+      const titleEl = link.closest(this.SELECTORS.docTitle)?.parentElement;
+      
+      return {
+        type: 'document',
+        title: titleEl?.textContent?.trim() || link.textContent.trim() || 'Document',
+        url: link.href,
+        source_url: window.location.href,
+        extracted_at: new Date().toISOString(),
+        file_type: link.href.split('.').pop()?.toLowerCase() || 'unknown'
+      };
+    }).filter(doc => doc.url && !doc.url.includes(window.location.origin));
+  },
+  
+  /**
+   * Parse various date formats to ISO 8601
+   */
+  parseDate(dateStr) {
+    if (!dateStr) return null;
+    
+    const normalized = dateStr.toLowerCase()
+      .replace(/г\./g, '')
+      .replace(/\s+-?\s+/g, '-')
+      .replace(/[.,]/g, '');
+    
+    const formats = [
+      /^\d{4}-\d{2}-\d{2}$/, // 2026-10-22
+      /^\d{2}[\.\-\/]\d{2}[\.\-\/]\d{4}$/, // 22.10.2026 or 22/10/2026
+      /^(\d{1,2}[^\d]+){2}\d{4}$/ // 22 октября 2026
+    ];
+    
+    if (formats[0].test(normalized)) {
+      return normalized + 'T00:00:00Z';
+    }
+    
+    // Try parsing Russian format
+    const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const match = normalized.match(/(\d{1,2})\s+([а-яё]{3,9})\s+(\d{4})/i);
+    
+    if (match) {
+      const day = parseInt(match[1]);
+      const monthIndex = months.findIndex(m => m.startsWith(match[2].toLowerCase()));
+      const year = parseInt(match[3]);
+      
+      if (monthIndex !== -1) {
+        const date = new Date(year, monthIndex, day);
+        return date.toISOString();
+      }
+    }
+    
+    // Fallback: try standard parser
+    const parsed = new Date(dateStr);
+    return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  },
+  
+  /**
+   * Compute SHA-256 hash for deduplication
+   */
+  async computeHash(content) {
+    if (!content) return '';
+    
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  },
+  
+  /**
+   * Main detection routine
+   */
+  analyzePage() {
+    const results = {
+      announcements: this.extractAnnouncements(),
+      calendar_events: this.extractCalendarEvents(),
+      documents: this.extractDocuments()
+    };
+    
+    // Only send non-empty results
+    const validResults = Object.entries(results)
+      .filter(([key, items]) => items.length > 0)
+      .reduce((acc, [key, items]) => ({ ...acc, [key]: items }), {});
+    
+    return validResults;
+  }
+};
+
+// Listen for messages from popup/background
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'analyze_page') {
+    const analysis = ANALYZER.analyzePage();
+    console.log('[EIOS Importer]', 'Found:', Object.keys(analysis));
+    sendResponse(analysis);
+  }
+});
+
+console.log('[EIOS Importer] Content script loaded on', window.location.href);

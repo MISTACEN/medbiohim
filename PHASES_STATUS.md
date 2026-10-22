@@ -3107,3 +3107,13 @@ Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `n
 - Устранён двойной префикс: `admin-schedule` теперь монтируется на `/admin`, поэтому `/admin/schedule/analytics|versions|save|entries` резолвятся один раз (до фикса — `/admin/schedule/schedule/...`).
 - Vercel `/labs` отдаёт 200. Полный сценарий «студент проходит лабораторную» и админские операции с токеном не проверены: нужна авторизованная сессия.
 - Локальный dev на `:3106` не запущен (порт свободен); ошибка 500 на `/login` была из остановленного сервера — нужен повторный `npm run dev`.
+
+## Аттестации, расширение и внешние платформы (2026-10-23)
+
+- **Конструктор аттестаций** для любого предмета: `colloquium | exam | credit | test | control`, этапы с теорией, тестами и задачами. Публичные маршруты `GET /attestations`, `GET /attestations/:subject/:slug`; админские `GET/PUT/DELETE /admin/attestations/:subject/:slug` с проверкой роли (admin/moderator/teacher) и серверной валидацией (slug, варианты, правильные ответы, проходной балл, окно доступности).
+- Хранение — `site_content` с ключом `attestation:<subject>:<slug>`: миграция не требуется, RLS не ослабляется, чтение опубликованных документов идёт через сервисный клиент.
+- **Новый интерфейс**: `/attestations` (каталог), `/subjects/[id]/attestations/[slug]` (прохождение с этапами, проверкой тестов и эталонами), вкладка «Аттестации» на странице предмета, пункт в сайдбаре; админ-конструктор `/admin/attestations` с редактором этапов и вариантов.
+- **Расширение 1.1.0**: переписан манифест (MV3, корректные пути), добавлен отсутствовавший content script, попап с настройками API/токена и подтверждением импорта, сервис-воркер пишет в реальный `POST /integrations/imports`. Сборка `npm run package`, архив `public/downloads/medbiohim-importer.zip` (11 KB), страница `/extension`, CI `.github/workflows/deploy-browser-extension.yml`.
+- **Импорт**: `GET/POST/DELETE /integrations/imports` (+ алиасы `/integrations/fesmu/import|dedup`), дедупликация по SHA-256 URL, ключи `extimport:<user id>:<hash>`, до 50 записей за раз.
+- **Внешние платформы**: NeoFamily Lab и Школа Сеченова разобраны по публичной навигации, карта функций и deep links в `src/data/external-platforms.ts`, блок в `/university`, разбор в `docs/EXTERNAL-PLATFORMS-REVERSE.md`.
+- Проверено локально: `workers/api npm run check` — 53/53 тестов; `npm run typecheck`, `npm run build` — OK; в браузере рендерятся `/attestations`, `/extension`, `/university` с двумя карточками платформ и 25 deep links; ZIP проверен `unzip -l` и сверкой ссылок манифеста.
