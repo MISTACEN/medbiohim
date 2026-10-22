@@ -121,6 +121,17 @@ Telegram — не только канал для домашних заданий
 
 Подробная сверка кода, документации, открытых рисков и точки продолжения: [STATUS-2026-10-11.md](STATUS-2026-10-11.md). Последние source changes: создание общего ДЗ участником группы, fail-closed PHP webhook secret, Telegram Mini App entry button, optional Node→PHP group relay. Ни одна из этих функций не считается полностью проверенной без успешных CI/runtime/E2E тестов.
 
+## Implementation checkpoint — 2026-10-22
+
+Реализованы исходники для публичного университетского хаба и пользовательского сбора тестов:
+
+- `GET /api/university` — публичный FESMU-адаптер: официальные PDF-расписания факультетов, новости/объявления/анонсы, ссылки на ЕИОС, библиотеку и тестирование; данные кэшируются на 30 минут и всегда содержат ссылку на первоисточник.
+- `/university` — официальные ресурсы, расписание по факультетам, публичные ленты, внешние NeoFamily/«Школа Сеченова» с явной пометкой «внешняя платформа».
+- `/university/import` — загрузка/вставка JSON от Bridge, нормализация, dedup, выбор предмета, preview, `dry_run` и импорт через `POST /admin/content/import`. По умолчанию тест и вопросы не публикуются.
+- `integrations/browser-extension` версии `0.3.0` — сбор вопроса и вариантов, ручная отметка правильных номеров, открытый ответ, набор вопросов, скачивание JSON и копирование для импорта.
+
+Границы: пароль ЕИОС не сохраняется, авторизация/CAPTCHA/2FA/paywall не обходятся, закрытые страницы ЕИОС не парсятся сервером. Preview и локальная проверка не означают подтверждение преподавателем. Production deploy и реальная загрузка расширения в браузер не выполнялись. Аудит старых SpaceWeb-контрактов: [SPACEWEB-BACKEND-PARITY-AUDIT.md](SPACEWEB-BACKEND-PARITY-AUDIT.md).
+
 ## 10. Pause checkpoint — 2026-10-11
 
 The canonical current-state inventory and handoff is maintained in [`UNFINISHED-REGISTRY.md`](UNFINISHED-REGISTRY.md), “Full checkpoint — 2026-10-11”. The contract defines intended behavior; it must not be read as proof that future or unverified features are already live.

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, ClipboardList, Users, UserRound } from "lucide-react";
+import { Home, BookOpen, ClipboardList, Users, UserRound, Landmark } from "lucide-react";
 import clsx from "clsx";
 
 const items = [
   { href: "/", label: "Главная", icon: Home },
   { href: "/subjects", label: "Учёба", icon: BookOpen },
+  { href: "/university", label: "Вуз", icon: Landmark },
   { href: "/homework", label: "ДЗ", icon: ClipboardList },
   { href: "/community", label: "Группа", icon: Users },
   { href: "/settings", label: "Профиль", icon: UserRound },
@@ -22,7 +23,7 @@ export function MobileNav() {
       style={{ borderColor: "var(--border)", boxShadow: "0 -8px 30px rgba(15,23,42,.08)" }}
       aria-label="Основная навигация"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5">
+      <div className="mx-auto grid max-w-lg grid-cols-6">
         {items.map((item) => {
           const active =
             item.href === "/"
@@ -35,7 +36,7 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={clsx(
-                "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-semibold transition active:scale-95",
+                "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-0.5 text-[9px] font-semibold transition active:scale-95 sm:text-[10px]",
                 active ? "text-[var(--primary)]" : "text-[var(--muted)]"
               )}
               aria-current={active ? "page" : undefined}

@@ -1,14 +1,109 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MEDBIOHIM Bridge</title><link rel="stylesheet" href="sidepanel.css"><script src="sidepanel.js" defer></script></head>
-<body><main class="app">
-<header class="brand"><div class="brand-mark" aria-hidden="true">МБ</div><div class="brand-copy"><h1>MEDBIOHIM Bridge</h1><p>Помощник по учебным тестам</p></div><button id="refresh" class="icon-button" type="button" title="Повторно прочитать страницу" aria-label="Повторно прочитать страницу">↻</button></header>
-<section class="card context"><div class="section-heading"><span>Текущая страница</span><span id="page-status" class="pill">Ожидание</span></div><div id="page-title" class="page-title">Нажмите «Считать вопрос»</div><div id="page-url" class="muted url"></div><button id="extract" class="primary" type="button">Считать вопрос со страницы</button></section>
-<section class="card"><div class="section-heading"><label for="subject">Предмет</label><span id="subject-confidence" class="muted">Не определён</span></div>
-<select id="subject"><option value="">Определить автоматически / выбрать вручную</option><option value="histology">Гистология, цитология и эмбриология</option><option value="biochemistry">Биохимия</option><option value="anatomy">Анатомия</option><option value="physiology">Физиология</option><option value="microbiology">Микробиология</option><option value="chemistry">Химия</option><option value="other">Другой / пока неизвестно</option></select>
-<label for="question" class="field-label">Вопрос</label><textarea id="question" rows="4" placeholder="Текст вопроса — можно исправить вручную"></textarea>
-<label for="options" class="field-label">Варианты ответа (по одному на строку)</label><textarea id="options" rows="4" placeholder="Вариант A&#10;Вариант B&#10;Вариант C"></textarea>
-<label for="formula-context" class="field-label">Формулы, уравнения и структурные записи</label><textarea id="formula-context" rows="3" placeholder="Формулы, реакции, заряды, индексы, обозначения; можно исправить вручную"></textarea><p id="formula-status" class="muted small">Математическая разметка ещё не проверена</p>\n<label for="image-context" class="field-label">Изображение / подписи к нему</label><textarea id="image-context" rows="2" placeholder="Автоматически найденные подписи, alt-текст; можно дополнить вручную"></textarea><p id="image-status" class="muted small">Изображения ещё не проверены</p>
-<div class="button-row"><button id="copy" class="secondary" type="button">Копировать вопрос</button><button id="open-search" class="primary compact" type="button">Искать в MEDBIOHIM ↗</button></div><p id="feedback" class="feedback" role="status">Расширение не отправляет данные автоматически.</p></section>
-<section class="card answer-card"><div class="section-heading"><span>Ответ</span><span class="pill neutral">Без догадок</span></div><p class="answer-message">Пока быстрый поиск открывается на сайте MEDBIOHIM. Там можно раскрыть сохранённый ответ, если он есть в базе. Прямой показ результата в этой панели — следующий этап.</p><p class="muted small">Пока ответ не подтверждён источником, расширение не помечает его как правильный.</p></section>
-<nav class="quick-links" aria-label="Разделы MEDBIOHIM"><button type="button" data-path="/tests">Тесты</button><button type="button" data-path="/subjects">Предметы</button><button type="button" data-path="/materials">Материалы</button><button type="button" data-path="/schedule">Расписание</button></nav>
-<footer><span class="status-dot" aria-hidden="true"></span> Доступ к странице — только после открытия расширения</footer></main></body></html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MEDBIOHIM Bridge</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <script src="sidepanel.js" defer></script>
+</head>
+<body>
+  <main class="app">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">МБ</div>
+      <div class="brand-copy">
+        <h1>MEDBIOHIM Bridge</h1>
+        <p>Помощник по учебным тестам</p>
+      </div>
+      <button id="refresh" class="icon-button" type="button" title="Повторно прочитать страницу" aria-label="Повторно прочитать страницу">↻</button>
+    </header>
+
+    <section class="card context">
+      <div class="section-heading"><span>Текущая страница</span><span id="page-status" class="pill">Ожидание</span></div>
+      <div id="page-title" class="page-title">Нажмите «Считать вопрос»</div>
+      <div id="page-url" class="muted url"></div>
+      <button id="extract" class="primary" type="button">Считать вопрос со страницы</button>
+    </section>
+
+    <section class="card">
+      <div class="section-heading"><label for="subject">Предмет</label><span id="subject-confidence" class="muted">Не определён</span></div>
+      <select id="subject">
+        <option value="">Определить автоматически / выбрать вручную</option>
+        <option value="histology">Гистология, цитология и эмбриология</option>
+        <option value="biochemistry">Биохимия</option>
+        <option value="anatomy">Анатомия</option>
+        <option value="physiology">Физиология</option>
+        <option value="microbiology">Микробиология</option>
+        <option value="chemistry">Химия</option>
+        <option value="other">Другой / пока неизвестно</option>
+      </select>
+
+      <label for="test-title" class="field-label">Тест / источник</label>
+      <input id="test-title" type="text" placeholder="Название теста из оригинальной системы">
+
+      <label for="question" class="field-label">Вопрос</label>
+      <textarea id="question" rows="4" placeholder="Текст вопроса — можно исправить вручную"></textarea>
+
+      <label for="options" class="field-label">Варианты ответа (по одному на строку)</label>
+      <textarea id="options" rows="4" placeholder="Вариант A&#10;Вариант B&#10;Вариант C"></textarea>
+
+      <div class="two-columns">
+        <div>
+          <label for="question-type" class="field-label">Тип вопроса</label>
+          <select id="question-type">
+            <option value="mcq">Один или несколько вариантов</option>
+            <option value="open">Открытый ответ</option>
+          </select>
+        </div>
+        <div>
+          <label for="correct-answers" class="field-label">Правильные номера</label>
+          <input id="correct-answers" type="text" inputmode="numeric" placeholder="1 или 1,3">
+        </div>
+      </div>
+
+      <label for="open-answer" class="field-label">Эталонный открытый ответ</label>
+      <input id="open-answer" type="text" placeholder="Заполните для открытого вопроса">
+
+      <label for="formula-context" class="field-label">Формулы, уравнения и структурные записи</label>
+      <textarea id="formula-context" rows="3" placeholder="Формулы, реакции, заряды, индексы, обозначения; можно исправить вручную"></textarea>
+      <p id="formula-status" class="muted small">Математическая разметка ещё не проверена</p>
+
+      <label for="image-context" class="field-label">Изображение / подписи к нему</label>
+      <textarea id="image-context" rows="2" placeholder="Автоматически найденные подписи, alt-текст; можно дополнить вручную"></textarea>
+      <p id="image-status" class="muted small">Изображения ещё не проверены</p>
+
+      <div class="button-row">
+        <button id="copy" class="secondary" type="button">Копировать вопрос</button>
+        <button id="add-question" class="primary compact" type="button">Добавить в набор</button>
+      </div>
+      <button id="open-search" class="secondary full-width" type="button">Искать в MEDBIOHIM ↗</button>
+      <p id="feedback" class="feedback" role="status">Расширение не отправляет данные автоматически.</p>
+    </section>
+
+    <section class="card bundle-card">
+      <div class="section-heading"><span>Набор вопросов</span><span id="bundle-count" class="pill neutral">0</span></div>
+      <p class="muted small">Проверьте вопросы и ответы. JSON скачивается на компьютер; в MEDBIOHIM он попадает только после preview и нажатия «Импортировать».</p>
+      <div id="bundle-list" class="bundle-list"></div>
+      <div class="button-row">
+        <button id="download-bundle" class="secondary" type="button" disabled>Скачать JSON</button>
+        <button id="open-import" class="primary compact" type="button" disabled>Открыть импорт</button>
+      </div>
+      <p id="bundle-feedback" class="feedback" role="status">Набор пуст.</p>
+    </section>
+
+    <section class="card answer-card">
+      <div class="section-heading"><span>Ответ</span><span class="pill neutral">Без догадок</span></div>
+      <p class="answer-message">Пока быстрый поиск открывается на сайте MEDBIOHIM. Там можно раскрыть сохранённый ответ, если он есть в базе. Прямой показ результата в этой панели — следующий этап.</p>
+      <p class="muted small">Пока ответ не подтверждён источником, расширение не помечает его как правильный.</p>
+    </section>
+
+    <nav class="quick-links" aria-label="Разделы MEDBIOHIM">
+      <button type="button" data-path="/university">Вуз</button>
+      <button type="button" data-path="/tests">Тесты</button>
+      <button type="button" data-path="/subjects">Предметы</button>
+      <button type="button" data-path="/schedule">Расписание</button>
+    </nav>
+    <footer><span class="status-dot" aria-hidden="true"></span> Доступ к странице — только после открытия расширения</footer>
+  </main>
+</body>
+</html>

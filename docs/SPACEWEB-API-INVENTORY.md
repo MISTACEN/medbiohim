@@ -5,6 +5,10 @@
 **Источник:** `backend/config/routes.php` + файлы в `backend/config/routes/`.
 **Дата снимка:** 2026-10-14.
 
+> **Актуальная сверка:** [SPACEWEB-BACKEND-PARITY-AUDIT.md](SPACEWEB-BACKEND-PARITY-AUDIT.md) (2026-10-22).
+> Таблица ниже — исторический снимок. Колонка CF в нём устарела: многие маршруты уже перенесены,
+> а часть фронтенд-контрактов (SRS, notes, admin presence, curriculum import) всё ещё не закрыта.
+
 Колонка **CF** — статус на Cloudflare Worker (обновлять вручную при миграции):
 
 | Символ | Значение |

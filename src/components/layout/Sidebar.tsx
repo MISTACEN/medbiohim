@@ -21,6 +21,7 @@ import {
   Calculator,
   Search,
   FlaskConical,
+  Landmark,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/", label: "Главная", icon: Home },
   { href: "/search", label: "Поиск", icon: Search },
   { href: "/schedule", label: "Расписание", icon: Calendar },
+  { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
   { href: "/subjects", label: "Предметы", icon: BookOpen },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
   { href: "/academic", label: "Учебный план", icon: ClipboardList },

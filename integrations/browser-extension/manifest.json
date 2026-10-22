@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MEDBIOHIM Bridge — помощник по тестам",
-  "version": "0.2.0",
-  "description": "Компактная боковая панель для определения предмета и подготовки вопросов к поиску в MEDBIOHIM.",
+  "version": "0.3.0",
+  "description": "Боковая панель для сбора вопросов из учебных тестов, проверки ответов и подготовки JSON для импорта в MEDBIOHIM.",
   "minimum_chrome_version": "114",
   "permissions": ["activeTab", "scripting", "sidePanel"],
   "background": {
