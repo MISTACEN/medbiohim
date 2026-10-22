@@ -7,7 +7,6 @@ import { createServiceClient } from "../lib/supabase";
 import { getRedis } from "../lib/redis";
 import dbAdmin from "./admin-database";
 import adminParity from "./admin-parity";
-import adminSchedule from "./admin-schedule";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

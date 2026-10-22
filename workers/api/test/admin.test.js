@@ -48,3 +48,9 @@ test("Telegram webhook secrets are read only from Worker environment and are not
   assert.match(routes, /secret_token: secret/);
   assert.doesNotMatch(routes, /return c\.json\(ok\(\{[^}]*token/i);
 });
+
+test("admin schedule routes mount under /admin so their /schedule paths resolve once", async () => {
+  const index = await source("../src/index.ts");
+  assert.match(index, /v1\.route\("\/admin", adminSchedule\)/);
+  assert.doesNotMatch(index, /v1\.route\("\/admin\/schedule", adminSchedule\)/);
+});

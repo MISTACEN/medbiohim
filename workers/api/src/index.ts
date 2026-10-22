@@ -153,7 +153,8 @@ v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
 v1.route("/files", files);
 v1.route("/admin", adminRoutes);
-v1.route("/admin/schedule", adminSchedule);
+// admin-schedule declares its own "/schedule/..." paths, so it mounts on /admin.
+v1.route("/admin", adminSchedule);
 v1.route("/histology", histology);
 v1.route("/labs", labs);
 
