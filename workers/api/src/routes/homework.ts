@@ -291,4 +291,157 @@ homework.post("/:id/progress", requireAuth, async (c) => {
   }
 });
 
+/** UPDATE homework */
+homework.patch("/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const db = c.get("supabase");
+  
+  const id = (c.req.param("id") ?? "");
+  if (!UUID.test(id)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID задания", 422, rid);
+    return c.json(body, status as 422);
+  }
+  
+  let payload: any;
+  try { payload = await c.req.json(); } catch {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  
+  const title = String(payload?.title || "").trim().slice(0, 240);
+  const description = payload?.description == null ? null : String(payload.description).slice(0, 10000);
+  const dueAt = payload?.due_at ? String(payload.due_at) : null;
+  
+  if (!title || !dueAt || ((payload?.due_date || "") && typeof payload.due_date !== 'string')) {
+    const { body, status } = fail("VALIDATION_ERROR", "Укажите название и срок выполнения", 422, rid);
+    return c.json(body, status as 422);
+  }
+  
+  let dueDate = dueAt.length >= 10 ? dueAt.slice(0, 10) : null;
+  
+  try {
+    const roles = await callerRoles(db, user.id);
+    const isAdminOrTeacher = ["teacher", "moderator", "admin"].some(r => roles.includes(r));
+    
+    // Verify homework exists and check ownership
+    const { data: task, error: taskError } = await db.from("homeworks")
+      .select("id,created_by,status,group_id").eq("id", id).maybeSingle();
+      
+    if (taskError) throw taskError;
+    if (!task) {
+      const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
+      return c.json(body, status as 404);
+    }
+    
+    if (task.status === "archived") {
+      const { body, status } = fail("FORBIDDEN", "Нельзя редактировать архивное задание", 403, rid);
+      return c.json(body, status as 403);
+    }
+    
+    // Non-staff can only edit their own non-group homework
+    if (!isAdminOrTeacher && task.group_id && String(task.created_by || "") !== user.id) {
+      const { body, status } = fail("FORBIDDEN", "Нельзя редактировать чужие групповые задания", 403, rid);
+      return c.json(body, status as 403);
+    }
+    
+    const { data, error } = await db.from("homeworks")
+      .update({ 
+        title, 
+        description, 
+        due_at: dueAt, 
+        due_date: dueDate,
+        updated_at: new Date().toISOString() 
+      })
+      .eq("id", id)
+      .select("*,subjects(name,slug,color_hex),schedule_entries(id,date,start_time,end_time,subject_name)")
+      .maybeSingle();
+      
+    if (error) throw error;
+    if (!data) {
+      const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
+      return c.json(body, status as 404);
+    }
+    
+    return c.json(ok({ item: data }, rid));
+  } catch (error) {
+    console.error("[homework:update]", error);
+    const { body, status } = fail("HOMEWORK_UPDATE_FAILED", "Не удалось обновить задание", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+/** SOFT-DELETE homework */
+homework.delete("/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const db = c.get("supabase");
+  
+  const id = (c.req.param("id") ?? "");
+  if (!UUID.test(id)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID задания", 422, rid);
+    return c.json(body, status as 422);
+  }
+  
+  try {
+    const roles = await callerRoles(db, user.id);
+    const isAdminOrTeacher = ["teacher", "moderator", "admin"].some(r => roles.includes(r));
+    
+    // Get current homework state
+    const { data: task, error: taskError } = await db.from("homeworks")
+      .select("id,group_id,created_by,status").eq("id", id).maybeSingle();
+      
+    if (taskError) throw taskError;
+    if (!task) {
+      const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
+      return c.json(body, status as 404);
+    }
+    
+    if (task.status === "archived") {
+      const { body, status } = fail("FORBIDDEN", "Задание уже удалено", 403, rid);
+      return c.json(body, status as 403);
+    }
+    
+    // Permission checks
+    if (isAdminOrTeacher) {
+      // Staff can delete any homework
+    } else if (task.group_id) {
+      // Student can only delete their own group homework
+      if (String(task.created_by || "") !== user.id) {
+        const { body, status } = fail("FORBIDDEN", "Можно удалять только собственные групповые задания", 403, rid);
+        return c.json(body, status as 403);
+      }
+    } else {
+      // Personal homework - must be owner
+      if (String(task.created_by || "") !== user.id) {
+        const { body, status } = fail("FORBIDDEN", "Можно удалять только свои личные задания", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    
+    // Soft delete
+    const { data, error } = await db.from("homeworks")
+      .update({ 
+        archived_at: new Date().toISOString(),
+        archived_by: user.id,
+        status: "archived"
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+      
+    if (error) throw error;
+    if (!data) {
+      const { body, status } = fail("NOT_FOUND", "Задание не найдено", 404, rid);
+      return c.json(body, status as 404);
+    }
+    
+    return c.json(ok({ message: "Задание удалено", item: data }, rid));
+  } catch (error) {
+    console.error("[homework:delete]", error);
+    const { body, status } = fail("HOMEWORK_DELETE_FAILED", "Не удалось удалить задание", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 export default homework;

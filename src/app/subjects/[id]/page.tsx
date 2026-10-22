@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
@@ -11,6 +11,7 @@ import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import TestsHub from "@/components/tests/TestsHub";
+import Labs from "@/components/Labs";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type Subject = {
@@ -25,9 +26,9 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "progress" | "colloquium";
+type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "progress" | "colloquium";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "progress", "colloquium"];
+const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "progress", "colloquium"];
 
 function normalizeTab(v: string) {
   if (v === "cards") return "trainers" as TabId;
@@ -301,6 +302,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "materials", label: "Материалы", Icon: FolderOpen },
     { id: "trainer", label: "Микропрепараты", Icon: Microscope },
     { id: "trainers", label: "Тренажёры", Icon: ListChecks },
+    { id: "labs", label: "Лабораторные", Icon: FlaskConical },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
     ...(slug === "physiology" ? [{ id: "colloquium" as TabId, label: "Коллоквиум", Icon: GraduationCap }] : []),
   ];
@@ -694,6 +696,18 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </div>
             </section>
           )
+        )}
+
+        {tab === "labs" && (
+          <section className="space-y-3">
+            <div className="card p-5">
+              <h2 className="text-lg font-bold">Интерактивные лабораторные</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                Пошаговые лабораторные работы по этому предмету: задания внутри сессии, ответы и проверка преподавателем.
+              </p>
+            </div>
+            <Labs subject={slug} />
+          </section>
         )}
 
         {tab === "progress" && (

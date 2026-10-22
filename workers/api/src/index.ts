@@ -34,6 +34,7 @@ import tickets from "./routes/tickets";
 import my from "./routes/my";
 import questions from "./routes/questions";
 import favorites from "./routes/favorites";
+import notes from "./routes/notes";
 import search from "./routes/search";
 import trainings from "./routes/trainings";
 import trainers from "./routes/trainers";
@@ -49,9 +50,11 @@ import chemistry from "./routes/chemistry";
 import plans from "./routes/plans";
 import storage from "./routes/storage";
 import adminRoutes from "./routes/admin";
+import adminSchedule from "./routes/admin-schedule";
 import histology from "./routes/histology";
 import files from "./routes/files";
 import telegram from "./routes/telegram";
+import labs from "./routes/labs";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -133,6 +136,7 @@ v1.route("/tickets", tickets);
 v1.route("/my", my);
 v1.route("/questions", questions);
 v1.route("/favorites", favorites);
+v1.route("/notes", notes);
 v1.route("/search", search);
 v1.route("/trainings", trainings);
 v1.route("/trainers", trainers);
@@ -149,7 +153,9 @@ v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
 v1.route("/files", files);
 v1.route("/admin", adminRoutes);
+v1.route("/admin/schedule", adminSchedule);
 v1.route("/histology", histology);
+v1.route("/labs", labs);
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)

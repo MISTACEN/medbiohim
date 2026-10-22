@@ -35,6 +35,7 @@ const navItems = [
   { href: "/community", label: "Сообщество", icon: Users },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
   { href: "/chemistry", label: "Химия", icon: FlaskConical },
+  { href: "/labs", label: "Лабораторные", icon: FlaskConical },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
 ];
 

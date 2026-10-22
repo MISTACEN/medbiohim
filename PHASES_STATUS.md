@@ -3074,3 +3074,28 @@ Live PostgreSQL constraint `content_work_items_priority_check` permits `low`, `n
 - Индекс `workers/api/src/data/histology-drive-index.json`: **178/178 фотографий препаратов** и 31 исходный DOCX электронограмм. Проверено напрямую: 178/178 изображений скачиваются с типом image/*; превью Google Drive для 28/28 электронограмм возвращают image/*.
 - Worker: typecheck OK, **36/36 тестов**, Wrangler dry-run OK. Production deploy и code-check CI прошли: [deploy](https://github.com/MISTACEN/medbiohim/actions/runs/39270945145), [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/39270945030). Проверены все 206 production-маршрутов: **206/206 HTTP 200**, image bytes (image/jpeg/image/png), ошибок нет; в выборочной проверке SHA-256 совпал с прямой выдачей Google Drive.
 - Источник временный и публичный. После подтверждённого восстановления постоянного хранилища нужно вернуть основной путь и удалить Drive-индекс/временный resolver.
+
+## Восстановление контрактов SRS, заметок и admin presence (2026-10-22)
+
+- `workers/api/src/routes/srs.ts` переписан под полный старый контракт: `summary`, `ensure`, `cards` (GET/POST), `review`, `DELETE /cards/:id`; `/srs`, `/srs/due`, `/srs/:id/review` оставлены алиасами. Review обновляет `srs_cards` (таблицы `srs_reviews` в схеме нет), формула интервалов совпадает с PHP.
+- Добавлен `workers/api/src/routes/notes.ts` и монтирование `/api/v1/notes`: `GET/POST` с owner-scoping по JWT (`notes.user_id`), поля `target_type/target_id/text`.
+- Добавлен `GET /api/v1/admin/presence?within=` в `admin.ts` с проверкой ролей admin/moderator/teacher на базе Redis-heartbeat.
+- Атлас гистологии: в `/trainers/feed/[subject]` после ответа снова показываются подписи из `preparation.captions`; раньше этот экран их вообще не выводил.
+- Локально: `wrangler dev` — новые маршруты отвечают 401 без токена; 4 новых контрактных теста проходят. Полный Worker typecheck остаётся красным из-за уже существующих ошибок в `labs.ts`, `homework.ts`, `admin-schedule.ts`. Deploy не выполнялся.
+- `src/components/Labs.tsx` переписан под текущий клиент `api()` и реальные маршруты `/labs/*` (`templates`, `start`, `:sessionId`, `checkpoints/submit`, `:sessionId/finish`): после этого frontend `npm run typecheck` и `npm run build` проходят (exit 0).
+
+## Интерактивные лабораторные в интерфейсе (2026-10-22)
+
+- Добавлен маршрут `/labs` (`src/app/labs/page.tsx`) и пункт «Лабораторные» в боковое меню.
+- В странице предмета появилась вкладка «Лабораторные»: она рендерит `Labs` с фильтром `subject_area` по slug предмета.
+- `src/components/Labs.tsx` принимает `subject`, загружает `GET /labs/templates?subject=...`, а ошибки вида `ROUTE_NOT_MIGRATED` показывает студенту нейтральным текстом вместо технического сообщения.
+- Проверено: `npm run typecheck` — OK, `npm run build` — exit 0 (`/labs` 3.12 kB), ESLint по изменённым файлам чистый; в браузере страница `/labs` и пункт меню отображаются.
+- Production Worker по-прежнему не содержит `/labs` (отвечает 501), а вкладка предмета требует авторизации — поэтому живой сценарий «студент проходит лабораторную» не проверен. Deploy не выполнялся.
+
+## Worker typecheck и тесты снова зелёные (2026-10-22)
+
+- `labs.ts`: типизирован insert сессии, `lab_name` берётся из шаблона (а не UUID), `lab_type` — только из допустимого набора; параметры маршрутов приводятся к строке; вложенный select сессии разбирается безопасно; ошибка записи `laboratory_results` больше не теряется (раньше `error` был вне области видимости).
+- `homework.ts`: `select` для PATCH теперь включает `group_id`, а несуществующий `.patch()` заменён на `.update()` в обновлении и soft-delete.
+- `admin-schedule.ts`: параметры маршрутов приводятся к строке; аналитика расписания считается в Worker вместо несуществующего `.group()` и опечатки `schedule_id`.
+- Тесты: устаревшие проверки страниц предметов обновлены под текущий `TestsHub` (передача subject/course/semester), а не под удалённый код.
+- Проверено: `workers/api npm run check` — typecheck чистый, **40/40 тестов**, `wrangler deploy --dry-run` успешно. Deploy не выполнялся.

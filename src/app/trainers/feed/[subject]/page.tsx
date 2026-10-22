@@ -262,7 +262,18 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                     {card.hotspots?.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{card.hotspots.map((h: any, i: number) => <div key={String(h.id || i)} className="rounded-xl bg-white/70 p-2"><span className="font-semibold">{String(h.id || "")}</span><span className="ml-2">{String(h.label || h.title || "")}</span></div>)}</div>}
                     {card.question?.explanation && <p className="mt-3 leading-6">{card.question.explanation}</p>}
                   </>
-                )}</div>}
+                )}
+                </div>}
+                {result !== null && Array.isArray(card.preparation?.captions) && card.preparation.captions.length > 0 && (
+                  <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Подписи к препарату</div>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 leading-6">
+                      {card.preparation.captions.map((caption: unknown, i: number) => (
+                        <li key={i}>{String(caption)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                   <button type="button" disabled={busy || result !== null} onClick={() => void skip()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"><SkipForward className="h-4 w-4" /> Пропустить</button>
                   {result !== null && <button type="button" onClick={next} className="btn-primary inline-flex items-center gap-2">Следующая <ChevronRight className="h-4 w-4" /></button>}

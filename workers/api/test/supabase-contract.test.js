@@ -27,6 +27,7 @@ const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.
 const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
 const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
+const testsHubSource = await readFile(new URL("../../../src/components/tests/TestsHub.tsx", import.meta.url), "utf8");
 const testPreparationPageSource = await readFile(new URL("../../../src/app/tests/preparation/[id]/page.tsx", import.meta.url), "utf8");
 const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
 const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
@@ -257,18 +258,16 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
 });
 
 test("subject test pages keep catalog queries scoped to canonical subject, course, and semester", () => {
-  assert.ok(subjectPageSource.includes('String(t.subject_slug || "") === slug'));
-  assert.ok(subjectPageSource.includes('Number(t.course_number) === Number(subject?.course_number ?? 2)'));
-  assert.ok(subjectPageSource.includes('Number(t.semester) === Number(subject?.semester ?? 3)'));
-  assert.ok(subjectTestsPageSource.includes('const rows = await listTests('));
-  assert.ok(subjectTestsPageSource.includes('slug,'));
-  assert.ok(subjectTestsPageSource.includes('Number(selected?.course_number ?? 2)'));
-  assert.ok(subjectTestsPageSource.includes('Number(selected?.semester ?? 3)'));
+  assert.ok(subjectPageSource.includes("listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3)"));
+  assert.ok(subjectTestsPageSource.includes("subjectSlug={info?.slug}"));
+  assert.ok(subjectTestsPageSource.includes("course={info?.course}"));
+  assert.ok(subjectTestsPageSource.includes("semester={info?.semester}"));
+  assert.ok(testsHubSource.includes("listTests(requestSubjectId, user?.groupId, requestSubjectSlug, course ?? undefined, semester ?? undefined)"));
 });
 
 test("subject detail accepts the Cloudflare response shape and preserves workload fields", () => {
   assert.ok(subjectPageSource.includes("responseData?.subject || responseData?.item"));
-  assert.ok(subjectTestsPageSource.includes("subject.data.subject || subject.data.item || (subject.data.id ? subject.data : null)"));
+  assert.ok(subjectTestsPageSource.includes("payload?.subject || payload?.item || (payload?.id ? payload : null)"));
   assert.ok(subjectsRouteSource.includes("total_hours,lecture_hours,practice_hours,self_study_hours"));
   assert.ok(subjectPageSource.includes("w.description"));
 });
