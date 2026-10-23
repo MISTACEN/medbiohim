@@ -1,0 +1,64 @@
+{
+ "subject": "physiology",
+ "manuals": [
+  {
+   "slug": "vozbudimye-sistemy",
+   "title": "Физиология возбудимых систем",
+   "subtitle": "Введение в физиологию, физиология клетки, возбудимых тканей, мышц и синапсов",
+   "semester": 3,
+   "hours": 44,
+   "file": "/content/physiology/vozbudimye-sistemy.json",
+   "source_url": "/library/physiology/vozbudimye-sistemy.docx"
+  },
+  {
+   "slug": "cns",
+   "title": "Физиология центральной нервной системы",
+   "subtitle": "Рефлекс, координация, соматическая и вегетативная нервная система",
+   "semester": 3,
+   "hours": 37,
+   "file": "/content/physiology/cns.json",
+   "source_url": "/library/physiology/cns.doc"
+  },
+  {
+   "slug": "krov-endokrin",
+   "title": "Физиология крови и эндокринной системы",
+   "subtitle": "Система крови, гемостаз, иммунитет, гуморальная регуляция",
+   "semester": 3,
+   "hours": 40,
+   "file": "/content/physiology/krov-endokrin.json",
+   "source_url": "/library/physiology/krov-endokrin.doc"
+  },
+  {
+   "slug": "dyhanie-vydelenie",
+   "title": "Физиология дыхания и выделения",
+   "subtitle": "Внешнее дыхание, газообмен, регуляция дыхания, почки и выделение",
+   "semester": 4,
+   "hours": 34,
+   "file": "/content/physiology/dyhanie-vydelenie.json",
+   "source_url": "/library/physiology/dyhanie-vydelenie.doc"
+  },
+  {
+   "slug": "pishchevarenie-obmen",
+   "title": "Физиология пищеварения, обмена веществ и терморегуляции",
+   "subtitle": "Пищеварительный конвейер, обмен энергии, питание, терморегуляция",
+   "semester": 4,
+   "hours": 48,
+   "file": "/content/physiology/pishchevarenie-obmen.json",
+   "source_url": "/library/physiology/pishchevarenie-obmen.docx"
+  },
+  {
+   "slug": "sensornye-vnd",
+   "title": "Физиология сенсорных систем и высшей нервной деятельности",
+   "subtitle": "Сенсорные системы, психофизиология, ВНД, поведение",
+   "semester": 4,
+   "hours": 48,
+   "file": "/content/physiology/sensornye-vnd.json",
+   "source_url": "/library/physiology/sensornye-vnd.doc"
+  }
+ ],
+ "reference": {
+  "title": "Основы физиологии человека. Том 1",
+  "author": "Н. А. Агаджанян и др.",
+  "url": "/library/physiology/agadzhanyan-fiziologiya-t1.pdf"
+ }
+}

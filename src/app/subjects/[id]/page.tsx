@@ -298,7 +298,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "plan", label: "Учебный план", Icon: GraduationCap },
     { id: "tickets", label: "Билеты", Icon: FileQuestion },
     { id: "tests", label: "Тесты", Icon: FileQuestion },
-    { id: "practice", label: "База вопросов", Icon: ListChecks },
+    { id: "practice", label: slug === "physiology" ? "Практикум" : "База вопросов", Icon: ListChecks },
     { id: "lectures", label: "Лекции", Icon: BookOpen },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
     { id: "trainer", label: "Микропрепараты", Icon: Microscope },
@@ -557,6 +557,32 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
             semester={subject?.semester ?? 3}
             embedded
           />
+        )}
+
+        {tab === "practice" && slug === "physiology" && (
+          <section className="mb-3 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Практикум по занятиям</p>
+            <h2 className="mt-1 text-xl font-extrabold">Все занятия физиологии в одном месте</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Шесть учебно-методических пособий кафедры разобраны по занятиям: вопросы для самоподготовки, практические работы,
+              ситуационные задачи, конспект и банки тестов с проверкой. Исходные файлы можно скачать.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={"/subjects/" + encodeURIComponent(subjectId) + "/lessons"}
+                className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+              >
+                Открыть практикум <ExternalLink className="ml-2 h-4 w-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => selectTab("colloquium")}
+                className="rounded-xl border bg-white px-4 py-3 text-sm font-semibold text-indigo-700 hover:border-indigo-300"
+              >
+                Коллоквиум по возбудимым системам
+              </button>
+            </div>
+          </section>
         )}
 
         {tab === "practice" && (

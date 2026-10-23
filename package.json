@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "predeploy:audit": "node scripts/predeploy-audit.mjs",
-    "test:api-failover": "node --test test/api-failover.test.mjs"
+    "test:api-failover": "node --test test/api-failover.test.mjs",
+    "test:physiology": "node --test test/physiology-content.test.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

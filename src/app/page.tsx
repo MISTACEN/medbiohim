@@ -594,6 +594,9 @@ export default function DashboardPage() {
           </div>
         )}
         <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/subjects/physiology/lessons" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <BookOpen className="h-4 w-4 text-emerald-500" /> Практикум по физиологии
+          </Link>
           <Link href="/trainers" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Microscope className="h-4 w-4 text-indigo-500" /> Тренажёр
           </Link>
