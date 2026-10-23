@@ -36,19 +36,8 @@ export interface AtlasCard {
   tags?: string[];
 }
 
-function createServiceDb(env: any) {
-  const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY;
-  if (!key) return null;
-  
-  try {
-    const { createClient } = require("@supabase/supabase-js");
-    return createClient(env.SUPABASE_URL, key, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-  } catch {
-    return null;
-  }
-}
+
+// Unused utility removed - all routes use c.get("supabase") injection instead
 
 trainerAtlas.get("/feed", requireAuth, async (c) => {
   const rid = requestId();
@@ -81,7 +70,7 @@ trainerAtlas.get("/feed", requireAuth, async (c) => {
 trainerAtlas.get("/feed/:id", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
-  const cardId = c.req.param("id");
+  const cardId = (c.req.param("id") ?? "");
   
   if (!UUID.test(cardId)) {
     const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID карточки", 422, rid);
@@ -165,7 +154,7 @@ trainerAtlas.post("/answer", requireAuth, async (c) => {
 
 trainerAtlas.get("/feedback/:cardId/stats", requireAuth, async (c) => {
   const rid = requestId();
-  const cardId = c.req.param("cardId");
+  const cardId = (c.req.param("cardId") ?? "");
   const supabase = c.get("supabase");
   
   if (!UUID.test(cardId)) {
