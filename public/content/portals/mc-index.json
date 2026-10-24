@@ -1,0 +1,92 @@
+{
+ "tests": [
+  {
+   "id": "biology-bio-genetics",
+   "title": "Общая генетика — базовый",
+   "subject": "Биология",
+   "subjectId": "biology",
+   "topic": "Генетика",
+   "count": 6
+  },
+  {
+   "id": "biology-bio-helminths",
+   "title": "Гельминты — пути заражения",
+   "subject": "Биология",
+   "subjectId": "biology",
+   "topic": "Паразитология",
+   "count": 5
+  },
+  {
+   "id": "biology-bio-protists",
+   "title": "Протисты — возбудители",
+   "subject": "Биология",
+   "subjectId": "biology",
+   "topic": "Паразитология",
+   "count": 6
+  },
+  {
+   "id": "history-hist-intro",
+   "title": "История — вводный",
+   "subject": "История России",
+   "subjectId": "history",
+   "topic": "Общее",
+   "count": 3
+  },
+  {
+   "id": "math-math-derivatives-basic",
+   "title": "Производная — базовый тест",
+   "subject": "Математический анализ",
+   "subjectId": "math",
+   "topic": "Производная функции",
+   "count": 4
+  },
+  {
+   "id": "math-math-vectors-basic",
+   "title": "Векторы — базовый тест",
+   "subject": "Математический анализ",
+   "subjectId": "math",
+   "topic": "Векторная алгебра",
+   "count": 5
+  },
+  {
+   "id": "orgchem-chem-kinetics",
+   "title": "Химическая кинетика",
+   "subject": "Органическая и физическая химия",
+   "subjectId": "chemistry",
+   "topic": "Физхимия",
+   "count": 5
+  },
+  {
+   "id": "physics-phys-mech",
+   "title": "Механика — базовый",
+   "subject": "Физика",
+   "subjectId": "physics",
+   "topic": "Механика",
+   "count": 5
+  },
+  {
+   "id": "physics-phys-optics",
+   "title": "Оптика — базовый",
+   "subject": "Физика",
+   "subjectId": "physics",
+   "topic": "Оптика",
+   "count": 4
+  },
+  {
+   "id": "physiology-physio-blood",
+   "title": "Кровь — базовый",
+   "subject": "Физиология",
+   "subjectId": "physiology",
+   "topic": "Кровь",
+   "count": 3
+  },
+  {
+   "id": "physiology-physio-cardio",
+   "title": "Кровообращение — базовый",
+   "subject": "Физиология",
+   "subjectId": "physiology",
+   "topic": "Сердечно-сосудистая система",
+   "count": 4
+  }
+ ]
+}

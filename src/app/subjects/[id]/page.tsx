@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, GraduationCap, ListChecks, Loader2, Microscope, RefreshCw, TrendingUp, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
@@ -13,6 +13,16 @@ import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import TestsHub from "@/components/tests/TestsHub";
 import Labs from "@/components/Labs";
 import AttestationList from "@/components/attestations/AttestationList";
+import PhysiologyPractice from "@/components/physiology/PhysiologyPractice";
+import Colloquium from "@/components/physiology/Colloquium";
+import SubjectQuestionBank from "@/components/questions/SubjectQuestionBank";
+import HobaPortal from "@/components/portals/HobaPortal";
+import MatchingTrainer from "@/components/portals/MatchingTrainer";
+import LegacyMCTests from "@/components/portals/LegacyMCTests";
+import ChemSdf from "@/components/portals/ChemSdf";
+import ArchiveLectures from "@/components/portals/ArchiveLectures";
+import { legacyPortalConfig, loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
+import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type Subject = {
@@ -27,9 +37,40 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "progress" | "colloquium";
+type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "progress" | "colloquium" | "portal";
+type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
 
-const TAB_IDS: TabId[] = ["plan", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "progress", "colloquium"];
+const TAB_IDS: TabId[] = ["plan", "lessons", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "progress", "colloquium", "portal"];
+
+// Вкладки сгруппированы: верхний ряд — крупные разделы, внутри — точные режимы.
+// Старые id сохранены, поэтому ссылки вида ?tab=tickets продолжают работать.
+const GROUP_OF: Record<TabId, GroupId> = {
+  plan: "plan",
+  lessons: "lessons",
+  tickets: "tests",
+  tests: "tests",
+  practice: "tests",
+  lectures: "materials",
+  materials: "materials",
+  trainer: "practice",
+  trainers: "practice",
+  labs: "practice",
+  attestations: "attestations",
+  colloquium: "attestations",
+  portal: "portal",
+  progress: "progress",
+};
+
+const GROUP_DEFAULT: Record<GroupId, TabId> = {
+  plan: "plan",
+  lessons: "lessons",
+  tests: "tests",
+  materials: "lectures",
+  practice: "trainers",
+  attestations: "attestations",
+  portal: "portal",
+  progress: "progress",
+};
 
 function normalizeTab(v: string) {
   if (v === "cards") return "trainers" as TabId;
@@ -248,12 +289,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   // by that UUID.
   const slug = resolveSubjectSlug(subject?.slug || "", subject?.name) || resolveSubjectSlug(subjectId, subject?.name);
   const histology = slug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
-  const query = new URLSearchParams({
-    subject: subjectId,
-    subject_slug: slug,
-    course: String(course),
-    semester: String(sem),
-  }).toString();
+  const portal = legacyPortalConfig(slug);
   const subjName = (subject?.name || "").toLowerCase().trim();
   const subjectBanks = banks.filter((b) => {
     const bankSlug = String(b.subject_slug || "").trim();
@@ -267,20 +303,48 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
   });
 
+  // Архивный билетный банк кафедры (статические questions_by_subject).
+  const [archiveBank, setArchiveBank] = useState<PortalTicketBank | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setArchiveBank(null);
+    loadTicketBank(slug).then((bank) => {
+      if (!cancelled && bank?.items?.length) setArchiveBank(bank);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
   // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.
   useEffect(() => {
     const firstAvailableBank = subjectBanks.find((bank: any) => Number(bank.count ?? 0) > 0);
-    setTicketBankId(firstAvailableBank ? String(firstAvailableBank.id) : "");
+    setTicketBankId(firstAvailableBank ? String(firstAvailableBank.id) : archiveBank ? "archive" : "");
     setTicketQuestions([]);
     setTicketTitle("");
     setTicketNote(null);
     setReveal({});
     // Reset the generated ticket when navigating between subjects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [banks, slug]);
+  }, [banks, slug, archiveBank]);
 
   async function genTicket() {
     if (!ticketBankId || ticketBusy) return;
+    if (ticketBankId === "archive" && archiveBank) {
+      // Локальная генерация из архивного банка кафедры.
+      const pool = [...archiveBank.items];
+      const picked: any[] = [];
+      const n = Math.min(ticketCount, pool.length);
+      for (let i = 0; i < n; i += 1) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picked.push(pool.splice(idx, 1)[0]);
+      }
+      setReveal({});
+      setTicketNote(null);
+      setTicketQuestions(picked);
+      setTicketTitle(`Билет · ${archiveBank.subject} · архив кафедры`);
+      return;
+    }
     setTicketBusy(true);
     setReveal({});
     setTicketNote(null);
@@ -294,20 +358,41 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     setTicketTitle(res.data.bank?.title || "");
   }
 
-  const nav: { id: TabId; label: string; Icon: ComponentType<{ className?: string }> }[] = [
-    { id: "plan", label: "Учебный план", Icon: GraduationCap },
-    { id: "tickets", label: "Билеты", Icon: FileQuestion },
+  const nav: { id: GroupId; label: string; Icon: ComponentType<{ className?: string }> }[] = [
+    { id: "plan", label: "План", Icon: GraduationCap },
+    ...(slug === "physiology" ? [{ id: "lessons" as GroupId, label: "Занятия", Icon: ListChecks }] : []),
     { id: "tests", label: "Тесты", Icon: FileQuestion },
-    { id: "practice", label: slug === "physiology" ? "Практикум" : "База вопросов", Icon: ListChecks },
-    { id: "lectures", label: "Лекции", Icon: BookOpen },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
-    { id: "trainer", label: "Микропрепараты", Icon: Microscope },
-    { id: "trainers", label: "Тренажёры", Icon: ListChecks },
-    { id: "labs", label: "Лабораторные", Icon: FlaskConical },
+    { id: "practice", label: "Практика", Icon: FlaskConical },
+    ...(portal ? [{ id: "portal" as GroupId, label: portal.tabLabel, Icon: Globe }] : []),
     { id: "attestations", label: "Аттестации", Icon: ClipboardList },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
-    ...(slug === "physiology" ? [{ id: "colloquium" as TabId, label: "Коллоквиум", Icon: GraduationCap }] : []),
   ];
+  const group = GROUP_OF[tab];
+  const subnav: { id: TabId; label: string }[] =
+    group === "tests"
+      ? [
+          { id: "tests", label: "Тесты" },
+          { id: "practice", label: "База вопросов" },
+          { id: "tickets", label: "Билеты" },
+        ]
+      : group === "materials"
+        ? [
+            { id: "lectures", label: "Лекции" },
+            { id: "materials", label: "Материалы" },
+          ]
+        : group === "practice"
+          ? [
+              { id: "trainers", label: "Тренажёры" },
+              { id: "trainer", label: histology ? "Микропрепараты" : "Препараты" },
+              { id: "labs", label: "Лабораторные" },
+            ]
+          : group === "attestations" && slug === "physiology"
+            ? [
+                { id: "attestations", label: "Аттестации" },
+                { id: "colloquium", label: "Коллоквиум" },
+              ]
+            : [];
 
   if (loading) return (
     <div className="mx-auto max-w-6xl space-y-4" aria-label="Загрузка">
@@ -365,14 +450,14 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
       <nav className="mobile-scroll-x flex flex-nowrap gap-2 overflow-x-auto pb-1 md:flex-wrap" role="tablist" aria-label="Разделы предмета">
         {nav.map(({ id, label, Icon }) => {
-          const active = tab === id;
+          const active = group === id;
           return (
             <button
               key={id}
               type="button"
               role="tab"
               aria-selected={active}
-              onClick={() => selectTab(id)}
+              onClick={() => selectTab(GROUP_DEFAULT[id])}
               className={
                 "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition " +
                 (active
@@ -387,12 +472,49 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         })}
       </nav>
 
+      {subnav.length > 1 && (
+        <nav className="flex flex-wrap gap-1.5" aria-label="Режимы раздела">
+          {subnav.map(({ id, label }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-current={active ? "page" : undefined}
+                onClick={() => selectTab(id)}
+                className={
+                  "rounded-full px-3 py-1.5 text-xs font-bold transition " +
+                  (active ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700")
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
       <div role="tabpanel" className="min-h-[12rem]">
-        {tab === "colloquium" && slug === "physiology" && (
-          <section className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-lg font-bold">Коллоквиум по физиологии возбудимых систем</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Контрольные вопросы по темам, ответы, объяснения простыми словами и проверочный тест для самоподготовки.</p></div>
-            <Link href={"/subjects/" + encodeURIComponent(subjectId) + "/colloquium"} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700">Открыть коллоквиум <ExternalLink className="ml-2 h-4 w-4" /></Link>
-          </section>
+        {tab === "colloquium" && slug === "physiology" && <Colloquium embedded />}
+
+        {tab === "portal" && portal && (
+          <div className="space-y-6">
+            {portal.hoba && <HobaPortal />}
+            {portal.sdf && <ChemSdf />}
+            {portal.parasitology && <MatchingTrainer />}
+            {portal.lectures && <ArchiveLectures setId={portal.lectures} />}
+            {portal.mcSubjectIds?.length ? (
+              <section className="space-y-3">
+                <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-slate-400">Тестовые тренировки</h2>
+                <LegacyMCTests subjectIds={portal.mcSubjectIds} />
+              </section>
+            ) : null}
+            <ExternalPlatformLinks subjectSlug={slug} />
+          </div>
+        )}
+
+        {tab === "lessons" && slug === "physiology" && (
+          <PhysiologyPractice backHref={`/subjects/${encodeURIComponent(subjectId)}?tab=plan`} backLabel="К учебному плану" />
         )}
         {tab === "plan" && (
           <section className="card p-5">
@@ -465,7 +587,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           <section className="card p-5">
             <h2 className="text-lg font-bold">Билеты</h2>
             <p className="mt-1 text-sm text-slate-500">Генератор билетов прямо здесь — никуда переходить не нужно. Билеты отдельный банк, с SRS не смешиваются.</p>
-            {ticketBankAvailable(slug) && subjectBanks.length ? (
+            {(ticketBankAvailable(slug) && subjectBanks.length) || archiveBank ? (
               <>
                 <div className="mt-4 grid gap-3 md:grid-cols-4">
                   <select
@@ -478,6 +600,11 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                         {b.title} ({Number(b.count ?? 0) > 0 ? b.count : "нет опубликованных вопросов"})
                       </option>
                     ))}
+                    {archiveBank && (
+                      <option value="archive">
+                        Архив билетов кафедры ({archiveBank.count})
+                      </option>
+                    )}
                   </select>
                   <select
                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -559,61 +686,25 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           />
         )}
 
-        {tab === "practice" && slug === "physiology" && (
-          <section className="mb-3 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Практикум по занятиям</p>
-            <h2 className="mt-1 text-xl font-extrabold">Все занятия физиологии в одном месте</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Шесть учебно-методических пособий кафедры разобраны по занятиям: вопросы для самоподготовки, практические работы,
-              ситуационные задачи, конспект и банки тестов с проверкой. Исходные файлы можно скачать.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={"/subjects/" + encodeURIComponent(subjectId) + "/lessons"}
-                className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
-              >
-                Открыть практикум <ExternalLink className="ml-2 h-4 w-4" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => selectTab("colloquium")}
-                className="rounded-xl border bg-white px-4 py-3 text-sm font-semibold text-indigo-700 hover:border-indigo-300"
-              >
-                Коллоквиум по возбудимым системам
-              </button>
-            </div>
-          </section>
-        )}
-
         {tab === "practice" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Практика</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {histology ? "Микропрепараты, электронограммы и задания МБХ." : "Темы и практические задания предмета."}
-            </p>
+          <div className="space-y-3">
+            <SubjectQuestionBank subjectId={subject?.id || ""} subjectSlug={slug} subjectName={subject?.name} />
             {modules.length > 0 && (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {modules.slice(0, 6).map((m, i) => (
-                  <div key={m.id || i} className="rounded-xl border p-3 text-sm font-medium">
-                    {m.title}
-                  </div>
-                ))}
-              </div>
+              <section className="card p-5">
+                <h2 className="text-lg font-bold">Темы предмета</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {histology ? "Темы, к которым привязаны микропрепараты, электронограммы и задания МБХ." : "Темы и практические задания предмета."}
+                </p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {modules.slice(0, 6).map((m, i) => (
+                    <div key={m.id || i} className="rounded-xl border p-3 text-sm font-medium">
+                      {m.title}
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={"/practice?" + query}
-                className="btn-primary inline-flex"
-              >
-                Открыть базу вопросов
-              </Link>
-              {histology && (
-                <button type="button" onClick={() => selectTab("trainers")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
-                  Открыть тренажёр
-                </button>
-              )}
-            </div>
-          </section>
+          </div>
         )}
 
         {tab === "lectures" && (
@@ -644,9 +735,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               </p>
             )}
           </section>
-        )}
-
-        {tab === "materials" && (
+        )}                {tab === "materials" && (
           histology ? (
             <HistologyMaterials />
           ) : (
@@ -678,7 +767,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               )}
               {!materialsRich.length && (
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={"/practice?" + query} className="btn-primary inline-flex">Открыть базу вопросов</Link>
+                  <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
                   <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
                     Перейти к тестам
                   </button>
@@ -698,7 +787,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 Для этого предмета микропрепараты пока не подключены. Потренируйтесь на вопросах с эталонами или запустите тест.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link href={"/practice?" + query} className="btn-primary inline-flex">Открыть базу вопросов</Link>
+                <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
                 <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
                   Перейти к тестам
                 </button>
@@ -717,7 +806,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                 Интерактивные тренажёры по этому предмету пока не подключены. Можно отработать материал в базе вопросов или в тестах.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link href={"/practice?" + query} className="btn-primary inline-flex">Открыть базу вопросов</Link>
+                <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
                 <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
                   Перейти к тестам
                 </button>

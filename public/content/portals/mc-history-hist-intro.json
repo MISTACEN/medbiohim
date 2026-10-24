@@ -1,0 +1,50 @@
+{
+ "id": "history-hist-intro",
+ "title": "История — вводный",
+ "subject": "История России",
+ "subjectId": "history",
+ "course": 1,
+ "semester": 1,
+ "topic": "Общее",
+ "questions": [
+  {
+   "id": "h1",
+   "text": "Древнерусское государство традиционно связывают с веками:",
+   "options": [
+    "IX–XII",
+    "XIV–XVI",
+    "XVIII",
+    "V–VI"
+   ],
+   "correct": 0,
+   "answer": "IX–XII",
+   "topic": "Общее"
+  },
+  {
+   "id": "h2",
+   "text": "Куликовская битва относится к:",
+   "options": [
+    "XIV веку",
+    "IX веку",
+    "XVIII веку",
+    "XX веку"
+   ],
+   "correct": 0,
+   "answer": "XIV веку",
+   "topic": "Общее"
+  },
+  {
+   "id": "h3",
+   "text": "Пётр I правил в основном в:",
+   "options": [
+    "конце XVII — начале XVIII в.",
+    "XV в.",
+    "XIX в.",
+    "XII в."
+   ],
+   "correct": 0,
+   "answer": "конце XVII — начале XVIII в.",
+   "topic": "Общее"
+  }
+ ]
+}

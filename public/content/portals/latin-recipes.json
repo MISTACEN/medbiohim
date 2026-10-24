@@ -1,0 +1,1247 @@
+{
+ "subject": "Латинский язык · 100 рецептов (по Чернявскому)",
+ "groups": [
+  {
+   "id": "species",
+   "label": "Сборы"
+  },
+  {
+   "id": "par162",
+   "label": "§162/173"
+  },
+  {
+   "id": "par184",
+   "label": "§184"
+  },
+  {
+   "id": "par187",
+   "label": "§187"
+  },
+  {
+   "id": "par205",
+   "label": "§205"
+  },
+  {
+   "id": "par208",
+   "label": "§208"
+  },
+  {
+   "id": "elements",
+   "label": "Хим. элементы"
+  },
+  {
+   "id": "par199",
+   "label": "§199 (новые)"
+  }
+ ],
+ "recipes": [
+  {
+   "num": 1,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum aromaticarum",
+    "",
+    "    Da.",
+    "    Signa: Ароматический сбор."
+   ]
+  },
+  {
+   "num": 2,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum amararum",
+    "",
+    "    Da.",
+    "    Signa: Горький сбор."
+   ]
+  },
+  {
+   "num": 3,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum cardiacarum",
+    "",
+    "    Da.",
+    "    Signa: Сердечный сбор."
+   ]
+  },
+  {
+   "num": 4,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum carminativarum",
+    "",
+    "    Da.",
+    "    Signa: Ветрогонный сбор."
+   ]
+  },
+  {
+   "num": 5,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum cholagogarum",
+    "",
+    "    Da.",
+    "    Signa: Желчегонный сбор."
+   ]
+  },
+  {
+   "num": 6,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum diureticarum",
+    "",
+    "    Da.",
+    "    Signa: Мочегонный сбор."
+   ]
+  },
+  {
+   "num": 7,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum antiasthmaticarum",
+    "",
+    "    Da.",
+    "    Signa: Противоастматический сбор."
+   ]
+  },
+  {
+   "num": 8,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum sedativarum",
+    "",
+    "    Da.",
+    "    Signa: Успокаивающий сбор."
+   ]
+  },
+  {
+   "num": 9,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum stomachicarum",
+    "",
+    "    Da.",
+    "    Signa: Желудочный сбор."
+   ]
+  },
+  {
+   "num": 10,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum polyvitaminicarum",
+    "",
+    "    Da.",
+    "    Signa: Поливитаминный сбор."
+   ]
+  },
+  {
+   "num": 11,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum laxantium",
+    "",
+    "    Da.",
+    "    Signa: Слабительный сбор."
+   ]
+  },
+  {
+   "num": 12,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum pectoralium",
+    "",
+    "    Da.",
+    "    Signa: Грудной сбор."
+   ]
+  },
+  {
+   "num": 13,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum adstringentium",
+    "",
+    "    Da.",
+    "    Signa: Вяжущий сбор."
+   ]
+  },
+  {
+   "num": 14,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum antihaemorrhoidalium",
+    "",
+    "    Da.",
+    "    Signa: Противогеморройный сбор."
+   ]
+  },
+  {
+   "num": 15,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum ad gargarisma",
+    "",
+    "    Da.",
+    "    Signa: Для полоскания горла."
+   ]
+  },
+  {
+   "num": 16,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum pro balneis",
+    "",
+    "    Da.",
+    "    Signa: Для ванн."
+   ]
+  },
+  {
+   "num": 17,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum ad cataplasmata",
+    "",
+    "    Da.",
+    "    Signa: Для припарок."
+   ]
+  },
+  {
+   "num": 18,
+   "group": "species",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum diaphoreticarum",
+    "",
+    "    Da.",
+    "    Signa: Потогонный сбор."
+   ]
+  },
+  {
+   "num": 19,
+   "group": "par162",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tincturae Convallariae                  10 ml",
+    "     Tincturae Valerianae                    20 ml",
+    "",
+    "    Misce.",
+    "    Da.",
+    "    Signa: По 20 капель 3 раза в день."
+   ]
+  },
+  {
+   "num": 20,
+   "group": "par162",
+   "isNew": false,
+   "lines": [
+    "Rp.: Unguenti Ichthyoli                     30,0",
+    "",
+    "    Da.",
+    "    Signa: Мазь. Наносить на поражённые участки."
+   ]
+  },
+  {
+   "num": 21,
+   "group": "par162",
+   "isNew": false,
+   "lines": [
+    "Rp.: Foliorum Salviae                       10,0",
+    "     Foliorum Menthae piperitae            20,0",
+    "",
+    "    Misce, fiant species.",
+    "    Da.",
+    "    Signa: Заварить как чай."
+   ]
+  },
+  {
+   "num": 22,
+   "group": "par162",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Dibazoli                      5 ml",
+    "",
+    "    Sterilisa!",
+    "    Da.",
+    "    Signa: Для инъекций."
+   ]
+  },
+  {
+   "num": 23,
+   "group": "par162",
+   "isNew": false,
+   "lines": [
+    "Rp.: Infusi florum Calendulae              10,0 — 200 ml",
+    "",
+    "    Da.",
+    "    Signa: Настой. По 1 ст. ложке 3 р/д."
+   ]
+  },
+  {
+   "num": 24,
+   "group": "par162",
+   "isNew": false,
+   "lines": [
+    "Rp.: Xeroformii                              1,2",
+    "     Olei Ricini                          20 ml",
+    "",
+    "    Misce, fiat linimentum.",
+    "    Da.",
+    "    Signa: Линимент. Втирать."
+   ]
+  },
+  {
+   "num": 25,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Validoli                               0,05",
+    "",
+    "    Da tales doses numero 20 in capsulis.",
+    "    Signa: По 1 капсуле при болях."
+   ]
+  },
+  {
+   "num": 26,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas Dexamethasoni 0,005         № 50",
+    "",
+    "    Da.",
+    "    Signa: По 1 таблетке утром."
+   ]
+  },
+  {
+   "num": 27,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Dimexidi                  100 ml",
+    "",
+    "    Da.",
+    "    Signa: Наружно."
+   ]
+  },
+  {
+   "num": 28,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Cortidis Frangulae                     15,0",
+    "          Foliorum Urticae                      15,0",
+    "          Foliorum Menthae piperitae",
+    "          Rhizomatis cum radicibus Valerianae    5,0",
+    "",
+    "    Misce, fiat species.",
+    "        Da.",
+    "    Signa: Сбор."
+   ]
+  },
+  {
+   "num": 29,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Extracti Crataegi fluidi              25 ml",
+    "",
+    "    Detur. Signetur.",
+    "    Signa: По 20 капель 3 р/д."
+   ]
+  },
+  {
+   "num": 30,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Euphyllini                             0,1",
+    "          Dimedroli                            0,0125",
+    "          Sacchari                              0,2",
+    "",
+    "    Misce, fiat pulvis.",
+    "        Da tales doses numero 12 in capsulis.",
+    "    Signa: По 1 капсуле 2 раза в день."
+   ]
+  },
+  {
+   "num": 31,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tincturae Convallariae                10 ml",
+    "          Tincturae Valerianae                10 ml",
+    "          Solutionis Nitroglycerini 1%          1 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: По 15 капель."
+   ]
+  },
+  {
+   "num": 32,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Validoli                               2 ml",
+    "",
+    "    Misceatur. Detur. Signetur.",
+    "    Signa: Внутрь."
+   ]
+  },
+  {
+   "num": 33,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tincturae Leonuri                     25 ml",
+    "",
+    "    Da.",
+    "    Signa: По 30 капель 3 раза."
+   ]
+  },
+  {
+   "num": 34,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas extracti Sennae 0,3        № 10",
+    "",
+    "    Detur. Signetur.",
+    "    Signa: На ночь."
+   ]
+  },
+  {
+   "num": 35,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas Sulfadimezini 0,5          № 12",
+    "",
+    "    Da.",
+    "    Signa: По 1 таблетке."
+   ]
+  },
+  {
+   "num": 36,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Dragée \"Revitum\"                      № 50",
+    "",
+    "    Detur. Signetur.",
+    "    Signa: По 1 драже в день."
+   ]
+  },
+  {
+   "num": 37,
+   "group": "par184",
+   "isNew": false,
+   "lines": [
+    "Rp.: Suppositoria \"Anusolum\"               № 6",
+    "",
+    "    Da.",
+    "    Signa: По 1 свече на ночь."
+   ]
+  },
+  {
+   "num": 38,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Linimenti Synthomycini 1% cum Novocaino 0,5%   50,0",
+    "",
+    "    Da.",
+    "    Signa: Линимент."
+   ]
+  },
+  {
+   "num": 39,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tincturae Convallariae                10 ml",
+    "          Tincturae Valerianae                10 ml",
+    "          Extracti Crataegi fluidi             5 ml",
+    "          Mentholi                             0,05",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: По 20 капель."
+   ]
+  },
+  {
+   "num": 40,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Aerosoli \"Cametonum\"                 30,0",
+    "",
+    "    Da.",
+    "    Signa: Аэрозоль для горла."
+   ]
+  },
+  {
+   "num": 41,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Nitroglycerini oleosae 1%   0,0005",
+    "",
+    "    Da tales doses numero 20 in capsulis.",
+    "    Signa: При болях в сердце."
+   ]
+  },
+  {
+   "num": 42,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas \"Festalum\"                № 60",
+    "",
+    "    Da.",
+    "    Signa: По 1 таблетке во время еды."
+   ]
+  },
+  {
+   "num": 43,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Bromazepami                           0,003",
+    "",
+    "    Da tales doses numero 20 in tabulettis.",
+    "    Signa: По 1 таблетке на ночь."
+   ]
+  },
+  {
+   "num": 44,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Emulsi olei Ricini                 180,0",
+    "          Sirupi sacchari                  ad 200,0",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: По 1 столовой ложке."
+   ]
+  },
+  {
+   "num": 45,
+   "group": "par187",
+   "isNew": false,
+   "lines": [
+    "Rp.: Sulfuris depurati                    10,0",
+    "          Magnii oxydi                        10,0",
+    "          Sacchari                            10,0",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: Порошок. По 1 ч.л. на приём."
+   ]
+  },
+  {
+   "num": 46,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas Furazolidoni 0,1           № 20",
+    "",
+    "    Da.",
+    "    Signa: По 2 таблетки 4 раза в день."
+   ]
+  },
+  {
+   "num": 47,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Mentholi                              2,5",
+    "          Novocaini                           1,0",
+    "          Anaesthesini                        1,0",
+    "          Spiritus aethylici 70%          ad 100 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: Для растираний."
+   ]
+  },
+  {
+   "num": 48,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Extracti Belladonnae                  0,02",
+    "          Xeroformii                          0,1",
+    "          Zinci sulfatis                      0,05",
+    "          Glycerini                           0,12",
+    "",
+    "    Misce, fiat suppositorium.",
+    "        Da tales doses numero 10.",
+    "    Signa: По 1 свече на ночь."
+   ]
+  },
+  {
+   "num": 49,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Herbae Adonidis vernalis              8,0",
+    "          Foliorum Menthae piperitae          1,0",
+    "",
+    "    Misce, fiant species.",
+    "        Da.",
+    "    Signa: Настой."
+   ]
+  },
+  {
+   "num": 50,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas Methyloestradioli 0,0002   № 10",
+    "",
+    "    Da.",
+    "    Signa: По назначению врача."
+   ]
+  },
+  {
+   "num": 51,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Aminazini 2,5%              2 ml",
+    "          Solutionis Glucosi 5%               20 ml",
+    "",
+    "    Misce. Sterilisa!",
+    "        Da.",
+    "    Signa: Внутривенно капельно."
+   ]
+  },
+  {
+   "num": 52,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Infusi florum Chamomillae        ex 20,0 — 200 ml",
+    "",
+    "    Da.",
+    "    Signa: Для полосканий."
+   ]
+  },
+  {
+   "num": 53,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Sirupi Rhei                         300 ml",
+    "",
+    "    Da.",
+    "    Signa: По 1 десертной ложке."
+   ]
+  },
+  {
+   "num": 54,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Infusi radicis Valerianae       ex 10,0 — 200 ml",
+    "          Infusi herbae Leonuri          ex 20,0 — 200 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: Успокоительное."
+   ]
+  },
+  {
+   "num": 55,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Unguenti Erythromycini                15,0",
+    "",
+    "    Da.",
+    "    Signa: Мазь."
+   ]
+  },
+  {
+   "num": 56,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Theobromini",
+    "          Phenobarbitali                    0,02",
+    "",
+    "    Da tales doses numero 12 in tabulettis.",
+    "    Signa: По 1 таблетке 2 р/д."
+   ]
+  },
+  {
+   "num": 57,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Extracti Crataegi fluidi              25,0",
+    "",
+    "    Da.",
+    "    Signa: По 30 капель."
+   ]
+  },
+  {
+   "num": 58,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum antiasthmaticarum           50,0",
+    "",
+    "    Da.",
+    "    Signa: Противоастматический сбор."
+   ]
+  },
+  {
+   "num": 59,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Infusi rhizomatis et radicis Rhei ex 15,0 — 200 ml",
+    "",
+    "    Da.",
+    "    Signa: Слабительное."
+   ]
+  },
+  {
+   "num": 60,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Herbae Hyperici                      100,0",
+    "",
+    "    Da.",
+    "    Signa: Трава для настоя."
+   ]
+  },
+  {
+   "num": 61,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Cortidis Frangulae                    30,0",
+    "          Foliorum Urticae                    20,0",
+    "          Herbae Millefolii                   10,0",
+    "",
+    "    Misce, fiant species.",
+    "        Da.",
+    "    Signa: Сбор."
+   ]
+  },
+  {
+   "num": 62,
+   "group": "par205",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Gentamycini sulfatis 4%   0,002 pro injectionibus",
+    "",
+    "    Da tales doses numero 6 in ampullis.",
+    "    Signa: В/м."
+   ]
+  },
+  {
+   "num": 63,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Hydrogenii peroxydi spirituosae 1,5%   50 ml",
+    "",
+    "    Da.",
+    "    Signa: Наружно."
+   ]
+  },
+  {
+   "num": 64,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Suppositoria cum Diprophyllino 0,5        № 10",
+    "",
+    "    Da.",
+    "    Signa: Ректально."
+   ]
+  },
+  {
+   "num": 65,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Platyphyllini hydrotartratis           0,003",
+    "          Papaverini hydrochloridi           0,03",
+    "          Theobromini                        0,25",
+    "",
+    "    Da tales doses numero 10 in tabulettis.",
+    "    Signa: По 1 таблетке."
+   ]
+  },
+  {
+   "num": 66,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Mentholi                              0,15",
+    "          Tincturae Eucalypti                50 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: По 15 капель."
+   ]
+  },
+  {
+   "num": 67,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Ichthyoli                             1,25",
+    "          Zinci oxydi                        12,5",
+    "          Amyli tritici                      12,5",
+    "          Vaselini                       ad 50,0",
+    "",
+    "    Misce, fiat pasta.",
+    "        Da.",
+    "    Signa: Паста."
+   ]
+  },
+  {
+   "num": 68,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Linimenti Methylis salicylatis compositi   50,0",
+    "",
+    "    Da.",
+    "    Signa: Растирание."
+   ]
+  },
+  {
+   "num": 69,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Tabulettas \"Theodibaverinum\"            № 12",
+    "",
+    "    Da.",
+    "    Signa: По 1 таблетке."
+   ]
+  },
+  {
+   "num": 70,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Norsulfazoli-natrii 10%",
+    "          Solutionis Natrii chloridi isotonicae   ana 10 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: Для инъекций."
+   ]
+  },
+  {
+   "num": 71,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Extracti Belladonnae                  0,02",
+    "          Xeroformii                          0,1",
+    "          Zinci sulfatis                      0,05",
+    "          Glycerini                           0,12",
+    "          Olei Cacao                          2,0",
+    "",
+    "    Misce, fiat suppositorium.",
+    "        Da tales doses numero 10.",
+    "    Signa: Свечи."
+   ]
+  },
+  {
+   "num": 72,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Camphorae oleosae 10% ad usum externum   10 ml",
+    "",
+    "    Da.",
+    "    Signa: Растирание."
+   ]
+  },
+  {
+   "num": 73,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Desoxycorticosteroni acetatis oleosae 0,5%   1 ml",
+    "",
+    "    Da tales doses numero 10 in ampullis.",
+    "    Signa: В/м."
+   ]
+  },
+  {
+   "num": 74,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Herbae Hyperici                       20,0",
+    "          Foliorum Salviae                    30,0",
+    "          Foliorum Menthae piperitae          10,0",
+    "",
+    "    Misce, fiant species.",
+    "        Da.",
+    "    Signa: Сбор."
+   ]
+  },
+  {
+   "num": 75,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Dibazoli                              0,005",
+    "          Sacchari                              0,3",
+    "",
+    "    Misce, fiat pulvis.",
+    "        Da tales doses numero 20.",
+    "    Signa: Порошок."
+   ]
+  },
+  {
+   "num": 76,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Infusi radicis Althaeae          ex 3,0 — 100 ml",
+    "          Sirupi Althaeae                       20 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: Микстура."
+   ]
+  },
+  {
+   "num": 77,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum diureticarum                50,0",
+    "",
+    "    Da.",
+    "    Signa: Мочегонный сбор."
+   ]
+  },
+  {
+   "num": 78,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Theophyllini                          0,1",
+    "          Ephedrini hydrochloridi             0,025",
+    "",
+    "    Misce, fiat pulvis.",
+    "        Da tales doses numero 20.",
+    "    Signa: По 1 порошку."
+   ]
+  },
+  {
+   "num": 79,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Unguenti Hydrocortisoni acetatis 0,5%   20,0",
+    "",
+    "    Da.",
+    "    Signa: Мазь."
+   ]
+  },
+  {
+   "num": 80,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Solutionis Furacilini spirituosae 0,1%    2 ml",
+    "          Mentholi                            0,06",
+    "          Olei Eucalypti",
+    "          Olei Ricini",
+    "          Olei Olivarum                    ad 15 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "    Signa: Капли для носа."
+   ]
+  },
+  {
+   "num": 81,
+   "group": "par208",
+   "isNew": false,
+   "lines": [
+    "Rp.: Specierum pectoralium                  50,0",
+    "",
+    "    Da.",
+    "    Signa: Грудной сбор."
+   ]
+  },
+  {
+   "num": 82,
+   "group": "elements",
+   "isNew": false,
+   "lines": [
+    "Rp.: Natrii salicylatis                    1,0",
+    "     Kalii iodidi                         0,1",
+    "     Solutionis Iodi spirituosae 5%    guttas VI",
+    "     Aquae destillatae                ad 200 ml",
+    "",
+    "    Misce.",
+    "    Da.",
+    "    Signa: Внутрь."
+   ]
+  },
+  {
+   "num": 83,
+   "group": "elements",
+   "isNew": false,
+   "lines": [
+    "Rp.: Natrii tetraboratis                   20,0",
+    "     Natrii hydrocarbonatis              20,0",
+    "     Olei Menthae piperitae           guttas III",
+    "",
+    "    Misce, fiat pulvis.",
+    "    Da.",
+    "    Signa: Порошок для полоскания."
+   ]
+  },
+  {
+   "num": 84,
+   "group": "elements",
+   "isNew": false,
+   "lines": [
+    "Rp.: Calcii glycerophosphatis               0,25",
+    "     Calcii lactatis                      0,25",
+    "",
+    "    Da tales doses numero 20 in tabulettis.",
+    "    Signa: По 1 таблетке 3 раза в день."
+   ]
+  },
+  {
+   "num": 82,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Phenoxymethylpenicillini 100 000 ЕД",
+    "",
+    "    Da tales doses numero 10 in tabulettis.",
+    "        Signetur."
+   ]
+  },
+  {
+   "num": 83,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Methyleni coerulei 0,5",
+    "          Solutionis Glucosi 25% 50 ml",
+    "",
+    "    Da tales doses numero 3 in ampullis.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 84,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Calcii pantothenatis 10% 5 ml",
+    "",
+    "    Da tales doses numero 10 in ampullis.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 85,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Chloroformii",
+    "          Olei Helianthi",
+    "          Methylis salicylatis ana 15 ml",
+    "",
+    "    Misce, fiat linimentum.",
+    "        Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 86,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Solutionis Hydrargyri oxycyanidi 0,01% 50 ml",
+    "",
+    "    Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 87,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Tabulettas Oleandomycini phosphatis obductas 0,125 № 25",
+    "",
+    "    Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 88,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Mentholi 0,1",
+    "          Phenylii salicylatis 0,3",
+    "          Olei Vaselini ad 10 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 89,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Solutionis Thiamini bromidi 3% 1 ml",
+    "",
+    "    Da tales doses numero 10 in ampullis.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 90,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Streptocidi",
+    "          Norsulfazoli ana 1,5",
+    "          Benzylpenicillini-natrii 25 000 ED",
+    "          Ephedrini hydrochloridi 0,05",
+    "",
+    "    Misce, fiat pulvis.",
+    "        Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 91,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Tabulettas Methylandrostenedioli 0,025 № 30",
+    "",
+    "    Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 92,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Natrii thiosulfatis 10,0",
+    "          Solutionis Natrii chloridi isotonicae ad 100 ml",
+    "",
+    "    Misce.",
+    "        Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 93,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Codeini phosphatis 0,015",
+    "          Acidi acetylsalicylici 0,5",
+    "          Acidi ascorbinici 0,1",
+    "          Rutini 0,02",
+    "          Dimedroli 0,02",
+    "          Calcii lactatis 0,1",
+    "",
+    "    Misce, fiat pulvis.",
+    "        Da tales doses numero 20.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 94,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Apomorphini hydrochloridi 0,015",
+    "          Acidi hydrochlorici diluti 1 ml",
+    "          Aquae destillatae ad 200 ml",
+    "",
+    "    Misceatur. Detur. Signetur."
+   ]
+  },
+  {
+   "num": 95,
+   "group": "par199",
+   "isNew": true,
+   "lines": [
+    "Rp.: Argenti nitratis 0,25",
+    "          Vinylini 1,0",
+    "          Vaselini 30,0",
+    "",
+    "    Misce, fiat unguentum.",
+    "        Da.",
+    "        Signa."
+   ]
+  },
+  {
+   "num": 99,
+   "group": "par184",
+   "isNew": true,
+   "lines": [
+    "Rp.: Tabulettas \"Citramonum\"                 № 10",
+    "",
+    "    Detur.",
+    "    Signetur."
+   ]
+  },
+  {
+   "num": 100,
+   "group": "par184",
+   "isNew": true,
+   "lines": [
+    "Rp.: Lamellas ophthalmicas cum Florenalo     № 30",
+    "",
+    "    Detur.",
+    "    Signetur."
+   ]
+  }
+ ],
+ "stats": {
+  "recipes": 100,
+  "groups": 8
+ }
+}

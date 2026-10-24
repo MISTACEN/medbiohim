@@ -1,0 +1,44 @@
+{
+ "banks": [
+  {
+   "subject_slug": "biology",
+   "subject": "Биология",
+   "count": 180
+  },
+  {
+   "subject_slug": "histology",
+   "subject": "Гистология, цитология",
+   "count": 350
+  },
+  {
+   "subject_slug": "history",
+   "subject": "История России",
+   "count": 85
+  },
+  {
+   "subject_slug": "inorganic_chemistry",
+   "subject": "Общая и неорганическая химия",
+   "count": 161
+  },
+  {
+   "subject_slug": "math",
+   "subject": "Математический анализ",
+   "count": 71
+  },
+  {
+   "subject_slug": "organic_chemistry",
+   "subject": "Органическая и физическая химия",
+   "count": 165
+  },
+  {
+   "subject_slug": "physics",
+   "subject": "Физика",
+   "count": 119
+  },
+  {
+   "subject_slug": "physiology",
+   "subject": "Физиология",
+   "count": 8
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "id": "physics-phys-mech",
+ "title": "Механика — базовый",
+ "subject": "Физика",
+ "subjectId": "physics",
+ "course": 1,
+ "semester": 1,
+ "topic": "Механика",
+ "questions": [
+  {
+   "id": "pm1",
+   "text": "Единица силы в СИ:",
+   "options": [
+    "джоуль",
+    "ньютон",
+    "ватт",
+    "паскаль"
+   ],
+   "correct": 1,
+   "answer": "ньютон",
+   "topic": "Механика"
+  },
+  {
+   "id": "pm2",
+   "text": "Работа равна:",
+   "options": [
+    "F·s·cosα",
+    "m·v",
+    "F/s",
+    "m·a"
+   ],
+   "correct": 0,
+   "answer": "F·s·cosα",
+   "topic": "Механика"
+  },
+  {
+   "id": "pm3",
+   "text": "Кинетическая энергия:",
+   "options": [
+    "mgh",
+    "mv²/2",
+    "kx²/2",
+    "qU"
+   ],
+   "correct": 1,
+   "answer": "mv²/2",
+   "topic": "Механика"
+  },
+  {
+   "id": "pm4",
+   "text": "Давление в жидкости на глубине h:",
+   "options": [
+    "ρgh",
+    "mgh",
+    "F/S только в газе",
+    "не зависит от h"
+   ],
+   "correct": 0,
+   "answer": "ρgh",
+   "topic": "Механика"
+  },
+  {
+   "id": "pm5",
+   "text": "Второй закон Ньютона:",
+   "options": [
+    "F = ma",
+    "F = mv",
+    "F = m/a",
+    "F = a/m"
+   ],
+   "correct": 0,
+   "answer": "F = ma",
+   "topic": "Механика"
+  }
+ ]
+}

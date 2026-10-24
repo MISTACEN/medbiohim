@@ -22,6 +22,7 @@ import {
   Search,
   FlaskConical,
   Landmark,
+  Languages,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -40,6 +41,7 @@ const navItems = [
   { href: "/labs", label: "Лабораторные", icon: FlaskConical },
   { href: "/attestations", label: "Аттестации", icon: ClipboardList },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
+  { href: "/latin", label: "Латинский", icon: Languages },
 ];
 
 const bottomItems: Array<{
