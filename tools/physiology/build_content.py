@@ -64,6 +64,16 @@ MANUALS = [
         ],
     },
     {
+        "slug": "serdce-sosudistaya",
+        "title": "Физиология сердечно-сосудистой системы",
+        "subtitle": "Сердечный цикл, гемодинамика, сосуды, регуляция кровообращения",
+        "semester": 4,
+        "file": "serdce-sosudistaya.doc",
+        "kind": "doc",
+        "year": 2022,
+        "hours": 40,
+    },
+    {
         "slug": "dyhanie-vydelenie",
         "title": "Физиология дыхания и выделения",
         "subtitle": "Внешнее дыхание, газообмен, регуляция дыхания, почки и выделение",

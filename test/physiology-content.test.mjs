@@ -13,7 +13,7 @@ const index = readJson("index.json");
 
 test("physiology index lists every manual with an existing source file", () => {
   assert.equal(index.subject, "physiology");
-  assert.equal(index.manuals.length, 6);
+  assert.equal(index.manuals.length, 7);
   for (const manual of index.manuals) {
     assert.ok(manual.slug, "manual slug");
     assert.ok(manual.title.length > 5, `${manual.slug}: title`);

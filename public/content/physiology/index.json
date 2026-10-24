@@ -29,6 +29,15 @@
    "source_url": "/library/physiology/krov-endokrin.doc"
   },
   {
+   "slug": "serdce-sosudistaya",
+   "title": "Физиология сердечно-сосудистой системы",
+   "subtitle": "Сердечный цикл, гемодинамика, сосуды, регуляция кровообращения",
+   "semester": 4,
+   "hours": 40,
+   "file": "/content/physiology/serdce-sosudistaya.json",
+   "source_url": "/library/physiology/serdce-sosudistaya.doc"
+  },
+  {
    "slug": "dyhanie-vydelenie",
    "title": "Физиология дыхания и выделения",
    "subtitle": "Внешнее дыхание, газообмен, регуляция дыхания, почки и выделение",
