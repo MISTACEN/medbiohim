@@ -14,3 +14,9 @@ coverage/
 supabase/.temp/
 __pycache__/
 *.pyc
+
+# Локальные временные файлы разработки
+.tmp-*
+
+# Разбитые на части PDF библиотеки гистологии (заливаются в Supabase Storage, не хранятся в git)
+public/library/histology/
