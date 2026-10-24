@@ -15,6 +15,8 @@ export type ExternalCategory = {
   title: string;
   description: string;
   links: ExternalLink[];
+  /** К каким предметам сайта относится категория (canonical slug-группы). */
+  tags?: string[];
 };
 
 export type ExternalPlatform = {
@@ -48,6 +50,7 @@ export const NEOFAMILY: ExternalPlatform = {
     {
       title: "Биология: клетка и молекулы",
       description: "Симуляции процессов с пошаговой анимацией — от мембраны до синтеза белка.",
+      tags: ["biology", "histology", "physiology"],
       links: [
         { title: "Строение клетки: органоиды", href: "https://lab.neofamily.ru/cell-structure/", note: "интерактивная схема" },
         { title: "Фосфолипидный бислой", href: "https://lab.neofamily.ru/bilayer/", note: "самосборка мембраны" },
@@ -60,6 +63,7 @@ export const NEOFAMILY: ExternalPlatform = {
     },
     {
       title: "Биология: генетика и организм",
+      tags: ["biology"],
       description: "Законы, задачи и процессы развития в интерактивном виде.",
       links: [
         { title: "Законы Менделя", href: "https://lab.neofamily.ru/mendel/" },
@@ -72,6 +76,7 @@ export const NEOFAMILY: ExternalPlatform = {
     },
     {
       title: "Химия",
+      tags: ["chemistry"],
       description: "От строения атома до электролиза и качественных реакций.",
       links: [
         { title: "Общая химия", href: "https://lab.neofamily.ru/himiya/" },
@@ -85,6 +90,7 @@ export const NEOFAMILY: ExternalPlatform = {
     {
       title: "Русский язык и приложения",
       description: "Орфография, пунктуация и мобильные приложения платформы.",
+      tags: ["russian"],
       links: [
         { title: "Гласные в корне", href: "https://lab.neofamily.ru/root-vowels/" },
         { title: "Приставки пре- и при-", href: "https://lab.neofamily.ru/pre-pri/" },
@@ -140,6 +146,7 @@ export const SECHENOV: ExternalPlatform = {
     {
       title: "Клинические инструменты",
       description: "Публичная часть: шкалы, рекомендации, тренажёр изображений.",
+      tags: ["physiology", "first_aid"],
       links: [
         { title: "Клинические рекомендации", href: "https://xn--80aafla1ahtef3a7eg.xn--p1ai/cr" },
         { title: "Медицинские шкалы", href: "https://xn--80aafla1ahtef3a7eg.xn--p1ai/cr/scales" },

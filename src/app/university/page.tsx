@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ExternalPlatforms from "@/components/university/ExternalPlatforms";
+import { ExternalPlatformStats } from "@/components/university/ExternalPlatformLinks";
 import {
   AlertCircle,
   ArrowUpRight,
@@ -504,6 +505,8 @@ export default function UniversityPage() {
       </section>
 
       <ExternalPlatforms />
+
+      <ExternalPlatformStats />
 
       <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
