@@ -20,3 +20,6 @@ __pycache__/
 
 # Разбитые на части PDF библиотеки гистологии (заливаются в Supabase Storage, не хранятся в git)
 public/library/histology/
+
+# Химия: PNG-рендеры сканов и ручные транскрипты (тяжёлые, в git не нужны)
+tools/chem/png/

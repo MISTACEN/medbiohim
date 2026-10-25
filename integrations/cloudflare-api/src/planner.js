@@ -764,6 +764,15 @@ export async function startSupabasePreparation(request, env, testId, input = {},
       delete safe.question_snapshot;
       return { ok: true, data: { session: safe, resumed: true } };
     }
+    // Уникальный ключ (user_id, test_id, status) допускает лишь одну запись с каждым
+    // статусом — старые in_progress/abandoned сессии этого теста удаляем вместе с их
+    // результатами, иначе PATCH в abandoned и INSERT новой сессии падают с 23505.
+    const stale = await c.rows("test_preparation_sessions", { select: "id", user_id: "eq." + c.identity.id,
+      test_id: "eq." + testId, status: "in.(in_progress,abandoned)", id: existing?.id ? "neq." + String(existing.id) : undefined, limit: "100" });
+    for (const row of stale) {
+      try { await c.rows("test_preparation_results", { session_id: "eq." + String(row.id) }, { method: "DELETE" }); } catch {}
+      try { await c.rows("test_preparation_sessions", { id: "eq." + String(row.id), user_id: "eq." + c.identity.id }, { method: "DELETE" }); } catch {}
+    }
     if (existing?.id) await c.rows("test_preparation_sessions", { id: "eq." + String(existing.id), user_id: "eq." + c.identity.id }, {
       method: "PATCH", body: JSON.stringify({ status: "abandoned", last_saved_at: new Date().toISOString() }),
     });
@@ -874,18 +883,57 @@ export async function finishSupabasePreparation(request, env, sessionId, fetcher
     }
     for (const topic of topics.values()) topic.percent = topic.total ? Math.round(topic.correct / topic.total * 10000) / 100 : 0;
     const total = ids.length, answered = results.length, now = new Date().toISOString();
-    const updated = await c.rows("test_preparation_sessions", { id: "eq." + String(session.id), user_id: "eq." + c.identity.id, select: "*" }, {
-      method: "PATCH", body: JSON.stringify({ status: "completed", completed_at: now, last_saved_at: now, current_index: total }),
-    });
-    const safe = updated[0] || { ...session, status: "completed", completed_at: now, current_index: total };
+    // Уникальный ключ (user_id, test_id, status): старая completed-сессия этого теста
+    // не даст перевести текущую в completed (23505). Удаляем её вместе с результатами.
+    try {
+      const oldCompleted = await c.rows("test_preparation_sessions", { select: "id", user_id: "eq." + c.identity.id,
+        test_id: "eq." + String(session.test_id), status: "eq.completed", id: "neq." + String(session.id), limit: "100" });
+      for (const row of oldCompleted) {
+        try { await c.rows("test_preparation_results", { session_id: "eq." + String(row.id) }, { method: "DELETE" }); } catch {}
+        try { await c.rows("test_preparation_sessions", { id: "eq." + String(row.id), user_id: "eq." + c.identity.id }, { method: "DELETE" }); } catch {}
+      }
+    } catch {}
+    // Полный PATCH может быть отклонён схемой (например, нет колонки completed_at):
+    // пробуем полный вариант, затем минимальный, и только потом отдаём реальную ошибку.
+    let updated = null, patchError = null;
+    const patchFull = { status: "completed", completed_at: now, last_saved_at: now, current_index: total };
+    try {
+      const rows = await c.rows("test_preparation_sessions", { id: "eq." + String(session.id), user_id: "eq." + c.identity.id, select: "*" }, {
+        method: "PATCH", body: JSON.stringify(patchFull),
+      });
+      updated = rows[0] || null;
+    } catch (error) { patchError = error; }
+    if (!updated) {
+      try {
+        const rows = await c.rows("test_preparation_sessions", { id: "eq." + String(session.id), user_id: "eq." + c.identity.id, select: "*" }, {
+          method: "PATCH", body: JSON.stringify({ status: "completed", last_saved_at: now }),
+        });
+        updated = rows[0] || null;
+        if (updated) patchError = null;
+      } catch (error) { patchError = patchError || error; }
+    }
+    if (patchError) {
+      console.error("MEDBIOHIM_PREPARATION_FINISH_PATCH", JSON.stringify({
+        session_id: String(session.id), code: patchError?.code || null, status: patchError?.status || null, message: String(patchError?.message || patchError).slice(0, 300),
+      }));
+    }
+    const safe = updated || { ...session, status: "completed", completed_at: now, current_index: total };
     safe.question_ids = ids; delete safe.question_snapshot;
+    if (patchError && !updated) {
+      // Не прячем причину: отдаём её пользователю и в логи.
+      const status = [400, 401, 403, 404, 409, 422].includes(Number(patchError?.status)) ? Number(patchError.status) : 503;
+      return fail(status, "FINISH_PATCH_FAILED", "Не удалось пометить сессию завершённой: " + String(patchError?.message || patchError).slice(0, 200), { stats: { total, answered, correct, wrong: Math.max(0, answered - correct - unresolved), unresolved: Math.min(answered, unresolved), unanswered: Math.max(0, total - answered), percent: total ? Math.round(correct / total * 10000) / 100 : 0, topics: [...topics.values()] } });
+    }
     return { ok: true, data: { session: safe,
       stats: { total, answered, correct, wrong: Math.max(0, answered - correct - unresolved), unresolved: Math.min(answered, unresolved),
         unanswered: Math.max(0, total - answered), percent: total ? Math.round(correct / total * 10000) / 100 : 0, topics: [...topics.values()] },
       errors: results } };
   } catch (error) {
     if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
-    return fail(503, "FINISH_ERROR", "Не удалось завершить подготовку");
+    console.error("MEDBIOHIM_PREPARATION_FINISH", JSON.stringify({
+      code: error?.code || null, status: error?.status || null, message: String(error?.message || error).slice(0, 300),
+    }));
+    return fail(503, "FINISH_ERROR", "Не удалось завершить подготовку: " + String(error?.message || error).slice(0, 160));
   }
 }
 

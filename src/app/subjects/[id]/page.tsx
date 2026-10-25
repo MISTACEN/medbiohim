@@ -21,6 +21,7 @@ import MatchingTrainer from "@/components/portals/MatchingTrainer";
 import LegacyMCTests from "@/components/portals/LegacyMCTests";
 import ChemSdf from "@/components/portals/ChemSdf";
 import ArchiveLectures from "@/components/portals/ArchiveLectures";
+import ChemPlan from "@/components/chem/ChemPlan";
 import { legacyPortalConfig, loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -85,6 +86,15 @@ const slugNames: Record<string, string> = {
   "органическая и физическая химия": "chemistry_organic_physical",
 };
 const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
+
+const STATIC_PLANS: Record<string, string> = {
+  organic_chemistry: "chem/plan-organic-2025-2026.json",
+  optics: "chem/plan-optics-2025-2026.json",
+  probability: "chem/plan-probability-2025-2026.json",
+  informatics: "chem/plan-informatics-2025-2026.json",
+  histology: "histology/plan-semester3-2026-2027.json",
+  physiology: "physiology/plan-semester3-2026-2027.json",
+};
 
 function isTabId(v: string): v is TabId {
   return (TAB_IDS as string[]).includes(v);
@@ -516,7 +526,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         {tab === "lessons" && slug === "physiology" && (
           <PhysiologyPractice backHref={`/subjects/${encodeURIComponent(subjectId)}?tab=plan`} backLabel="К учебному плану" />
         )}
-        {tab === "plan" && (
+        {tab === "plan" && STATIC_PLANS[slug] && <ChemPlan planFile={STATIC_PLANS[slug]} />}
+        {tab === "plan" && !STATIC_PLANS[slug] && (
           <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
             <p className="mt-1 text-sm text-slate-500">
