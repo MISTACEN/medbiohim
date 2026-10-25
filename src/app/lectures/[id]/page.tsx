@@ -22,7 +22,8 @@ export default function LectureViewPage() {
     void getLecture(id).then((r) => {
       if (cancelled) return;
       if (r.ok) {
-        setLec(r.data.lecture);
+        // API отдаёт лекцию плоско (поля в data), но старые сборки — в data.lecture.
+        setLec(r.data?.lecture || r.data || null);
         setError(null);
       } else {
         setLec(null);
@@ -53,7 +54,7 @@ export default function LectureViewPage() {
         <ArrowLeft className="h-4 w-4" /> Все лекции
       </Link>
       <header>
-        <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{lec.subject}</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{lec.subject || lec.subject_slug}</div>
         <h1 className="page-title mt-1">{lec.title}</h1>
         {lec.published_at && (
           <p className="page-subtitle">Опубликовано: {new Date(lec.published_at).toLocaleString("ru-RU")}</p>
@@ -61,7 +62,7 @@ export default function LectureViewPage() {
       </header>
 
       <article className="card p-6">
-        <LectureRenderer markdown={lec.body_md || ""} html={lec.body_html || ""} />
+        <LectureRenderer markdown={lec.body_markdown || lec.body_md || ""} html={lec.body_html || ""} />
       </article>
 
       <LectureLearningLinks relatedLearning={lec.related_learning} />

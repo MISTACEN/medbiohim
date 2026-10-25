@@ -782,7 +782,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               <p className="mt-1 text-xs text-slate-500">Опубликовано: {new Date(activeLecture.published_at).toLocaleString("ru-RU")}</p>
             )}
             <article className="mt-4">
-              <LectureRenderer markdown={activeLecture.body_md || ""} html={activeLecture.body_html || ""} />
+              <LectureRenderer markdown={activeLecture.body_markdown || activeLecture.body_md || ""} html={activeLecture.body_html || ""} />
             </article>
           </section>
         )}
