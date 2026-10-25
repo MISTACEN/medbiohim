@@ -4,7 +4,7 @@ import { ArrowLeft, Chrome, Download, LockKeyhole, MousePointerClick, ShieldChec
 const STEPS = [
   {
     title: "Скачайте архив",
-    text: "Кнопка ниже отдаёт собранное расширение (Manifest V3, ~11 КБ). Никаких сторонних магазинов и трекеров.",
+    text: "Кнопка ниже отдаёт собранное расширение (Manifest V3, ~13 КБ). Никаких сторонних магазинов и трекеров.",
   },
   {
     title: "Распакуйте папку",
@@ -21,6 +21,7 @@ const STEPS = [
 ];
 
 const SOURCES = [
+  { name: "Сайт ДВГМУ", detail: "новости, объявления, расписание и документы", tone: "sky" },
   { name: "ЕИОС ДВГМУ", detail: "объявления, события календаря, документы", tone: "indigo" },
   { name: "NeoFamily Lab", detail: "тренажёры и интерактивные темы", tone: "violet" },
   { name: "Школа Сеченова", detail: "уроки, клинические разделы, материалы", tone: "emerald" },
@@ -58,7 +59,7 @@ export default function ExtensionPage() {
               <Sparkles className="h-4 w-4" /> Импорт вручную без расширения
             </Link>
           </div>
-          <p className="mt-3 text-[11px] text-slate-400">Версия 1.1.0 · Chrome, Edge, Яндекс.Браузер, Opera (Chromium)</p>
+          <p className="mt-3 text-[11px] text-slate-400">Версия 1.2.0 · Chrome, Edge, Яндекс.Браузер, Opera (Chromium)</p>
         </div>
       </header>
 
@@ -78,11 +79,11 @@ export default function ExtensionPage() {
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
         <h2 className="font-serif text-xl font-semibold">Где работает</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {SOURCES.map((source) => (
             <div key={source.name} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/50 p-4">
               <div className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                source.tone === "indigo" ? "bg-indigo-50 text-indigo-600" : source.tone === "violet" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"
+                source.tone === "sky" ? "bg-sky-50 text-sky-600" : source.tone === "indigo" ? "bg-indigo-50 text-indigo-600" : source.tone === "violet" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"
               }`}>
                 {source.name}
               </div>
