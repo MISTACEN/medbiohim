@@ -270,7 +270,15 @@ export default function SubjectQuestionBank({
     if (!subjectId) return;
     listQuestionTopics(subjectId).then((result: any) => {
       if (cancelled) return;
-      if (result?.ok) setTopicGroups(result.data?.items || []);
+      if (result?.ok) {
+        // В базе есть дубли разделов из разных импортов: пустые темы только мешают
+        // ориентироваться, поэтому оставляем те, где действительно есть вопросы.
+        const groups = (result.data?.items || [])
+          .map((group: any) => ({ ...group, topics: (group.topics || []).filter((topic: any) => Number(topic.count || 0) > 0) }))
+          .filter((group: any) => group.topics.length > 0)
+          .sort((a: any, b: any) => b.topics.reduce((sum: number, t: any) => sum + Number(t.count || 0), 0) - a.topics.reduce((sum: number, t: any) => sum + Number(t.count || 0), 0));
+        setTopicGroups(groups);
+      }
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [subjectId]);
