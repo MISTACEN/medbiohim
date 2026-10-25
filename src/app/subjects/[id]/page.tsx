@@ -335,7 +335,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   });
   const subjectLibrary: LibraryFile[] = slug === "physiology" ? PHYSIOLOGY_LIBRARY : [];
   const subjectLectures = lectures.filter((l) => {
-    const ls = String(l?.subject || "").toLowerCase().trim();
+    // Лекции привязаны через subject_slug; поле subject у них пустое, из-за
+    // чего вкладка всегда показывала «лекций нет».
+    const ls = String(l?.subject_slug || l?.subject || "").toLowerCase().trim();
     if (!ls || !subjName) return false;
     return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
   });
