@@ -23,7 +23,11 @@ test("import validation bounds items, URLs and text", () => {
   assert.ok(routeSource.includes("Не более ${MAX_ITEMS} элементов"));
   assert.ok(routeSource.includes("/^https?:\\/\\//i.test(url)"));
   assert.ok(routeSource.includes("clean(value.summary, 4000)"));
-  assert.ok(routeSource.includes('"eios", "neofamily", "sechenov", "other"'));
+  // The allowlist is asserted value-by-value so adding a source (e.g. `fesmu`
+  // for public FESMU/ДВГМУ pages) does not require an exact-string rewrite.
+  for (const source of ["eios", "neofamily", "sechenov", "fesmu", "other"]) {
+    assert.ok(routeSource.includes(`"${source}"`), `SOURCES misses ${source}`);
+  }
 });
 
 test("extension compatibility aliases exist and are mounted", () => {
