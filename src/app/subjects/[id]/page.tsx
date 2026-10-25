@@ -334,10 +334,12 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
   });
   const subjectLibrary: LibraryFile[] = slug === "physiology" ? PHYSIOLOGY_LIBRARY : [];
+  // Лекции привязаны через subject_slug ("histology"), а не к русскому названию.
   const subjectLectures = lectures.filter((l) => {
-    // Лекции привязаны через subject_slug; поле subject у них пустое, из-за
-    // чего вкладка всегда показывала «лекций нет».
-    const ls = String(l?.subject_slug || l?.subject || "").toLowerCase().trim();
+    const slugKey = String(slug || "").toLowerCase().trim();
+    const lectureSlug = String(l?.subject_slug || "").toLowerCase().trim();
+    if (slugKey && lectureSlug) return lectureSlug === slugKey;
+    const ls = String(l?.subject || "").toLowerCase().trim();
     if (!ls || !subjName) return false;
     return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
   });
