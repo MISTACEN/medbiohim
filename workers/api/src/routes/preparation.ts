@@ -59,7 +59,8 @@ preparation.post("/:id/preparation/start", requireAuth, async (c) => {
   try {
     const result = await startSupabasePreparation(c.req.raw.clone(), c.env, testId, input);
     return respond(c, rid, result, "Не удалось начать подготовку");
-  } catch {
+  } catch (error) {
+    console.error("MEDBIOHIM_PREPARATION_START_ROUTE", String(error));
     const { body, status } = fail("PREPARATION_UNAVAILABLE", "Не удалось начать подготовку", 503, rid);
     return c.json(body, status as 503);
   }

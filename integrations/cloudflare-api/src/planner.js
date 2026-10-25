@@ -791,8 +791,12 @@ export async function startSupabasePreparation(request, env, testId, input = {},
     // Уникальный ключ (user_id, test_id, status) допускает лишь одну запись с каждым
     // статусом — старые in_progress/abandoned сессии этого теста удаляем вместе с их
     // результатами, иначе PATCH в abandoned и INSERT новой сессии падают с 23505.
-    const stale = await c.rows("test_preparation_sessions", { select: "id", user_id: "eq." + c.identity.id,
-      test_id: "eq." + testId, status: "in.(in_progress,abandoned)", id: existing?.id ? "neq." + String(existing.id) : undefined, limit: "100" });
+    // Фильтр по id добавляем только когда есть что исключать: PostgREST не
+    // принимает пустое значение и отвечает 400 вместо пустого списка.
+    const staleParams = { select: "id", user_id: "eq." + c.identity.id,
+      test_id: "eq." + testId, status: "in.(in_progress,abandoned)", limit: "100" };
+    if (existing?.id) staleParams.id = "neq." + String(existing.id);
+    const stale = await c.rows("test_preparation_sessions", staleParams);
     for (const row of stale) {
       try { await c.rows("test_preparation_results", { session_id: "eq." + String(row.id) }, { method: "DELETE" }); } catch {}
       try { await c.rows("test_preparation_sessions", { id: "eq." + String(row.id), user_id: "eq." + c.identity.id }, { method: "DELETE" }); } catch {}
@@ -812,6 +816,10 @@ export async function startSupabasePreparation(request, env, testId, input = {},
   } catch (error) {
     if (error?.status === 401) return fail(401, "UNAUTHORIZED", "Требуется войти в систему");
     if (error?.status === 403) return fail(403, "FORBIDDEN", "Недостаточно прав на этот тест");
+    console.error("MEDBIOHIM_PREPARATION_START", JSON.stringify({
+      code: error?.code || null, status: error?.status || null, table: error?.table || null, method: error?.method || null,
+      message: String(error?.message || error).slice(0, 300),
+    }));
     return fail(503, "PREPARATION_ERROR", "Подготовка к тесту временно недоступна");
   }
 }
