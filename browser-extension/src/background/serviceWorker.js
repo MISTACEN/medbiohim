@@ -39,6 +39,7 @@ async function importItems(items) {
     kind: item.kind || "link",
     source: item.source || "other",
     summary: item.summary || undefined,
+    published_at: item.published_at || undefined,
   }));
 
   let lastError = "Не удалось сохранить импорт.";

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MEDBIOHIM Importer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Сохраняет выбранные объявления, события и материалы с ЕИОС ДВГМУ, NeoFamily и Школы Сеченова в личную библиотеку MEDBIOHIM.",
   "permissions": ["storage", "activeTab", "scripting", "notifications"],
   "host_permissions": [

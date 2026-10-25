@@ -407,3 +407,69 @@ still a *partial* payload. The overview always returns `ok:true` with per-sectio
 3. Live `/api/v1/integrations/imports` with a real session (auth, per-user dedup, 50-item cap, 401 UI state).
 4. `elib.fesmu.ru` from another network.
 5. Live pages newer than the 2026-10-25 snapshot; 12 s/15 s/10-min boundaries under a pathological host.
+
+## 10. Bridge extension (task-4) — Lead-authored verification
+
+**Independence disclosure.** The Lead implemented task-4 and also wrote the
+verification below. The teammate scheduled to verify it (`fesmu-core`) failed
+before producing anything, as did `hub-ui` and `verifier` earlier in the session.
+This section is therefore *self*-verification: better than reading the code,
+weaker than an independent author. Treat it accordingly.
+
+**Method.** `test/bridge-extension.test.mjs` (6 tests) parses the committed real
+FESMU markup with a small HTML parser and selector engine written inside the test
+(no jsdom, no new dependency) and executes the **real**
+`browser-extension/src/content/analyzer.js` inside that DOM via
+`new Function`. The assertions exercise the shipped analyzer, not a
+re-implementation.
+
+| Lead verification | Result |
+| --- | --- |
+| `www.fesmu.ru` / `fesmu.ru` → `source:"fesmu"`; `eios.fesmu.ru` → `"eios"`; `notfesmu.ru`, `fesmu.ru.evil.com`, `…xn--p1ai.evil.com` → `"other"` | PASS |
+| 10 real Bitrix cards whose anchor text is empty yield their `area-label`/`data-title` titles; every url absolute; no markup or `area-label` leaks into a title | PASS |
+| `published_at` is a valid ISO date on dated cards; `05.03.2026`→`2026-03-05`, `29.02.2024`→`2024-02-29`; `31.02.2026`, `29.02.2025`, `31.04.2026` and undated cards → `null` | PASS |
+| Title fallback: `alt`-only anchor, `data-title` anchor, container heading, heading on an ancestor; `heading`/`filename`/`link` placeholders never emitted | PASS |
+| Analysis is local: `fetch` and `console.log` spied and never called; the source contains no `document.cookie`, `localStorage`, `chrome.storage`, `Authorization` | PASS |
+| Caps: 120 hostile cards → ≤50 items | PASS |
+
+**Two findings while writing this, both resolved:**
+
+1. The first run reported only 5 of 10 card titles. That was a **defect in this
+   test's own HTML parser**, not in the analyzer: the trimmed fixtures contain a
+   truncated `<div class="` (the trimmer cut an image block), and the parser's
+   quoted-attribute handling swallowed the following card. Fixed by excluding a
+   raw `<` from attribute values — which is correct HTML5 behaviour, since `<`
+   cannot appear there. After the fix the shim sees all 50 anchors, and the
+   analyzer returns all 10 titles. The analyzer was never wrong here.
+2. A heading *outside* the card wrapper was not used as a title. That is a real
+   gap for ДВГМУ markup, where a link is often wrapped in a section that carries
+   the visible title, so `resolveTitle()` now also inspects up to two ancestors
+   of the closest card (`analyzer.js`, `resolveTitle`). The assertion was kept,
+   not weakened.
+
+**Artifact verification.** `browser-extension/dist/` is gitignored, so the
+committed `public/downloads/medbiohim-importer.zip` was unpacked and compared:
+all six entries (`analyzer.js`, `background.js`, `manifest.json`, `popup.html`,
+`popup.js`, `styles.css`) are SHA-256 identical to `dist/`; the packaged
+`manifest.json` is `version 1.2.0` with `host_permissions` unchanged; every file
+referenced by the manifest exists. Archive size 11433 → 13214 bytes.
+
+**Regression runs after the change:** frontend `node --test test/` → **120/120**
+(114 + the 6 new Bridge tests), `npm.cmd run typecheck` → 0, `workers/api`
+`npm.cmd test` → **53/53**, `npm.cmd run typecheck` → 0, `npm.cmd run predeploy:audit`
+→ PASS WITH WARNINGS (0 failures), extension `npm.cmd run build` / `run package`
+→ 0.
+
+### Not verified for the Bridge change
+
+1. **A real browser**: the analyzer was executed against a DOM shim, not Chrome.
+   No extension load, no popup interaction, no live `chrome.tabs.sendMessage`.
+2. **The live import round-trip** from the popup with a real MEDBIOHIM token into
+   the deployed Worker (the `fesmu` source and `published_at` reaching
+   `site_content`).
+3. **Selectors on ЕИОС pages**: unchanged by this task and not re-tested; only
+   the public ДВГМУ markup was exercised.
+4. **Real-world noise**: section landing links (`/press-center/news/for-applicants/`
+   → «Для абитуриентов») are still offered as items, by design — the popup lets
+   the user deselect them. Not filtered, and not claimed as filtered.
+5. **Extension store update / packaging pipeline** beyond `npm run package`.

@@ -73,7 +73,7 @@ function renderPreview(data) {
   elements["import-status"].textContent = "";
   elements.progress.classList.add("hidden");
 
-  const sourceLabels = { eios: "ЕИОС", neofamily: "NeoFamily", sechenov: "Школа Сеченова", other: "Страница" };
+  const sourceLabels = { eios: "ЕИОС", fesmu: "ДВГМУ", neofamily: "NeoFamily", sechenov: "Школа Сеченова", other: "Страница" };
   const items = data.items || [];
 
   for (const [index, item] of items.entries()) {
@@ -130,7 +130,7 @@ async function analyze() {
   try {
     const tab = await activeTab();
     if (!tab?.url || !isSupported(tab.url)) {
-      status(elements["settings-status"], "Откройте страницу ЕИОС, NeoFamily или Школы Сеченова.", "error");
+      status(elements["settings-status"], "Откройте страницу ДВГМУ (www.fesmu.ru), ЕИОС, NeoFamily или Школы Сеченова.", "error");
       return;
     }
     const response = await chrome.tabs.sendMessage(tab.id, { action: "analyze_page" });
