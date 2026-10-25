@@ -14,7 +14,7 @@ import { createServiceClient } from "../lib/supabase";
 
 const integrations = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-const SOURCES = new Set(["eios", "neofamily", "sechenov", "other"]);
+const SOURCES = new Set(["eios", "neofamily", "sechenov", "fesmu", "other"]);
 const KINDS = new Set(["announcement", "event", "document", "topic", "link"]);
 const MAX_ITEMS = 50;
 

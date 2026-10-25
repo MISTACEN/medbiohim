@@ -510,6 +510,36 @@ export async function listSubjects(course?:number,semester?:number){const q=new 
 export async function listGroups(){return api<any>("/groups")}
 export async function trackExternalPlatformClick(payload:{platform:string;title:string;href:string;subject_slug?:string|null}){return api<any>("/external-platforms/click",{method:"POST",body:JSON.stringify(payload)})}
 export async function externalPlatformStats(){return api<any>("/external-platforms/stats")}
+/**
+ * University portal imports (ФЕСМУ/ЕИОС/manual selection).
+ * Additive helpers for docs/UNIVERSITY-INTEGRATION-CONTRACT.md §3 — the Worker
+ * route deduplicates by SHA-256(url) per user and caps a request at 50 items.
+ */
+export type IntegrationImportKind="announcement"|"event"|"document"|"topic"|"link";
+export type IntegrationImportSource="eios"|"neofamily"|"sechenov"|"fesmu"|"other";
+export type IntegrationImportInput={
+  title:string;
+  url:string;
+  kind:IntegrationImportKind;
+  source:IntegrationImportSource;
+  summary?:string;
+  published_at?:string|null;
+};
+export type IntegrationImportRecord={
+  id:string;
+  key:string;
+  title:string;
+  url:string;
+  kind:string;
+  source:string;
+  imported_at:string;
+  summary?:string;
+};
+export type IntegrationImportsData={items:IntegrationImportRecord[];count:number};
+export type IntegrationImportResult={imported:number;skipped:number;items:IntegrationImportRecord[]};
+export async function integrationImports(){return api<IntegrationImportsData>("/integrations/imports")}
+export async function integrationImport(items:IntegrationImportInput[]){return api<IntegrationImportResult>("/integrations/imports",{method:"POST",body:JSON.stringify({items})})}
+export async function integrationImportDelete(id:string){return api<{deleted:boolean}>(`/integrations/imports/${encodeURIComponent(id)}`,{method:"DELETE"})}
 export type QuestionComment={id:string;question_id:string;user_id:string;body:string;created_at:string;author_name:string;author_avatar:string|null};
 export async function listQuestionComments(questionId:string){return api<any>(`/questions/${encodeURIComponent(questionId)}/comments`)}
 export async function addQuestionComment(questionId:string,body:string){return api<any>(`/questions/${encodeURIComponent(questionId)}/comments`,{method:"POST",body:JSON.stringify({body})})}
