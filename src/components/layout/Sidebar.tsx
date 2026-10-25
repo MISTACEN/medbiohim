@@ -20,9 +20,7 @@ import {
   Bot,
   Calculator,
   Search,
-  FlaskConical,
   Landmark,
-  Languages,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -37,11 +35,8 @@ const navItems = [
   { href: "/academic", label: "Учебный план", icon: ClipboardList },
   { href: "/community", label: "Сообщество", icon: Users },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
-  { href: "/chemistry", label: "Химия", icon: FlaskConical },
-  { href: "/labs", label: "Лабораторные", icon: FlaskConical },
   { href: "/attestations", label: "Аттестации", icon: ClipboardList },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
-  { href: "/latin", label: "Латинский", icon: Languages },
 ];
 
 const bottomItems: Array<{

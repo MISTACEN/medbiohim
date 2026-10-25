@@ -65,7 +65,14 @@ async function client(request, env, fetcher) {
       e.method = init.method || "GET";
       throw e;
     }
-    const data = await r.json(); return Array.isArray(data) ? data : [];
+    // DELETE/PATCH без Prefer:return=representation приходят с 204 и пустым телом —
+    // json() на нём бросает исключение уже после успешного удаления.
+    if (r.status === 204) return [];
+    const text = await r.text();
+    if (!text) return [];
+    let data = null;
+    try { data = JSON.parse(text); } catch { return []; }
+    return Array.isArray(data) ? data : [];
   }
   async function rpc(functionName, payload) {
     if (!/^[a-z_][a-z0-9_]*$/i.test(String(functionName || ""))) throw new Error("Invalid RPC name");
@@ -724,13 +731,30 @@ export async function startSupabasePreparation(request, env, testId, input = {},
   const mode = requestedMode === "sequential" ? "sequential" : requestedMode === "count" ? "count" : "full";
   const questionLimit = mode === "count" ? Math.max(1, Math.min(200, Number.parseInt(String(body.question_limit ?? 10), 10) || 10)) : null;
   try {
-    const tests = await c.rows("tests", { select: "id,title,subject_id,is_published", id: "eq." + testId, is_published: "eq.true", limit: "1" });
+    const tests = await c.rows("tests", { select: "id,title,subject_id,module_id,topic_id,is_published", id: "eq." + testId, is_published: "eq.true", limit: "1" });
     if (!tests[0]) return fail(404, "NOT_FOUND", "Тест не найден или не опубликован");
     const groupResult = await groupFor(c.rows, c.identity.id, String(body.group_id || ""));
     if (!groupResult.ok) return groupResult;
     const groupId = groupResult.group.group_id;
     const links = await c.rows("test_questions", { select: "question_id,order_index", test_id: "eq." + testId, order: "order_index.asc,question_id.asc", limit: "1000" });
     let ids = links.map((row) => String(row.question_id || "")).filter(uuid);
+    // Банки из методичек часто созданы без строк в test_questions. Тогда берём
+    // опубликованные вопросы темы теста, затем — его раздела, чтобы набор по
+    // каждой теме реально запускался, а не отвечал «в тесте нет вопросов».
+    if (!ids.length) {
+      const test = tests[0];
+      const scope = [
+        { column: "topic_id", value: test?.topic_id },
+        { column: "module_id", value: test?.module_id },
+      ];
+      for (const { column, value } of scope) {
+        if (!uuid(value)) continue;
+        const params = { select: "id", [column]: "eq." + String(value), is_published: "eq.true", archived_at: "is.null", order: "created_at.asc", limit: "1000" };
+        const rows = await c.rows("questions", params);
+        ids = rows.map((row) => String(row.id || "")).filter(uuid);
+        if (ids.length) break;
+      }
+    }
     if (mode !== "sequential") {
       for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     }

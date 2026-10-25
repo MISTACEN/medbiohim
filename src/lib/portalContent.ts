@@ -83,6 +83,8 @@ export type LegacyPortalConfig = {
 /** Какие предметы получают вкладку легаси-портала. */
 export const LEGACY_PORTALS: Record<string, LegacyPortalConfig> = {
   inorganic_chemistry: { tabLabel: "Коллоквиум", hoba: true, sdf: true },
+  // Канонический slug предмета в каталоге: химия живёт внутри предмета.
+  chemistry_organic_physical: { tabLabel: "Химия", sdf: true, lectures: "chem", mcSubjectIds: ["chemistry"] },
   biology: { tabLabel: "Портал", parasitology: true, lectures: "bio", mcSubjectIds: ["biology"] },
   organic_chemistry: { tabLabel: "Тренажёры", lectures: "chem", mcSubjectIds: ["chemistry"] },
   physics: { tabLabel: "Тренажёры", mcSubjectIds: ["physics"] },

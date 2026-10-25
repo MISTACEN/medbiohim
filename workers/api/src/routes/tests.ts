@@ -165,6 +165,34 @@ tests.get("/", requireAuth, async (c) => {
       }
       for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
     }
+    // Банки из методичек созданы без test_questions, но у них есть тема/раздел.
+    // Считаем вопросы по теме теста, иначе такой банк выглядит пустым («0 вопросов»).
+    const emptyScoped = items.filter((item: any) => !(counts.get(String(item.id)) || 0) && (item.topic_id || item.module_id));
+    if (emptyScoped.length) {
+      const topicIds = [...new Set(emptyScoped.map((item: any) => String(item.topic_id || "")).filter((v: string) => UUID.test(v)))];
+      const moduleIds = [...new Set(emptyScoped.map((item: any) => String(item.module_id || "")).filter((v: string) => UUID.test(v)))];
+      const topicCounts = new Map<string, number>();
+      const moduleCounts = new Map<string, number>();
+      if (topicIds.length || moduleIds.length) {
+        let q = db.from("questions").select("topic_id,module_id")
+          .eq("is_published", true).is("archived_at", null).limit(20000);
+        const filters: string[] = [];
+        if (topicIds.length) filters.push("topic_id.in.(" + topicIds.join(",") + ")");
+        if (moduleIds.length) filters.push("module_id.in.(" + moduleIds.join(",") + ")");
+        q = q.or(filters.join(","));
+        const { data: scopedQuestions } = await q;
+        for (const row of scopedQuestions || []) {
+          const topicKey = String((row as any).topic_id || "");
+          const moduleKey = String((row as any).module_id || "");
+          if (topicKey) topicCounts.set(topicKey, (topicCounts.get(topicKey) || 0) + 1);
+          if (moduleKey) moduleCounts.set(moduleKey, (moduleCounts.get(moduleKey) || 0) + 1);
+        }
+      }
+      for (const item of emptyScoped as any[]) {
+        const fallback = topicCounts.get(String(item.topic_id || "")) || moduleCounts.get(String(item.module_id || "")) || 0;
+        if (fallback) counts.set(String(item.id), fallback);
+      }
+    }
     return c.json(ok({ items: items.map((item: any) => {
       const subject = Array.isArray(item.subjects) ? item.subjects[0] : item.subjects;
       return {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Archive, ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, MessageSquare, Search, Sparkles } from "lucide-react";
-import { listQuestions } from "@/lib/api";
+import { listQuestionTopics, listQuestions } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import QuestionComments from "@/components/questions/QuestionComments";
 import { loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
@@ -235,6 +235,9 @@ export default function SubjectQuestionBank({
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [aiCopied, setAiCopied] = useState<Record<string, boolean>>({});
+  // Модули (методички) и темы предмета — для фильтра банка по темам.
+  const [topicGroups, setTopicGroups] = useState<Array<{ id: string; title: string; topics: Array<{ id: string; title: string; count: number }> }>>([]);
+  const [topicId, setTopicId] = useState("");
 
   // Архивный банк грузим один раз на предмет.
   useEffect(() => {
@@ -256,7 +259,21 @@ export default function SubjectQuestionBank({
 
   useEffect(() => {
     setPage(0);
-  }, [kind, search, subjectId, subjectSlug]);
+  }, [kind, search, subjectId, subjectSlug, topicId]);
+
+  // Темы грузим один раз на предмет; фильтр по теме работает только при
+  // известном subject_id (slug может охватывать несколько предметов).
+  useEffect(() => {
+    let cancelled = false;
+    setTopicGroups([]);
+    setTopicId("");
+    if (!subjectId) return;
+    listQuestionTopics(subjectId).then((result: any) => {
+      if (cancelled) return;
+      if (result?.ok) setTopicGroups(result.data?.items || []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [subjectId]);
 
   // Если в основном банке вопросов пусто, сразу показываем архив.
   useEffect(() => {
@@ -271,6 +288,7 @@ export default function SubjectQuestionBank({
       subject_slug: subjectId ? undefined : subjectSlug || undefined,
       kind: kind || undefined,
       q: search || undefined,
+      topic_id: topicId || undefined,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
       include_answer: 1,
@@ -299,7 +317,7 @@ export default function SubjectQuestionBank({
     return () => {
       cancelled = true;
     };
-  }, [subjectId, subjectSlug, kind, search, page]);
+  }, [subjectId, subjectSlug, kind, search, page, topicId]);
 
   // Счётчики по типам подгружаем один раз: так видно, из чего состоит банк.
   useEffect(() => {
@@ -392,6 +410,25 @@ export default function SubjectQuestionBank({
                 </button>
               );
             })}
+            {topicGroups.length > 0 && (
+              <select
+                value={topicId}
+                onChange={(event) => setTopicId(event.target.value)}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 outline-none"
+                aria-label="Фильтр по теме"
+              >
+                <option value="">Все темы</option>
+                {topicGroups.map((group) => (
+                  <optgroup key={group.id} label={group.title}>
+                    {group.topics.map((topic) => (
+                      <option key={topic.id} value={topic.id}>
+                        {topic.title} ({topic.count})
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
             <label className="ml-auto flex min-w-[12rem] flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 sm:max-w-xs">
               <Search className="h-4 w-4 shrink-0 text-slate-400" />
               <input

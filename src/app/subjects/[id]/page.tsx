@@ -22,6 +22,8 @@ import LegacyMCTests from "@/components/portals/LegacyMCTests";
 import ChemSdf from "@/components/portals/ChemSdf";
 import ArchiveLectures from "@/components/portals/ArchiveLectures";
 import ChemPlan from "@/components/chem/ChemPlan";
+import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
+import LatinRecipes from "@/components/portals/LatinRecipes";
 import { legacyPortalConfig, loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -38,10 +40,10 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "progress" | "colloquium" | "portal";
+type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "progress" | "colloquium" | "portal" | "chem" | "latin";
 type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
 
-const TAB_IDS: TabId[] = ["plan", "lessons", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "progress", "colloquium", "portal"];
+const TAB_IDS: TabId[] = ["plan", "lessons", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "progress", "colloquium", "portal", "chem", "latin"];
 
 // Вкладки сгруппированы: верхний ряд — крупные разделы, внутри — точные режимы.
 // Старые id сохранены, поэтому ссылки вида ?tab=tickets продолжают работать.
@@ -60,6 +62,8 @@ const GROUP_OF: Record<TabId, GroupId> = {
   colloquium: "attestations",
   portal: "portal",
   progress: "progress",
+  chem: "practice",
+  latin: "practice",
 };
 
 const GROUP_DEFAULT: Record<GroupId, TabId> = {
@@ -299,6 +303,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   // by that UUID.
   const slug = resolveSubjectSlug(subject?.slug || "", subject?.name) || resolveSubjectSlug(subjectId, subject?.name);
   const histology = slug === "histology" || /гистол.*цитол|цитол.*гистол/i.test(subject?.name || "");
+  const chemistry = /chem|хим/i.test(`${slug || ""} ${subject?.name || ""}`);
+  const latin = /lat|латин/i.test(`${slug || ""} ${subject?.name || ""}`) && !chemistry;
   const portal = legacyPortalConfig(slug);
   const subjName = (subject?.name || "").toLowerCase().trim();
   const subjectBanks = banks.filter((b) => {
@@ -396,6 +402,8 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               { id: "trainers", label: "Тренажёры" },
               { id: "trainer", label: histology ? "Микропрепараты" : "Препараты" },
               { id: "labs", label: "Лабораторные" },
+              ...(chemistry ? [{ id: "chem" as TabId, label: "Структуры" }] : []),
+              ...(latin ? [{ id: "latin" as TabId, label: "Рецепты" }] : []),
             ]
           : group === "attestations" && slug === "physiology"
             ? [
@@ -506,6 +514,20 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
 
       <div role="tabpanel" className="min-h-[12rem]">
         {tab === "colloquium" && slug === "physiology" && <Colloquium embedded />}
+
+        {tab === "chem" && chemistry && <ChemistryWorkbench embedded />}
+
+        {tab === "latin" && latin && (
+          <section className="card p-4 sm:p-5">
+            <h2 className="text-lg font-bold">Латинский язык · рецепты</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Формы рецептов по Чернявскому: разделы, поиск и карточки Rp./Da./Signa — без ухода с предмета.
+            </p>
+            <div className="mt-4">
+              <LatinRecipes />
+            </div>
+          </section>
+        )}
 
         {tab === "portal" && portal && (
           <div className="space-y-6">

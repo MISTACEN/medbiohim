@@ -46,6 +46,35 @@ const MODULE_ORDER: Record<string, number> = {
 
 const CURRENT_SCHEME_MAX = 19;
 
+/** Обложка фото препарата: грузим только при появлении карточки. */
+function PhotoCover({ id, title }: { id: string; title: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    getTrainerImageUrl(id)
+      .then((url) => {
+        if (alive && url) setSrc(url);
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+  if (src) {
+    // Изображение приходит подписанной ссылкой и имеет произвольные размеры.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={title} loading="lazy" className="h-36 w-full rounded-xl border object-cover" />;
+  }
+  return (
+    <div className="flex h-36 w-full items-center justify-center rounded-xl border bg-slate-50 text-slate-400">
+      {failed ? <ImageIcon className="h-6 w-6" /> : <Loader2 className="h-5 w-5 animate-spin" />}
+    </div>
+  );
+}
+
 function categoryOf(x: Item): string {
   const key = String(x.source_key || "");
   if (key.startsWith("histology-em-")) return "em";
@@ -521,6 +550,11 @@ export default function HistologyMaterials() {
                     onClick={() => void open(item)}
                     className="rounded-2xl border border-slate-200 !bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
                   >
+                    {item.kind === "photo" ? (
+                      <div className="mb-3">
+                        <PhotoCover id={String(item.id)} title={String(item.title || "Микропрепарат")} />
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                         {categoryIcon(item.category)}

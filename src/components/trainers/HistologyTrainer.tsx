@@ -229,8 +229,11 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
 
   const atlasByTopic = useMemo(() => {
     const map = new Map<string, any[]>();
+    // Электронограммы без фильтра по занятию показываем одним блоком: только
+    // так выдерживается порядок трёх рядов атласа из методички.
+    const singleEmBlock = contentType === "electronogram" && !atlasTopic;
     for (const item of atlasItems) {
-      const key = atlasTopic || lessonKeyOf(item);
+      const key = singleEmBlock ? "Электронограммы · порядок атласа" : (atlasTopic || lessonKeyOf(item));
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
@@ -248,7 +251,7 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     return Array.from(map.entries())
       .sort((a, b) => compareLessons(a[0], b[0]))
       .map(([title, items]) => [title, items.sort(within)] as [string, any[]]);
-  }, [atlasItems, atlasTopic, atlasSort]);
+  }, [atlasItems, atlasTopic, atlasSort, contentType]);
 
   const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
   const hasMoreHistory = sessions.length > 4;

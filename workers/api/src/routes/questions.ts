@@ -38,18 +38,101 @@ questions.get("/", requireAuth, async (c) => {
         return c.json(ok({ items: (data || []).map((row: any) => ({ ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()), answer: c.req.query("include_answer") === "1" ? row.answer : undefined })), total: count || 0, limit, offset }, rid));
       }
     }
-    let q = supabase.from("questions").select("id,text,answer,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+    let q = supabase.from("questions").select("id,text,answer,subject_id,module_id,topic_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
     if (subjectId) q = q.eq("subject_id", subjectId);
     if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
     if (kind) q = q.eq("type", kind);
+    const topicId = String(c.req.query("topic_id") || "").trim();
+    if (topicId) q = q.eq("topic_id", topicId);
+    const moduleId = String(c.req.query("module_id") || "").trim();
+    if (moduleId) q = q.eq("module_id", moduleId);
+    const withTopic = c.req.query("with_topic") === "1";
+    if (withTopic) q = q.not("topic_id", "is", null);
     const { data, error, count } = await q;
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Вопросы недоступны", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: (data || []).map((row: any) => ({ ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()), answer: c.req.query("include_answer") === "1" ? row.answer : undefined })), total: count || 0, limit, offset }, rid));
+    // Названия темы/раздела подтягиваем отдельными запросами: у legacy-таблиц
+    // может не быть FK-связи, и вложенный embed уронил бы весь банк в 503.
+    const rows = data || [];
+    const topicIds = [...new Set(rows.map((row: any) => String(row.topic_id || "")).filter(Boolean))];
+    const moduleIds = [...new Set(rows.map((row: any) => String(row.module_id || "")).filter(Boolean))];
+    const topicTitles = new Map<string, string>();
+    const moduleTitles = new Map<string, string>();
+    if (topicIds.length) {
+      const { data: topicRows } = await supabase.from("topics").select("id,title").in("id", topicIds).limit(500);
+      for (const row of topicRows || []) topicTitles.set(String((row as any).id), String((row as any).title || ""));
+    }
+    if (moduleIds.length) {
+      const { data: moduleRows } = await supabase.from("modules").select("id,title").in("id", moduleIds).limit(500);
+      for (const row of moduleRows || []) moduleTitles.set(String((row as any).id), String((row as any).title || ""));
+    }
+    return c.json(ok({ items: rows.map((row: any) => ({
+      ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()),
+      answer: c.req.query("include_answer") === "1" ? row.answer : undefined,
+      topic: topicTitles.get(String(row.topic_id || "")) || "",
+      module: moduleTitles.get(String(row.module_id || "")) || "",
+    })), total: count || 0, limit, offset }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Вопросы недоступны", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+// Темы предмета для фильтра банка вопросов: модули (методички) с темами и
+// числом опубликованных вопросов по каждой теме.
+questions.get("/topics", requireAuth, async (c) => {
+  const rid = requestId();
+  const supabase = c.get("supabase");
+  const subjectId = String(c.req.query("subject_id") || "").trim();
+  if (!UUID.test(subjectId)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный ID предмета", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    const { data: moduleRows, error: modulesError } = await supabase
+      .from("modules").select("id,title,order_index")
+      .eq("subject_id", subjectId).eq("is_published", true)
+      .order("order_index", { ascending: true }).limit(200);
+    if (modulesError) throw modulesError;
+    const moduleIds = (moduleRows || []).map((m: any) => String(m.id)).filter(Boolean);
+    const { data: topicRows, error: topicsError } = moduleIds.length
+      ? await supabase.from("topics").select("id,module_id,title,order_index").in("module_id", moduleIds).limit(1000)
+      : { data: [] as any[], error: null as any };
+    if (topicsError) throw topicsError;
+    const topicsByModule = new Map<string, any[]>();
+    for (const row of topicRows || []) {
+      const key = String((row as any).module_id || "");
+      if (!topicsByModule.has(key)) topicsByModule.set(key, []);
+      topicsByModule.get(key)!.push(row);
+    }
+    const modules = (moduleRows || []).map((m: any) => ({ ...m, topics: topicsByModule.get(String(m.id)) || [] }));
+    const topicIds = (topicRows || []).map((t: any) => String(t.id));
+    const counts = new Map<string, number>();
+    if (topicIds.length) {
+      for (let i = 0; i < topicIds.length; i += 200) {
+        const chunk = topicIds.slice(i, i + 200);
+        const { data: qRows, error } = await supabase.from("questions").select("topic_id")
+          .eq("subject_id", subjectId).eq("is_published", true).is("archived_at", null).in("topic_id", chunk).limit(10000);
+        if (error) throw error;
+        for (const row of qRows || []) {
+          const key = String(row.topic_id || "");
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+      }
+    }
+    const items = (modules || []).map((m: any) => ({
+      id: String(m.id), title: String(m.title || ""), order_index: m.order_index ?? null,
+      topics: (m.topics || []).map((t: any) => ({
+        id: String(t.id), title: String(t.title || ""), order_index: t.order_index ?? null,
+        count: counts.get(String(t.id)) || 0,
+      })).sort((a: any, b: any) => (a.order_index ?? 9999) - (b.order_index ?? 9999) || a.title.localeCompare(b.title, "ru")),
+    }));
+    return c.json(ok({ items }, rid));
+  } catch (error) {
+    console.error("[questions:topics]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Темы предмета недоступны", 503, rid);
     return c.json(body, status as 503);
   }
 });

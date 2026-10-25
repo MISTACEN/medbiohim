@@ -58,19 +58,18 @@ export function HistologyQuestionCard({
     ? q.preparation.captions.map(String).filter(Boolean)
     : [];
   const captions: string[] = snapCaps.length ? snapCaps : reviewCaps;
-  const showStudyLabels = labelMode === "with";
-  const showCaptions = (showStudyLabels || answeredNow) && captions.length > 0;
+  // Подписи и название препарата — только после ответа: пользователь в тренажёре
+  // отвечает сам (изучение с подписями — это «Атлас»). Старые сессии с
+  // label_mode «with» больше не раскрывают подсказки до ответа.
+  const showCaptions = answeredNow && captions.length > 0;
   const reviewPrep = (a.review_snapshot as any)?.preparation;
   const prepNameFromReview = reviewPrep?.name ? String(reviewPrep.name) : null;
   const prepNameFromCorrect = answeredNow
     ? (a.options.find((o) => o.correct)?.label || null)
     : null;
-  const showPrepName =
-    showStudyLabels && q?.preparation?.name
-      ? String(q.preparation.name)
-      : answeredNow
-        ? (prepNameFromReview || prepNameFromCorrect || (q?.preparation?.name ? String(q.preparation.name) : null))
-        : null;
+  const showPrepName = answeredNow
+    ? (prepNameFromReview || prepNameFromCorrect || (q?.preparation?.name ? String(q.preparation.name) : null))
+    : null;
   const prompt = isEm
     ? (q?.question?.prompt || "Что изображено на электронограмме?")
     : (q?.question?.prompt || "Что изображено?");
