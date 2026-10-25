@@ -803,7 +803,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                       setLectureError("");
                       setLectureLoading(true);
                       void getLecture(String(lec.id)).then((result) => {
-                        if (result.ok) setActiveLecture(result.data.lecture);
+                        // API отдаёт лекцию и вложенно (data.lecture), и плоско.
+                        const payload = result.ok ? (result.data?.lecture || result.data) : null;
+                        if (result.ok && payload) setActiveLecture(payload);
                         else setLectureError(result.error.message || "Не удалось открыть лекцию.");
                         setLectureLoading(false);
                       });
