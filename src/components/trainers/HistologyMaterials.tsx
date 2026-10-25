@@ -77,11 +77,14 @@ function PhotoCover({ id, title }: { id: string; title: string }) {
 
 function categoryOf(x: Item): string {
   const key = String(x.source_key || "");
+  // Учебники и атласы лежат в библиотеке (public/library), а не в папке
+  // «Учебники» файлового хранилища — без этого они оседали в «Прочем».
+  if (key.startsWith("histology-library:")) return "textbook";
   if (key.startsWith("histology-em-")) return "em";
   if (key.includes("-scheme-") || key.includes("-gif-") || key.includes("-spinal-schemes")) return "scheme";
   if (key.includes("-method-")) return "method";
   if (key.includes("-test-") || key.includes("-fed-") || key.includes("-control-")) return "tests";
-  if (key.includes("-exam-") || key.includes("-specimen-list")) return "exam";
+  if (key.includes("-exam-") || key.includes("-specimen-list") || key.includes("-memo") || key.includes("-tasks")) return "exam";
   return x.kind === "photo" ? "photo" : "other";
 }
 
