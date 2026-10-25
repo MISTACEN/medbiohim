@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
 import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
-import { generateTicket, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
@@ -151,6 +152,10 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const [ticketBankId, setTicketBankId] = useState("");
   const [ticketCount, setTicketCount] = useState(3);
   const [ticketMode, setTicketMode] = useState<"practice" | "exam">("exam");
+  // Лекция читается прямо в предмете: переход на /lectures/:id уводил со страницы.
+  const [activeLecture, setActiveLecture] = useState<Lecture | null>(null);
+  const [lectureLoading, setLectureLoading] = useState(false);
+  const [lectureError, setLectureError] = useState("");
   const [ticketBusy, setTicketBusy] = useState(false);
   const [ticketQuestions, setTicketQuestions] = useState<any[]>([]);
   const [ticketTitle, setTicketTitle] = useState("");
@@ -756,17 +761,50 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           </div>
         )}
 
-        {tab === "lectures" && (
+        {tab === "lectures" && activeLecture && (
+          <section className="card p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveLecture(null)}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-700"
+              >
+                <ChevronLeft className="h-4 w-4" /> К списку лекций
+              </button>
+              <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{activeLecture.subject || subject?.name}</span>
+            </div>
+            <h2 className="mt-3 text-xl font-extrabold">{activeLecture.title}</h2>
+            {activeLecture.published_at && (
+              <p className="mt-1 text-xs text-slate-500">Опубликовано: {new Date(activeLecture.published_at).toLocaleString("ru-RU")}</p>
+            )}
+            <article className="mt-4">
+              <LectureRenderer markdown={activeLecture.body_md || ""} html={activeLecture.body_html || ""} />
+            </article>
+          </section>
+        )}
+
+        {tab === "lectures" && !activeLecture && (
           <section className="card p-5">
             <h2 className="text-lg font-bold">Лекции</h2>
-            <p className="mt-1 text-sm text-slate-500">Лекции этого предмета — открываются в один клик.</p>
+            <p className="mt-1 text-sm text-slate-500">Лекции этого предмета — читаются прямо здесь.</p>
+            {lectureLoading && <p className="mt-3 text-sm text-slate-500">Открываю лекцию…</p>}
+            {lectureError && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{lectureError}</p>}
             {subjectLectures.length > 0 ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {subjectLectures.map((lec: any) => (
-                  <Link
+                  <button
                     key={lec.id}
-                    href={"/lectures/" + encodeURIComponent(lec.id)}
-                    className="flex gap-3 rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
+                    type="button"
+                    onClick={() => {
+                      setLectureError("");
+                      setLectureLoading(true);
+                      void getLecture(String(lec.id)).then((result) => {
+                        if (result.ok) setActiveLecture(result.data.lecture);
+                        else setLectureError(result.error.message || "Не удалось открыть лекцию.");
+                        setLectureLoading(false);
+                      });
+                    }}
+                    className="flex gap-3 rounded-xl border bg-slate-50 p-4 text-left transition hover:border-indigo-300 hover:bg-white"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
                       <BookOpen className="h-5 w-5" />
@@ -775,7 +813,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                       <div className="font-semibold leading-snug">{lec.title}</div>
                       {lec.summary && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{lec.summary}</p>}
                     </div>
-                  </Link>
+                  </button>
                 ))}
               </div>
             ) : (
