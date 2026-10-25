@@ -91,6 +91,21 @@ const slugNames: Record<string, string> = {
 };
 const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
 
+type LibraryFile = { title: string; href: string; type: string };
+
+// Исходные пособия кафедры физиологии (папка «физиологии»): каждое пособие —
+// отдельный файл, поэтому они показываются в «Материалах» прямо в предмете.
+const PHYSIOLOGY_LIBRARY: LibraryFile[] = [
+  { title: "Вводное занятие. Физиология возбудимых систем", href: "/library/physiology/vozbudimye-sistemy.docx", type: "Word · практические занятия" },
+  { title: "Физиология ЦНС", href: "/library/physiology/cns.doc", type: "Word · практические работы и самоподготовка" },
+  { title: "Физиология крови и эндокринной системы", href: "/library/physiology/krov-endokrin.doc", type: "Word · методичка" },
+  { title: "Физиология системы кровообращения", href: "/library/physiology/serdce-sosudistaya.doc", type: "Word · методичка" },
+  { title: "Физиология дыхания и выделения", href: "/library/physiology/dyhanie-vydelenie.doc", type: "Word · методичка" },
+  { title: "Физиология пищеварения и обмена веществ", href: "/library/physiology/pishchevarenie-obmen.docx", type: "Word · методичка" },
+  { title: "Сенсорные системы и ВНД", href: "/library/physiology/sensornye-vnd.doc", type: "Word · методичка" },
+  { title: "Агаджанян Н.А. Основы физиологии человека, том 1", href: "/library/physiology/agadzhanyan-fiziologiya-t1.pdf", type: "PDF · учебник" },
+];
+
 const STATIC_PLANS: Record<string, string> = {
   organic_chemistry: "chem/plan-organic-2025-2026.json",
   optics: "chem/plan-optics-2025-2026.json",
@@ -313,6 +328,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     const bankName = String(b.subject || b.subject_name || "").toLowerCase().trim();
     return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
   });
+  const subjectLibrary: LibraryFile[] = slug === "physiology" ? PHYSIOLOGY_LIBRARY : [];
   const subjectLectures = lectures.filter((l) => {
     const ls = String(l?.subject || "").toLowerCase().trim();
     if (!ls || !subjName) return false;
@@ -777,8 +793,31 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
               <p className="mt-1 text-sm text-slate-500">
                 {materialsRich.length
                   ? materialsRich.length + " материалов — читаются прямо здесь, оригинал доступен отдельно."
-                  : "Материалы пока не найдены."}
+                  : subjectLibrary.length
+                    ? subjectLibrary.length + " исходных пособий кафедры — открываются здесь же."
+                    : "Материалы пока не найдены."}
               </p>
+              {subjectLibrary.length > 0 && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {subjectLibrary.map((file) => (
+                    <a
+                      key={file.href}
+                      href={file.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex gap-3 rounded-xl border bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-white"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                        <FolderOpen className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block font-semibold leading-snug">{file.title}</span>
+                        <span className="mt-1 block text-xs text-slate-500">{file.type}</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
               {materialsRich.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {materialsRich.map((m: any) => (
@@ -798,7 +837,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
                   ))}
                 </div>
               )}
-              {!materialsRich.length && (
+              {!materialsRich.length && !subjectLibrary.length && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
                   <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
