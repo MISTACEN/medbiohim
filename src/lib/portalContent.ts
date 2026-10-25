@@ -137,6 +137,7 @@ export type PortalTicketItem = {
   type?: string;
   topic?: string;
   subject?: string;
+  options?: string[];
 };
 export type PortalTicketBank = { subject_slug: string; subject: string; count: number; items: PortalTicketItem[] };
 export type PortalTicketBankIndex = { banks: { subject_slug: string; subject: string; count: number }[] };

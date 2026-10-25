@@ -99,12 +99,13 @@ export default function HobaPortal() {
   if (!theory) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">
-        <Loader2 className="size-4 animate-spin" /> Загружаем материалы ХОБА…
+        <Loader2 className="size-4 animate-spin" /> Загружаем материалы неорганической химии…
       </div>
     );
   }
 
-  const subject = theory.subject;
+  // «ХОБА» — историческое имя папки-источника, на сайте не показываем
+  const subject = theory.subject.replace(/\s*\(ХОБА\)\s*/g, "");
 
   return (
     <div className="space-y-4">

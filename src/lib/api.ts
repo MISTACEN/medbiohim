@@ -510,6 +510,10 @@ export async function listSubjects(course?:number,semester?:number){const q=new 
 export async function listGroups(){return api<any>("/groups")}
 export async function trackExternalPlatformClick(payload:{platform:string;title:string;href:string;subject_slug?:string|null}){return api<any>("/external-platforms/click",{method:"POST",body:JSON.stringify(payload)})}
 export async function externalPlatformStats(){return api<any>("/external-platforms/stats")}
+export type QuestionComment={id:string;question_id:string;user_id:string;body:string;created_at:string;author_name:string;author_avatar:string|null};
+export async function listQuestionComments(questionId:string){return api<any>(`/questions/${encodeURIComponent(questionId)}/comments`)}
+export async function addQuestionComment(questionId:string,body:string){return api<any>(`/questions/${encodeURIComponent(questionId)}/comments`,{method:"POST",body:JSON.stringify({body})})}
+export async function deleteQuestionComment(commentId:string){return api<any>(`/questions/comments/${encodeURIComponent(commentId)}`,{method:"DELETE"})}
 export type ApiTest=any;
 export async function listTests(subjectId?:string,groupId?:string,subjectSlug?:string,course?:number,semester?:number){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);if(subjectSlug)q.set("subject_slug",subjectSlug);if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return apiCached<any>(`/tests${q.toString()?`?${q}`:""}`)}
 export async function getChemistryMaster(params:Record<string,unknown>={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});return apiCached<any>(`/tests/chemistry-master${q.toString()?`?${q}`:""}`)}

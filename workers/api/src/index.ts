@@ -59,6 +59,7 @@ import attestations from "./routes/attestations";
 import adminAttestations from "./routes/admin-attestations";
 import integrations from "./routes/integrations";
 import externalPlatforms from "./routes/external-platforms";
+import questionComments from "./routes/question-comments";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -165,6 +166,7 @@ v1.route("/labs", labs);
 v1.route("/attestations", attestations);
 v1.route("/integrations", integrations);
 v1.route("/external-platforms", externalPlatforms);
+v1.route("/questions", questionComments);
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)

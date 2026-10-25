@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Archive, ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, Search } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, MessageSquare, Search, Sparkles } from "lucide-react";
 import { listQuestions } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import QuestionComments from "@/components/questions/QuestionComments";
 import { loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
 
 const PAGE_SIZE = 20;
@@ -29,6 +30,20 @@ function typeLabel(type?: string | null) {
   const map: Record<string, string> = { mcq: "Тест", mc: "Тест", open: "Открытый", theory: "Теория" };
   return map[String(type || "")] || "";
 }
+
+/** «Спросить ИИ»: копируем формулировку вопроса в буфер и открываем DeepSeek —
+ *  ответ человек получает в своём личном AI-чате, наш API не расходуется. */
+async function askAi(questionText: string, options?: string[]) {
+  const prompt = ["Разбери вопрос для подготовки к экзамену в медвузе:", questionText, ...(options?.length ? ["Варианты ответа:", ...options.map((o, i) => `${String.fromCharCode(65 + i)}) ${o}`)] : []), "Дай правильный ответ с объяснением простым языком."].filter(Boolean).join("\n");
+  try {
+    await navigator.clipboard.writeText(prompt);
+  } catch {
+    /* буфер недоступен — просто открываем чат */
+  }
+  window.open("https://chat.deepseek.com/", "_blank", "noreferrer noopener");
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /** Архивный билетный банк кафедры (questions_by_subject) — тот же список,
  *  но целиком клиентский: поиск, фильтр по типу и постраничный вывод. */
@@ -142,6 +157,15 @@ function ArchiveBankView({ bank }: { bank: PortalTicketBank }) {
                     {isOpen ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     {isOpen ? "Скрыть эталон" : "Показать эталон"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void askAi(String(item.text || "Вопрос"), item.options?.map(optionText))}
+                    className="mt-3 ml-1.5 inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+                    title="Скопируем вопрос и откроем DeepSeek — ответ получите в своём чате"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Спросить ИИ
+                  </button>
                   {isOpen && (
                     <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-950">
                       {answer ? <ChemRichText text={String(item.answer)} asHtml /> : "Эталон для этого вопроса пока не заполнен."}
@@ -209,6 +233,8 @@ export default function SubjectQuestionBank({
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
+  const [aiCopied, setAiCopied] = useState<Record<string, boolean>>({});
 
   // Архивный банк грузим один раз на предмет.
   useEffect(() => {
@@ -430,11 +456,32 @@ export default function SubjectQuestionBank({
                         {isOpen ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         {isOpen ? "Скрыть эталон" : "Показать эталон"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void askAi(String(item.text || item.stem || "Вопрос"), Array.isArray(item.options) ? item.options.map(optionText) : undefined);
+                          setAiCopied((c) => ({ ...c, [id]: true }));
+                        }}
+                        className="mt-3 ml-1.5 inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+                        title="Скопируем вопрос и откроем DeepSeek — ответ получите в своём чате"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {aiCopied[id] ? "Вопрос скопирован" : "Спросить ИИ"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCommentsOpen((c) => ({ ...c, [id]: !c[id] }))}
+                        className="mt-3 ml-1.5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-indigo-300 hover:bg-indigo-50"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Обсуждение
+                      </button>
                       {isOpen && (
                         <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-950">
                           {answer ? <ChemRichText text={String(item.answer)} asHtml /> : "Эталон для этого вопроса пока не заполнен."}
                         </div>
                       )}
+                      {commentsOpen[id] && UUID_RE.test(id) && <QuestionComments questionId={id} />}
                     </div>
                   </li>
                 );
