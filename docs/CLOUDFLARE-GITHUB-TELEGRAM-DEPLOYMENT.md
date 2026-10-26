@@ -1,49 +1,63 @@
-# Cloudflare Workers + GitHub deployment for MEDBIOHIM Telegram
+# Telegram-бот: деплой через GitHub Actions
 
-## Target
+> Актуально на 2026-10-26. Топология: [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md).
 
-- Repository: `MISTACEN/medbiohim`
-- Production branch: `main`
-- Worker directory: `integrations/telegram-bot-cloudflare`
-- Wrangler target: `medbiohim-telegram` (the existing production Worker)
-- Worker source: `src/worker.js`
+## Что где
 
-## Before enabling automatic deploys
+| Что | Где |
+|---|---|
+| Код канонического бота | `integrations/telegram-bot-cloudflare/` (`src/worker.js`) |
+| Worker | `medbiohim-telegram` — `https://medbiohim-telegram.ryazansevegor.workers.dev` |
+| Деплой | `.github/workflows/deploy-telegram-worker.yml` |
+| Проверки на push/PR | `.github/workflows/telegram-worker-checks.yml` |
+| Health | `GET /health` → `{"ok":true,"configured":true}` (без раскрытия секретов) |
+| Webhook | `POST /api/webhook` |
 
-1. Confirm the `Telegram Worker checks` GitHub Actions run is green. It runs `npm test` under the Worker directory.
-2. Confirm the existing production Worker is named exactly `medbiohim-telegram` and has its current `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` secrets. Never put either secret in Git.
-3. Confirm the PHP API is reachable through HTTPS. The user-provided health URL currently uses HTTP; Cloudflare Worker-to-API relays must use HTTPS. Do not configure the HTTP URL as the relay.
-4. Only after HTTPS is verified, configure the Worker variables:
-   - `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL=https://<verified-api-origin>/api/v1/telegram/account-link/confirm`
-   - `TELEGRAM_HOMEWORK_WEBHOOK_URL=https://<verified-api-origin>/api/v1/telegram/webhook` (only when the existing homework relay is ready)
-   Do not guess `<verified-api-origin>`; check the deployed PHP routing and document root first.
-5. Apply the reviewed Supabase migration `database/migrations/20261011120000_telegram_account_linking.sql` before testing account linking.
+## Деплой
 
-## Cloudflare dashboard setup
+Автодеплой **включён**: push в `main`, затрагивающий `integrations/telegram-bot-cloudflare/**`,
+запускает workflow `Deploy MEDBIOHIM Telegram Worker`. Он выполняет по порядку:
 
-1. Open **Workers & Pages → medbiohim-telegram → Settings → Builds** (the exact label may vary by dashboard version).
-2. Connect the GitHub account and select `MISTACEN/medbiohim`.
-3. Select branch `main`.
-4. Set the project/root directory to `integrations/telegram-bot-cloudflare`.
-5. Build/test command: `npm test`.
-6. Deploy command: `npx wrangler deploy`.
-7. Keep `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` as Worker secrets. Keep all secrets out of repository files and build logs.
-8. Check the first build log and verify the deployed script URL/Worker name before relying on the new build.
+1. `npm test` в каталоге бота — красный тест **блокирует** прод-деплой;
+2. `npx --yes wrangler@4.149.0 deploy --dry-run` — сборка без публикации;
+3. `npx --yes wrangler@4.149.0 deploy` — публикация Worker.
 
-## Important behavior
+Альтернативный путь «Cloudflare Dashboard → Builds → подключить GitHub» больше не нужен:
+источник истины — GitHub Actions. Если оба пути включены одновременно, каждый коммит
+выкатывается дважды; оставьте Actions.
 
-Connecting GitHub can cause each commit to `main` to deploy the Worker. The current Wrangler name was aligned with the existing production Worker to avoid creating a second Worker. Do not enable automatic production deploys until the test workflow passes and the Cloudflare build configuration is reviewed.
+Проверка результата: `GET /health` должен вернуть `configured:true`, а в ответе
+`getWebhookInfo` URL вебхука должен указывать на этот Worker (скрипт
+`integrations/telegram-bot-cloudflare/scripts/register-webhook.mjs`).
 
-## Current limitations
+## Секреты и переменные
 
-- Source contains account linking, onboarding buttons, and a native Telegram command menu registration on `/start` and `/help`.
-- Telegram-only website login is not yet implemented as a verified session exchange. Do not treat the old Supabase `custom:telegram` OAuth URL as functional unless a real, tested OIDC provider is configured.
-- The API health URL supplied for SpaceWeb is HTTP and has not been verified as HTTPS in this session. The Worker relay cannot use plain HTTP.
+Секреты Worker (только Dashboard → Workers → `medbiohim-telegram` → Settings, тип Secret; в Git
+их быть не должно): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`.
 
+Публичные переменные — в `integrations/telegram-bot-cloudflare/wrangler.toml`:
 
-## Updated verification checkpoint (2026-10-11)
+- `MEDBIOHIM_APP_URL` — единственный канонический адрес сайта (по умолчанию `https://medbiohim.vercel.app`).
+- `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` — `https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/account-link/confirm` (работает).
+- `TELEGRAM_HOMEWORK_WEBHOOK_URL` — опционально, relay групповых обновлений в PHP. **Не задан.**
 
-- SpaceWeb HTTP health returns 200, but HTTPS certificate verification fails and HTTPS redirects back to HTTP. Do not set either PHP relay variable until a trusted HTTPS origin is available.
-- Cloudflare account inspection found no DNS zones. Do not assume the existing workers.dev address can secure a plain-HTTP origin.
-- GitHub Actions run https://github.com/MISTACEN/medbiohim/actions/runs/38143942074 ended before any job steps (runner_id=0, empty runner_name, steps=[]). Do not enable auto-deploy based on an unexecuted test suite.
-- See docs/HOSTING-HTTPS-DECISION-2026-10-11.md for the agreed future hosting order and current audit.
+Секрет Telegram (`secret_token` вебхука) и `TELEGRAM_WEBHOOK_SECRET` Worker должны совпадать.
+
+## Порядок первого включения (если Worker пересоздаётся)
+
+1. Задать `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` как секреты Worker.
+2. Проверить `GET /health` → `configured:true`.
+3. Убедиться, что применена миграция `database/migrations/20261017120000_telegram_account_linking_rpc.sql` (RPC привязки аккаунта).
+4. Зарегистрировать вебхук скриптом `scripts/register-webhook.mjs` (интерактивно, ввод секретов скрыт).
+5. Проверить в Telegram: `/start`, `/help`, `/menu`, `/schedule`, `/link`.
+
+У бота может быть **только один активный webhook**. Не переключайте его на другие реализации —
+в репозитории лежат legacy-варианты (`integrations/telegram-bot/`), они не должны получать обновления.
+
+## История (не инструкция)
+
+Чекпоинты от 2026-10-11 описывали состояние до включения автодеплоя: Cloudflare Builds,
+падение GitHub Actions до выполнения шагов (`runner_id=0`), HTTP-адрес SpaceWeb и отсутствие
+DNS-зон. Всё это устарело: деплой идёт через Actions и подтверждён, а `TELEGRAM_HOMEWORK_WEBHOOK_URL`
+по-прежнему не задан, потому что для relay нужен проверенный HTTPS-origin PHP — см.
+[HOSTING-HTTPS-DECISION-2026-10-11.md](HOSTING-HTTPS-DECISION-2026-10-11.md).

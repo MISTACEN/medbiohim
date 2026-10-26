@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { createAnonClient, createUserClient, verifyBearerUser } from "../lib/supabase";
+import { createAnonClient, createServiceClient, createUserClient, verifyBearerUser } from "../lib/supabase";
 import { rateLimit } from "../lib/redis";
 import { ok, fail, requestId } from "../lib/response";
+import { validateTelegramInitData } from "../lib/telegram-initdata";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const auth = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -209,6 +210,119 @@ auth.post("/recover", async (c) => {
     // still return sent:true to avoid email enumeration
   }
   return c.json(ok({ sent: true }, rid));
+});
+
+/**
+ * POST /api/v1/auth/telegram/webapp — silent Mini App login.
+ *
+ * The Telegram identity is trusted only after a spec-correct initData signature
+ * check. A verified Telegram user still needs an explicit account link; the
+ * session itself is issued server-side and never derived from initData.
+ */
+auth.post("/telegram/webapp", async (c) => {
+  const rid = requestId();
+  const ip = clientIp(c);
+  const rl = await rateLimit(c.env, `auth:telegram-webapp:${ip}`, 20, 60);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много попыток входа", 429, rid);
+    return c.json(body, status as 429);
+  }
+
+  const botToken = c.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!botToken) {
+    const { body, status } = fail("TELEGRAM_NOT_CONFIGURED", "Вход через Telegram временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+
+  const body = await readJson<{ init_data?: string }>(c);
+  if (!body || typeof body.init_data !== "string" || !body.init_data) {
+    const { body: b, status } = fail("VALIDATION", "Нужен init_data", 400, rid);
+    return c.json(b, status as 400);
+  }
+
+  const verification = await validateTelegramInitData(body.init_data, botToken);
+  if (!verification.ok) {
+    // Deliberately generic: never tell a forger which check failed.
+    const { body: b, status } = fail("INVALID_INIT_DATA", "Не удалось подтвердить данные Telegram", 401, rid);
+    return c.json(b, status as 401);
+  }
+
+  const service = createServiceClient(c.env);
+  if (!service) {
+    const { body: b, status } = fail("TELEGRAM_LOGIN_UNAVAILABLE", "Вход через Telegram временно недоступен", 503, rid);
+    return c.json(b, status as 503);
+  }
+
+  try {
+    const { data: account, error: accountError } = await service
+      .from("telegram_accounts")
+      .select("user_id")
+      .eq("telegram_user_id", String(verification.user.id))
+      .maybeSingle();
+    if (accountError) {
+      console.error("[auth:telegram-webapp]", { stage: "account_lookup", code: accountError.code, requestId: rid });
+      const { body: b, status } = fail("TELEGRAM_LOGIN_UNAVAILABLE", "Вход через Telegram временно недоступен", 503, rid);
+      return c.json(b, status as 503);
+    }
+
+    const linkedUserId = account?.user_id ? String(account.user_id) : "";
+    if (!linkedUserId) {
+      const { body: b, status } = fail(
+        "TELEGRAM_NOT_LINKED",
+        "Telegram не привязан. Привяжите аккаунт в Настройках → Telegram.",
+        409,
+        rid
+      );
+      return c.json(b, status as 409);
+    }
+
+    const { data: adminUser, error: adminUserError } = await service.auth.admin.getUserById(linkedUserId);
+    if (adminUserError || !adminUser?.user) {
+      console.error("[auth:telegram-webapp]", { stage: "user_lookup", code: adminUserError?.code, requestId: rid });
+      const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
+      return c.json(b, status as 503);
+    }
+
+    const email = adminUser.user.email?.trim();
+    if (!email) {
+      // A profile without an email cannot receive a server-issued session.
+      const { body: b, status } = fail(
+        "TELEGRAM_NO_EMAIL",
+        "Для профиля не задан email. Обратитесь в поддержку.",
+        409,
+        rid
+      );
+      return c.json(b, status as 409);
+    }
+
+    const { data: link, error: linkError } = await service.auth.admin.generateLink({ type: "magiclink", email });
+    const tokenHash = link?.properties?.hashed_token;
+    if (linkError || !tokenHash) {
+      console.error("[auth:telegram-webapp]", { stage: "generate_link", code: linkError?.code, requestId: rid });
+      const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
+      return c.json(b, status as 503);
+    }
+
+    const anon = createAnonClient(c.env);
+    const { data: otp, error: otpError } = await anon.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+    if (otpError || !otp.session) {
+      console.error("[auth:telegram-webapp]", { stage: "verify_otp", code: otpError?.code, requestId: rid });
+      const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
+      return c.json(b, status as 503);
+    }
+
+    const session = normalizeSession(otp.session);
+    // Same envelope as /login so the shared frontend client keeps working.
+    return c.json(ok({ ...session, session }, rid));
+  } catch (error) {
+    console.error("[auth:telegram-webapp]", {
+      stage: "unhandled",
+      error: error instanceof Error ? error.name : "unknown",
+      requestId: rid,
+    });
+    const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
+    return c.json(b, status as 503);
+  }
 });
 
 /** GET /api/v1/auth/me — profile bundle */

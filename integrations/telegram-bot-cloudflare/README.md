@@ -1,58 +1,97 @@
 # MEDBIOHIM Telegram bot — Cloudflare Workers adapter
 
-## Текущее состояние (11 октября 2026)
+## Текущее состояние (26 октября 2026)
 
-- Основной beta Worker развёрнут под именем `medbiohim-telegram`: https://medbiohim-telegram.ryazansevegor.workers.dev
-- Прежний `medbiohim-telegram-test` сохранён отдельно как резервный Worker: https://medbiohim-telegram-test.ryazansevegor.workers.dev
-- Для основного beta Worker включён адрес `workers.dev`.
-- Важно: Cloudflare не переносит секретные значения при создании нового Worker. В новом `medbiohim-telegram` необходимо отдельно задать секреты `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`. До этого health покажет `configured:false`, а webhook регистрировать не следует.
-- Webhook Telegram пока не переключён. Сначала задайте секреты, проверьте `/health`, затем запустите интерактивный скрипт регистрации.
-- Webhook endpoint: https://medbiohim-telegram.ryazansevegor.workers.dev/api/webhook
-- Скрипт `scripts/register-webhook.mjs` проверяет Worker и токен, устанавливает webhook и проверяет результат через `getWebhookInfo`. Токен и secret вводятся в скрытом режиме и не выводятся скриптом.
+- Бот развёрнут как Cloudflare Worker `medbiohim-telegram`: https://medbiohim-telegram.ryazansevegor.workers.dev
+- Проверка живости: `GET /health` → `{"ok":true,"service":"medbiohim-telegram-bot","configured":true}`. `configured` показывает только наличие `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`; значения секретов не раскрываются.
+- Webhook Telegram: `POST https://medbiohim-telegram.ryazansevegor.workers.dev/api/webhook`
+- Деплой автоматический: `.github/workflows/deploy-telegram-worker.yml` при пуше в `main` с изменениями в `integrations/telegram-bot-cloudflare/**` прогоняет `npm test`, затем `npx --yes wrangler@4.149.0 deploy --dry-run`, и только после этого публикует Worker. Красные тесты блокируют деплой.
+- Резервный Worker `medbiohim-telegram-test` сохранён отдельно: https://medbiohim-telegram-test.ryazansevegor.workers.dev
+
+## Один сайт, одна версия
+
+У платформы **одна каноническая версия**: `MEDBIOHIM_APP_URL`, по умолчанию `https://medbiohim.vercel.app` (см. `wrangler.toml`).
+
+- Preview-URL git-ветки (`medbiohim-git-main-mistacen1.vercel.app`) больше не используется и не может быть в ссылке.
+- Если `MEDBIOHIM_APP_URL` задан без `https:` (например, локальный `http://192.168.x.x`), Worker откатывается на канонический origin и никогда не отдаёт такой адрес пользователю.
+- Команды `/oldsite`, `/main` и `/site` оставлены как **скрытые алиасы** на канонический сайт: у части пользователей в Telegram закешировано старое меню. В `setMyCommands` они не попадают.
+
+## Команды
+
+Зарегистрированное меню бота: `/start`, `/help`, `/menu`, `/app`, `/login`, `/register`, `/link`, `/status`, `/schedule`, `/homework`, `/subjects`, `/materials`, `/tests`, `/tickets`, `/university`, `/cards`, `/progress`, `/calculators`, `/latin`, `/extension`, `/privacy`.
+
+- Каждая команда — короткий честный текст и inline-кнопка на соответствующий путь канонического сайта.
+- `/menu` — inline-клавиатура со всеми разделами в две колонки, а не текст.
+- `/status` — честно: бот не может показать состояние привязки, для этого нужен токен аккаунта пользователя, которого у бота нет. Кнопка ведёт на `/settings` (Настройки → Telegram), где состояние видно и где можно отвязать.
+- `/app` — кнопка `web_app` на корень канонического сайта (открывает платформу внутри Telegram).
+- `/privacy` — описывает реальную привязку, а не отрицает её (см. ниже).
+- Любая команда с чужим `@username` (например, `/start@other_bot`) игнорируется.
+
+## Привязка Telegram к аккаунту (реализована)
+
+1. Пользователь входит в MEDBIOHIM и открывает **Настройки → Telegram**.
+2. Сайт создаёт одноразовую ссылку и открывает бота с командой `/start link_<48 hex-символов>`.
+3. Worker подтверждает ссылку на сервере MEDBIOHIM (`TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL`, в `wrangler.toml` указан современный API `medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/account-link/confirm`) и отвечает пользователю.
+4. Передаются только `telegram_user_id`, `username`, `first_name`. Больше ничего.
+
+Ссылка одноразовая: при повторном использовании или истечении срока бот честно сообщает, что нужно создать новую в настройках сайта. Адрес привязки обязан быть HTTPS, иначе запрос не отправляется.
+
+## Групповые чаты и конвейер домашних заданий
+
+Сообщения из групп и супергрупп пересылаются в `TELEGRAM_HOMEWORK_WEBHOOK_URL` (PHP-конвейер), **если он задан**. Без этой переменной worker отвечает `{"ok":true,"forwarded":false}` и ничего не отправляет. Адрес relay обязан быть HTTPS: HTTP-адрес отклоняется с `502` без сетевого запроса.
+
+В личных чатах команда `/homework` ничего не импортирует — она лишь объясняет правила и открывает раздел заданий на сайте.
+
+## Идемпотентность (опционально, без KV не нужна)
+
+Telegram может доставить одно и то же обновление повторно. Если к Worker привязан KV namespace `TELEGRAM_UPDATES`, повторный `update_id` в течение 24 часов пропускается (ответ `{"ok":true,"duplicate":true}`).
+
+```toml
+[[kv_namespaces]]
+binding = "TELEGRAM_UPDATES"
+id = "<your-kv-namespace-id>"
+```
+
+Без привязки KV Worker работает как раньше: обновления не дедуплицируются, но и не теряются. Ошибка KV тоже не приводит к потере обновления.
 
 ## Безопасность
 
-Не вставляйте токен в исходный код, GitHub, адресную строку браузера, переписку или скриншоты. Если токен когда-либо раскрывался, сначала перевыпустите его через `@BotFather` и обновите секрет `TELEGRAM_BOT_TOKEN` в Cloudflare Worker. Не показывайте никому вводимые секреты.
+- Проверка заголовка `X-Telegram-Bot-Api-Secret-Token` сравнением с постоянным временем; неверный секрет → `401`.
+- Не-POST на `/api/webhook` → `405`; тело больше 256 КиБ → `413`; некорректный JSON → `400`; отсутствие `TELEGRAM_BOT_TOKEN` или `TELEGRAM_WEBHOOK_SECRET` → `503`.
+- Бот никогда не пишет первым: только отвечает на входящее обновление.
+- Токены, секреты, тела обновлений и ответы upstream не логируются.
+- Не вставляйте токен в исходный код, GitHub, адресную строку, переписку или скриншоты. Если токен мог раскрыться, перевыпустите его через `@BotFather` и обновите секрет Worker. Значения секретов не выводятся ни скриптом, ни Worker'ом.
 
-Смена webhook заменяет прежний адрес: Telegram отправляет обновления бота только на один активный webhook. Скрипт сохраняет ожидающие обновления (`drop_pending_updates: false`). Если текущий webhook ведёт на другой сервер, тот сервер перестанет получать новые обновления после переключения.
+## Возможности и ограничения
 
-## Перед переключением: сверить секреты Worker
+- Публичные разделы отдаются ссылками на канонический сайт; бот не показывает расписание, оценки или материалы прямо в чате.
+- Личные данные не показываются до привязки аккаунта; после привязки бот по-прежнему не раскрывает их без запроса с сайта.
+- Без KV нет дедупликации обновлений (см. выше).
+- Нет зависимостей: только стандартный рантайм Workers, Node.js 20+ для тестов.
 
-Поскольку токен мог быть перевыпущен через BotFather, сначала убедитесь, что Cloudflare использует именно актуальный токен. Откройте https://dash.cloudflare.com/ → аккаунт MEDBIOHIM → **Workers & Pages** → **medbiohim-telegram** → **Settings** → **Variables and Secrets**. В разделе secrets задайте/обновите `TELEGRAM_BOT_TOKEN` актуальным токеном через **Edit** или **Add** (тип Secret, не Text/Plaintext), сохраните и дождитесь завершения обновления. Не публикуйте значение. Если у вас нет точного значения `TELEGRAM_WEBHOOK_SECRET`, задайте новый секрет по инструкции ниже и используйте его же в скрипте.
+## Тесты и локальная проверка
 
-## Что нужно сделать один раз на компьютере Windows
+Из этой папки (PowerShell блокирует `npm.ps1`, поэтому используйте `npm.cmd`/`npx.cmd`):
 
-1. Убедитесь, что установлен Node.js версии 20 или новее. В PowerShell выполните `node --version`. Если команда не найдена, установите LTS-версию с https://nodejs.org/ и откройте PowerShell заново.
-2. Откройте репозиторий https://github.com/MISTACEN/medbiohim (ветка `main`) и нажмите зелёную кнопку **Code → Download ZIP**. Распакуйте ZIP, например, в папку `Загрузки\medbiohim-main`.
-3. Откройте распакованную папку, зайдите в `integrations\telegram-bot-cloudflare`. Нажмите на адресную строку Проводника, введите `powershell` и нажмите Enter.
-4. В открывшемся PowerShell выполните:
+```powershell
+npm.cmd test
+npx.cmd --yes wrangler@4.149.0 deploy --dry-run   # проверка сборки без публикации
+```
 
-   ```powershell
-   node .\scripts\register-webhook.mjs
-   ```
+## Регистрация webhook (однократно)
 
-5. Скрипт сначала попросит ввести точную фразу `SWITCH-MAIN`. Это подтверждение, что вы действительно хотите переключить **основного бота** на Cloudflare. Если передумали — нажмите Ctrl+C или введите другую фразу.
-6. Введите актуальный токен основного бота и значение `TELEGRAM_WEBHOOK_SECRET`, которое задано в Cloudflare Worker. Ввод скрыт: символы не отображаются. Не вводите токен в обычный текст чата.
-7. Дождитесь сообщения **«УСПЕХ: Telegram подтвердил новый webhook»**. Если скрипт сообщил ошибку, не повторяйте вслепую — скопируйте только текст ошибки, предварительно убедившись, что в нём нет секретов.
-8. Откройте Telegram, найдите своего бота, отправьте `/start`, затем `/help`. Проверьте кнопки и команды `/schedule`, `/tests`, `/subjects`, `/materials`.
-9. Проверьте https://medbiohim-telegram.ryazansevegor.workers.dev/health — ожидается JSON с `"ok":true` и `"configured":true`. Открытие `/api/webhook` в браузере методом GET вернёт `METHOD_NOT_ALLOWED`; это нормально, потому что Telegram отправляет POST.
+Скрипт `scripts/register-webhook.mjs` проверяет Worker (`/health`), токен (`getMe`), устанавливает webhook и подтверждает результат через `getWebhookInfo`. Токен и secret вводятся в скрытом режиме и не выводятся.
 
-### Если не знаете значение TELEGRAM_WEBHOOK_SECRET
+```powershell
+node .\scripts\register-webhook.mjs
+```
 
-Не пытайтесь угадать его. Откройте https://dash.cloudflare.com/ → выберите аккаунт MEDBIOHIM → **Workers & Pages** → `medbiohim-telegram` → **Settings** → **Variables and Secrets**. Найдите `TELEGRAM_WEBHOOK_SECRET`. Если интерфейс не позволяет посмотреть сохранённое значение (обычно секреты скрыты), создайте новый случайный секрет, состоящий только из латинских букв, цифр, `_` и `-`; сохраните его в менеджере паролей, задайте его как secret `TELEGRAM_WEBHOOK_SECRET` для Worker и затем используйте то же значение в скрипте. После изменения подождите завершения обновления Worker и снова проверьте `/health`.
+Смена webhook заменяет прежний адрес: Telegram доставляет обновления только на один активный webhook (`drop_pending_updates: false`, ожидающие обновления сохраняются). Скрипт требует подтверждения `SWITCH-MAIN` и не деплоит Worker и не меняет его секреты.
 
-Если перевыпускали токен через BotFather, обновите и `TELEGRAM_BOT_TOKEN` в этом же разделе Cloudflare. Значения обоих секретов должны совпадать с теми, что использует Worker.
+## Если секреты не заданы
 
-## Возможности и ограничения текущей версии
-
-- `GET /health` — состояние сервиса без раскрытия значений секретов.
-- `POST /api/webhook` — проверка заголовка `X-Telegram-Bot-Api-Secret-Token`, ограничение размера тела, публичные команды `/start`, `/help`, `/app`, `/site`, `/schedule`, `/tests`, `/subjects`, `/materials`, `/privacy`, `/homework`.
-- Приватные команды отправляют ссылки на платформу; личные расписания/оценки и привязка аккаунта пока не реализованы.
-- Пересылка групповых обновлений в PHP отключена, пока не задан и не проверен `TELEGRAM_HOMEWORK_WEBHOOK_URL`.
-- Нет постоянного хранилища для дедупликации обновлений; перед включением записи домашних заданий или приватных данных нужно добавить идемпотентность.
-- Запуск тестов проекта: `npm test` из этой папки (Node.js 20+).
-- Скрипт регистрации не деплоит Worker и не меняет его секреты; он только регистрирует webhook в Telegram после локального подтверждения.
+Откройте https://dash.cloudflare.com/ → аккаунт MEDBIOHIM → **Workers & Pages** → `medbiohim-telegram` → **Settings** → **Variables and Secrets**. Задайте `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` как **Secret** (не Text). Cloudflare не переносит секреты между Worker'ами. До этого `/health` вернёт `configured:false`, и регистрировать webhook не следует. Если значение `TELEGRAM_WEBHOOK_SECRET` неизвестно, создайте новый случайный секрет из латинских букв, цифр, `_` и `-`, сохраните его в менеджере паролей и используйте то же значение в скрипте.
 
 ## Откат
 
-Чтобы вернуть старый webhook, запустите скрипт ещё раз и при запросе токена используйте токен того же бота; перед этим измените `WEBHOOK_URL` в скрипте на проверенный прежний HTTPS-адрес и пересмотрите изменения. Не вызывайте `deleteWebhook` без необходимости: это остановит доставку обновлений через webhook.
+Чтобы вернуть прежний webhook, измените `WEBHOOK_URL` в скрипте на проверенный прежний HTTPS-адрес и запустите его снова. Не вызывайте `deleteWebhook` без необходимости: это остановит доставку обновлений.

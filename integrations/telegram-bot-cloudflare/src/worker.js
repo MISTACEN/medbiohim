@@ -1,6 +1,8 @@
 const MAX_BODY_BYTES = 256 * 1024;
 const REQUEST_TIMEOUT_MS = 8000;
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
+const UPDATE_DEDUP_TTL_SECONDS = 24 * 60 * 60;
+const UPDATE_DEDUP_PREFIX = "telegram:update:";
 
 function safeEqual(left, right) {
   if (typeof left !== "string" || typeof right !== "string" || !left || !right) return false;
@@ -12,29 +14,197 @@ function safeEqual(left, right) {
   return diff === 0;
 }
 
+/**
+ * A `.vercel.app` host other than the canonical one is a preview/branch
+ * deployment — a stale build that must never be presented as the site.
+ */
+function isPreviewHost(hostname) {
+  const host = String(hostname || "").toLowerCase();
+  if (host !== "vercel.app" && !host.endsWith(".vercel.app")) return false;
+  return host !== "medbiohim.vercel.app";
+}
+
 function safeAppOrigin(value, fallback) {
   try {
     const url = new URL(value || fallback);
-    return url.protocol === "https:" ? url.origin : fallback;
+    if (url.protocol !== "https:") return fallback;
+    if (isPreviewHost(url.hostname)) return fallback;
+    return url.origin;
   } catch {
     return fallback;
   }
 }
 
-function appLinks(env) {
-  return {
-    old: safeAppOrigin(env.MEDBIOHIM_APP_URL, DEFAULT_APP_ORIGIN),
-    main: safeAppOrigin(env.MEDBIOHIM_MAIN_APP_URL, "https://medbiohim-git-main-mistacen1.vercel.app"),
-  };
+// There is exactly one canonical site. Preview/branch deployments and private
+// hosts are never emitted, even if they somehow end up in the environment.
+function appOrigin(env) {
+  return safeAppOrigin(env && env.MEDBIOHIM_APP_URL, DEFAULT_APP_ORIGIN);
 }
 
-function versionButtons(env, path = "/login") {
-  const links = appLinks(env);
-  const target = (origin) => new URL(path, origin).toString();
-  return [
-    [{ text: "🔹 Старая версия", url: target(links.old) }],
-    [{ text: "🟢 Новая версия", url: target(links.main) }],
-  ];
+function appUrl(env, path = "/") {
+  return new URL(path, appOrigin(env)).toString();
+}
+
+function openButton(env, label, path) {
+  return [[{ text: label, url: appUrl(env, path) }]];
+}
+
+// Real sections of the canonical site. `button` is the inline-keyboard label,
+// `path` is a page on the canonical origin only.
+const SITE_SECTIONS = [
+  {
+    command: "schedule",
+    path: "/schedule",
+    button: "📅 Расписание",
+    text: "Расписание занятий MEDBIOHIM: пары, аудитории и изменения.",
+  },
+  {
+    command: "homework",
+    path: "/homework",
+    button: "📝 Задания",
+    text: "Задания и домашняя работа MEDBIOHIM. Импорт заданий работает в подключённой учебной группе, где настроен конвейер MEDBIOHIM: пришлите текст, фото или документ и подпишите предмет и срок, если они не очевидны. В личном чате команда ничего не импортирует — она открывает раздел заданий на сайте.",
+  },
+  {
+    command: "subjects",
+    path: "/subjects",
+    button: "📚 Предметы",
+    text: "Предметы, темы и атлас MEDBIOHIM.",
+  },
+  {
+    command: "materials",
+    path: "/materials",
+    button: "📖 Материалы",
+    text: "Учебные материалы, лекции и файлы MEDBIOHIM.",
+  },
+  {
+    command: "tests",
+    path: "/tests",
+    button: "🧪 Тесты",
+    text: "Тесты, банк вопросов и режим подготовки MEDBIOHIM.",
+  },
+  {
+    command: "tickets",
+    path: "/tickets",
+    button: "🎫 Билеты",
+    text: "Экзаменационные билеты и подготовка к ним.",
+  },
+  {
+    command: "university",
+    path: "/university",
+    button: "🏛 Вузовский хаб",
+    text: "Вузовский хаб ДВГМУ: учебные материалы, сохранённое и импорт.",
+  },
+  {
+    command: "cards",
+    path: "/cards",
+    button: "🃏 Карточки SRS",
+    text: "Карточки для интервального повторения (SRS).",
+  },
+  {
+    command: "progress",
+    path: "/progress",
+    button: "📈 Прогресс",
+    text: "Ваш прогресс обучения на платформе MEDBIOHIM.",
+  },
+  {
+    command: "calculators",
+    path: "/calculators",
+    button: "🧮 Калькуляторы",
+    text: "Медицинские калькуляторы MEDBIOHIM.",
+  },
+  {
+    command: "latin",
+    path: "/latin",
+    button: "🔤 Латынь",
+    text: "Латинский язык: термины и тренировки.",
+  },
+  {
+    command: "extension",
+    path: "/extension",
+    button: "🧩 Расширение",
+    text: "Браузерное расширение MEDBIOHIM: быстрый доступ к разделам платформы.",
+  },
+  {
+    command: "login",
+    path: "/login",
+    button: "🔑 Войти",
+    text: "Вход в аккаунт MEDBIOHIM.",
+  },
+  {
+    command: "register",
+    path: "/register",
+    button: "🆕 Регистрация",
+    text: "Создание аккаунта MEDBIOHIM.",
+  },
+  {
+    command: "status",
+    path: "/settings",
+    button: "⚙️ Настройки → Telegram",
+    text: "Показать статус привязки прямо в боте нельзя: для этого нужен токен вашего аккаунта, а бот его не получает. Проверьте привязку на сайте: Настройки → Telegram. Там же её можно отвязать.",
+  },
+];
+
+const SECTION_BY_COMMAND = new Map(SITE_SECTIONS.map((section) => [section.command, section]));
+
+// Registered with Telegram for this bot. /oldsite, /main and /site are
+// deliberately absent: they stay as hidden aliases for cached old menus.
+const BOT_COMMANDS = [
+  { command: "start", description: "Начать и открыть меню" },
+  { command: "help", description: "Помощь и список команд" },
+  { command: "menu", description: "Все разделы кнопками" },
+  { command: "app", description: "Открыть MEDBIOHIM" },
+  { command: "login", description: "Войти в аккаунт" },
+  { command: "register", description: "Создать аккаунт" },
+  { command: "link", description: "Привязать Telegram к аккаунту" },
+  { command: "status", description: "Статус привязки и настройки" },
+  { command: "schedule", description: "Расписание занятий" },
+  { command: "homework", description: "Задания и домашняя работа" },
+  { command: "subjects", description: "Предметы и атлас" },
+  { command: "materials", description: "Учебные материалы" },
+  { command: "tests", description: "Тесты и подготовка" },
+  { command: "tickets", description: "Экзаменационные билеты" },
+  { command: "university", description: "Вузовский хаб ДВГМУ" },
+  { command: "cards", description: "Карточки SRS" },
+  { command: "progress", description: "Прогресс обучения" },
+  { command: "calculators", description: "Медицинские калькуляторы" },
+  { command: "latin", description: "Латинский язык" },
+  { command: "extension", description: "Браузерное расширение" },
+  { command: "privacy", description: "Приватность и данные" },
+];
+
+const PRIVACY_TEXT = [
+  "Приватность MEDBIOHIM.",
+  "Привязка Telegram к аккаунту действительно есть: сайт создаёт в разделе Настройки → Telegram одноразовую ссылку вида /start link_<48 hex-символов>, и бот подтверждает её на сервере MEDBIOHIM.",
+  "При привязке бот передаёт только ваш Telegram id, username и first_name. Больше ничего.",
+  "Бот не читает вашу переписку, не хранит пароли, коды входа и токены, не показывает учебные или медицинские данные без привязки и никогда не пишет первым — только отвечает на входящие сообщения.",
+  "В группах сообщения пересылаются в учебный конвейер только если он настроен администратором; в личном чате ничего не пересылается.",
+  "Не отправляйте боту пароли, коды входа и другие секреты.",
+].join("\n");
+
+const HELP_TEXT = [
+  "MEDBIOHIM — учебная платформа. Единый сайт, одна версия.",
+  "Разделы: /schedule, /homework, /subjects, /materials, /tests, /tickets, /university, /cards, /progress, /calculators, /latin, /extension.",
+  "Аккаунт: /login, /register, /link — привязка Telegram, /status — где проверить привязку. Все разделы кнопками — /menu, платформа внутри Telegram — /app.",
+  "Бот отвечает только на входящие команды, не пишет первым и не показывает личные данные без привязки. Подробнее — /privacy.",
+].join("\n");
+
+function menuButtons(env) {
+  const rows = [];
+  for (let i = 0; i < SITE_SECTIONS.length; i += 2) {
+    rows.push(
+      SITE_SECTIONS.slice(i, i + 2).map((section) => ({
+        text: section.button,
+        url: appUrl(env, section.path),
+      })),
+    );
+  }
+  return rows;
+}
+
+function isAddressedToBot(addressedBot, env) {
+  if (!addressedBot) return true;
+  const configuredBot = ((env && env.TELEGRAM_BOT_USERNAME) || "").replace(/^@/, "").toLowerCase();
+  return Boolean(configuredBot) && addressedBot.toLowerCase() === configuredBot;
 }
 
 function parseCommand(text, env) {
@@ -43,68 +213,74 @@ function parseCommand(text, env) {
   if (!trimmed.startsWith("/")) return null;
   const first = trimmed.split(/\s+/, 1)[0];
   const [name, addressedBot] = first.slice(1).split("@", 2);
-  const configuredBot = (env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, "").toLowerCase();
-  if (addressedBot && (!configuredBot || addressedBot.toLowerCase() !== configuredBot)) return null;
+  if (!isAddressedToBot(addressedBot, env)) return null;
   return name.toLowerCase();
 }
 
 function commandResponse(text, env) {
-  const links = appLinks(env);
-  const origin = links.old;
   const command = parseCommand(text, env);
   if (!command) return null;
+
+  const section = SECTION_BY_COMMAND.get(command);
+  if (section) {
+    return {
+      text: section.text,
+      buttons: openButton(env, section.button, section.path),
+      webAppUrl: null,
+      menu: false,
+    };
+  }
+
   const commands = {
     start: {
-      text: "Привет! Я бот MEDBIOHIM. Выберите старую или новую версию сайта. После входа откройте Настройки → Telegram для привязки бота. До привязки личные данные не показываю. Команды доступны в меню бота.",
+      text: "Привет! Я бот MEDBIOHIM. Отсюда можно открыть любой раздел платформы. Войдите кнопкой ниже, затем откройте на сайте Настройки → Telegram, чтобы привязать бота. Все разделы кнопками — /menu, помощь — /help.",
+      buttons: openButton(env, "🚀 Открыть MEDBIOHIM", "/"),
       menu: true,
-      buttons: versionButtons(env),
     },
     help: {
-      text: "Выберите старую или новую версию сайта кнопками ниже. Для привязки Telegram сначала войдите, затем откройте Настройки → Telegram. Команды: /site — выбор версии, /oldsite — старая версия, /main — новая версия, /login — вход, /schedule — расписание, /tests — тесты, /subjects — предметы, /materials — материалы, /homework — задания, /privacy — приватность.",
+      text: HELP_TEXT,
+      buttons: openButton(env, "🧭 Все разделы", "/"),
       menu: true,
-      buttons: versionButtons(env),
     },
-    homework: {
-      text: "Чтобы бот мог разобрать задание, оно должно быть отправлено в подключённую учебную группу, где настроен импорт MEDBIOHIM. Можно прислать текст, фото или документ; подпишите предмет/срок, если они не очевидны. Проверьте результат в платформе. В личном чате эта команда ничего не импортирует.",
+    menu: {
+      text: "Разделы MEDBIOHIM — выберите кнопку ниже. Полный список команд: /help.",
+      buttons: menuButtons(env),
     },
-    site: {
-      text: "Выберите сайт, который хотите открыть.",
-      buttons: [
-        [{ text: "🔹 Старая версия", url: new URL("/", links.old).toString() }],
-        [{ text: "🟢 Новая версия", url: new URL("/", links.main).toString() }],
-      ],
+    app: {
+      text: "Открыть MEDBIOHIM внутри Telegram.",
+      webAppUrl: appUrl(env, "/"),
     },
-    oldsite: { text: "Старая версия MEDBIOHIM", url: new URL("/login", links.old).toString() },
-    main: { text: "Новый сайт", url: new URL("/login", links.main).toString() },
-    login: {
-      text: "Выберите, на какой версии сайта войти.",
-      buttons: versionButtons(env),
+    link: {
+      text: "Чтобы привязать Telegram: войдите в MEDBIOHIM, откройте Настройки → Telegram и нажмите «Привязать Telegram». Сайт создаст одноразовую ссылку и откроет этого бота с командой /start link_<48 символов>; ссылка действует один раз. Бот передаст на сервер только ваш Telegram id, username и имя.",
+      buttons: openButton(env, "⚙️ Открыть настройки", "/settings"),
     },
-    register: {
-      text: "Выберите версию сайта для регистрации.",
-      buttons: [
-        [{ text: "🔹 Старая версия", url: new URL("/register", links.old).toString() }],
-        [{ text: "🟢 Новая версия", url: new URL("/register", links.main).toString() }],
-      ],
-    },
-    link: { text: "Чтобы привязать Telegram, войдите в MEDBIOHIM и откройте Настройки → Telegram.", path: "/settings" },
-    app: { text: "Открыть MEDBIOHIM внутри Telegram", webApp: true },
-    schedule: { text: "Открыть расписание MEDBIOHIM", path: "/schedule" },
-    tests: { text: "Открыть тесты MEDBIOHIM", path: "/tests" },
-    subjects: { text: "Открыть предметы и атлас MEDBIOHIM", path: "/subjects" },
-    materials: { text: "Открыть материалы MEDBIOHIM", path: "/materials" },
     privacy: {
-      text: "Бот пока не связывает Telegram с аккаунтом MEDBIOHIM и не получает личные данные. Не отправляйте сюда пароли, коды входа, токены или медицинские/учебные персональные данные. Приватные функции появятся только после отдельной безопасной привязки аккаунта.",
+      text: PRIVACY_TEXT,
+      buttons: openButton(env, "⚙️ Настройки → Telegram", "/settings"),
+    },
+    // Hidden aliases kept only because old Telegram menus may still be cached
+    // on user devices. They always resolve to the single canonical site.
+    site: {
+      text: "MEDBIOHIM — единый сайт, одна актуальная версия.",
+      buttons: openButton(env, "🚀 Открыть MEDBIOHIM", "/"),
+    },
+    oldsite: {
+      text: "Открыть MEDBIOHIM.",
+      buttons: openButton(env, "🚀 Открыть MEDBIOHIM", "/login"),
+    },
+    main: {
+      text: "Открыть MEDBIOHIM.",
+      buttons: openButton(env, "🚀 Открыть MEDBIOHIM", "/login"),
     },
   };
+
   const result = commands[command] || {
     text: "Не знаю эту команду. Напишите /help, чтобы увидеть список доступных команд.",
   };
   return {
     text: result.text,
-    url: result.url || (result.path ? new URL(result.path, origin).toString() : null),
-    webAppUrl: result.webApp ? new URL("/", origin).toString() : null,
     buttons: result.buttons || null,
+    webAppUrl: result.webAppUrl || null,
     menu: result.menu === true,
   };
 }
@@ -142,6 +318,24 @@ async function fetchWithTimeout(url, init) {
   }
 }
 
+// Optional idempotency: only active when a KV namespace is bound to
+// TELEGRAM_UPDATES. Without the binding the worker behaves exactly as before.
+async function isDuplicateUpdate(env, updateId) {
+  const store = env && env.TELEGRAM_UPDATES;
+  if (!store || typeof store.get !== "function" || typeof store.put !== "function") return false;
+  if (!Number.isSafeInteger(updateId)) return false;
+  const key = `${UPDATE_DEDUP_PREFIX}${updateId}`;
+  try {
+    const seen = await store.get(key);
+    if (seen) return true;
+    await store.put(key, "1", { expirationTtl: UPDATE_DEDUP_TTL_SECONDS });
+    return false;
+  } catch {
+    // A broken or unbound store must never drop a real update.
+    return false;
+  }
+}
+
 async function sendTelegramMessage(env, chatId, response) {
   const payload = { chat_id: chatId, text: response.text, disable_web_page_preview: true };
   if (response.menu) {
@@ -149,22 +343,7 @@ async function sendTelegramMessage(env, chatId, response) {
       await fetchWithTimeout(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/setMyCommands`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ commands: [
-          { command: "start", description: "Начать и открыть меню" },
-          { command: "login", description: "Войти или зарегистрироваться" },
-          { command: "register", description: "Создать аккаунт" },
-          { command: "link", description: "Привязать Telegram к аккаунту" },
-          { command: "site", description: "Выбрать версию сайта" },
-          { command: "oldsite", description: "Старая версия сайта" },
-          { command: "main", description: "Новый сайт" },
-          { command: "schedule", description: "Моё расписание" },
-          { command: "homework", description: "Задания и домашняя работа" },
-          { command: "tests", description: "Тесты и билеты" },
-          { command: "subjects", description: "Предметы и атлас" },
-          { command: "materials", description: "Учебные материалы" },
-          { command: "help", description: "Помощь и список команд" },
-          { command: "privacy", description: "Приватность и данные" }
-        ] }),
+        body: JSON.stringify({ commands: BOT_COMMANDS }),
       });
     } catch {
       // Do not prevent the user from receiving /start if Telegram menu setup is temporarily unavailable.
@@ -175,10 +354,6 @@ async function sendTelegramMessage(env, chatId, response) {
   } else if (response.webAppUrl) {
     payload.reply_markup = {
       inline_keyboard: [[{ text: "Открыть MEDBIOHIM", web_app: { url: response.webAppUrl } }]],
-    };
-  } else if (response.url) {
-    payload.reply_markup = {
-      inline_keyboard: [[{ text: "Открыть раздел", url: response.url }]],
     };
   }
   const result = await fetchWithTimeout(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -271,6 +446,11 @@ export async function handleRequest(request, env) {
   const parsed = await readUpdate(request);
   if (parsed.error) return json({ ok: false, error: parsed.error }, parsed.status);
   const update = parsed.update;
+
+  if (await isDuplicateUpdate(env, update.update_id)) {
+    return json({ ok: true, duplicate: true });
+  }
+
   const message = update.message || update.edited_message;
   if (!message?.chat || typeof message.chat.id !== "number") return json({ ok: true, ignored: true });
 
@@ -286,10 +466,11 @@ export async function handleRequest(request, env) {
   if (message.chat.type !== "private") return json({ ok: true, ignored: true });
 
   const text = typeof message.text === "string" ? message.text.trim() : "";
-  const linkStart = text.match(/^\/start(?:@[^\s]+)?\s+link_([a-f0-9]{48})$/i);
+  const linkStart = text.match(/^\/start(?:@([^\s]+))?\s+link_([a-f0-9]{48})$/i);
   if (linkStart) {
+    if (!isAddressedToBot(linkStart[1], env)) return json({ ok: true, ignored: true });
     try {
-      await confirmAccountLink(env, message, linkStart[1].toLowerCase());
+      await confirmAccountLink(env, message, linkStart[2].toLowerCase());
       return json({ ok: true, accountLink: true });
     } catch {
       return json({ ok: false, error: "ACCOUNT_LINK_FAILED" }, 502);

@@ -14,6 +14,8 @@
 #   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_BLOB_TOKEN
 #   OPENAI_API_KEY (optional)
 #   TELEGRAM_WEBHOOK_SECRET, TELEGRAM_BOT_USERNAME (optional)
+#   TELEGRAM_BOT_TOKEN — REQUIRED for Telegram Mini App login: POST /auth/telegram/webapp
+#     validates initData with it. Without the secret the route answers 503 TELEGRAM_NOT_CONFIGURED.
 #   APP_ORIGIN (e.g. https://medbiohim.vercel.app)
 # Never put secrets in this file.
 

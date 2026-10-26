@@ -1,11 +1,25 @@
-# MEDBIOHIM Telegram bot — isolated MVP
+# MEDBIOHIM Telegram bot — isolated MVP (DEPRECATED)
+
+> ## ⛔ LEGACY — не использовать для новых развёртываний
+>
+> Канонический и единственный развиваемый бот — **`integrations/telegram-bot-cloudflare/`**
+> (Cloudflare Worker `medbiohim-telegram`, деплой через `.github/workflows/deploy-telegram-worker.yml`).
+>
+> Этот Node/Vercel-MVP оставлен как исторический артефакт: в нём **нет** привязки аккаунта
+> Telegram к MEDBIOHIM, которая уже работает в каноническом боте (одноразовая ссылка
+> `/start link_<48 hex>` → `POST /api/v1/telegram/account-link/confirm`), и он не развивается.
+>
+> У бота может быть только один активный webhook: не регистрируйте на этот код webhook
+> основного бота — иначе канонический бот перестанет получать обновления.
+>
+> Актуальная топология: `docs/WORKERS-TOPOLOGY.md`.
 
 This is an **optional, separately deployable** Node.js webhook. It does not modify the main website API and does not read Supabase or student data.
 
 ## Current functionality
 
 - `/start`, `/help`, `/app`, `/site`, `/schedule`, `/tests`, `/subjects`, `/materials`, `/homework`, `/privacy`.
-- `/start` and `/app` return a Telegram Web App button opening the existing MEDBIOHIM site; this is an entry-point MVP, not yet Telegram account linking.
+- `/start` and `/app` return a Telegram Web App button opening the existing MEDBIOHIM site; **in this legacy webhook** that is only an entry point — account linking lives in the canonical Cloudflare bot, not here.
 - Private-chat commands are handled by the Node webhook. Group/supergroup updates can be relayed to the existing PHP homework-ingestion endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured; channels and other chat types are ignored.
 - Replies contain public links to the MEDBIOHIM student-preparation platform.
 - Webhook requests require Telegram's `X-Telegram-Bot-Api-Secret-Token` header.

@@ -500,6 +500,8 @@ export function peekTrainerImageUrl(id: string): string | null {
 }
 export function logoutSession():void{const t=getToken();if(!t||typeof window==="undefined")return;try{void fetch(`${API_URL}/auth/logout`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json","Authorization":`Bearer ${t}`},body:"{}",cache:"no-store",keepalive:true}).catch(()=>{})}catch{}}
 export async function login(email:string,password:string){return api<any>("/auth/login",{method:"POST",body:JSON.stringify({email,password})})}
+/** Silent Telegram Mini App login: the Worker verifies initData and issues a session. */
+export async function telegramWebAppLogin(initData:string){return api<any>("/auth/telegram/webapp",{method:"POST",body:JSON.stringify({init_data:initData})})}
 export async function recoverPassword(email:string){return api<any>("/auth/recover",{method:"POST",body:JSON.stringify({email})})}
 export async function me(){return api<any>("/auth/me")}
 export async function refreshSession(){const r=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!r)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:r})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}

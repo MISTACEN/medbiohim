@@ -1,12 +1,19 @@
 name = "medbiohim-telegram"
 main = "src/worker.js"
-compatibility_date = "2026-10-11"
+compatibility_date = "2026-10-26"
 workers_dev = true
 
 [vars]
+# Single canonical site. Preview/branch URLs are never used.
 MEDBIOHIM_APP_URL = "https://medbiohim.vercel.app"
-MEDBIOHIM_MAIN_APP_URL = "https://medbiohim-git-main-mistacen1.vercel.app"
 # Optional: TELEGRAM_BOT_USERNAME = "your_bot_username"
 # Optional: TELEGRAM_HOMEWORK_WEBHOOK_URL = "https://your-php-api.example/api/v1/telegram/webhook"
 TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/account-link/confirm"
 # Set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET as Worker secrets, not here.
+
+# Optional idempotency. Bind a KV namespace named TELEGRAM_UPDATES to skip
+# repeated Telegram update_id values for 24 hours. Without this binding the
+# Worker behaves exactly as before (no deduplication) and needs no KV at all.
+# [[kv_namespaces]]
+# binding = "TELEGRAM_UPDATES"
+# id = "<your-kv-namespace-id>"

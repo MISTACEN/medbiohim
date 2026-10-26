@@ -6,6 +6,7 @@
 - Read-only probes returned `401` for authenticated catalogs/trainings/SRS/admin routes (expected without a user session). `GET /api/v1/files` returned `501 ROUTE_NOT_MIGRATED`, confirming incomplete route parity. Keep the remaining SpaceWeb-compatible behavior available until missing routes are ported and acceptance checks pass.
 - Histology binaries are stored in the private Upstash Blob bucket and resolved through `UPSTASH_BLOB_TOKEN`; Supabase remains the metadata and authorization source. **Cloudflare R2 is not configured or required.** B2 signing code/secrets are retained only as a legacy fallback for any old object keys; no files were copied, deleted, or rewritten in this pass.
 - The `medbiohim-api-shadow` Worker is the existing service that receives the observed API requests. Do not create a second Worker until its private secrets and bindings can be provisioned without exposing or losing them.
+- **Telegram routes in this directory are LEGACY.** The `/settings/telegram/*` handlers here predate the canonical Worker API. The live routes are `workers/api/src/routes/settings.ts` (`/telegram/status`, `/telegram/link-start`, `/telegram/unlink`) and `workers/api/src/routes/telegram.ts` (`/telegram/account-link/confirm`). Do not point the bot or the site at the shadow copies. The canonical Telegram bot itself is `integrations/telegram-bot-cloudflare/` — see `docs/WORKERS-TOPOLOGY.md`.
 
 ## Histology object-key compatibility
 

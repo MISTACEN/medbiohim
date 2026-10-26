@@ -29,7 +29,7 @@
 ```
 medbiohim-api          = единственный прод API   (workers/api/)
 medbiohim-api-shadow   = fallback MEDBIOHIM_UPSTREAM only
-medbiohim-telegram     = бот, не API сайта
+medbiohim-telegram     = канонический Telegram-бот, не API сайта
 ```
 
 Подробно: [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md).
@@ -37,10 +37,10 @@ medbiohim-telegram     = бот, не API сайта
 ## Интеграции
 
 - [../integrations/browser-extension/README.md](../integrations/browser-extension/README.md)
-- [../integrations/telegram-bot/README.md](../integrations/telegram-bot/README.md)
+- [../integrations/telegram-bot/README.md](../integrations/telegram-bot/README.md) — **legacy (deprecated)**, не использовать для новых развёртываний
 - [../workers/api/](../workers/api/) — **production** Worker API (`medbiohim-api`)
 - [../integrations/cloudflare-api/](../integrations/cloudflare-api/) — **shadow only** (`medbiohim-api-shadow`)
-- [../integrations/telegram-bot-cloudflare/](../integrations/telegram-bot-cloudflare/) — Telegram Worker
+- [../integrations/telegram-bot-cloudflare/](../integrations/telegram-bot-cloudflare/) — **канонический** Telegram Worker
 
 ## История / аудиты
 

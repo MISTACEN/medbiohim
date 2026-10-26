@@ -9,7 +9,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearTokens, hasRefreshToken, hasToken, logoutSession, me, refreshSession } from "@/lib/api";
+import { clearTokens, hasRefreshToken, hasToken, logoutSession, me, refreshSession, setTokens, telegramWebAppLogin } from "@/lib/api";
+import { getTelegramInitData } from "@/lib/telegram-webapp";
+
+/**
+ * A Telegram Mini App is opened many times a day; the silent login must be
+ * attempted at most once per page load, never in a retry loop.
+ */
+let telegramLoginAttempted = false;
 
 export type AppUser = {
   id: string;
@@ -43,6 +50,7 @@ const Ctx = createContext<AuthCtx>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [telegramNotice, setTelegramNotice] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!hasToken()) {
@@ -114,9 +122,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
+  /**
+   * Silent Telegram Mini App login, then the regular profile load.
+   * Any failure is swallowed: a browser user must never be blocked or alarmed.
+   */
+  const bootstrap = useCallback(async () => {
+    const initData = getTelegramInitData();
+    if (initData && !hasToken() && !telegramLoginAttempted) {
+      telegramLoginAttempted = true;
+      try {
+        const result = await telegramWebAppLogin(initData);
+        if (result.ok) {
+          const data = result.data as { access_token?: string; refresh_token?: string } | null;
+          if (data?.access_token) setTokens(data.access_token, data.refresh_token);
+        } else if (result.error.code === "TELEGRAM_NOT_LINKED" || result.error.code === "TELEGRAM_NO_EMAIL") {
+          // Soft notice only: the user can still browse and log in normally.
+          setTelegramNotice(true);
+        }
+      } catch {
+        // Stay silent and continue as a normal browser session.
+      }
+    }
+    await refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    void bootstrap();
+  }, [bootstrap]);
 
   const logout = useCallback(() => {
     logoutSession();
@@ -129,7 +161,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, loading, refresh, logout]
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      {children}
+      {telegramNotice ? (
+        <div
+          role="status"
+          className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-lg dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <div className="font-bold">Telegram не привязан</div>
+          <p className="mt-1 leading-relaxed opacity-95">
+            Привяжите аккаунт в{" "}
+            <a className="font-semibold underline" href="/settings">
+              Настройках → Telegram
+            </a>
+            , чтобы вход из Telegram выполнялся автоматически.
+          </p>
+          <button type="button" className="mt-2 text-xs font-semibold underline" onClick={() => setTelegramNotice(false)}>
+            Скрыть
+          </button>
+        </div>
+      ) : null}
+    </Ctx.Provider>
+  );
 }
 
 function isTemporaryAuthFailure(code: string): boolean {
