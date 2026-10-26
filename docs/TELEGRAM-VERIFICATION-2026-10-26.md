@@ -256,3 +256,22 @@ Mini App внутри настоящего WebView.
 `TELEGRAM_WEBHOOK_SECRET`. Если последний там уже задан, ручной шаг не нужен вовсе —
 живая проверка после деплоя это покажет: поддельный `initData` вернёт `401 INVALID_INIT_DATA`
 при рабочей цепочке и `503 TELEGRAM_LOGIN_UNAVAILABLE` при отсутствующем секрете.
+
+### Живая проверка после деплоя `6e1a34f0`
+
+| Проба | Результат |
+|---|---|
+| `GET medbiohim-telegram…/health` | `{"configured":true,"internal":true}` — у бота общий секрет есть (переиспользован его вебхук-секрет), ручной шаг для бота не нужен |
+| `POST /api/verify-initdata` без заголовка | `401 UNAUTHORIZED` |
+| `POST /api/verify-initdata` с неверным секретом | `401 UNAUTHORIZED` |
+| `POST medbiohim.vercel.app/api/v1/auth/telegram/webapp` с подделкой | `503 TELEGRAM_NOT_CONFIGURED` |
+| CI: `Deploy MEDBIOHIM Telegram Worker` / `Deploy MEDBIOHIM API to Cloudflare` | success / success |
+
+`npx wrangler deploy --dry-run` в `workers/api` показывает, что переменная уходит в деплой
+(`Vars: … TELEGRAM_BOT_VERIFY_URL: "https://medbiohim-telegram…"`). Значит причина `503` — **не
+переменная, а отсутствующий общий секрет** на `medbiohim-api`: `hasRemoteVerifier` требует и
+адрес, и секрет.
+
+Вывод: нужен ровно один новый секрет `TELEGRAM_INTERNAL_SECRET` (случайное значение) на **обоих**
+воркерах. Менять `TELEGRAM_WEBHOOK_SECRET` на боте нельзя без последствий: он проверяет входящие
+обновления Telegram, и его смена потребовала бы перерегистрации вебхука с новым `secret_token`.
