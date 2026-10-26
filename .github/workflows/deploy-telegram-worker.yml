@@ -23,16 +23,21 @@ jobs:
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: integrations/telegram-bot-cloudflare/package.json
+      
+      # Worker has no npm dependencies - uses Wrangler via npx
+      # Skip package installation entirely
+      
       - name: Run Telegram Worker tests
         run: npm test
+      
       - name: Build Worker without publishing
         run: npx --yes wrangler@4.149.0 deploy --dry-run
+      
       - name: Deploy Telegram Worker
         run: npx --yes wrangler@4.149.0 deploy
         env:
