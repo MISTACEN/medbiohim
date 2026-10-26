@@ -186,3 +186,29 @@ identity и подпись чужим токеном — отвергаются.
 Непроверенным остаётся то же, что и в §7: реальный Supabase-round-trip, живой
 `initData` из Telegram, реальные секреты, `wrangler deploy`, Ed25519-подпись и
 Mini App внутри настоящего WebView.
+
+## 9. Живая проверка продакшена (Lead, после деплоя `bbf3cd2e`)
+
+Все относящиеся к делу workflow для коммита `bbf3cd2e` завершились успешно:
+`Deploy MEDBIOHIM Telegram Worker`, `Deploy MEDBIOHIM API to Cloudflare`,
+`Telegram Worker checks`, `MEDBIOHIM code checks`, `MEDBIOHIM smoke`,
+`Package MEDBIOHIM source`, `MEDBIOHIM optional integrations checks`.
+Четыре workflow (`apply-p0-academic-crud`, `apply-p1-ui-schedule-db`,
+`fix-academic-soft`, `fix-runtime-errors`) падают на каждом коммите, включая
+базовый `6e434de6` до этих работ — предсуществующее, к Telegram отношения не имеет.
+
+| Живая проба (2026-10-26) | Результат | Что доказывает |
+|---|---|---|
+| `GET medbiohim-telegram…/health` | `200 {"ok":true,"configured":true}` | бот жив, секреты бота на месте |
+| `POST /api/webhook` с неверным secret | `401` | проверка секрета работает в проде |
+| `GET /api/webhook` | `405` | метод-гард в проде |
+| `POST medbiohim.vercel.app/api/v1/auth/telegram/webapp` с поддельным `init_data` | `503 TELEGRAM_NOT_CONFIGURED` | **роут Mini App развёрнут** — такого кода в старом API не было; секрет `TELEGRAM_BOT_TOKEN` у `medbiohim-api` не задан |
+
+### Требуется ручной шаг
+
+Вход из Telegram сейчас ответит `503`, а не сессией: у воркера **`medbiohim-api`**
+нет секрета `TELEGRAM_BOT_TOKEN`. Его нужно добавить — Dashboard → Workers →
+`medbiohim-api` → Settings → Variables and Secrets (тип Secret, то же значение,
+что у бота). После этого поддельный `init_data` должен получать
+`401 INVALID_INIT_DATA`, а настоящий — сессию. Сам бот (команды, кнопки, привязка
+аккаунта) работает и без этого шага.
