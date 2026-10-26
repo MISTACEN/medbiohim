@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { handleRequest } from "../src/worker.js";
 
 const SITE = "https://medbiohim.vercel.app";
@@ -362,4 +363,143 @@ test("works without KV even when deduplication is not configured at all", async 
   assert.equal(response.status, 200);
   assert.equal((await response.json()).ok, true);
   assert.equal(sendMessageCalls(calls).length, 1);
+});
+
+/* ------------------------------------------------------------------ *
+ * /api/verify-initdata — the API Worker delegates Mini App login here,
+ * because this Worker is the only one that holds the bot token.
+ * ------------------------------------------------------------------ */
+
+/** Signing is done here independently of src/initdata.js. */
+function signInitData(fields, botToken = baseEnv.TELEGRAM_BOT_TOKEN) {
+  const dataCheckString = Object.keys(fields)
+    .filter((key) => key !== "hash")
+    .sort()
+    .map((key) => `${key}=${fields[key]}`)
+    .join("\n");
+  const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
+  return createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+}
+
+function buildInitData(extra = {}, authDate = Math.floor(Date.now() / 1000) - 10, botToken) {
+  const fields = {
+    auth_date: String(authDate),
+    user: JSON.stringify({ id: 279058397, username: "vdlav", first_name: "Влад" }),
+    ...extra,
+  };
+  const signed = { ...fields, hash: signInitData(fields, botToken) };
+  return Object.entries(signed)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join("&");
+}
+
+function internalRequest({ initData = "", secret = "test-secret", method = "POST", body } = {}) {
+  return new Request("https://worker.example/api/verify-initdata", {
+    method,
+    headers: {
+      "content-type": "application/json",
+      ...(secret === null ? {} : { "x-medbiohim-internal": secret }),
+    },
+    body: method === "GET" ? undefined : JSON.stringify(body === undefined ? { init_data: initData } : body),
+  });
+}
+
+test("internal verify endpoint is unavailable until a shared secret exists", async (t) => {
+  const calls = stubFetch(t);
+  const response = await handleRequest(internalRequest({ initData: buildInitData() }), { TELEGRAM_BOT_TOKEN: "test-token" });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "INTERNAL_NOT_CONFIGURED");
+  assert.equal(calls.length, 0);
+});
+
+test("internal verify endpoint rejects a wrong shared secret without any outbound call", async (t) => {
+  const calls = stubFetch(t);
+  const response = await handleRequest(internalRequest({ initData: buildInitData(), secret: "nope" }), baseEnv);
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "UNAUTHORIZED");
+  assert.equal(calls.length, 0);
+
+  const missing = await handleRequest(internalRequest({ initData: buildInitData(), secret: null }), baseEnv);
+  assert.equal(missing.status, 401);
+});
+
+test("internal verify endpoint returns the verified identity and never the token", async (t) => {
+  const calls = stubFetch(t);
+  const response = await handleRequest(internalRequest({ initData: buildInitData() }), baseEnv);
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.ok, true);
+  assert.equal(payload.user.id, 279058397);
+  assert.equal(payload.user.username, "vdlav");
+  assert.equal(payload.user.first_name, "Влад");
+  assert.ok(typeof payload.auth_date === "number");
+
+  const serialized = JSON.stringify(payload);
+  assert.ok(!serialized.includes(baseEnv.TELEGRAM_BOT_TOKEN), "the bot token must never appear in the answer");
+  assert.ok(!serialized.includes("test-secret"), "the shared secret must never be echoed");
+  assert.ok(!serialized.includes("hash"), "the signature must never be echoed");
+  assert.equal(calls.length, 0, "verification is local: no outbound call");
+});
+
+test("internal verify endpoint rejects forgeries and foreign tokens generically", async (t) => {
+  stubFetch(t);
+  const tampered = buildInitData().replace(encodeURIComponent("279058397"), encodeURIComponent("279058398"));
+  const tamperedResponse = await handleRequest(internalRequest({ initData: tampered }), baseEnv);
+  assert.equal(tamperedResponse.status, 401);
+  assert.deepEqual(await tamperedResponse.json(), { ok: false, error: "INVALID_INIT_DATA" });
+
+  const foreign = await handleRequest(internalRequest({ initData: buildInitData({}, undefined, "another-token") }), baseEnv);
+  assert.equal(foreign.status, 401);
+  assert.deepEqual(await foreign.json(), { ok: false, error: "INVALID_INIT_DATA" });
+
+  const expired = await handleRequest(internalRequest({ initData: buildInitData({}, 1) }), baseEnv);
+  assert.equal(expired.status, 401);
+  assert.deepEqual(await expired.json(), { ok: false, error: "INVALID_INIT_DATA" });
+});
+
+test("internal verify endpoint guards method, body shape and size", async (t) => {
+  stubFetch(t);
+  const get = await handleRequest(internalRequest({ secret: "test-secret", method: "GET" }), baseEnv);
+  assert.equal(get.status, 405);
+
+  const empty = await handleRequest(internalRequest({ initData: "" }), baseEnv);
+  assert.equal(empty.status, 400);
+  assert.equal((await empty.json()).error, "INVALID_BODY");
+
+  const nonString = await handleRequest(internalRequest({ body: { init_data: 42 } }), baseEnv);
+  assert.equal(nonString.status, 400);
+
+  const brokenJson = await handleRequest(new Request("https://worker.example/api/verify-initdata", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-medbiohim-internal": "test-secret" },
+    body: "{oops",
+  }), baseEnv);
+  assert.equal(brokenJson.status, 400);
+
+  const oversized = await handleRequest(new Request("https://worker.example/api/verify-initdata", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-medbiohim-internal": "test-secret", "content-length": String(256 * 1024 + 1) },
+    body: "{}",
+  }), baseEnv);
+  assert.equal(oversized.status, 413);
+});
+
+test("a dedicated internal secret takes precedence over the webhook secret", async (t) => {
+  stubFetch(t);
+  const env = { ...baseEnv, TELEGRAM_INTERNAL_SECRET: "dedicated-secret" };
+  const withWebhookSecret = await handleRequest(internalRequest({ initData: buildInitData(), secret: "test-secret" }), env);
+  assert.equal(withWebhookSecret.status, 401, "the webhook secret must stop working once a dedicated one is set");
+
+  const withDedicated = await handleRequest(internalRequest({ initData: buildInitData(), secret: "dedicated-secret" }), env);
+  assert.equal(withDedicated.status, 200);
+});
+
+test("health reports whether the internal endpoint is usable", async () => {
+  const withSecret = await handleRequest(request("/health", { method: "GET" }), baseEnv);
+  const withSecretBody = await withSecret.json();
+  assert.equal(withSecretBody.configured, true);
+  assert.equal(withSecretBody.internal, true);
+
+  const withoutSecret = await handleRequest(request("/health", { method: "GET" }), { TELEGRAM_BOT_TOKEN: "test-token" });
+  assert.equal((await withoutSecret.json()).internal, false);
 });

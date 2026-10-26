@@ -25,7 +25,11 @@ export type TelegramInitDataError =
   | "invalid_hash"
   | "missing_user"
   | "invalid_user"
-  | "crypto_unavailable";
+  | "crypto_unavailable"
+  // Remote (bot Worker) verification is not usable — an infrastructure problem,
+  // never a statement about the caller's credentials.
+  | "internal_not_configured"
+  | "internal_unavailable";
 
 export type TelegramInitDataResult =
   | { ok: true; user: TelegramInitDataUser; auth_date: number }
@@ -211,4 +215,85 @@ export async function validateTelegramInitData(
       first_name: normalizeOptionalString(record.first_name, 128),
     },
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Remote verification through the bot Worker
+ * ------------------------------------------------------------------ */
+
+export type TelegramVerifierEnv = {
+  TELEGRAM_BOT_VERIFY_URL?: string;
+  TELEGRAM_INTERNAL_SECRET?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
+};
+
+/** `TELEGRAM_INTERNAL_SECRET` wins; the webhook secret is the shared fallback. */
+export function internalSecretValue(env: TelegramVerifierEnv | undefined): string {
+  return String((env && (env.TELEGRAM_INTERNAL_SECRET || env.TELEGRAM_WEBHOOK_SECRET)) || "").trim();
+}
+
+/**
+ * Only an https URL that speaks the bot's verify contract is accepted, so a
+ * misconfigured environment can never be turned into an arbitrary fetch target.
+ */
+export function verifyUrl(env: TelegramVerifierEnv | undefined): string | null {
+  try {
+    const url = new URL(String((env && env.TELEGRAM_BOT_VERIFY_URL) || "").trim());
+    if (url.protocol !== "https:") return null;
+    if (!url.hostname.endsWith(".workers.dev")) return null;
+    if (url.pathname !== "/api/verify-initdata") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/** True when this Worker can verify initData without holding the bot token. */
+export function hasRemoteVerifier(env: TelegramVerifierEnv | undefined): boolean {
+  return Boolean(internalSecretValue(env)) && verifyUrl(env) !== null;
+}
+
+/**
+ * Verify initData by asking the bot Worker, which is the only place that holds
+ * `TELEGRAM_BOT_TOKEN`. Nothing about the token, the hash or the signed string
+ * is available to this Worker. Never throws.
+ */
+export async function verifyTelegramInitDataRemote(
+  initData: string,
+  env: TelegramVerifierEnv | undefined,
+  timeoutMs = 8000
+): Promise<TelegramInitDataResult> {
+  const secret = internalSecretValue(env);
+  const url = verifyUrl(env);
+  if (!secret || !url) return { ok: false, error: "internal_not_configured" };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-medbiohim-internal": secret },
+      body: JSON.stringify({ init_data: initData }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | { ok?: boolean; error?: string; auth_date?: number; user?: { id?: unknown; username?: unknown; first_name?: unknown } }
+      | null;
+
+    if (response.status === 401 && payload?.error === "INVALID_INIT_DATA") {
+      // The bot proved the signature wrong: this is a credential failure.
+      return { ok: false, error: "invalid_hash" };
+    }
+    if (!response.ok || payload?.ok !== true) return { ok: false, error: "internal_unavailable" };
+
+    const id = payload?.user?.id;
+    if (!Number.isSafeInteger(id) || (id as number) <= 0) return { ok: false, error: "internal_unavailable" };
+    const asString = (value: unknown): string | null => (typeof value === "string" && value ? value : null);
+
+    return {
+      ok: true,
+      auth_date: typeof payload?.auth_date === "number" ? payload.auth_date : 0,
+      user: { id: id as number, username: asString(payload?.user?.username), first_name: asString(payload?.user?.first_name) },
+    };
+  } catch {
+    return { ok: false, error: "internal_unavailable" };
+  }
 }

@@ -3,7 +3,7 @@ import type { Env } from "../env";
 import { createAnonClient, createServiceClient, createUserClient, verifyBearerUser } from "../lib/supabase";
 import { rateLimit } from "../lib/redis";
 import { ok, fail, requestId } from "../lib/response";
-import { validateTelegramInitData } from "../lib/telegram-initdata";
+import { hasRemoteVerifier, validateTelegramInitData, verifyTelegramInitDataRemote } from "../lib/telegram-initdata";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const auth = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -229,7 +229,8 @@ auth.post("/telegram/webapp", async (c) => {
   }
 
   const botToken = c.env.TELEGRAM_BOT_TOKEN?.trim();
-  if (!botToken) {
+  const canVerifyRemotely = hasRemoteVerifier(c.env);
+  if (!botToken && !canVerifyRemotely) {
     const { body, status } = fail("TELEGRAM_NOT_CONFIGURED", "Вход через Telegram временно недоступен", 503, rid);
     return c.json(body, status as 503);
   }
@@ -240,8 +241,18 @@ auth.post("/telegram/webapp", async (c) => {
     return c.json(b, status as 400);
   }
 
-  const verification = await validateTelegramInitData(body.init_data, botToken);
+  // Local crypto when this Worker owns the token; otherwise delegate to the bot
+  // Worker, which does. The bot token never has to be copied here.
+  const verification = botToken
+    ? await validateTelegramInitData(body.init_data, botToken)
+    : await verifyTelegramInitDataRemote(body.init_data, c.env);
   if (!verification.ok) {
+    if (!botToken && (verification.error === "internal_not_configured" || verification.error === "internal_unavailable")) {
+      // An infrastructure problem, not the caller's credentials — never report it
+      // as a signature failure.
+      const { body: b, status } = fail("TELEGRAM_LOGIN_UNAVAILABLE", "Вход через Telegram временно недоступен", 503, rid);
+      return c.json(b, status as 503);
+    }
     // Deliberately generic: never tell a forger which check failed.
     const { body: b, status } = fail("INVALID_INIT_DATA", "Не удалось подтвердить данные Telegram", 401, rid);
     return c.json(b, status as 401);

@@ -14,8 +14,13 @@
 #   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_BLOB_TOKEN
 #   OPENAI_API_KEY (optional)
 #   TELEGRAM_WEBHOOK_SECRET, TELEGRAM_BOT_USERNAME (optional)
-#   TELEGRAM_BOT_TOKEN — REQUIRED for Telegram Mini App login: POST /auth/telegram/webapp
-#     validates initData with it. Without the secret the route answers 503 TELEGRAM_NOT_CONFIGURED.
+#   Telegram Mini App login (POST /auth/telegram/webapp) verifies initData and needs ONE of:
+#     1. TELEGRAM_BOT_TOKEN set here — validated locally in this Worker, or
+#     2. TELEGRAM_BOT_VERIFY_URL (a [vars] entry, see below) plus a shared secret
+#        (TELEGRAM_INTERNAL_SECRET, falling back to TELEGRAM_WEBHOOK_SECRET):
+#        verification is delegated to the bot Worker, which is the only place that
+#        holds the bot token, so the token never has to be copied here.
+#   Without either, the route answers 503 TELEGRAM_NOT_CONFIGURED.
 #   APP_ORIGIN (e.g. https://medbiohim.vercel.app)
 # Never put secrets in this file.
 
@@ -30,6 +35,9 @@ workers_dev = true
 APP_ENV = "production"
 CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000"
 UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io"
+# Mini App initData verification is delegated to the bot Worker (it owns the bot token).
+# Needs a shared secret: TELEGRAM_INTERNAL_SECRET or TELEGRAM_WEBHOOK_SECRET.
+TELEGRAM_BOT_VERIFY_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-initdata"
 
 # Fallback only for routes still 501 on this Worker. Not a second production API.
 [[services]]

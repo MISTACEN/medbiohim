@@ -21,6 +21,11 @@ export type Env = {
   // Telegram bot administration (secrets must be configured in Cloudflare, never committed)
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
+  // Shared secret for the internal API → bot call (falls back to TELEGRAM_WEBHOOK_SECRET).
+  TELEGRAM_INTERNAL_SECRET?: string;
+  // Public endpoint on the bot Worker that verifies Mini App initData; that Worker
+  // is the only place that holds the bot token.
+  TELEGRAM_BOT_VERIFY_URL?: string;
   TELEGRAM_WEBHOOK_ORIGIN?: string;
   TELEGRAM_WEBHOOK_URL?: string;
   TELEGRAM_BOT_USERNAME?: string;

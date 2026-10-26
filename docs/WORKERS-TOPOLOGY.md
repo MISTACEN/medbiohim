@@ -29,11 +29,16 @@ Browser → Vercel /api/v1/* → medbiohim-api (PROD)
   состояние без раскрытия секретов.
 - Привязка аккаунта: одноразовая ссылка `/start link_<48 hex>` → `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL`
   → `medbiohim-api` `POST /api/v1/telegram/account-link/confirm`.
-- Mini App (вход из Telegram): `POST /api/v1/auth/telegram/webapp` в `workers/api` проверяет подпись
-  `initData` (HMAC-SHA256 по спецификации Telegram, срок 24 ч, дубликаты ключей отклоняются) и выдаёт
-  обычную сессию того же формата, что `/auth/login`. Требует секрет `TELEGRAM_BOT_TOKEN` на
-  **`medbiohim-api`**; без него роут отвечает `503 TELEGRAM_NOT_CONFIGURED`, а не падает.
-  Непривязанный Telegram → `409 TELEGRAM_NOT_LINKED`.
+- Mini App (вход из Telegram): `POST /api/v1/auth/telegram/webapp` в `workers/api` выдаёт обычную
+  сессию того же формата, что `/auth/login`, но **подпись `initData` проверяет бот** —
+  `POST /api/verify-initdata` на `medbiohim-telegram`, где и лежит `TELEGRAM_BOT_TOKEN`.
+  Токен бота в `medbiohim-api` не дублируется. Вызов защищён общим секретом
+  (`TELEGRAM_INTERNAL_SECRET`, иначе `TELEGRAM_WEBHOOK_SECRET`), адрес — `TELEGRAM_BOT_VERIFY_URL`
+  (только https и только хост `*.workers.dev` с путём `/api/verify-initdata`).
+  Если `TELEGRAM_BOT_TOKEN` задан и в `medbiohim-api`, проверка идёт локально и поход в бота не нужен.
+  Непривязанный Telegram → `409 TELEGRAM_NOT_LINKED`; недоступный/ненастроенный верификатор →
+  `503 TELEGRAM_LOGIN_UNAVAILABLE` (никогда не выдаётся за неверную подпись); без обоих путей →
+  `503 TELEGRAM_NOT_CONFIGURED`.
 - Групповой relay: `TELEGRAM_HOMEWORK_WEBHOOK_URL` → PHP `TelegramHomeworkService`
   (классификация ДЗ, вложения, OCR). Это **единственная** часть PHP-контура Telegram,
   которая ещё используется в проде; при переносе её в `workers/api` обновить этот раздел.
@@ -60,7 +65,8 @@ Legacy (не развивается, не подключать к основно
 
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `UPSTASH_BLOB_TOKEN`
-- `TELEGRAM_BOT_TOKEN` — обязателен для входа в Telegram Mini App (`/auth/telegram/webapp`); без него роут отдаёт 503
+- `TELEGRAM_INTERNAL_SECRET` — общий секрет для внутреннего вызова API → бот (проверка `initData`); если не задан, используется `TELEGRAM_WEBHOOK_SECRET`. Должен совпадать на обоих воркерах
+- `TELEGRAM_BOT_TOKEN` — **не обязателен** здесь: вход в Mini App по умолчанию проверяется ботом. Задавайте только если хотите локальную проверку без похода в бота
 - прочие по мере надобности
 
 Не дублировать «для надёжности» на shadow без причины.

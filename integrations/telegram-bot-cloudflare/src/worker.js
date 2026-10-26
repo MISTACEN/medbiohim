@@ -1,3 +1,5 @@
+import { constantTimeEqual, validateTelegramInitData } from "./initdata.js";
+
 const MAX_BODY_BYTES = 256 * 1024;
 const REQUEST_TIMEOUT_MS = 8000;
 const DEFAULT_APP_ORIGIN = "https://medbiohim.vercel.app";
@@ -424,11 +426,73 @@ async function relayGroupUpdate(env, update) {
   return { configured: true };
 }
 
+/**
+ * Shared secret for the internal API → bot call. A dedicated
+ * `TELEGRAM_INTERNAL_SECRET` wins; otherwise the webhook secret is reused, since
+ * both Workers already have to agree on it.
+ */
+function internalSecret(env) {
+  return String((env && (env.TELEGRAM_INTERNAL_SECRET || env.TELEGRAM_WEBHOOK_SECRET)) || "").trim();
+}
+
+/**
+ * `POST /api/verify-initdata` — Mini App login verification for the API Worker.
+ *
+ * Only this Worker holds `TELEGRAM_BOT_TOKEN`, and it never leaves: the caller
+ * receives the verified Telegram identity, never the token, the hash or the
+ * signed string. Every verification failure collapses to one generic answer so
+ * the endpoint cannot be used as an oracle.
+ */
+async function handleVerifyInitData(request, env) {
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {
+      status: 405,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", allow: "POST" },
+    });
+  }
+
+  const secret = internalSecret(env);
+  if (!secret) return json({ ok: false, error: "INTERNAL_NOT_CONFIGURED" }, 503);
+  if (!constantTimeEqual(request.headers.get("x-medbiohim-internal") || "", secret)) {
+    return json({ ok: false, error: "UNAUTHORIZED" }, 401);
+  }
+  if (!env.TELEGRAM_BOT_TOKEN) return json({ ok: false, error: "BOT_NOT_CONFIGURED" }, 503);
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_BODY_BYTES) return json({ ok: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+  const text = await request.text();
+  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
+    return json({ ok: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+  }
+
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return json({ ok: false, error: "INVALID_BODY" }, 400);
+  }
+  const initData = typeof body?.init_data === "string" ? body.init_data : "";
+  if (!initData) return json({ ok: false, error: "INVALID_BODY" }, 400);
+
+  const result = await validateTelegramInitData(initData, env.TELEGRAM_BOT_TOKEN);
+  if (!result.ok) {
+    // Deliberately generic: never tell the caller which check failed.
+    return json({ ok: false, error: "INVALID_INIT_DATA" }, 401);
+  }
+  return json({ ok: true, user: result.user, auth_date: result.auth_date });
+}
+
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
   if (url.pathname === "/health") {
-    return json({ ok: true, service: "medbiohim-telegram-bot", configured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET) });
+    return json({
+      ok: true,
+      service: "medbiohim-telegram-bot",
+      configured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET),
+      internal: Boolean(internalSecret(env)),
+    });
   }
+  if (url.pathname === "/api/verify-initdata") return handleVerifyInitData(request, env);
   if (url.pathname !== "/api/webhook") return json({ ok: false, error: "NOT_FOUND" }, 404);
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {
