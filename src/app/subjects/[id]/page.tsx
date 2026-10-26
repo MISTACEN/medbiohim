@@ -8,6 +8,7 @@ import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { platformsForSubject } from "@/data/external-platforms";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
@@ -326,6 +327,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   const chemistry = /chem|хим/i.test(`${slug || ""} ${subject?.name || ""}`);
   const latin = /lat|латин/i.test(`${slug || ""} ${subject?.name || ""}`) && !chemistry;
   const portal = legacyPortalConfig(slug);
+  // NeoFamily и Школа Сеченова — не отдельная страница хаба, а часть предмета:
+  // показываем только категории, размеченные под этот slug.
+  const externalPlatforms = platformsForSubject(slug);
   const subjName = (subject?.name || "").toLowerCase().trim();
   const subjectBanks = banks.filter((b) => {
     const bankSlug = String(b.subject_slug || "").trim();
@@ -405,7 +409,9 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     { id: "tests", label: "Тесты", Icon: FileQuestion },
     { id: "materials", label: "Материалы", Icon: FolderOpen },
     { id: "practice", label: "Практика", Icon: FlaskConical },
-    ...(portal ? [{ id: "portal" as GroupId, label: portal.tabLabel, Icon: Globe }] : []),
+    ...(portal || externalPlatforms.length
+      ? [{ id: "portal" as GroupId, label: portal?.tabLabel || "Платформы", Icon: Globe }]
+      : []),
     { id: "attestations", label: "Аттестации", Icon: ClipboardList },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
   ];
@@ -554,13 +560,13 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
           </section>
         )}
 
-        {tab === "portal" && portal && (
+        {tab === "portal" && (portal || externalPlatforms.length > 0) && (
           <div className="space-y-6">
-            {portal.hoba && <HobaPortal />}
-            {portal.sdf && <ChemSdf />}
-            {portal.parasitology && <MatchingTrainer />}
-            {portal.lectures && <ArchiveLectures setId={portal.lectures} />}
-            {portal.mcSubjectIds?.length ? (
+            {portal?.hoba && <HobaPortal />}
+            {portal?.sdf && <ChemSdf />}
+            {portal?.parasitology && <MatchingTrainer />}
+            {portal?.lectures && <ArchiveLectures setId={portal.lectures} />}
+            {portal?.mcSubjectIds?.length ? (
               <section className="space-y-3">
                 <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-slate-400">Тестовые тренировки</h2>
                 <LegacyMCTests subjectIds={portal.mcSubjectIds} />

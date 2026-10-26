@@ -658,7 +658,11 @@ export function TestsHub({
                     className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-white p-3 transition hover:border-indigo-200 sm:flex-row sm:items-center sm:justify-between sm:p-4"
                   >
                     <div className="min-w-0">
-                      <h3 className="font-bold leading-snug text-slate-900">{test.title}</h3>
+                      <h3 className="font-bold leading-snug text-slate-900">
+                        {test.title.trim().toLowerCase() === group.title.trim().toLowerCase()
+                          ? "Тест по теме занятия"
+                          : test.title}
+                      </h3>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
                         <span>{test.questionCount} {plural(test.questionCount, "вопрос", "вопроса", "вопросов")}</span>
                         <span>Источник: {test.source}</span>

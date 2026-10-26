@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import ExternalPlatforms from "@/components/university/ExternalPlatforms";
-import { ExternalPlatformStats } from "@/components/university/ExternalPlatformLinks";
 import FeedList from "@/components/university/FeedList";
 import { ImportsProvider } from "@/components/university/ImportsProvider";
 import SavedImports from "@/components/university/SavedImports";
@@ -138,9 +136,23 @@ export default function UniversityPage() {
 
         <SavedImports />
 
-        <ExternalPlatforms />
-
-        <ExternalPlatformStats />
+        <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-violet-900">
+                <ExternalLink className="h-5 w-5" /> NeoFamily и Школа Сеченова — внутри предметов
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-violet-900/80">
+                Эти платформы не про вуз, а про учебные темы, поэтому их разделы теперь живут на
+                странице предмета во вкладке «Платформы»: биология, гистология, физиология и химия
+                показывают только свои симуляции и тренажёры.
+              </p>
+            </div>
+            <Link href="/subjects" className="btn-secondary inline-flex items-center gap-2">
+              Открыть предметы <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
 
         <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

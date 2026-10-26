@@ -2,19 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Flame } from "lucide-react";
-import { EXTERNAL_PLATFORMS } from "@/data/external-platforms";
+import { platformsForSubject } from "@/data/external-platforms";
 import { externalPlatformStats, trackExternalPlatformClick } from "@/lib/api";
-
-/** Канонический slug предмета сайта → теги категорий внешних платформ. */
-const SUBJECT_TAGS: Record<string, string[]> = {
-  biology: ["biology"],
-  histology: ["histology"],
-  physiology: ["physiology"],
-  inorganic_chemistry: ["chemistry"],
-  organic_chemistry: ["chemistry"],
-  chemistry_organic_physical: ["chemistry"],
-  first_aid: ["first_aid"],
-};
 
 function track(platform: string, title: string, href: string, subjectSlug?: string | null) {
   // Счётчик некритичен: любой сбой просто игнорируем, переход всё равно открывается.
@@ -24,18 +13,9 @@ function track(platform: string, title: string, href: string, subjectSlug?: stri
 /** Контекстные ссылки на внешние платформы внутри вкладки «Портал» страницы
  *  предмета: показываем только категории, размеченные под этот предмет. */
 export default function ExternalPlatformLinks({ subjectSlug }: { subjectSlug?: string | null }) {
-  const tags = useMemo(() => SUBJECT_TAGS[subjectSlug || ""] || [], [subjectSlug]);
+  const platforms = useMemo(() => platformsForSubject(subjectSlug), [subjectSlug]);
 
-  const platforms = useMemo(
-    () =>
-      EXTERNAL_PLATFORMS.map((platform) => ({
-        platform,
-        categories: platform.categories.filter((c) => c.tags?.some((t) => tags.includes(t))),
-      })).filter((p) => p.categories.length > 0),
-    [tags],
-  );
-
-  if (tags.length === 0 || platforms.length === 0) return null;
+  if (platforms.length === 0) return null;
 
   return (
     <section className="space-y-3">

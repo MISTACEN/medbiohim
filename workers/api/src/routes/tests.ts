@@ -154,16 +154,26 @@ tests.get("/", requireAuth, async (c) => {
     const ids = items.map((item: any) => item.id).filter(Boolean);
     const counts = new Map<string, number>();
     if (ids.length) {
-      const { data: links, error: linkError } = await db.from("test_questions")
-        .select("test_id,questions!inner(id,is_published,archived_at)")
-        .in("test_id", ids)
-        .eq("questions.is_published", true)
-        .is("questions.archived_at", null);
-      if (linkError) {
-        const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
-        return c.json(body, status as 503);
+      // PostgREST отдаёт не больше max-rows (обычно 1000) строк за запрос, а связей
+      // у предмета тысячи: без постраничного чтения последние банки выглядели как
+      // «0 вопросов». Читаем страницами, пока страница не станет неполной.
+      const PAGE = 900;
+      for (let from = 0; ; from += PAGE) {
+        const { data: links, error: linkError } = await db.from("test_questions")
+          .select("test_id,questions!inner(id,is_published,archived_at)")
+          .in("test_id", ids)
+          .eq("questions.is_published", true)
+          .is("questions.archived_at", null)
+          .order("test_id", { ascending: true })
+          .order("question_id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (linkError) {
+          const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
+          return c.json(body, status as 503);
+        }
+        for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
+        if (!links || links.length < PAGE) break;
       }
-      for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
     }
     // Банки из методичек созданы без test_questions, но у них есть тема/раздел.
     // Считаем вопросы по теме теста, иначе такой банк выглядит пустым («0 вопросов»).

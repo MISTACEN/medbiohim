@@ -174,3 +174,29 @@ export const SECHENOV: ExternalPlatform = {
 };
 
 export const EXTERNAL_PLATFORMS = [NEOFAMILY, SECHENOV];
+
+/** Канонический slug предмета сайта → теги категорий внешних платформ. */
+export const SUBJECT_TAGS: Record<string, string[]> = {
+  biology: ["biology"],
+  histology: ["histology"],
+  physiology: ["physiology"],
+  inorganic_chemistry: ["chemistry"],
+  organic_chemistry: ["chemistry"],
+  chemistry_organic_physical: ["chemistry"],
+  first_aid: ["first_aid"],
+};
+
+/**
+ * Платформы и их категории, относящиеся к предмету.
+ *
+ * Нужна и странице предмета (вкладка «Платформы»), и старому хабу, поэтому
+ * фильтрация живёт в данных, а не в компоненте: одна карта тегов на весь сайт.
+ */
+export function platformsForSubject(slug?: string | null): { platform: ExternalPlatform; categories: ExternalCategory[] }[] {
+  const tags = SUBJECT_TAGS[String(slug || "")] || [];
+  if (!tags.length) return [];
+  return EXTERNAL_PLATFORMS.map((platform) => ({
+    platform,
+    categories: platform.categories.filter((category) => category.tags?.some((tag) => tags.includes(tag))),
+  })).filter((entry) => entry.categories.length > 0);
+}
