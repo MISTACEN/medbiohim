@@ -689,6 +689,7 @@ export async function adminCreateAnnouncement(title:string,body:string,pinned=fa
 export async function adminCreateHomework(payload:Record<string,unknown>): Promise<any> { return api("/admin/homeworks", { method:"POST", body:JSON.stringify(payload) }) as any; }
 export async function adminCreateQuestion(payload:Record<string,unknown>): Promise<any> { return api("/admin/questions", { method:"POST", body:JSON.stringify(payload) }) as any; }
 export async function adminCreateWork(payload:Record<string,unknown>): Promise<any> { return api("/admin/problem-center/work", { method:"POST", body:JSON.stringify(payload) }) as any; }
+export async function adminUpdateAnnouncement(id:string,patch:{title?:string;body?:string;pinned?:boolean}): Promise<any> { return api("/admin/announcements/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(patch) }) as any; }
 export async function adminDeleteAnnouncement(id:string): Promise<any> { return api("/admin/announcements/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
 export async function adminDeleteCommunity(id:string): Promise<any> { return api("/admin/community/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
 export async function adminDeleteHomework(id:string): Promise<any> { return api("/admin/homeworks/" + encodeURIComponent(id), { method:"DELETE" }) as any; }
@@ -704,7 +705,16 @@ export async function adminListLectures(status?:string,subject?:string): Promise
 export async function adminListMaterials(): Promise<any> { return api("/admin/materials") as any; }
 export async function adminListQuestions(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/admin/questions" + (q.toString()?"?"+q:"")) as any; }
 export async function adminListSchedule(groupId?:string,semester?:number): Promise<any> { const q=new URLSearchParams(); if(groupId)q.set("group_id",groupId); if(semester!=null)q.set("semester",String(semester)); return api("/admin/schedule" + (q.toString()?"?"+q:"")) as any; }
-export async function adminListUsers(): Promise<any> { return api("/admin/users") as any; }
+export async function adminListUsers(params:{q?:string;role?:string;groupId?:string;limit?:number;offset?:number}={}): Promise<any> {
+  const search = new URLSearchParams();
+  if(params.q) search.set("q", params.q);
+  if(params.role) search.set("role", params.role);
+  if(params.groupId) search.set("group_id", params.groupId);
+  if(params.limit) search.set("limit", String(params.limit));
+  if(params.offset) search.set("offset", String(params.offset));
+  const suffix = search.toString();
+  return api("/admin/users" + (suffix ? `?${suffix}` : "")) as any;
+}
 export async function adminOverview(): Promise<any> { return api("/admin/overview") as any; }
 export async function adminValidateContent(): Promise<any> { return api(`/admin/content/validate`) as any; }
 export async function adminProblemCenter(): Promise<any> { return api("/admin/problem-center") as any; }

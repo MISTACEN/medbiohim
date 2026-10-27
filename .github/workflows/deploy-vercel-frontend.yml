@@ -1,5 +1,14 @@
-# Frontend deployment via GitHub Actions (Vercel alternative)
-# Alternative to direct Vercel CI/CD to avoid npm ci issues with missing lockfile
+# Frontend deployment check for the Vercel site.
+#
+# Vercel's own GitHub integration is the primary deployer of
+# https://medbiohim.vercel.app (docs/HOSTING-RESILIENCE-AND-FREE-TIERS.md: "Vercel уже
+# связан с GitHub ... не ломать автодеплой"). This workflow therefore:
+#   1. proves the pushed commit still typechecks, lints and builds;
+#   2. runs the Vercel CLI only when VERCEL_TOKEN exists (fallback for the day the
+#      Git integration is unavailable);
+#   3. verifies that production actually serves this commit.
+# Step 3 exists because a green integration status is not proof: production has to
+# answer with its own X-Medbiohim-Build for this SHA (docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md, §3).
 
 name: Deploy MEDBIOHIM Frontend
 
@@ -22,44 +31,75 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: package-lock.json
-      
+
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
       - name: Build Next.js application
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      
-      # Option 1: Deploy to Vercel directly using their CLI
-      - name: Deploy to Vercel
+
+      # Fallback path only: without a token the Git integration is the only deployer,
+      # and a failing CLI step must not mark the deployment as broken.
+      - name: Deploy to Vercel (CLI fallback)
+        if: env.VERCEL_TOKEN != ''
         run: npx vercel deploy --prod --yes
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      
-      # Option 2: Or deploy to Cloudflare Pages instead (comment above, uncomment below)
-      # - name: Build and deploy to Cloudflare Pages
-      #   run: |
-      #     npx wrangler pages project create medbiohim-frontend --commit-hash=${{ github.sha }} || true
-      #     npx wrangler pages deploy .next/dist --project-name=medbiohim-frontend
-      
+
+      - name: Verify production serves this commit
+        run: |
+          set -euo pipefail
+          url="https://medbiohim.vercel.app/"
+          expected="${GITHUB_SHA}"
+          echo "expected build: ${expected}"
+          for attempt in $(seq 1 16); do
+            headers="$(curl -fsS -D - -o /dev/null --max-time 20 "$url" || true)"
+            build="$(printf '%s' "$headers" | tr -d '\r' | awk 'tolower($1) == "x-medbiohim-build:" { print $2 }')"
+            mode="$(printf '%s' "$headers" | tr -d '\r' | awk 'tolower($1) == "x-medbiohim-api-mode:" { print $2 }')"
+            echo "attempt ${attempt}: X-Medbiohim-Build=${build:-<none>} api-mode=${mode:-<none>}"
+            if [ "$build" = "$expected" ]; then
+              echo "production serves ${expected}"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::production does not serve ${expected}; last reported ${build:-<none>}"
+          exit 1
+
+      - name: Verify API health through the proxy
+        run: |
+          set -euo pipefail
+          body="$(curl -fsS --max-time 20 "https://medbiohim.vercel.app/api/v1/health")"
+          echo "$body"
+          printf '%s' "$body" | grep -q '"ok":true' || { echo "::error::health endpoint did not report ok:true"; exit 1; }
+
       - name: Store deployment URL
-        run: echo "Deployment completed at $(date)" > deployment-info.txt
-      
+        run: echo "Verified $(date) against ${GITHUB_SHA}" > deployment-info.txt
+
       - name: Upload deployment info
         uses: actions/upload-artifact@v4
         with:

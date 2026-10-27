@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, adminListUsers, adminSetUserRole, hasToken, listGroups } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type AdminUser = {
   id: string;
@@ -17,30 +18,70 @@ type AdminUser = {
 };
 type Group = { id: string; name?: string; code?: string; course_number?: number };
 
-/** Пользователи: роли + учебная группа/семестр (вынесено из старого /admin). */
+const ROLES = ["student", "teacher", "moderator", "admin"] as const;
+const ROLE_LABEL: Record<string, string> = {
+  student: "Студент",
+  teacher: "Преподаватель",
+  moderator: "Модератор",
+  admin: "Администратор",
+};
+const PAGE_SIZE = 50;
+
+/** Пользователи: поиск, фильтры, роли, учебная группа/семестр. */
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [groups, setGroups] = useState<Group[]>([]);
   const [drafts, setDrafts] = useState<Record<string, { groupId: string; semester: string }>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [query, setQuery] = useState("");
+  const [applied, setApplied] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
 
   function msg(err = "", good = "") { setError(err); setOk(good); }
 
-  async function load() {
-    const [u, g] = await Promise.all([adminListUsers(), listGroups()]);
-    if (g.ok) setGroups(g.data.items as Group[]);
-    else msg(g.error.message);
-    if (!u.ok) return msg(u.error.message);
+  const load = useCallback(async (search: string, role: string, groupId: string, nextOffset: number) => {
+    setLoading(true);
+    const [u, g] = await Promise.all([
+      adminListUsers({ q: search || undefined, role: role || undefined, groupId: groupId || undefined, limit: PAGE_SIZE, offset: nextOffset }),
+      nextOffset === 0 ? listGroups() : Promise.resolve(null),
+    ]);
+    setLoading(false);
+    if (g) {
+      if (g.ok) setGroups(g.data.items as Group[]);
+      else msg(describeApiError(g.error));
+    }
+    if (!u.ok) return msg(describeApiError(u.error));
     const list = (u.data.items || []) as AdminUser[];
     setUsers(list);
+    setTotal(Number(u.data.total ?? list.length));
+    setOffset(nextOffset);
     const next: Record<string, { groupId: string; semester: string }> = {};
     list.forEach((x) => { next[x.id] = { groupId: String(x.group_id || ""), semester: String(x.semester || 3) }; });
     setDrafts(next);
+  }, []);
+
+  useEffect(() => { void load("", "", "", 0); }, [load]);
+
+  function applyFilters(e?: React.FormEvent) {
+    e?.preventDefault();
+    const search = query.trim();
+    setApplied(search);
+    void load(search, roleFilter, groupFilter, 0);
   }
 
-  useEffect(() => { void load(); }, []);
+  function resetFilters() {
+    setQuery("");
+    setApplied("");
+    setRoleFilter("");
+    setGroupFilter("");
+    void load("", "", "", 0);
+  }
 
   async function saveAcademic(user: AdminUser) {
     const draft = drafts[user.id] || { groupId: "", semester: "3" };
@@ -48,9 +89,20 @@ export default function AdminUsersPage() {
     setSaving((x) => ({ ...x, [user.id]: true }));
     const r = await api(`/admin/users/${user.id}/academic`, { method: "PUT", body: JSON.stringify({ group_id: draft.groupId, semester: Number(draft.semester) || 3 }) });
     setSaving((x) => ({ ...x, [user.id]: false }));
-    if (!r.ok) return msg(r.error.message);
+    if (!r.ok) return msg(describeApiError(r.error));
     msg("", "Учебная группа сохранена");
-    await load();
+    await load(applied, roleFilter, groupFilter, offset);
+  }
+
+  async function toggleRole(user: AdminUser, role: string) {
+    const action = (user.roles || []).includes(role) ? "revoke" : "assign";
+    if (action === "revoke" && !window.confirm(`Снять роль «${ROLE_LABEL[role] || role}» с ${user.email || user.full_name}?`)) return;
+    setSaving((x) => ({ ...x, [`${user.id}:${role}`]: true }));
+    const r = await adminSetUserRole(user.id, role, action);
+    setSaving((x) => ({ ...x, [`${user.id}:${role}`]: false }));
+    if (!r.ok) return msg(describeApiError(r.error));
+    setUsers((prev) => prev.map((z) => (z.id === user.id ? { ...z, roles: r.data.roles } : z)));
+    msg("", action === "assign" ? `Роль «${role}» назначена` : `Роль «${role}» снята`);
   }
 
   if (!hasToken()) {
@@ -63,14 +115,42 @@ export default function AdminUsersPage() {
     );
   }
 
+  const shown = users.length;
+  const hasPrev = offset > 0;
+  const hasNext = offset + shown < total;
+
   return (
     <div className="space-y-5">
       <header>
         <h1 className="page-title">Пользователи и роли</h1>
-        <p className="page-subtitle">Группа, семестр и роли для каждого пользователя · {users.length}</p>
+        <p className="page-subtitle">
+          Поиск по почте и имени, фильтры по роли и группе · всего {total}
+        </p>
       </header>
-      {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {ok && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ok}</div>}
+
+      <form onSubmit={applyFilters} className="card grid gap-2 md:grid-cols-[minmax(0,1fr)_170px_200px_auto]">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Почта или ФИО"
+          aria-label="Поиск пользователя"
+          className="rounded-xl border px-3 py-2 text-sm"
+        />
+        <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); void load(applied, e.target.value, groupFilter, 0); }} aria-label="Фильтр по роли" className="rounded-xl border px-3 py-2 text-sm">
+          <option value="">Все роли</option>
+          {ROLES.map((role) => <option key={role} value={role}>{ROLE_LABEL[role]}</option>)}
+        </select>
+        <select value={groupFilter} onChange={(e) => { setGroupFilter(e.target.value); void load(applied, roleFilter, e.target.value, 0); }} aria-label="Фильтр по группе" className="rounded-xl border px-3 py-2 text-sm">
+          <option value="">Все группы</option>
+          {groups.map((g) => <option key={g.id} value={g.id}>{g.name || g.code}</option>)}
+        </select>
+        <div className="flex gap-2">
+          <button className="btn-primary" disabled={loading}>{loading ? "Ищем…" : "Найти"}</button>
+          <button type="button" className="btn-secondary" onClick={resetFilters} disabled={loading}>Сброс</button>
+        </div>
+      </form>
 
       <div className="space-y-3">
         {users.map((u) => {
@@ -82,7 +162,9 @@ export default function AdminUsersPage() {
                 <div>
                   <b>{u.full_name || u.email}</b>
                   <div className="text-xs text-slate-500">{u.email}</div>
-                  <div className="mt-1 text-xs text-slate-500">Роли: {(u.roles || []).join(", ") || "student"}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Роли: {(u.roles || []).map((role) => ROLE_LABEL[role] || role).join(", ") || "студент по умолчанию"}
+                  </div>
                 </div>
                 <div className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
                   {selectedGroup?.course_number ?? u.course_number ?? "—"} курс
@@ -107,27 +189,49 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-1">
-                {["student", "teacher", "moderator", "admin"].map((role) => (
-                  <button
-                    type="button"
-                    key={role}
-                    className="rounded-lg border bg-white px-2 py-1 text-xs hover:bg-slate-50"
-                    onClick={async () => {
-                      const r = await adminSetUserRole(u.id, role, "assign");
-                      if (!r.ok) return msg(r.error.message);
-                      setUsers((prev) => prev.map((z) => (z.id === u.id ? { ...z, roles: r.data.roles } : z)));
-                      msg("", `${role} назначена: ${u.email}`);
-                    }}
-                  >
-                    +{role}
-                  </button>
-                ))}
+                {ROLES.map((role) => {
+                  const assigned = (u.roles || []).includes(role);
+                  const busy = !!saving[`${u.id}:${role}`];
+                  return (
+                    <button
+                      type="button"
+                      key={role}
+                      disabled={busy}
+                      aria-pressed={assigned}
+                      title={assigned ? "Нажмите, чтобы снять роль" : "Нажмите, чтобы назначить роль"}
+                      className={`rounded-lg border px-2 py-1 text-xs disabled:opacity-50 ${assigned ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "bg-white hover:bg-slate-50"}`}
+                      onClick={() => void toggleRole(u, role)}
+                    >
+                      {assigned ? `− ${ROLE_LABEL[role]}` : `+ ${ROLE_LABEL[role]}`}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
         })}
-        {users.length === 0 && <div className="card text-sm text-slate-500">Пользователей пока нет.</div>}
+        {!loading && users.length === 0 && (
+          <div className="card text-sm text-slate-500">
+            {applied || roleFilter || groupFilter ? "Никого не нашли — измените фильтры." : "Пользователей пока нет."}
+          </div>
+        )}
       </div>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-slate-500">
+            {offset + 1}–{offset + shown} из {total}
+          </span>
+          <div className="flex gap-2">
+            <button type="button" className="btn-secondary" disabled={!hasPrev || loading} onClick={() => void load(applied, roleFilter, groupFilter, Math.max(offset - PAGE_SIZE, 0))}>
+              Назад
+            </button>
+            <button type="button" className="btn-secondary" disabled={!hasNext || loading} onClick={() => void load(applied, roleFilter, groupFilter, offset + PAGE_SIZE)}>
+              Вперёд
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

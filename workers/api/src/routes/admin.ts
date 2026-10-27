@@ -90,15 +90,30 @@ admin.get("/overview", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   if (!await gate(c)) return;
   try {
-    const [groups, subjects, tests, questions, site] = await Promise.all([
+    const [groups, subjects, tests, questions, scheduleEntries, site, announcements] = await Promise.all([
       db.from("groups").select("id", { count: "exact", head: true }).eq("is_active", true),
       db.from("subjects").select("id", { count: "exact", head: true }).eq("is_active", true),
       db.from("tests").select("id", { count: "exact", head: true }),
       db.from("questions").select("id", { count: "exact", head: true }),
-      db.from("site_content").select("key,payload").eq("key", "site").maybeSingle()
+      db.from("schedule_entries").select("id", { count: "exact", head: true }),
+      db.from("site_content").select("key,payload").eq("key", "site").maybeSingle(),
+      db.from("site_content").select("payload").eq("key", "announcements").maybeSingle()
     ]);
     if (groups.error || subjects.error || tests.error || questions.error) return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен");
-    return c.json(ok({ site: site.data?.payload || {}, counts: { groups: groups.count || 0, subjects: subjects.count || 0, tests: tests.count || 0, questions: questions.count || 0 }, source: "supabase" }, rid));
+    // Ключи совпадают с подписями дашборда: раньше плитки «Объявления» и «Занятия»
+    // молчали, потому что во внешнем интерфейсе не было под такие имена данных.
+    const announcementPayload = announcements.data?.payload;
+    const counts = {
+      groups: groups.count || 0,
+      subjects: subjects.count || 0,
+      tests: tests.count || 0,
+      questions: questions.count || 0,
+      schedule: scheduleEntries.count || 0,
+      announcements: Array.isArray(announcementPayload) ? announcementPayload.length : 0,
+    };
+    // Дополнительные счётчики — best effort: из-за них сводка не должна падать.
+    const partial = Boolean(scheduleEntries.error || announcements.error || site.error);
+    return c.json(ok({ site: site.data?.payload || {}, counts, source: "supabase", partial }, rid));
   } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен"); }
 });
 
@@ -342,9 +357,47 @@ admin.delete("/lectures/:id", requireAuth, async (c) => {
 admin.get("/users", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   if (!await gate(c, STRICT_ADMINS)) return;
+  // Поиск и фильтры считаются на сервере: раньше список был жёстко «последние 100»,
+  // и найти студента по почте или группе можно было только глазами по всей странице.
+  const q = (c.req.query("q") || "").trim().slice(0, 120);
+  const roleFilter = (c.req.query("role") || "").trim().toLowerCase();
+  const groupFilter = (c.req.query("group_id") || "").trim();
+  const limit = Math.min(Math.max(Number(c.req.query("limit") || 50), 1), 200);
+  const offset = Math.max(Number(c.req.query("offset") || 0), 0);
+  if (roleFilter && !["admin", "moderator", "teacher", "student"].includes(roleFilter)) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "Неизвестная роль");
+  }
+  if (groupFilter && !UUID.test(groupFilter)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный group_id");
+  const emptyPage = () => c.json(ok({ items: [], total: 0, limit, offset }, rid));
   try {
-    // The list is capped at 100 rows for the UI; the dashboard needs the real total.
-    const { data, count: totalUsers, error: dbError } = await db.from("users").select("id,email,full_name,course_number,semester,created_at", { count: "exact" }).order("created_at", { ascending: false }).limit(100);
+    let allowedIds: string[] | null = null;
+    if (roleFilter) {
+      const { data: role, error: roleError } = await db.from("roles").select("id").eq("code", roleFilter).maybeSingle();
+      if (roleError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось применить фильтр по роли");
+      if (!role?.id) return emptyPage();
+      const { data: roleRows, error: roleRowsError } = await db.from("user_roles").select("user_id").eq("role_id", role.id).limit(5000);
+      if (roleRowsError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось применить фильтр по роли");
+      allowedIds = [...new Set((roleRows || []).map((row: any) => String(row.user_id || "")).filter(Boolean))];
+      if (!allowedIds.length) return emptyPage();
+    }
+    if (groupFilter) {
+      const { data: memberRows, error: memberRowsError } = await db.from("group_memberships").select("user_id")
+        .eq("group_id", groupFilter).eq("is_active", true).limit(5000);
+      if (memberRowsError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось применить фильтр по группе");
+      const memberIds = new Set((memberRows || []).map((row: any) => String(row.user_id || "")));
+      allowedIds = allowedIds ? allowedIds.filter((id) => memberIds.has(id)) : [...memberIds];
+      if (!allowedIds.length) return emptyPage();
+    }
+    let query = db.from("users").select("id,email,full_name,course_number,semester,created_at", { count: "exact" });
+    if (allowedIds) query = query.in("id", allowedIds);
+    if (q) {
+      // Символы, ломающие синтаксис PostgREST `or`, вырезаем: поиск не должен падать от запятой.
+      const pattern = q.replace(/[%_,()]/g, " ").replace(/\s+/g, " ").trim();
+      if (pattern) query = query.or(`email.ilike.%${pattern}%,full_name.ilike.%${pattern}%`);
+    }
+    const { data, count: totalUsers, error: dbError } = await query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
     if (dbError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей");
     const ids = (data || []).map((u: any) => u.id).filter(Boolean);
     const roleMap: Record<string, string[]> = {};
@@ -366,7 +419,7 @@ admin.get("/users", requireAuth, async (c) => {
         groupMap[(membership as any).user_id] = { group_id: (membership as any).group_id, group_name: group?.name || null, group_code: group?.code || null, course_number: group?.course_number || null };
       }
     }
-    return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [], ...(groupMap[u.id] || {}) })), total: totalUsers ?? (data || []).length }, rid));
+    return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [], ...(groupMap[u.id] || {}) })), total: totalUsers ?? (data || []).length, limit, offset }, rid));
   } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей"); }
 });
 admin.post("/users/roles", requireAuth, async (c) => {
@@ -967,7 +1020,14 @@ admin.get("/announcements", requireAuth, async (c) => {
   try {
     const payload = await readAnnouncements(c);
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
-    return c.json(ok({ items }, rid));
+    // Закреплённое объявление — первым, остальные от новых к старым: тот же порядок,
+    // что видит студент на главной.
+    const sorted = [...items].sort((a: any, b: any) => {
+      const pin = Number(Boolean(b?.pinned)) - Number(Boolean(a?.pinned));
+      if (pin !== 0) return pin;
+      return String(b?.created_at || "").localeCompare(String(a?.created_at || ""));
+    });
+    return c.json(ok({ items: sorted }, rid));
   } catch (cause) {
     console.error("[admin:announcements:list]", cause);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить объявления");
@@ -989,6 +1049,42 @@ admin.post("/announcements", requireAuth, async (c) => {
   } catch (cause) {
     console.error("[admin:announcements:create]", cause);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось опубликовать объявление");
+  }
+});
+
+// Правка объявления: раньше исправить опечатку можно было только удалением и
+// повторной публикацией, а закрепить объявление — вообще никак.
+admin.patch("/announcements/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await gate(c, STRICT_ADMINS))) return c.res;
+  const id = c.req.param("id") || "";
+  const input = await bodyJson(c);
+  const hasTitle = input?.title !== undefined;
+  const hasBody = input?.body !== undefined;
+  const hasPinned = input?.pinned !== undefined;
+  if (!hasTitle && !hasBody && !hasPinned) return error(c, rid, 422, "VALIDATION_ERROR", "Нет полей для обновления");
+  if (hasTitle && !validText(input.title, 200)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный заголовок — от 1 до 200 символов");
+  if (hasBody && !validText(input.body, 5000)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный текст — от 1 до 5000 символов");
+  if (hasPinned && typeof input.pinned !== "boolean") return error(c, rid, 422, "VALIDATION_ERROR", "Флаг закрепления должен быть true или false");
+  try {
+    const payload = await readAnnouncements(c);
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
+    const index = items.findIndex((item: any) => String(item?.id || "") === id);
+    if (index < 0) return error(c, rid, 404, "NOT_FOUND", "Объявление не найдено");
+    const updatedAt = new Date().toISOString();
+    const item = {
+      ...items[index],
+      ...(hasTitle ? { title: String(input.title).trim() } : {}),
+      ...(hasBody ? { body: String(input.body).trim() } : {}),
+      ...(hasPinned ? { pinned: input.pinned === true } : {}),
+      updated_at: updatedAt,
+    };
+    const nextItems = items.map((current: any, position: number) => (position === index ? item : current));
+    await writeAnnouncements(c, Array.isArray(payload) ? nextItems : { ...payload, items: nextItems }, updatedAt);
+    return c.json(ok({ item }, rid));
+  } catch (cause) {
+    console.error("[admin:announcements:update]", cause);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось обновить объявление");
   }
 });
 
