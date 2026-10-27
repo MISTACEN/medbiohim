@@ -69,9 +69,13 @@ subjects.get("/:id", requireAuth, async (c) => {
   // неоднозначность честно отдаётся как 409.
   let data = rows?.[0];
   if ((rows || []).length > 1) {
-    const exact = (rows || []).find((row: any) => String(row.slug || "") === id);
-    if (exact) {
-      data = exact;
+    // 1) точный слаг помогает, только если он выделяет одну строку
+    //    (смешанные канонические/алиасные записи);
+    // 2) иначе строка курса/семестра студента;
+    // 3) иначе честный 409.
+    const exact = (rows || []).filter((row: any) => String(row.slug || "") === id);
+    if (exact.length === 1) {
+      data = exact[0];
     } else {
       const course = Number(c.req.query("course")) || null;
       const semester = Number(c.req.query("semester")) || null;
