@@ -1,4 +1,18 @@
 /** Shared same-origin API client for the Vercel `/api/v1` proxy. */
+import { describeApiError } from "@/lib/errors";
+import { isTemporaryFailure, withRetry } from "@/lib/retry";
+import {
+  clearSessionTokens,
+  currentUserScope,
+  getAccessToken,
+  hasAccessToken,
+  hasRefreshToken,
+  refreshAccessToken,
+  refreshSessionResult,
+  registerUserScopeReset,
+  setSessionTokens,
+} from "@/lib/auth/session";
+
 const API_URL="/api/v1";
 export type ApiSuccess<T>={ok:true;data:T;requestId:string;stale?:boolean};
 export type ApiError={ok:false;error:{code:string;message:string;details?:unknown};requestId:string};
@@ -16,8 +30,10 @@ export type AcademicState = {
   topic_progress?: any[];
   generated_at?: string;
 };
-function getToken(){if(typeof window==="undefined")return null;const t=localStorage.getItem("mb_access_token");return t&&t.trim()?t.trim():null}
-function getRefreshToken(){if(typeof window==="undefined")return null;const t=localStorage.getItem("mb_refresh_token");return t&&t.trim()?t.trim():null}
+// Session storage lives in one module (`@/lib/auth/session`); these aliases keep
+// the existing `@/lib/api` surface working for every caller.
+const getToken = getAccessToken;
+const cacheUserScope = currentUserScope;
 function logTrainerImageResponse(res:Response,startedAt:number){
   if(typeof window==="undefined")return;
   const entry:any={at:Date.now(),method:"GET",path:"/trainers/feed/:id/image",status:res.status,durationMs:Date.now()-startedAt,source:res.headers.get("x-mbh-api-source")||"unknown",requestId:res.headers.get("x-request-id")||"",fallback:res.headers.get("x-mbh-transport-fallback")==="true",ok:res.ok,kind:"image_response"};
@@ -29,21 +45,10 @@ function logTrainerImageResponse(res:Response,startedAt:number){
     void res.clone().json().then((payload:any)=>{if(payload?.error?.code)entry.errorCode=String(payload.error.code).slice(0,80);}).catch(()=>{}).finally(persist);
   }else persist();
 }
-export function setTokens(access:string,refresh?:string){
-  const previousScope = cacheUserScope();
-  localStorage.setItem("mb_access_token",access);
-  const nextScope = cacheUserScope();
-  if(refresh) localStorage.setItem("mb_refresh_token",refresh);
-  else if(previousScope !== nextScope) localStorage.removeItem("mb_refresh_token");
-  if(previousScope !== nextScope) clearUserScopedCaches();
-}
-export function clearTokens(){
-  localStorage.removeItem("mb_access_token");
-  localStorage.removeItem("mb_refresh_token");
-  clearUserScopedCaches();
-}
-export function hasToken(){return !!getToken()}
-export function hasRefreshToken(){return !!getRefreshToken()}
+export const setTokens = setSessionTokens;
+export const clearTokens = clearSessionTokens;
+export const hasToken = hasAccessToken;
+export { hasRefreshToken };
 async function request<T>(path:string,options:RequestInit={},tokenOverride?:string):Promise<{res:Response;text:string}>{
   const headers:Record<string,string>={Accept:"application/json",...(options.headers as Record<string,string>|undefined)};
   const isForm=typeof FormData!=="undefined"&&options.body instanceof FormData;
@@ -115,22 +120,6 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
 type CacheEntry<T> = { value: ApiSuccess<T>; expires: number };
 const apiCache = new Map<string, CacheEntry<any>>();
 const API_CACHE_TTL = 60_000;
-
-function cacheUserScope(): string | null {
-  if (typeof window === "undefined") return null;
-  const token = getToken();
-  if (!token) return "anon";
-  try {
-    const part = token.split(".")[1];
-    if (!part) return null;
-    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof json?.sub === "string" && json.sub ? json.sub : null;
-  } catch {
-    // Never share a cache bucket between opaque/malformed tokens. In this case,
-    // bypass caching and let the API authenticate the request normally.
-    return null;
-  }
-}
 
 function isCacheableGet(path: string, options: RequestInit) {
   if ((options.method || "GET").toUpperCase() !== "GET") return false;
@@ -205,54 +194,12 @@ export function invalidateApiCache(prefix = "") {
   }
 }
 
-let refreshPromise: Promise<string | null> | null = null;
-
 function notifyApiLoading(type: "start" | "end") {
   if (typeof window === "undefined") return;
   try { window.dispatchEvent(new CustomEvent(type === "start" ? "mbh:api-start" : "mbh:api-end")); } catch {}
 }
 
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = (async () => {
-    try {
-      const rr = await fetch(`${API_URL}/auth/refresh`, {
-        method: "POST",
-        headers: {"Accept":"application/json","Content-Type":"application/json"},
-        body: JSON.stringify({refresh_token: refreshToken}),
-        cache: "no-store",
-        signal: AbortSignal.timeout(10000),
-      });
-      const rt = await rr.text();
-      if (!rr.ok) {
-        // Supabase refresh tokens may remain valid while Auth is unavailable.
-        // Clear the session only when the endpoint explicitly rejects it.
-        if (rr.status === 401) {
-          try {
-            const failure = JSON.parse(rt) as { error?: { code?: string } };
-            if (failure?.error?.code === "INVALID_REFRESH") clearTokens();
-          } catch {}
-        }
-        return null;
-      }
-      const parsed = JSON.parse(rt) as {data?:{access_token?:string;refresh_token?:string}};
-      const access = parsed.data?.access_token;
-      if (!access) return null;
-      setTokens(access, parsed.data?.refresh_token);
-      return access;
-    } catch {
-      return null;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-  return refreshPromise;
-}
-
-export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{
-  notifyApiLoading("start");
+async function requestOnce<T>(path:string,options:RequestInit):Promise<ApiResult<T>>{
   try {
     let {res,text}=await request<T>(path,options);
     if(res.status===401 && path!=="/auth/refresh"){
@@ -262,10 +209,26 @@ export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResu
     try {
       return JSON.parse(text) as ApiResult<T>;
     } catch {
-      return {ok:false,error:{code:"BAD_RESPONSE",message:res.ok?"Сервер вернул не JSON":`HTTP ${res.status}`},requestId:res.headers.get("x-request-id")||"client"};
+      return {ok:false,error:{code:"BAD_RESPONSE",message:describeApiError({code:"BAD_RESPONSE"},res.status)},requestId:res.headers.get("x-request-id")||"client"};
     }
   } catch {
-    return {ok:false,error:{code:"NETWORK",message:"Сеть недоступна"},requestId:"client"};
+    return {ok:false,error:{code:"NETWORK",message:describeApiError({code:"NETWORK"})},requestId:"client"};
+  }
+}
+
+export async function api<T>(path:string,options:RequestInit={}):Promise<ApiResult<T>>{
+  notifyApiLoading("start");
+  try {
+    const method=(options.method||"GET").toUpperCase();
+    // Only idempotent reads are retried, and only after a temporary failure:
+    // a rejected write must never be sent twice.
+    if(method==="GET"||method==="HEAD"){
+      return await withRetry(
+        ()=>requestOnce<T>(path,options),
+        (result)=>!result.ok&&isTemporaryFailure(result.error.code),
+      );
+    }
+    return await requestOnce<T>(path,options);
   } finally {
     notifyApiLoading("end");
   }
@@ -318,31 +281,17 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
         });
         logTrainerImageResponse(res,imageRequestStartedAt);
         if(res.status===401){
-          const refreshToken=getRefreshToken();
-          if(refreshToken){
-            const rr=await fetch(`${API_URL}/auth/refresh`,{
-              method:"POST",
-              headers:{"Accept":"application/json","Content-Type":"application/json"},
-              body:JSON.stringify({refresh_token:refreshToken}),
+          // A feed renders many cards at once; they must share one refresh, not start their own.
+          const refreshed=await refreshAccessToken();
+          if(refreshed){
+            token=refreshed;
+            imageRequestStartedAt=Date.now();
+            res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image?retry=auth-${Date.now()}`,{
+              headers:{Authorization:`Bearer ${token}`},
               cache:"no-store",
-              signal:AbortSignal.timeout(10000),
+              signal:AbortSignal.timeout(15000),
             });
-            if(rr.ok){
-              try{
-                const parsed=JSON.parse(await rr.text()) as {data?:{access_token?:string;refresh_token?:string}};
-                if(parsed.data?.access_token){
-                  setTokens(parsed.data.access_token,parsed.data.refresh_token);
-                  token=parsed.data.access_token;
-                  imageRequestStartedAt=Date.now();
-                  res=await fetch(`${API_URL}/trainers/feed/${encodeURIComponent(idKey)}/image?retry=auth-${Date.now()}`,{
-                    headers:{Authorization:`Bearer ${token}`},
-                    cache:"no-store",
-                    signal:AbortSignal.timeout(15000),
-                  });
-                  logTrainerImageResponse(res,imageRequestStartedAt);
-                }
-              }catch{}
-            }
+            logTrainerImageResponse(res,imageRequestStartedAt);
           }
         }
         if(res.ok){
@@ -504,7 +453,7 @@ export async function login(email:string,password:string){return api<any>("/auth
 export async function telegramWebAppLogin(initData:string){return api<any>("/auth/telegram/webapp",{method:"POST",body:JSON.stringify({init_data:initData})})}
 export async function recoverPassword(email:string){return api<any>("/auth/recover",{method:"POST",body:JSON.stringify({email})})}
 export async function me(){return api<any>("/auth/me")}
-export async function refreshSession(){const r=typeof window!=="undefined"?localStorage.getItem("mb_refresh_token"):null;if(!r)return{ok:false as const,error:{code:"NO_REFRESH_TOKEN",message:"Сессия требует повторного входа."},requestId:"client"};const res=await api<{access_token:string;refresh_token?:string}>("/auth/refresh",{method:"POST",body:JSON.stringify({refresh_token:r})});if(res.ok&&res.data.access_token)setTokens(res.data.access_token,res.data.refresh_token);return res}
+export const refreshSession = refreshSessionResult;
 export async function health(){return api<any>("/health")}
 export async function presenceHeartbeat(){return api<any>("/presence/heartbeat",{method:"POST",body:"{}"})}
 export async function adminPresence(within=180){return api<any>("/admin/presence?within="+encodeURIComponent(String(within)))} 
@@ -572,16 +521,9 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
   try{
     let res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store",signal:AbortSignal.timeout(30000)});
     if(res.status===401){
-      const refreshToken=getRefreshToken();
-      if(refreshToken){
-        const rr=await fetch(`${API_URL}/auth/refresh`,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store",signal:AbortSignal.timeout(10000)});
-        if(rr.ok){
-          const parsed=JSON.parse(await rr.text()) as {data?:{access_token?:string;refresh_token?:string}};
-          if(parsed.data?.access_token){
-            setTokens(parsed.data.access_token,parsed.data.refresh_token);
-            res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:{Authorization:`Bearer ${parsed.data.access_token}`},cache:"no-store",signal:AbortSignal.timeout(30000)});
-          }
-        }
+      const refreshed=await refreshAccessToken();
+      if(refreshed){
+        res=await fetch(`${API_URL}/materials/${encodeURIComponent(id)}/file`,{headers:{Authorization:`Bearer ${refreshed}`},cache:"no-store",signal:AbortSignal.timeout(30000)});
       }
     }
     if(!res.ok)return null;
@@ -593,6 +535,9 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
 const trainerCardCache=new Map<string, any>();
 const trainerCardInflight=new Map<string, Promise<ApiResult<any>>>();
+
+// The session module clears these caches when the account behind the tokens changes.
+registerUserScopeReset(clearUserScopedCaches);
 
 function clearUserScopedCaches(){
   invalidateApiCache();

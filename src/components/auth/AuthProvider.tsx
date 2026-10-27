@@ -9,6 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { SESSION_EXPIRED_EVENT } from "@/lib/auth/session";
+import { isTemporaryAuthFailure } from "@/lib/retry";
 import { clearTokens, hasRefreshToken, hasToken, logoutSession, me, refreshSession, setTokens, telegramWebAppLogin } from "@/lib/api";
 import { getTelegramInitData } from "@/lib/telegram-webapp";
 
@@ -51,6 +55,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [telegramNotice, setTelegramNotice] = useState(false);
+  const router = useRouter();
+
+  /**
+   * The session module clears the tokens only when the refresh token was explicitly
+   * rejected. Temporary API outages never reach here, so this is a real sign-out, and
+   * the user returns to the page they were on after signing in again.
+   */
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      if (typeof window === "undefined") return;
+      if (window.location.pathname.startsWith("/login")) return;
+      const next = `${window.location.pathname}${window.location.search}`;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [router]);
 
   const refresh = useCallback(async () => {
     if (!hasToken()) {
@@ -172,9 +194,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           <div className="font-bold">Telegram не привязан</div>
           <p className="mt-1 leading-relaxed opacity-95">
             Привяжите аккаунт в{" "}
-            <a className="font-semibold underline" href="/settings">
+            <Link className="font-semibold underline" href="/settings">
               Настройках → Telegram
-            </a>
+            </Link>
             , чтобы вход из Telegram выполнялся автоматически.
           </p>
           <button type="button" className="mt-2 text-xs font-semibold underline" onClick={() => setTelegramNotice(false)}>
@@ -184,10 +206,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ) : null}
     </Ctx.Provider>
   );
-}
-
-function isTemporaryAuthFailure(code: string): boolean {
-  return ["NETWORK", "BAD_RESPONSE", "AUTH_UPSTREAM", "AUTH_ERROR", "DB_UNAVAILABLE", "UPSTREAM"].includes(code);
 }
 
 export function useAuth() {
