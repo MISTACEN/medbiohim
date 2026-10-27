@@ -11,6 +11,8 @@ import {
   listTicketBanks,
   type BankQuestion,
 } from "@/lib/api";
+import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
+import { describeApiError } from "@/lib/errors";
 
 const SUBJECTS = [
   ["biology", "Биология"],
@@ -49,7 +51,7 @@ export default function AdminQuestionsPage() {
       setItems(questions.data.items);
       setTotal(questions.data.total);
       setNote(null);
-    } else setNote(questions.error.message);
+    } else setNote(describeApiError(questions.error));
     if (bankRes.ok) setBanks(bankRes.data.items);
   }
 
@@ -70,15 +72,47 @@ export default function AdminQuestionsPage() {
     };
     const res = edit.id ? await adminUpdateQuestion(edit.id, payload) : await adminCreateQuestion(payload);
     setBusy(false);
-    if (!res.ok) { setNote(res.error.message); return; }
+    if (!res.ok) { setNote(describeApiError(res.error)); return; }
     setEdit(null);
     await reload();
   }
 
+  const columns: Array<DataTableColumn<BankQuestion>> = [
+    {
+      key: "text",
+      header: "Билет",
+      sortValue: (item) => String(item.text || ""),
+      render: (item) => <div className="max-w-[46rem] leading-6" title={item.text}>{item.text}</div>,
+    },
+    {
+      key: "subject",
+      header: "Предмет",
+      sortValue: (item) => String(item.subject || ""),
+      render: (item) => <span className="text-xs text-slate-600">{item.subject || "—"}</span>,
+    },
+    {
+      key: "topic",
+      header: "Тема",
+      sortValue: (item) => String(item.topic || ""),
+      render: (item) => <span className="text-xs text-slate-500">{item.topic || "—"}</span>,
+    },
+    {
+      key: "actions",
+      header: "Действия",
+      align: "right",
+      render: (item) => (
+        <div className="flex justify-end gap-2">
+          <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold" onClick={() => setEdit(item)}>Изменить</button>
+          <button type="button" aria-label={`Удалить билет «${item.text.slice(0, 40)}»`} className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs text-rose-600" onClick={() => void remove(item.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+        </div>
+      ),
+    },
+  ];
+
   async function remove(id: string) {
     if (!confirm("Удалить экзаменационный вопрос?")) return;
     const res = await adminDeleteQuestion(id);
-    if (!res.ok) setNote(res.error.message); else await reload();
+    if (!res.ok) setNote(describeApiError(res.error)); else await reload();
   }
 
   return (
@@ -109,7 +143,18 @@ export default function AdminQuestionsPage() {
 
       {note && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{note}</div>}
       {edit && <section className="card space-y-3 p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">{edit.id ? "Редактирование билета" : "Новый экзаменационный билет"}</h2><p className="text-xs text-slate-500">kind=ticket · for_exam=true · for_ticket=true</p></div><span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Supabase</span></div><div className="grid gap-3 md:grid-cols-2"><select className="rounded-xl border px-3 py-2 text-sm" value={edit.subject_slug || subjectSlug} onChange={(e) => { const slug = e.target.value; setEdit({ ...edit, subject_slug: slug, subject: SUBJECTS.find(([s]) => s === slug)?.[1] || "" }); setSubjectSlug(slug); }}>{SUBJECTS.map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}</select><input className="rounded-xl border px-3 py-2 text-sm" placeholder="Тема" value={edit.topic || ""} onChange={(e) => setEdit({ ...edit, topic: e.target.value })} /></div><textarea className="min-h-[120px] w-full rounded-xl border px-3 py-2 text-sm" placeholder="Формулировка вопроса" value={edit.text || ""} onChange={(e) => setEdit({ ...edit, text: e.target.value })} /><textarea className="min-h-[100px] w-full rounded-xl border px-3 py-2 text-sm" placeholder="Эталонный ответ (виден в режиме подготовки)" value={edit.answer || ""} onChange={(e) => setEdit({ ...edit, answer: e.target.value })} /><div className="flex gap-2"><button type="button" disabled={busy} className="btn-primary inline-flex items-center gap-2 text-sm" onClick={save}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Сохранить</button><button type="button" className="rounded-xl bg-slate-100 px-4 py-2 text-sm" onClick={() => setEdit(null)}>Отмена</button></div></section>}
-      {loading ? <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Загрузка банка…</div> : <ul className="space-y-2">{items.map((item) => <li key={item.id} className="card flex flex-wrap items-start justify-between gap-3 p-4"><div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap gap-2 text-[11px] uppercase text-slate-400"><span>{item.subject}</span><span>ticket</span>{item.topic && <span>{item.topic}</span>}</div><div className="font-medium leading-6">{item.text}</div></div><div className="flex shrink-0 gap-2"><button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold" onClick={() => setEdit(item)}>Изменить</button><button type="button" className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs text-rose-600" onClick={() => remove(item.id)} title="Удалить"><Trash2 className="h-3.5 w-3.5" /></button></div></li>)}</ul>}
+      <DataTable
+        rows={items}
+        columns={columns}
+        rowKey={(item) => item.id}
+        loading={loading}
+        empty="Билетов нет"
+        searchText={(item) => `${item.text} ${item.topic || ""} ${item.subject || ""}`}
+        searchPlaceholder="Поиск по билету, теме или предмету…"
+        caption="Экзаменационные билеты"
+        pageSize={25}
+        initialSort={{ key: "subject", dir: "asc" }}
+      />
     </div>
   );
 }
