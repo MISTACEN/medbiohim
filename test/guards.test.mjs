@@ -11,9 +11,9 @@ const source = await readFile(new URL("../src/lib/guards.ts", import.meta.url), 
 const js = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const module = { exports: {} };
-new Function("exports", "require", "module", js)(module.exports, require_, module);
-const { isAnnouncement, isProfile, isSubjectCard, isScheduleRow, isTestItem, filterSafe } = module.exports;
+const moduleShim = { exports: {} };
+new Function("exports", "require", "module", js)(moduleShim.exports, require_, moduleShim);
+const { isAnnouncement, isProfile, isSubjectCard, isScheduleRow, isTestItem, filterSafe } = moduleShim.exports;
 
 test("isAnnouncement accepts a valid announcement and rejects junk", () => {
   assert.equal(isAnnouncement({ id: "a1", title: "Объявление", body: "текст" }), true);

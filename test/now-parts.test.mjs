@@ -10,9 +10,9 @@ const source = await readFile(new URL("../src/lib/now-parts.ts", import.meta.url
 const js = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const module = { exports: {} };
-new Function("exports", "require", "module", js)(module.exports, require_, module);
-const { pickNextLesson, nowParts } = module.exports;
+const moduleShim = { exports: {} };
+new Function("exports", "require", "module", js)(moduleShim.exports, require_, moduleShim);
+const { pickNextLesson, nowParts } = moduleShim.exports;
 
 const NOW = { date: "2026-10-28", timeLabel: "10:30", minutes: 630 };
 
