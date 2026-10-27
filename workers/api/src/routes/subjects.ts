@@ -56,20 +56,38 @@ subjects.get("/:id/gradebook", requireAuth, async (c) => {
 });
 
 subjects.get("/:id", requireAuth, async (c) => {
-  const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
+  const rid = requestId(); const db = c.get("supabase"); const user = c.get("user");
+  const id = String(c.req.param("id") ?? "");
   const query = UUID.test(id)
     ? db.from("subjects").select("*").eq("id", id).limit(2)
     : db.from("subjects").select("*").in("slug", slugVariants(id)).eq("is_active", true).limit(2);
   const { data: rows, error } = await query;
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subject unavailable", 503, rid); return c.json(body, status as 503); }
-  // В БД могут быть и канонический слаг, и его алиас (исторический из методички).
-  // Точное совпадение с запрошенным слагом выигрывает; 409 — только если
-  // дубликаты по-настоящему неоднозначны.
+  // В БД один предмет может занимать несколько активных строк (по курсу и
+  // семестру) под одним и тем же слагом-алиасом. Сначала выигрывает точный
+  // слаг; если его нет — выбираем строку курса/семестра студента; иначе
+  // неоднозначность честно отдаётся как 409.
   let data = rows?.[0];
   if ((rows || []).length > 1) {
     const exact = (rows || []).find((row: any) => String(row.slug || "") === id);
-    if (!exact) { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }
-    data = exact;
+    if (exact) {
+      data = exact;
+    } else {
+      const course = Number(c.req.query("course")) || null;
+      const semester = Number(c.req.query("semester")) || null;
+      let profileCourse = course, profileSemester = semester;
+      if (!profileCourse || !profileSemester) {
+        const { data: profile } = await db.from("users")
+          .select("course_number,semester").eq("id", user.id).maybeSingle();
+        profileCourse = profileCourse || (profile as any)?.course_number || null;
+        profileSemester = profileSemester || (profile as any)?.semester || null;
+      }
+      const candidates = (rows || []).filter((row: any) =>
+        (profileCourse == null || Number(row.course_number) === Number(profileCourse)) &&
+        (profileSemester == null || Number(row.semester) === Number(profileSemester)));
+      if (candidates.length === 1) data = candidates[0];
+      else { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }
+    }
   }
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
   return c.json(ok(data, rid));
