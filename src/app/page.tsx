@@ -376,7 +376,7 @@ export default function DashboardPage() {
               Предметы
             </Link>
             <Link
-              href="/schedule"
+              href="/homework"
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Задания
@@ -534,7 +534,7 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
-            <Link href="/schedule" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
+            <Link href="/homework" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
               Все задания <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
@@ -621,7 +621,7 @@ export default function DashboardPage() {
             <ul className="space-y-3">
               {(data?.homeworks || []).slice(0, 6).map((hw, i) => (
                 <li key={str(hw, "id") || String(i)}>
-                  <Link href="/schedule" className="block rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200">
+                  <Link href="/homework" className="block rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200">
                     <div className="font-medium text-slate-900">{str(hw, "title") || "Задание"}</div>
                     <div className="mt-1 text-xs text-slate-500">
                       {str(hw, "due_at") ? `до ${str(hw, "due_at").slice(0, 10)}` : ""}
