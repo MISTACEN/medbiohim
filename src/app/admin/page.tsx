@@ -31,7 +31,8 @@ export default function AdminPage() {
     const [overview, people] = await Promise.all([adminOverview(), adminListUsers()]);
     if (overview.ok) setCounts(overview.data.counts || {});
     else setError(overview.error.message);
-    if (people.ok) setUsers((people.data.items || []).length);
+    // `items` ограничен 100 строками — для счётчика берём точное значение из БД.
+    if (people.ok) setUsers(Number(people.data.total ?? (people.data.items || []).length));
     setLoading(false);
   }
 

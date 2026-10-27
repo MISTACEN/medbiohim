@@ -35,6 +35,19 @@ export default function TutorPage() {
     setMobileList(false);
   }
 
+  // «Спросить тьютора» из поиска кладёт вопрос в sessionStorage — раньше он не читался.
+  useEffect(() => {
+    if (booting) return;
+    let prefill = "";
+    try {
+      prefill = sessionStorage.getItem("tutor_prefill") || "";
+      if (prefill) sessionStorage.removeItem("tutor_prefill");
+    } catch { /* приватный режим — подсказку просто не показываем */ }
+    if (!prefill.trim()) return;
+    setInput((current) => (current.trim() ? current : prefill));
+    inputRef.current?.focus();
+  }, [booting]);
+
   async function boot(){
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
@@ -117,14 +130,20 @@ export default function TutorPage() {
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] p-3">
               <button type="button" onClick={()=>setMobileList(true)} className="rounded-lg p-2 hover:bg-[var(--background)] md:hidden"><ChevronLeft className="h-4 w-4"/></button>
-              <select value={provider} onChange={e=>setProvider(e.target.value as AiProvider)} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm">
+              {/*
+                * В списке только то, что бэкенд умеет СОХРАНИТЬ: колонка
+                * ai_conversations.provider допускает auto/gemini/gigachat. Groq,
+                * Mistral и OpenRouter раньше стояли в списке и молча сбрасывались на
+                * «Авто» — лучше не предлагать выбор, который не сохранится.
+                */}
+              <select value={provider} onChange={e=>setProvider(e.target.value as AiProvider)} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" aria-label="Модель ответа">
                 <option value="auto">Авто — лучший доступный</option>
-                <option value="groq" disabled={!available.groq}>Groq</option>
-                <option value="gigachat" disabled={!available.gigachat}>GigaChat</option>
-                <option value="gemini" disabled={!available.gemini}>Gemini{psRegionHint ? " — недоступен из RU backend" : ""}</option>
-                <option value="mistral" disabled={!available.mistral}>Mistral</option>
-                <option value="openrouter" disabled={!available.openrouter}>OpenRouter</option>
+                <option value="gigachat" disabled={!available.gigachat}>GigaChat{available.gigachat ? "" : " — не настроен"}</option>
+                <option value="gemini" disabled={!available.gemini}>Gemini{psRegionHint ? " — недоступен из RU backend" : available.gemini ? "" : " — не настроен"}</option>
               </select>
+              {(!available.gigachat && !available.gemini) && (
+                <span className="text-xs text-[var(--muted)]">Доступен только режим «Авто»: остальные модели не настроены на сервере.</span>
+              )}
               <select value={subjectSlug} onChange={e=>setSubjectSlug(e.target.value)} className="min-w-[170px] rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"><option value="">Все предметы</option>{subjects.map(s=><option key={s.slug} value={s.slug}>{s.name}</option>)}</select>
               <span className="ml-auto truncate text-xs text-[var(--muted)]">{conversation?.title}</span>
             </div>

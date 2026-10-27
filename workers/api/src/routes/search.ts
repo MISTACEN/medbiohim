@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
-import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { requireAuth, type AuthVariables } from "../middleware/auth";const search = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-const search = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+type SearchKind = "questions" | "tickets" | "lectures" | "materials";
 
 search.get("/", requireAuth, async (c) => {
   const rid = requestId();
@@ -11,16 +11,35 @@ search.get("/", requireAuth, async (c) => {
   const q = (c.req.query("q") || c.req.query("query") || "").trim().slice(0, 160);
   const limit = Math.min(Math.max(Number(c.req.query("limit") || 20), 1), 50);
   const subjectSlug = c.req.query("subject_slug")?.trim().toLowerCase();
-  const type = c.req.query("type");
-  if (![undefined, "all", "questions", "lectures", "materials"].includes(type)) {
-    const { body, status } = fail("VALIDATION_ERROR", "Неизвестный тип поиска", 422, rid);
-    return c.json(body, status as 422);
+  // Клиент и сервер долго расходились в словаре типов: UI слал question/ticket/trainer/
+  // subject/plan, API принимал только all/questions/lectures/materials и отвечал 422
+  // на любой фильтр. Теперь принимаются оба написания, а неизвестное значение — ошибка.
+  const LEGACY_TYPE_ALIASES: Record<string, SearchKind> = {
+    question: "questions",
+    questions: "questions",
+    tickets: "tickets",
+    ticket: "tickets",
+    exam: "tickets",
+    lectures: "lectures",
+    lecture: "lectures",
+    material: "materials",
+    materials: "materials",
+  };
+  const rawType = (c.req.query("type") || "").trim().toLowerCase();
+  let kind: SearchKind | undefined;
+  if (!rawType || rawType === "all") kind = undefined;
+  else {
+    kind = LEGACY_TYPE_ALIASES[rawType];
+    if (!kind) {
+      const { body, status } = fail("VALIDATION_ERROR", "Неизвестный тип поиска", 422, rid);
+      return c.json(body, status as 422);
+    }
   }
   if (!q || q.length < 2) return c.json(ok({ items: [], query: q, total: 0, facets: { subjects: [], types: {} } }, rid));
 
   try {
     const results: any[] = [];
-    if (!type || type === "all" || type === "questions") {
+    if (!kind || kind === "questions") {
       let subjectId = "";
       let subjectIds: string[] = [];
       if (subjectSlug) {
@@ -43,14 +62,29 @@ search.get("/", requireAuth, async (c) => {
         }
       }
     }
-    if (!type || type === "all" || type === "lectures") {
-      let query = db.from("histology_lectures").select("id,title,description_algorithm_ref,body_markdown,subject_slug").eq("is_published", true).ilike("title", `%${q}%`).limit(limit);
+    // Билеты ищутся по тексту экзаменационного вопроса (kind=ticket живёт в exam_questions).
+    if (!kind || kind === "tickets") {
+      let query = db.from("exam_questions").select("id,text,answer,subject_slug,type").eq("is_published", true).ilike("text", `%${q}%`).limit(limit);
+      if (subjectSlug) query = query.eq("subject_slug", subjectSlug);
+      const { data, error } = await query;
+      if (error) throw error;
+      for (const row of data || []) {
+        const text = String((row as any).text || "");
+        results.push({ type: "ticket", id: (row as any).id, title: text.slice(0, 160), subject: (row as any).subject_slug || "", subject_slug: (row as any).subject_slug || null, topic: "", snippet: text.slice(0, 200), has_answer: Boolean(String((row as any).answer || "").trim()), answer: (row as any).answer || undefined, href: "/tickets", score: 1 });
+      }
+    }
+    if (!kind || kind === "lectures") {
+      // Раньше лекция находилась только по заголовку; ищем и по телу.
+      const bodyPattern = q.replace(/[,()\\%]/g, " ").trim();
+      let query = db.from("histology_lectures").select("id,title,description_algorithm_ref,body_markdown,subject_slug").eq("is_published", true);
+      query = bodyPattern ? query.or(`title.ilike.%${q}%,body_markdown.ilike.%${bodyPattern}%`) : query.ilike("title", `%${q}%`);
+      query = query.limit(limit);
       if (subjectSlug) query = query.eq("subject_slug", subjectSlug);
       const { data, error } = await query;
       if (error) throw error;
       for (const row of data || []) results.push({ type: "lecture", id: row.id, title: row.title, slug: row.id, subject: row.subject_slug || "", subject_slug: row.subject_slug, topic: "", snippet: String(row.description_algorithm_ref || row.body_markdown || "").slice(0, 200), has_answer: false, href: "/lectures", score: 1 });
     }
-    if (!type || type === "all" || type === "materials") {
+    if (!kind || kind === "materials") {
       let query = db.from("materials").select("id,title,subject_id,subjects(name,slug)").eq("is_published", true).ilike("title", `%${q}%`).limit(limit);
       if (subjectSlug) {
         const { data: subjects, error } = await db.from("subjects").select("id").eq("slug", subjectSlug).eq("is_active", true).limit(100);

@@ -38,10 +38,11 @@ export async function updateAccountProfile(patch: {
     body: JSON.stringify(patch),
   });
 }
-export async function changeAccountPassword(password: string) {
-  return api<{ changed: boolean }>("/settings/password", {
+export async function changeAccountPassword(password: string, currentPassword: string) {
+  return api<{ changed: boolean; sessions_revoked?: boolean }>("/settings/password", {
     method: "POST",
-    body: JSON.stringify({ password }),
+    // Сервер проверяет текущий пароль: владение устройством ≠ владение аккаунтом.
+    body: JSON.stringify({ password, current_password: currentPassword }),
   });
 }
 export async function startLinkIdentity(provider: string, redirect_to?: string) {

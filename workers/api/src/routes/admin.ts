@@ -343,7 +343,8 @@ admin.get("/users", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   if (!await gate(c, STRICT_ADMINS)) return;
   try {
-    const { data, error: dbError } = await db.from("users").select("id,email,full_name,course_number,semester,created_at").order("created_at", { ascending: false }).limit(100);
+    // The list is capped at 100 rows for the UI; the dashboard needs the real total.
+    const { data, count: totalUsers, error: dbError } = await db.from("users").select("id,email,full_name,course_number,semester,created_at", { count: "exact" }).order("created_at", { ascending: false }).limit(100);
     if (dbError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей");
     const ids = (data || []).map((u: any) => u.id).filter(Boolean);
     const roleMap: Record<string, string[]> = {};
@@ -365,7 +366,7 @@ admin.get("/users", requireAuth, async (c) => {
         groupMap[(membership as any).user_id] = { group_id: (membership as any).group_id, group_name: group?.name || null, group_code: group?.code || null, course_number: group?.course_number || null };
       }
     }
-    return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [], ...(groupMap[u.id] || {}) })) }, rid));
+    return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [], ...(groupMap[u.id] || {}) })), total: totalUsers ?? (data || []).length }, rid));
   } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей"); }
 });
 admin.post("/users/roles", requireAuth, async (c) => {

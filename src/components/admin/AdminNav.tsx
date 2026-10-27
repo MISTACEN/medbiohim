@@ -6,6 +6,8 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { canSeeAdminItem } from "@/lib/admin/access";
 import {
   Activity,
   BookOpen,
@@ -33,6 +35,8 @@ type NavItem = {
   short?: string;
   icon: typeof LayoutDashboard;
   desc: string;
+  /** Раздел доступен только роли admin — как и в воркере (STRICT_ADMINS). */
+  strictAdmin?: boolean;
 };
 type NavSection = { title: string; items: NavItem[] };
 
@@ -59,7 +63,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
   {
     title: "Студенты и контент",
     items: [
-      { href: "/admin/users", label: "Пользователи и роли", icon: Users, short: "Пользователи", desc: "Роли, группа, курс и семестр для каждого студента." },
+      { href: "/admin/users", label: "Пользователи и роли", icon: Users, short: "Пользователи", strictAdmin: true, desc: "Роли, группа, курс и семестр для каждого студента." },
       { href: "/admin/announcements", label: "Объявления и сайт", icon: Megaphone, short: "Объявления", desc: "Новости и тексты главной страницы." },
       { href: "/admin/tools", label: "ДЗ, файлы, диагностика", icon: Settings2, short: "ДЗ / файлы", desc: "Проверка ДЗ, материалы, сообщество, Storage, health." },
     ],
@@ -67,15 +71,15 @@ export const ADMIN_SECTIONS: NavSection[] = [
   {
     title: "Импорт",
     items: [
-      { href: "/admin/content-import", label: "Импорт тестов", icon: FileUp, short: "Тесты", desc: "Excel → тесты, вопросы и порядок." },
-      { href: "/admin/content-package", label: "Импорт контента", icon: UploadCloud, short: "Контент", desc: "Пакет документов, материалов и препаратов." },
-      { href: "/admin/telegram", label: "Telegram → ДЗ", icon: Bot, short: "Telegram", desc: "Привязка чатов групп и проверка webhook." },
+      { href: "/admin/content-import", label: "Импорт тестов", icon: FileUp, short: "Тесты", strictAdmin: true, desc: "Excel → тесты, вопросы и порядок." },
+      { href: "/admin/content-package", label: "Импорт контента", icon: UploadCloud, short: "Контент", strictAdmin: true, desc: "Пакет документов, материалов и препаратов." },
+      { href: "/admin/telegram", label: "Telegram → ДЗ", icon: Bot, short: "Telegram", strictAdmin: true, desc: "Привязка чатов групп и проверка webhook." },
     ],
   },
   {
     title: "Система",
     items: [
-      { href: "/admin/database", label: "База данных / SQL", icon: Database, short: "База / SQL", desc: "Подключения, схема, строки и SQL-редактор." },
+      { href: "/admin/database", label: "База данных / SQL", icon: Database, short: "База / SQL", strictAdmin: true, desc: "Подключения, схема, строки и SQL-редактор." },
       { href: "/admin/api-logs", label: "Журнал API", icon: Activity, short: "Журнал API", desc: "Endpoint, источник, статус и задержки." },
       { href: "/admin/problems", label: "Проблемы и жалобы", icon: Flag, short: "Жалобы", desc: "Обращения студентов и очередь работ." },
     ],
@@ -88,12 +92,19 @@ export function isAdminRoute(pathname: string, href: string) {
 
 export function AdminNav() {
   const pathname = usePathname();
-  const flat = ADMIN_SECTIONS.flatMap((section) => section.items);
+  const { user } = useAuth();
+  // Прячем то, что сервер всё равно отклонит: студент не должен видеть CMS-разделы.
+  const sections = ADMIN_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => canSeeAdminItem(item, user?.roles)),
+  })).filter((section) => section.items.length > 0);
+  const flat = sections.flatMap((section) => section.items);
+  if (!flat.length) return null;
 
   return (
     <>
       <aside className="card hidden h-fit space-y-1 p-2 lg:sticky lg:top-4 lg:block" aria-label="Разделы админ-панели">
-        {ADMIN_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <div key={section.title} className="pb-1">
             <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">{section.title}</div>
             {section.items.map(({ href, label, icon: Icon, desc }) => {

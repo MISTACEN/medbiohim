@@ -64,7 +64,7 @@ planner.get("/", requireAuth, async (c) => {
     if (hwIds.length) {
       const [progressResult, submissionsResult] = await Promise.all([
         db.from("homework_progress").select("homework_id,completed,submitted_at,status").eq("user_id", user.id).in("homework_id", hwIds).limit(500),
-        db.from("homework_submissions").select("id,homework_id,status,grade,submitted_at").eq("user_id", user.id).in("homework_id", hwIds).order("submitted_at", { ascending: false }).limit(500),
+        db.from("homework_submissions").select("id,homework_id,status,grade,teacher_comment,graded_at,submitted_at").eq("user_id", user.id).in("homework_id", hwIds).order("submitted_at", { ascending: false }).limit(500),
       ]);
       if (progressResult.error) throw progressResult.error;
       if (submissionsResult.error) throw submissionsResult.error;
@@ -84,7 +84,9 @@ planner.get("/", requireAuth, async (c) => {
         color_hex: subject?.color_hex ?? null, my_completed: progress?.completed === true,
         completed_at: progress?.submitted_at ?? null, submission_status: submission?.status ?? null,
         my_status: status, my_status_source: submission ? "submission" : progress?.completed ? "progress" : "none",
-        submission_id: submission?.id ?? null, grade: submission?.grade ?? null };
+        submission_id: submission?.id ?? null, grade: submission?.grade ?? null,
+        // Оценку и комментарий преподавателя студент раньше не видел вообще.
+        teacher_comment: submission?.teacher_comment ?? null, graded_at: submission?.graded_at ?? null };
     });
 
     const { data: schedules, error: schedulesError } = await db.from("schedules")

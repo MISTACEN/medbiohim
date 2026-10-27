@@ -236,11 +236,36 @@ async function changePassword(c: any) {
   const input = payload && typeof payload === "object" && !Array.isArray(payload)
     ? payload as Record<string, unknown> : {};
   const password = typeof input.password === "string" ? input.password : "";
+  // Владение устройством больше не равно владению аккаунтом: смена пароля требует
+  // текущий пароль, иначе украденный access-токен давал полный контроль навсегда.
+  const currentPassword = typeof input.current_password === "string" ? input.current_password : "";
   if (password.length < 8 || password.length > 1024) {
     const { body, status } = fail("VALIDATION_ERROR", "Пароль должен содержать не менее 8 символов", 400, rid);
     return c.json(body, status as 400);
   }
+  if (!currentPassword) {
+    const { body, status } = fail("VALIDATION_ERROR", "Укажите текущий пароль", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const user = c.get("user");
+  const email = String(user?.email || "").trim();
+  if (!email) {
+    const { body, status } = fail("VALIDATION_ERROR", "У аккаунта нет email для подтверждения пароля", 400, rid);
+    return c.json(body, status as 400);
+  }
   try {
+    // 1. Подтверждение владения: текущий пароль проверяет сам Supabase Auth.
+    const verify = await fetch(new URL("/auth/v1/token?grant_type=password", c.env.SUPABASE_URL), {
+      method: "POST",
+      headers: { apikey: c.env.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: currentPassword }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!verify.ok) {
+      const { body, status } = fail("INVALID_CURRENT_PASSWORD", "Текущий пароль указан неверно", 401, rid);
+      return c.json(body, status as 401);
+    }
+    // 2. Смена пароля под access-токеном пользователя.
     const response = await fetch(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
       method: "PUT",
       headers: {
@@ -255,7 +280,27 @@ async function changePassword(c: any) {
       const { body, status } = fail("PASSWORD_CHANGE_FAILED", "Supabase Auth не принял изменение пароля", 422, rid);
       return c.json(body, status as 422);
     }
-    return c.json(ok({ changed: true }, rid));
+    // 3. Чужие refresh-токены больше не должны работать. Отзыв — best effort:
+    // он требует service-ключа и не должен ломать саму смену пароля.
+    let sessionsRevoked = false;
+    if (c.env.SUPABASE_SERVICE_ROLE_KEY && user?.id) {
+      try {
+        const revoke = await fetch(new URL(`/auth/v1/admin/users/${encodeURIComponent(String(user.id))}/logout`, c.env.SUPABASE_URL), {
+          method: "POST",
+          headers: {
+            apikey: c.env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${c.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+        sessionsRevoked = revoke.ok;
+        if (!revoke.ok) console.warn("[settings:password] сессии не отозваны", { status: revoke.status, requestId: rid });
+      } catch (revokeError) {
+        console.warn("[settings:password] отзыв сессий не удался", { error: String(revokeError), requestId: rid });
+      }
+    }
+    return c.json(ok({ changed: true, sessions_revoked: sessionsRevoked }, rid));
   } catch (error) {
     console.error("[settings:password]", { error: String(error), requestId: rid });
     const { body, status } = fail("PASSWORD_CHANGE_FAILED", "Не удалось изменить пароль", 503, rid);

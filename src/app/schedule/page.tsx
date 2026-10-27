@@ -9,6 +9,26 @@ import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasTo
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
+/**
+ * Оценка и отзыв преподавателя по этой работе. Бэкенд их возвращал, но в интерфейсе
+ * студент не видел их нигде — ни в расписании, ни в карточке ДЗ.
+ */
+function HomeworkGrade({ homework }: { homework: any }) {
+  const grade = homework?.grade;
+  const comment = homework?.teacher_comment;
+  const gradedAt = homework?.graded_at ? String(homework.graded_at).slice(0, 10).split("-").reverse().join(".") : "";
+  if ((grade == null || grade === "") && !comment) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs" role="status">
+      <div className="font-semibold" style={{ color: "var(--text)" }}>
+        Оценка преподавателя{grade != null && grade !== "" ? `: ${grade}` : ""}
+        {gradedAt ? <span className="ml-2 opacity-70">· {gradedAt}</span> : null}
+      </div>
+      {comment ? <p className="mt-1 whitespace-pre-wrap opacity-80">{String(comment)}</p> : null}
+    </div>
+  );
+}
+
 const TZ = "Asia/Vladivostok";
 const SEMESTER_FROM = "2026-09-01";
 const SEMESTER_TO = "2027-01-31";
@@ -800,6 +820,7 @@ export default function SchedulePage() {
               </div>}
               {selectedHomeworks.length===0 ? <div className="rounded-xl border border-dashed p-4 text-center text-sm opacity-60">На это занятие ДЗ пока нет.</div> : <div className="space-y-2">
                 {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-emerald-600":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{h.description}</p>}
+                {<HomeworkGrade homework={h}/>}
                 {Array.isArray(h.attachments) && h.attachments.length>0 && <div className="mt-3 grid grid-cols-2 gap-2">
                   {h.attachments.map((att:any,index:number)=>{
                     const image=String(att.mime_type||"").startsWith("image/");

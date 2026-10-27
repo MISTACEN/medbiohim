@@ -3,22 +3,46 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { globalSearch, type SearchHit } from "@/lib/features-api";
-import { Search, Loader2, BookOpen, FileQuestion, GraduationCap, Layers } from "lucide-react";
+import { listSubjectsCatalog } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
+import { Search, Loader2, BookOpen, FileQuestion, GraduationCap, FileText } from "lucide-react";
+
+/**
+ * Значения должны совпадать со словарём Worker'а (`workers/api/src/routes/search.ts`),
+ * иначе фильтр снова начнёт возвращать 422 на любой выбор.
+ */
+const TYPE_OPTIONS = [
+  { value: "", label: "Все типы" },
+  { value: "questions", label: "Вопросы" },
+  { value: "tickets", label: "Билеты" },
+  { value: "lectures", label: "Лекции" },
+  { value: "materials", label: "Материалы" },
+];
 
 const TYPE_LABEL: Record<string, string> = {
   question: "Вопрос",
   ticket: "Билет",
-  trainer: "Тренажёр",
-  plan: "План",
-  subject: "Предмет",
+  lecture: "Лекция",
+  material: "Материал",
 };
 
 const TYPE_ICON: Record<string, typeof BookOpen> = {
   question: FileQuestion,
   ticket: GraduationCap,
-  trainer: Layers,
-  subject: BookOpen,
-  plan: BookOpen,
+  lecture: BookOpen,
+  material: FileText,
+};
+
+/** Старые ссылки с типом «question»/«ticket» продолжают работать. */
+const TYPE_ALIASES: Record<string, string> = {
+  question: "questions",
+  questions: "questions",
+  ticket: "tickets",
+  tickets: "tickets",
+  lecture: "lectures",
+  lectures: "lectures",
+  material: "materials",
+  materials: "materials",
 };
 
 export default function SearchPage() {
@@ -29,6 +53,7 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [typeFilter, setTypeFilter] = useState("");
   const [subjectSlug, setSubjectSlug] = useState("");
+  const [subjects, setSubjects] = useState<Array<{ name: string; slug: string }>>([]);
 
   const run = useCallback(async (query: string, type?: string, subjectFilter?: string) => {
     const qq = query.trim();
@@ -39,7 +64,7 @@ export default function SearchPage() {
     const res = await globalSearch(qq, { limit: 30, type: type || undefined, subject_slug: subjectFilter || undefined });
     setLoading(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       setItems([]);
       return;
     }
@@ -49,7 +74,7 @@ export default function SearchPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const initial = (params.get("q") || "").trim();
-    const type = (params.get("type") || "").trim();
+    const type = TYPE_ALIASES[(params.get("type") || "").trim().toLowerCase()] || "";
     const subject = (params.get("subject_slug") || "").trim();
     if (!initial || searched) return;
     setQ(initial);
@@ -57,6 +82,20 @@ export default function SearchPage() {
     setSubjectSlug(subject);
     void run(initial, type, subject);
   }, [searched, run]);
+
+  // Список предметов — из каталога, а не из зашитых шести названий.
+  useEffect(() => {
+    void listSubjectsCatalog().then((result) => {
+      if (result.ok) {
+        const items = (result.data as { items?: Array<{ name?: string; slug?: string }> })?.items || [];
+        setSubjects(
+          items
+            .map((item) => ({ name: String(item.name || ""), slug: String(item.slug || "") }))
+            .filter((item) => item.name && item.slug)
+        );
+      }
+    });
+  }, []);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +110,7 @@ export default function SearchPage() {
           Поиск
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          По всем предметам: вопросы, билеты, тренажёры, планы и каталог.
+          По всем предметам: вопросы, билеты, лекции и материалы.
         </p>
       </div>
 
@@ -87,12 +126,11 @@ export default function SearchPage() {
           onChange={(e) => setTypeFilter(e.target.value)}
           className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-3 text-sm"
         >
-          <option value="">Все типы</option>
-          <option value="question">Вопросы</option>
-          <option value="ticket">Билеты</option>
-          <option value="trainer">Тренажёры</option>
-          <option value="subject">Предметы</option>
-          <option value="plan">Учебные планы</option>
+          {TYPE_OPTIONS.map((option) => (
+            <option key={option.value || "all"} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         <select
           value={subjectSlug}
@@ -101,12 +139,11 @@ export default function SearchPage() {
           className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-3 text-sm"
         >
           <option value="">Все предметы</option>
-          <option value="histology">Гистология</option>
-          <option value="biochemistry">Биохимия</option>
-          <option value="anatomy">Анатомия</option>
-          <option value="physiology">Физиология</option>
-          <option value="microbiology">Микробиология</option>
-          <option value="chemistry">Химия</option>
+          {subjects.map((subject) => (
+            <option key={subject.slug} value={subject.slug}>
+              {subject.name}
+            </option>
+          ))}
         </select>
         <button
           type="submit"

@@ -7,6 +7,7 @@ import {
   Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
+import { describeApiError } from "@/lib/errors";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   changeAccountPassword,
@@ -35,6 +36,7 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
@@ -90,13 +92,20 @@ export default function SettingsPage() {
 
   async function onChangePassword(e: FormEvent) {
     e.preventDefault();
+    if (!currentPassword) return setErr("Укажите текущий пароль");
     if (password.length < 8) return setErr("Пароль не короче 8 символов");
     if (password !== password2) return setErr("Пароли не совпадают");
-    setBusy("password"); setErr(null);
-    const r = await changeAccountPassword(password);
+    if (password === currentPassword) return setErr("Новый пароль совпадает с текущим");
+    setBusy("password"); setErr(null); setMsg(null);
+    const r = await changeAccountPassword(password, currentPassword);
     setBusy(null);
-    if (!r.ok) return setErr(r.error.message);
-    setPassword(""); setPassword2(""); setMsg("Пароль обновлён");
+    if (!r.ok) return setErr(describeApiError(r.error));
+    setCurrentPassword(""); setPassword(""); setPassword2("");
+    setMsg(
+      r.data.sessions_revoked
+        ? "Пароль обновлён. Остальные устройства вышли из аккаунта — на них нужно войти заново."
+        : "Пароль обновлён. Если вы входили с других устройств, смените пароль ещё раз после выхода на них."
+    );
   }
 
   async function onLink(provider: string) {
@@ -254,8 +263,19 @@ export default function SettingsPage() {
       <section className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><KeyRound className="h-5 w-5" /> Пароль</h2>
         <form onSubmit={onChangePassword} className="space-y-3">
-          <input type="password" placeholder="Новый пароль" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" autoComplete="new-password" />
-          <input type="password" placeholder="Повтор" value={password2} onChange={(e) => setPassword2(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" autoComplete="new-password" />
+          <label className="block text-sm font-semibold">
+            Текущий пароль
+            <input type="password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-normal" autoComplete="current-password" />
+          </label>
+          <label className="block text-sm font-semibold">
+            Новый пароль
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-normal" autoComplete="new-password" />
+            <span className="mt-1 block text-xs font-normal" style={{ color: "var(--muted)" }}>Не короче 8 символов.</span>
+          </label>
+          <label className="block text-sm font-semibold">
+            Повтор нового пароля
+            <input type="password" required value={password2} onChange={(e) => setPassword2(e.target.value)} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-normal" autoComplete="new-password" />
+          </label>
           <button type="submit" disabled={busy === "password"} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-semibold">Сменить пароль</button>
         </form>
       </section>
