@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "predeploy:audit": "node scripts/predeploy-audit.mjs",
-    "test": "node --test test/",
+    "test": "node --test \"test/**/*.test.mjs\"",
     "test:api-failover": "node --test test/api-failover.test.mjs",
     "test:physiology": "node --test test/physiology-content.test.mjs"
   },
