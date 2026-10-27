@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, adminListUsers, adminSetUserRole, hasToken, listGroups } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 type AdminUser = {
   id: string;
@@ -42,6 +43,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  const { confirm, dialog } = useConfirm();
 
   function msg(err = "", good = "") { setError(err); setOk(good); }
 
@@ -96,7 +98,15 @@ export default function AdminUsersPage() {
 
   async function toggleRole(user: AdminUser, role: string) {
     const action = (user.roles || []).includes(role) ? "revoke" : "assign";
-    if (action === "revoke" && !window.confirm(`Снять роль «${ROLE_LABEL[role] || role}» с ${user.email || user.full_name}?`)) return;
+    if (action === "revoke") {
+      const agreed = await confirm({
+        title: `Снять роль «${ROLE_LABEL[role] || role}»?`,
+        description: `${user.full_name || user.email} сразу потеряет доступ к соответствующим разделам.`,
+        confirmLabel: "Снять роль",
+        danger: true,
+      });
+      if (!agreed) return;
+    }
     setSaving((x) => ({ ...x, [`${user.id}:${role}`]: true }));
     const r = await adminSetUserRole(user.id, role, action);
     setSaving((x) => ({ ...x, [`${user.id}:${role}`]: false }));
@@ -216,6 +226,8 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {dialog}
 
       {total > 0 && (
         <div className="flex items-center justify-between gap-3 text-sm">

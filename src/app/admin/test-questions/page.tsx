@@ -6,6 +6,7 @@ import { Archive, CheckCircle2, Pencil } from "lucide-react";
 import { adminContentArchive, adminDbList, adminDbUpdate, type AdminDbRow, hasToken } from "@/lib/api";
 import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { describeApiError } from "@/lib/errors";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 /** Вопросы тестов: каскадные фильтры + общая таблица с поиском и пагинацией. */
 export default function TestQuestionsPage() {
@@ -21,6 +22,7 @@ export default function TestQuestionsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
+  const { confirm, dialog } = useConfirm();
 
   async function load() {
     setLoading(true);
@@ -70,7 +72,13 @@ export default function TestQuestionsPage() {
   }
 
   async function archive(row: AdminDbRow) {
-    if (!window.confirm("Архивировать вопрос?")) return;
+    const agreed = await confirm({
+      title: "Архивировать вопрос?",
+      description: "Вопрос перестанет появляться в тестах, но останется в базе и в журнале версий.",
+      confirmLabel: "Архивировать",
+      danger: true,
+    });
+    if (!agreed) return;
     setBusy("archive-" + String(row.id));
     const result = await adminContentArchive("questions", String(row.id));
     setBusy("");
@@ -190,6 +198,8 @@ export default function TestQuestionsPage() {
           }
         />
       </section>
+
+      {dialog}
 
       {edit && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">

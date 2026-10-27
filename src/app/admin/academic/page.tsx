@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { createGroup, createSubject, deleteGroup, deleteSubject, hasToken, listGroups, listSubjects, updateGroup, updateSubject } from "@/lib/api";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 type Subject = { id: string; name?: string; course_number?: number; semester?: number };
 type Group = { id: string; name?: string; code?: string; course_number?: number };
 
 /** Предметы и учебные группы — вынесено из старого /admin. */
 export default function AdminAcademicPage() {
+  const { confirm, dialog } = useConfirm();
   const [groups, setGroups] = useState<Group[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState("");
@@ -115,7 +117,13 @@ export default function AdminAcademicPage() {
                       setEditingSubject({ name: String(s.name || ""), course: String(s.course_number || 1), semester: String(s.semester || 1) });
                     }}><Pencil className="h-4 w-4" /></button>
                     <button type="button" className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50" title="Удалить" onClick={async () => {
-                      if (!window.confirm(`Удалить предмет «${s.name}»?`)) return;
+                      const agreed = await confirm({
+                        title: "Удалить предмет?",
+                        description: `«${String(s.name || "")}» — связанные модули, темы и материалы станут недоступны.`,
+                        confirmLabel: "Удалить",
+                        danger: true,
+                      });
+                      if (!agreed) return;
                       const r = await deleteSubject(String(s.id));
                       if (!r.ok) return msg(r.error.message);
                       msg("", "Предмет удалён");
@@ -188,7 +196,13 @@ export default function AdminAcademicPage() {
                       setEditingGroup({ name: String(g.name || ""), code: String(g.code || ""), course: String(g.course_number || 1) });
                     }}><Pencil className="h-4 w-4" /></button>
                     <button type="button" className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50" title="Удалить" onClick={async () => {
-                      if (!window.confirm(`Удалить группу «${g.name}»?`)) return;
+                      const agreed = await confirm({
+                        title: "Удалить группу?",
+                        description: `«${String(g.name || "")}» — студенты потеряют привязку к группе.`,
+                        confirmLabel: "Удалить",
+                        danger: true,
+                      });
+                      if (!agreed) return;
                       const r = await deleteGroup(String(g.id));
                       if (!r.ok) return msg(r.error.message);
                       msg("", "Группа удалена");
@@ -202,6 +216,7 @@ export default function AdminAcademicPage() {
           </div>
         </section>
       </div>
+      {dialog}
     </div>
   );
 }

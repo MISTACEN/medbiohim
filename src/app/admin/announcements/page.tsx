@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminCreateAnnouncement, adminDeleteAnnouncement, adminListAnnouncements, adminOverview, adminUpdateAnnouncement, adminUpdateSite, hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const SITE_FIELDS: Array<{ key: "title" | "subtitle" | "description" | "announcement_banner"; label: string }> = [
   { key: "title", label: "Заголовок сайта" },
@@ -26,6 +27,7 @@ export default function AdminAnnouncementsPage() {
   const [busy, setBusy] = useState("");
   // Правка на месте: { id, title, body } — единственное редактируемое объявление.
   const [draft, setDraft] = useState<{ id: string; title: string; body: string } | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   function msg(err = "", good = "") { setError(err); setOk(good); }
 
@@ -172,7 +174,13 @@ export default function AdminAnnouncementsPage() {
                         type="button"
                         className="text-rose-600"
                         onClick={async () => {
-                          if (!window.confirm(`Удалить объявление «${a.title}»?`)) return;
+                          const agreed = await confirm({
+                            title: "Удалить объявление?",
+                            description: `«${a.title}» — восстановить его будет нельзя.`,
+                            confirmLabel: "Удалить",
+                            danger: true,
+                          });
+                          if (!agreed) return;
                           const r = await adminDeleteAnnouncement(a.id);
                           if (!r.ok) return msg(describeApiError(r.error));
                           msg("", "Объявление удалено");
@@ -208,6 +216,7 @@ export default function AdminAnnouncementsPage() {
         ))}
         <button className="btn-primary">Сохранить</button>
       </form>
+      {dialog}
     </div>
   );
 }

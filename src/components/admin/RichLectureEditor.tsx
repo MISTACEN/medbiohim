@@ -340,6 +340,9 @@ export function RichLectureEditor({
   const [page, setPage] = useState("1");
   const [link, setLink] = useState("");
   const [busyUpload, setBusyUpload] = useState(false);
+  // alert() блокировал редактор и терялся при перерисовке — ошибка загрузки
+  // должна быть видна рядом с кнопкой и исчезать после успешной попытки.
+  const [uploadError, setUploadError] = useState("");
 
   const [trainerLoading, setTrainerLoading] = useState(false);
   const [trainerQuery, setTrainerQuery] = useState("");
@@ -562,6 +565,7 @@ export function RichLectureEditor({
 
   async function uploadAndInsert(file: File) {
     setBusyUpload(true);
+    setUploadError("");
     try {
       const result: any = await uploadFile(file, undefined, "mbh");
       if (!result.ok) throw new Error(result.error?.message || "Не удалось загрузить файл");
@@ -590,7 +594,7 @@ export function RichLectureEditor({
         insertAtCursor('<p><a href="' + url + '">' + esc(file.name) + "</a></p>");
       }
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Ошибка загрузки");
+      setUploadError(error instanceof Error ? error.message : "Не удалось загрузить файл");
     } finally {
       setBusyUpload(false);
     }
@@ -782,6 +786,7 @@ export function RichLectureEditor({
           )}
         </div>
         {busyUpload&&<div className="lecture-uploading"><Loader2 className="h-4 w-4 animate-spin"/> Загружаю файл…</div>}
+        {uploadError&&<div role="alert" className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"><span className="min-w-0 flex-1">{uploadError}</span><button type="button" onClick={()=>setUploadError("")} aria-label="Закрыть сообщение об ошибке" className="font-semibold">×</button></div>}
       </div>
 
       {block&&<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-3" role="dialog" aria-modal="true">

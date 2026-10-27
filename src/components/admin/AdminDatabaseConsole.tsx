@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
   CheckCircle2,
   Database,
@@ -118,6 +119,7 @@ function connectionStatus(connection: AdminDatabaseConnection) {
 }
 
 export default function AdminDatabaseConsole() {
+  const { confirm, dialog } = useConfirm();
   const [connections, setConnections] = useState<AdminDatabaseConnection[]>([]);
   const [selectedId, setSelectedId] = useState("supabase_primary");
   const [mode, setMode] = useState<Mode>("data");
@@ -298,7 +300,13 @@ export default function AdminDatabaseConsole() {
       setMessage("У таблицы нет первичного ключа. Для удаления используйте SQL.");
       return;
     }
-    if (!window.confirm("Удалить строку с ключом «" + keyLabel(row, columns) + "»?")) return;
+    const agreed = await confirm({
+      title: "Удалить строку?",
+      description: `Ключ «${keyLabel(row, columns)}» — строка исчезнет из прод-базы без возможности отмены.`,
+      confirmLabel: "Удалить строку",
+      danger: true,
+    });
+    if (!agreed) return;
     setBusy(true);
     const result = await adminDatabaseDelete(selectedId, table, keyOf(row, columns));
     setBusy(false);
@@ -687,6 +695,7 @@ export default function AdminDatabaseConsole() {
           </div>
         </div>
       ) : null}
+      {dialog}
     </section>
   );
 }

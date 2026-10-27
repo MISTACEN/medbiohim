@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { describeApiError } from "@/lib/errors";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const SUBJECTS = [
   ["biology", "Биология"],
@@ -36,6 +37,7 @@ export default function AdminQuestionsPage() {
   const [subjectSlug, setSubjectSlug] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   const selectedSubject = useMemo(() => SUBJECTS.find(([slug]) => slug === subjectSlug)?.[1] || "", [subjectSlug]);
   const slugForBank = (subject: string) => SUBJECTS.find(([, name]) => name === subject)?.[0] || "";
@@ -110,7 +112,13 @@ export default function AdminQuestionsPage() {
   ];
 
   async function remove(id: string) {
-    if (!confirm("Удалить экзаменационный вопрос?")) return;
+    const agreed = await confirm({
+      title: "Удалить экзаменационный билет?",
+      description: "Билет исчезнет из подготовки и банка. Восстановить его можно только из журнала версий.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!agreed) return;
     const res = await adminDeleteQuestion(id);
     if (!res.ok) setNote(describeApiError(res.error)); else await reload();
   }
@@ -155,6 +163,7 @@ export default function AdminQuestionsPage() {
         pageSize={25}
         initialSort={{ key: "subject", dir: "asc" }}
       />
+      {dialog}
     </div>
   );
 }

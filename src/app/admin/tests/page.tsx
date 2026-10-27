@@ -23,6 +23,7 @@ import {
   AdminDbRow,
   hasToken,
 } from "@/lib/api";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 type BuildQuestion = AdminDbRow & {
   id: string | number;
@@ -52,6 +53,7 @@ function shuffle<T>(items: T[]) {
 }
 
 export default function AdminTestsPage() {
+  const { confirm, dialog } = useConfirm();
   const [tests, setTests] = useState<AdminDbRow[]>([]);
   const [subjects, setSubjects] = useState<AdminDbRow[]>([]);
   const [modules, setModules] = useState<AdminDbRow[]>([]);
@@ -293,12 +295,13 @@ export default function AdminTestsPage() {
   }
 
   async function remove(t: AdminDbRow) {
-    if (
-      !confirm(
-        "Архивировать тест? Он исчезнет из опубликованного списка, но останется в БД и аудите.",
-      )
-    )
-      return;
+    const agreed = await confirm({
+      title: "Архивировать тест?",
+      description: "Он исчезнет из опубликованного списка, но останется в базе и в журнале версий.",
+      confirmLabel: "Архивировать",
+      danger: true,
+    });
+    if (!agreed) return;
     const r = await adminContentArchive("tests", String(t.id));
     if (r.ok) {
       setMessage("Тест архивирован");
@@ -545,6 +548,7 @@ export default function AdminTestsPage() {
           </div>
         </div>
       )}
+      {dialog}
     </main>
   );
 }

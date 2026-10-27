@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { adminDbAudit, adminDbAuditVersion, adminRollbackAudit, hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 type AuditRow = {
   id: string;
@@ -85,6 +86,7 @@ export default function AdminAuditPage() {
   const [ok, setOk] = useState("");
   const [details, setDetails] = useState<Record<string, AuditDetail | null>>({});
   const [busy, setBusy] = useState("");
+  const { confirm, dialog } = useConfirm();
 
   function msg(err = "", good = "") { setError(err); setOk(good); }
 
@@ -116,7 +118,12 @@ export default function AdminAuditPage() {
 
   async function rollback(row: AuditRow) {
     const label = TABLE_LABEL[row.table_name] || row.table_name;
-    if (!window.confirm(`Откатить ${label.toLowerCase()} к версии №${row.version_no}? Текущее состояние тоже сохранится в журнал.`)) return;
+    const agreed = await confirm({
+      title: `Откатить к версии №${row.version_no}?`,
+      description: `${label} вернётся к значениям этой версии. Текущее состояние тоже попадёт в журнал, так что откат обратим.`,
+      confirmLabel: "Откатить",
+    });
+    if (!agreed) return;
     setBusy("rollback-" + row.id);
     const r = await adminRollbackAudit(row.id);
     setBusy("");
@@ -250,6 +257,8 @@ export default function AdminAuditPage() {
           </table>
         </div>
       )}
+
+      {dialog}
 
       {total > PAGE_SIZE && (
         <div className="flex items-center justify-between gap-3 text-sm">

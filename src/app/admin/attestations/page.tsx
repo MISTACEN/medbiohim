@@ -31,6 +31,7 @@ import type {
   AttestationType,
 } from "@/types/attestations";
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const TYPES = Object.keys(ATTESTATION_TYPE_LABELS) as AttestationType[];
 const KINDS: { value: AttestationItemKind; label: string }[] = [
@@ -69,6 +70,7 @@ function newItem(kind: AttestationItemKind): AttestationItem {
 }
 
 export default function AdminAttestationsPage() {
+  const { confirm, dialog } = useConfirm();
   const [items, setItems] = useState<AttestationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -141,9 +143,15 @@ export default function AdminAttestationsPage() {
     ]);
   }
 
-  function removeStage(index: number) {
+  async function removeStage(index: number) {
     if (!draft) return;
-    if (!window.confirm("Удалить этап вместе со всеми материалами?")) return;
+    const agreed = await confirm({
+      title: "Удалить этап?",
+      description: "Вместе с этапом пропадут все его материалы, а нумерация остальных сдвинется.",
+      confirmLabel: "Удалить этап",
+      danger: true,
+    });
+    if (!agreed) return;
     patchStages(draft.stages.filter((_, i) => i !== index));
   }
 
@@ -243,7 +251,13 @@ export default function AdminAttestationsPage() {
   }
 
   async function remove(item: AttestationSummary) {
-    if (!window.confirm(`Удалить «${item.title}»? Действие необратимо.`)) return;
+    const agreed = await confirm({
+      title: "Удалить аттестацию?",
+      description: `«${item.title}» — действие необратимо, материалы и этапы будут потеряны.`,
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!agreed) return;
     const result = await adminDeleteAttestation(item.subject_slug, item.slug);
     if (!result.ok) {
       setNotice({ tone: "error", text: result.error.message });
@@ -494,7 +508,7 @@ export default function AdminAttestationsPage() {
                   <button type="button" onClick={() => moveStage(stageIndex, 1)} disabled={stageIndex === draft.stages.length - 1} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-500 disabled:opacity-30" aria-label="Ниже">
                     <ArrowDown className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={() => removeStage(stageIndex)} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-rose-200 hover:text-rose-600" aria-label="Удалить этап">
+                  <button type="button" onClick={() => void removeStage(stageIndex)} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-rose-200 hover:text-rose-600" aria-label="Удалить этап">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -655,6 +669,7 @@ export default function AdminAttestationsPage() {
           </button>
         </div>
       )}
+      {dialog}
     </div>
   );
 }
