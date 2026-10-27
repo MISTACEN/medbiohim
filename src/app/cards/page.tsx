@@ -36,6 +36,19 @@ function CardsPageInner() {
   }, [search]);
   const scopeFromUrl = search.get("scope") === "personal" ? "personal" : "shared";
 
+// Стрик SRS живёт в localStorage: раньше он был только в useState и умирал
+// вместе с перезагрузкой страницы (FD5).
+function readStreak(): { streak: number; doneToday: number; day: string } {
+  try {
+    const raw = JSON.parse(localStorage.getItem("mbh:srs_streak") || "{}");
+    const today = new Date().toISOString().slice(0, 10);
+    if (raw?.day === today) return { streak: Number(raw.streak) || 0, doneToday: Number(raw.doneToday) || 0, day: today };
+    return { streak: 0, doneToday: 0, day: today };
+  } catch {
+    return { streak: 0, doneToday: 0, day: new Date().toISOString().slice(0, 10) };
+  }
+}
+
   const [summary, setSummary] = useState<SrsSummary | null>(null);
   const [queue, setQueue] = useState<SrsCard[]>([]);
   const [idx, setIdx] = useState(0);
@@ -43,7 +56,19 @@ function CardsPageInner() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [doneToday, setDoneToday] = useState(0);
+  const [doneToday, setDoneToday] = useState(() => readStreak().doneToday);
+  const [streak, setStreak] = useState(() => readStreak().streak);
+
+  // Персистентность стрика: обновили счётчики — сохранили за сегодня (FD5).
+  useEffect(() => {
+    try {
+      localStorage.setItem("mbh:srs_streak", JSON.stringify({
+        day: new Date().toISOString().slice(0, 10),
+        streak,
+        doneToday,
+      }));
+    } catch {}
+  }, [streak, doneToday]);
   const [subjectSlug, setSubjectSlug] = useState("");
   const [scope, setScope] = useState<"shared" | "personal">(scopeFromUrl);
   const [front, setFront] = useState("");
@@ -100,6 +125,7 @@ function CardsPageInner() {
     }
     setSummary(res.data.summary);
     setDoneToday((n) => n + 1);
+    setStreak((s) => s + 1);
     setFlipped(false);
     if (idx + 1 < queue.length) setIdx(idx + 1);
     else await refresh(subjectSlug || undefined, scope);
@@ -153,9 +179,14 @@ function CardsPageInner() {
             <span className="rounded-full border border-[var(--border)] px-3 py-1">
               В колоде: {summary.total}
             </span>
-            {doneToday > 0 && (
+            {streak > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 font-medium text-orange-800">
-                <Flame className="h-3.5 w-3.5" /> сегодня {doneToday}
+                <Flame className="h-3.5 w-3.5" /> стрик: {streak} {streak === 1 ? "день" : streak < 5 ? "дня" : "дней"}
+              </span>
+            )}
+            {doneToday > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1">
+                сегодня {doneToday}
               </span>
             )}
           </div>

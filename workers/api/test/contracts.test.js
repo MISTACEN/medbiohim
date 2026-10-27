@@ -150,3 +150,21 @@ test("curriculum map no longer masks database errors with an empty list", async 
   assert.match(mapRoute, /DB_UNAVAILABLE/);
   assert.doesNotMatch(mapRoute, /ok\(\{\s*items:\s*\[\]\s*\}/);
 });
+
+test("every admin-schedule handler is staff-gated (D3)", async () => {
+  const route = await source("../src/routes/admin-schedule.ts");
+  const handlers = [
+    'adminSchedule.get("/schedule/versions/:scheduleId"',
+    'adminSchedule.post("/schedule/save"',
+    'adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion"',
+    'adminSchedule.patch("/schedule/entries/:id"',
+    'adminSchedule.delete("/schedule/entries/:id"',
+    'adminSchedule.get("/schedule/analytics/:scheduleId"',
+  ];
+  for (const handler of handlers) {
+    const start = route.indexOf(handler);
+    assert.ok(start >= 0, "missing handler: " + handler);
+    const body = route.slice(start, start + 900);
+    assert.match(body, /isAdmin\(c\)/, "handler is not staff-gated: " + handler);
+  }
+});

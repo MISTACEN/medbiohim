@@ -114,7 +114,7 @@ admin.get("/overview", requireAuth, async (c) => {
     // Дополнительные счётчики — best effort: из-за них сводка не должна падать.
     const partial = Boolean(scheduleEntries.error || announcements.error || site.error);
     return c.json(ok({ site: site.data?.payload || {}, counts, source: "supabase", partial }, rid));
-  } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен"); }
 });
 
 admin.get("/content/validate", requireAuth, async (c) => {
@@ -141,7 +141,7 @@ admin.get("/content/validate", requireAuth, async (c) => {
     for (const test of tests.data || []) if ((test as any).is_published && !(test as any).archived_at && !(counts[String((test as any).id)] > 0)) issues.push({ type: "published_test_without_questions", id: (test as any).id, title: (test as any).title || "" });
     for (const question of exam.data || []) if (!String((question as any).answer || "").trim() && ["mc","mcq","case"].includes(String((question as any).type || ""))) issues.push({ type: "published_exam_question_without_answer", id: (question as any).id, subject_slug: (question as any).subject_slug || null });
     return c.json(ok({ ok: issues.length === 0, issues: issues.slice(0, 500), count: issues.length, checked: { tests: tests.data?.length || 0, questions: questions.data?.length || 0, test_questions: links.data?.length || 0, exam_questions: exam.data?.length || 0 } }, rid));
-  } catch { return error(c, rid, 503, "VALIDATION_FAILED", "Не удалось проверить данные"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "VALIDATION_FAILED", "Не удалось проверить данные"); }
 });
 
 // Questions: preserve the legacy exam_questions contract used by the admin editor.
@@ -163,7 +163,7 @@ admin.get("/questions", requireAuth, async (c) => {
     const { data, error: dbError, count } = await query;
     if (dbError) return error(c, rid, 503, "DB_UNAVAILABLE", "Банк вопросов временно недоступен");
     return c.json(ok({ items: data || [], total: count ?? (data || []).length, source: "supabase" }, rid));
-  } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Банк вопросов временно недоступен"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_UNAVAILABLE", "Банк вопросов временно недоступен"); }
 });
 admin.post("/questions", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), input = await bodyJson(c);
@@ -174,7 +174,7 @@ admin.post("/questions", requireAuth, async (c) => {
     const { data, error: dbError } = await db.from("exam_questions").insert(row).select("*").single();
     if (dbError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
     return c.json(ok({ question: data }, rid), 201);
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос"); }
 });
 admin.put("/questions/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
@@ -188,7 +188,7 @@ admin.put("/questions/:id", requireAuth, async (c) => {
     if (dbError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
     if (!data) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
     return c.json(ok({ question: data }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос"); }
 });
 admin.delete("/questions/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
@@ -198,7 +198,7 @@ admin.delete("/questions/:id", requireAuth, async (c) => {
     if (dbError) return error(c, rid, 503, "DB_ERROR", "Не удалось удалить вопрос");
     if (!data) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
     return c.json(ok({ deleted: true }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось удалить вопрос"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось удалить вопрос"); }
 });
 
 admin.put("/question-bank/:id", requireAuth, async (c) => {
@@ -230,15 +230,23 @@ admin.put("/question-bank/:id", requireAuth, async (c) => {
     const { data, error: writeError } = await db.from("questions").update({ type, text, answer, options: options || [], updated_at: new Date().toISOString() }).eq("id", id).select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
     if (writeError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
     return c.json(ok({ question: data }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось выполнить операцию с вопросом"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось выполнить операцию с вопросом"); }
 });
 
 // Lectures are stored in site_content.payload.items; keep the legacy JSON document contract.
 async function readLectures(db: any) {
-  const { data, error: dbError } = await db.from("site_content").select("key,payload").eq("key", "lectures").maybeSingle();
-  if (dbError) throw dbError;
-  const payload = data?.payload;
-  return { exists: !!data, items: Array.isArray(payload?.items) ? payload.items : [] };
+  // maybeSingle() на дубликате ключа даёт PGRST116 → 503 (гипотеза D35).
+  // Миграция 20261008_histology_lecture_05_blood.sql вставляет 'lectures'
+  // беззащитным insert — берём последнюю обновлённую строку детерминированно.
+  const { data: rows, error: dbError } = await db
+    .from("site_content")
+    .select("key,payload")
+    .eq("key", "lectures")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (dbError) { console.error("[admin:lectures]", dbError.message); throw dbError; }
+  const payload = rows?.[0]?.payload;
+  return { exists: !!rows?.length, items: Array.isArray(payload?.items) ? payload.items : [] };
 }
 async function writeLectures(db: any, old: any, items: any[]) {
   const payload = { items };
@@ -261,7 +269,7 @@ admin.get("/lectures", requireAuth, async (c) => {
     if (subject) items = items.filter((x: any) => x.subject_slug === subject);
     items = items.sort((a: any, b: any) => String(b.updated_at || "").localeCompare(String(a.updated_at || ""))).slice(0, 500);
     return c.json(ok({ items, count: items.length }, rid));
-  } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить лекции"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить лекции"); }
 });
 admin.post("/lectures/generate", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user"), input = await bodyJson(c);
@@ -326,7 +334,7 @@ admin.patch("/lectures/:id", requireAuth, async (c) => {
     store.items[index] = updated;
     await writeLectures(db, store, store.items);
     return c.json(ok({ lecture: updated }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить лекцию"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить лекцию"); }
 });
 admin.post("/lectures/:id/publish", requireAuth, async (c) => setLectureStatus(c, "published", ["admin", "moderator"]));
 admin.post("/lectures/:id/reject", requireAuth, async (c) => setLectureStatus(c, "rejected", ["admin", "moderator"]));
@@ -340,7 +348,7 @@ async function setLectureStatus(c: any, status: string, roles: string[]) {
     store.items[index] = { ...store.items[index], status, reviewed_by: user.id, published_at: status === "published" ? now : null, updated_at: now };
     await writeLectures(db, store, store.items);
     return c.json(ok({ lecture: store.items[index] }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось изменить статус лекции"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось изменить статус лекции"); }
 }
 admin.delete("/lectures/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
@@ -350,7 +358,7 @@ admin.delete("/lectures/:id", requireAuth, async (c) => {
     if (items.length === store.items.length) return error(c, rid, 404, "NOT_FOUND", "Лекция не найдена");
     await writeLectures(db, store, items);
     return c.json(ok({ deleted: true }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось удалить лекцию"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось удалить лекцию"); }
 });
 
 // User and role administration is restricted to administrators only.
@@ -420,7 +428,7 @@ admin.get("/users", requireAuth, async (c) => {
       }
     }
     return c.json(ok({ items: (data || []).map((u: any) => ({ ...u, roles: roleMap[u.id] || [], ...(groupMap[u.id] || {}) })), total: totalUsers ?? (data || []).length, limit, offset }, rid));
-  } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей"); }
 });
 admin.post("/users/roles", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user"), input = await bodyJson(c);
@@ -453,7 +461,7 @@ admin.post("/users/roles", requireAuth, async (c) => {
     const { data: rows } = await db.from("user_roles").select("roles(code)").eq("user_id", userId).limit(20);
     const roles = (rows || []).map((row: any) => { const r = Array.isArray(row.roles) ? row.roles[0] : row.roles; return String(r?.code || ""); }).filter(Boolean);
     return c.json(ok({ roles, session_refresh_required: userId === user.id }, rid));
-  } catch { return error(c, rid, 503, "ROLE_WRITE_FAILED", "Не удалось изменить роли пользователя"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "ROLE_WRITE_FAILED", "Не удалось изменить роли пользователя"); }
 });
 
 // Assign group / course / semester to a user (admin CMS).
@@ -559,7 +567,7 @@ admin.get("/telegram/chats", requireAuth, async (c) => {
     const { data, error: dbError } = await db.from("telegram_bot_chats").select("*,groups(name,code)").order("created_at", { ascending: false }).limit(500);
     if (dbError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить Telegram-чаты");
     return c.json(ok({ items: data || [] }, rid));
-  } catch { return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить Telegram-чаты"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить Telegram-чаты"); }
 });
 admin.post("/telegram/chats/:chatId/bind", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), chatId = (c.req.param("chatId") ?? ""), input = await bodyJson(c);
@@ -573,7 +581,7 @@ admin.post("/telegram/chats/:chatId/bind", requireAuth, async (c) => {
     if (dbError) return error(c, rid, 503, "DB_ERROR", "Не удалось привязать Telegram-чат");
     if (!data) return error(c, rid, 404, "NOT_FOUND", "Чат ещё не зарегистрирован ботом");
     return c.json(ok({ chat: data }, rid));
-  } catch { return error(c, rid, 503, "DB_ERROR", "Не удалось привязать Telegram-чат"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось привязать Telegram-чат"); }
 });
 admin.post("/telegram/set-webhook", requireAuth, async (c) => {
   const rid = requestId();
@@ -591,7 +599,7 @@ admin.post("/telegram/set-webhook", requireAuth, async (c) => {
       body: JSON.stringify({ url: explicitWebhookUrl || (() => { try { const parsed = new URL(origin); if (parsed.pathname !== "/" && parsed.pathname !== "") return parsed.toString(); return origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"; } catch { return origin; } })(), allowed_updates: ["message","edited_message"], ...(secret ? { secret_token: secret } : {}) }),
       signal: AbortSignal.timeout(12000),
     });
-  } catch { return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Не удалось связаться с Telegram"); }
+  } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Не удалось связаться с Telegram"); }
   const result: any = await response.json().catch(() => ({}));
   if (!response.ok || result.ok !== true) return error(c, rid, 502, "TELEGRAM_WEBHOOK_FAILED", "Telegram отклонил настройку webhook");
   return c.json(ok({ configured: true, url: explicitWebhookUrl || (() => { try { const parsed = new URL(origin); if (parsed.pathname !== "/" && parsed.pathname !== "") return parsed.toString(); return origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"; } catch { return origin; } })() }, rid));

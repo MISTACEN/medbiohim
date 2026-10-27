@@ -895,7 +895,12 @@ export default function SchedulePage() {
               {selected.source_detail && <div className="sm:col-span-2"><b>Источник/уточнение:</b> {selected.source_detail}</div>}
               {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Отработка — это не обычное занятие</div>}
             <div className="sm:col-span-2">
-              <div className="mb-1 font-semibold">Посещение</div>
+              <div className="mb-1 font-semibold">
+                Посещение
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[10px] font-semibold text-amber-800" title="Отметку ставит сам студент; преподаватель её не подтверждает">
+                  самоотчёт
+                </span>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {([["present", "Был"], ["excused", "Уважительная"], ["sick", "Болезнь"], ["unexcused", "Пропуск"]] as const).map(([status, label]) => (
                   <button key={status} type="button" disabled={attendanceBusy} aria-pressed={selected.attendance_status === status} onClick={() => void setAttendance(selected, status)} className="rounded-lg border px-2 py-1 disabled:opacity-50" style={selected.attendance_status === status ? { borderColor: "var(--primary)", color: "var(--primary)" } : undefined}>{label}</button>

@@ -52,11 +52,19 @@ lessonPlan.get("/", requireAuth, async (c) => {
       return c.json(ok({ lesson: null, weeks: [], plan_meta: null }, rid));
     }
 
-    const { data: subject, error: subjectError } = await db
+    // В БД один предмет может занимать несколько активных строк под одним слагом
+    // (1к/2с, 2к/4с, 2к/3с). maybeSingle() на нескольких строках даёт PGRST116
+    // и маскированный 503 (живой инцидент 27.10) — выбираем детерминированно,
+    // как plans.ts: младший курс/семестр.
+    const { data: subjectRows, error: subjectError } = await db
       .from("subjects")
       .select("id,slug,name,course_number,semester,control_type")
       .eq("slug", slug)
-      .maybeSingle();
+      .eq("is_active", true)
+      .order("course_number", { ascending: true })
+      .order("semester", { ascending: true })
+      .limit(1);
+    const subject = subjectRows?.[0] || null;
 
     if (subjectError) throw subjectError;
     if (!subject) {

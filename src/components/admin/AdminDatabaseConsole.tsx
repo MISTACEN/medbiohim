@@ -57,29 +57,9 @@ type RowData = Record<string, unknown>;
 
 type Mode = "data" | "schema" | "sql" | "settings";
 
-const DEFAULT_CONNECTIONS: Record<string, Partial<AdminDatabaseConnection>> = {
-  spaceweb_pgsql: {
-    label: "SpaceWeb · PostgreSQL 5433",
-    slug: "spaceweb_pgsql",
-    driver: "pgsql",
-    host: "pg4.sweb.ru",
-    port: 5433,
-    database_name: "ryazansev3",
-    username: "ryazansev3",
-    sslmode: "require",
-    charset: "UTF8",
-  },
-  spaceweb_mysql8: {
-    label: "SpaceWeb · MySQL 8",
-    slug: "spaceweb_mysql8",
-    driver: "mysql",
-    host: "127.0.0.1",
-    port: 3308,
-    database_name: "ryazansev3",
-    username: "ryazansev3",
-    charset: "utf8mb4",
-  },
-};
+// LEGACY-пресеты SpaceWeb (spaceweb_pgsql/spaceweb_mysql8) удалены (MA13):
+// миграция на Supabase завершена, панель аудита/отката (MA3) живёт в /admin/audit.
+const DEFAULT_CONNECTIONS: Record<string, Partial<AdminDatabaseConnection>> = {};
 
 function display(value: unknown): string {
   if (value === null || value === undefined) return "";
