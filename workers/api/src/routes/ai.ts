@@ -3,7 +3,8 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { rateLimit } from "../lib/redis";
-// @ts-ignore Shared JavaScript AI provider implementation bundled by Wrangler.
+// Shared JavaScript AI provider implementation bundled by Wrangler.
+// @ts-expect-error The integration module is plain JavaScript without type declarations.
 import { generateAiCompletion, getAiProviderStatus } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
 
 const ai = new Hono<{ Bindings: Env; Variables: AuthVariables }>();

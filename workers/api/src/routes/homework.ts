@@ -318,7 +318,7 @@ homework.patch("/:id", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   
-  let dueDate = dueAt.length >= 10 ? dueAt.slice(0, 10) : null;
+  const dueDate = dueAt.length >= 10 ? dueAt.slice(0, 10) : null;
   
   try {
     const roles = await callerRoles(db, user.id);

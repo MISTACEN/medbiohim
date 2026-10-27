@@ -101,9 +101,17 @@ if (existsSync(proxyPath)) {
 const apiClientPath = join(root, "src/lib/api.ts");
 if (existsSync(apiClientPath)) {
   const apiClient = await readFile(apiClientPath, "utf8");
+  // The scope itself is derived in the session module; the cache must bypass it
+  // when the token is opaque or malformed.
+  const sessionPath = join(root, "src/lib/auth/session.ts");
+  const sessionClient = existsSync(sessionPath) ? await readFile(sessionPath, "utf8") : "";
+  const scopeIsGuarded =
+    sessionClient.includes("Никогда не делим bucket кэша между непрозрачными или битыми токенами") &&
+    sessionClient.includes("if (!part) return null;") &&
+    sessionClient.includes("export function currentUserScope()");
   if (apiClient.includes("const userScope = cacheUserScope();") &&
       apiClient.includes("if (userScope === null) return api<T>(path, options);") &&
-      apiClient.includes("Never share a cache bucket between opaque/malformed tokens")) {
+      scopeIsGuarded) {
     pass("API cache bypasses malformed/opaque token scopes");
   } else {
     fail("API cache may share a cache scope for malformed/opaque tokens");

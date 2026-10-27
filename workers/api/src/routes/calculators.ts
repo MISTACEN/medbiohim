@@ -3,7 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 // Shared, stateless formulas formerly used only by the shadow Worker.
-// @ts-ignore The integration module is plain JavaScript and is bundled by Wrangler.
+// @ts-expect-error The integration module is plain JavaScript without type declarations and is bundled by Wrangler.
 import { listCalculators, computeCalculator, CalculatorValidationError } from "../../../../integrations/cloudflare-api/src/calculators.js";
 
 const calculators = new Hono<{ Bindings: Env; Variables: AuthVariables }>();

@@ -61,10 +61,10 @@ academic.get("/state", requireAuth, async (c) => {
     });
     const topicProgress = (progressOk ? (progressResult.data || []) : []).map((p: any) => {
       const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics;
-      const module = Array.isArray(topic?.modules) ? topic.modules[0] : topic?.modules;
-      const subject = Array.isArray(module?.subjects) ? module.subjects[0] : module?.subjects;
+      const topicModule = Array.isArray(topic?.modules) ? topic.modules[0] : topic?.modules;
+      const subject = Array.isArray(topicModule?.subjects) ? topicModule.subjects[0] : topicModule?.subjects;
       return { topic_id: p.topic_id, percent: p.percent, status: p.status, last_activity_at: p.last_activity_at,
-        topic_name: topic?.title || "", subject_id: module?.subject_id ?? null, subject_name: subject?.name || "" };
+        topic_name: topic?.title || "", subject_id: topicModule?.subject_id ?? null, subject_name: subject?.name || "" };
     });
     const debts = states.filter((s: any) => ["failed", "retake_required"].includes(String(s.academic_status)));
     const pending = states.filter((s: any) => s.academic_status === "pending");

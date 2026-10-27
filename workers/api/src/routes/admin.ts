@@ -346,7 +346,7 @@ admin.get("/users", requireAuth, async (c) => {
     const { data, error: dbError } = await db.from("users").select("id,email,full_name,course_number,semester,created_at").order("created_at", { ascending: false }).limit(100);
     if (dbError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить пользователей");
     const ids = (data || []).map((u: any) => u.id).filter(Boolean);
-    let roleMap: Record<string, string[]> = {};
+    const roleMap: Record<string, string[]> = {};
     if (ids.length) {
       const { data: roles, error: rolesError } = await db.from("user_roles").select("user_id,roles(code)").in("user_id", ids);
       if (rolesError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить роли пользователей");
@@ -869,7 +869,7 @@ admin.put("/schedule", requireAuth, async (c) => {
   const entries = Array.isArray(input.entries) ? input.entries : [];
   if (entries.length > 2000) return error(c, rid, 422, "VALIDATION_ERROR", "Слишком много занятий (max 2000)");
   try {
-    let { data: existing } = await db
+    const { data: existing } = await db
       .from("schedules")
       .select("id,version")
       .eq("group_id", groupId)

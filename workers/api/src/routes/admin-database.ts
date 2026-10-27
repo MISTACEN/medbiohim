@@ -239,7 +239,7 @@ dbAdmin.delete("/:id/rows/:table", requireAuth, async (c) => {
     return c.json(body, status as 503);
   }
   try {
-    let q = svc.from(t).delete().eq("id", id);
+    const q = svc.from(t).delete().eq("id", id);
     const { error } = await q;
     if (error) throw error;
     return c.json(ok({ deleted: true }, rid));

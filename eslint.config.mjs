@@ -17,12 +17,19 @@ const eslintConfig = [
     ignores: [
       ".next/**",
       "node_modules/**",
+      "**/node_modules/**",
       "backend/**",
       "integrations/**",
       "out/**",
       "dist/**",
       "coverage/**",
       "next-env.d.ts",
+      // Wrangler build output is generated, not source (workers/api/.wrangler).
+      "**/.wrangler/**",
+      // Extension build config is CommonJS and has its own toolchain.
+      "browser-extension/**",
+      // Historical source snippets kept as reference material for retired CI workflows.
+      "scripts/p0/**",
     ],
   },
 ];
