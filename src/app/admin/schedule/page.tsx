@@ -17,6 +17,7 @@ import {
   type ScheduleItem,
 } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2, Upload } from "lucide-react";
+import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
 
 const TZ = "Asia/Vladivostok";
 const TYPE_LABELS: Record<string, string> = {
@@ -99,6 +100,9 @@ export default function AdminSchedulePage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [edit, setEdit] = useState<ScheduleItem | null>(null);
   const [importing, setImporting] = useState(false);
+  // Снимок серверного состояния: без него нельзя отличить «сетка как была» от правок.
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const [draftOffer, setDraftOffer] = useState<{ savedAt: string; data: { items: ScheduleItem[]; weekStart?: string } } | null>(null);
   const [meta, setMeta] = useState<{periods:Array<{id:string;title:string;start_date:string;end_date?:string|null;notes?:string|null}>}>({periods:[]});
   const currentGroup = groups.find((g) => String(g.id) === String(groupId));
 
@@ -136,6 +140,7 @@ export default function AdminSchedulePage() {
       let list = dedupeItems(res.data.items || []);
       list = list.filter((x) => !x.group_id || x.group_id === groupId);
       setItems(list);
+      setBaseline(JSON.stringify(list));
       const payload = res.data as {
         source?: string;
         degraded?: boolean;
@@ -160,6 +165,37 @@ export default function AdminSchedulePage() {
   }, [groupId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const draftKey = `admin:schedule:${groupId || "none"}:3`;
+  const dirty = baseline !== null && JSON.stringify(items) !== baseline;
+  useUnsavedChanges(dirty);
+
+  // Черновик пишется только когда есть расхождения с сервером — иначе нечего восстанавливать.
+  useEffect(() => {
+    if (!dirty || !groupId) return;
+    const timer = setTimeout(() => saveDraft(draftKey, { items, weekStart }), 800);
+    return () => clearTimeout(timer);
+  }, [dirty, groupId, draftKey, items, weekStart]);
+
+  useEffect(() => {
+    if (!groupId) return setDraftOffer(null);
+    const stored = readDraft<{ items: ScheduleItem[]; weekStart?: string }>(draftKey);
+    setDraftOffer(stored && Array.isArray(stored.data?.items) ? { savedAt: stored.savedAt, data: stored.data } : null);
+  }, [draftKey, groupId]);
+
+  function restoreDraft() {
+    if (!draftOffer) return;
+    setItems(draftOffer.data.items);
+    const restoredWeek = draftOffer.data.weekStart ? new Date(draftOffer.data.weekStart) : null;
+    if (restoredWeek && !Number.isNaN(restoredWeek.getTime())) setWeekStart(restoredWeek);
+    setDraftOffer(null);
+    setNote("Черновик восстановлен — проверьте сетку и нажмите «Сохранить»");
+  }
+
+  function discardDraft() {
+    clearDraft(draftKey);
+    setDraftOffer(null);
+  }
 
   const weekItems = useMemo(() => {
     const from = dateKey(weekStart);
@@ -227,6 +263,8 @@ export default function AdminSchedulePage() {
       setNote(db.error.message);
       return;
     }
+    clearDraft(draftKey);
+    setDraftOffer(null);
     setNote(`Сохранено в БД · версия ${(db.data as { version?: number }).version ?? "—"} · ${(db.data as { entries_saved?: number }).entries_saved ?? clean.length} занятий`);
     await load();
   }
@@ -278,6 +316,16 @@ export default function AdminSchedulePage() {
       </div>
 
       {note && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{note}</div>}
+
+      {draftOffer && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-900">
+          <span className="min-w-0 flex-1">
+            Найден несохранённый черновик расписания от {formatDraftTime(draftOffer.savedAt)} — {draftOffer.data.items.length} занятий.
+          </span>
+          <button type="button" className="btn-secondary text-xs" onClick={restoreDraft}>Восстановить</button>
+          <button type="button" className="text-xs font-semibold text-rose-700" onClick={discardDraft}>Удалить черновик</button>
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center gap-2 p-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Загрузка…</div>
       ) : (

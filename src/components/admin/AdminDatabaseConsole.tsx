@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
+
+const INITIAL_SQL = "SELECT * FROM subjects LIMIT 50";
+const SQL_DRAFT_KEY = "admin:sql";
 import {
   CheckCircle2,
   Database,
@@ -131,13 +135,28 @@ export default function AdminDatabaseConsole() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
-  const [sql, setSql] = useState("SELECT * FROM subjects LIMIT 50");
+  const [sql, setSql] = useState(INITIAL_SQL);
+  const [sqlDraftOffer, setSqlDraftOffer] = useState<{ savedAt: string; value: string } | null>(null);
+  // Длинный SQL-запрос терялся при обновлении страницы — держим его в черновике.
+  const sqlDirty = sql.trim() !== "" && sql !== INITIAL_SQL;
+  useUnsavedChanges(sqlDirty, "В SQL-окне есть невыполненный запрос — он потеряется при уходе.");
   const [sqlResult, setSqlResult] = useState<any | null>(null);
   const [confirmDanger, setConfirmDanger] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [schemaBusy, setSchemaBusy] = useState(false);
   const [newJson, setNewJson] = useState("{}");
+
+  useEffect(() => {
+    const stored = readDraft<string>(SQL_DRAFT_KEY);
+    if (stored?.data && stored.data !== INITIAL_SQL) setSqlDraftOffer({ savedAt: stored.savedAt, value: stored.data });
+  }, []);
+
+  useEffect(() => {
+    if (!sqlDirty) return;
+    const timer = setTimeout(() => saveDraft(SQL_DRAFT_KEY, sql), 800);
+    return () => clearTimeout(timer);
+  }, [sqlDirty, sql]);
   const [showNew, setShowNew] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [isNewConnection, setIsNewConnection] = useState(false);
@@ -349,6 +368,9 @@ export default function AdminDatabaseConsole() {
     setMessage("SQL выполнен");
     setSqlResult(result.data);
     setConfirmDanger(false);
+    // Запрос выполнен — предупреждение о потере больше не актуально.
+    clearDraft(SQL_DRAFT_KEY);
+    setSqlDraftOffer(null);
   }
 
   async function testConnection(id = selectedId) {
@@ -664,6 +686,13 @@ export default function AdminDatabaseConsole() {
                   Подтвердить изменение БД
                 </label>
               </div>
+              {sqlDraftOffer && (
+                <div role="status" className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+                  <span className="min-w-0 flex-1">Найден невыполненный запрос от {formatDraftTime(sqlDraftOffer.savedAt)}.</span>
+                  <button type="button" className="font-semibold" onClick={() => { setSql(sqlDraftOffer.value); setSqlDraftOffer(null); }}>Вставить</button>
+                  <button type="button" className="font-semibold text-rose-700" onClick={() => { clearDraft(SQL_DRAFT_KEY); setSqlDraftOffer(null); }}>Удалить</button>
+                </div>
+              )}
               <textarea value={sql} onChange={(e) => setSql(e.target.value)} className="mt-3 min-h-[260px] w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-sm text-white outline-none" spellCheck={false} />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={() => void runSql()} disabled={busy || !sql.trim()}>

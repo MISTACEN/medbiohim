@@ -32,6 +32,7 @@ import type {
 } from "@/types/attestations";
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
 
 const TYPES = Object.keys(ATTESTATION_TYPE_LABELS) as AttestationType[];
 const KINDS: { value: AttestationItemKind; label: string }[] = [
@@ -77,6 +78,26 @@ export default function AdminAttestationsPage() {
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<Attestation | null>(null);
   const [isNew, setIsNew] = useState(false);
+  // Снимок сохранённого состояния: аттестация — многоэкранная форма, и потерять
+  // её из-за случайного перехода было слишком легко.
+  const [editorBaseline, setEditorBaseline] = useState<string | null>(null);
+  const [draftOffer, setDraftOffer] = useState<{ savedAt: string; data: { item: Attestation; isNew: boolean } } | null>(null);
+  const attestationDraftKey = `admin:attestation:${draft?.subject_slug || "none"}:${draft?.slug || "new"}`;
+  const editorDirty = Boolean(draft) && editorBaseline !== null && JSON.stringify(draft) !== editorBaseline;
+  useUnsavedChanges(editorDirty);
+
+  // Черновик формы переживает перезагрузку: этап и материалы можно набирать долго.
+  useEffect(() => {
+    if (!editorDirty || !draft) return;
+    const timer = setTimeout(() => saveDraft(attestationDraftKey, { item: draft, isNew }), 800);
+    return () => clearTimeout(timer);
+  }, [editorDirty, draft, isNew, attestationDraftKey]);
+
+  useEffect(() => {
+    if (!draft) return setDraftOffer(null);
+    const stored = readDraft<{ item: Attestation; isNew: boolean }>(attestationDraftKey);
+    setDraftOffer(stored?.data?.item ? { savedAt: stored.savedAt, data: stored.data } : null);
+  }, [attestationDraftKey, draft?.slug, draft?.subject_slug]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
@@ -111,14 +132,20 @@ export default function AdminAttestationsPage() {
       setNotice({ tone: "error", text: result.error.message });
       return;
     }
-    setDraft(result.data.item as Attestation);
+    const loaded = result.data.item as Attestation;
+    setDraft(loaded);
+    setEditorBaseline(JSON.stringify(loaded));
     setIsNew(false);
+    setDraftOffer(null);
   }
 
   function startNew() {
     setNotice(null);
-    setDraft(newAttestation());
+    const next = newAttestation();
+    setDraft(next);
+    setEditorBaseline(JSON.stringify(next));
     setIsNew(true);
+    setDraftOffer(null);
   }
 
   function patch(values: Partial<Attestation>) {
@@ -246,7 +273,11 @@ export default function AdminAttestationsPage() {
     }
     setNotice({ tone: "ok", text: isNew ? "Аттестация создана." : "Изменения сохранены." });
     setIsNew(false);
-    setDraft(result.data.item as Attestation);
+    const saved = result.data.item as Attestation;
+    setDraft(saved);
+    setEditorBaseline(JSON.stringify(saved));
+    clearDraft(attestationDraftKey);
+    setDraftOffer(null);
     void load();
   }
 
@@ -263,7 +294,10 @@ export default function AdminAttestationsPage() {
       setNotice({ tone: "error", text: result.error.message });
       return;
     }
-    if (draft && draft.slug === item.slug && draft.subject_slug === item.subject_slug) setDraft(null);
+    if (draft && draft.slug === item.slug && draft.subject_slug === item.subject_slug) {
+      setDraft(null);
+      setEditorBaseline(null);
+    }
     setNotice({ tone: "ok", text: "Аттестация удалена." });
     void load();
   }
@@ -294,6 +328,33 @@ export default function AdminAttestationsPage() {
           Коллоквиум, экзамен, зачёт, тест или контрольная по любому предмету. Этапы, теория, тесты с проверкой и задачи с эталоном.
         </p>
       </header>
+
+      {draftOffer && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+          <span className="min-w-0 flex-1">
+            Найден несохранённый черновик аттестации от {formatDraftTime(draftOffer.savedAt)}.
+          </span>
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            onClick={() => {
+              setDraft(draftOffer.data.item);
+              setIsNew(Boolean(draftOffer.data.isNew));
+              setDraftOffer(null);
+              setNotice({ tone: "ok", text: "Черновик восстановлен — проверьте и сохраните." });
+            }}
+          >
+            Восстановить
+          </button>
+          <button
+            type="button"
+            className="text-xs font-semibold text-rose-700"
+            onClick={() => { clearDraft(attestationDraftKey); setDraftOffer(null); }}
+          >
+            Удалить черновик
+          </button>
+        </div>
+      )}
 
       {notice && (
         <div
