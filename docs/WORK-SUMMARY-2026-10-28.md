@@ -226,6 +226,22 @@ MA1–MA3/MA5/MA6/MA9/MA12/SA1/FD1–FD4/FD6 закрыты.
 - `npx tsc --noEmit` — 0; `npx eslint src` — 0 errors; root-тесты **172/172**;
   `grep window.location.search` — 0; `next build` — успешен.
 
+## CI-инцидент пакета и его урок
+
+Первый пуш пакета (`dfb6d9cd`) упал в CI: `npm run lint` гоняет `eslint .` по
+всему репо, а мои unit-тесты объявляли переменную `module` — правило
+`no-assign-module-variable`. `npx eslint src` это не ловит, потому что тесты
+лежат вне src. Переименовано в `moduleShim` (`43ad77a4`), code checks зелёные.
+Правило для будущих тестов: в test/** не называть переменные `module`/`exports`.
+
+## Живая проверка пакета в проде
+
+- /help — новый FAQ отдаётся с деплоя Vercel;
+- /search?q=гистология — чтение query через useSearchParams работает,
+  фильтры рендерятся;
+- деплой выполнен интеграцией Vercel (проверяющий workflow на test-only коммит
+  не запускается по paths — это ожидаемо).
+
 ## Осталось из планов (не начато)
 
 D1 (типы домена), D9-хук useApiRequest, G1 (vitest), B4-внедрение ErrorState
