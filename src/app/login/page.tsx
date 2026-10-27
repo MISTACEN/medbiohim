@@ -1,9 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Mail, Send, Shield } from "lucide-react";
 import { clearTokens, login, recoverPassword, setTokens } from "@/lib/api";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { safeNextPath } from "@/lib/navigation";
 import { startGoogleOAuth, startMagicLink } from "@/lib/supabase";
 
 type LoginMethod = "email" | "google" | "telegram";
@@ -29,6 +32,11 @@ function mapLoginError(code: string, message: string): string {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { refresh } = useAuth();
+  // A session that expired while the user was working comes back to the same page.
+  // Read after mount so the form itself is server-rendered instead of a placeholder.
+  const [nextPath, setNextPath] = useState("/");
   const [method, setMethod] = useState<LoginMethod>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,6 +46,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
   const [recoverLoading, setRecoverLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = new URLSearchParams(window.location.search).get("next");
+    // Only same-site paths: an open redirect must never be possible here.
+    setNextPath(safeNextPath(raw));
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -57,7 +72,9 @@ export default function LoginPage() {
       const refreshToken = session?.refresh_token ?? session?.refreshToken ?? payload?.refresh_token ?? payload?.refreshToken;
       if (typeof accessToken === "string" && accessToken.length > 0) {
         setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
-        window.location.href = "/";
+        // Client-side navigation: the shell and the profile state update without a reload.
+        await refresh();
+        router.replace(nextPath);
         return;
       }
       if (payload?.needs_email_confirm || payload?.needs_email_confirmation) {

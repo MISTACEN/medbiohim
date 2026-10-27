@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ChemicalFigureSpec, ChemicalMolecule, ChemicalRepresentation } from "@/lib/chemistry/types";
 import { StructureView } from "@/components/chemistry/StructureView";
+import { readChemistryResolve } from "@/lib/chemistry/resolve";
 import { ProjectionView } from "@/components/chemistry/ProjectionView";
 import type { ProjectionKind } from "@/lib/chemistry/projections";
 
@@ -56,15 +57,14 @@ export function ChemicalFigure({ spec, className }: Props) {
           q = spec.name || String(spec.cid);
         }
         const res = await fetch(`/api/v1/chemistry/resolve?query=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        if (!res.ok || data.error || !data.molecule) {
-          throw new Error(data.error || "structure not found");
-        }
-        if (!cancelled) setMolecule(data.molecule as ChemicalMolecule);
+        const payload = await res.json().catch(() => null);
+        const result = readChemistryResolve(res.ok, payload);
+        if (!result.ok) throw new Error(result.message);
+        if (!cancelled) setMolecule(result.molecule);
       } catch (e) {
         if (!cancelled) {
           setMolecule(null);
-          setError(e instanceof Error ? e.message : "resolve failed");
+          setError(e instanceof Error ? e.message : "Не удалось получить структуру");
         }
       } finally {
         if (!cancelled) setLoading(false);

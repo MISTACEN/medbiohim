@@ -1,4 +1,48 @@
 
+## Аудит 2026-10-27: Волна 0 целиком + часть Волны 1 (2026-10-27)
+
+Выполнялось по [TECH-AUDIT-PLAN-2026-10-27.md](docs/TECH-AUDIT-PLAN-2026-10-27.md) и
+[PRODUCT-AUDIT-PLAN-2026-10-27.md](docs/PRODUCT-AUDIT-PLAN-2026-10-27.md).
+
+**Волна 0 — закрыта полностью.**
+
+- **A1** `code-check.yml`: отдельные именованные шаги `npm run typecheck`, `npm run lint`, `npm test`,
+  кэш npm, новый job `workers-api` (typecheck + тесты воркера).
+- **A2** Линт: 15 реальных ошибок исправлены (prefer-const, `@ts-ignore` → `@ts-expect-error`,
+  переименование тени `module`), ignores для `.wrangler/**`, `browser-extension/**`, `scripts/p0/**`.
+  `npm run lint` = **0 errors** (было 147).
+- **A4** 15 source-mutating workflow удалены; все идемпотентные маркеры проверены по текущему дереву
+  (0 отсутствующих), история и способ восстановления — в [docs/architecture/ci-history.md](docs/architecture/ci-history.md).
+- **A5** `npm test` = `node --test test/`: 152 теста в CI вместо одного файла.
+- **B1–B3** Добавлены `error.tsx`, `global-error.tsx`, `not-found.tsx`, корневой `loading.tsx`
+  и 4 вложенных (subjects/[id], tests/bank/[id], chemistry, admin).
+- **H0** `ChemicalFigure` разбирает конверт `{ok,data:{molecule}}` через `readChemistryResolve`:
+  структуры формул снова отображаются в лекциях, тестах и билетах.
+- **C1/C5** Поиск в `TopBar` — `router.push` (без перезагрузки); внутренних `<a href="/…">` в `src` больше нет.
+
+**Волна 1 — сделано: D8, D7, B5, C2, E4, часть B4.**
+
+- **D8** Новый модуль `src/lib/auth/session.ts` — единственный владелец токенов и refresh.
+  Три обхода single-flight устранены (картинки тренажёров, файлы материалов, `refreshSession`).
+  Событие `mbh:session-expired` отправляется только при явном отказе (`INVALID_REFRESH`), 5xx сессию не сбрасывает.
+- **D7** `src/lib/retry.ts`: `withRetry` (экспоненциальная задержка с джиттером), `isTemporaryFailure`
+  и `isTemporaryAuthFailure` в одном месте; повтор только для идемпотентных GET/HEAD и только при временных кодах.
+- **B4** `src/lib/errors.ts` (словарь кодов → русский текст) и `src/components/ui/ErrorState.tsx` (с «Повторить»); подключены на материалах и в истории попыток.
+- **B5** Убраны технотексты: `HTTP 500`/«не JSON», «в Supabase» в материалах, операторские тексты в регистрации и callback,
+  английские ошибки химии, сырой enum статуса попытки.
+- **C2/E4** Вход и регистрация возвращают управление роутеру; после истечения сессии пользователь попадает на
+  `/login?next=<прежняя страница>`, путь проходит через `safeNextPath` (защита от open redirect).
+
+**Проверено:** `typecheck` 0 ошибок, `lint` 0 errors, 152/152 теста, `predeploy:audit` = PASS (1 WARN: нет PHP CLI локально),
+production build; в браузере на `next start` — брендированный 404, поиск из TopBar без перезагрузки,
+истечение сессии → `/login?next=%2Fmaterials`.
+
+**Не сделано в этой волне:** D1 (типы домена), D3 (type guards), D9 (`useApiRequest` + отмена, 10 страниц),
+C6–C7 (`useSearchParams` в 9 файлах), G1–G2 (Vitest). Также не закрыт A3: required-check в branch protection
+настраивается только в GitHub UI владельцем.
+
+**Ещё открыто из части 2 продукта:** MA1 (роль-гейт админки), MA2 (точный счётчик), SA1 (смена пароля), FD1–FD4.
+
 ## Admin panel restructure — single shell + synced navigation (2026-10-27)
 
 - One navigation source: `src/components/admin/AdminNav.tsx` (`ADMIN_SECTIONS`) drives desktop sidebar, mobile tabs and dashboard tiles; `src/app/admin/layout.tsx` applies it to every `/admin/*` page.

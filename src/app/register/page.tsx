@@ -2,11 +2,15 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
 import { register, setTokens } from "@/lib/api";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { startGoogleOAuth } from "@/lib/supabase";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { refresh } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +41,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         const msg = res.error.message || "Ошибка регистрации";
         if (/rate limit/i.test(msg)) {
-          setError("Лимит писем Supabase исчерпан. Подождите или войдите через Google.");
+          setError("Слишком много писем за короткое время. Подождите и попробуйте снова или войдите через Google.");
         } else if (/already|registered|exists/i.test(msg)) {
           setError("Email уже зарегистрирован — войдите или используйте Google.");
         } else {
@@ -51,11 +55,12 @@ export default function RegisterPage() {
       const refreshToken = session?.refresh_token ?? session?.refreshToken ?? payload?.refresh_token ?? payload?.refreshToken;
       if (typeof accessToken === "string" && accessToken.length > 0) {
         setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
-        window.location.href = "/";
+        await refresh();
+        router.replace("/");
         return;
       }
       if (payload?.needs_email_confirm || payload?.needs_email_confirmation) {
-        setInfo("Аккаунт создан. Подтвердите email или включите Auto Confirm в Supabase, затем войдите.");
+        setInfo("Аккаунт создан. Откройте письмо и подтвердите email, затем войдите.");
         return;
       }
       setInfo("Регистрация принята. Попробуйте войти.");

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getDashboard } from "@/lib/api";
 import { Bell, MessageSquare, Menu, Search, Moon, Sun, LogIn, LogOut, Palette } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -10,6 +10,7 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 
 export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { meta, toggleClassicMode } = useTheme();
   const [searchText, setSearchText] = useState("");
@@ -28,7 +29,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
     >
       <button type="button" onClick={onMenuClick} className="mr-1 rounded-xl p-2 transition hover:opacity-80 lg:hidden" style={{ color: "var(--muted)" }} aria-label="Открыть меню"><Menu className="h-5 w-5" /></button>
       <div className="mr-3 min-w-0 lg:hidden"><div className="truncate text-[15px] font-extrabold tracking-tight" style={{ color: "var(--text)" }}>{pageTitle}</div><div className="text-[9px] font-medium uppercase tracking-[.12em]" style={{ color: "var(--muted)" }}>Медбиохим</div></div>
-      <form className="relative hidden max-w-md flex-1 sm:block" onSubmit={(e) => { e.preventDefault(); const q = searchText.trim(); if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`; }}><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} /><input type="search" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Поиск по платформе..." className="w-full rounded-full border py-2 pl-10 pr-4 text-sm outline-none transition focus:ring-2" style={{ borderColor: "var(--border)", background: "var(--background)", color: "var(--text)" }} /></form>
+      <form className="relative hidden max-w-md flex-1 sm:block" onSubmit={(e) => { e.preventDefault(); const q = searchText.trim(); if (q) router.push(`/search?q=${encodeURIComponent(q)}`); }}><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} /><input type="search" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Поиск по платформе..." className="w-full rounded-full border py-2 pl-10 pr-4 text-sm outline-none transition focus:ring-2" style={{ borderColor: "var(--border)", background: "var(--background)", color: "var(--text)" }} /></form>
       <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
         <span className="hidden rounded-full px-2.5 py-1 text-xs font-medium md:inline" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>{course != null ? `Курс ${course}` : "Курс не указан"}</span>
         <span className="hidden rounded-full px-2.5 py-1 text-xs font-medium md:inline" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>{semester != null ? `Сем. ${semester}` : "Семестр не указан"}</span>

@@ -15,10 +15,31 @@ import {
   listMyAttempts,
 } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { describeApiError } from "@/lib/errors";
 import { useAuth } from "@/components/auth/AuthProvider";
 import TestsHub from "@/components/tests/TestsHub";
 
 type View = "tests" | "chemistry" | "history";
+
+/** Серверный статус попытки — студенту нужен русский текст, а не сырой enum. */
+const ATTEMPT_STATUS: Record<string, string> = {
+  completed: "завершён",
+  finished: "завершён",
+  graded: "проверен",
+  active: "идёт",
+  in_progress: "идёт",
+  started: "идёт",
+  pending: "ожидает проверки",
+  expired: "время истекло",
+  abandoned: "прерван",
+  cancelled: "отменён",
+};
+
+function attemptStatusText(status: unknown): string {
+  const key = String(status || "").trim().toLowerCase();
+  return ATTEMPT_STATUS[key] || "—";
+}
 
 const VIEWS: Array<{ id: View; label: string; Icon: typeof ClipboardCheck }> = [
   { id: "tests", label: "Тесты и банки", Icon: ClipboardCheck },
@@ -68,7 +89,7 @@ export default function TestsPage() {
       .then((result: any) => {
         if (cancelled) return;
         if (result.ok) setAttempts(Array.isArray(result.data?.items) ? result.data.items : []);
-        else setAttemptsError(result.error?.message || "История попыток недоступна.");
+        else setAttemptsError(describeApiError(result.error));
       })
       .catch(() => {
         if (!cancelled) setAttemptsError("История попыток недоступна.");
@@ -78,6 +99,16 @@ export default function TestsPage() {
       });
     return () => { cancelled = true; };
   }, [authLoading, user?.groupId]);
+
+  /** Повтор истории попыток по кнопке «Повторить». */
+  async function loadAttempts() {
+    setAttemptsError("");
+    setAttemptsLoading(true);
+    const result = await listMyAttempts(undefined, user?.groupId);
+    if (result.ok) setAttempts(Array.isArray(result.data?.items) ? (result.data.items as any[]) : []);
+    else setAttemptsError(describeApiError(result.error));
+    setAttemptsLoading(false);
+  }
 
   useEffect(() => {
     if (authLoading || !hasToken() || view !== "chemistry") return;
@@ -302,7 +333,14 @@ export default function TestsPage() {
           </div>
 
           {attemptsError && (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{attemptsError}</div>
+            <div className="mt-4">
+              <ErrorState
+                compact
+                title="История попыток не загрузилась"
+                message={attemptsError}
+                retry={() => void loadAttempts()}
+              />
+            </div>
           )}
 
           {attemptsLoading ? (
@@ -318,7 +356,7 @@ export default function TestsPage() {
                   <div className="min-w-0">
                     <div className="font-semibold text-slate-800">{String(attempt.test_title || "Тест")}</div>
                     <div className="mt-0.5 text-xs text-[var(--muted)]">
-                      {attempt.started_at ? String(attempt.started_at).slice(0, 16).replace("T", " ") : "—"} · {attempt.status === "completed" ? "завершён" : String(attempt.status || "—")}
+                      {attempt.started_at ? String(attempt.started_at).slice(0, 16).replace("T", " ") : "—"} · {attemptStatusText(attempt.status)}
                     </div>
                   </div>
                   <div className="font-bold text-indigo-700">

@@ -31,7 +31,7 @@ export default function AuthCallbackPage() {
     }
     setStatus("error");
     setMessage(
-      "Токен не получен. В Supabase → Authentication → URL Configuration добавьте Redirect: https://medbiohim.vercel.app/auth/callback"
+      "Не удалось завершить вход: ссылка недействительна или уже использована. Вернитесь на страницу входа и попробуйте снова."
     );
   }, []);
 

@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { BookOpen, ExternalLink, File, FileText, Search, X, Presentation } from "lucide-react";
 import { getMaterialFileUrl, listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { describeApiError } from "@/lib/errors";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 
 function FileIcon({ type }: { type?: string | null }) {
@@ -103,14 +105,19 @@ export default function MaterialsPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
+  const [noteIsError, setNoteIsError] = useState(false);
   const [active, setActive] = useState<ApiMaterial | null>(null);
 
   async function load(query = q.trim()) {
     setLoading(true);
     setNote(null);
+    setNoteIsError(false);
     const r = await listMaterials({ subjectSlug: initialSubjectSlug || undefined, q: query || undefined });
     if (r.ok) setItems(r.data.items || []);
-    else setNote(r.error.message);
+    else {
+      setNote(describeApiError(r.error));
+      setNoteIsError(true);
+    }
     setLoading(false);
   }
 
@@ -146,11 +153,15 @@ export default function MaterialsPage() {
         </div>
       </div>
 
-      {note && <div className="card border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{note}</div>}
+      {note && noteIsError ? (
+        <ErrorState title="Материалы не загрузились" message={note} retry={() => void load()} />
+      ) : note ? (
+        <div className="card p-4 text-sm" style={{ color: "var(--text)" }}>{note}</div>
+      ) : null}
 
       {loading ? <SkeletonCards count={6} /> : visible.length === 0 ? (
         <div className="card p-12 text-center text-slate-500">
-          <div className="font-semibold">Материалы пока не загружены в Supabase</div>
+          <div className="font-semibold">Материалы пока не загружены</div>
           <p className="mt-1 text-sm">После импорта пакета документы появятся здесь уже как страницы сайта.</p>
         </div>
       ) : (
