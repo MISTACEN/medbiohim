@@ -40,7 +40,7 @@ PROMPT = (
 )
 
 
-MODELS = [MODEL, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"]
+MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", MODEL]
 
 
 def ocr_openrouter(api_key: str, png_bytes: bytes, mime: str = "image/png") -> str:
@@ -72,7 +72,8 @@ def ocr_image(api_key: str, png_bytes: bytes, mime: str = "image/png") -> str:
             {"text": PROMPT},
             {"inline_data": {"mime_type": mime, "data": base64.b64encode(png_bytes).decode()}},
         ]}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192},
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192,
+                              "thinkingConfig": {"thinkingBudget": 0}},
     }).encode()
     models = list(dict.fromkeys(MODELS))
     last_error: Exception | None = None
@@ -81,8 +82,11 @@ def ocr_image(api_key: str, png_bytes: bytes, mime: str = "image/png") -> str:
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
             data=body, headers={"Content-Type": "application/json"}, method="POST")
         for attempt in range(4):
+            req = urllib.request.Request(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+                data=body, headers={"Content-Type": "application/json"}, method="POST")
             try:
-                with urllib.request.urlopen(req, timeout=120) as r:
+                with urllib.request.urlopen(req, timeout=180) as r:
                     data = json.load(r)
                 parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
                 text = "".join(p.get("text", "") for p in parts).strip()
@@ -94,7 +98,10 @@ def ocr_image(api_key: str, png_bytes: bytes, mime: str = "image/png") -> str:
                 if e.code in (404, 400):  # модель недоступна для ключа — пробуем следующую
                     print(f"    {model}: HTTP {e.code} → следующая модель", flush=True)
                     break
-                wait = 5 * (attempt + 1)
+                if e.code == 429:
+                    wait = 30 * (attempt + 1)  # лимит запросов — ждём дольше
+                else:
+                    wait = 5 * (attempt + 1)
                 print(f"    retry {attempt + 1}: {e} (ждём {wait}с)", flush=True)
                 time.sleep(wait)
             except Exception as e:  # noqa: BLE001

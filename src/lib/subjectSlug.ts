@@ -104,7 +104,10 @@ export const CATALOG_ID_TO_SLUG: Record<string, string> = {
 export function resolveSubjectSlug(idOrSlug?: string | null, name?: string | null): string {
   const raw = (idOrSlug || "").trim();
   if (CATALOG_ID_TO_SLUG[raw]) return CATALOG_ID_TO_SLUG[raw];
-  if (raw && !raw.startsWith("sub-")) return canonicalSubjectSlug(raw);
+  // UUID предмета — это не слаг: раньше он просачивался в URL статики
+  // вида /content/portals/ticket-banks/<uuid>.json и давал 404 в консоли.
+  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+  if (raw && !raw.startsWith("sub-") && !uuidLike) return canonicalSubjectSlug(raw);
   const n = (name || "").toLowerCase();
   if (n.includes("гистол") || n.includes("цитолог")) return "histology";
   if (n.includes("неорган")) return "inorganic_chemistry";
@@ -120,7 +123,9 @@ export function resolveSubjectSlug(idOrSlug?: string | null, name?: string | nul
   if (n.includes("физическ") && n.includes("культур")) return "physical_education";
   if (n.includes("биологи")) return "biology";
   if (n.includes("истори") && n.includes("росси")) return "history";
-  return canonicalSubjectSlug(raw);
+  // Неизвестный id без имени не превращаем в «слаг»: пустая строка честно
+  // означает «слаг определить не удалось», а не передаётся дальше как UUID.
+  return uuidLike ? "" : canonicalSubjectSlug(raw);
 }
 
 export function ticketBankAvailable(slug?: string | null): boolean {

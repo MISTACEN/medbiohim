@@ -13,8 +13,47 @@ function invalid(c: any, rid: string, message: string) {
 }
 function safeAttempt(row: any) {
   const out: Record<string, unknown> = {};
-  for (const field of SAFE_ATTEMPT_FIELDS) if (row && Object.prototype.hasOwnProperty.call(row, field)) out[field] = row[field];
+  for (const field of SAFE_ATTEMPT_FIELDS) if (row && Object.prototype.hasOwnProperty.call(row, field)) out[field] = row && row[field];
   return out;
+}
+
+const CHEM_FORMULA_MARKERS = /[→⇌≡⁻⁺²³₀-₉]|\b(?:CH|C)\d|\bH\d|[A-Za-z]\d?\s*[↔→]/;
+const CHEM_KIND_MAP: Record<string, string> = {
+  mcq: "test_question", test_question: "test_question",
+  match: "test_question", matching: "test_question",
+  open: "open_task", open_task: "open_task",
+};
+
+/**
+ * Приводит позицию каталога chemistry_master_documents к контракту клиента
+ * (/tests → вкладка «Химия»). Понимает канонические элементы v1 и элементы
+ * OCR-выгрузки tools/chem (kind: mcq/match/open, answer_raw). Ответ не
+ * додумывается: есть answer/answer_raw — «prepared_from_text», нет — «unprepared».
+ */
+function normalizeChemistryItem(raw: any, doc: any): Record<string, unknown> {
+  const kindRaw = String(raw?.kind || raw?.item_type || "").toLowerCase();
+  const question = String(raw?.question || raw?.text || "").trim();
+  const answer = String(raw?.answer ?? raw?.answer_raw ?? "").trim();
+  const topic = String(raw?.topic || raw?.theme || "").trim();
+  const text = `${question} ${answer}`;
+  const formulaPreserved =
+    raw?.formula_preserved === true ||
+    (typeof raw?.formula_kind === "string" && raw.formula_kind.length > 0) ||
+    CHEM_FORMULA_MARKERS.test(text);
+  return {
+    item_id: String(raw?.item_id || raw?.item_key || raw?.id || `${doc?.id}:${raw?.num ?? question.slice(0, 32)}`),
+    question,
+    kind: CHEM_KIND_MAP[kindRaw] || (answer || raw?.options ? "test_question" : "open_task"),
+    topic: topic || String(doc?.title || ""),
+    formula_preserved: Boolean(formulaPreserved),
+    answer: answer || null,
+    answer_status: raw?.answer_status || (answer ? "prepared_from_text" : "unprepared"),
+    options: Array.isArray(raw?.options) && raw.options.length ? raw.options : undefined,
+    source: String(raw?.source || raw?.source_document || doc?.title || ""),
+    source_number: raw?.source_number ?? (raw?.num != null ? String(raw.num) : ""),
+    subject_slug: doc?.subject_slug || "",
+    version: doc?.version || "",
+  };
 }
 
 async function accessibleSubjectIds(db: any, userId: string, subjectIds: string[]): Promise<Set<string>> {
@@ -217,17 +256,61 @@ tests.get("/curriculum-map", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   try {
     const { data, error } = await db.from("test_curriculum_map").select("*").limit(500);
-    if (error) return c.json(ok({ items: [] }, rid));
+    if (error) throw error;
     return c.json(ok({ items: data || [] }, rid));
-  } catch { return c.json(ok({ items: [] }, rid)); }
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Карта учебного плана временно недоступна", 503, rid);
+    return c.json(body, status as 503);
+  }
 });
+
+/**
+ * Единый каталог заданий по химии. Данные лежат в chemistry_master_documents
+ * (additive-каталог, content — jsonb-массив позиций); роут разворачивает позиции
+ * в плоский список, фильтрует и пагинирует. Ошибка БД отдаётся как ошибка:
+ * «пустой список 200» маскировал неработающий каталог месяцами.
+ */
 tests.get("/chemistry-master", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
+  const query = (c.req.query("q") || "").trim().toLowerCase().slice(0, 160);
+  const kind = c.req.query("kind") || "";
+  const formula = c.req.query("formula") || "";
+  const page = Math.max(1, Number(c.req.query("page")) || 1);
+  const limit = Math.min(50, Math.max(1, Number(c.req.query("limit")) || 12));
+  if (kind && kind !== "test_question" && kind !== "open_task") {
+    return invalid(c, rid, "Неизвестный тип задания");
+  }
   try {
-    const { data, error } = await db.from("chemistry_master").select("*").limit(500);
-    if (error) return c.json(ok({ items: [] }, rid));
-    return c.json(ok({ items: data || [] }, rid));
-  } catch { return c.json(ok({ items: [] }, rid)); }
+    const { data, error } = await db
+      .from("chemistry_master_documents")
+      .select("id,subject_slug,title,version,content,item_count,updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(20);
+    if (error) throw error;
+
+    const items: Record<string, unknown>[] = [];
+    for (const doc of data || []) {
+      const content = Array.isArray((doc as any).content) ? (doc as any).content : [];
+      for (const raw of content) items.push(normalizeChemistryItem(raw, doc));
+    }
+    const filtered = items.filter((item) => {
+      if (kind && item.kind !== kind) return false;
+      if (formula === "true" && !item.formula_preserved) return false;
+      if (formula === "false" && item.formula_preserved) return false;
+      if (query) {
+        const haystack = `${item.question || ""} ${item.topic || ""}`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+    const pages = Math.max(1, Math.ceil(filtered.length / limit));
+    const safePage = Math.min(page, pages);
+    const slice = filtered.slice((safePage - 1) * limit, safePage * limit);
+    return c.json(ok({ items: slice, pagination: { total: filtered.length, page: safePage, pages, limit } }, rid));
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Каталог заданий по химии временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
 });
 
 tests.get("/attempts", requireAuth, async (c) => {

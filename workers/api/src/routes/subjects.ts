@@ -6,6 +6,20 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 const subjects = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MANAGERS = ["admin", "moderator", "teacher"];
+// Клиент канонизирует слаги (src/lib/subjectSlug.ts), а в БД могут лежать
+// исходные слаги методички. Без алиасов на сервере GET /subjects/organic_chemistry
+// отдавал 404, хотя предмет существовал под слагом chemistry_organic_physical.
+const SLUG_ALIASES: Record<string, string> = {
+  organic_chemistry: "chemistry_organic_physical",
+  histology: "histology_cytology",
+};
+function slugVariants(raw: string): string[] {
+  const variants = [raw];
+  const alias = SLUG_ALIASES[raw];
+  if (alias) variants.push(alias);
+  for (const [short, long] of Object.entries(SLUG_ALIASES)) if (long === raw) variants.push(short);
+  return variants;
+}
 
 async function isManager(c: any) {
   const user = c.get("user"); const db = c.get("supabase");
@@ -45,7 +59,7 @@ subjects.get("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   const query = UUID.test(id)
     ? db.from("subjects").select("*").eq("id", id).limit(2)
-    : db.from("subjects").select("*").eq("slug", id).eq("is_active", true).limit(2);
+    : db.from("subjects").select("*").in("slug", slugVariants(id)).eq("is_active", true).limit(2);
   const { data: rows, error } = await query;
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subject unavailable", 503, rid); return c.json(body, status as 503); }
   if ((rows || []).length > 1) { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }

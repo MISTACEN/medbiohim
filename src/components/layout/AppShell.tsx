@@ -22,7 +22,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hasToken()) return;
     let timer: ReturnType<typeof setInterval> | null = null;
-    const beat = () => { void presenceHeartbeat(); };
+    // Heartbeat только в видимой вкладке: в живом логе он давал 16 % трафика
+    // и продолжал биться ночью со свёрнутым окном (D33).
+    const beat = () => {
+      if (document.visibilityState !== "visible") return;
+      void presenceHeartbeat();
+    };
     beat();
     timer = setInterval(beat, 60_000);
     return () => { if (timer) clearInterval(timer); };

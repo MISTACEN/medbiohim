@@ -118,3 +118,35 @@ test("content importer returns the response fields expected by the admin UI", as
   assert.match(admin, /dry_run:\s*true,\s*valid:\s*true,\s*errors:\s*\[\]/);
   assert.match(admin, /created:\s*\{\s*tests:\s*mappedTests\.length/);
 });
+
+test("chemistry master catalog reads chemistry_master_documents and reports DB failures", async () => {
+  const testsRoute = await source("../src/routes/tests.ts");
+  // Каталог лежит в chemistry_master_documents; чтение несуществующей
+  // chemistry_master месяцами маскировалось пустым ответом 200.
+  assert.match(testsRoute, /\.from\("chemistry_master_documents"\)/);
+  assert.doesNotMatch(testsRoute, /\.from\("chemistry_master"\)/);
+  const chemistryRoute = testsRoute.slice(
+    testsRoute.indexOf('tests.get("/chemistry-master"'),
+    testsRoute.indexOf('tests.get("/attempts"')
+  );
+  assert.ok(chemistryRoute.length > 0, "chemistry-master route not found");
+  assert.match(chemistryRoute, /DB_UNAVAILABLE/);
+  assert.doesNotMatch(chemistryRoute, /ok\(\{\s*items:\s*\[\]\s*\}/);
+  // Фильтры и пагинация из UI: q/kind/formula/page/limit + pagination в ответе.
+  assert.match(chemistryRoute, /c\.req\.query\("q"\)/);
+  assert.match(chemistryRoute, /c\.req\.query\("kind"\)/);
+  assert.match(chemistryRoute, /c\.req\.query\("formula"\)/);
+  assert.match(chemistryRoute, /pagination:\s*\{\s*total/);
+  assert.match(chemistryRoute, /normalizeChemistryItem/);
+});
+
+test("curriculum map no longer masks database errors with an empty list", async () => {
+  const testsRoute = await source("../src/routes/tests.ts");
+  const mapRoute = testsRoute.slice(
+    testsRoute.indexOf('tests.get("/curriculum-map"'),
+    testsRoute.indexOf('tests.get("/chemistry-master"')
+  );
+  assert.ok(mapRoute.length > 0, "curriculum-map route not found");
+  assert.match(mapRoute, /DB_UNAVAILABLE/);
+  assert.doesNotMatch(mapRoute, /ok\(\{\s*items:\s*\[\]\s*\}/);
+});

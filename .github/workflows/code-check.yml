@@ -44,6 +44,8 @@ jobs:
         run: npm test
       - name: Test Cloudflare-first fallback policy
         run: npm run test:api-failover
+      - name: Physiology content regression tests
+        run: npm run test:physiology
       # --- Contract checks ---
       - name: Verify Vercel API proxy uses Cloudflare only
         run: |
