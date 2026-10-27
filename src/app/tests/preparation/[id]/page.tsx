@@ -19,9 +19,15 @@ import {
   type PreparationQuestion,
 } from "@/lib/api";
 
-type QuestionOption = string | { label?: unknown; correct?: boolean };
+type QuestionOption = string | { key?: unknown; label?: unknown; correct?: boolean };
+
 const optionLabel = (option: QuestionOption) =>
   typeof option === "string" ? option : String(option?.label ?? "");
+const optionKey = (option: QuestionOption, index: number) => {
+  if (typeof option === "string") return String.fromCharCode(65 + index);
+  const key = option?.key;
+  return key != null && String(key).trim() ? String(key) : String.fromCharCode(65 + index);
+};
 const optionCorrect = (option: QuestionOption) =>
   typeof option !== "string" && option?.correct === true;
 
@@ -34,10 +40,30 @@ function parseSelection(value: string | undefined): string[] {
   return value.trim() ? [value.trim()] : [];
 }
 
-function correctLabels(q: any): string[] {
-  return Array.isArray(q?.options)
-    ? q.options.filter((o: QuestionOption) => optionCorrect(o)).map(optionLabel)
-    : [];
+/** Переводит и ключи (А/1), и старые текстовые ответы в канонические ключи вариантов. */
+function selectedKeys(q: any, value: string | undefined): string[] {
+  const options: QuestionOption[] = Array.isArray(q?.options) ? q.options : [];
+  const lookup = new Map<string, string>();
+  options.forEach((option, index) => {
+    const key = optionKey(option, index);
+    lookup.set(key.trim().toLowerCase(), key);
+    lookup.set(optionLabel(option).trim().toLowerCase(), key);
+    lookup.set(String(index), key);
+  });
+  const result: string[] = [];
+  for (const token of parseSelection(value)) {
+    const key = lookup.get(token.trim().toLowerCase());
+    if (key && !result.includes(key)) result.push(key);
+  }
+  return result;
+}
+
+function correctKeys(q: any, grading?: any): string[] {
+  if (Array.isArray(grading?.correct_keys) && grading.correct_keys.length) {
+    return grading.correct_keys.map(String);
+  }
+  const options: QuestionOption[] = Array.isArray(q?.options) ? q.options : [];
+  return options.flatMap((option, index) => (optionCorrect(option) ? [optionKey(option, index)] : []));
 }
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -45,15 +71,46 @@ function sameSet(a: string[], b: string[]): boolean {
   return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
 }
 
-function answerCorrect(q: any, value: string | undefined): boolean {
-  const expected = correctLabels(q);
-  return expected.length > 0 && sameSet(parseSelection(value), expected);
+function answerCorrect(q: any, value: string | undefined, grading?: any): boolean {
+  if (grading && grading.is_correct != null) return grading.is_correct === true;
+  const expected = correctKeys(q, grading);
+  if (!expected.length) return false;
+  const given = selectedKeys(q, value);
+  if (q?.requires_order) return JSON.stringify(given) === JSON.stringify(expected);
+  return sameSet(given, expected);
 }
 
 function answerDisplay(q: any, value: string | undefined): string {
   const selected = parseSelection(value);
   if (!selected.length) return "";
+  const options: QuestionOption[] = Array.isArray(q?.options) ? q.options : [];
+  const keys = selectedKeys(q, value);
+  if (keys.length) {
+    return keys
+      .map((key) => {
+        const index = options.findIndex((option, i) => optionKey(option, i) === key);
+        const option = index >= 0 ? options[index] : null;
+        return option ? `${key}) ${optionLabel(option)}` : key;
+      })
+      .join("; ");
+  }
   return selected.join("; ");
+}
+
+function etalonDisplay(q: any, grading?: any): string {
+  const fromServer = String(q?.answer_display || grading?.answer_display || "").trim();
+  if (fromServer) return fromServer;
+  const options: QuestionOption[] = Array.isArray(q?.options) ? q.options : [];
+  const keys = correctKeys(q, grading);
+  if (keys.length) {
+    return keys
+      .map((key) => {
+        const index = options.findIndex((option, i) => optionKey(option, i) === key);
+        return index >= 0 ? `${key}) ${optionLabel(options[index])}` : key;
+      })
+      .join("; ");
+  }
+  return String(q?.answer || "").trim();
 }
 
 export default function PreparationPage() {
@@ -201,7 +258,7 @@ export default function PreparationPage() {
     setError("");
 
     void queueSave(
-      { current_index: idx, question_id: questionId, answer_text: v },
+      { current_index: idx, question_id: questionId, answer_text: v, reveal: experience === "prepare" },
       (message) => {
         setChecked((a) => {
           const next = { ...a };
@@ -244,6 +301,26 @@ export default function PreparationPage() {
     const r = await finishPreparation(session.id);
     if (r.ok) {
       setStats(r.data);
+      // После завершения сервер раскрывает эталоны и правильные варианты.
+      // Перечитываем сессию, иначе разбор остался бы с «пустыми» вопросами.
+      const completed = await getPreparation(session.id);
+      if (completed.ok) {
+        setSession(completed.data.session);
+        if (Array.isArray(completed.data.questions) && completed.data.questions.length) {
+          setQuestions(completed.data.questions);
+        }
+        const nextAnswers: Record<string, string> = {};
+        const nextChecked: Record<string, boolean> = {};
+        const nextGrading: Record<string, any> = {};
+        for (const row of completed.data.answers || []) {
+          nextAnswers[row.question_id] = row.answer_text || "";
+          nextChecked[row.question_id] = true;
+          nextGrading[row.question_id] = row;
+        }
+        setAnswers(nextAnswers);
+        setChecked(nextChecked);
+        setGrading(nextGrading);
+      }
       const a = await preparationAiReview(session.id);
       if (a.ok) setAi(a.data.review);
     } else setError(r.error.message);
@@ -360,8 +437,8 @@ export default function PreparationPage() {
           <h2 className="text-lg font-bold">Разбор вопросов</h2>
           {questions.map((qq, i) => {
             const user = answerDisplay(qq, answers[qq.id]);
-            const etalon = correctLabels(qq).join("; ") || String(qq.answer || "").trim();
-            const ok = checked[qq.id] && answerCorrect(qq, answers[qq.id]);
+            const etalon = etalonDisplay(qq, grading[qq.id]);
+            const ok = checked[qq.id] && answerCorrect(qq, answers[qq.id], grading[qq.id]);
             const missed = user === "";
             return (
               <div
@@ -380,7 +457,7 @@ export default function PreparationPage() {
                   </div>
                   <div>
                     <span className="text-slate-500">Правильный ответ: </span>
-                    <div className="font-semibold text-emerald-800"><ChemRichText text={etalon || "—"} className="inline" /></div>
+                    <div className="font-semibold text-emerald-800"><ChemRichText text={etalon || "—"} asHtml={qq.is_closed !== true} className="inline" /></div>
                   </div>
                 </div>
               </div>
@@ -418,33 +495,37 @@ export default function PreparationPage() {
       </div>
     );
 
-  const isOpen =
-    q.type === "open" ||
-    q.type === "problem" ||
-    q.type === "theory" ||
-    q.type === "practical" ||
-    !Array.isArray(q.options) ||
-    q.options.length === 0;
   const options: QuestionOption[] = Array.isArray(q.options) ? q.options : [];
-  const correctOptionLabels = correctLabels(q);
-  const isMulti = !isOpen && correctOptionLabels.length > 1;
-  const selectedOptions = parseSelection(answers[q.id]);
+  // is_closed приходит с сервера; старые ответы API без него разбираем по типу.
+  // Если закрытый вопрос остался без вариантов, даём текстовое поле, чтобы
+  // вопрос вообще можно было ответить (и отправить на ручную проверку).
+  const isOpen = q.is_closed == null
+    ? q.type === "open" ||
+      q.type === "problem" ||
+      q.type === "theory" ||
+      q.type === "practical" ||
+      options.length === 0
+    : !q.is_closed || options.length === 0;
   const serverGrading = grading[q.id];
+  const correctOptionKeys = new Set(correctKeys(q, serverGrading));
+  const isMulti = !isOpen && (q.allow_multiple === true || q.requires_order === true || correctOptionKeys.size > 1);
+  const selectedOptionKeys = selectedKeys(q, answers[q.id]);
   const correct = serverGrading?.is_correct === true;
   const unresolved = serverGrading && serverGrading.is_correct == null;
   const answeredCount = Object.keys(checked).length;
   const isLast = idx === questions.length - 1;
   const experienceLabel = experience === "exam" ? "Экзамен" : experience === "solve" ? "Решение" : "Подготовка";
+  const reference = etalonDisplay(q, serverGrading);
 
-  function toggleOption(label: string) {
+  function toggleOption(key: string) {
     if (checked[q.id]) return;
     setAnswers((prev) => {
-      const current = parseSelection(prev[q.id]);
+      const current = selectedKeys(q, prev[q.id]);
       const next = isMulti
-        ? current.includes(label)
-          ? current.filter((x) => x !== label)
-          : [...current, label]
-        : [label];
+        ? current.includes(key)
+          ? current.filter((x) => x !== key)
+          : [...current, key]
+        : [key];
       return { ...prev, [q.id]: JSON.stringify(next) };
     });
   }
@@ -531,50 +612,69 @@ export default function PreparationPage() {
           </>
         ) : (
           <>
+            {options.length === 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                Это закрытый вопрос, но варианты ответа не заполнены в банке. Ответ можно дать текстом — он уйдёт на ручную проверку.
+              </div>
+            )}
             {options.map((o, i) => {
-            const label = optionLabel(o);
-            const selected = selectedOptions.includes(label);
-            const isCorrectOption = optionCorrect(o);
-            const stateClass = checked[q.id]
-              ? isCorrectOption
-                ? "border-emerald-400 bg-emerald-50"
+              const key = optionKey(o, i);
+              const label = optionLabel(o);
+              const selected = selectedOptionKeys.includes(key);
+              const isCorrectOption = checked[q.id] && correctOptionKeys.has(key);
+              const stateClass = checked[q.id]
+                ? isCorrectOption
+                  ? "border-emerald-400 bg-emerald-50"
+                  : selected
+                    ? "border-rose-400 bg-rose-50"
+                    : "border-slate-200"
                 : selected
-                  ? "border-rose-400 bg-rose-50"
-                  : "border-slate-200"
-              : selected
-                ? "border-indigo-400 bg-indigo-50"
-                : "border-slate-200 hover:bg-slate-50";
-            return (
-              <label
-                key={i}
-                className={"flex w-full cursor-pointer items-center gap-3 rounded-xl border p-3 text-left " + stateClass}
-              >
-                <input
-                  type={isMulti ? "checkbox" : "radio"}
-                  name={"q-" + q.id}
-                  checked={selected}
-                  disabled={!!checked[q.id]}
-                  onChange={() => toggleOption(label)}
-                  className="mt-0.5"
-                />
-                <ChemRichText text={label} className="flex-1 space-y-1" />
-              </label>
-            );
+                  ? "border-indigo-400 bg-indigo-50"
+                  : "border-slate-200 hover:bg-slate-50";
+              const position = q.requires_order && selected ? selectedOptionKeys.indexOf(key) + 1 : null;
+              return (
+                <label
+                  key={key + "-" + i}
+                  className={"flex w-full cursor-pointer items-start gap-3 rounded-xl border p-3 text-left " + stateClass}
+                >
+                  <input
+                    type={isMulti ? "checkbox" : "radio"}
+                    name={"q-" + q.id}
+                    checked={selected}
+                    disabled={!!checked[q.id]}
+                    onChange={() => toggleOption(key)}
+                    className="mt-1"
+                  />
+                  <span className={
+                    "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " +
+                    (isCorrectOption ? "bg-emerald-600 text-white" : selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600")
+                  }>
+                    {position ?? key}
+                  </span>
+                  <ChemRichText text={label} className="flex-1 space-y-1" />
+                  {isCorrectOption && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">эталон</span>}
+                </label>
+              );
             })}
-            <button
-              type="button"
-              disabled={!!checked[q.id] || selectedOptions.length === 0}
-              onClick={() => void answer(JSON.stringify(selectedOptions))}
-              className="btn-primary"
-            >
-              {experience === "prepare"
-                ? isMulti
-                  ? "Проверить выбор"
-                  : "Проверить ответ"
-                : isMulti
-                  ? "Сохранить выбор"
-                  : "Сохранить ответ"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={!!checked[q.id] || selectedOptionKeys.length === 0}
+                onClick={() => void answer(JSON.stringify(selectedOptionKeys))}
+                className="btn-primary"
+              >
+                {experience === "prepare"
+                  ? isMulti
+                    ? "Проверить выбор"
+                    : "Проверить ответ"
+                  : isMulti
+                    ? "Сохранить выбор"
+                    : "Сохранить ответ"}
+              </button>
+              {q.requires_order && (
+                <span className="text-xs text-[var(--muted)]">Нажимайте варианты в нужной последовательности: номер выбора появится в квадрате.</span>
+              )}
+            </div>
           </>
         )}
 
@@ -582,15 +682,20 @@ export default function PreparationPage() {
 
         {checked[q.id] && experience === "prepare" && (
           <div className={unresolved ? "rounded-xl bg-amber-50 p-4 text-amber-800" : correct ? "rounded-xl bg-emerald-50 p-4 text-emerald-700" : "rounded-xl bg-rose-50 p-4 text-rose-700"}>
-            {unresolved ? "↻ Ответ сохранён, но автоматическая проверка ещё не завершена" : correct ? "✓ Ответ засчитан" : "✗ Ответ не засчитан"}
+            {unresolved
+              ? "↻ Ответ сохранён; автоматическая проверка по эталону невозможна"
+              : correct
+                ? "✓ Ответ засчитан"
+                : "✗ Ответ не засчитан"}
             {serverGrading?.grading_source === "ai" ? <div className="mt-1 text-xs">Проверка смысла через ИИ</div> : null}
             {serverGrading?.grading_feedback ? <div className="mt-1 text-sm">{String(serverGrading.grading_feedback)}</div> : null}
-            {q.answer != null && String(q.answer).trim() !== "" ? (
-              <div className="mt-1 text-sm">Эталон: <ChemRichText text={String(q.answer)} className="mt-1 whitespace-pre-wrap" /></div>
-            ) : session?.status === "completed" ? (
-              <div className="mt-1 text-sm">Эталон для этого вопроса не заполнен.</div>
+            {reference ? (
+              <div className="mt-1 text-sm">
+                <span className="font-semibold">Правильный ответ: </span>
+                <ChemRichText text={reference} asHtml={isOpen} className="mt-1 whitespace-pre-wrap" />
+              </div>
             ) : (
-              <div className="mt-1 text-xs opacity-75">Эталон будет показан после завершения подготовки.</div>
+              <div className="mt-1 text-sm">Эталон для этого вопроса не заполнен — ответ не считается ошибкой.</div>
             )}
             {unresolved ? (
               <button type="button" disabled={loading} onClick={() => void retryPreparationGrading(session.id, q.id).then((r) => {

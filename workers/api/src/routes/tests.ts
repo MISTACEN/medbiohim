@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { normalizeQuestion, publicOptions } from "../../../../integrations/cloudflare-api/src/question-format.js";
 
 const tests = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,15 +48,6 @@ async function accessibleSubjectIds(db: any, userId: string, subjectIds: string[
   }));
 }
 
-function stripOptionCorrectness(options: unknown): unknown[] {
-  if (!Array.isArray(options)) return [];
-  return options.map((option: any) => {
-    if (!option || typeof option !== "object" || Array.isArray(option)) return option;
-    const safe = { ...option };
-    for (const key of ["correct", "is_correct", "isCorrect", "answer", "is_answer", "isAnswer"]) delete safe[key];
-    return safe;
-  });
-}
 function rpcResult(c: any, rid: string, data: any, error: any, fallback: string, attemptKey?: string, hideAnswerGrade = false) {
   if (error) {
     const status = error.code === "PGRST116" ? 404 : 503;
@@ -339,20 +331,39 @@ tests.get("/:id", requireAuth, async (c) => {
       const q = Array.isArray(link.question) ? link.question[0] : link.question;
       if (!q || q.is_published !== true || q.archived_at != null) return [];
       const topic = Array.isArray(q.topic) ? q.topic[0] : q.topic;
+      // Любой исторический формат (0-based цифра, читаемый эталон, буква,
+      // варианты внутри текста) превращаем в одинаковые key/label/correct.
+      const normalized = normalizeQuestion({
+        type: q.type,
+        text: q.text,
+        answer: q.answer,
+        options: q.options,
+      }, { extractTextOptions: true });
       const item: Record<string, unknown> = {
         id: q.id,
         subject_id: q.subject_id,
         module_id: q.module_id,
         topic_id: q.topic_id,
         topic_title: topic?.title || null,
-        type: q.type,
-        text: q.text,
-        body: q.text,
-        options: bankView ? (Array.isArray(q.options) ? q.options : []) : stripOptionCorrectness(q.options),
+        type: normalized.type,
+        text: normalized.text,
+        body: normalized.text,
+        is_closed: normalized.is_closed,
+        closed: normalized.is_closed,
+        options: publicOptions(normalized, bankView),
+        option_count: normalized.options.length,
+        allow_multiple: normalized.allow_multiple,
+        requires_order: normalized.order_indexes.length > 0,
+        has_answer: Boolean(String(normalized.answer || "").trim()),
         difficulty: q.difficulty ?? null,
       };
       // Answers/correct option markers are available only in the dedicated study bank view.
-      if (bankView) item.answer = q.answer ?? null;
+      if (bankView) {
+        item.answer = normalized.answer || null;
+        item.answer_display = normalized.answer_display || "";
+        item.answer_resolution = normalized.resolution;
+        item.answer_indexes = normalized.correct_indexes;
+      }
       return [item];
     });
     const test = { ...data, duration_sec: data.time_limit_sec };

@@ -153,14 +153,33 @@ function TicketsPageInner() {
       <ol className="space-y-4">
         {questions.map((qq, idx) => (
           <li key={qq.id} className="card p-5">
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Вопрос {idx + 1}
-              {qq.subject ? ` · ${qq.subject}` : ""}
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+              <span>Вопрос {idx + 1}</span>
+              {qq.subject ? <span>· {qq.subject}</span> : null}
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold normal-case tracking-normal text-slate-600">
+                {qq.is_closed ? "закрытый" : "открытый"}
+              </span>
             </div>
             <div className="mt-2 font-medium leading-snug">
-              <ChemRichText text={String(qq.text || "")} />
+              <ChemRichText text={String(qq.text || "")} asHtml />
             </div>
-            {mode === "practice" && (qq.answer || qq.has_answer) && (
+            {Array.isArray(qq.options) && qq.options.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {qq.options.map((option: any, optionIndex: number) => {
+                  const key = option?.key != null && String(option.key).trim()
+                    ? String(option.key)
+                    : String.fromCharCode(65 + optionIndex);
+                  const isCorrect = mode === "practice" && reveal[qq.id] && option?.correct === true;
+                  return (
+                    <div key={key + "-" + optionIndex} className={"flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " + (isCorrect ? "border-emerald-300 bg-emerald-50" : "border-slate-100 bg-white")}>
+                      <span className={"inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " + (isCorrect ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600")}>{key}</span>
+                      <ChemRichText text={String(option?.label ?? option ?? "")} className="inline flex-1" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {mode === "practice" && (
               <div className="mt-3">
                 <button
                   type="button"
@@ -172,7 +191,12 @@ function TicketsPageInner() {
                 </button>
                 {reveal[qq.id] && (
                   <div className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                    <ChemRichText text={String(qq.answer || "")} asHtml />
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Эталон</div>
+                    {String(qq.answer_display || qq.answer || "").trim() ? (
+                      <ChemRichText text={String(qq.answer_display || qq.answer || "")} asHtml />
+                    ) : (
+                      <div className="text-amber-700">Эталон для этого вопроса не заполнен.</div>
+                    )}
                   </div>
                 )}
               </div>

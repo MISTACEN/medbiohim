@@ -8,18 +8,26 @@ import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
 
-type BankOption = string | { label?: unknown; correct?: boolean };
+type BankOption = string | { key?: unknown; label?: unknown; correct?: boolean };
 type BankQuestion = {
   id: string;
   text: string;
   answer?: string | null;
+  answer_display?: string | null;
   options: BankOption[];
   type?: string;
+  is_closed?: boolean | null;
+  requires_order?: boolean;
   topicTitle?: string | null;
 };
 
 function labelOf(o: BankOption) {
   return typeof o === "string" ? o : String(o.label ?? "");
+}
+
+function keyOf(o: BankOption, index: number) {
+  if (typeof o === "string") return String.fromCharCode(65 + index);
+  return o.key != null && String(o.key).trim() ? String(o.key) : String.fromCharCode(65 + index);
 }
 
 function correctOf(o: BankOption) {
@@ -109,8 +117,11 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
             id: String(q.id || i),
             text: String(q.text || q.body || q.q || ""),
             answer: q.answer == null ? null : String(q.answer),
+            answer_display: q.answer_display == null ? null : String(q.answer_display),
             options: Array.isArray(q.options) ? (q.options as BankOption[]) : [],
             type: String(q.type || "mcq"),
+            is_closed: typeof q.is_closed === "boolean" ? q.is_closed : null,
+            requires_order: q.requires_order === true,
             topicTitle: q.topic_title == null ? null : String(q.topic_title),
           }))
         );
@@ -336,6 +347,7 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
             const displayNumber = originalIndex >= 0 ? originalIndex + 1 : i + 1;
             const correctOptions = q.options.filter(correctOf).map(labelOf);
             const hasStructuredAnswers = correctOptions.length > 0;
+            const reference = String(q.answer_display || q.answer || "").trim();
             return (
               <article key={q.id} className="rounded-2xl border border-slate-200 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -367,25 +379,42 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
                       <div
                         key={oi}
                         className={
-                          "rounded-xl border px-3 py-2 text-sm " +
+                          "flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " +
                           (showAnswers && isCorrect
                             ? "border-emerald-300 bg-emerald-50"
                             : "border-slate-100 bg-white")
                         }
                       >
-                        <span className="mr-2 font-semibold">{String.fromCharCode(65 + oi)}.</span>
-                        <ChemRichText text={label} className="inline" />
-                        {showAnswers && isCorrect && <span className="ml-2 text-xs font-bold text-emerald-700">✓ правильный</span>}
+                        <span className={
+                          "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " +
+                          (showAnswers && isCorrect ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600")
+                        }>{keyOf(option, oi)}</span>
+                        <ChemRichText text={label} className="inline flex-1" />
+                        {showAnswers && isCorrect && <span className="text-xs font-bold text-emerald-700">✓ эталон</span>}
                       </div>
                     );
                   })}
                 </div>
 
-                {showAnswers && !hasStructuredAnswers && q.answer && (
+                {q.is_closed && q.options.length === 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Закрытый вопрос без вариантов ответа: их нужно заполнить в редакторе банка.
+                  </div>
+                )}
+
+                {showAnswers && reference && (
                   <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
                     <span className="font-semibold">Эталон: </span>
-                    <ChemRichText text={q.answer} className="inline" />
+                    <ChemRichText text={reference} asHtml={q.is_closed !== true} className="inline" />
+                    {q.is_closed && !hasStructuredAnswers && (
+                      <span className="ml-2 text-xs text-amber-700">эталон не сопоставлен с вариантами</span>
+                    )}
+                    {q.requires_order && <span className="ml-2 text-xs text-emerald-700">порядок вариантов</span>}
                   </div>
+                )}
+
+                {!q.is_closed && q.options.length === 0 && !reference && (
+                  <div className="mt-3 text-xs text-slate-400">Эталон для этого вопроса пока не заполнен.</div>
                 )}
 
                 {isAdmin && editingId === q.id && draft && (

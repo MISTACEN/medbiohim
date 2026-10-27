@@ -82,6 +82,11 @@ function optionText(option: any) {
   return typeof option === "string" ? option : String(option?.label ?? "");
 }
 
+function optionKey(option: any, index: number) {
+  if (typeof option === "string") return String.fromCharCode(65 + index);
+  return option?.key != null && String(option.key).trim() ? String(option.key) : String.fromCharCode(65 + index);
+}
+
 function answerPreview(value: any) {
   const answer = String(value ?? "").trim();
   if (!answer || /^\d{1,2}$/.test(answer)) return "";
@@ -111,17 +116,31 @@ function officialAnswerText(question: any) {
   return answer;
 }
 
-function correctOptionIndex(question: any) {
+function correctOptionIndexes(question: any) {
   const options = Array.isArray(question?.options) ? question.options : [];
-  if (!options.length) return -1;
-  const explicit = options.findIndex((option: any) => optionIsCorrect(option));
-  if (explicit >= 0) return explicit;
+  if (!options.length) return [];
+  const explicit = options.flatMap((option: any, index: number) => (optionIsCorrect(option) ? [index] : []));
+  if (explicit.length) return explicit;
   if (typeof question?.correct === "number" && question.correct >= 0 && question.correct < options.length) {
-    return question.correct;
+    return [question.correct];
   }
-  const answer = String(question?.answer || "").trim();
-  if (!answer) return -1;
-  return options.findIndex((option: any) => optionText(option).trim() === answer);
+  return [];
+}
+
+function correctOptionIndex(question: any) {
+  return correctOptionIndexes(question)[0] ?? -1;
+}
+
+function referenceText(question: any) {
+  const display = String(question?.answer_display || "").trim();
+  if (display) return display;
+  const indexes = correctOptionIndexes(question);
+  if (indexes.length) {
+    return indexes
+      .map((index: number) => `${optionKey(question.options[index], index)}) ${optionText(question.options[index])}`)
+      .join("; ");
+  }
+  return officialAnswerText(question);
 }
 
 export default function PracticePage() {
@@ -777,7 +796,7 @@ export default function PracticePage() {
                 <div className="space-y-2">
                   {selected.options.map((option: any, index: number) => {
                     const isSelected = draft === String(index);
-                    const isCorrect = index === correctOptionIndex(selected);
+                    const isCorrect = correctOptionIndexes(selected).includes(index);
                     const stateClass = showAnswer && isCorrect
                       ? "border-emerald-300 bg-emerald-50"
                       : showAnswer && isSelected && !isCorrect
@@ -792,8 +811,11 @@ export default function PracticePage() {
                         onClick={() => setDraft(String(index))}
                         className={"flex w-full items-start gap-2 rounded-xl border px-3 py-2 text-left text-sm transition " + stateClass}
                       >
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-500">
-                          {String.fromCharCode(65 + index)}
+                        <span className={
+                          "mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " +
+                          (showAnswer && isCorrect ? "bg-emerald-600 text-white" : "bg-white text-slate-500")
+                        }>
+                          {optionKey(option, index)}
                         </span>
                         <span className="min-w-0 flex-1">{optionText(option)}</span>
                         {showAnswer && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
@@ -824,10 +846,10 @@ export default function PracticePage() {
                   <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                     Официальный ответ
                   </div>
-                  {isChoiceQuestion(selected) && correctOptionIndex(selected) >= 0 ? (
-                    <p className="font-semibold">{optionText(selected.options[correctOptionIndex(selected)])}</p>
+                  {isChoiceQuestion(selected) && correctOptionIndexes(selected).length ? (
+                    <p className="whitespace-pre-wrap font-semibold">{referenceText(selected)}</p>
                   ) : (
-                    <ChemRichText text={officialAnswerText(selected)} asHtml />
+                    <ChemRichText text={referenceText(selected)} asHtml />
                   )}
                 </div>
               )}

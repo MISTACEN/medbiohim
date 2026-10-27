@@ -2,9 +2,43 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import {
+  normalizeQuestion,
+  publicOptions,
+  gradeClosedAnswer,
+} from "../../../../integrations/cloudflare-api/src/question-format.js";
 
 const questions = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function publicQuestionRow(row: any, includeAnswer: boolean) {
+  const { options: rawOptions, ...safe } = row || {};
+  const base = {
+    ...safe,
+    stem: String(row?.text || ""),
+    has_answer: Boolean(String(row?.answer ?? "").trim()),
+  };
+  if (!includeAnswer) return { ...base, answer: undefined };
+  const normalized = normalizeQuestion({
+    type: row?.type,
+    text: row?.text,
+    answer: row?.answer,
+    options: rawOptions,
+  }, { extractTextOptions: true });
+  return {
+    ...base,
+    stem: normalized.text,
+    text: normalized.text,
+    answer: normalized.answer || null,
+    answer_display: normalized.answer_display || "",
+    options: publicOptions(normalized, true),
+    is_closed: normalized.is_closed,
+    allow_multiple: normalized.allow_multiple,
+    requires_order: normalized.order_indexes.length > 0,
+    correct_keys: normalized.correct_keys,
+    has_answer: Boolean(String(normalized.answer || "").trim()),
+  };
+}
 
 questions.get("/", requireAuth, async (c) => {
   const rid = requestId();
@@ -30,15 +64,16 @@ questions.get("/", requireAuth, async (c) => {
       if (!subjectIds.length) return c.json(ok({ items: [], total: 0, limit, offset }, rid));
       subjectId = subjectIds.length === 1 ? subjectIds[0] : "";
       if (subjectIds.length > 1) {
-        let q = supabase.from("questions").select("id,text,answer,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).in("subject_id", subjectIds).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+        const includeAnswer = c.req.query("include_answer") === "1";
+        let q = supabase.from("questions").select("id,text,answer,options,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).in("subject_id", subjectIds).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
         if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
         if (kind) q = q.eq("type", kind);
         const { data, error, count } = await q;
         if (error) throw error;
-        return c.json(ok({ items: (data || []).map((row: any) => ({ ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()), answer: c.req.query("include_answer") === "1" ? row.answer : undefined })), total: count || 0, limit, offset }, rid));
+        return c.json(ok({ items: (data || []).map((row: any) => publicQuestionRow(row, includeAnswer)), total: count || 0, limit, offset }, rid));
       }
     }
-    let q = supabase.from("questions").select("id,text,answer,subject_id,module_id,topic_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+    let q = supabase.from("questions").select("id,text,answer,options,subject_id,module_id,topic_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
     if (subjectId) q = q.eq("subject_id", subjectId);
     if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
     if (kind) q = q.eq("type", kind);
@@ -68,9 +103,9 @@ questions.get("/", requireAuth, async (c) => {
       const { data: moduleRows } = await supabase.from("modules").select("id,title").in("id", moduleIds).limit(500);
       for (const row of moduleRows || []) moduleTitles.set(String((row as any).id), String((row as any).title || ""));
     }
+    const includeAnswer = c.req.query("include_answer") === "1";
     return c.json(ok({ items: rows.map((row: any) => ({
-      ...row, stem: row.text, has_answer: Boolean(String(row.answer ?? "").trim()),
-      answer: c.req.query("include_answer") === "1" ? row.answer : undefined,
+      ...publicQuestionRow(row, includeAnswer),
       topic: topicTitles.get(String(row.topic_id || "")) || "",
       module: moduleTitles.get(String(row.module_id || "")) || "",
     })), total: count || 0, limit, offset }, rid));
@@ -172,16 +207,23 @@ questions.get("/mini-quiz", requireAuth, async (c) => {
       return c.json(body, status as 503);
     }
     const items = (data || []).map((row: any) => {
-      let options = row.options;
-      if (typeof options === "string") {
-        try { options = JSON.parse(options); } catch { options = []; }
-      }
-      if (!Array.isArray(options)) options = [];
-      const publicOptions = options.map((opt: any, index: number) => ({
-        index,
-        label: String(opt?.label ?? opt ?? ""),
-      }));
-      return { id: row.id, stem: row.text, type: row.type, subject_id: row.subject_id, options: publicOptions };
+      const normalized = normalizeQuestion({
+        type: row.type,
+        text: row.text,
+        answer: row.answer,
+        options: row.options,
+      });
+      return {
+        id: row.id,
+        stem: normalized.text,
+        text: normalized.text,
+        type: normalized.type,
+        subject_id: row.subject_id,
+        is_closed: normalized.is_closed,
+        allow_multiple: normalized.allow_multiple,
+        requires_order: normalized.order_indexes.length > 0,
+        options: publicOptions(normalized, false).map((option, index) => ({ ...option, index })),
+      };
     });
     return c.json(ok({ items }, rid));
   } catch {
@@ -204,31 +246,28 @@ questions.post("/mini-quiz/check", requireAuth, async (c) => {
     return c.json(b, status as 422);
   }
   try {
-    const { data, error } = await supabase.from("questions").select("id,answer,options,is_published").eq("id", questionId).eq("is_published", true).maybeSingle();
+    const { data, error } = await supabase.from("questions").select("id,type,text,answer,options,is_published").eq("id", questionId).eq("is_published", true).maybeSingle();
     if (error || !data) {
       const { body: b, status } = fail("NOT_FOUND", "Question not found", 404, rid);
       return c.json(b, status as 404);
     }
-    let options = data.options as any;
-    if (typeof options === "string") {
-      try { options = JSON.parse(options); } catch { options = []; }
-    }
-    if (!Array.isArray(options)) options = [];
-    let correct: number[] = [];
-    let answer: any = data.answer;
-    if (typeof answer === "string") {
-      try { answer = JSON.parse(answer); } catch { if (/^\d+$/.test(answer.trim())) answer = Number(answer.trim()); }
-    }
-    if (Array.isArray(answer)) {
-      correct = answer.map((v: any) => Number(v)).filter((n: number) => Number.isInteger(n) && n >= 0 && n < options.length);
-    } else if (typeof answer === "number" && Number.isInteger(answer) && answer >= 0 && answer < options.length) {
-      correct = [answer];
-    }
-    if (!correct.length) correct = options.flatMap((option: any, index: number) => option && typeof option === "object" && option.correct === true ? [index] : []);
+    const normalized = normalizeQuestion({
+      type: (data as any).type,
+      text: (data as any).text,
+      answer: (data as any).answer,
+      options: (data as any).options,
+    }, { extractTextOptions: true });
+    const correctSorted = [...normalized.correct_indexes].sort((a, b) => a - b);
     const selectedSorted = [...selected].sort((a, b) => a - b);
-    const correctSorted = [...correct].sort((a, b) => a - b);
-    const isCorrect = selectedSorted.length === correctSorted.length && selectedSorted.every((v, i) => v === correctSorted[i]);
-    return c.json(ok({ is_correct: isCorrect, correct_indexes: correctSorted }, rid));
+    const isCorrect = correctSorted.length
+      ? selectedSorted.length === correctSorted.length && selectedSorted.every((v, i) => v === correctSorted[i])
+      : null;
+    return c.json(ok({
+      is_correct: isCorrect,
+      correct_indexes: correctSorted,
+      correct_keys: normalized.correct_keys,
+      answer_display: normalized.answer_display,
+    }, rid));
   } catch {
     const { body: b, status } = fail("DB_UNAVAILABLE", "Check failed", 503, rid);
     return c.json(b, status as 503);
@@ -253,8 +292,32 @@ questions.get("/:id", requireAuth, async (c) => {
     }
     const topic = Array.isArray((data as any).topics) ? (data as any).topics[0] : (data as any).topics;
     const subject = Array.isArray((data as any).subjects) ? (data as any).subjects[0] : (data as any).subjects;
-    const question = { ...data, stem: (data as any).text, topic: topic?.title || "", subject_name: subject?.name || "", subject_slug: subject?.slug || null,
-      has_answer: Boolean(String((data as any).answer || "").trim()) };
+    const normalized = normalizeQuestion({
+      type: (data as any).type,
+      text: (data as any).text,
+      answer: (data as any).answer,
+      options: (data as any).options,
+    }, { extractTextOptions: true });
+    const question = {
+      ...data,
+      stem: normalized.text,
+      text: normalized.text,
+      type: normalized.type,
+      options: publicOptions(normalized, true),
+      is_closed: normalized.is_closed,
+      closed: normalized.is_closed,
+      allow_multiple: normalized.allow_multiple,
+      requires_order: normalized.order_indexes.length > 0,
+      answer: normalized.answer || null,
+      answer_display: normalized.answer_display || "",
+      answer_resolution: normalized.resolution,
+      correct_keys: normalized.correct_keys,
+      correct_indexes: normalized.correct_indexes,
+      topic: topic?.title || "",
+      subject_name: subject?.name || "",
+      subject_slug: subject?.slug || null,
+      has_answer: Boolean(String(normalized.answer || "").trim()),
+    };
     return c.json(ok({ question }, rid));
   } catch (error) {
     console.error("[questions:detail]", error);

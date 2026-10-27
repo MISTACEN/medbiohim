@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { normalizeQuestion, publicOptions } from "../../../../integrations/cloudflare-api/src/question-format.js";
 
 const tickets = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -132,13 +133,32 @@ tickets.post("/generate", requireAuth, async (c) => {
     if (!eligible.length) return ticketError(c, rid, "NO_TICKET_QUESTIONS", "В этом банке пока нет опубликованных вопросов", 404);
 
     const questions = shuffle(eligible).slice(0, Math.min(count, eligible.length)).map((question) => {
-      const answer = String(question.answer || "");
+      // В билетах вопросы открытые, но текст может содержать HTML/химию и
+      // перечисления. Нормализация даёт единый is_closed/options/answer_display,
+      // поэтому билет отображается так же аккуратно, как тест.
+      const normalized = normalizeQuestion({
+        type: question.type || "open",
+        text: question.text,
+        answer: question.answer,
+        options: [],
+      });
       return {
         id: question.id,
         subject: question.subject_name || bank.subject_name,
         topic: question.topic || null,
-        text: question.text,
-        ...(mode === "practice" ? { answer, has_answer: Boolean(answer.trim()) } : {}),
+        type: normalized.type,
+        text: normalized.text,
+        is_closed: normalized.is_closed,
+        closed: normalized.is_closed,
+        options: publicOptions(normalized, mode === "practice"),
+        allow_multiple: normalized.allow_multiple,
+        requires_order: normalized.order_indexes.length > 0,
+        has_answer: Boolean(String(normalized.answer || "").trim()),
+        ...(mode === "practice" ? {
+          answer: normalized.answer,
+          answer_display: normalized.answer_display,
+          answer_resolution: normalized.resolution,
+        } : {}),
       };
     });
     return c.json(ok({

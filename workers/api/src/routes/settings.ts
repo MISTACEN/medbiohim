@@ -40,11 +40,15 @@ async function readAccount(c: any) {
     if (profileError) throw profileError;
     if (prefError) throw prefError;
 
-    const identities = Array.isArray(user.identities) ? user.identities : [];
+    // В продукте остаются только почта, Google и Telegram. Устаревшие
+    // идентичности (VK, Яндекс, GitHub, Discord, телефон) не показываем.
+    const allowedProviders = new Set(["email", "google", "custom:telegram"]);
+    const identities = (Array.isArray(user.identities) ? user.identities : [])
+      .filter((identity: any) => allowedProviders.has(String(identity.provider || "")));
     const linkedIdentities = identities.map((identity: any) => {
       const provider = String(identity.provider || "unknown");
       const identityData = identity.identity_data && typeof identity.identity_data === "object" ? identity.identity_data : {};
-      const labels: Record<string, string> = { email: "Почта", google: "Google", "custom:vk": "ВКонтакте", github: "GitHub", discord: "Discord", yandex: "Яндекс" };
+      const labels: Record<string, string> = { email: "Почта", google: "Google", "custom:telegram": "Telegram" };
       return {
         id: String(identity.identity_id || identity.id || ""),
         provider,
@@ -73,8 +77,7 @@ async function readAccount(c: any) {
       providers_available: [
         { id: "email", label: "Почта / пароль", region: "any", enabled: true, linkable: false },
         { id: "google", label: "Google", region: "global", enabled: true, linkable: true },
-        { id: "custom:vk", label: "ВКонтакте", region: "ru", enabled: true, linkable: true },
-        { id: "yandex", label: "Яндекс", region: "ru", enabled: false, linkable: true },
+        { id: "custom:telegram", label: "Telegram", region: "global", enabled: true, linkable: false },
       ],
       preferences: prefRow?.preferences || {},
       sync: {
@@ -270,7 +273,7 @@ async function startIdentityLink(c: any) {
   const input = payload && typeof payload === "object" && !Array.isArray(payload)
     ? payload as Record<string, unknown> : {};
   const provider = typeof input.provider === "string" ? input.provider.trim().toLowerCase() : "";
-  const allowedProviders = new Set(["google", "custom:vk", "yandex", "github", "discord"]);
+  const allowedProviders = new Set(["google"]);
   if (!allowedProviders.has(provider)) {
     const { body, status } = fail("VALIDATION_ERROR", "Провайдер не поддерживается", 400, rid);
     return c.json(body, status as 400);

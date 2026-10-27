@@ -25,13 +25,7 @@ function providerLabel(p) {
   const map = {
     email: "Почта / пароль",
     google: "Google",
-    vk: "ВКонтакте",
-    "custom:vk": "ВКонтакте",
     "custom:telegram": "Telegram",
-    yandex: "Яндекс",
-    github: "GitHub",
-    discord: "Discord",
-    phone: "Телефон",
   };
   return map[p] || p;
 }
@@ -40,8 +34,7 @@ function availableProviders(env) {
   return [
     { id: "email", label: "Почта / пароль", region: "any", enabled: true, linkable: false },
     { id: "google", label: "Google", region: "global", enabled: env.OAUTH_GOOGLE_ENABLED !== "0", linkable: true },
-    { id: "custom:vk", label: "ВКонтакте", region: "ru", enabled: env.OAUTH_VK_ENABLED !== "0", linkable: true },
-    { id: "yandex", label: "Яндекс", region: "ru", enabled: env.OAUTH_YANDEX_ENABLED === "1", linkable: true },
+    { id: "custom:telegram", label: "Telegram", region: "global", enabled: true, linkable: false },
   ];
 }
 
@@ -150,7 +143,10 @@ async function savePreferences(accessToken, userId, patch, env, fetcher) {
 }
 
 function buildAccount(user, prefs, env) {
-  const identities = Array.isArray(user.identities) ? user.identities : [];
+  // Только поддерживаемые способы входа; устаревшие идентичности скрываем.
+  const allowed = new Set(["email", "google", "custom:telegram"]);
+  const identities = (Array.isArray(user.identities) ? user.identities : [])
+    .filter((id) => id && allowed.has(String(id.provider || "")));
   const linked = identities.map((id) => {
     if (!id || typeof id !== "object") return null;
     const provider = String(id.provider || "unknown");
@@ -183,7 +179,7 @@ function buildAccount(user, prefs, env) {
     preferences: prefs,
     sync: {
       account_id: user.id ?? null,
-      note: "Все данные (прогресс, SRS, избранное, сессии) привязаны к этому ID. Привязка Google/VK/Telegram/почты не создаёт второй аккаунт.",
+      note: "Все данные (прогресс, SRS, избранное, сессии) привязаны к этому ID. Привязка Google или Telegram не создаёт второй аккаунт.",
       scopes: ["progress", "srs_cards", "favorites", "notes", "sessions", "homework"],
     },
   };
@@ -300,7 +296,7 @@ export async function unlinkSupabaseTelegram(request, env, fetcher = fetch) {
   }
 }
 
-const ALLOWED_LINK_PROVIDERS = new Set(["google", "custom:vk", "github", "discord", "yandex"]);
+const ALLOWED_LINK_PROVIDERS = new Set(["google"]);
 
 export async function startSupabaseIdentityLink(request, env, body, fetcher = fetch) {
   const identity = await authenticateSupabaseRequest(request, env, fetcher);

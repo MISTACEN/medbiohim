@@ -37,7 +37,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         const msg = res.error.message || "Ошибка регистрации";
         if (/rate limit/i.test(msg)) {
-          setError("Лимит Supabase на письма. Подождите или войдите через Google / Auto Confirm в Dashboard.");
+          setError("Лимит писем Supabase исчерпан. Подождите или войдите через Google.");
         } else if (/already|registered|exists/i.test(msg)) {
           setError("Email уже зарегистрирован — войдите или используйте Google.");
         } else {

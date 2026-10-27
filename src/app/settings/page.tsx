@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import clsx from "clsx";
 import {
-  Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles,
+  Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -145,8 +145,19 @@ export default function SettingsPage() {
     setAccount((prev) => prev ? { ...prev, preferences: { ...prev.preferences, ...r.data.preferences } } : prev);
   }
 
-  const identities = account?.identities || [];
+  const ALLOWED_PROVIDERS = new Set(["email", "google", "custom:telegram", "telegram"]);
+  const identities = (account?.identities || []).filter((item) => ALLOWED_PROVIDERS.has(String(item.provider)));
   const linkedProviders = new Set(identities.map((i) => i.provider));
+  const providerCatalog = (account?.providers_available?.length
+    ? account.providers_available
+    : [
+        { id: "email", label: "Почта", region: "global", enabled: true, linkable: false },
+        { id: "google", label: "Google", region: "global", enabled: true, linkable: true },
+        { id: "custom:telegram", label: "Telegram", region: "global", enabled: true, linkable: false },
+      ]
+  ).filter((item) => ALLOWED_PROVIDERS.has(item.id));
+  const googleProvider = providerCatalog.find((item) => item.id === "google");
+  const emailIdentity = identities.find((item) => item.provider === "email");
   const prefs = account?.preferences || {};
 
   const renderTheme = (t: (typeof THEMES)[number]) => {
@@ -187,10 +198,46 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <section className="card space-y-2 border-l-4 border-l-[var(--primary)] p-5">
+      <section className="card space-y-3 border-l-4 border-l-[var(--primary)] p-5">
         <div className="flex items-center gap-2 font-semibold"><Shield className="h-5 w-5 text-[var(--primary)]" /> Единый аккаунт</div>
-        <p className="text-sm text-[var(--muted)]">{String(account?.sync?.note || "Прогресс, SRS и задания привязаны к одному ID. Привязка Google/VK не создаёт второй профиль.")}</p>
+        <p className="text-sm text-[var(--muted)]">{String(account?.sync?.note || "Прогресс, SRS и задания привязаны к одному ID. Привязка Google или Telegram не создаёт второй профиль.")}</p>
         {account?.sync?.account_id ? <div className="font-mono text-xs text-[var(--muted)]">ID: {String(account.sync.account_id)}</div> : null}
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[
+            {
+              key: "email",
+              title: "Почта",
+              icon: <Mail className="h-4 w-4" />,
+              active: Boolean(emailIdentity || account?.user?.email || user?.email),
+              detail: String(emailIdentity?.email || account?.user?.email || user?.email || "не указана"),
+            },
+            {
+              key: "google",
+              title: "Google",
+              icon: <span className="text-sm font-black text-[#4285F4]">G</span>,
+              active: linkedProviders.has("google"),
+              detail: linkedProviders.has("google") ? "привязан" : "не привязан",
+            },
+            {
+              key: "telegram",
+              title: "Telegram",
+              icon: <Send className="h-4 w-4" />,
+              active: Boolean(telegramStatus?.linked),
+              detail: telegramStatus?.linked
+                ? (telegramStatus.account?.username ? "@" + telegramStatus.account.username : "привязан")
+                : "не привязан",
+            },
+          ].map((item) => (
+            <div key={item.key} className={clsx("rounded-xl border px-3 py-2.5", item.active ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)]")}>
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                {item.icon}
+                {item.title}
+                {item.active && <Check className="ml-auto h-3.5 w-3.5 text-emerald-600" />}
+              </div>
+              <div className="mt-1 truncate text-xs text-[var(--muted)]">{item.detail}</div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="card space-y-4 p-5">
@@ -214,10 +261,19 @@ export default function SettingsPage() {
       </section>
 
       <section className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Привязанные входы</h2>
-        <p className="text-sm text-[var(--muted)]">Почта и поддерживаемые OAuth-провайдеры привязываются к одному аккаунту. Telegram связывается через одноразовое подтверждение в боте.</p>
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Способы входа</h2>
+        <p className="text-sm text-[var(--muted)]">
+          В аккаунте используются только почта, Google и Telegram. Почта — основной идентификатор; Google привязывается в один клик; Telegram — через подтверждение в боте.
+        </p>
         <div className="space-y-2">
-          {identities.map((id) => (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
+            <div>
+              <div className="font-semibold">Почта</div>
+              <div className="text-xs text-[var(--muted)]">{String(emailIdentity?.email || account?.user?.email || user?.email || "не указана")}</div>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">основной вход</span>
+          </div>
+          {identities.filter((item) => item.provider !== "email" && item.provider !== "custom:telegram" && item.provider !== "telegram").map((id) => (
             <div key={id.id || id.provider} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
               <div>
                 <div className="font-semibold">{id.provider_label}</div>
@@ -229,21 +285,23 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {(account?.providers_available || [
-            { id: "google", label: "Google", region: "global", enabled: true, linkable: true },
-            { id: "custom:vk", label: "ВКонтакте", region: "ru", enabled: true, linkable: true },
-          ]).filter((p) => p.linkable && p.id !== "custom:telegram").map((p) => {
-            const linked = linkedProviders.has(p.id);
-            return (
-              <button key={p.id} type="button" disabled={linked || !p.enabled || !!busy} onClick={() => void onLink(p.id)}
-                className={clsx("rounded-xl border px-4 py-3 text-left text-sm", linked ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-[var(--border)]")}>
-                <div className="font-semibold">{linked ? "✓ " : "+ "}{p.label}</div>
-                <div className="text-xs text-[var(--muted)]">{linked ? "Уже привязан" : p.region === "ru" ? "Без VPN в РФ" : "Может нужен VPN"}</div>
-              </button>
-            );
-          })}
-        </div>
+        {googleProvider && (
+          <button
+            type="button"
+            disabled={linkedProviders.has("google") || !googleProvider.enabled || !!busy}
+            onClick={() => void onLink("google")}
+            className={clsx(
+              "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm",
+              linkedProviders.has("google") ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-[var(--border)] hover:bg-slate-50",
+            )}
+          >
+            <span>
+              <span className="block font-semibold">{linkedProviders.has("google") ? "✓ Google привязан" : "Привязать Google"}</span>
+              <span className="block text-xs text-[var(--muted)]">{linkedProviders.has("google") ? "Вход в один клик уже доступен" : "Тот же аккаунт, без второго профиля"}</span>
+            </span>
+            <span className="text-lg font-black text-[#4285F4]">G</span>
+          </button>
+        )}
       </section>
 
 

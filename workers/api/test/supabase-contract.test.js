@@ -227,9 +227,11 @@ test("student subject plans use the narrow RPC without loosening site_content RL
 test("test details preserve the PHP envelope and keep answer keys out of normal attempts", () => {
   assert.ok(testsSource.includes('const bankView = c.req.query("view") === "bank"'));
   assert.ok(testsSource.includes('return c.json(ok({ test, questions, source: "db", view: bankView ? "bank" : "test" }, rid))'));
-  assert.ok(testsSource.includes("function stripOptionCorrectness(options: unknown): unknown[]"));
-  assert.ok(testsSource.includes("if (bankView) item.answer = q.answer ?? null"));
-  assert.ok(testsSource.includes("options: bankView ? (Array.isArray(q.options) ? q.options : []) : stripOptionCorrectness(q.options)"));
+  assert.ok(testsSource.includes("normalizeQuestion({"));
+  assert.ok(testsSource.includes("options: publicOptions(normalized, bankView)"));
+  assert.ok(testsSource.includes("if (bankView) {"));
+  assert.ok(testsSource.includes("item.answer_display = normalized.answer_display"));
+  assert.ok(testsSource.includes("item.answer_resolution = normalized.resolution"));
   assert.ok(testsSource.includes("async function accessibleSubjectIds"));
   assert.ok(testsSource.includes("Этот тест недоступен для вашей специальности"));
   assert.ok(testsSource.includes("subject_name: subject?.name || \"\""));
@@ -244,7 +246,10 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
   assert.ok(ticketsSource.includes('from("exam_questions")'));
   assert.ok(ticketsSource.includes('.eq("for_ticket", true)'));
   assert.ok(ticketsSource.includes('tickets.post("/generate", requireAuth'));
-  assert.ok(ticketsSource.includes('mode === "practice" ? { answer, has_answer: Boolean(answer.trim()) } : {}'));
+  assert.ok(ticketsSource.includes("normalizeQuestion({"));
+  assert.ok(ticketsSource.includes("options: publicOptions(normalized, mode === \"practice\")"));
+  assert.ok(ticketsSource.includes("...(mode === \"practice\" ? {"));
+  assert.ok(ticketsSource.includes("answer_display: normalized.answer_display"));
   assert.ok(ticketsSource.includes('title.includes("ситуационные задачи")'));
   assert.ok(ticketsSource.includes('title.includes("экзаменационные препараты")'));
   assert.ok(apiClientSource.includes('apiCached("/tickets/banks")'));

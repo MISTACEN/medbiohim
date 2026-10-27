@@ -50,19 +50,6 @@ export function parseOAuthTokensFromUrl(href: string): {
 
 export { SUPABASE_URL, SUPABASE_ANON };
 
-/** Start VK OAuth via Supabase (requires VK provider enabled in dashboard). */
-export function startVkOAuth(redirectTo?: string) {
-  if (typeof window === "undefined") return;
-  const appOrigin =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
-  const redirect = redirectTo || `${appOrigin}/auth/callback`;
-  const url =
-    `${SUPABASE_URL}/auth/v1/authorize` +
-    `?provider=custom:vk` +
-    `&redirect_to=${encodeURIComponent(redirect)}`;
-  window.location.href = url;
-}
-
 /** Send passwordless magic link to email via Supabase OTP. */
 export async function startMagicLink(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const appOrigin =

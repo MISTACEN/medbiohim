@@ -464,7 +464,7 @@ export default function SubjectQuestionBank({
                 const id = String(item.id || index);
                 const isOpen = !!opened[id];
                 const options: any[] = Array.isArray(item.options) ? item.options : [];
-                const answer = plain(item.answer);
+                const answer = plain(item.answer_display || item.answer);
                 return (
                   <li key={id} className="rounded-xl border border-slate-200 bg-white">
                     <div className="p-4">
@@ -483,14 +483,17 @@ export default function SubjectQuestionBank({
                       </div>
                       {options.length > 0 && (
                         <ul className="mt-3 grid gap-1.5 text-sm text-slate-700">
-                          {options.map((option: any, optionIndex: number) => (
-                            <li key={optionIndex} className="flex items-start gap-2">
-                              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500">
-                                {String.fromCharCode(65 + optionIndex)}
-                              </span>
-                              <span className="min-w-0 flex-1">{optionText(option)}</span>
-                            </li>
-                          ))}
+                          {options.map((option: any, optionIndex: number) => {
+                            const correct = option && typeof option === "object" && option.correct === true;
+                            return (
+                              <li key={optionIndex} className={"flex items-start gap-2 rounded-lg px-1.5 py-1 " + (correct ? "bg-emerald-50" : "")}>
+                                <span className={"mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " + (correct ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500")}>
+                                  {option?.key != null && String(option.key).trim() ? String(option.key) : String.fromCharCode(65 + optionIndex)}
+                                </span>
+                                <span className="min-w-0 flex-1">{optionText(option)}</span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                       <button
@@ -523,7 +526,7 @@ export default function SubjectQuestionBank({
                       </button>
                       {isOpen && (
                         <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-950">
-                          {answer ? <ChemRichText text={String(item.answer)} asHtml /> : "Эталон для этого вопроса пока не заполнен."}
+                          {answer ? <ChemRichText text={String(item.answer_display || item.answer)} asHtml /> : "Эталон для этого вопроса пока не заполнен."}
                         </div>
                       )}
                       {commentsOpen[id] && UUID_RE.test(id) && <QuestionComments questionId={id} />}

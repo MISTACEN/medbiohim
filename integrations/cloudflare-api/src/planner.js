@@ -1,5 +1,6 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { createB2DownloadUrls } from "./b2-download.js";
+import { normalizeQuestion, publicOptions, gradeClosedAnswer, gradeOpenAnswer } from "./question-format.js";
 
 const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, message, ...extra });
 const uuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ""));
@@ -662,56 +663,95 @@ function parsePreparationJson(value, fallback) {
   if (typeof value === "string") { try { return JSON.parse(value); } catch {} }
   return fallback;
 }
-function normalizedAnswer(value) {
-  return String(value ?? "").normalize("NFKC").trim().toLocaleLowerCase("ru")
-    .replace(/ё/g, "е").replace(/[.,;:!?{}"'()]/g, "").replace(/\s+/g, " ");
-}
 function gradePreparationAnswer(snapshot, given) {
-  const answer = String(snapshot?.answer ?? "").trim();
-  const options = parsePreparationJson(snapshot?.options, []);
-  const correctOptions = Array.isArray(options)
-    ? options.filter((option) => option && typeof option === "object" && option.correct === true).map((option) => normalizedAnswer(option.label))
-    : [];
-  const normalizedGiven = normalizedAnswer(given);
-  if (!answer && correctOptions.length === 0) {
-    return { is_correct: null, score: null, grading_status: "pending", grading_source: "rule_engine", confidence: null, feedback: "Для этого ответа нужна ручная или AI-проверка.", model: null, graded_at: null };
-  }
-  let correct = false;
-  if (correctOptions.length) {
-    const parsed = parsePreparationJson(given, null);
-    let supplied = Array.isArray(parsed) ? parsed.map(normalizedAnswer).filter(Boolean) : normalizedGiven ? normalizedGiven.split(/\s*(?:,|;|\|)\s*/).filter(Boolean) : [];
-    supplied = [...new Set(supplied)].sort();
-    const expected = [...new Set(correctOptions)].sort();
-    correct = supplied.length === expected.length && supplied.every((v, i) => v === expected[i]);
-  } else correct = normalizedGiven === normalizedAnswer(answer);
+  const question = normalizeQuestion(snapshot);
   const now = new Date().toISOString();
+  const base = {
+    grading_source: "rule_engine",
+    model: null,
+    correct_keys: question.correct_keys,
+    answer_display: question.answer_display,
+  };
+  if (question.is_closed) {
+    const graded = gradeClosedAnswer(question, given);
+    if (graded.is_correct === null) {
+      return {
+        ...base,
+        is_correct: null,
+        score: null,
+        grading_status: "pending",
+        confidence: null,
+        feedback: question.answer
+          ? "Эталон не удалось однозначно сопоставить с вариантами; вопрос требует ручной проверки."
+          : "Для этого вопроса не заполнен эталон; он не считается ошибкой и требует ручной проверки.",
+        graded_at: null,
+      };
+    }
+    return {
+      ...base,
+      is_correct: graded.is_correct,
+      score: graded.is_correct ? 100 : 0,
+      grading_status: "deterministic",
+      confidence: 0.99,
+      feedback: graded.is_correct
+        ? "Ответ совпадает с эталоном."
+        : "Ответ отличается от эталона; сравните его с правильным ответом после завершения теста.",
+      graded_at: now,
+    };
+  }
+
+  const answer = String(question.answer || "").trim();
+  if (!answer) {
+    return {
+      ...base,
+      is_correct: null,
+      score: null,
+      grading_status: "pending",
+      confidence: null,
+      feedback: "Для этого вопроса не заполнен эталон; он не считается ошибкой и требует ручной проверки.",
+      graded_at: null,
+    };
+  }
+  const correct = gradeOpenAnswer(answer, given) === true;
   return {
-    is_correct: correct, score: correct ? 100 : 0, grading_status: "deterministic",
-    grading_source: "rule_engine", confidence: 0.99,
-    feedback: correct ? "Ответ совпадает с эталоном." : "Ответ отличается от эталона; сравните его с правильным ответом после завершения теста.",
-    model: null, graded_at: now,
+    ...base,
+    is_correct: correct,
+    score: correct ? 100 : 0,
+    grading_status: "deterministic",
+    confidence: 0.99,
+    feedback: correct
+      ? "Ответ совпадает с эталоном."
+      : "Ответ отличается от эталона; сравните его с правильным ответом после завершения теста.",
+    graded_at: now,
   };
 }
 function publicPreparationQuestion(snapshot, completed) {
-  const opts = parsePreparationJson(snapshot?.options, []);
-  let correctCount = 0;
-  const options = Array.isArray(opts) ? opts.map((option) => {
-    if (option && typeof option === "object") {
-      if (option.correct === true) correctCount++;
-      const out = { label: String(option.label ?? "") };
-      if (completed) out.correct = option.correct === true;
-      return out;
-    }
-    return { label: String(option) };
-  }) : [];
+  const question = normalizeQuestion(snapshot);
+  const options = publicOptions(question, completed);
   const out = {
-    id: String(snapshot?.id || ""), body: String(snapshot?.text ?? snapshot?.body ?? ""),
-    text: String(snapshot?.text ?? snapshot?.body ?? ""), options, type: String(snapshot?.type || "open"),
-    subject_id: snapshot?.subject_id ?? null, module_id: snapshot?.module_id ?? null,
-    topic_id: snapshot?.topic_id ?? null, module_name: snapshot?.module_name ?? null,
-    topic_name: snapshot?.topic_name ?? null, allow_multiple: correctCount > 1,
+    id: String(snapshot?.id || ""),
+    body: question.text,
+    text: question.text,
+    options,
+    type: question.type,
+    subject_id: snapshot?.subject_id ?? null,
+    module_id: snapshot?.module_id ?? null,
+    topic_id: snapshot?.topic_id ?? null,
+    module_name: snapshot?.module_name ?? null,
+    topic_name: snapshot?.topic_name ?? null,
+    is_closed: question.is_closed,
+    closed: question.is_closed,
+    option_count: options.length,
+    allow_multiple: question.allow_multiple,
+    requires_order: question.order_indexes.length > 0,
+    has_answer: Boolean(String(question.answer || "").trim()),
   };
-  if (completed) out.answer = snapshot?.answer ?? null;
+  if (completed) {
+    out.answer = question.answer || null;
+    out.answer_display = question.answer_display || null;
+    out.correct_keys = question.correct_keys;
+    out.answer_resolution = question.resolution;
+  }
   return out;
 }
 async function getPreparationSession(c, sessionId) {
@@ -775,9 +815,31 @@ export async function startSupabasePreparation(request, env, testId, input = {},
     const topicNames = new Map(topics.map((row) => [String(row.id), row.title]));
     const snapshot = ids.map((id) => {
       const q = questionById.get(id);
-      return { id, subject_id: q.subject_id ?? null, module_id: q.module_id ?? null, topic_id: q.topic_id ?? null,
-        type: q.type ?? "open", text: q.text ?? "", answer: q.answer ?? null, options: parsePreparationJson(q.options, []),
-        module_name: moduleNames.get(String(q.module_id || "")) ?? null, topic_name: topicNames.get(String(q.topic_id || "")) ?? null };
+      // Снимок хранит уже нормализованные варианты: у них есть key/label/correct.
+      // Благодаря этому старые сессии и новые одинаково понимают ответ «2», «В»
+      // и читаемый эталон «Верный ответ: 2) …».
+      const normalized = normalizeQuestion({
+        type: q.type ?? "open",
+        text: q.text ?? "",
+        answer: q.answer ?? null,
+        options: parsePreparationJson(q.options, []),
+      }, { extractTextOptions: true });
+      return {
+        id,
+        subject_id: q.subject_id ?? null,
+        module_id: q.module_id ?? null,
+        topic_id: q.topic_id ?? null,
+        type: q.type ?? "open",
+        text: normalized.text,
+        answer: q.answer ?? null,
+        options: normalized.options,
+        is_closed: normalized.is_closed,
+        answer_display: normalized.answer_display,
+        answer_resolution: normalized.resolution,
+        order_indexes: normalized.order_indexes,
+        module_name: moduleNames.get(String(q.module_id || "")) ?? null,
+        topic_name: topicNames.get(String(q.topic_id || "")) ?? null,
+      };
     });
     const existingRows = await c.rows("test_preparation_sessions", { select: "*", user_id: "eq." + c.identity.id,
       test_id: "eq." + testId, status: "eq.in_progress", order: "started_at.desc.nullslast", limit: "1" });
@@ -870,12 +932,37 @@ export async function saveSupabasePreparation(request, env, sessionId, input, fe
         method: "POST", headers: { prefer: "resolution=merge-duplicates,return=representation" },
         body: JSON.stringify({ session_id: String(session.id), user_id: c.identity.id, test_id: String(session.test_id),
           question_id: questionId, answer_text: answerText, is_correct: grade.is_correct, score: grade.score,
-          answer_snapshot: { type: q.type || "open", answer: q.answer ?? null, options: q.options ?? [] },
+          answer_snapshot: (() => {
+            const normalized = normalizeQuestion(q);
+            return {
+              type: normalized.type,
+              text: normalized.text,
+              answer: normalized.answer || null,
+              options: normalized.options,
+              is_closed: normalized.is_closed,
+              answer_display: normalized.answer_display,
+              answer_resolution: normalized.resolution,
+              order_indexes: normalized.order_indexes,
+            };
+          })(),
           grading_status: grade.grading_status, grading_source: grade.grading_source, grading_confidence: grade.confidence,
           grading_feedback: grade.feedback, grading_model: grade.model, graded_at: grade.graded_at, answered_at: now }),
       });
       if (!saved[0]) return fail(503, "SAVE_ERROR", "Не удалось сохранить ответ");
-      grading = { ...grade, question_id: questionId };
+      // Эталон и правильные ключи отдаём только в режиме подготовки, где
+      // проверка сразу. В «решении» и «экзамене» ответ не должен утекать
+      // вместе с промежуточным сохранением.
+      grading = body.reveal === true
+        ? { ...grade, question_id: questionId }
+        : {
+            ...grade,
+            question_id: questionId,
+            correct_keys: [],
+            answer_display: "",
+            feedback: grade.grading_status === "pending"
+              ? "Ответ сохранён; вопрос требует ручной проверки."
+              : "Ответ сохранён.",
+          };
     }
     const updated = await c.rows("test_preparation_sessions", { id: "eq." + String(session.id), user_id: "eq." + c.identity.id, select: "*" }, {
       method: "PATCH", body: JSON.stringify({ current_index: current, last_saved_at: new Date().toISOString() }),
