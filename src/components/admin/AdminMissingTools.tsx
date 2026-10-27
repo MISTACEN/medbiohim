@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   adminCreateHomework, adminDeleteCommunity, adminDeleteHomework, adminDeleteMaterial,
   adminListCommunity, adminListHomeworks, adminListMaterials, adminUpdateCommunity,
@@ -38,8 +37,7 @@ export function AdminMissingTools({ onMessage }: Props) {
   async function moderate(id:string,patch:Record<string,unknown>){const r=await adminUpdateCommunity(id,patch);if(!r.ok)return onMessage?.(r.error.message,true);await reload("community");onMessage?.("Пост обновлён");}
 
   return <div className="card space-y-5">
-    <div className="rounded-2xl border p-4" style={{background:"var(--primary-soft)",borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Центр управления</h2><p className="text-sm" style={{color:"var(--muted)"}}>Полный CMS без JSON и прямого редактирования production БД.</p></div><Link href="/admin/tools" className="btn-primary">Открыть полный Control Center</Link></div><p className="mt-2 text-xs" style={{color:"var(--muted)"}}>Там находятся пользователи, группа → курс → семестр, расписание, контент, ДЗ, Storage, импорт и системная диагностика.</p></div>
-    <div><h2 className="text-lg font-semibold">Быстрые операции</h2><p className="text-sm text-slate-500">ДЗ, файлы и модерация сообщества — без JSON и SQL.</p></div>
+    <div><h2 className="text-lg font-semibold">ДЗ, файлы и сообщество</h2><p className="text-sm text-slate-500">Проверка заданий, загрузка материалов и модерация — без JSON и SQL.</p></div>
     <div className="flex flex-wrap gap-2">{([['homework','ДЗ и проверка'],['materials','Материалы'],['community','Сообщество']] as const).map(([id,label])=><button key={id} type="button" onClick={()=>setSection(id)} className={section===id?"rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white":"rounded-full border px-3 py-1.5 text-xs"}>{label}</button>)}</div>
 
     {section==="homework"&&<div className="space-y-4">

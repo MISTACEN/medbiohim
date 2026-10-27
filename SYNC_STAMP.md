@@ -1,4 +1,11 @@
 
+## Admin panel restructure — single shell + synced navigation (2026-10-27)
+
+- One navigation source: `src/components/admin/AdminNav.tsx` (`ADMIN_SECTIONS`) drives desktop sidebar, mobile tabs and dashboard tiles; `src/app/admin/layout.tsx` applies it to every `/admin/*` page.
+- `/admin` is now a dashboard: live counts + all sections, instead of the old tab soup.
+- New focused pages: `/admin/academic` (предметы и группы), `/admin/users` (роли + учебная группа), `/admin/announcements` (объявления + настройки сайта).
+- `/admin/tools` is now only ДЗ/сообщество, Storage-аудит и системная диагностика; duplicated overview/sidebar removed.
+- No API, database, permission or deployment changes. Verify with `npm run typecheck`; browser smoke of the new routes remains pending.
 
 ## Extension + Telegram integration hardening (2026-10-11)
 
