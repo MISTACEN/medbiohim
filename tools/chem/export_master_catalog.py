@@ -40,10 +40,14 @@ def sql_quote(s: str) -> str:
 def item_from_part1(theme_key: str, theme: dict, q: dict, idx: int) -> dict:
     answer_raw = (q.get("answer_raw") or "").strip()
     text = " ".join([q.get("text", ""), " ".join(q.get("options") or [])])
+    question = (q.get("text") or "").strip()
+    if not question and (q.get("left") or q.get("right")):
+        # У match-заданий строка-инструкция не всегда распознана, но пары есть.
+        question = "Установите соответствие между позициями."
     return {
         "item_key": f"tests-p1-{theme_key}-{q.get('num', idx)}",
         "kind": "mcq" if q.get("options") else ("match" if q.get("kind") == "match" else q.get("kind", "open")),
-        "question": q.get("text", ""),
+        "question": question,
         "options": q.get("options") or (q.get("left") and {"left": q["left"], "right": q["right"]}) or None,
         "answer": answer_raw or None,
         "answer_status": "prepared_from_text" if answer_raw else "unprepared",
@@ -63,10 +67,13 @@ def item_from_tests(doc_name: str, theme_key: str, theme: dict, q: dict, idx: in
         options = {"left": q.get("left") or [], "right": q.get("right") or []}
     else:
         options = q.get("options") or None
+    question = (q.get("text") or "").strip()
+    if not question and (q.get("left") or q.get("right")):
+        question = "Установите соответствие между позициями."
     return {
         "item_key": f"tests-{doc_name}-{theme_key}-{q.get('num', idx)}",
         "kind": q.get("kind", "open"),
-        "question": q.get("text", ""),
+        "question": question,
         "options": options,
         "answer": answer_raw or None,
         "answer_status": "prepared_from_text" if answer_raw else "unprepared",

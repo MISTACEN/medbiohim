@@ -62,8 +62,15 @@ subjects.get("/:id", requireAuth, async (c) => {
     : db.from("subjects").select("*").in("slug", slugVariants(id)).eq("is_active", true).limit(2);
   const { data: rows, error } = await query;
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subject unavailable", 503, rid); return c.json(body, status as 503); }
-  if ((rows || []).length > 1) { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }
-  const data = rows?.[0];
+  // В БД могут быть и канонический слаг, и его алиас (исторический из методички).
+  // Точное совпадение с запрошенным слагом выигрывает; 409 — только если
+  // дубликаты по-настоящему неоднозначны.
+  let data = rows?.[0];
+  if ((rows || []).length > 1) {
+    const exact = (rows || []).find((row: any) => String(row.slug || "") === id);
+    if (!exact) { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }
+    data = exact;
+  }
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
   return c.json(ok(data, rid));
 });
