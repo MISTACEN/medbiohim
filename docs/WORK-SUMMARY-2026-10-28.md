@@ -187,3 +187,48 @@ MA1–MA3/MA5/MA6/MA9/MA12/SA1/FD1–FD4/FD6 закрыты.
 - tsc: 0 ошибок (фронт + воркер); eslint: 0 errors; root-тесты 159/159; воркер 140/140.
 - Проверки, которые нельзя было сделать статически ❓ → осталось только
   React #130 в `next dev` (единственный пункт волны 0 без движения).
+
+---
+
+# Третий заход (28.10.2026, ночь): волны 1–3 пакетом, работа с 2 суб-агентами
+
+## Закрыто пакетом (коммит «feat: волны 1–3 пакетом»)
+
+- **C6–C7 (волна 1)**: `window.location.search` → `useSearchParams` в 11 файлах
+  (login, materials/source, practice, search, settings, subjects/[id], tests,
+  tests/bank/[id], AuthHashCatcher, HistologyTrainer, AuthProvider) — по образцу
+  cards/page.tsx с Suspense-границами; `next build` прогнан агентом — ни одна
+  страница не упала. Grep = 0. OAuth-hash-логика не тронута.
+- **D3-guards (волна 1)**: `src/lib/guards.ts` — isAnnouncement/isProfile/
+  isSubjectCard/isScheduleRow/isTestItem + filterSafe; встроены в границы
+  api.ts (listSubjects/listTests/listSchedule/getDashboard) и покрыты 7 unit-тестами.
+- **SA9-остаток (волна 2)**: операторские тексты «Supabase»/«Auto Confirm»
+  вычищены из UI (content-import, questions, content-package, api-logs,
+  schedule, tutor, university/import, AdminDatabaseConsole) — grep видимых
+  пользователю «Supabase» = 0.
+- **MA7-остаток (волна 2)**: `useUnsavedChanges` подключён в RichLectureEditor —
+  несохранённая лекция предупреждает при уходе.
+- **FA7 (волна 3)**: /help переписан из заглушки с внутренней архитектурой в
+  настоящий FAQ студента (вход, Telegram, расширение, задания, тесты, SRS,
+  тренажёры, тема, жалобы на вопросы).
+- **MA4-остаток (волна 2)**: клиентская пагинация («Показать ещё») в
+  admin/lectures и admin/announcements.
+- **MA11 (волна 2)**: поиск по тексту/типу и batch-закрытие выбранных жалоб
+  (Исправлено/Отклонить) в admin/problems; labels типизированы.
+- **SA7 (волна 2)**: ThemeProvider применяет серверную тему при первом входе,
+  когда локального выбора ещё нет — тема переезжает между устройствами.
+- **FD8 (волна 2)**: единый расчёт времени и «ближайшей пары» — `src/lib/now-parts.ts`
+  (nowParts + pickNextLesson), обе страницы (дашборд и расписание) на одном
+  модуле вместо двух разных Intl-форматов; 6 unit-тестов.
+
+## Верификация пакета
+
+- `npx tsc --noEmit` — 0; `npx eslint src` — 0 errors; root-тесты **172/172**;
+  `grep window.location.search` — 0; `next build` — успешен.
+
+## Осталось из планов (не начато)
+
+D1 (типы домена), D9-хук useApiRequest, G1 (vitest), B4-внедрение ErrorState
+на остальные страницы, MA8 (полный редактор вопросов), MA10 (атомарная сборка
+вариантов), SA2–SA6/SA8/SA10 (email-flow, аватар, сессии, экспорт, QR, magic link),
+React #130, волны 3–4 химии (H3–H9), FA-улучшения продукта.

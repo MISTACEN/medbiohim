@@ -8,6 +8,7 @@ import {
   Underline, Undo2, Video, Wand2, X,
 } from "lucide-react";
 import { getTrainerFeed, uploadFile, fileDownloadUrl } from "@/lib/api";
+import { useUnsavedChanges } from "@/lib/unsaved-changes";
 
 type Subject = { slug: string; name: string };
 type Attachment = {
@@ -326,6 +327,12 @@ export function RichLectureEditor({
   const ref = useRef<HTMLDivElement>(null);
   const loadedValue = useRef("");
   const savedRange = useRef<Range | null>(null);
+  // MA7: baseline — последний «чистый» контент (начальное значение или внешняя
+  // синхронизация). Если текущий markdown от него отличается — есть несохранённые
+  // правки, и уход со страницы нужно подтверждать (beforeunload).
+  const cleanValue = useRef(value);
+  const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty, "В редакторе лекции есть несохранённые правки — они потеряются, если уйти.");
 
   const [block, setBlock] = useState<BlockKind | null>(null);
   const [blockTab, setBlockTab] = useState<"builder" | "raw">("builder");
@@ -396,6 +403,8 @@ export function RichLectureEditor({
     if (ref.current && value !== loadedValue.current) {
       ref.current.innerHTML = markdownToHtml(value || "");
       loadedValue.current = value;
+      cleanValue.current = value;
+      setDirty(false);
     }
   }, [value]);
 
@@ -405,6 +414,7 @@ export function RichLectureEditor({
     if (ref.current.innerHTML !== html) ref.current.innerHTML = html;
     const markdown = htmlToMarkdown(html);
     loadedValue.current = markdown;
+    setDirty(markdown !== cleanValue.current);
     onChange({ html, markdown });
   }
 

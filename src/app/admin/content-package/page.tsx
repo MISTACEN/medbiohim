@@ -149,7 +149,7 @@ export default function AdminContentPackagePage() {
       const materials = bundle.materials.map((x) => ({ ...x, file_id: resolveUploaded(String(bundle.sources.find((s) => s.id === x.source_key)?.source_path || "")) }));
       const trainer_cards = bundle.trainer_cards.map((x) => ({ ...x, specialty_slug: "mbh", subject_slug: "histology", source_file_id: resolveUploaded(String(x.preparation?.imagePath || "")) }));
 
-      setStatus("Сохраняю материалы, тренажёр и тесты в Supabase…");
+      setStatus("Сохраняю материалы, тренажёр и тесты…");
       setProgress(80);
       const r = await adminImportContentPackage({
         package_id: bundle.package_id,
@@ -212,7 +212,7 @@ export default function AdminContentPackagePage() {
         {busy && <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-indigo-600 transition-all" style={{ width: progress + "%" }} /></div>}
         {status && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">{status}</div>}
         {result && <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">{Object.entries(result).map(([k,v]) => <div key={k} className="rounded-xl border bg-emerald-50 p-3"><div className="text-[11px] uppercase text-emerald-700">{k}</div><div className="text-xl font-bold text-emerald-900">{String(v)}</div></div>)}</div>}
-        {result && <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 className="h-5 w-5" /> Контент записан в Supabase, оригиналы привязаны к B2.</div>}
+        {result && <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 className="h-5 w-5" /> Контент сохранён, оригиналы привязаны к файлам.</div>}
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

@@ -1,6 +1,7 @@
 /** Shared same-origin API client for the Vercel `/api/v1` proxy. */
 import { describeApiError } from "@/lib/errors";
 import { isTemporaryFailure, withRetry } from "@/lib/retry";
+import { filterSafe, isAnnouncement, isScheduleRow, isSubjectCard, isTestItem } from "@/lib/guards";
 import {
   clearSessionTokens,
   currentUserScope,
@@ -457,7 +458,7 @@ export const refreshSession = refreshSessionResult;
 export async function health(){return api<any>("/health")}
 export async function presenceHeartbeat(){return api<any>("/presence/heartbeat",{method:"POST",body:"{}"})}
 export async function adminPresence(within=180){return api<any>("/admin/presence?within="+encodeURIComponent(String(within)))} 
-export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return apiCached<any>(`/subjects${q.toString()?`?${q}`:""}`)}
+export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<any>(`/subjects${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isSubjectCard)};return r}
 export async function listGroups(){return api<any>("/groups")}
 export async function trackExternalPlatformClick(payload:{platform:string;title:string;href:string;subject_slug?:string|null}){return api<any>("/external-platforms/click",{method:"POST",body:JSON.stringify(payload)})}
 export async function externalPlatformStats(){return api<any>("/external-platforms/stats")}
@@ -496,7 +497,7 @@ export async function listQuestionComments(questionId:string){return api<any>(`/
 export async function addQuestionComment(questionId:string,body:string){return api<any>(`/questions/${encodeURIComponent(questionId)}/comments`,{method:"POST",body:JSON.stringify({body})})}
 export async function deleteQuestionComment(commentId:string){return api<any>(`/questions/comments/${encodeURIComponent(commentId)}`,{method:"DELETE"})}
 export type ApiTest=any;
-export async function listTests(subjectId?:string,groupId?:string,subjectSlug?:string,course?:number,semester?:number){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);if(subjectSlug)q.set("subject_slug",subjectSlug);if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));return apiCached<any>(`/tests${q.toString()?`?${q}`:""}`)}
+export async function listTests(subjectId?:string,groupId?:string,subjectSlug?:string,course?:number,semester?:number){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);if(subjectSlug)q.set("subject_slug",subjectSlug);if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<any>(`/tests${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isTestItem)};return r}
 export async function getChemistryMaster(params:Record<string,unknown>={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});return apiCached<any>(`/tests/chemistry-master${q.toString()?`?${q}`:""}`)}
 export async function getTestCurriculumMap(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return apiCached<any>(`/tests/curriculum-map${q.toString()?`?${q}`:""}`)}
 export async function getTest(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}${q}`)}
@@ -580,8 +581,8 @@ export async function checkLectureMiniQuizAnswer(questionId:string,selectedIndex
   });
 }
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
-export async function listSchedule(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);return api<any>(`/schedule${q.toString()?`?${q}`:""}`)}
-export async function getDashboard(){return api<any>("/dashboard")}
+export async function listSchedule(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);const r=await api<any>(`/schedule${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isScheduleRow)};return r}
+export async function getDashboard(){const r=await api<any>("/dashboard");if(r?.ok&&r.data)r.data={...r.data,announcements:filterSafe(r.data?.announcements,isAnnouncement)};return r}
 export async function getProgress(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/progress${q.toString()?`?${q}`:""}`)}
 export async function getCurriculum(){return api<any>("/curriculum")}
 export async function getSubject(id:string){return apiCached<any>(`/subjects/${id}`)}

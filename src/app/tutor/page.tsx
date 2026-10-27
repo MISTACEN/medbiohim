@@ -111,7 +111,7 @@ export default function TutorPage() {
   return (
     <div className="mx-auto flex h-[calc(100vh-5.5rem)] max-w-6xl flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История хранится в Supabase и восстанавливается после перезагрузки.</p></div>
+        <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История сохраняется и восстанавливается после перезагрузки страницы.</p></div>
         <div className="flex items-center gap-2 text-xs">
           {(["groq","gigachat","gemini","mistral","openrouter"] as const).map(p=><span key={p} className={available[p]?"rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{p==="groq"?"Groq":p==="gigachat"?"GigaChat":p==="gemini"?"Gemini":p==="mistral"?"Mistral":"OpenRouter"} {available[p]?"●":"○"}</span>)}
         </div>

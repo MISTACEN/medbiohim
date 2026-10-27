@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { setTokens } from "@/lib/api";
 import { parseOAuthTokensFromUrl } from "@/lib/supabase";
 
-/**
- * Supabase may redirect to Site URL (/) with #access_token=...
- * instead of /auth/callback. Catch tokens on any page.
- */
-export function AuthHashCatcher() {
+function AuthHashCatcherInner() {
+  const searchParams = useSearchParams();
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const href = window.location.href;
@@ -17,7 +16,10 @@ export function AuthHashCatcher() {
     const parsed = parseOAuthTokensFromUrl(href);
     if (parsed.access_token) {
       setTokens(parsed.access_token, parsed.refresh_token);
-      const clean = window.location.pathname + window.location.search;
+      // The tokens live in the URL hash (unavailable to useSearchParams);
+      // the clean URL keeps pathname and the regular query string.
+      const qs = searchParams.toString();
+      const clean = window.location.pathname + (qs ? `?${qs}` : "");
       window.history.replaceState({}, "", clean || "/");
       window.location.href = "/";
       return;
@@ -28,7 +30,19 @@ export function AuthHashCatcher() {
         parsed.error_description || parsed.error
       )}`;
     }
-  }, []);
+  }, [searchParams]);
 
   return null;
+}
+
+/**
+ * Supabase may redirect to Site URL (/) with #access_token=...
+ * instead of /auth/callback. Catch tokens on any page.
+ */
+export function AuthHashCatcher() {
+  return (
+    <Suspense fallback={null}>
+      <AuthHashCatcherInner />
+    </Suspense>
+  );
 }

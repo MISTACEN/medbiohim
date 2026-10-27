@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { globalSearch, type SearchHit } from "@/lib/features-api";
 import { listSubjectsCatalog } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
@@ -45,7 +46,8 @@ const TYPE_ALIASES: Record<string, string> = {
   materials: "materials",
 };
 
-export default function SearchPage() {
+function SearchPageInner() {
+  const searchParams = useSearchParams();
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<SearchHit[]>([]);
@@ -71,17 +73,17 @@ export default function SearchPage() {
     setItems(res.data.items || []);
   }, []);
 
+  const initialQuery = (searchParams.get("q") || "").trim();
+  const initialType = TYPE_ALIASES[(searchParams.get("type") || "").trim().toLowerCase()] || "";
+  const initialSubject = (searchParams.get("subject_slug") || "").trim();
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initial = (params.get("q") || "").trim();
-    const type = TYPE_ALIASES[(params.get("type") || "").trim().toLowerCase()] || "";
-    const subject = (params.get("subject_slug") || "").trim();
-    if (!initial || searched) return;
-    setQ(initial);
-    setTypeFilter(type);
-    setSubjectSlug(subject);
-    void run(initial, type, subject);
-  }, [searched, run]);
+    if (!initialQuery || searched) return;
+    setQ(initialQuery);
+    setTypeFilter(initialType);
+    setSubjectSlug(initialSubject);
+    void run(initialQuery, initialType, initialSubject);
+  }, [searched, run, initialQuery, initialType, initialSubject]);
 
   // Список предметов — из каталога, а не из зашитых шести названий.
   useEffect(() => {
@@ -221,5 +223,13 @@ export default function SearchPage() {
         })}
       </ul>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-3xl p-8 text-sm text-[var(--muted)]">Загрузка…</div>}>
+      <SearchPageInner />
+    </Suspense>
   );
 }

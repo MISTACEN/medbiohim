@@ -367,7 +367,7 @@ export default function UniversityImportPage() {
   async function run(dryRun: boolean) {
     setBusy(true);
     setErrors([]);
-    setMessage(dryRun ? "Проверяю пакет через API…" : "Импортирую пакет в Supabase…");
+    setMessage(dryRun ? "Проверяю пакет через API…" : "Импортирую пакет…");
     try {
       const payload = buildPayload(dryRun);
       const response = await adminContentImport(payload);
@@ -610,7 +610,7 @@ export default function UniversityImportPage() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Проверить через API
             </button>
             <button type="button" disabled={busy || !includedQuestions.length || !subjectKey || !testTitle.trim()} onClick={() => void run(false)} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Импортировать в Supabase
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Импортировать
             </button>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-400">

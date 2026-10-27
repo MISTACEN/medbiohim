@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   BookOpenCheck,
   CheckCircle2,
@@ -143,7 +144,8 @@ function referenceText(question: any) {
   return officialAnswerText(question);
 }
 
-export default function PracticePage() {
+function PracticePageInner() {
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [subjectCounts, setSubjectCounts] = useState<Record<string, number>>({});
@@ -175,18 +177,16 @@ export default function PracticePage() {
   const listRef = useRef<HTMLDivElement | null>(null);
   const openSequence = useRef(0);
 
+  // Older subject pages link with `subject=<uuid>`. Keep that deep link
+  // contract while also accepting the explicit subject_id/subject_slug form.
+  const legacySubject = searchParams.get("subject") || "";
+  const initialId = searchParams.get("subject_id") || (UUID.test(legacySubject) ? legacySubject : "");
+  const initialSlug = searchParams.get("subject_slug") || (!initialId ? legacySubject : "");
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    // Older subject pages link with `subject=<uuid>`. Keep that deep link
-    // contract while also accepting the explicit subject_id/subject_slug form.
-    const legacySubject = params.get("subject") || "";
-    const initialId = params.get("subject_id") || (UUID.test(legacySubject) ? legacySubject : "");
-    const initialSlug = params.get("subject_slug") || (!initialId ? legacySubject : "");
     if (initialId) setSubjectId(initialId);
     if (initialSlug) setSubjectSlug(resolveSubjectSlug(initialSlug));
     setFiltersReady(true);
-  }, []);
+  }, [initialId, initialSlug]);
 
   useEffect(() => {
     if (authLoading || !hasToken()) return;
@@ -858,5 +858,13 @@ export default function PracticePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PracticePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--muted)]">Загрузка…</div>}>
+      <PracticePageInner />
+    </Suspense>
   );
 }

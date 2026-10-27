@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { nowParts as sharedNowParts, pickNextLesson } from "@/lib/now-parts";
 import Link from "next/link";
 import {
   Calendar,
@@ -58,27 +59,7 @@ function str(row: DashRow | null | undefined, ...keys: string[]): string {
   return "";
 }
 
-function khNowParts() {
-  const dtf = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Vladivostok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  const parts = Object.fromEntries(
-    dtf
-      .formatToParts(new Date())
-      .filter((p) => p.type !== "literal")
-      .map((p) => [p.type, p.value])
-  );
-  return {
-    today: `${parts.year}-${parts.month}-${parts.day}`,
-    hm: `${parts.hour}:${parts.minute}`,
-  };
-}
+// FD8: единые «сейчас» и «ближайшая пара» с расписанием — src/lib/now-parts.ts
 
 function homeworkStatus(row: DashRow): string {
   return str(row, "my_status", "submission_status", "status").toLowerCase();
@@ -246,7 +227,8 @@ export default function DashboardPage() {
       });
   }, [data?.schedule]);
 
-  const { today: khToday, hm: khHm } = khNowParts();
+  const kh = sharedNowParts();
+  const khToday = kh.date, khHm = kh.timeLabel;
   const todaySchedule = scheduleSorted.filter((row) => str(row, "date") === khToday);
   const todayRemainingSchedule = todaySchedule.filter((row) => (str(row, "end_time", "endTime").slice(0, 5) || str(row, "start_time", "startTime").slice(0, 5) || "00:00") >= khHm);
   const nextFutureDate = scheduleSorted.map((row) => str(row, "date")).find((date) => date > khToday) || null;
@@ -254,12 +236,7 @@ export default function DashboardPage() {
   const dashboardSchedule = todayRemainingSchedule.length > 0 ? todayRemainingSchedule : futureSchedule;
   const scheduleIsToday = todayRemainingSchedule.length > 0;
   const nextScheduleDate = dashboardSchedule[0] ? str(dashboardSchedule[0], "date") : "";
-  const nextAfterNow =
-    dashboardSchedule.find((row) => {
-      const startTime = str(row, "start_time", "startTime").slice(0, 5) || "00:00";
-      const date = str(row, "date");
-      return date > khToday || (date === khToday && startTime >= khHm);
-    }) || null;
+  const nextAfterNow = pickNextLesson(dashboardSchedule as any, kh);
 
   const metrics = academic?.metrics;
   const hasMetrics = Boolean(academic && metrics);

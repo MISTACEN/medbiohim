@@ -7,6 +7,7 @@ import {
 import Link from "next/link";
 import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { nowParts as sharedNowParts } from "@/lib/now-parts";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 
 /**
@@ -59,17 +60,8 @@ function subjectColor(item:any): string {
 }
 function attendanceLabel(status?:string){return status==="present"?"Был":status==="excused"?"Уважительная":status==="sick"?"Болезнь":status==="unexcused"?"Пропуск":"";}
 
-function nowParts() {
-  const dtf = new Intl.DateTimeFormat("en-GB", {
-    timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  });
-  const raw = Object.fromEntries(dtf.formatToParts(new Date()).filter((p) => p.type !== "literal").map((p) => [p.type, p.value]));
-  const year = Number(raw.year), month = Number(raw.month), day = Number(raw.day);
-  const hour = Number(raw.hour), minute = Number(raw.minute);
-  const date = `${String(year).padStart(4,"0")}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-  return { year, month, day, hour, minute, date, minutes: hour * 60 + minute, timeLabel: `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}` };
-}
+// FD8: общая реализация с дашбордом — src/lib/now-parts.ts
+const nowParts = () => sharedNowParts();
 function parseYmd(ymd: string) { const [y,m,d]=ymd.split("-").map(Number); return {y,m,d}; }
 function addDaysYmd(ymd: string, days: number): string {
   const {y,m,d}=parseYmd(ymd); const utc=new Date(Date.UTC(y,m-1,d+days));
@@ -373,7 +365,7 @@ export default function SchedulePage() {
         if ((res.data.items || []).length === 0) {
           setError(
             user?.groupName
-              ? "Для назначенной группы Supabase не вернул занятия. Проверьте активную версию schedules и связанные schedule_entries."
+              ? "Для назначенной группы пока не найдено занятий. Возможно, расписание ещё не опубликовано — попробуйте позже или сообщите администратору."
               : "Учебная группа не назначена. Назначьте её в CMS, чтобы расписание могло быть загружено."
           );
         }
@@ -581,7 +573,7 @@ export default function SchedulePage() {
           <p className="page-subtitle">{groupName}{course != null ? ` · ${course} курс` : ""}{semester != null ? ` · семестр ${semester}` : ""} · 2026/2027</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
-              <Database className="h-3.5 w-3.5" /> {source === "db" ? "Supabase" : source === "local" ? "резервные данные" : source} · {totalCount} занятий за семестр
+              <Database className="h-3.5 w-3.5" /> {source === "db" ? "база данных" : source === "local" ? "резервные данные" : source} · {totalCount} занятий за семестр
             </div>
             <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: "color-mix(in srgb, var(--primary) 12%, transparent)" }}>
               <Clock className="h-3.5 w-3.5" /> Хабаровск · {now.timeLabel}

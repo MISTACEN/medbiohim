@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ClipboardCheck,
   FlaskConical,
@@ -47,7 +48,9 @@ const VIEWS: Array<{ id: View; label: string; Icon: typeof ClipboardCheck }> = [
   { id: "history", label: "История попыток", Icon: History },
 ];
 
-export default function TestsPage() {
+function TestsPageInner() {
+  const searchParams = useSearchParams();
+  const requestedView = searchParams.get("view");
   const { user, loading: authLoading } = useAuth();
   const [view, setView] = useState<View>("tests");
   const [attempts, setAttempts] = useState<any[]>([]);
@@ -65,10 +68,8 @@ export default function TestsPage() {
   const [chemistryError, setChemistryError] = useState("");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const requested = new URLSearchParams(window.location.search).get("view");
-    if (requested === "chemistry" || requested === "history" || requested === "tests") setView(requested);
-  }, []);
+    if (requestedView === "chemistry" || requestedView === "history" || requestedView === "tests") setView(requestedView);
+  }, [requestedView]);
 
   function selectView(next: View) {
     setView(next);
@@ -369,5 +370,13 @@ export default function TestsPage() {
         </section>
       )}
     </div>
+  );
+}
+
+export default function TestsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка…</div>}>
+      <TestsPageInner />
+    </Suspense>
   );
 }

@@ -67,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       if (typeof window === "undefined") return;
       if (window.location.pathname.startsWith("/login")) return;
-      const next = `${window.location.pathname}${window.location.search}`;
+      // Imperative read in an event handler (not render): parse the live URL
+      // so the whole provider does not need a Suspense boundary for the hook.
+      const current = new URL(window.location.href);
+      const next = `${current.pathname}${current.search}`;
       router.replace(`/login?next=${encodeURIComponent(next)}`);
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);

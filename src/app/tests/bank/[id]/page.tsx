@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, BookOpenCheck, Check, ListChecks, Pencil, Play, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { adminUpdateBankQuestion, getBankProgress, getTestBank, hasToken, me, type ApiTest } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
@@ -57,7 +58,8 @@ function isAdminResponse(payload: any): boolean {
 
 type EditOption = { label: string; correct: boolean };
 
-export default function TestBankPage({ params }: { params: Promise<{ id: string }> }) {
+function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [testId, setTestId] = useState("");
   const [test, setTest] = useState<ApiTest | null>(null);
@@ -80,17 +82,19 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
     count: 10,
   });
 
+  const queryContext = useMemo(() => {
+    return {
+      subject: searchParams.get("subject") || "",
+      module: searchParams.get("module") || "",
+      topic: searchParams.get("topic") || "",
+      mode: searchParams.get("mode") || "",
+      count: Math.max(1, Math.min(200, Number(searchParams.get("count")) || 10)),
+    };
+  }, [searchParams]);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const query = new URLSearchParams(window.location.search);
-    setContext({
-      subject: query.get("subject") || "",
-      module: query.get("module") || "",
-      topic: query.get("topic") || "",
-      mode: query.get("mode") || "",
-      count: Math.max(1, Math.min(200, Number(query.get("count")) || 10)),
-    });
-  }, []);
+    setContext(queryContext);
+  }, [queryContext]);
 
   useEffect(() => {
     let cancelled = false;
@@ -516,5 +520,13 @@ export default function TestBankPage({ params }: { params: Promise<{ id: string 
         </div>
       </section>
     </main>
+  );
+}
+
+export default function TestBankPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка…</div>}>
+      <TestBankPageInner params={params} />
+    </Suspense>
   );
 }

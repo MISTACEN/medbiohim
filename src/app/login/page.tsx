@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Send, Shield } from "lucide-react";
 import { clearTokens, login, recoverPassword, setTokens } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -31,8 +31,9 @@ function mapLoginError(code: string, message: string): string {
   return message || "Ошибка входа";
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh } = useAuth();
   // A session that expired while the user was working comes back to the same page.
   // Read after mount so the form itself is server-rendered instead of a placeholder.
@@ -47,12 +48,11 @@ export default function LoginPage() {
   const [magicLoading, setMagicLoading] = useState(false);
   const [recoverLoading, setRecoverLoading] = useState(false);
 
+  const rawNext = searchParams.get("next");
+  // Only same-site paths: an open redirect must never be possible here.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = new URLSearchParams(window.location.search).get("next");
-    // Only same-site paths: an open redirect must never be possible here.
-    setNextPath(safeNextPath(raw));
-  }, []);
+    setNextPath(safeNextPath(rawNext));
+  }, [rawNext]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -307,5 +307,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

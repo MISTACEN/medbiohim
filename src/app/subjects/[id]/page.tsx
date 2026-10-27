@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ComponentType } from "react";
+import { Suspense, useEffect, useState, type ComponentType } from "react";
+import { useSearchParams } from "next/navigation";
 import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
@@ -130,7 +131,9 @@ function stripHtml(html?: string | null) {
   return String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
+function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
+  const searchParams = useSearchParams();
+  const tabFromQuery = searchParams.get("tab") || "";
   const { user, loading: authLoading } = useAuth();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -166,7 +169,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     if (typeof window === "undefined") return;
     const fromHash = window.location.hash.replace(/^#/, "");
-    const fromQuery = new URLSearchParams(window.location.search).get("tab");
+    const fromQuery = tabFromQuery;
     const initial = fromQuery || fromHash;
     const normalized = initial ? normalizeTab(initial) : "";
     if (normalized && isTabId(normalized)) setTab(normalized);
@@ -178,7 +181,7 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+  }, [tabFromQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1029,5 +1032,13 @@ export default function SubjectPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
     </div>
+  );
+}
+
+export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-6xl space-y-4 p-8 text-sm text-slate-500">Загрузка…</div>}>
+      <SubjectPageInner params={params} />
+    </Suspense>
   );
 }

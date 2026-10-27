@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import clsx from "clsx";
 import {
@@ -24,7 +25,8 @@ import {
 
 type TrainerLayout = "sidebar" | "list" | "top";
 
-export default function SettingsPage() {
+function SettingsPageInner() {
+  const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const { user, refresh } = useAuth();
   const [recoveryMode, setRecoveryMode] = useState(false);
@@ -68,16 +70,17 @@ export default function SettingsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const recoveryFromQuery = searchParams.get("recovery") === "1";
+  const linkedFromQuery = searchParams.get("linked") === "1" || searchParams.get("link") === "ok";
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const q = new URLSearchParams(window.location.search);
-    if (q.get("recovery") === "1") setRecoveryMode(true);
-    if (q.get("linked") === "1" || q.get("link") === "ok") {
+    if (recoveryFromQuery) setRecoveryMode(true);
+    if (linkedFromQuery) {
       setMsg("Провайдер привязан. Данные остаются на том же аккаунте.");
       void load();
       window.history.replaceState({}, "", "/settings");
     }
-  }, [load]);
+  }, [recoveryFromQuery, linkedFromQuery, load]);
 
   async function onSaveProfile(e: FormEvent) {
     e.preventDefault();
@@ -426,5 +429,13 @@ export default function SettingsPage() {
         <div className="grid gap-3 md:grid-cols-3">{(otherThemes.length ? otherThemes : THEMES).map(renderTheme)}</div>
       </section>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка…</div>}>
+      <SettingsPageInner />
+    </Suspense>
   );
 }

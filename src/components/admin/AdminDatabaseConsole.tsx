@@ -537,7 +537,7 @@ export default function AdminDatabaseConsole() {
               <section className="card p-5">
                 <h3 className="font-bold">Основная БД</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Supabase — каноническая БД MEDBIOHIM. Реквизиты подключения хранятся только в server-side environment и намеренно не редактируются из браузера.
+                  Основная база данных MEDBIOHIM. Реквизиты подключения хранятся только на сервере и намеренно не редактируются из браузера.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Info label="Драйвер" value="PostgreSQL" />

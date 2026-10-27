@@ -9,6 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { hasToken } from "@/lib/api";
+import { getAccountSettings } from "@/lib/settings-api";
 
 /**
  * Six selectable themes: the original three plus three new reference themes
@@ -123,6 +125,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     setThemeState(initial);
     applyDom(initial);
+    // Тема с сервера (SA7): при первом входе локального выбора ещё нет —
+    // применяем preference из профиля, чтобы тема переезжала между устройствами.
+    if (!saved && hasToken()) {
+      let cancelled = false;
+      getAccountSettings()
+        .then((result) => {
+          if (cancelled || !result.ok) return;
+          const remote = String((result.data as any)?.preferences?.theme || "");
+          if (remote && THEMES.some((t) => t.id === remote)) {
+            setThemeState(remote as AppThemeId);
+            applyDom(remote as AppThemeId);
+          }
+        })
+        .catch(() => {
+          // Серверная тема — best effort: локальная уже применена.
+        });
+      return () => { cancelled = true; };
+    }
   }, []);
 
   const setTheme = useCallback((id: AppThemeId) => {

@@ -18,6 +18,7 @@ type Announcement = { id: string; title?: string; body?: string; pinned?: boolea
 /** Объявления и тексты главной — вынесено из старого /admin. */
 export default function AdminAnnouncementsPage() {
   const [site, setSite] = useState({ title: "Медбиохим", subtitle: "", description: "", announcement_banner: "" });
+  const [visible, setVisible] = useState(1);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -120,8 +121,11 @@ export default function AdminAnnouncementsPage() {
 
         <div className="card">
           <h2 className="mb-2 font-bold">Опубликовано · {announcements.length}</h2>
+          {announcements.length > visible*30 && (
+            <button type="button" onClick={() => setVisible(v => v + 1)} className="mt-2 w-full rounded-xl border px-3 py-2 text-sm font-semibold">Показать ещё ({announcements.length - visible*30})</button>
+          )}
           <div className="divide-y">
-            {announcements.map((a) => (
+            {announcements.slice(0, visible*30).map((a) => (
               <div key={a.id} className="py-3">
                 {draft?.id === a.id ? (
                   <div className="space-y-2">

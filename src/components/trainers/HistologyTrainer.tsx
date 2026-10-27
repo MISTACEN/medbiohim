@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Menu } from "lucide-react";
 import { getAccountSettings } from "@/lib/settings-api";
 import {
@@ -26,7 +27,8 @@ type AnswerRow = {
   review_snapshot?: any;
 };
 
-export default function HistologyTrainer({ embedded = false }: { embedded?: boolean }) {
+function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
+  const searchParams = useSearchParams();
   const [topics, setTopics] = useState<string[]>([]);
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Training[]>([]);
@@ -102,11 +104,10 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
     setWorking(false);
   };
 
+  const trainingFromQuery = searchParams.get("training") || "";
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const id = new URLSearchParams(window.location.search).get("training");
-    if (id) void loadSession(id);
-  }, []);
+    if (trainingFromQuery) void loadSession(trainingFromQuery);
+  }, [trainingFromQuery]);
 
   const start = async () => {
     setWorking(true);
@@ -567,5 +568,13 @@ export default function HistologyTrainer({ embedded = false }: { embedded?: bool
         </>
       )}
     </div>
+  );
+}
+
+export default function HistologyTrainer({ embedded = false }: { embedded?: boolean }) {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка…</div>}>
+      <HistologyTrainerInner embedded={embedded} />
+    </Suspense>
   );
 }
