@@ -672,7 +672,16 @@ export type TelegramAdminChat = any;
 export type TrainerFeedCard = any;
 
 const ADMIN_DB_ID = "supabase_primary";
-export async function adminDbAudit(limit = 200): Promise<any> { return api("/admin/db/audit?limit=" + encodeURIComponent(String(limit))) as any; }
+export async function adminDbAudit(params:{limit?:number;offset?:number;table?:string;source?:string}={}): Promise<any> {
+  const search = new URLSearchParams();
+  if(params.limit) search.set("limit", String(params.limit));
+  if(params.offset) search.set("offset", String(params.offset));
+  if(params.table) search.set("table", params.table);
+  if(params.source) search.set("source", params.source);
+  const suffix = search.toString();
+  return api("/admin/db/audit" + (suffix ? `?${suffix}` : "")) as any;
+}
+export async function adminDbAuditVersion(id:string): Promise<any> { return api("/admin/db/audit/" + encodeURIComponent(id)) as any; }
 export async function adminRollbackAudit(id:string): Promise<any> { return api(`/admin/db/audit/${encodeURIComponent(id)}/rollback`, {method:"POST",body:"{}"}) as any; }
 export async function adminDbDelete(table:string,id:string): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/rows/${encodeURIComponent(table)}?id=${encodeURIComponent(id)}`, { method:"DELETE" }) as any; }
 export async function adminDbDeleteByKey(table:string,key:Record<string,unknown>): Promise<any> { return adminDbDelete(table, String(key.id || "")); }
