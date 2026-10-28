@@ -16,6 +16,7 @@ import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import TestsHub from "@/components/tests/TestsHub";
 import Labs from "@/components/Labs";
 import AttestationList from "@/components/attestations/AttestationList";
+import ExamQuestionsPanel from "@/components/subjects/ExamQuestionsPanel";
 import PhysiologyPractice from "@/components/physiology/PhysiologyPractice";
 import Colloquium from "@/components/physiology/Colloquium";
 import SubjectQuestionBank from "@/components/questions/SubjectQuestionBank";
@@ -43,10 +44,10 @@ type Subject = {
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
 
-type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "progress" | "colloquium" | "portal" | "chem" | "latin";
+type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin";
 type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
 
-const TAB_IDS: TabId[] = ["plan", "lessons", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "progress", "colloquium", "portal", "chem", "latin"];
+const TAB_IDS: TabId[] = ["plan", "lessons", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "exam", "progress", "colloquium", "portal", "chem", "latin"];
 
 // Вкладки сгруппированы: верхний ряд — крупные разделы, внутри — точные режимы.
 // Старые id сохранены, поэтому ссылки вида ?tab=tickets продолжают работать.
@@ -62,6 +63,7 @@ const GROUP_OF: Record<TabId, GroupId> = {
   trainers: "practice",
   labs: "practice",
   attestations: "attestations",
+  exam: "attestations",
   colloquium: "attestations",
   portal: "portal",
   progress: "progress",
@@ -439,10 +441,11 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
               ...(chemistry ? [{ id: "chem" as TabId, label: "Структуры" }] : []),
               ...(latin ? [{ id: "latin" as TabId, label: "Рецепты" }] : []),
             ]
-          : group === "attestations" && slug === "physiology"
+          : group === "attestations"
             ? [
                 { id: "attestations", label: "Аттестации" },
-                { id: "colloquium", label: "Коллоквиум" },
+                { id: "exam" as TabId, label: "Вопросы к экзамену" },
+                ...(slug === "physiology" ? [{ id: "colloquium" as TabId, label: "Коллоквиум" }] : []),
               ]
             : [];
 
@@ -966,6 +969,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             <AttestationList subjectSlug={slug} subjectName={subject?.name} />
           </section>
         )}
+
+        {tab === "exam" && <ExamQuestionsPanel subjectSlug={slug} />}
 
         {tab === "progress" && (
           <section className="card p-5">

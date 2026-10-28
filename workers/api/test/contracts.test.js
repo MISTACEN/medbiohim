@@ -228,3 +228,29 @@ test("personal iCal import is user-scoped, SSRF-guarded and keeps manual topic l
     assert.match(route.slice(start, start + 120), /requireAuth/, "handler is not authenticated: " + handler);
   }
 });
+
+test("exam questions are read-only, subject-scoped and never mask DB failures", async () => {
+  const index = await source("../src/index.ts");
+  assert.match(index, /import examQuestions from "\.\/routes\/exam-questions"/);
+  assert.match(index, /v1\.route\("\/exam-questions", examQuestions\)/);
+
+  const route = await source("../src/routes/exam-questions.ts");
+  // Только чтение: ни insert, ни update, ни delete.
+  assert.doesNotMatch(route, /\.insert\(/);
+  assert.doesNotMatch(route, /\.update\(/);
+  assert.doesNotMatch(route, /\.delete\(/);
+  // Вопросы кафедры: for_exam, только опубликованные.
+  assert.match(route, /\.eq\("for_exam", true\)/);
+  assert.match(route, /\.eq\("is_published", true\)/);
+  // Пагинация и поиск из UI.
+  assert.match(route, /\.range\(offset, offset \+ limit - 1\)/);
+  assert.match(route, /\.ilike\("text"/);
+  // Честная ошибка вместо пустого успеха.
+  assert.match(route, /DB_UNAVAILABLE/);
+  assert.doesNotMatch(route, /ok\(\{\s*items:\s*\[\]\s*\}/);
+
+  const handlers = ['examQuestions.get("/", requireAuth', 'examQuestions.get("/summary", requireAuth'];
+  for (const handler of handlers) {
+    assert.ok(route.includes(handler), "missing handler: " + handler);
+  }
+});
