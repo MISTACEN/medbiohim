@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { AuthHashCatcher } from "@/components/auth/AuthHashCatcher";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -15,9 +16,19 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Медбиохим — образовательная платформа",
-  description:
-    "Образовательная платформа от студентов для студентов: расписание, задания, тесты, материалы",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — образовательная платформа`,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — образовательная платформа`,
+    description: DEFAULT_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
