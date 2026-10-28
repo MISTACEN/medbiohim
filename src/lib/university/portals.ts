@@ -7,6 +7,9 @@
  */
 import type { Faculty, FeedKind, PortalInfo, ScheduleKind, ServiceStatus } from "./types";
 
+/** Public Moodle of the ОЗиЗ department (U6/U7); read-only catalog. */
+export const OZIZ_URL = "https://ozizdvgmu.ru/";
+
 export const PORTAL: PortalInfo = {
   name: "ФГБОУ ВО «Дальневосточный государственный медицинский университет» Минздрава России",
   url: "https://www.fesmu.ru/",
@@ -106,6 +109,15 @@ const SERVICE_REGISTRY: Omit<ServiceStatus, "reachable" | "http_status" | "laten
     description: "Электронная информационно-образовательная среда: расписание, материалы, оценки.",
     badge: "Личный кабинет",
     note: "Вход выполняется только на стороне вуза. MEDBIOHIM не отправляет логины, пароли и cookie.",
+  },
+  {
+    id: "oziz",
+    title: "ОЗиЗ — Moodle",
+    url: OZIZ_URL,
+    category: "lms",
+    description: "Публичный каталог курсов кафедры общественного здоровья и здравоохранения: информационные технологии в здравоохранении, история медицины, физиология.",
+    badge: "Moodle ОЗиЗ",
+    note: "Читается только публичная страница каталога. Содержимое курса открывается после входа на стороне Moodle; MEDBIOHIM не входит в аккаунт и не хранит sesskey/токены.",
   },
   {
     id: "schedule",

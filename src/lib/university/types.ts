@@ -178,6 +178,47 @@ export type ServiceStatusReport = {
   services: ServiceStatus[];
 };
 
+/** Public Moodle category of ozizdvgmu.ru (U7). `path` keeps the full breadcrumb. */
+export type OzizCategory = {
+  id: number;
+  name: string;
+  path: string;
+  depth: number;
+};
+
+/** One public course card; course contents stay behind the Moodle login (U7/U9). */
+export type OzizCourse = {
+  id: number;
+  title: string;
+  url: string;
+  summary: string | null;
+  teachers: string[];
+  category: string | null;
+  /** U8: same dimensions as the FESMU schedule, derived from the title/path. */
+  faculty: string | null;
+  program: string | null;
+  course: string | null;
+  course_number: number | null;
+  form: StudyForm | null;
+  semester: Semester | null;
+  /** Academic year or month.year as written in the title, e.g. «2026-27» / «02.2021». */
+  year: string | null;
+};
+
+/** `GET /api/university/oziz` — public catalog, never throws. */
+export type OzizCatalog = {
+  ok: boolean;
+  fetched_at: string;
+  source: string;
+  cached: boolean;
+  stale: boolean;
+  cache_age_seconds: number | null;
+  categories: OzizCategory[];
+  courses: OzizCourse[];
+  note: string;
+  error: string | null;
+};
+
 /** Result of the low-level transport; never throws. */
 export type FesmuResponse = {
   ok: boolean;

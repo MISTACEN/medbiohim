@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+
+<html  dir="ltr" lang="ru" xml:lang="ru">
+<head>
+    <title>Категории курсов | Система управления обучением ОЗиЗ ДВГМУ</title>
+    <link rel="shortcut icon" href="https://ozizdvgmu.ru/pluginfile.php/1/core_admin/favicon/64x64/1793189415/favIcon.jpg" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="keywords" content="moodle, Категории курсов | Система управления обучением ОЗиЗ ДВГМУ" />
+<link rel="stylesheet" type="text/css" href="https://ozizdvgmu.ru/theme/yui_combo.php?rollup/3.18.1/yui-moodlesimple-min.css" /><script id="firstthemesheet" type="text/css">/** Required in order to fix style inclusion problems in IE with YUI **/</script><link rel="stylesheet" type="text/css" href="https://ozizdvgmu.ru/theme/styles.php/adaptable/1793189415_1791873373/all" />
+<script>
+//<![CDATA[
+var M = {}; M.yui = {};
+M.pageloadstarttime = new Date();
+M.cfg = {"wwwroot":"https:\/\/ozizdvgmu.ru","apibase":"https:\/\/ozizdvgmu.ru\/r.php\/api","homeurl":{},"sesskey":"","sessiontimeout":"7200","sessiontimeoutwarning":1200,"themerev":"1793189415","slasharguments":1,"theme":"adaptable","iconsystemmodule":"core\/icon_system_fontawesome","jsrev":"1793189415","admin":"admin","svgicons":true,"usertimezone":"\u0410\u0437\u0438\u044f\/\u0412\u043b\u0430\u0434\u0438\u0432\u043e\u0441\u0442\u043e\u043a","language":"ru","courseId":1,"courseContextId":2,"contextid":1,"contextInstanceId":0,"langrev":1793189415,"templaterev":"1793189415","siteId":1,"userId":0};var yui1ConfigFn = function(me) {if(/-skin|reset|fonts|grids|base/.test(me.name)){me.type='css';me.path=me.path.replace(/\.js/,'.css');me.path=me.path.replace(/\/yui2-skin/,'/assets/skins/sam/yui2-skin')}};
+var yui2ConfigFn = function(me) {var parts=me.name.replace(/^moodle-/,'').split('-'),component=parts.shift(),module=parts[0],min='-min';if(/-(skin|core)$/.test(me.name)){parts.pop();me.type='css';min=''}
+if(module){var filename=parts.join('-');me.path=component+'/'+module+'/'+filename+min+'.'+me.type}else{me.path=component+'/'+component+'.'+me.type}};
+YUI_config = {"debug":false,"base":"https:\/\/ozizdvgmu.ru\/lib\/yuilib\/3.18.1\/","comboBase":"https:\/\/ozizdvgmu.ru\/theme\/yui_combo.php?","combine":true,"filter":null,"insertBefore":"firstthemesheet","groups":{"yui2":{"base":"https:\/\/ozizdvgmu.ru\/lib\/yuilib\/2in3\/2.9.0\/build\/","comboBase":"https:\/\/ozizdvgmu.ru\/theme\/yui_combo.php?","combine":true,"ext":false,"root":"2in3\/2.9.0\/build\/","patterns":{"yui2-":{"group":"yui2","configFn":yui1ConfigFn}}},"moodle":{"name":"moodle","base":"https:\/\/ozizdvgmu.ru\/theme\/yui_combo.php?m\/1793189415\/","combine":true,"comboBase":"https:\/\/ozizdvgmu.ru\/theme\/yui_combo.php?","ext":false,"root":"m\/1793189415\/","patterns":{"moodle-":{"group":"moodle","configFn":yui2ConfigFn}},"filter":null,"modules":{"moodle-core-notification":{"requires":["moodle-core-notification-dialogue","moodle-core-notification-alert","moodle-core-notification-confirm","moodle-core-notification-exception","moodle-core-notification-ajaxexception"]},"moodle-core-notification-dialogue":{"requires":["base","node","panel","escape","event-key","dd-plugin","moodle-core-widget-focusafterclose","moodle-core-lockscroll"]},"moodle-core-notification-alert":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-notification-confirm":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-notification-exception":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-notification-ajaxexception":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-handlebars":{"condition":{"trigger":"handlebars","when":"after"}},"moodle-core-blocks":{"requires":["base","node","io","dom","dd","dd-scroll","moodle-core-dragdrop","moodle-core-notification"]},"moodle-core-event":{"requires":["event-custom"]},"moodle-core-lockscroll":{"requires":["plugin","base-build"]},"moodle-core-actionmenu":{"requires":["base","event","node-event-simulate"]},"moodle-core-maintenancemodetimer":{"requires":["base","node"]},"moodle-core-dragdrop":{"requires":["base","node","io","dom","dd","event-key","event-focus","moodle-core-notification"]},"moodle-core-chooserdialogue":{"requires":["base","panel","moodle-core-notification"]},"moodle-core_availability-form":{"requires":["base","node","event","event-delegate","panel","moodle-core-notification-dialogue","json"]},"moodle-course-management":{"requires":["base","node","io-base","moodle-core-notification-exception","json-parse","dd-constrain","dd-proxy","dd-drop","dd-delegate","node-event-delegate"]},"moodle-course-util":{"requires":["node"],"use":["moodle-course-util-base"],"submodules":{"moodle-course-util-base":{},"moodle-course-util-section":{"requires":["node","moodle-course-util-base"]},"moodle-course-util-cm":{"requires":["node","moodle-course-util-base"]}}},"moodle-course-dragdrop":{"requires":["base","node","io","dom","dd","dd-scroll","moodle-core-dragdrop","moodle-core-notification","moodle-course-coursebase","moodle-course-util"]},"moodle-course-categoryexpander":{"requires":["node","event-key"]},"moodle-form-dateselector":{"requires":["base","node","overlay","calendar"]},"moodle-form-shortforms":{"requires":["node","base","selector-css3","moodle-core-event"]},"moodle-question-chooser":{"requires":["moodle-core-chooserdialogue"]},"moodle-question-searchform":{"requires":["base","node"]},"moodle-availability_completion-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_date-form":{"requires":["base","node","event","io","moodle-core_availability-form"]},"moodle-availability_grade-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_group-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_grouping-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_profile-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-mod_assign-history":{"requires":["node","transition"]},"moodle-mod_attendance-groupfilter":{"requires":["base","node"]},"moodle-mod_quiz-toolboxes":{"requires":["base","node","event","event-key","io","moodle-mod_quiz-quizbase","moodle-mod_quiz-util-slot","moodle-core-notification-ajaxexception"]},"moodle-mod_quiz-modform":{"requires":["base","node","event"]},"moodle-mod_quiz-questionchooser":{"requires":["moodle-core-chooserdialogue","moodle-mod_quiz-util","querystring-parse"]},"moodle-mod_quiz-autosave":{"requires":["base","node","event","event-valuechange","node-event-delegate","io-form","datatype-date-format"]},"moodle-mod_quiz-util":{"requires":["node","moodle-core-actionmenu"],"use":["moodle-mod_quiz-util-base"],"submodules":{"moodle-mod_quiz-util-base":{},"moodle-mod_quiz-util-slot":{"requires":["node","moodle-mod_quiz-util-base"]},"moodle-mod_quiz-util-page":{"requires":["node","moodle-mod_quiz-util-base"]}}},"moodle-mod_quiz-dragdrop":{"requires":["base","node","io","dom","dd","dd-scroll","moodle-core-dragdrop","moodle-core-notification","moodle-mod_quiz-quizbase","moodle-mod_quiz-util-base","moodle-mod_quiz-util-page","moodle-mod_quiz-util-slot","moodle-course-util"]},"moodle-mod_quiz-quizbase":{"requires":["base","node"]},"moodle-message_airnotifier-toolboxes":{"requires":["base","node","io"]},"moodle-editor_atto-editor":{"requires":["node","transition","io","overlay","escape","event","event-simulate","event-custom","node-event-html5","node-event-simulate","yui-throttle","moodle-core-notification-dialogue","moodle-editor_atto-rangy","handlebars","timers","querystring-stringify"]},"moodle-editor_atto-plugin":{"requires":["node","base","escape","event","event-outside","handlebars","event-custom","timers","moodle-editor_atto-menu"]},"moodle-editor_atto-menu":{"requires":["moodle-core-notification-dialogue","node","event","event-custom"]},"moodle-editor_atto-rangy":{"requires":[]},"moodle-report_eventlist-eventfilter":{"requires":["base","event","node","node-event-delegate","datatable","autocomplete","autocomplete-filters"]},"moodle-report_loglive-fetchlogs":{"requires":["base","event","node","io","node-event-delegate"]},"moodle-gradereport_history-userselector":{"requires":["escape","event-delegate","event-key","handlebars","io-base","json-parse","moodle-core-notification-dialogue"]},"moodle-qbank_editquestion-chooser":{"requires":["moodle-core-chooserdialogue"]},"moodle-tool_lp-dragdrop-reorder":{"requires":["moodle-core-dragdrop"]},"moodle-assignfeedback_editpdf-editor":{"requires":["base","event","node","io","graphics","json","event-move","event-resize","transition","querystring-stringify-simple","moodle-core-notification-dialog","moodle-core-notification-alert","moodle-core-notification-warning","moodle-core-notification-exception","moodle-core-notification-ajaxexception"]},"moodle-atto_accessibilitychecker-button":{"requires":["color-base","moodle-editor_atto-plugin"]},"moodle-atto_accessibilityhelper-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_align-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_bold-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_charmap-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_clear-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_collapse-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_emojipicker-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_emoticon-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_equation-button":{"requires":["moodle-editor_atto-plugin","moodle-core-event","io","event-valuechange","tabview","array-extras"]},"moodle-atto_h5p-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_html-button":{"requires":["promise","moodle-editor_atto-plugin","moodle-atto_html-beautify","moodle-atto_html-codemirror","event-valuechange"]},"moodle-atto_html-beautify":{},"moodle-atto_html-codemirror":{"requires":["moodle-atto_html-codemirror-skin"]},"moodle-atto_image-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_indent-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_italic-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_link-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_managefiles-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_managefiles-usedfiles":{"requires":["node","escape"]},"moodle-atto_media-button":{"requires":["moodle-editor_atto-plugin","moodle-form-shortforms"]},"moodle-atto_noautolink-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_orderedlist-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_recordrtc-recording":{"requires":["moodle-atto_recordrtc-button"]},"moodle-atto_recordrtc-button":{"requires":["moodle-editor_atto-plugin","moodle-atto_recordrtc-recording"]},"moodle-atto_rtl-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_strike-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_subscript-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_superscript-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_table-button":{"requires":["moodle-editor_atto-plugin","moodle-editor_atto-menu","event","event-valuechange"]},"moodle-atto_title-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_underline-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_undo-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_unorderedlist-button":{"requires":["moodle-editor_atto-plugin"]},"moodle-atto_wordimport-button":{"requires":["moodle-editor_atto-plugin"]}}},"gallery":{"name":"gallery","base":"https:\/\/ozizdvgmu.ru\/lib\/yuilib\/gallery\/","combine":true,"comboBase":"https:\/\/ozizdvgmu.ru\/theme\/yui_combo.php?","ext":false,"root":"gallery\/1793189415\/","patterns":{"gallery-":{"group":"gallery"}}}},"modules":{"core_filepicker":{"name":"core_filepicker","fullpath":"https:\/\/ozizdvgmu.ru\/lib\/javascript.php\/1793189415\/repository\/filepicker.js","requires":["base","node","node-event-simulate","json","async-queue","io-base","io-upload-iframe","io-form","yui2-treeview","panel","cookie","datatable","datatable-sort","resize-plugin","dd-plugin","escape","moodle-core_filepicker","moodle-core-notification-dialogue"]},"core_comment":{"name":"core_comment","fullpath":"https:\/\/ozizdvgmu.ru\/lib\/javascript.php\/1793189415\/comment\/comment.js","requires":["base","io-base","node","json","yui2-animation","overlay","escape"]}},"logInclude":[],"logExclude":[],"logLevel":null};
+M.yui.loader = {modules: {}};
+
+//]]>
+</script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Twitter Card data -->
+    <meta name="twitter:card" value="summary">
+    <meta name="twitter:site" value="Система электронной поддержки обучения. Кафедра общественного здоровья и здравоохранения ФГБОУ ВО ДВГМУ Минздрава России.">
+    <meta name="twitter:title" value="Категории курсов | Система управления обучением ОЗиЗ ДВГМУ">
+
+    <!-- Open Graph data -->
+    <meta property="og:title" content="Категории курсов | Система управления обучением ОЗиЗ ДВГМУ">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="">
+    <meta name="og:site_name" value="Система электронной поддержки обучения. Кафедра общественного здоровья и здравоохранения ФГБОУ ВО ДВГМУ Минздрава России.">
+
+    <!-- Chrome, Firefox OS and Opera on Android topbar color -->
+    <meta name="theme-color" content="#fff">
+
+    <!-- Windows Phone topbar color -->
+    <meta name="msapplication-navbutton-color" content="#fff">
+
+    <!-- iOS Safari topbar color -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="#fff">
+
+</head><body  id="page-course-index-category" class="limitedwidth format-site  path-course path-course-index dir-ltr lang-ru yui-skin-sam yui3-skin-sam ozizdvgmu-ru pagelayout-coursecategory course-1 context-1 notloggedin theme theme_adaptable two-column  fullin has-header-bg header-style1 showblockicons standard uses-drawers responsivesectionnav"><div>
+    <a class="sr-only sr-only-focusable" href="#maincontent">Перейти к основному содержанию</a>
+</div><script src="https://ozizdvgmu.ru/lib/javascript.php/1793189415/lib/polyfills/polyfill.js"></script>
+<script src="https://ozizdvgmu.ru/theme/yui_combo.php?rollup/3.18.1/yui-moodlesimple-min.js"></script><script src="https://ozizdvgmu.ru/lib/javascript.php/1793189415/lib/javascript-static.js"></script>
+<script>
+//<![CDATA[
+document.body.className += ' jsenabled';
+//]]>
+</script>
+
+<div id="page-wrapper"><div  class="drawer drawer-right d-none d-print-none not-initialized" data-region="fixed-drawer" id="theme_adaptable-drawers-sidepost" data-preference="drawer-open-block" data-state="show-drawer-right" data-forceopen="" data-close-on-resize="1">
+    <div class="drawerheader">
+        <button
+            class="btn drawertoggle icon-no-margin hidden"
+            data-toggler="drawers"
+            data-action="closedrawer"
+            data-target="theme_adaptable-drawers-sidepost"
+            data-toggle="tooltip"
+            data-placement="left"
+            title="Закрыть боковую панель"
+        >
+            <i class="afaicon fa fa-xmark fa-fw" aria-hidden="true"  ></i>
+        </button>
+        
+        <div class="drawerheadercontent hidden">
+            
+        </div>
+    </div>
+    <div class="drawercontent drag-container" data-usertour="scroller">
+                    <section class="d-print-none" aria-label="Блоки">
+                <aside id="block-region-side-post" class="block-region" data-blockregion="side-post" data-droptarget="1"><h2 class="sr-only">Блоки</h2><a class="skip skip-block" id="fsb-1" href="#sb-1">Пропустить Навигация</a><section id="inst13522" class="block_navigation block mb-3" role="navigation" data-block="navigation" data-instance-id="13522" aria-labelledby="instance-13522-header"><div class="header"><div id="instance-13522-action" class="block-action block-collapsible" data-instance-id="13522" title="Show / hide the block"></div><div class="title"><div class="block_action"></div><h2 class="d-inline" id="instance-13522-header">Навигация</h2></div><div class="block-controls"></div></div><div class="content"><ul class="block_tree list" role="tree" data-ajax-loader="block_navigation/nav_loader"><li class="type_unknown depth_1 contains_branch" role="treeitem" aria-expanded="true" aria-owns="random6ae1f6290fb4a5_group" data-collapsible="false" aria-labelledby="random6ae1f6290fb4a4_label_1_1"><p class="tree_item branch canexpand navigation_node"><a tabindex="-1" id="random6ae1f6290fb4a4_label_1_1" href="https://ozizdvgmu.ru/">В начало</a></p><ul id="random6ae1f6290fb4a5_group" role="group"><li class="type_custom depth_2 item_with_icon" role="treeitem" aria-labelledby="random6ae1f6290fb4a6_label_2_3"><p class="tree_item hasicon"><a tabindex="-1" id="random6ae1f6290fb4a6_label_2_3" href="https://ozizdvgmu.ru/my/courses.php"><i class="afaicon anavigationitem far fa-circle fa-2xs align-middle navicon fa-fw" aria-hidden="true"  ></i><span class="item-content-wrap">Мои курсы</span></a></p></li><li class="type_activity depth_2 item_with_icon" role="treeitem" aria-labelledby="random6ae1f6290fb4a6_label_2_4"><p class="tree_item hasicon"><a tabindex="-1" id="random6ae1f6290fb4a6_label_2_4" title="Форум" href="https://ozizdvgmu.ru/mod/forum/view.php?id=1"><img class="icon navicon" alt="Форум" title="Форум" src="https://ozizdvgmu.ru/theme/image.php/adaptable/forum/1793189415/monologo" /><span class="item-content-wrap">Объявления сайта</span></a></p></li><li class="type_system depth_2 item_with_icon" role="treeitem" aria-labelledby="random6ae1f6290fb4a6_label_2_5"><p class="tree_item hasicon"><a tabindex="-1" id="random6ae1f6290fb4a6_label_2_5" href="https://ozizdvgmu.ru/my/courses.php"><i class="afaicon fa fa-graduation-cap navicon fa-fw" aria-hidden="true"  ></i><span class="item-content-wrap">Мои курсы</span></a></p></li><li class="type_system depth_2 contains_branch current_branch" role="treeitem" aria-expanded="true" data-requires-ajax="true" data-loaded="false" data-node-id="expandable_branch_0_courses" data-node-key="courses" data-node-type="0" aria-labelledby="random6ae1f6290fb4a6_label_2_6"><p class="tree_item branch active_tree_node" id="expandable_branch_0_courses"><a tabindex="-1" id="random6ae1f6290fb4a6_label_2_6" href="https://ozizdvgmu.ru/course/index.php">Курсы</a></p></li></ul></li></ul></div></section><span class="skip-block-to" id="sb-1"></span></aside>
+            </section>
+
+    </div>
+</div><header id="adaptable-page-header-wrapper" class="headerbgimage" style="background-image: url('//ozizdvgmu.ru/pluginfile.php/1/theme_adaptable/headerbgimage/1793189415/%D0%94%D0%B2%D0%B3%D0%BC%D1%83%D0%A4%D1%80%D0%BE%D0%BD%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%B5%D0%A4%D0%BE%D1%82%D0%BE.jpeg');">
+    <div id="header1" class="above-header">
+        <div class="container">
+            <nav class="navbar navbar-expand btco-hover-menu">
+                <button class="navbar-toggler nav-link aabtn d-block d-lg-none px-1 my-1 border-0" data-toggler="drawers" data-action="toggle" data-target="theme_adaptable-drawers-primary">
+                    <i aria-hidden="true" class="fa fa-bars afaicon fa-fw"></i>
+                    <span class="sr-only">Боковая панель</span>
+                </button>
+
+                <div class="collapse navbar-collapse">
+                
+                    <ul id="adaptable-user-nav" class="navbar-nav ml-auto my-auto">
+                        
+
+                        <li class="nav-item navbarsearchsocial mx-md-1 my-auto d-md-block d-lg-none my-auto">
+                            <div id="searchinput-navbar-6ae1f6292989c6ae1f6290fb4a11" class="simplesearchform adsimplesearchform">
+    <div class="collapse" id="searchform-navbar-6ae1f6292989c6ae1f6290fb4a11">
+        <form autocomplete="off" action="https://ozizdvgmu.ru/course/search.php" method="get" accept-charset="utf-8" class="mform d-flex flex-wrap align-items-center searchform-navbar">
+                <input type="hidden" name="context" value="1">
+            <div class="input-group">
+                <input type="text"
+                    id="searchinput-6ae1f6292989c6ae1f6290fb4a11"
+                    class="form-control withclear"
+                    placeholder="Поиск курса"
+                    aria-label="Поиск курса"
+                    name="q"
+                    data-region="input"
+                    autocomplete="off"
+                >
+                <label for="searchinput-6ae1f6292989c6ae1f6290fb4a11">
+                    <span class="sr-only">Поиск курса</span>
+                </label>
+                <button class="btn btn-close adsimplesearchclose"
+                    data-action="closesearch"
+                    data-toggle="collapse"
+                    data-target="#searchform-navbar-6ae1f6292989c6ae1f6290fb4a11"
+                    type="button"
+                >
+                    <i class="afaicon fa fa-xmark fa-fw" aria-hidden="true"  ></i>
+                    <span class="sr-only">Закрыть</span>
+                </button>
+                <button type="submit" class="btn btn-submit" data-action="submit">
+                    <i class="afaicon fa fa-magnifying-glass fa-fw" aria-hidden="true"  ></i>
+                    <span class="sr-only">Поиск курса</span>
+                </button>
+            </div>
+        </form>
+    </div>
+    <button
+        class="rounded-0 nav-link icon-no-margin"
+        data-toggle="collapse"
+        data-target="#searchform-navbar-6ae1f6292989c6ae1f6290fb4a11"
+        data-action="opensearch"
+        type="button"
+        aria-expanded="false"
+        aria-controls="searchform-navbar-6ae1f6292989c6ae1f6290fb4a11"
+        title="Изменить данные поисковой строки"
+    >
+        <i class="afaicon fa fa-magnifying-glass fa-fw" aria-hidden="true"  ></i>
+        <span class="sr-only">Изменить данные поисковой строки</span>
+    </button>
+</div>
+                        </li>
+
+
+                        
+
+                        
+
+                        <li class="nav-item"><a class="btn-login d-inline-block" href="https://ozizdvgmu.ru/login/index.php">Вход</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <div id="page-header" class="main-header-row d-none d-lg-flex">
+        <div class="container">
+            <div class="row d-flex justify-content-start align-items-center h-100">
+                <div class="col-lg-8 p-0">
+                    <div class="bd-highlight d-flex">
+                        <div class="pb-2 pr-3 pt-2 bd-highlight d-none d-lg-inline-block"><a href=https://ozizdvgmu.ru aria-label="В начало" title="Система электронной поддержки обучения. Кафедра общественного здоровья и здравоохранения ФГБОУ ВО ДВГМУ Минздрава России."><img src=//ozizdvgmu.ru/pluginfile.php/1/theme_adaptable/logo/1793189415/logo%20real.png id="logo" alt="Логотип"></a></div>
+                        <div id="headertitle" class="bd-highlight pt-2 d-none d-lg-inline-block"><h1><span id="sitetitle">Система электронной поддержки обучения. Кафедра общественного здоровья и здравоохранения ФГБОУ ВО ДВГМУ Минздрава России.</span></h1></div>
+                    </div>
+                    <div id="course-header">
+                        
+                    </div>
+                </div>
+                <div class="col-lg-4 d-flex justify-content-end">
+                        <div class="headersearch pagelayoutoriginal d-none d-lg-inline-block">
+    <div id="searchinput-navbar-6ae1f62929b4e6ae1f6290fb4a12" class="simplesearchform adsimplesearchform">
+    <div class="collapse" id="searchform-navbar-6ae1f62929b4e6ae1f6290fb4a12">
+        <form autocomplete="off" action="https://ozizdvgmu.ru/course/search.php" method="get" accept-charset="utf-8" class="mform d-flex flex-wrap align-items-center searchform-navbar">
+                <input type="hidden" name="context" value="1">
+            <div class="input-group">
+                <input type="text"
+                    id="searchinput-6ae1f62929b4e6ae1f6290fb4a12"
+                    class="form-control withclear"
+                    placeholder="Поиск курса"
+                    aria-label="Поиск курса"
+                    name="q"
+                    data-region="input"
+                    autocomplete="off"
+                >
+                <label for="searchinput-6ae1f62929b4e6ae1f6290fb4a12">
+                    <span class="sr-only">Поиск курса</span>
+                </label>
+                <button class="btn btn-close adsimplesearchclose"
+                    data-action="closesearch"
+                    data-toggle="collapse"
+                    data-target="#searchform-navbar-6ae1f62929b4e6ae1f6290fb4a12"
+                    type="button"
+                >
+                    <i class="afaicon fa fa-xmark fa-fw" aria-hidden="true"  ></i>
+                    <span class="sr-only">Закрыть</span>
+                </button>
+                <button type="submit" class="btn btn-submit" data-action="submit">
+                    <i class="afaicon fa fa-magnifying-glass fa-fw" aria-hidden="true"  ></i>
+                    <span class="sr-only">Поиск курса</span>
+                </button>
+            </div>
+        </form>
+    </div>
+    <button
+        class="rounded-0 nav-link icon-no-margin"
+        data-toggle="collapse"
+        data-target="#searchform-navbar-6ae1f62929b4e6ae1f6290fb4a12"
+        data-action="opensearch"
+        type="button"
+        aria-expanded="false"
+        aria-controls="searchform-navbar-6ae1f62929b4e6ae1f6290fb4a12"
+        title="Изменить данные поисковой строки"
+    >
+        <i class="afaicon fa fa-magnifying-glass fa-fw" aria-hidden="true"  ></i>
+        <span class="sr-only">Изменить данные поисковой строки</span>
+    </button>
+</div>
+</div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+</header>
+
+
+<div  class="drawer drawer-left drawer-primary d-print-none not-initialized" data-region="fixed-drawer" id="theme_adaptable-drawers-primary" data-preference="" data-state="show-drawer-primary" data-forceopen="0" data-close-on-resize="1">
+    <div class="drawerheader">
+        <button
+            class="btn drawertoggle icon-no-margin hidden"
+            data-toggler="drawers"
+            data-action="closedrawer"
+            data-target="theme_adaptable-drawers-primary"
+            data-toggle="tooltip"
+            data-placement="right"
+            title="Закрыть панель"
+        >
+            <i class="afaicon fa fa-xmark fa-fw" aria-hidden="true"  ></i>
+        </button>
+                    <img src="https://ozizdvgmu.ru/pluginfile.php/1/core_admin/logocompact/300x300/1793189415/miniLogo.jpg" class="logo py-1 h-100" alt="">
+
+        <div class="drawerheadercontent hidden">
+            
+        </div>
+    </div>
+    <div class="drawercontent drag-container" data-usertour="scroller">
+                <div class="list-group">
+        </div>
+
+    </div>
+</div><div id="page" class="drawers"><div class="drawer-toggles d-flex">
+    <div class="drawer-toggler drawer-right-toggle ml-auto d-print-none">
+        <button
+            class="btn icon-no-margin"
+            data-toggler="drawers"
+            data-action="toggle"
+            data-target="theme_adaptable-drawers-sidepost"
+            data-toggle="tooltip"
+            data-placement="right"
+            title="Открыть боковую панель"
+        >
+            <span class="sr-only">Открыть боковую панель</span>
+            <span class="dir-rtl-hide"><i class="afaicon fa fa-chevron-left fa-fw" aria-hidden="true"  ></i></span>
+            <span class="dir-ltr-hide"><i class="afaicon fa fa-chevron-right fa-fw" aria-hidden="true"  ></i></span>
+        </button>
+    </div>
+</div><div id="maincontainer" class="container outercont"><div class="row">
+    <div id="page-second-header" class="col-12 pt-3 pb-3">
+        <div class="d-flex flex-fill flex-wrap align-items-center">
+            <div id="page-navbar" class="mr-auto d-none d-md-flex">
+                <nav role="navigation" aria-label="Цвет фона верхнего меню навигации"><ol class="breadcrumb align-items-center d-none d-md-flex"><li><a href="https://ozizdvgmu.ru/"><i aria-hidden="true" class="fa-lg fa fa-home afaicon fa-fw"></i></a></li><li><i aria-hidden="true" class="separator fa fa-angle-right afaicon fa-fw"></i><span itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb"><a itemprop="url" aria-current="page" href="https://ozizdvgmu.ru/course/index.php"><span itemprop="title">Курсы</span></a></span></li></ol></nav>
+            </div>
+            <div class="header-actions-container ml-auto" data-region="header-actions-container">
+            </div>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="mr-auto d-flex flex-column">
+            </div>
+        </div>
+    </div>
+</div><div id="page-content" class="row"><div id="region-main-box" class="col-12"><section id="region-main"><span class="notifications" id="user-notifications"></span><div role="main"><span id="maincontent"></span><span></span><div class="container-fluid tertiary-navigation" id="action_bar">
+    <div class="row">
+            <div class="navitem">
+                <div class="urlselect text-truncate w-100">
+                    <form method="post" action="https://ozizdvgmu.ru/course/jumpto.php" class="d-flex flex-wrap align-items-center" id="url_select_f6ae1f6290fb4a1">
+                        <input type="hidden" name="sesskey" value="7LZSFEFBhf">
+                            <label for="url_select6ae1f6290fb4a2" class="sr-only">
+                                Категории курсов
+                            </label>
+                        <select  id="url_select6ae1f6290fb4a2" class="custom-select urlselect text-truncate w-100" name="jump"
+                                 >
+                                    <option value="/course/index.php?categoryid=1"  >Разное</option>
+                                    <option value="/course/index.php?categoryid=6"  >Разное / ДПО</option>
+                                    <option value="/course/index.php?categoryid=9"  >Разное / Второй курс</option>
+                                    <option value="/course/index.php?categoryid=11"  >ДВГМУ</option>
+                                    <option value="/course/index.php?categoryid=8"  >ДВГМУ / Лечебный факультет</option>
+                                    <option value="/course/index.php?categoryid=2"  >ДВГМУ / Лечебный факультет / Кафедра общественного здоровья и здравоохранения (ОЗиЗ)</option>
+                                    <option value="/course/index.php?categoryid=4"  >ДВГМУ / Лечебный факультет / Кафедра общественного здоровья и здравоохранения (ОЗиЗ) / ИТвЗ</option>
+                                    <option value="/course/index.php?categoryid=3"  >ДВГМУ / Лечебный факультет / Кафедра общественного здоровья и здравоохранения (ОЗиЗ) / История медицины</option>
+                                    <option value="/course/index.php?categoryid=5"  >ДВГМУ / Лечебный факультет / Кафедра физиологии</option>
+                                    <option value="/course/index.php?categoryid=10"  >ДВГМУ / Факультет фармации и биомедицины</option>
+                                    <option value="/course/index.php?categoryid=12"  >ДВГМУ / Факультет МГФ</option>
+                        </select>
+                            <noscript>
+                                <input type="submit" class="btn btn-secondary ms-1" value="Применить">
+                            </noscript>
+                    </form>
+                </div>
+            </div>
+            <div class="navitem">
+                <div class="simplesearchform ">
+                    <form autocomplete="off" action="https://ozizdvgmu.ru/course/search.php" method="get" accept-charset="utf-8" class="mform d-flex flex-wrap align-items-center simplesearchform">
+                    <div class="input-group">
+                        <label for="searchinput-6ae1f629128516ae1f6290fb4a3">
+                            <span class="sr-only">Поиск курса</span>
+                        </label>
+                        <input type="text"
+                           id="searchinput-6ae1f629128516ae1f6290fb4a3"
+                           class="form-control"
+                           placeholder="Поиск курса"
+                           aria-label="Поиск курса"
+                           name="search"
+                           data-region="input"
+                           autocomplete="off"
+                           value=""
+                        >
+                        <div class="input-group-append">
+                            <button type="submit"
+                                class="btn  btn-primary search-icon"
+                                
+                            >
+                                <i class="afaicon fa fa-magnifying-glass fa-fw" aria-hidden="true"  ></i>
+                                <span class="sr-only">Поиск курса</span>
+                            </button>
+                        </div>
+                
+                    </div>
+                    </form>
+                </div>            </div>
+    </div>
+</div><div class="course_category_tree clearfix category-browse category-browse-0"><div class="collapsible-actions"><a class="collapseexpand aabtn" href="#">Развернуть всё</a></div><div class="content"><div class="subcategories"><div class="category notloaded with_children collapsed" data-categoryid="1" data-depth="1" data-showcourses="15" data-type="0"><div class="info"><h3 class="categoryname aabtn"><a href="https://ozizdvgmu.ru/course/index.php?categoryid=1">Разное</a></h3></div><div class="content"></div></div><div class="category notloaded with_children collapsed" data-categoryid="11" data-depth="1" data-showcourses="15" data-type="0"><div class="info"><h3 class="categoryname aabtn"><a href="https://ozizdvgmu.ru/course/index.php?categoryid=11">ДВГМУ</a></h3></div><div class="content"></div></div></div></div></div></div></section></div></div></div><footer id="page-footer" class="d-none d-lg-block">
+    
+    <div class="container"><div class="row"></div></div>
+    <div class="info container2 clearfix">
+        <div class="container">
+            <div class="row">
+                <div class="tool_usertours-resettourcontainer"></div>
+                <div class="col-md-4 my-md-0 my-2 helplink"></div>
+                <div class="col-md-4 my-md-0 my-2"><div class="tool_dataprivacy"><a href="https://ozizdvgmu.ru/admin/tool/dataprivacy/summary.php">Сводка хранения данных</a></div></div>
+            </div>
+            <div class="row">
+                <div class="col-12 my-md-0 my-2">
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+<div id="back-to-top"><i class="fa fa-angle-up "></i></div>
+
+
+</div>
+</div>
+
+<script>
+//<![CDATA[
+var require = {
+    baseUrl : 'https://ozizdvgmu.ru/lib/requirejs.php/1793189415/',
+    // We only support AMD modules with an explicit define() statement.
+    enforceDefine: true,
+    skipDataMain: true,
+    waitSeconds : 0,
+
+    paths: {
+        jquery: 'https://ozizdvgmu.ru/lib/javascript.php/1793189415/lib/jquery/jquery-3.7.1.min',
+        jqueryui: 'https://ozizdvgmu.ru/lib/javascript.php/1793189415/lib/jquery/ui-1.13.2/jquery-ui.min',
+        jqueryprivate: 'https://ozizdvgmu.ru/lib/javascript.php/1793189415/lib/requirejs/jquery-private'
+    },
+
+    // Custom jquery config map.
+    map: {
+      // '*' means all modules will get 'jqueryprivate'
+      // for their 'jquery' dependency.
+      '*': { jquery: 'jqueryprivate' },
+
+      // 'jquery-private' wants the real jQuery module
+      // though. If this line was not here, there would
+      // be an unresolvable cyclic dependency.
+      jqueryprivate: { jquery: 'jquery' }
+    }
+};
+
+//]]>
+</script>
+<script src="https://ozizdvgmu.ru/lib/javascript.php/1793189415/lib/requirejs/require.min.js"></script>
+<script>
+//<![CDATA[
+M.util.js_pending("core/first");
+require(['core/first'], function() {
+require(['core/prefetch'])
+;
+M.util.js_pending('filter_mathjaxloader/loader'); require(['filter_mathjaxloader/loader'], function(amd) {amd.configure({"mathjaxconfig":"\nMathJax.Hub.Config({\n    config: [\"Accessible.js\", \"Safe.js\"],\n    errorSettings: { message: [\"!\"] },\n    skipStartupTypeset: true,\n    messageStyle: \"none\"\n});\n","lang":"ru"}); M.util.js_complete('filter_mathjaxloader/loader');});;
+require(["media_videojs/loader"], function(loader) {
+    loader.setUp('ru');
+});;
+
+        require(['jquery', 'core/custom_interaction_events'], function($, CustomEvents) {
+            CustomEvents.define('#url_select6ae1f6290fb4a2', [CustomEvents.events.accessibleChange]);
+            $('#url_select6ae1f6290fb4a2').on(CustomEvents.events.accessibleChange, function() {
+                if ($(this).val()) {
+                    $('#url_select_f6ae1f6290fb4a1').submit();
+                }
+            });
+        });
+    ;
+M.util.js_pending('theme_adaptable/adaptable'); require(['theme_adaptable/adaptable'], function(amd) {amd.init({"rtl":false,"stickynavbar":true}); M.util.js_complete('theme_adaptable/adaptable');});;
+M.util.js_pending('theme_adaptable/pace_init'); require(['theme_adaptable/pace_init'], function(amd) {amd.init("minimal"); M.util.js_complete('theme_adaptable/pace_init');});;
+M.util.js_pending('block_navigation/navblock'); require(['block_navigation/navblock'], function(amd) {amd.init("13522"); M.util.js_complete('block_navigation/navblock');});;
+M.util.js_pending('block_settings/settingsblock'); require(['block_settings/settingsblock'], function(amd) {amd.init("13523", null); M.util.js_complete('block_settings/settingsblock');});;
+M.util.js_pending('theme_adaptable/collapseblock'); require(['theme_adaptable/collapseblock'], function(amd) {amd.collapseBlockInit(); M.util.js_complete('theme_adaptable/collapseblock');});;
+
+M.util.js_pending('theme_boost/drawers:load');
+require(['theme_boost/drawers'], function() {
+    M.util.js_complete('theme_boost/drawers:load');
+});
+;
+
+require(
+[
+    'jquery',
+],
+function(
+    $
+) {
+    var uniqid = "6ae1f6292989c6ae1f6290fb4a11";
+    var container = $('#searchinput-navbar-' + uniqid);
+    var opensearch = container.find('[data-action="opensearch"]');
+    var input = container.find('[data-region="input"]');
+    var submit = container.find('[data-action="submit"]');
+
+    submit.on('click', function(e) {
+        if (input.val() === '') {
+            e.preventDefault();
+        }
+    });
+    container.on('hidden.bs.collapse', function() {
+        opensearch.removeClass('d-none');
+        input.val('');
+    });
+    container.on('show.bs.collapse', function() {
+        opensearch.addClass('d-none');
+    });
+    container.on('shown.bs.collapse', function() {
+        input.focus();
+    });
+});
+;
+
+require(
+[
+    'jquery',
+],
+function(
+    $
+) {
+    var uniqid = "6ae1f62929b4e6ae1f6290fb4a12";
+    var container = $('#searchinput-navbar-' + uniqid);
+    var opensearch = container.find('[data-action="opensearch"]');
+    var input = container.find('[data-region="input"]');
+    var submit = container.find('[data-action="submit"]');
+
+    submit.on('click', function(e) {
+        if (input.val() === '') {
+            e.preventDefault();
+        }
+    });
+    container.on('hidden.bs.collapse', function() {
+        opensearch.removeClass('d-none');
+        input.val('');
+    });
+    container.on('show.bs.collapse', function() {
+        opensearch.addClass('d-none');
+    });
+    container.on('shown.bs.collapse', function() {
+        input.focus();
+    });
+});
+;
+
+M.util.js_pending('theme_boost/drawers:load');
+require(['theme_boost/drawers'], function() {
+    M.util.js_complete('theme_boost/drawers:load');
+});
+;
+
+    M.util.js_pending('theme_boost/loader');
+    require(['theme_boost/loader', 'theme_boost/drawer'], function(Loader, Drawer) {
+        Drawer.init();
+        M.util.js_complete('theme_boost/loader');
+    });
+;
+M.util.js_pending('core/notification'); require(['core/notification'], function(amd) {amd.init(1, []); M.util.js_complete('core/notification');});;
+M.util.js_pending('core/log'); require(['core/log'], function(amd) {amd.setConfig({"level":"warn"}); M.util.js_complete('core/log');});;
+M.util.js_pending('core/page_global'); require(['core/page_global'], function(amd) {amd.init(); M.util.js_complete('core/page_global');});;
+M.util.js_pending('core/utility'); require(['core/utility'], function(amd) {M.util.js_complete('core/utility');});;
+M.util.js_pending('core/storage_validation'); require(['core/storage_validation'], function(amd) {amd.init(null); M.util.js_complete('core/storage_validation');});
+    M.util.js_complete("core/first");
+});
+//]]>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?delayStartupUntil=configured"></script>
+<script>
+//<![CDATA[
+M.str = {"moodle":{"lastmodified":"\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0435","name":"\u0418\u043c\u044f","error":"\u041e\u0448\u0438\u0431\u043a\u0430","info":"\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f","yes":"\u0414\u0430","no":"\u041d\u0435\u0442","collapseall":"\u0421\u0432\u0435\u0440\u043d\u0443\u0442\u044c \u0432\u0441\u0451","expandall":"\u0420\u0430\u0437\u0432\u0435\u0440\u043d\u0443\u0442\u044c \u0432\u0441\u0451","viewallcourses":"\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0432\u0441\u0435 \u043a\u0443\u0440\u0441\u044b","cancel":"\u041e\u0442\u043c\u0435\u043d\u0430","confirm":"\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c","areyousure":"\u0412\u044b \u0443\u0432\u0435\u0440\u0435\u043d\u044b?","closebuttontitle":"\u0417\u0430\u043a\u0440\u044b\u0442\u044c","unknownerror":"\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u0430\u044f \u043e\u0448\u0438\u0431\u043a\u0430","file":"\u0424\u0430\u0439\u043b","url":"URL"},"repository":{"type":"\u0422\u0438\u043f","size":"\u0420\u0430\u0437\u043c\u0435\u0440","invalidjson":"\u041d\u0435\u0432\u0435\u0440\u043d\u0430\u044f \u0441\u0442\u0440\u043e\u043a\u0430 JSON","nofilesattached":"\u041d\u0435 \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u043b\u0435\u043d \u043d\u0438 \u043e\u0434\u0438\u043d \u0444\u0430\u0439\u043b","filepicker":"\u0412\u044b\u0431\u043e\u0440 \u0444\u0430\u0439\u043b\u0430","logout":"\u0412\u044b\u0445\u043e\u0434","nofilesavailable":"\u041d\u0435\u0442 \u043d\u0438 \u043e\u0434\u043d\u043e\u0433\u043e \u0444\u0430\u0439\u043b\u0430","norepositoriesavailable":"\u041a \u0441\u043e\u0436\u0430\u043b\u0435\u043d\u0438\u044e, \u043d\u0438 \u043e\u0434\u043d\u043e \u0438\u0437 \u0412\u0430\u0448\u0438\u0445 \u0442\u0435\u043a\u0443\u0449\u0438\u0445 \u0445\u0440\u0430\u043d\u0438\u043b\u0438\u0449 \u0444\u0430\u0439\u043b\u043e\u0432 \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0432\u0435\u0440\u043d\u0443\u0442\u044c \u0444\u0430\u0439\u043b\u044b \u0432 \u0437\u0430\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u043c\u043e\u043c \u0444\u043e\u0440\u043c\u0430\u0442\u0435.","fileexistsdialogheader":"\u0424\u0430\u0439\u043b \u0441\u043e\u0437\u0434\u0430\u043d","fileexistsdialog_editor":"\u0424\u0430\u0439\u043b \u0441 \u044d\u0442\u0438\u043c \u0438\u043c\u0435\u043d\u0435\u043c \u0443\u0436\u0435 \u0431\u044b\u043b \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u043b\u0435\u043d \u043a \u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u0443\u0435\u043c\u043e\u043c\u0443 \u0442\u0435\u043a\u0441\u0442\u0443","fileexistsdialog_filemanager":"\u0424\u0430\u0439\u043b \u0441 \u044d\u0442\u0438\u043c \u0438\u043c\u0435\u043d\u0435\u043c \u0443\u0436\u0435 \u0431\u044b\u043b \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u043b\u0435\u043d","renameto":"\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c \u0432 \u00ab{$a}\u00bb","referencesexist":"\u041d\u0430 \u044d\u0442\u043e\u0442 \u0444\u0430\u0439\u043b \u0435\u0441\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0438: {$a}","select":"\u0412\u044b\u0431\u0440\u0430\u0442\u044c"},"admin":{"confirmdeletecomments":"\u0412\u044b \u0443\u0432\u0435\u0440\u0435\u043d\u044b \u0432 \u0442\u043e\u043c, \u0447\u0442\u043e \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u0442\u0435\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438?","confirmation":"\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435"},"debug":{"debuginfo":"\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e\u0431 \u043e\u0442\u043b\u0430\u0434\u043a\u0435","line":"\u0421\u0442\u0440\u043e\u043a\u0430","stacktrace":"\u0422\u0440\u0430\u0441\u0441\u0438\u0440\u043e\u0432\u043a\u0438 \u0441\u0442\u0435\u043a\u0430"},"langconfig":{"labelsep":":"}};
+//]]>
+</script>
+<script>
+//<![CDATA[
+(function() {Y.use("moodle-course-categoryexpander",function() {Y.Moodle.course.categoryexpander.init();
+});
+M.util.help_popups.setup(Y);
+ M.util.js_pending('random6ae1f6290fb4a13'); Y.on('domready', function() { M.util.js_complete("init");  M.util.js_complete('random6ae1f6290fb4a13'); });
+})();
+//]]>
+</script>
+
+
+
+
+
+
+</body></html>

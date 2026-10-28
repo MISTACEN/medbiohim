@@ -670,7 +670,7 @@ test("§1.5 a probe never reports reachable without a real HTTP answer", async (
   install(routes, calls);
   const report = await fesmu.getServiceReport({ force: true });
   assert.equal(report.ok, true);
-  assert.equal(report.services.length, 6);
+  assert.equal(report.services.length, 7);
   for (const service of report.services) {
     assert.equal(typeof service.checked_at, "string");
     assert.ok(!Number.isNaN(Date.parse(service.checked_at)), service.id);
@@ -705,7 +705,7 @@ test("§1.5 probes are bounded to ≤4 in parallel", async () => {
     }
   });
   const report = await fesmu.getServiceReport({ force: true });
-  assert.equal(report.services.length, 6);
+  assert.equal(report.services.length, 7);
   assert.ok(peak <= 4, `concurrency must stay ≤4, observed ${peak}`);
   assert.ok(peak >= 2, `probes must overlap, observed ${peak}`);
 });
@@ -722,8 +722,8 @@ test("§1.5 HEAD is tried first and GET only after a real non-2xx status", async
   install(routes, calls);
   const report = await fesmu.getServiceReport({ force: true });
   assert.equal(report.services.every((service) => service.reachable === true), true);
-  assert.equal(calls.filter((call) => call.init.method === "HEAD").length, 6);
-  assert.equal(calls.filter((call) => call.init.method === "GET").length, 6);
+  assert.equal(calls.filter((call) => call.init.method === "HEAD").length, 7);
+  assert.equal(calls.filter((call) => call.init.method === "GET").length, 7);
 });
 
 /* ------------------------------------------------------------------ *
@@ -974,7 +974,7 @@ test("§2 total upstream failure still returns a parseable ok:true payload", asy
   assert.equal(body.schedule.error, "Сеть недоступна");
   assert.deepEqual(body.schedule.documents, []);
   assert.equal(body.schedule.fetched_at, null);
-  assert.equal(body.services.length, 6, "the static registry is still served");
+  assert.equal(body.services.length, 7, "the static registry is still served");
   assert.equal(body.schedule.faculties.length, 6, "the static faculty list is still served");
 });
 
@@ -1060,7 +1060,7 @@ test("§2 GET /api/university?status=1 and /api/university/status return the fro
     const problems = collectShapeProblems(() => checkStatusReportShape(body));
     assert.deepEqual(problems, [], `${label} §2 shape drift:\n${problems.join("\n")}`);
     assert.equal(body.ok, true, label);
-    assert.equal(body.services.length, 6, label);
+    assert.equal(body.services.length, 7, label);
     const library = body.services.find((service) => service.id === "library");
     assert.equal(library.reachable, false, label);
     assert.equal(typeof library.checked_at, "string", label);

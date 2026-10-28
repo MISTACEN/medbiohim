@@ -82,7 +82,12 @@ const STATUS_TTL_MS = 10 * 60 * 1000;
 const MAX_FEED_ITEMS = 30;
 const MAX_CONTEXT_LENGTH = 120;
 const PARSE_ERROR = "Разметка источника изменилась";
-const FESMU_HOST = /(^|\.)fesmu\.ru$/i;
+/**
+ * Hosts allowed by the transport: the university site and the public ОЗиЗ
+ * Moodle catalog (U6/U7). Both are read-only public HTML; no credentials are
+ * ever sent, so the relaxed TLS agent stays limited to these hosts.
+ */
+const FESMU_HOST = /(^|\.)(fesmu\.ru|ozizdvgmu\.ru)$/i;
 
 export type FesmuMethod = "GET" | "HEAD";
 
@@ -133,7 +138,7 @@ function guardUrl(input: string): { url: URL | null; error: string | null } {
     return { url: null, error: `Неподдерживаемая схема: ${url.protocol}` };
   }
   if (!FESMU_HOST.test(url.hostname)) {
-    return { url: null, error: "Разрешены только домены fesmu.ru" };
+    return { url: null, error: "Разрешены только домены fesmu.ru и ozizdvgmu.ru" };
   }
   return { url, error: null };
 }

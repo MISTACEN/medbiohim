@@ -576,7 +576,7 @@ test("overview: frozen shape, registry without probes, 6 faculties, 3 feeds", as
     const overview = await fesmu.getOverview();
     assert.equal(overview.ok, true);
     assert.match(overview.fetched_at, /^\d{4}-\d{2}-\d{2}T/);
-    assert.equal(overview.services.length, 6);
+    assert.equal(overview.services.length, 7);
     for (const service of overview.services) {
       assert.equal(service.reachable, null);
       assert.equal(service.checked_at, null);
@@ -626,7 +626,7 @@ test("service probes report only real HTTP answers", async () => {
   try {
     const report = await fesmu.getServiceReport({ force: true });
     assert.equal(report.ok, true);
-    assert.equal(report.services.length, 6);
+    assert.equal(report.services.length, 7);
     for (const service of report.services) {
       assert.equal(typeof service.checked_at, "string");
       assert.equal(typeof service.reachable, "boolean");
@@ -646,7 +646,7 @@ test("service probes report only real HTTP answers", async () => {
     const after = calls.length;
     const cached = await fesmu.getServiceReport();
     assert.equal(calls.length, after);
-    assert.equal(cached.services.length, 6);
+    assert.equal(cached.services.length, 7);
   } finally {
     resetTransport();
   }
@@ -662,7 +662,7 @@ test("service probe never marks an unanswered HEAD/GET as reachable", async () =
     assert.equal(report.services.every((service) => service.reachable === false), true);
     assert.equal(report.services.every((service) => service.http_status === null), true);
     // A host that never answers is not retried with GET: one HEAD per service.
-    assert.equal(calls.length, 6);
+    assert.equal(calls.length, 7);
     assert.equal(calls.every((call) => call.init.method === "HEAD"), true);
   } finally {
     resetTransport();
@@ -683,8 +683,8 @@ test("service probe falls back to GET when HEAD returns a real status", async ()
     const report = await fesmu.getServiceReport({ force: true });
     assert.equal(report.services.every((service) => service.reachable === true), true);
     assert.equal(report.services.every((service) => service.http_status === 200), true);
-    assert.equal(calls.filter((call) => call.init.method === "HEAD").length, 6);
-    assert.equal(calls.filter((call) => call.init.method === "GET").length, 6);
+    assert.equal(calls.filter((call) => call.init.method === "HEAD").length, 7);
+    assert.equal(calls.filter((call) => call.init.method === "GET").length, 7);
   } finally {
     resetTransport();
   }
@@ -709,7 +709,7 @@ test("service probes run with bounded concurrency and do not serialize", async (
   });
   try {
     const report = await fesmu.getServiceReport({ force: true });
-    assert.equal(report.services.length, 6);
+    assert.equal(report.services.length, 7);
     assert.equal(report.services.every((service) => service.checked_at !== null), true);
     assert.ok(maxInFlight <= 4, `concurrency must stay ≤4, saw ${maxInFlight}`);
     assert.ok(maxInFlight >= 3, `fast services must run together, saw ${maxInFlight}`);
@@ -747,7 +747,7 @@ test("route handlers serve the frozen envelopes with cache-control: no-store", a
     assert.equal(overview.headers.get("cache-control"), "no-store");
     const overviewBody = await overview.json();
     assert.equal(overviewBody.ok, true);
-    assert.equal(overviewBody.services.length, 6);
+    assert.equal(overviewBody.services.length, 7);
     assert.equal(overviewBody.services.every((service) => service.reachable === null), true);
     assert.equal(overviewBody.feeds.news.items.length, 10);
     assert.equal(overviewBody.feeds.announcements.items.length, 10);
@@ -775,13 +775,13 @@ test("route handlers serve the frozen envelopes with cache-control: no-store", a
     assert.equal(status.status, 200);
     const statusBody = await status.json();
     assert.equal(statusBody.ok, true);
-    assert.equal(statusBody.services.length, 6);
+    assert.equal(statusBody.services.length, 7);
     assert.equal(typeof statusBody.fetched_at, "string");
 
     const viaQuery = await route.GET(new NextRequest(`${base}?status=1`));
     const viaQueryBody = await viaQuery.json();
     assert.equal(viaQueryBody.ok, true);
-    assert.equal(viaQueryBody.services.length, 6);
+    assert.equal(viaQueryBody.services.length, 7);
   } finally {
     resetTransport();
   }
