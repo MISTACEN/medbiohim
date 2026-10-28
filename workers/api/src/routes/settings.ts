@@ -60,11 +60,16 @@ async function readAccount(c: any) {
       };
     });
     const metadata = user.user_metadata && typeof user.user_metadata === "object" ? user.user_metadata : {};
+    // Смена почты в Supabase двухшаговая: письмо уходит на новый адрес, а
+    // user.email меняется только после подтверждения. Показываем это явно,
+    // иначе UI делает вид, что адрес уже изменён.
+    const pendingEmail = (user as any).new_email || c.get("emailChangePending") || null;
     return c.json(ok({
       user: {
         id: user.id,
         email: user.email || null,
         email_confirmed_at: user.email_confirmed_at || null,
+        email_change_pending: pendingEmail,
         phone: user.phone || null,
         full_name: profile?.full_name || metadata.full_name || metadata.name || null,
         avatar_url: profile?.avatar_url || metadata.avatar_url || null,
@@ -206,6 +211,8 @@ async function updateProfile(c: any) {
       } catch {
         // Supabase Auth may return an empty success body; the profile update itself remains valid.
       }
+      // Даже если тело ответа пустое, новый адрес известен: он ждёт подтверждения.
+      c.set("emailChangePending", email);
     }
 
     if (Object.keys(patch).length) {
@@ -476,6 +483,37 @@ async function unlinkTelegramAccount(c: any) {
   }
 }
 
+/**
+ * Повторная отправка письма о смене почты. Supabase не отдаёт старый pending
+ * адрес в списке идентичностей, поэтому берём его из текущего пользователя.
+ */
+async function resendEmailChange(c: any) {
+  const rid = requestId();
+  const user = c.get("user");
+  const pending = typeof (user as any).new_email === "string" ? String((user as any).new_email).trim() : "";
+  if (!pending) {
+    const { body, status } = fail("EMAIL_CHANGE_NOT_PENDING", "Нет неподтверждённой смены почты", 409, rid);
+    return c.json(body, status as 409);
+  }
+  try {
+    const response = await fetch(new URL("/auth/v1/resend", c.env.SUPABASE_URL), {
+      method: "POST",
+      headers: { apikey: c.env.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "email_change", email: pending }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      const { body, status } = fail("EMAIL_RESEND_FAILED", "Не удалось отправить письмо повторно", 422, rid);
+      return c.json(body, status as 422);
+    }
+    return c.json(ok({ resent: true, pending_email: pending }, rid));
+  } catch (error) {
+    console.error("[settings:email-resend]", { error: String(error), requestId: rid });
+    const { body, status } = fail("EMAIL_RESEND_FAILED", "Не удалось отправить письмо повторно", 503, rid);
+    return c.json(body, status as 503);
+  }
+}
+
 settings.get("/", requireAuth, readPreferences);
 settings.get("/preferences", requireAuth, readPreferences);
 settings.patch("/", requireAuth, savePreferences); // Backward-compatible settings endpoint.
@@ -484,6 +522,7 @@ settings.get("/telegram/status", requireAuth, readTelegramStatus);
 settings.post("/telegram/link-start", requireAuth, startTelegramLink);
 settings.post("/telegram/unlink", requireAuth, unlinkTelegramAccount);
 settings.patch("/profile", requireAuth, updateProfile);
+settings.post("/email/resend", requireAuth, resendEmailChange);
 settings.post("/password", requireAuth, changePassword);
 settings.post("/identities/link", requireAuth, startIdentityLink);
 settings.post("/identities/unlink", requireAuth, unlinkIdentity);

@@ -13,6 +13,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import {
   changeAccountPassword,
   getAccountSettings,
+  resendEmailChange,
   saveAccountPreferences,
   startLinkIdentity,
   unlinkIdentity,
@@ -38,6 +39,7 @@ function SettingsPageInner() {
   const [busy, setBusy] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [emailPending, setEmailPending] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
@@ -56,6 +58,7 @@ function SettingsPageInner() {
       const u = r.data.user || {};
       setFullName(String(u.full_name || user?.name || ""));
       setEmail(String(u.email || user?.email || ""));
+      setEmailPending(String(u.email_change_pending || ""));
       const savedLayout = String(r.data.preferences?.trainer_layout || "top");
       if (savedLayout === "sidebar" || savedLayout === "list" || savedLayout === "top") setTrainerLayout(savedLayout);
     } else {
@@ -89,8 +92,24 @@ function SettingsPageInner() {
     setBusy(null);
     if (!r.ok) return setErr(r.error.message);
     setAccount(r.data);
-    setMsg("Профиль сохранён");
+    const pending = String(r.data?.user?.email_change_pending || "");
+    setEmailPending(pending);
+    // Supabase меняет адрес только после перехода по ссылке из письма:
+    // рапортовать «сохранено» до подтверждения — врать пользователю.
+    setMsg(
+      pending
+        ? `Письмо с подтверждением отправлено на ${pending}. Адрес изменится после перехода по ссылке из письма.`
+        : "Профиль сохранён"
+    );
     if (refresh) void refresh();
+  }
+
+  async function onResendEmailChange() {
+    setBusy("email-resend"); setErr(null);
+    const r = await resendEmailChange();
+    setBusy(null);
+    if (!r.ok) return setErr(describeApiError(r.error));
+    setMsg(`Письмо отправлено повторно на ${r.data.pending_email || emailPending}`);
   }
 
   async function onChangePassword(e: FormEvent) {
@@ -257,8 +276,27 @@ function SettingsPageInner() {
         <form onSubmit={onSaveProfile} className="space-y-3">
           <label className="block text-sm"><span className="mb-1 block text-xs text-[var(--muted)]">Имя</span>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" /></label>
-          <label className="block text-sm"><span className="mb-1 block text-xs text-[var(--muted)]">Email</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" /></label>
+          <div className="block text-sm">
+            <label htmlFor="settings-email" className="mb-1 block text-xs text-[var(--muted)]">Email</label>
+            <input id="settings-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
+            {emailPending ? (
+              <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="font-semibold">Адрес {emailPending} ждёт подтверждения</div>
+                <p className="mt-1 leading-relaxed">
+                  Пока вы не перейдёте по ссылке из письма, вход остаётся на{" "}
+                  {String(account?.user?.email || user?.email || "текущий адрес")}. Если письма нет — проверьте «Спам».
+                </p>
+                <button
+                  type="button"
+                  disabled={busy === "email-resend"}
+                  onClick={() => void onResendEmailChange()}
+                  className="mt-2 rounded-lg border border-amber-400 px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                >
+                  {busy === "email-resend" ? "Отправляем…" : "Отправить письмо снова"}
+                </button>
+              </div>
+            ) : null}
+          </div>
           <button type="submit" disabled={busy === "profile"} className="btn-primary disabled:opacity-60">{busy === "profile" ? "…" : "Сохранить профиль"}</button>
         </form>
       </section>

@@ -272,3 +272,16 @@ test("schedule .ics feed is token-gated, read-only and serves text/calendar", as
   // Без серверного секрета подписка честно отключается.
   assert.match(route, /FEED_DISABLED/);
 });
+
+test("email change stays truthful: pending address is reported and resend is explicit", async () => {
+  const route = await source("../src/routes/settings.ts");
+  // Новый адрес попадает в ответ как «ждёт подтверждения», а не как факт.
+  assert.match(route, /email_change_pending: pendingEmail/);
+  assert.match(route, /c\.set\("emailChangePending", email\)/);
+  // Повторная отправка — отдельный роут и только для реально ожидающего адреса.
+  assert.match(route, /settings\.post\("\/email\/resend", requireAuth, resendEmailChange\)/);
+  assert.match(route, /EMAIL_CHANGE_NOT_PENDING/);
+  assert.match(route, /type: "email_change"/);
+  // Почта меняется только в Auth, не прямой записью в таблицу users.
+  assert.doesNotMatch(route, /from\("users"\)\s*\.update\(\s*\{[^}]*email/);
+});

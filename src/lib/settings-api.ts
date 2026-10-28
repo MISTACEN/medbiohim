@@ -38,8 +38,14 @@ export async function updateAccountProfile(patch: {
     body: JSON.stringify(patch),
   });
 }
-export async function changeAccountPassword(password: string, currentPassword: string) {
-  return api<{ changed: boolean; sessions_revoked?: boolean }>("/settings/password", {
+/** Повторная отправка письма о смене почты (адрес ждёт подтверждения). */
+export async function resendEmailChange() {
+  return api<{ resent: boolean; pending_email: string }>("/settings/email/resend", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+export async function changeAccountPassword(password: string, currentPassword: string) {  return api<{ changed: boolean; sessions_revoked?: boolean }>("/settings/password", {
     method: "POST",
     // Сервер проверяет текущий пароль: владение устройством ≠ владение аккаунтом.
     body: JSON.stringify({ password, current_password: currentPassword }),
