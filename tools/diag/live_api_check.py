@@ -108,6 +108,14 @@ def main() -> int:
                 "ends with END:VCALENDAR:",
                 body.rstrip().endswith("END:VCALENDAR"),
             )
+
+        # У свежего пользователя нет неподтверждённой смены почты: роут обязан
+        # ответить 409, а не «отправить письмо в никуда».
+        status, ctype, body = request(
+            api + "/settings/email/resend", method="POST", headers=auth, body={}, ua=BROWSER_UA
+        )
+        print(f"\nsettings/email/resend: {status}")
+        print(body[:200])
     finally:
         status, _, body = request(supabase + f"/auth/v1/admin/users/{user_id}", method="DELETE", headers=admin_headers)
         print("\ndelete user:", status)
