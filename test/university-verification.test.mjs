@@ -1072,10 +1072,12 @@ test("§1.5 the overview never probes and the status endpoint never blocks it", 
   install(fixtureRoutes(), calls);
   const { NextRequest, overview } = await importRoutes();
   await overview.GET(new NextRequest("http://localhost/api/university"));
-  assert.equal(calls.length, 4, "overview = 3 feeds + 1 schedule index, no probes");
+  // 3 ленты + индекс расписания + 6 страниц факультетов (U5: превью карточки).
+  assert.equal(calls.length, 10, "overview = 3 feeds + index + 6 faculty pages, no probes");
   assert.equal(
     calls.every((call) => call.init.method === "GET"),
     true,
+    "overview must never probe services (no HEAD)",
   );
 });
 

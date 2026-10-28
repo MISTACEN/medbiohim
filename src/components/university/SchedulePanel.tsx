@@ -11,12 +11,14 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import type { Faculty, FacultyScheduleResponse, ScheduleItem } from "./types";
+import type { Faculty, FacultyScheduleResponse, FacultyScheduleSummary, ScheduleItem } from "./types";
 import { FESMU_SOURCE, formatDateTime } from "./format";
 import SaveButton from "./SaveButton";
 
 type Props = {
   faculties?: Faculty[];
+  /** Server-side «what is inside» per faculty, so the card is informative before a click (U5). */
+  summaries?: FacultyScheduleSummary[];
   indexUrl?: string;
   documents?: ScheduleItem[];
   note?: string;
@@ -60,9 +62,20 @@ function schedulePayload(item: ScheduleItem) {
       url: item.url,
       kind: "document" as const,
       source: FESMU_SOURCE,
-      summary: [item.course, item.semester, item.kind_label || item.kind, item.format].filter(Boolean).join(" · ") || undefined,
+      summary:
+        [item.program, item.course, item.form, item.semester, item.kind_label || item.kind, item.format]
+          .filter(Boolean)
+          .join(" · ") || undefined,
     },
   ];
+}
+
+function pluralFiles(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} файл`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} файла`;
+  return `${count} файлов`;
 }
 
 function ScheduleRow({ item }: { item: ScheduleItem }) {
@@ -77,7 +90,9 @@ function ScheduleRow({ item }: { item: ScheduleItem }) {
           <span className="font-medium text-indigo-600">{item.kind_label || item.kind || "документ"}</span>
           {item.semester && <span>{item.semester}</span>}
           {item.stream && <span>{item.stream}</span>}
+          {item.form && <span>{item.form}</span>}
           {item.format && <span className="uppercase">{item.format}</span>}
+          {item.program && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{item.program}</span>}
           {item.context && <span>{item.context}</span>}
           {item.course && <span>{item.course}</span>}
           {item.is_debt && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">задолженность</span>}
@@ -92,6 +107,7 @@ function ScheduleRow({ item }: { item: ScheduleItem }) {
 /** Расписание: 6 факультетов, общие документы, поиск, «Повторить» на каждый раздел. */
 export default function SchedulePanel({
   faculties,
+  summaries,
   indexUrl,
   documents,
   note,
@@ -102,6 +118,13 @@ export default function SchedulePanel({
   onRetryDocuments,
 }: Props) {
   const list = useMemo(() => (Array.isArray(faculties) ? faculties : []), [faculties]);
+  const summaryById = useMemo(() => {
+    const map = new Map<string, FacultyScheduleSummary>();
+    for (const summary of Array.isArray(summaries) ? summaries : []) {
+      if (summary && typeof summary.id === "string") map.set(summary.id, summary);
+    }
+    return map;
+  }, [summaries]);
   const docs = useMemo(() => (Array.isArray(documents) ? documents : []), [documents]);
   const [selected, setSelected] = useState("");
   const [schedules, setSchedules] = useState<Record<string, FacultyScheduleResponse>>({});
@@ -151,33 +174,49 @@ export default function SchedulePanel({
   const current = selected ? schedules[selected] : undefined;
   const items = useMemo(() => (Array.isArray(current?.items) ? current.items : []), [current]);
 
+  // U1/U4: сначала специальность, потом курс — иначе файлы фармацевтов и
+  // медиков-биохимиков лежат в одной куче на одной и той же странице.
+  const fallbackProgram = useMemo(() => {
+    const programs = current?.faculty?.programs;
+    return Array.isArray(programs) && programs.length === 1 ? programs[0] : "Без специальности";
+  }, [current]);
+
   const grouped = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const filtered = items.filter((item) => {
       if (!needle) return true;
-      return `${item.title} ${item.course || ""} ${item.semester || ""} ${item.stream || ""} ${item.kind_label || item.kind || ""}`
+      return `${item.title} ${item.program || ""} ${item.form || ""} ${item.course || ""} ${item.semester || ""} ${item.stream || ""} ${item.kind_label || item.kind || ""}`
         .toLowerCase()
         .includes(needle);
     });
-    const groups = new Map<string, ScheduleItem[]>();
+    const programs = new Map<string, Map<string, ScheduleItem[]>>();
     for (const item of filtered) {
-      const key = item.course || "Общие материалы";
-      const bucket = groups.get(key) || [];
+      const programKey = item.program || fallbackProgram;
+      const courseKey = item.course || "Общие материалы";
+      const courses = programs.get(programKey) || new Map<string, ScheduleItem[]>();
+      const bucket = courses.get(courseKey) || [];
       bucket.push(item);
-      groups.set(key, bucket);
+      courses.set(courseKey, bucket);
+      programs.set(programKey, courses);
     }
-    return [...groups.entries()]
-      .map(([course, bucket]) => ({
-        course,
-        items: [...bucket].sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || a.title.localeCompare(b.title, "ru")),
+    return [...programs.entries()]
+      .map(([program, courses]) => ({
+        program,
+        fileCount: [...courses.values()].reduce((total, bucket) => total + bucket.length, 0),
+        courses: [...courses.entries()]
+          .map(([course, bucket]) => ({
+            course,
+            items: [...bucket].sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || a.title.localeCompare(b.title, "ru")),
+          }))
+          .sort((a, b) => {
+            const ra = courseRank(a.items[0]);
+            const rb = courseRank(b.items[0]);
+            if (ra === rb) return a.course.localeCompare(b.course, "ru");
+            return ra - rb;
+          }),
       }))
-      .sort((a, b) => {
-        const ra = courseRank(a.items[0]);
-        const rb = courseRank(b.items[0]);
-        if (ra === rb) return a.course.localeCompare(b.course, "ru");
-        return ra - rb;
-      });
-  }, [items, query]);
+      .sort((a, b) => a.program.localeCompare(b.program, "ru"));
+  }, [items, query, fallbackProgram]);
 
   return (
     <section id="schedule" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -231,23 +270,54 @@ export default function SchedulePanel({
       ) : (
         <>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((faculty) => (
-              <button
-                key={faculty.id}
-                type="button"
-                onClick={() => setSelected(faculty.id)}
-                className={`rounded-xl border px-3 py-2.5 text-left transition ${
-                  selected === faculty.id
-                    ? "border-indigo-300 bg-indigo-50 text-indigo-800 shadow-sm"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50"
-                }`}
-              >
-                <span className="block text-sm font-semibold">{faculty.title}</span>
-                <span className="mt-0.5 block text-[11px] text-slate-500">
-                  {[faculty.code, faculty.program].filter(Boolean).join(" · ") || "Официальная страница"}
-                </span>
-              </button>
-            ))}
+            {list.map((faculty) => {
+              const summary = summaryById.get(faculty.id);
+              const programs = summary?.programs?.length ? summary.programs : faculty.programs || [];
+              return (
+                <button
+                  key={faculty.id}
+                  type="button"
+                  onClick={() => setSelected(faculty.id)}
+                  className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                    selected === faculty.id
+                      ? "border-indigo-300 bg-indigo-50 text-indigo-800 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">{faculty.title}</span>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                    {[faculty.code, faculty.program].filter(Boolean).join(" · ") || "Официальная страница"}
+                  </span>
+                  <span className="mt-1.5 flex flex-wrap gap-1 text-[10px] font-semibold">
+                    {summary?.ok && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                        {pluralFiles(summary.doc_count || 0)}
+                      </span>
+                    )}
+                    {summary?.ok && Boolean(summary.courses?.length) && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                        {summary.courses?.length} курс(а/ов)
+                      </span>
+                    )}
+                    {summary?.ok && summary.has_streams && (
+                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700">потоки</span>
+                    )}
+                    {summary?.ok && summary.has_forms && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">формы обучения</span>
+                    )}
+                    {summary && summary.ok === false && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">состав уточняется</span>
+                    )}
+                  </span>
+                  {programs.length > 0 && (
+                    <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+                      {programs.slice(0, 3).join(" · ")}
+                      {programs.length > 3 ? ` · ещё ${programs.length - 3}` : ""}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -292,16 +362,30 @@ export default function SchedulePanel({
               {query ? "По этому запросу файлов нет." : "На странице факультета пока нет PDF-файлов."}
             </div>
           ) : (
-            <div className="mt-4 space-y-4">
-              {grouped.map((group) => (
-                <div key={group.course}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600">{group.course}</span>
-                    <span className="text-[11px] text-slate-400">{group.items.length}</span>
+            <div className="mt-4 space-y-5">
+              {grouped.map((program) => (
+                <div key={program.program}>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700">
+                      {program.program}
+                    </span>
+                    <span className="text-[11px] text-slate-400">{pluralFiles(program.fileCount)}</span>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {group.items.map((item) => (
-                      <ScheduleRow key={item.url} item={item} />
+                  <div className="space-y-3">
+                    {program.courses.map((course) => (
+                      <div key={`${program.program}|${course.course}`}>
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                            {course.course}
+                          </span>
+                          <span className="text-[11px] text-slate-400">{course.items.length}</span>
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {course.items.map((item) => (
+                            <ScheduleRow key={item.url} item={item} />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

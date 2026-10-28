@@ -39,10 +39,16 @@ export type Faculty = {
   slug: string;
   title: string;
   short: string;
+  /** Legacy single-line caption; `programs` is the full list (U1). */
   program: string | null;
+  /** All specialties of the faculty, e.g. «Фармация 33.05.01» + «Медицинская биохимия 30.05.01». */
+  programs: string[];
   code: string | null;
   url: string;
 };
+
+/** How the specialty is taught; derived from the document wording (U3). */
+export type StudyForm = "очная" | "заочная" | "очно-заочная";
 
 /** A single press-center card. `date` stays in the source `dd.mm.yyyy` form. */
 export type FeedItem = {
@@ -74,10 +80,13 @@ export type ScheduleItem = {
   title: string;
   title_source: TitleSource;
   url: string;
+  /** Specialty heading above the document, e.g. «30.05.01 Медицинская биохимия» (U1). */
+  program: string | null;
   course: string | null;
   course_number: number | null;
   semester: Semester | null;
   stream: string | null;
+  form: StudyForm | null;
   kind: ScheduleKind;
   kind_label: string;
   format: DocumentFormat;
@@ -112,11 +121,24 @@ export type PortalInfo = {
   events_url: string;
 };
 
+/** What a faculty card can show before the user opens it (U5). */
+export type FacultySummary = {
+  id: string;
+  /** false when the faculty page could not be read; other fields are then empty. */
+  ok: boolean;
+  doc_count: number;
+  courses: string[];
+  programs: string[];
+  has_streams: boolean;
+  has_forms: boolean;
+};
+
 /** Global schedule section on the overview payload. */
 export type SchedulePage = {
   index_url: string;
   note: string;
   faculties: Faculty[];
+  faculty_summaries: FacultySummary[];
   documents: ScheduleItem[];
   cached: boolean;
   stale: boolean;

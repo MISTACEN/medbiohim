@@ -122,6 +122,7 @@ export default function UniversityPage() {
 
         <SchedulePanel
           faculties={schedule?.faculties}
+          summaries={schedule?.faculty_summaries}
           indexUrl={schedule?.index_url}
           documents={schedule?.documents}
           note={schedule?.note}

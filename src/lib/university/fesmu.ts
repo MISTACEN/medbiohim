@@ -46,6 +46,7 @@ import type {
   DocumentFormat,
   Faculty,
   FacultySchedule,
+  FacultySummary,
   Feed,
   FeedItem,
   FeedKind,
@@ -57,6 +58,7 @@ import type {
   Semester,
   ServiceStatusReport,
   ServiceStatus,
+  StudyForm,
   TitleSource,
 } from "./types";
 
@@ -860,6 +862,111 @@ function deriveCourse(title: string, stem: string): { course: string | null; cou
   return { course: null, courseNumber: null };
 }
 
+/**
+ * U2: курс часто живёт только в шапке таблицы (`1 курс … 6 курс`), а в тексте
+ * ссылки («Занятия и лекции») цифры нет вообще. Поэтому курс читается из
+ * колонки: находим таблицу и строку с якорем, считаем номер ячейки и берём
+ * одноимённую ячейку шапки.
+ */
+export function parseCourseWord(text: string): { course: string; courseNumber: number } | null {
+  const match = /(\d{1,2})\s*(?:-?й)?\s*курс/i.exec(text || "");
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (!(value >= 1 && value <= 9)) return null;
+  return { course: `${value} курс`, courseNumber: value };
+}
+
+export function deriveCourseFromTable(
+  html: string,
+  index: number,
+): { course: string; courseNumber: number } | null {
+  if (typeof html !== "string" || index <= 0) return null;
+  const tableStart = html.lastIndexOf("<table", index);
+  if (tableStart === -1) return null;
+  const rowStart = Math.max(html.lastIndexOf("<tr", index), tableStart);
+  const rowPrefix = html.slice(rowStart, index);
+  // Number of cells *before* the current one, so column 0 is the first <td>.
+  const column = Math.max(0, (rowPrefix.match(/<t[hd]\b/gi) || []).length - 1);
+  const tableHead = html.slice(tableStart, index);
+  // Шапка — первый ряд таблицы; в шаблонах Bitrix она может быть и из <td>.
+  const headerMatch = /<tr\b[^>]*>([\s\S]*?)<\/tr>/i.exec(tableHead);
+  if (!headerMatch) return null;
+  const cells = headerMatch[1].split(/<t[hd]\b[^>]*>/i).slice(1);
+  const header = cells[column];
+  if (!header) return null;
+  const hit = parseCourseWord(cleanText(header));
+  if (!hit) return null;
+  return { course: hit.course, courseNumber: hit.courseNumber };
+}
+
+/**
+ * U1: специальность — это заголовок секции перед таблицей, а не `context`:
+ * «30.05.01 Медицинская биохимия» стоит раньше «Осенний семестр», поэтому
+ * deriveContext() его теряет.
+ */
+const PROGRAM_PATTERN = /(\d{2}\.\d{2}\.\d{2})\s+([А-ЯЁA-Zа-яё][А-Яа-яёA-Za-z\s\-()]{2,80})/;
+
+export function deriveProgram(html: string, index: number): string | null {
+  if (typeof html !== "string" || index <= 0) return null;
+  // Реальный ДВГМУ пишет специальность не заголовком, а абзацем:
+  // `<p style="text-align:center"><span><b>30.05.01 Медицинская биохимия</b></span></p>`.
+  // Поэтому ищем сам текст кода в разметке, но только в собственном блоке: всё,
+  // что было до закрытия предыдущей таблицы, относится к предыдущей специальности.
+  const previousTableEnd = html.lastIndexOf("</table>", index);
+  const sectionEnd = html.lastIndexOf("</section>", index);
+  const floor = Math.max(previousTableEnd, sectionEnd, index - 60_000, 0);
+  const prefix = html.slice(floor, index);
+  let best: { at: number; text: string } | null = null;
+  for (const match of prefix.matchAll(new RegExp(PROGRAM_PATTERN.source, "g"))) {
+    const label = `${match[1]} ${match[2]}`.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!label || label.length < 10) continue;
+    const at = match.index ?? 0;
+    if (!best || at >= best.at) best = { at, text: label };
+  }
+  return best ? (best as { at: number; text: string }).text : null;
+}
+
+/**
+ * U3: форма обучения обычно стоит отдельной строкой под ссылкой
+ * («(заочная форма)»), а не в её тексте. Берём хвост ячейки до ближайшего
+ * переноса/ссылки — так «очная» и «заочная» в одном <td> не путаются.
+ */
+export function deriveFormFromCell(html: string, index: number): StudyForm | null {
+  if (typeof html !== "string" || index <= 0) return null;
+  const cellEnd = html.indexOf("</td>", index);
+  const nextAnchor = html.indexOf("<a ", index);
+  const limit = Math.min(
+    cellEnd === -1 ? index + 400 : cellEnd,
+    nextAnchor === -1 ? index + 400 : nextAnchor,
+    index + 500,
+  );
+  return deriveForm(cleanText(html.slice(index, limit)));
+}
+
+/**
+ * U3: форма обучения — из текста ссылки или строки под ней («(заочная форма)»).
+ * Возвращается та форма, которая встречается раньше: в одной ячейке могут стоять
+ * и очная, и заочная — тогда форма относится к ближайшей строке.
+ */
+export function deriveForm(haystack: string): StudyForm | null {
+  const original = String(haystack || "");
+  const hits: { form: StudyForm; at: number }[] = [];
+  const scan = (form: StudyForm, pattern: RegExp, source: string, offset = 0) => {
+    const match = pattern.exec(source);
+    if (match) hits.push({ form, at: offset + match.index });
+  };
+  scan("очно-заочная", /очно\s*-\s*заочн/i, original);
+  // «заочная» и «очная» не должны срабатывать внутри «очно-заочная».
+  let rest = original;
+  const masked = original.replace(/очно\s*-\s*заочн/gi, (fragment) => " ".repeat(fragment.length));
+  if (masked.length === original.length) rest = masked;
+  scan("заочная", /заочн/i, rest);
+  scan("очная", /очн/i, rest);
+  if (hits.length === 0) return null;
+  hits.sort((left, right) => left.at - right.at);
+  return hits[0].form;
+}
+
 function deriveSemester(haystack: string): Semester | null {
   if (/осен|osen|autumn/i.test(haystack)) return "осенний";
   if (/весн|vesna|spring/i.test(haystack)) return "весенний";
@@ -998,7 +1105,10 @@ function buildScheduleItem(
   if (BOILERPLATE_TITLES.some((pattern) => pattern.test(title))) return null;
   if (BOILERPLATE_TITLES.some((pattern) => pattern.test(`${stem} ${fallback}`))) return null;
 
-  const course = deriveCourse(title, stem);
+  // Course from the name wins; the table column is the fallback (U2).
+  const namedCourse = deriveCourse(title, stem);
+  const course = namedCourse.courseNumber === null && first ? deriveCourseFromTable(html, first.start) : null;
+  const resolvedCourse = namedCourse.courseNumber !== null ? namedCourse : course ?? namedCourse;
   // Separators are word boundaries here too, so `2_potok_vesna.pdf` reads as
   // «2 поток, весенний» instead of losing the stream.
   const haystack = `${title} ${stem.replace(/[_\-]+/g, " ")}`;
@@ -1007,10 +1117,12 @@ function buildScheduleItem(
     title,
     title_source: titleSource,
     url,
-    course: course.course,
-    course_number: course.courseNumber,
+    program: first ? deriveProgram(html, first.start) : null,
+    course: resolvedCourse.course,
+    course_number: resolvedCourse.courseNumber,
     semester: deriveSemester(haystack),
     stream: deriveStream(haystack),
+    form: deriveForm(haystack) ?? (first ? deriveFormFromCell(html, first.end) : null),
     kind,
     kind_label: deriveKindLabel(kind, title, titleSource),
     format: first ? first.format : "pdf",
@@ -1223,12 +1335,56 @@ export async function getServiceReport(options: { force?: boolean } = {}): Promi
  * Builders used by the route handlers
  * ------------------------------------------------------------------ */
 
+/**
+ * U5: «что внутри» карточки факультета до клика — число файлов, курсы,
+ * специальности, наличие потоков и форм обучения. Считается по уже
+ * закэшированному расписанию факультетов; недоступный факультет отдаёт
+ * `ok: false` и не ломает overview.
+ */
+async function summariseFaculty(faculty: Faculty): Promise<FacultySummary> {
+  const loaded = await loadSchedule(`schedule:${faculty.id}`, faculty.url, false, false);
+  const items = loaded.items;
+  const courses = [...new Set(items.map((item) => item.course).filter((value): value is string => Boolean(value)))].sort(
+    (left, right) => (parseInt(left, 10) || 99) - (parseInt(right, 10) || 99),
+  );
+  const programs = [...new Set(items.map((item) => item.program).filter((value): value is string => Boolean(value)))].sort(
+    (left, right) => left.localeCompare(right, "ru"),
+  );
+  return {
+    id: faculty.id,
+    ok: loaded.ok,
+    doc_count: items.length,
+    courses,
+    programs: programs.length > 0 ? programs : [...faculty.programs],
+    has_streams: items.some((item) => Boolean(item.stream)),
+    has_forms: items.some((item) => Boolean(item.form)),
+  };
+}
+
+const EMPTY_SUMMARY_TIMEOUT_MS = 9_000;
+
+function failedSummary(faculty: Faculty): FacultySummary {
+  return {
+    id: faculty.id,
+    ok: false,
+    doc_count: 0,
+    courses: [],
+    programs: [...faculty.programs],
+    has_streams: false,
+    has_forms: false,
+  };
+}
+
 export async function getSchedulePage(options: { force?: boolean } = {}): Promise<SchedulePage> {
   const loaded = await loadSchedule("schedule:index", SCHEDULE_INDEX_URL, true, options.force === true);
+  const faculty_summaries = await runPool(FACULTIES, 3, (faculty) =>
+    withDeadline(summariseFaculty(faculty), EMPTY_SUMMARY_TIMEOUT_MS, () => failedSummary(faculty)),
+  );
   return {
     index_url: SCHEDULE_INDEX_URL,
     note: SCHEDULE_NOTE,
     faculties: FACULTIES.map((faculty) => ({ ...faculty })),
+    faculty_summaries,
     documents: loaded.items,
     cached: loaded.cached,
     stale: loaded.stale,

@@ -36,7 +36,9 @@ export type Faculty = {
   slug?: string;
   title: string;
   short?: string;
+  /** Legacy single-line caption; `programs` lists every specialty of the unit. */
   program?: string | null;
+  programs?: string[];
   code?: string | null;
   url: string;
 };
@@ -45,10 +47,14 @@ export type ScheduleItem = {
   title: string;
   title_source?: "page" | "filename" | string;
   url: string;
+  /** Specialty heading the document belongs to (U1). */
+  program?: string | null;
   course?: string | null;
   course_number?: number | null;
   semester?: string | null;
   stream?: string | null;
+  /** `очная` / `заочная` / `очно-заочная` from the document wording (U3). */
+  form?: string | null;
   kind?: string;
   kind_label?: string;
   format?: string | null;
@@ -85,10 +91,22 @@ export type Portal = {
   events_url?: string;
 };
 
+/** «Что внутри» карточки факультета, посчитанное сервером (U5). */
+export type FacultyScheduleSummary = {
+  id: string;
+  ok?: boolean;
+  doc_count?: number;
+  courses?: string[];
+  programs?: string[];
+  has_streams?: boolean;
+  has_forms?: boolean;
+};
+
 export type ScheduleSection = {
   index_url?: string;
   note?: string;
   faculties?: Faculty[];
+  faculty_summaries?: FacultyScheduleSummary[];
   documents?: ScheduleItem[];
   cached?: boolean;
   stale?: boolean;

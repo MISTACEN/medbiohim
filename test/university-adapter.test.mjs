@@ -351,7 +351,9 @@ test("faculty page: dedupe, course/semester/stream/kind, no internal links", asy
     assert.ok(practice);
     assert.equal(practice.kind, "practice-exams");
     assert.equal(practice.kind_label, "Экзамены по практике");
-    assert.equal(practice.course_number, null);
+    // U2: курс теперь читается и из колонки таблицы, а не только из имени файла,
+    // поэтому «экзамены по практике» 2 курса больше не падают в «Общие материалы».
+    assert.equal(practice.course_number, 2);
 
     const numbers = schedule.items.map((item) => item.course_number);
     const defined = numbers.filter((value) => value !== null);
@@ -600,8 +602,16 @@ test("overview: frozen shape, registry without probes, 6 faculties, 3 feeds", as
         "stale",
       ]);
     }
-    // The overview must not probe: only the 3 feeds + the schedule index were read.
-    assert.equal(calls.length, 4);
+    // The overview must not probe services (no HEAD), but it does read the six
+    // faculty pages: that is what fills `faculty_summaries` (U5).
+    assert.equal(calls.length, 10);
+    for (const call of calls) {
+      assert.notEqual(String(call.init?.method || "GET").toUpperCase(), "HEAD", "overview must not probe");
+    }
+    assert.equal(overview.schedule.faculty_summaries.length, 6);
+    const farmSummary = overview.schedule.faculty_summaries.find((summary) => summary.id === "farmatsii");
+    assert.ok(farmSummary.doc_count > 0, "specialty preview must be filled from the cached page");
+    assert.ok(farmSummary.programs.length >= 2, "both specialties of the faculty must be visible");
   } finally {
     resetTransport();
   }
@@ -751,7 +761,9 @@ test("route handlers serve the frozen envelopes with cache-control: no-store", a
     assert.equal(facultyBody.ok, true);
     assert.equal(facultyBody.faculty.id, "lechebnyy");
     assert.ok(facultyBody.items.length > 40);
-    assert.equal(facultyBody.cached, false);
+    // The overview already warmed the faculty cache while building summaries (U5),
+    // so the first click is served from it and honestly says so.
+    assert.equal(facultyBody.cached, true);
     assert.equal(typeof facultyBody.cache_age_seconds, "number");
 
     const alias = await route.GET(new NextRequest(`${base}?faculty=lechebnyy`));
