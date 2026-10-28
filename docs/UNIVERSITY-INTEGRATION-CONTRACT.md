@@ -46,6 +46,28 @@ Namespace: `https://www.fesmu.ru` (ДВГМУ / ФЕСМУ). Real, verified URLs
 8. `/api/university` ignores non-faculty documents on the schedule index
    («график учебного процесса», «график вступительных», «график вручения дипломов»).
 
+### 0.1.1. Status of the §0.1 bug list (audit 2026-10-28, offline verification)
+
+All 8 defects above are fixed in the current tree and verified offline
+(`npx tsc --noEmit` clean; `node --test` — adapter 37/37, round-1 oracle 47/47,
+round-2 8/8). Item-by-item:
+
+1. **TLS** — mitigated in code per §1.1 (relaxed `node:https` agent for
+   `*.fesmu.ru` only, rationale comment, `FESMU_STRICT_TLS=1` restores strict
+   verification). The **root cause is infrastructural and remains OPEN on the
+   university side**: `www.fesmu.ru` still does not send its intermediate CA, so
+   plain `fetch`, browsers with a cold chain cache or any strict-TLS environment
+   will still fail. "It works from the adapter" is a mitigation, not a fix of
+   the server configuration.
+2. Feed paths — `portals.ts` uses the verified `news/`, `announce/`, `events/`.
+3. Faculty paths — `FACULTIES` carries the six verified §1.4 paths.
+4. URL join — `resolveUrl()` is `new URL()`-based and drops RFC1918 hosts.
+5. Cache — `readThrough()` implements the 30-min TTL with stale fallback and
+   `fetched_at`/`cache_age_seconds` on every payload.
+6. News parser — Bitrix card parser per §1.3 (incl. V-1/V-2 hardening).
+7. The hub serves all 6 faculty units.
+8. Index-page `documents` are extracted with `type: "document"`.
+
 ## 1. Adapter requirements
 
 ### 1.1. Transport

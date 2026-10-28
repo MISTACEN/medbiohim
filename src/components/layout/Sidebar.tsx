@@ -21,6 +21,7 @@ import {
   Calculator,
   Search,
   Landmark,
+  ListChecks,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/subjects", label: "Предметы", icon: BookOpen },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
   { href: "/academic", label: "Учебный план", icon: ClipboardList },
+  { href: "/assignments", label: "Отработки", icon: ListChecks },
   { href: "/community", label: "Сообщество", icon: Users },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
   { href: "/attestations", label: "Аттестации", icon: ClipboardList },

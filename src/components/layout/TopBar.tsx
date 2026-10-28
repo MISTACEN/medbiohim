@@ -20,7 +20,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const initials = (user?.name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   const course = user?.course ?? null;
   const semester = user?.semester ?? null;
-  const pageTitle = pathname === "/" ? "Медбиохим" : pathname.startsWith("/schedule") ? "Расписание" : pathname.startsWith("/university") ? "Вуз и ЕИОС" : pathname.startsWith("/homework") ? "Задания" : pathname.startsWith("/subjects") ? "Учёба" : pathname.startsWith("/community") ? "Группа" : pathname.startsWith("/settings") ? "Профиль" : "Медбиохим";
+  const pageTitle = pathname === "/" ? "Медбиохим" : pathname.startsWith("/schedule") ? "Расписание" : pathname.startsWith("/university") ? "Вуз и ЕИОС" : pathname.startsWith("/homework") ? "Задания" : pathname.startsWith("/assignments") ? "Отработки" : pathname.startsWith("/subjects") ? "Учёба" : pathname.startsWith("/community") ? "Группа" : pathname.startsWith("/settings") ? "Профиль" : "Медбиохим";
 
   return (
     <header

@@ -7,6 +7,17 @@ const SUPPORTED_HOSTS = ["eios.fesmu.ru", "fesmu.ru", "lab.neofamily.ru", "xn--8
 
 const elements = {};
 let snapshot = null;
+let analyzedTabId = null;
+
+/** Stop the MAIN-world interceptor; capture must never outlive the preview. */
+function disarmCapture() {
+  if (analyzedTabId == null) return;
+  try {
+    chrome.tabs.sendMessage(analyzedTabId, { action: "disarm_capture" });
+  } catch {
+    /* tab closed — nothing to disarm */
+  }
+}
 
 function cacheElements() {
   for (const id of [
@@ -94,7 +105,7 @@ function renderPreview(data) {
     meta.className = "item-meta";
     const badge = document.createElement("span");
     badge.className = "badge";
-    badge.textContent = sourceLabels[item.source] || item.source;
+    badge.textContent = item.via === "network" ? "сеть" : sourceLabels[item.source] || item.source;
     meta.appendChild(badge);
     meta.append(item.summary ? item.summary.slice(0, 90) : new URL(item.url).hostname);
 
@@ -143,6 +154,14 @@ async function analyze() {
       return;
     }
     status(elements["settings-status"], `Найдено материалов: ${response.items.length}. Проверьте список перед импортом.`, "ok");
+    analyzedTabId = tab.id;
+    if (response.network_count) {
+      status(
+        elements["settings-status"],
+        `Найдено материалов: ${response.items.length} (${response.network_count} из данных страницы). Проверьте список перед импортом.`,
+        "ok",
+      );
+    }
     renderPreview(response);
   } catch (error) {
     status(elements["settings-status"], `Ошибка: ${error?.message || error}`, "error");
@@ -174,6 +193,7 @@ function importSelected() {
         `Готово: сохранено ${result.imported ?? items.length}, пропущено дублей ${result.skipped ?? 0}.`,
         "ok"
       );
+      disarmCapture();
     } else {
       status(elements["import-status"], result?.error || "Не удалось сохранить импорт.", "error");
     }
@@ -200,5 +220,9 @@ document.addEventListener("DOMContentLoaded", () => {
   elements["close-preview-btn"].addEventListener("click", () => {
     elements["preview-section"].classList.add("hidden");
     snapshot = null;
+    disarmCapture();
   });
+
+  // Closing the popup must not leave the page interceptor armed.
+  window.addEventListener("unload", disarmCapture);
 });

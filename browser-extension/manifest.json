@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MEDBIOHIM Importer",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Сохраняет выбранные объявления, события и материалы с ЕИОС ДВГМУ, NeoFamily и Школы Сеченова в личную библиотеку MEDBIOHIM.",
   "permissions": ["storage", "activeTab", "scripting", "notifications"],
   "host_permissions": [
@@ -22,6 +22,17 @@
     "type": "module"
   },
   "content_scripts": [
+    {
+      "matches": [
+        "https://eios.fesmu.ru/*",
+        "https://www.fesmu.ru/*",
+        "https://lab.neofamily.ru/*",
+        "https://xn--80aafla1ahtef3a7eg.xn--p1ai/*"
+      ],
+      "js": ["interceptor.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
     {
       "matches": [
         "https://eios.fesmu.ru/*",

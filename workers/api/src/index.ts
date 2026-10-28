@@ -22,6 +22,7 @@ import schedule from "./routes/schedule";
 import lessonPlan from "./routes/lesson-plan";
 import curriculum from "./routes/curriculum";
 import homework from "./routes/homework";
+import assignments from "./routes/assignments";
 import submissions from "./routes/submissions";
 import planner from "./routes/planner";
 import academic from "./routes/academic";
@@ -128,6 +129,7 @@ v1.route("/curriculum", curriculum);
 // Alias: some clients call /plans — map to curriculum (avoid 501)
 v1.get("/plans", (c) => curriculum.fetch(rewriteRequest(c.req.raw, "/"), c.env));
 v1.route("/homeworks", homework);
+v1.route("/assignments", assignments);
 v1.route("/homework", homework);
 v1.route("/submissions", submissions);
 v1.route("/planner", planner);

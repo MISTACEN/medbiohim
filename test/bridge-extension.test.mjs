@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const ANALYZER = new URL("../browser-extension/src/content/analyzer.js", import.meta.url);
+const SOURCES = new URL("../browser-extension/src/content/sources.json", import.meta.url);
 const FIXTURES = new URL("./fixtures/fesmu/", import.meta.url);
 const NEW_URL = "https://www.fesmu.ru/press-center/news/";
 
@@ -235,9 +236,23 @@ function runAnalyzer(html, { hostname = "www.fesmu.ru", title = "Новости"
       },
     },
   };
-  const source = readFileSync(ANALYZER, "utf8");
+  // The shipped analyzer imports its declarative source map; the browser gets
+  // that through webpack. Here the module loader is substituted by the parsed
+  // JSON from disk — the analyzer code itself stays exactly as shipped.
+  const rawSource = readFileSync(ANALYZER, "utf8");
+  const sourcesConfig = JSON.parse(readFileSync(SOURCES, "utf8"));
+  const source = rawSource.replace(/^import sourcesConfig from "\.\/sources\.json";$/m, "");
+  assert.notEqual(source, rawSource, "analyzer must import ./sources.json");
+  const window = {
+    location: { hostname, href },
+    // Capture events are cross-world chatter: analysis must work without a page
+    // listener registry, so both sides are inert in the harness.
+    addEventListener() {},
+    dispatchEvent() {},
+  };
   // eslint-disable-next-line no-new-func
-  new Function("window", "document", "chrome", `${source}\n`)({ location: { hostname, href } }, document, chrome);
+  new Function("window", "document", "chrome", "sourcesConfig", `${source}
+`)(window, document, chrome, sourcesConfig);
   assert.equal(typeof listeners[0], "function", "analyzer must register a message listener");
   let response = null;
   listeners[0]({ action: "analyze_page" }, {}, (value) => {

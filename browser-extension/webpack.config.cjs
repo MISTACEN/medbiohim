@@ -8,6 +8,9 @@ module.exports = {
     background: "./src/background/serviceWorker.js",
     popup: "./src/js/popup.js",
     analyzer: "./src/content/analyzer.js",
+    // MAIN-world network interceptor: must ship as its own content script so it
+    // can wrap window.fetch/XHR before the platform's own scripts run.
+    interceptor: "./src/content/interceptor.js",
   },
   output: {
     path: path.resolve(__dirname, "dist"),

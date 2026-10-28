@@ -359,6 +359,12 @@ export default function DashboardPage() {
               Задания
             </Link>
             <Link
+              href="/assignments"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Отработки
+            </Link>
+            <Link
               href="/academic"
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >

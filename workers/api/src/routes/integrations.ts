@@ -2,9 +2,9 @@
  * Manual imports from external study portals (EIOS, NeoFamily, Sechenov school).
  *
  * The browser extension only sends what the user explicitly selected; nothing is
- * crawled. Records live in site_content under `extimport:<user id>:<hash>` so the
- * feature works without a schema migration, and every read/write is scoped to the
- * caller's own prefix. New table would be preferable once migrations run.
+ * crawled. Records live in `imported_sources` (private per user, RLS owner-only);
+ * legacy rows from the old `site_content` keys `extimport:<user>:<hash>` are
+ * still readable until the one-off migration drains them (20261028_imported_sources.sql).
  */
 import { Hono } from "hono";
 import type { Env } from "../env";
@@ -33,7 +33,7 @@ function store(c: any) {
   return createServiceClient(c.env) || c.get("supabase");
 }
 
-function prefix(userId: string) {
+function legacyPrefix(userId: string) {
   return `extimport:${userId}:`;
 }
 
@@ -73,19 +73,47 @@ function normalizeItems(raw: unknown): { items?: ImportItem[]; error?: string } 
   return { items };
 }
 
+function rowToItem(row: any): ImportItem & { updated_at?: string } {
+  return {
+    id: String(row.content_hash || row.id || ""),
+    source: String(row.source || "other"),
+    kind: String(row.kind || "link"),
+    title: String(row.title || ""),
+    url: String(row.url || ""),
+    summary: row.summary || undefined,
+    published_at: row.published_at || null,
+    imported_at: String(row.created_at || row.imported_at || ""),
+    updated_at: row.updated_at,
+  };
+}
+
 integrations.get("/imports", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   try {
     const { data, error } = await store(c)
-      .from("site_content")
-      .select("key,payload,updated_at")
-      .like("key", `${prefix(user.id)}%`)
+      .from("imported_sources")
+      .select("id,content_hash,source,kind,title,url,summary,published_at,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
       .limit(300);
     if (error) throw error;
-    const items = (data || [])
-      .map((row: any) => ({ key: row.key, updated_at: row.updated_at, ...row.payload }))
-      .sort((a: any, b: any) => String(b.imported_at || "").localeCompare(String(a.imported_at || "")));
+    const items = (data || []).map(rowToItem);
+
+    // Legacy-ключи site_content, ещё не перенесённые разовой миграцией.
+    const legacy = await store(c)
+      .from("site_content")
+      .select("key,payload,updated_at")
+      .like("key", `${legacyPrefix(user.id)}%`)
+      .limit(300);
+    if (!legacy.error) {
+      const known = new Set(items.map((item: ImportItem) => item.id));
+      for (const row of legacy.data || []) {
+        const item = rowToItem({ ...row.payload, content_hash: String(row.key || "").split(":").pop(), created_at: row.payload?.imported_at });
+        if (item.id && !known.has(item.id)) items.push(item);
+      }
+      items.sort((a: any, b: any) => String(b.imported_at || "").localeCompare(String(a.imported_at || "")));
+    }
     return c.json(ok({ items, count: items.length }, rid));
   } catch (error) {
     console.error("[integrations:list]", error);
@@ -109,35 +137,41 @@ integrations.post("/imports", requireAuth, async (c) => {
   try {
     const db = store(c);
     const existing = await db
-      .from("site_content")
-      .select("key")
-      .like("key", `${prefix(user.id)}%`)
-      .limit(300);
+      .from("imported_sources")
+      .select("content_hash")
+      .eq("user_id", user.id)
+      .limit(500);
     if (existing.error) throw existing.error;
-    const known = new Set((existing.data || []).map((row: any) => String(row.key)));
+    const known = new Set((existing.data || []).map((row: any) => String(row.content_hash)));
 
     const rows = [];
     let skipped = 0;
-    for (const item of normalized.items) {
+    for (const item of normalized.items as ImportItem[]) {
       const hash = await hashUrl(item.url);
-      const key = `${prefix(user.id)}${hash}`;
-      if (known.has(key)) {
+      if (known.has(hash)) {
         skipped += 1;
         continue;
       }
-      known.add(key);
+      known.add(hash);
       rows.push({
-        key,
-        payload: { ...item, id: hash },
-        updated_at: new Date().toISOString(),
+        user_id: user.id,
+        source: item.source,
+        kind: item.kind,
+        content_hash: hash,
+        title: item.title,
+        url: item.url,
+        summary: item.summary || null,
+        published_at: item.published_at || null,
       });
     }
 
+    let saved: any[] = [];
     if (rows.length) {
-      const { error } = await db.from("site_content").upsert(rows, { onConflict: "key" });
+      const { data, error } = await db.from("imported_sources").upsert(rows, { onConflict: "user_id,content_hash" }).select();
       if (error) throw error;
+      saved = data || [];
     }
-    return c.json(ok({ imported: rows.length, skipped, items: rows.map((row) => row.payload) }, rid), 201);
+    return c.json(ok({ imported: saved.length, skipped, items: saved.map(rowToItem) }, rid), 201);
   } catch (error) {
     console.error("[integrations:import]", error);
     return c.json(fail("IMPORT_FAILED", "Не удалось сохранить импорт", 503, rid), 503);
@@ -152,14 +186,26 @@ integrations.delete("/imports/:id", requireAuth, async (c) => {
     return c.json(fail("VALIDATION_ERROR", "Некорректный ID импорта", 422, rid), 422);
   }
   try {
-    const { data, error } = await store(c)
-      .from("site_content")
+    const db = store(c);
+    const { data, error } = await db
+      .from("imported_sources")
       .delete()
-      .eq("key", `${prefix(user.id)}${id}`)
-      .select("key")
+      .eq("user_id", user.id)
+      .eq("content_hash", id)
+      .select("id")
       .maybeSingle();
     if (error) throw error;
-    if (!data) return c.json(fail("NOT_FOUND", "Импорт не найден", 404, rid), 404);
+    if (!data) {
+      // Legacy-запись ещё в site_content — удаляем оттуда.
+      const legacy = await db
+        .from("site_content")
+        .delete()
+        .eq("key", `${legacyPrefix(user.id)}${id}`)
+        .select("key")
+        .maybeSingle();
+      if (legacy.error) throw legacy.error;
+      if (!legacy.data) return c.json(fail("NOT_FOUND", "Импорт не найден", 404, rid), 404);
+    }
     return c.json(ok({ deleted: true }, rid));
   } catch (error) {
     console.error("[integrations:delete]", error);

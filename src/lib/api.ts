@@ -514,6 +514,13 @@ export async function getStudentPlanner(from?:string,to?:string,groupId?:string)
 export async function markAttendance(entryId:string,status:"present"|"excused"|"sick"|"unexcused",note?:string,groupId?:string){const q=groupId?"?group_id="+encodeURIComponent(groupId):"";return api<any>(`/attendance/${encodeURIComponent(entryId)}${q}`,{method:"POST",body:JSON.stringify({status,note})})}
 export async function submitHomework(id:string,textAnswer?:string,fileId?:string){return api<any>(`/homeworks/${id}/submit`,{method:"POST",body:JSON.stringify({text_answer:textAnswer,file_id:fileId})})}
 export async function listHomeworkSubmissions(id:string){return api<any>(`/homeworks/${encodeURIComponent(id)}/submissions`)}
+export type MyAssignmentStatus="passed"|"failed"|"pending"|"retake_needed"
+export type MyAssignment={id:string;subject:string;topic:string;due_date:string|null;status:MyAssignmentStatus;grade:string|null;note:string|null;source:"manual"|"csv";created_at?:string;updated_at?:string}
+export async function listMyAssignments(status?:string){const q=status?`?status=${encodeURIComponent(status)}`:"";return api<any>(`/assignments${q}`)}
+export async function saveMyAssignments(items:Array<{subject:string;topic:string;due_date?:string|null;status?:MyAssignmentStatus;grade?:string|null;note?:string|null;source?:"manual"|"csv"}>){return api<any>("/assignments",{method:"POST",body:JSON.stringify({items})})}
+export async function updateMyAssignment(id:string,patch:{status?:MyAssignmentStatus;grade?:string|null;note?:string|null;due_date?:string|null}){return api<any>(`/assignments/${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify(patch)})}
+export async function deleteMyAssignment(id:string){return api<any>(`/assignments/${encodeURIComponent(id)}`,{method:"DELETE"})}
+
 export async function uploadFile(file:File,groupId?:string,specialtySlug?:string){const fd=new FormData();fd.append("file",file);if(groupId)fd.append("group_id",groupId);if(specialtySlug)fd.append("specialty_slug",specialtySlug);return api<any>("/files/upload",{method:"POST",body:fd})}
 export async function getFileDownload(id:string):Promise<any>{return api<any>("/files/"+encodeURIComponent(id))}
 export function fileDownloadUrl(id:string):string{return `${API_URL}/files/${encodeURIComponent(id)}/download`}

@@ -168,3 +168,35 @@ test("every admin-schedule handler is staff-gated (D3)", async () => {
     assert.match(body, /isAdmin\(c\)/, "handler is not staff-gated: " + handler);
   }
 });
+
+test("assignment tracker is mounted and scoped to the caller only", async () => {
+  const index = await source("../src/index.ts");
+  assert.match(index, /import assignments from "\.\/routes\/assignments"/);
+  assert.match(index, /v1\.route\("\/assignments", assignments\)/);
+
+  const route = await source("../src/routes/assignments.ts");
+  // Личные записи: таблица my_assignments, owner-only RLS, user_id из JWT.
+  assert.match(route, /\.from\("my_assignments"\)/);
+  assert.doesNotMatch(route, /site_content/);
+  assert.match(route, /\.eq\("user_id", user\.id\)/);
+  assert.doesNotMatch(route, /body\.user_id/);
+  // Каждый хендлер требует авторизации.
+  const handlers = ['assignments.get("/"', 'assignments.post("/"', 'assignments.patch("/:id"', 'assignments.delete("/:id"'];
+  for (const handler of handlers) {
+    const start = route.indexOf(handler);
+    assert.ok(start >= 0, "missing handler: " + handler);
+    const body = route.slice(start, start + 260);
+    assert.match(body, /requireAuth/, "handler is not authenticated: " + handler);
+  }
+  // Статусы — закрытый список, а не произвольная строка из тела запроса.
+  assert.match(route, /const STATUSES = new Set\(\["passed", "failed", "pending", "retake_needed"\]\)/);
+});
+
+test("imported sources table is the storage and legacy keys stay user-scoped", async () => {
+  const route = await source("../src/routes/integrations.ts");
+  assert.match(route, /\.from\("imported_sources"\)/);
+  assert.match(route, /\.eq\("user_id", user\.id\)/);
+  assert.match(route, /user_id: user\.id/);
+  // Legacy-ключи site_content читаются только в своём префиксе.
+  assert.match(route, /extimport:\$\{userId\}:/);
+});

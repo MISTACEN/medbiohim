@@ -1,0 +1,72 @@
+{
+  "version": "2026.10.28",
+  "updated": "2026-10-28",
+  "notes": [
+    "Декларативная карта источников для analyzer.js: селекторы и regex вынесены сюда,",
+    "чтобы правка после редизайна платформы была правкой одного JSON (см. README, раздел «Карта источников»).",
+    "Принципы docs/EXTERNAL-PLATFORMS-REVERSE.md: только открытая разметка, работа по кнопке,",
+    "никаких автологинов и обхода платного доступа.",
+    "Правила: selectors в источнике ДОПОЛНЯЮТ common (списки конкатенируются, строки заменяют).",
+    "После правки поднимите version и синхронизируйте medbiohim_sources_version в manifest.json."
+  ],
+  "common": {
+    "anchor_scope": "main a[href], article a[href], .content a[href], .card a[href], a[href]",
+    "heading_scope": "main h2, article h2, main h3",
+    "card_selector": [
+      "article",
+      "li",
+      ".card",
+      ".item",
+      ".event",
+      ".news",
+      ".announcement",
+      "[class*='card']",
+      "[class*='item']"
+    ],
+    "title_attributes": ["data-title", "title", "alt", "aria-label"],
+    "summary_selector": "p, .description, .summary, .excerpt, time",
+    "placeholder_titles": "^(heading|filename|title|alt|image|link|ссылка|подробнее|читать далее|more|ещё|еще|\\+|-)$",
+    "skip_url": "\\.(png|jpe?g|gif|webp|svg|ico|woff2?|css|js)(\\?|$)",
+    "date_pattern": "(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})",
+    "kind_rules": [
+      { "kind": "document", "pattern": "\\.(pdf|docx?|xlsx?|pptx?)(\\?|$)" },
+      { "kind": "event", "pattern": "расписан|календар|событ|мероприят|schedule|calendar|event" },
+      { "kind": "announcement", "pattern": "объявлен|новост|announcement|news" },
+      { "kind": "topic", "pattern": "задан|урок|тем|lesson|topic|trainer|тренаж|тест" }
+    ],
+    "limits": { "title": 220, "summary": 240, "anchors": 60, "items": 50 }
+  },
+  "sources": [
+    {
+      "id": "eios",
+      "label": "ЕИОС ДВГМУ",
+      "match": "^eios\\.fesmu\\.ru$",
+      "selectors": {},
+      "notes": "SPA ЕИОС: работает общий разбор якорей и заголовков."
+    },
+    {
+      "id": "fesmu",
+      "label": "ДВГМУ (сайт вуза)",
+      "match": "(^|\\.)fesmu\\.ru$",
+      "selectors": {
+        "card_selector": [".iblock-list-item-wrap", "[area-label]", "[class*='iblock']"],
+        "title_attributes": ["area-label", "data-title", "title", "alt", "aria-label"]
+      },
+      "notes": "1C-Bitrix (шаблон sf-): заголовок карточки лежит в area-label обёртки, сама ссылка — пустая картинка. Аналогично адаптеру src/lib/university/fesmu.ts."
+    },
+    {
+      "id": "neofamily",
+      "label": "NeoFamily Lab",
+      "match": "(^|\\.)lab\\.neofamily\\.ru$",
+      "selectors": {},
+      "notes": "Публичный каталог тем; пока хватает общего разбора."
+    },
+    {
+      "id": "sechenov",
+      "label": "Школа Сеченова",
+      "match": "(^|\\.)xn--80aafla1ahtef3a7eg\\.xn--p1ai$",
+      "selectors": {},
+      "notes": "Платный доступ: расширение читает только открытую студенту страницу, ничего не обходит."
+    }
+  ]
+}

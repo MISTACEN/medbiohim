@@ -6,47 +6,85 @@
  * titles, links, dates and short snippets are read from the current DOM. No
  * cookies, no tokens and no credentials are read here.
  *
+ * Selectors, limits and heuristic regexes live in `sources.json` (declarative
+ * source map, see README → «Карта источников»), so a platform redesign is a JSON
+ * edit instead of a code change. Per-source `selectors` extend the common block:
+ * arrays are concatenated, strings replace.
+ *
  * FESMU note: the public ДВГМУ site is NOT ЕИОС. Cards on `www.fesmu.ru`
  * (1C-Bitrix `sf-` template) carry the real title in an `area-label` attribute on
  * the card wrapper, while the anchor itself is usually an empty image link — so a
  * title has to be resolved from attributes, exactly like the server adapter does
  * in `src/lib/university/fesmu.ts`.
+ *
+ * Network capture: the MAIN-world `interceptor.js` announces list-like JSON
+ * payloads the page itself requested while the user was reviewing it. Those
+ * items are buffered here (in memory, per tab) and merged into the preview with
+ * `via: "network"`. Nothing leaves the tab until the user presses «Импортировать».
  */
 
-const SUPPORTED = [
-  { match: /^eios\.fesmu\.ru$/i, source: "eios", label: "ЕИОС ДВГМУ" },
-  // Public university pages are the official ДВГМУ site, not the ЕИОС system.
-  { match: /(^|\.)fesmu\.ru$/i, source: "fesmu", label: "ДВГМУ (сайт вуза)" },
-  { match: /(^|\.)lab\.neofamily\.ru$/i, source: "neofamily", label: "NeoFamily Lab" },
-  { match: /(^|\.)xn--80aafla1ahtef3a7eg\.xn--p1ai$/i, source: "sechenov", label: "Школа Сеченова" },
-];
+import sourcesConfig from "./sources.json";
 
-/** Wrapper selectors: generic cards plus the 1C-Bitrix blocks used by ДВГМУ. */
-const CARD_SELECTOR = [
-  "article",
-  "li",
-  ".card",
-  ".item",
-  ".event",
-  ".news",
-  ".announcement",
-  "[class*='card']",
-  "[class*='item']",
-  ".iblock-list-item-wrap",
-  "[area-label]",
-  "[class*='iblock']",
-].join(", ");
+const CAPTURE_EVENT = "medbiohim:capture";
+const ARM_EVENT = "medbiohim:arm";
+const DISARM_EVENT = "medbiohim:disarm";
 
-/** Attributes that carry a human title on ДВГМУ cards. */
-const TITLE_ATTRIBUTES = ["area-label", "data-title", "title", "alt", "aria-label"];
-/** Values that are markup plumbing, never a real title. */
-const PLACEHOLDER_TITLES = /^(heading|filename|title|alt|image|link|ссылка|подробнее|читать далее|more|ещё|еще|\+|-)$/i;
+/** How long one «Разобрать страницу» keeps the interceptor armed. */
+const ARM_TTL_MS = 100000;
+
+const SUPPORTED = (sourcesConfig.sources || []).map((entry) => ({
+  match: new RegExp(entry.match, "i"),
+  source: entry.id,
+  label: entry.label,
+}));
+
+const COMMON = sourcesConfig.common || {};
+
+function sourceConfig(hostname) {
+  return (sourcesConfig.sources || []).find((entry) => {
+    try {
+      return new RegExp(entry.match, "i").test(hostname);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function mergeSelectors(base, override) {
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(override || {})) {
+    if (Array.isArray(value) && Array.isArray(merged[key])) {
+      merged[key] = [...merged[key], ...value];
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+function selectorsFor(hostname) {
+  const entry = sourceConfig(hostname);
+  return mergeSelectors(COMMON, entry && entry.selectors);
+}
+
+const MAX_TITLE = Number(COMMON.limits?.title ?? 220);
+const MAX_SUMMARY = Number(COMMON.limits?.summary ?? 240);
+const MAX_ANCHORS = Number(COMMON.limits?.anchors ?? 60);
+const MAX_ITEMS = Number(COMMON.limits?.items ?? 50);
+
+const PLACEHOLDER_TITLES = new RegExp(
+  COMMON.placeholder_titles || "^(heading|filename|title|alt|image|link|\\+|-)$",
+  "i",
+);
 const DATE_ONLY = /^\d{1,2}\.\d{1,2}\.\d{4}$/;
+const DATE_PATTERN = new RegExp(COMMON.date_pattern || "(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})");
+const SKIP_URL = new RegExp(COMMON.skip_url || "\\.(png|jpe?g|gif|svg)(\\?|$)", "i");
+const KIND_RULES = (COMMON.kind_rules || []).map((rule) => ({
+  kind: rule.kind,
+  pattern: new RegExp(rule.pattern, "i"),
+}));
 
-const MAX_TITLE = 220;
-const MAX_SUMMARY = 240;
-const MAX_ANCHORS = 60;
-const MAX_ITEMS = 50;
+let activeSelectors = selectorsFor(window.location.hostname);
 
 function currentSource() {
   const host = window.location.hostname;
@@ -69,7 +107,8 @@ function absolute(href) {
 
 function attributeTitle(node) {
   if (!node || typeof node.getAttribute !== "function") return "";
-  for (const name of TITLE_ATTRIBUTES) {
+  const names = activeSelectors.title_attributes || ["title", "alt", "aria-label"];
+  for (const name of names) {
     const value = node.getAttribute(name);
     if (typeof value === "string" && value.trim()) return value;
   }
@@ -82,11 +121,14 @@ function isUsableTitle(value) {
 }
 
 function cardContainer(anchor) {
-  return anchor && typeof anchor.closest === "function" ? anchor.closest(CARD_SELECTOR) : null;
+  const selector = (activeSelectors.card_selector || []).join(", ");
+  if (!selector || !anchor || typeof anchor.closest !== "function") return null;
+  return anchor.closest(selector);
 }
 
 function queryOne(node, selector) {
-  return node && typeof node.querySelector === "function" ? node.querySelector(selector) : null;
+  if (!node || !selector || typeof node.querySelector !== "function") return null;
+  return node.querySelector(selector);
 }
 
 /**
@@ -119,11 +161,10 @@ function resolveTitle(anchor) {
 }
 
 function classify(title, href) {
-  const value = `${title} ${href}`.toLowerCase();
-  if (/\.(pdf|docx?|xlsx?|pptx?)(\?|$)/.test(value)) return "document";
-  if (/расписан|календар|событ|мероприят|schedule|calendar|event/.test(value)) return "event";
-  if (/объявлен|новост|announcement|news/.test(value)) return "announcement";
-  if (/задан|урок|тем|lesson|topic|trainer|тренаж|тест/.test(value)) return "topic";
+  const value = `${title} ${href}`;
+  for (const rule of KIND_RULES) {
+    if (rule.pattern.test(value)) return rule.kind;
+  }
   return "link";
 }
 
@@ -145,7 +186,7 @@ function daysInMonth(year, month) {
 function publishedAt(anchor) {
   const scope = cardContainer(anchor) || anchor;
   const haystack = `${text(scope, 4000)} ${attributeTitle(scope)}`;
-  const match = /(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(haystack);
+  const match = DATE_PATTERN.exec(haystack);
   if (!match) return null;
   const day = Number(match[1]);
   const month = Number(match[2]);
@@ -159,16 +200,14 @@ function publishedAt(anchor) {
 
 function nearbySummary(anchor) {
   const container = cardContainer(anchor) || anchor;
-  const nodes =
-    typeof container.querySelectorAll === "function"
-      ? container.querySelectorAll("p, .description, .summary, .excerpt, time")
-      : [];
+  const selector = activeSelectors.summary_selector || "p, .description, .summary, .excerpt, time";
+  const nodes = typeof container.querySelectorAll === "function" ? container.querySelectorAll(selector) : [];
   for (const node of nodes) {
     const value = text(node, MAX_SUMMARY);
     if (!value || DATE_ONLY.test(value)) continue;
     return value;
   }
-  const single = queryOne(container, "p, .description, .summary, .excerpt, time");
+  const single = queryOne(container, selector);
   const value = text(single, MAX_SUMMARY);
   return DATE_ONLY.test(value) ? "" : value;
 }
@@ -176,11 +215,17 @@ function nearbySummary(anchor) {
 function collectAnchors() {
   const seen = new Set();
   const items = [];
-  const anchors = document.querySelectorAll("main a[href], article a[href], .content a[href], .card a[href], a[href]");
+  const scope = activeSelectors.anchor_scope || "a[href]";
+  let anchors = [];
+  try {
+    anchors = document.querySelectorAll(scope);
+  } catch {
+    anchors = document.querySelectorAll("a[href]");
+  }
   for (const anchor of anchors) {
     const href = absolute(anchor.getAttribute("href"));
     if (!href || !/^https?:/i.test(href)) continue;
-    if (/\.(png|jpe?g|gif|webp|svg|ico|woff2?|css|js)(\?|$)/i.test(href)) continue;
+    if (SKIP_URL.test(href)) continue;
     const title = resolveTitle(anchor);
     if (!title) continue;
     const key = `${href}|${title}`;
@@ -200,7 +245,14 @@ function collectAnchors() {
 
 function collectHeadings() {
   const items = [];
-  for (const heading of document.querySelectorAll("main h2, article h2, main h3")) {
+  const scope = activeSelectors.heading_scope || "main h2, article h2, main h3";
+  let headings = [];
+  try {
+    headings = document.querySelectorAll(scope);
+  } catch {
+    headings = document.querySelectorAll("main h2, article h2, main h3");
+  }
+  for (const heading of headings) {
     const title = text(heading, MAX_TITLE);
     if (title.length < 6) continue;
     const link = heading.querySelector("a[href]") || heading.closest("a[href]");
@@ -217,37 +269,97 @@ function collectHeadings() {
   return items;
 }
 
+/* ------------------------------------------------------------------ *
+ * Network capture buffer (filled by interceptor.js in the MAIN world)
+ * ------------------------------------------------------------------ */
+
+const networkItems = [];
+const networkSeen = new Set();
+
+function rememberNetworkItem(item) {
+  const url = String(item?.url || "");
+  const title = String(item?.title || "").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE);
+  if (!url || !/^https?:/i.test(url) || title.length < 4) return;
+  const key = `${url}|${title}`;
+  if (networkSeen.has(key)) return;
+  networkSeen.add(key);
+  networkItems.push({ title, url, kind: classify(title, url), summary: "", published_at: null, via: "network" });
+  if (networkItems.length > MAX_ITEMS) networkItems.splice(0, networkItems.length - MAX_ITEMS);
+}
+
+/**
+ * MAIN world can only hand us strings (`CustomEvent.detail` objects are not
+ * reliably readable across worlds), so the payload arrives JSON-encoded.
+ */
+window.addEventListener(CAPTURE_EVENT, (event) => {
+  try {
+    const raw = typeof event.detail === "string" ? JSON.parse(event.detail) : event.detail;
+    for (const item of raw?.items || []) rememberNetworkItem(item);
+  } catch {
+    /* malformed payload — ignore */
+  }
+});
+
+function armCapture() {
+  window.dispatchEvent(new CustomEvent(ARM_EVENT, { detail: { ttl: ARM_TTL_MS } }));
+}
+
+function disarmCapture() {
+  window.dispatchEvent(new CustomEvent(DISARM_EVENT));
+}
+
 function analyze() {
   const meta = currentSource();
+  activeSelectors = selectorsFor(window.location.hostname);
   const merged = new Map();
-  for (const item of [...collectHeadings(), ...collectAnchors()]) {
+  const pageUrl = window.location.href;
+  for (const item of [...collectHeadings(), ...collectAnchors(), ...networkItems]) {
     const title = item.title.replace(/^#+\s*/, "");
+    if (item.url === pageUrl) continue;
     const key = item.url;
     const existing = merged.get(key);
     if (existing) {
       if (title.length > existing.title.length) existing.title = title;
       if (!existing.summary && item.summary) existing.summary = item.summary;
       if (!existing.published_at && item.published_at) existing.published_at = item.published_at;
+      if (item.via === "network" && !existing.via) existing.via = "network";
       continue;
     }
-    merged.set(key, { ...item, title, published_at: item.published_at || null, source: meta.source, page_title: document.title.slice(0, 200) });
+    merged.set(key, {
+      ...item,
+      title,
+      published_at: item.published_at || null,
+      via: item.via || "page",
+      source: meta.source,
+      page_title: document.title.slice(0, 200),
+    });
   }
+  const items = [...merged.values()];
   return {
     source: meta.source,
     source_label: meta.label,
-    page_url: window.location.href,
+    page_url: pageUrl,
     page_title: document.title,
-    items: [...merged.values()].slice(0, MAX_ITEMS),
+    sources_version: sourcesConfig.version || null,
+    network_count: items.filter((item) => item.via === "network").length,
+    items: items.slice(0, MAX_ITEMS),
   };
 }
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request?.action === "analyze_page") {
     try {
+      // Capture only starts when the user asks for a parse, and it stops on its
+      // own TTL or on the explicit disarm when the preview closes (anti-goal U9).
+      armCapture();
       sendResponse({ ok: true, ...analyze() });
     } catch (error) {
       sendResponse({ ok: false, error: String(error?.message || error) });
     }
+  }
+  if (request?.action === "disarm_capture") {
+    disarmCapture();
+    sendResponse({ ok: true });
   }
   return true;
 });
