@@ -16,6 +16,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import type { Attestation, AttestationItem, AttestationType } from "@/types/attestations";
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
 
@@ -366,11 +367,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
 
                           {item.body && (
                             <div className={`mt-3 text-sm leading-7 text-slate-600 ${isTheory ? "border-l-2 border-indigo-100 pl-4" : ""}`}>
-                              {item.body.split("\n").map((line, lineIndex) => (
-                                <p key={lineIndex} className={lineIndex > 0 ? "mt-2" : ""}>
-                                  {line}
-                                </p>
-                              ))}
+                              <ChemRichText text={item.body} className="space-y-2" />
                             </div>
                           )}
 
@@ -425,7 +422,9 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                                 )}
                               </div>
                               {isChecked && item.explanation && (
-                                <p className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-5 text-slate-500">{item.explanation}</p>
+                                <div className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-5 text-slate-500">
+                                  <ChemRichText text={item.explanation} className="space-y-1" />
+                                </div>
                               )}
                             </div>
                           )}
