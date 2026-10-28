@@ -200,3 +200,31 @@ test("imported sources table is the storage and legacy keys stay user-scoped", a
   // Legacy-ключи site_content читаются только в своём префиксе.
   assert.match(route, /extimport:\$\{userId\}:/);
 });
+
+test("personal iCal import is user-scoped, SSRF-guarded and keeps manual topic links", async () => {
+  const index = await source("../src/index.ts");
+  assert.match(index, /import scheduleIcal from "\.\/routes\/schedule-ical"/);
+  assert.match(index, /v1\.route\("\/schedule", schedule\);\s*v1\.route\("\/schedule", scheduleIcal\);/);
+
+  const route = await source("../src/routes/schedule-ical.ts");
+  // Личные события: своя таблица, owner-only, user_id только из JWT.
+  assert.match(route, /\.from\("user_calendar_events"\)/);
+  assert.doesNotMatch(route, /\.from\("schedule_entries"\)/);
+  assert.match(route, /\.eq\("user_id", user\.id\)/);
+  assert.doesNotMatch(route, /body\.user_id/);
+  // Ссылка на фид не может указывать на внутреннюю сеть.
+  assert.match(route, /assertPublicUrl/);
+  assert.match(route, /169\.254\.169\.254/);
+  // Ответ без событий — ошибка, а не пустой успех.
+  assert.match(route, /NO_EVENTS/);
+  // Повторная синхронизация не перезаписывает уже привязанную тему.
+  assert.match(route, /topic_id: item\.topicId/);
+  assert.match(route, /touched\.push\(base\)/);
+
+  const handlers = ['ical.get("/ical"', 'ical.post("/ical"', 'ical.delete("/ical/:id"'];
+  for (const handler of handlers) {
+    const start = route.indexOf(handler);
+    assert.ok(start >= 0, "missing handler: " + handler);
+    assert.match(route.slice(start, start + 120), /requireAuth/, "handler is not authenticated: " + handler);
+  }
+});

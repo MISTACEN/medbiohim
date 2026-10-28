@@ -9,6 +9,7 @@ import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasTo
 import { useAuth } from "@/components/auth/AuthProvider";
 import { nowParts as sharedNowParts } from "@/lib/now-parts";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import IcalImportCard from "@/components/schedule/IcalImportCard";
 
 /**
  * Оценка и отзыв преподавателя по этой работе. Бэкенд их возвращал, но в интерфейсе
@@ -586,6 +587,8 @@ export default function SchedulePage() {
           <button type="button" className="schedule-icon-btn" onClick={() => setWeekStart((d) => { const next=addDaysYmd(d,7); setSelectedDay(next); return next; })} aria-label="Следующая неделя"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
+
+      <IcalImportCard />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="schedule-tabs">
