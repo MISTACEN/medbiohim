@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import FeedList from "@/components/university/FeedList";
 import { ImportsProvider } from "@/components/university/ImportsProvider";
 import OzizCatalogSection from "@/components/university/OzizCatalog";
+import ExamQuestionsIndex from "@/components/university/ExamQuestionsIndex";
 import SavedImports from "@/components/university/SavedImports";
 import SchedulePanel from "@/components/university/SchedulePanel";
 import ServiceGrid from "@/components/university/ServiceGrid";
@@ -135,6 +136,8 @@ export default function UniversityPage() {
         />
 
         <OzizCatalogSection />
+
+        <ExamQuestionsIndex />
 
         <FeedList feeds={overview?.feeds} loading={loading && !overview} retrying={loading} onRetry={() => void loadOverview()} />
 
