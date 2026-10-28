@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarPlus, Download, Loader2, Trash2 } from "lucide-react";
-import { deleteIcalEvent, importIcalCalendar, listIcalEvents } from "@/lib/api";
+import { CalendarPlus, Download, Link2, Loader2, Trash2 } from "lucide-react";
+import { deleteIcalEvent, getScheduleFeedLink, importIcalCalendar, listIcalEvents } from "@/lib/api";
 
 type IcalRow = {
   id: string;
@@ -41,12 +41,21 @@ export default function IcalImportCard() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [events, setEvents] = useState<IcalRow[]>([]);
+  const [feedPath, setFeedPath] = useState<{ download: string; subscribe: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const refresh = useCallback(async () => {
     const response = await listIcalEvents();
     if (response.ok) {
       const items = Array.isArray(response.data?.items) ? response.data.items : [];
       setEvents(items);
+    }
+    const feed = await getScheduleFeedLink();
+    if (feed.ok && feed.data?.download_path) {
+      setFeedPath({
+        download: String(feed.data.download_path),
+        subscribe: String(feed.data.path || feed.data.download_path).replace(/&download=1$/, ""),
+      });
     }
   }, []);
 
@@ -79,8 +88,19 @@ export default function IcalImportCard() {
     await refresh();
   }
 
-  async function remove(id: string) {
-    setBusy(true);
+  async function copyFeedLink() {
+    if (!feedPath) return;
+    const absolute = `${window.location.origin}${feedPath.subscribe}`;
+    try {
+      await navigator.clipboard.writeText(absolute);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setError("Браузер не дал скопировать ссылку — откройте её вручную");
+    }
+  }
+
+  async function remove(id: string) {    setBusy(true);
     const response = await deleteIcalEvent(id);
     setBusy(false);
     if (!response.ok) {
@@ -113,6 +133,27 @@ export default function IcalImportCard() {
 
       {open && (
         <div className="mt-3 space-y-3">
+          {feedPath && (
+            <div className="rounded-xl border bg-white/60 p-3">
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <Link2 className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                Экспорт и подписка
+              </div>
+              <p className="mt-1 text-[11px] opacity-70">
+                Скачайте файл один раз или добавьте ссылку в Google/Apple Календарь: изменения расписания будут подтягиваться сами.
+                В Google: «Другие календари» → «По URL».
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <a href={feedPath.download} className="btn-secondary inline-flex items-center gap-1.5 text-xs">
+                  <Download className="h-3.5 w-3.5" /> Скачать .ics
+                </a>
+                <button type="button" className="btn-secondary inline-flex items-center gap-1.5 text-xs" onClick={() => void copyFeedLink()}>
+                  <Link2 className="h-3.5 w-3.5" /> {copied ? "Скопировано" : "Ссылка для подписки"}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <button
               type="button"

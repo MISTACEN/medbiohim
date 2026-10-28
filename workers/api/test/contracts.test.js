@@ -254,3 +254,21 @@ test("exam questions are read-only, subject-scoped and never mask DB failures", 
     assert.ok(route.includes(handler), "missing handler: " + handler);
   }
 });
+
+test("schedule .ics feed is token-gated, read-only and serves text/calendar", async () => {
+  const index = await source("../src/index.ts");
+  assert.match(index, /import scheduleFeed from "\.\/routes\/schedule-feed"/);
+  assert.match(index, /v1\.route\("\/schedule", scheduleFeed\)/);
+
+  const route = await source("../src/routes/schedule-feed.ts");
+  // Подписка открывается без заголовка Authorization, но только по HMAC-токену.
+  assert.match(route, /verifyFeedToken\(token, secret\)/);
+  assert.match(route, /requireAuth, async \(c\) =>/);
+  // Отдаём календарь, а не JSON, и не пишем в БД.
+  assert.match(route, /text\/calendar; charset=utf-8/);
+  assert.doesNotMatch(route, /\n\s*\.insert\(/);
+  assert.doesNotMatch(route, /\n\s*\.update\(/);
+  assert.doesNotMatch(route, /\n\s*\.delete\(/);
+  // Без серверного секрета подписка честно отключается.
+  assert.match(route, /FEED_DISABLED/);
+});

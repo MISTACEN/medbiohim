@@ -590,6 +590,7 @@ export async function checkLectureMiniQuizAnswer(questionId:string,selectedIndex
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
 export async function listSchedule(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);const r=await api<any>(`/schedule${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isScheduleRow)};return r}
 export async function importIcalCalendar(payload:{text?:string;url?:string;dry_run?:boolean}){return api<any>("/schedule/ical",{method:"POST",body:JSON.stringify(payload)})}
+export async function getScheduleFeedLink(){return api<any>("/schedule/feed-link")}
 export async function listIcalEvents(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/schedule/ical${q.toString()?`?${q}`:""}`)}
 export async function deleteIcalEvent(id:string){return api<any>(`/schedule/ical/${encodeURIComponent(id)}`,{method:"DELETE"})}
 export async function getDashboard(){const r=await api<any>("/dashboard");if(r?.ok&&r.data)r.data={...r.data,announcements:filterSafe(r.data?.announcements,isAnnouncement)};return r}

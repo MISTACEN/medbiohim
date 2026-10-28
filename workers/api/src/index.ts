@@ -20,6 +20,7 @@ import subjects from "./routes/subjects";
 import groups from "./routes/groups";
 import schedule from "./routes/schedule";
 import scheduleIcal from "./routes/schedule-ical";
+import scheduleFeed from "./routes/schedule-feed";
 import lessonPlan from "./routes/lesson-plan";
 import curriculum from "./routes/curriculum";
 import homework from "./routes/homework";
@@ -127,6 +128,7 @@ v1.route("/subjects", subjects);
 v1.route("/groups", groups);
 v1.route("/schedule", schedule);
 v1.route("/schedule", scheduleIcal);
+v1.route("/schedule", scheduleFeed);
 v1.route("/lesson-plan", lessonPlan);
 v1.route("/curriculum", curriculum);
 // Alias: some clients call /plans — map to curriculum (avoid 501)
