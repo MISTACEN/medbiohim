@@ -11,7 +11,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f9fafb",
+  themeColor: "#4f46e5",
   colorScheme: "light dark",
 };
 
@@ -22,6 +22,18 @@ export const metadata: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
+  applicationName: "MEDBIOHIM",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MEDBIOHIM",
+  },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"],
+  },
   openGraph: {
     type: "website",
     locale: "ru_RU",
@@ -37,7 +49,6 @@ export default function RootLayout({
   return (
     <html lang="ru" data-theme="classic-light" suppressHydrationWarning>
       <body className="antialiased">
-
         <ThemeProvider>
           <AuthProvider>
             <AuthHashCatcher />
