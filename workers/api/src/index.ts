@@ -46,6 +46,7 @@ import progress from "./routes/progress";
 import srs from "./routes/srs";
 import sessions from "./routes/sessions";
 import settings from "./routes/settings";
+import accountData from "./routes/export";
 import presence from "./routes/presence";
 import community from "./routes/community";
 import calculators from "./routes/calculators";
@@ -157,6 +158,8 @@ v1.route("/progress", progress);
 v1.route("/srs", srs);
 v1.route("/sessions", sessions);
 v1.route("/settings", settings);
+// SA6: экспорт данных аккаунта и удаление с grace-периодом (/account/export, /account/deletion).
+v1.route("/account", accountData);
 v1.route("/telegram", telegram);
 v1.route("/presence", presence);
 v1.route("/community", community);

@@ -2,11 +2,12 @@
 
 import { FormEvent, Suspense, useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import clsx from "clsx";
 import {
   Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
-  MonitorSmartphone, LogOut,
+  MonitorSmartphone, LogOut, Database, ArrowRight,
 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
 import { describeApiError } from "@/lib/errors";
@@ -632,6 +633,16 @@ function SettingsPageInner() {
           <li>• Когда доставка появится, настройки частоты и тихих часов придут сюда же.</li>
         </ul>
         <div className="flex items-center gap-2 text-xs text-[var(--muted)]"><Globe2 className="h-3.5 w-3.5" /> Язык интерфейса: русский</div>
+      </section>
+
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Database className="h-5 w-5" /> Данные и аккаунт</h2>
+        <p className="text-sm text-[var(--muted)]">
+          Выгрузка своих данных одним JSON-файлом и удаление аккаунта с недельным сроком, в течение которого запрос можно отменить.
+        </p>
+        <Link href="/settings/data" className="inline-flex w-fit items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:border-[var(--primary)]">
+          Открыть «Данные и аккаунт» <ArrowRight className="h-4 w-4" />
+        </Link>
       </section>
 
       <section className="card space-y-5 p-5">
