@@ -31,6 +31,11 @@ compatibility_flags = ["nodejs_compat"]
 
 workers_dev = true
 
+# SA6: раз в сутки исполняем запросы на удаление аккаунта с истёкшим grace-периодом.
+# Время UTC; результат пишется в логи воркера как [account-deletion-sweep].
+[triggers]
+crons = ["17 3 * * *"]
+
 [vars]
 APP_ENV = "production"
 CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000"

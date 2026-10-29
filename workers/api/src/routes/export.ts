@@ -29,6 +29,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { serviceRoleConfigured } from "../jobs/account-deletion";
 
 const account = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -234,6 +235,20 @@ function deletionFailure(error: unknown, rid: string) {
   }
   console.error("[account:deletion]", error);
   return fail("DELETION_UNAVAILABLE", "Управление удалением аккаунта временно недоступно", 503, rid);
+}
+
+/**
+ * Пользователь должен знать, произойдёт ли удаление на самом деле. Без
+ * служебного ключа запрос сохранится, но исполнять его некому — это видно в
+ * ответе и в интерфейсе, а не выясняется постфактум.
+ */
+export type DeletionResponse = DeletionPayload & {
+  /** Настроен ли на воркере служебный ключ, который реально удалит аккаунт. */
+  execution_configured: boolean;
+};
+
+function withExecution(payload: DeletionPayload, env: Env): DeletionResponse {
+  return { ...payload, execution_configured: serviceRoleConfigured(env) };
 }
 
 // --- Экспорт --------------------------------------------------------------
@@ -485,7 +500,7 @@ account.get("/deletion", requireAuth, async (c) => {
   try {
     const { data, error } = await c.get("supabase").rpc("medbiohim_account_deletion_status");
     if (error) throw error;
-    return c.json(ok(normalizeDeletion(data, "none"), rid));
+    return c.json(ok(withExecution(normalizeDeletion(data, "none"), c.env), rid));
   } catch (error) {
     const { body, status } = deletionFailure(error, rid);
     return c.json(body, status as 503);
@@ -515,7 +530,7 @@ account.post("/deletion", requireAuth, async (c) => {
       p_reason: reason || null,
     });
     if (error) throw error;
-    const result = normalizeDeletion(data, "scheduled");
+    const result = withExecution(normalizeDeletion(data, "scheduled"), c.env);
     // Повторный запрос не создаёт дубль и не считается ошибкой пользователя.
     return c.json(ok(result, rid), result.status === "already_requested" ? 200 : 201);
   } catch (error) {
@@ -529,7 +544,7 @@ account.delete("/deletion", requireAuth, async (c) => {
   try {
     const { data, error } = await c.get("supabase").rpc("medbiohim_cancel_account_deletion");
     if (error) throw error;
-    const result = normalizeDeletion(data, "not_requested");
+    const result = withExecution(normalizeDeletion(data, "not_requested"), c.env);
     if (result.status === "cancelled") return c.json(ok(result, rid));
     if (result.status === "executed") {
       const { body, status } = fail(

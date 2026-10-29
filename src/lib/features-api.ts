@@ -287,6 +287,8 @@ export type AccountDeletionState = {
   grace_days: number | null;
   days_left: number | null;
   execution: "service_role_only";
+  /** Настроен ли на сервере служебный ключ: без него запрос сохранится, но не исполнится. */
+  execution_configured: boolean;
   deletion_executed: boolean;
   message: string;
 };

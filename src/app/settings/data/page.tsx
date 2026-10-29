@@ -291,6 +291,17 @@ export default function AccountDataPage() {
               </p>
             </div>
             <p className="text-sm text-[var(--muted)]">{deletion?.message}</p>
+            {deletion?.execution_configured === false && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                <div className="flex items-center gap-2 font-semibold">
+                  <AlertTriangle className="h-4 w-4" /> Автоматическое удаление не настроено
+                </div>
+                <p className="mt-1">
+                  Запрос сохранён, но на сервере нет служебного ключа, который удаляет аккаунты. Дата
+                  исполнения не наступит сама — напишите в поддержку, чтобы удаление выполнили вручную.
+                </p>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => void onCancelDeletion()}

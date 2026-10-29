@@ -62,6 +62,7 @@ import telegram from "./routes/telegram";
 import labs from "./routes/labs";
 import attestations from "./routes/attestations";
 import adminAttestations from "./routes/admin-attestations";
+import adminAccount from "./routes/admin-account";
 import integrations from "./routes/integrations";
 import externalPlatforms from "./routes/external-platforms";
 import questionComments from "./routes/question-comments";
@@ -172,6 +173,8 @@ v1.route("/admin", adminRoutes);
 // admin-schedule declares its own "/schedule/..." paths, so it mounts on /admin.
 v1.route("/admin", adminSchedule);
 v1.route("/admin", adminAttestations);
+// SA6: ручной запуск исполнения запросов на удаление аккаунта (только админ).
+v1.route("/admin", adminAccount);
 v1.route("/histology", histology);
 v1.route("/labs", labs);
 v1.route("/attestations", attestations);
@@ -206,4 +209,27 @@ app.onError((err, c) => {
   return c.json(body, status as 500);
 });
 
-export default app;
+// SA6: cron-исполнение запросов на удаление аккаунта.
+//
+// Cloudflare вызывает `scheduled` на default-экспорте модуля, а приложение Hono
+// уже умеет fetch. Поэтому scheduled вешается на тот же объект через
+// Object.assign: `export default app` остаётся рабочим (тесты и рантайм Hono
+// продолжают видеть приложение), а воркер получает ещё и cron-обработчик.
+const appWithCron = Object.assign(app, {
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<void> {
+    ctx.waitUntil(
+      (async () => {
+        // Импорт внутри обработчика: код удаления не грузится на каждый запрос.
+        const { runAccountDeletionSweep } = await import("./jobs/account-deletion");
+        const result = await runAccountDeletionSweep(env);
+        console.log("[account-deletion-sweep] результат", JSON.stringify(result));
+      })()
+    );
+  },
+});
+
+export default appWithCron;
