@@ -13,7 +13,7 @@ The platform is split into:
 - Vercel server: Cloudflare-only API proxy and optional Gemini proxy settings.
 - Cloudflare Worker: Supabase, Upstash, AI providers, CORS, and runtime secrets.
 - Legacy SpaceWeb/PHP server: retained for migration/reference; not used by the production API proxy.
-- Legacy optional integrations: Firebase compatibility variables.
+- Firebase: полностью выведен из эксплуатации (2026-10-30). Ни код, ни конфиги его не используют — база и вход на Supabase.
 
 ## Frontend / Vercel
 
@@ -51,11 +51,12 @@ APP_ENV, APP_DEBUG, CORS_ORIGINS, ADMIN_BOOTSTRAP_SECRET
 
 These control runtime mode, debugging, allowed browser origins, and protected admin bootstrap behavior.
 
-### Optional legacy Firebase
+### Firebase (retired)
 
-FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_MESSAGING_SENDER_ID, FIREBASE_APP_ID
-
-These are compatibility settings only. They do not define the canonical MEDBIOHIM database.
+Переменные FIREBASE_* удалены из конфигурации: ни один компонент (фронт,
+воркер, бэкенд-скрипты) их не читает, ни одна копия .env их не задаёт.
+База данных и аутентификация работают на Supabase; исторические упоминания
+Firebase в старых документах — только про пройденную миграцию.
 
 ### AI provider layer
 
@@ -84,7 +85,7 @@ AI remains optional for core testing where deterministic logic exists. Provider/
 
 ## Current test-config inventory
 
-The private test .env supplied for this work contains the Supabase, PostgreSQL, B2, legacy Firebase, Gemini, GigaChat, Groq, Mistral, and OpenRouter configuration families described above. Its values are intentionally not mirrored into GitHub.
+The private test .env supplied for this work contains the Supabase, PostgreSQL, B2, Gemini, GigaChat, Groq, Mistral, and OpenRouter configuration families described above (Firebase was retired in 2026-10). Its values are intentionally not mirrored into GitHub.
 
 ### Admin database console
 

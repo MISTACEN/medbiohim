@@ -1212,3 +1212,52 @@ eslint 0 errors, `next build` успешен.
 - примечание: прямые запросы к workers.dev из консоли без браузерного
   User-Agent блокирует Cloudflare (error 1010) — это фильтр на границе,
   а не API; с браузерным UA всё отвечает.
+
+## Сессия 21 (2026-10-30): аудит Supabase через MCP-advisors + Firebase выведен окончательно
+
+### Firebase → Supabase: финальная точка
+
+Проверено по всему репо: ни кода, ни зависимостей, ни заданных переменных
+FIREBASE_* не осталось — база и вход давно работают на Supabase. Дочищены
+последние следы: legacy-блок FIREBASE_* удалён из `backend/.env.example`,
+в `docs/ENV-CONFIG-MAP.md` раздел «Optional legacy Firebase» заменён честным
+«Firebase (retired)» с датой и статусом миграции.
+
+### Аудит БД (Supabase MCP: security + performance advisors)
+
+Найдено и исправлено миграцией `20261030_audit_lints_fixes.sql`
+(**применена к прод-БД**):
+
+- 🟠 ERROR: диагностическая таблица `_ma10_check` (без PK и RLS, остаток
+  пакета атомарных вариантов) — удалена;
+- 🟠 WARN: search_path не зафиксирован у SECURITY DEFINER функции
+  `medbiohim_account_deletion_grace_days` — зафиксирован (`set search_path = ''`);
+- 🟡 WARN performance: 4 RLS-политики (question_comments ×3, user_calendar_events)
+  вызывали `auth.uid()` на каждую строку — переписаны на `(select auth.uid())`,
+  семантика не меняется;
+- 🟡 WARN: дублирующий уникальный индекс `site_content_key_uidx` (уникальность
+  уже держит первичный ключ) — удалён;
+- 🟡 performance: 21 покрывающий индекс на внешние ключи горячих путей
+  (план-прогресс, exam_questions, curriculum, trainer_feed, SRS, ДЗ,
+  подготовка к тестам, календарь студента) — unindexed foreign keys 46 → 25,
+  остаток — холодные таблицы (академический календарь, chemical_spectra,
+  content_work_items), покрываются по мере надобности.
+
+Зафиксировано как намеренное (не чинится, обоснование в шапке миграции):
+
+- view `trainer_feed_cards_public` и `test_curriculum_map` — SECURITY DEFINER
+  сознательно: первый вырезает правильные ответы до выдачи и сам гейтит
+  доступ группы МБХ, второй показывает только опубликованный контент;
+- `telegram_accounts` / `telegram_account_link_tokens` — RLS без политик =
+  deny-all через PostgREST, доступ только у воркера с сервисным ключом;
+- 21 SECURITY DEFINER RPC (сессии, удаление аккаунта, попытки тестов,
+  telegram-линк) рассчитаны на вызов авторизованным студентом и внутри
+  проверяют `auth.uid()` — ревокать EXECUTE нельзя, сломается UI;
+- multiple permissive policies (homeworks/users/user_roles/site_content) —
+  консолидация политик отдельной задачей, семантика сейчас верна.
+
+### Требует дашборда (вне API)
+
+- Leaked password protection (проверка паролей по HaveIBeenPwned) выключена —
+  включается в Supabase Dashboard → Authentication → Settings, через
+  сервисный ключ недоступно.
