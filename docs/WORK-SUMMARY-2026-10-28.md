@@ -1423,3 +1423,28 @@ next build ok.
   compatibility) остался без контекста — у него нет предмета.
 
 Проверки: worker 247/247 (контрактный тест FA9), tsc 0, eslint по файлу 0.
+
+## Сессия 28 (2026-10-30): FA5 — обсуждение в сообществе: комментарии, правка поста, жалобы
+
+Сообщество было «доской объявлений»: посты без обсуждения и без модерации.
+
+- **Миграция `20261030_community_comments_reports.sql` (применена к
+  прод-БД)**: `community_comments` (паттерн question_comments: body 1..2000,
+  мягкое удаление is_deleted, RLS insert/update/delete own) и
+  `community_reports` (unique (post_id, reporter), статус
+  open/resolved/dismissed; читает и закрывает только админ — has_app_role).
+- **Воркер community.ts**: доступ к посту группы — тот же, что к ленте
+  (assertPostAccess → assertGroupMember); GET/POST комментарии,
+  PATCH/DELETE только своих (мягкое удаление), PATCH своего поста,
+  POST жалобы (повторная от того же студента — 409 ALREADY_REPORTED,
+  а не «отправлено»); модерская очередь GET /community/admin/reports и
+  PATCH /community/admin/reports/:id — за requireAdmin.
+- **UI**: компонент PostDiscussion под каждым постом — «Обсуждение»
+  (список с авторами, добавление, правка/удаление своих), «Редактировать»
+  у своего поста, «Жалоба» с причиной у чужих и честным подтверждением
+  отправки. В админ-центре проблем — вкладка «Жалобы на посты» со
+  счётчиком открытых и кнопками Закрыть/Отклонить.
+- Контрактные тесты community-comments.test.js (2).
+
+Проверки: worker 249/249, node 215/215, vitest 210/210, tsc 0,
+eslint 0 errors, next build ok.

@@ -5,6 +5,7 @@ import { createCommunityPost, getAvatarUrl, listCommunityPosts, me } from "@/lib
 import { Loader2, Send } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { PostDiscussion } from "@/components/community/PostDiscussion";
 
 type Post = {
   id: string;
@@ -164,6 +165,7 @@ export default function CommunityPage() {
                 </div>
                 <h3 className="mt-3 font-medium">{p.title}</h3>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{p.body}</p>
+                <PostDiscussion post={p} onChanged={reload} />
               </li>
             );
           })}
