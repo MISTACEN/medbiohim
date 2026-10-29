@@ -400,6 +400,9 @@ test("avatar upload is authenticated, size/type limited and served through a pri
   const settings = await source("../src/routes/settings.ts");
   assert.match(settings, /has_uploaded_avatar:/);
   assert.match(settings, /avatar_proxy_url:/);
+  // Без токена хранилища загрузка недоступна, и интерфейс должен это знать,
+  // а не вести пользователя в 502.
+  assert.match(settings, /avatar_upload_enabled: Boolean\(c\.env\.UPSTASH_BLOB_TOKEN/);
   assert.doesNotMatch(settings, /avatar_key: profile/);
 
   // Лента сообщества подписывает посты автором, не раскрывая профиль целиком.

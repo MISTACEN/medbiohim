@@ -77,6 +77,10 @@ async function readAccount(c: any) {
         // ключ объекта наружу не отдаём, только факт наличия и адрес.
         has_uploaded_avatar: Boolean(profile?.avatar_key),
         avatar_proxy_url: profile?.avatar_key ? `/api/v1/storage/avatar/${encodeURIComponent(user.id)}` : null,
+        // Загрузка файла требует Upstash Blob. Если токена нет, кнопка в профиле
+        // не должна приводить к 502: интерфейс честно пишет, что загрузка
+        // временно недоступна (внешняя ссылка avatar_url при этом работает).
+        avatar_upload_enabled: Boolean(c.env.UPSTASH_BLOB_TOKEN?.trim()),
         course_number: profile?.course_number ?? null,
         semester: profile?.semester ?? null,
         created_at: user.created_at || null,

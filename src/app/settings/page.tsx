@@ -96,6 +96,10 @@ function SettingsPageInner() {
     return () => { cancelled = true; };
   }, [account?.user?.id, account?.user?.avatar_url, account?.user?.has_uploaded_avatar, user?.id]);
 
+  // Сервер сам сообщает, доступна ли загрузка: без хранилища кнопка вела бы в
+  // честный 502. Старый ответ без поля считаем доступным (fail-open на UI).
+  const avatarUploadEnabled = account?.user?.avatar_upload_enabled !== false;
+
   async function onAvatarPick(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -356,14 +360,16 @@ function SettingsPageInner() {
           <div className="min-w-0 space-y-2">
             <div className="text-xs text-[var(--muted)]">JPEG, PNG или WebP, до 2 МБ.</div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className={clsx(
-                "cursor-pointer rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold",
-                avatarBusy && "pointer-events-none opacity-60"
-              )}>
-                {avatarBusy ? "Загрузка…" : avatarPreview ? "Заменить фото" : "Загрузить фото"}
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void onAvatarPick(e)} disabled={avatarBusy} />
-              </label>
-              {account?.user?.has_uploaded_avatar ? (
+              {avatarUploadEnabled ? (
+                <label className={clsx(
+                  "cursor-pointer rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold",
+                  avatarBusy && "pointer-events-none opacity-60"
+                )}>
+                  {avatarBusy ? "Загрузка…" : avatarPreview ? "Заменить фото" : "Загрузить фото"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void onAvatarPick(e)} disabled={avatarBusy} />
+                </label>
+              ) : null}
+              {account?.user?.has_uploaded_avatar && avatarUploadEnabled ? (
                 <button
                   type="button"
                   onClick={() => void onAvatarRemove()}
@@ -378,7 +384,12 @@ function SettingsPageInner() {
               <div className="text-xs text-[var(--muted)]">
                 Сейчас показывается внешний аватар из{" "}
                 {String((account.user as { provider_hint?: string }).provider_hint || "подключённого сервиса")}.
-                Загрузка своего фото заменит его.
+                {avatarUploadEnabled ? " Загрузка своего фото заменит его." : ""}
+              </div>
+            ) : null}
+            {!avatarUploadEnabled ? (
+              <div className="text-xs text-[var(--muted)]">
+                Загрузка своего фото временно недоступна: файловое хранилище не настроено на сервере.
               </div>
             ) : null}
           </div>
