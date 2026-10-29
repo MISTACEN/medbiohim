@@ -24,6 +24,7 @@ import {
 import { listHistologySourceFiles, listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { describeApiError } from "@/lib/errors";
+import { SkeletonCards } from "@/components/ui/Skeleton";
 
 type Item = any;
 
@@ -464,7 +465,7 @@ export default function HistologyMaterials() {
     ["textbook", "Учебники"],
   ];
 
-  if (loading) return <div className="card p-8 text-sm text-slate-500">Загрузка материалов…</div>;
+  if (loading) return <SkeletonCards count={3} />;
 
   return (
     <div className="histology-materials-page space-y-5" style={{ colorScheme: "light" }}>

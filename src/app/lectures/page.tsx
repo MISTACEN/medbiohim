@@ -6,6 +6,8 @@ import { BookOpen, Search } from "lucide-react";
 import { listLectures, type LectureListItem } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCards } from "@/components/ui/Skeleton";
 
 export default function LecturesPage() {
   const [q, setQ] = useState("");
@@ -71,11 +73,17 @@ export default function LecturesPage() {
       )}
 
       {loading ? (
-        <div className="card p-6 text-sm text-[var(--muted)]">Загрузка…</div>
+        <SkeletonCards count={4} />
       ) : filtered.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-[var(--muted)]">
-          Пока нет опубликованных лекций. Админ может сгенерировать и утвердить их в CMS.
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title={q ? "По запросу ничего не найдено" : "Пока нет опубликованных лекций"}
+          description={
+            q
+              ? "Попробуйте другое слово — поиск идёт по названию, теме и предмету лекции."
+              : "Админ может сгенерировать и утвердить лекции в CMS — они появятся здесь автоматически."
+          }
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((lec) => (

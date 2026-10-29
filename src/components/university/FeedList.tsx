@@ -6,6 +6,7 @@ import type { Feed, FeedItem, FeedKind } from "./types";
 import { FESMU_SOURCE, formatDateTime, formatFeedDate, importKindForFeed } from "./format";
 import { useImports } from "./ImportsProvider";
 import SaveButton from "./SaveButton";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 type Props = {
   feeds?: Partial<Record<FeedKind, Feed>>;
@@ -96,8 +97,8 @@ export default function FeedList({ feeds, loading, retrying, onRetry }: Props) {
       </div>
 
       {loading ? (
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Загружаем публичные данные...
+        <div className="mt-4">
+          <SkeletonList count={3} rows={1} />
         </div>
       ) : current?.error ? (
         <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">

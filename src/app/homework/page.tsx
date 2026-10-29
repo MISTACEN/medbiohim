@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Clock, Loader2, Send } from "lucide-react";
 import { listHomeworks, listHomeworkSubmissions, setHomeworkDone, submitHomework, hasToken } from "@/lib/api";
-import { SkeletonCards } from "@/components/ui/Skeleton";
+import { SkeletonCards, SkeletonList } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { describeApiError } from "@/lib/errors";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -226,16 +227,13 @@ export default function HomeworkPage() {
       {loading ? (
         <SkeletonCards count={4} />
       ) : filtered.length === 0 ? (
-        <div className="card p-8 text-center">
-          <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--status-ok-fg)]" />
-          <p className="mt-3 font-semibold">
-            {filter === "active" ? "Активных заданий нет" : filter === "overdue" ? "Просроченных заданий нет" : "Заданий пока нет"}
-          </p>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Новые задания появятся здесь, когда преподаватель или староста их опубликуют.
-          </p>
-          <Link href="/schedule" className="btn-primary mt-4 inline-block">Перейти к расписанию</Link>
-        </div>
+        <EmptyState
+          icon={CheckCircle2}
+          title={filter === "active" ? "Активных заданий нет" : filter === "overdue" ? "Просроченных заданий нет" : "Заданий пока нет"}
+          description="Новые задания появятся здесь, когда преподаватель или староста их опубликуют."
+          action="Перейти к расписанию"
+          actionHref="/schedule"
+        />
       ) : (
         <ul className="space-y-2">
           {filtered.map((h) => {
@@ -339,8 +337,8 @@ export default function HomeworkPage() {
                       </button>
                     )}
                     {submissionsLoading && openId === h.id && (
-                      <div className="mt-3 flex items-center gap-2 text-sm text-[var(--muted)]">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Загружаю сдачи…
+                      <div className="mt-3">
+                        <SkeletonList count={1} rows={2} />
                       </div>
                     )}
                   </div>

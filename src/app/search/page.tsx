@@ -23,6 +23,8 @@ import {
 import { listSubjectsCatalog } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { normalizeLibraryText, searchLibrary } from "@/lib/library";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 /**
  * Значения должны совпадать со словарём Worker'а (`workers/api/src/routes/search.ts`),
@@ -447,13 +449,12 @@ function SearchPageInner() {
       )}
 
       {searched && !loading && items.length === 0 && !error && (
-        <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-sm">
-          <p className="font-medium">Уточните запрос</p>
-          <p className="text-[var(--muted)]">
-            Ищите по названию препарата, учебника или предмета. Например: «препарат почка», «учебник по гистологии»,
-            «учебник по физиологии»,
-            «билет физиология».
-          </p>
+        <div className="space-y-3">
+          <EmptyState
+            icon={Search}
+            title="Ничего не найдено"
+            description="Уточните запрос: ищите по названию препарата, учебника или предмета. Например: «препарат почка», «учебник по гистологии», «билет физиология»."
+          />
           <div className="flex flex-wrap gap-2">
             {examples.map((example) => (
               <button
@@ -528,7 +529,7 @@ function SearchPageInner() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-3xl p-8 text-sm text-[var(--muted)]">Загрузка…</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-3xl p-8"><SkeletonList count={3} /></div>}>
       <SearchPageInner />
     </Suspense>
   );

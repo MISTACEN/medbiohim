@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowUpRight, Bookmark, CheckCircle2, Info, Loader2, LogIn, RefreshCw, Trash2 } from "lucide-react";
 import { useImports } from "./ImportsProvider";
 import { formatDateTime, kindLabel, sourceLabel } from "./format";
+import { SkeletonCard, SkeletonList } from "@/components/ui/Skeleton";
 
 type Props = {
   /** Compact mode hides the «открыть отдельную страницу» link (used on /university/saved). */
@@ -62,8 +63,8 @@ export default function SavedImports({ compact = false }: Props) {
       )}
 
       {!ready ? (
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Проверяем сессию MEDBIOHIM...
+        <div className="mt-4">
+          <SkeletonCard height={96} />
         </div>
       ) : needsLogin ? (
         <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-5 text-sm text-indigo-800">
@@ -87,8 +88,8 @@ export default function SavedImports({ compact = false }: Props) {
           </button>
         </div>
       ) : loading && items.length === 0 ? (
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Загружаем сохранённые материалы...
+        <div className="mt-4">
+          <SkeletonList count={3} rows={1} />
         </div>
       ) : items.length === 0 ? (
         <div className="mt-4 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-500">

@@ -14,6 +14,7 @@ import {
 import type { Faculty, FacultyScheduleResponse, FacultyScheduleSummary, ScheduleItem } from "./types";
 import { FESMU_SOURCE, formatDateTime } from "./format";
 import SaveButton from "./SaveButton";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 type Props = {
   faculties?: Faculty[];
@@ -338,8 +339,8 @@ export default function SchedulePanel({
           </div>
 
           {loading && !current ? (
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Читаем официальную страницу факультета...
+            <div className="mt-4">
+              <SkeletonList count={3} rows={1} />
             </div>
           ) : (error && !current) || current?.error ? (
             <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">

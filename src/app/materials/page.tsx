@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { BookOpen, ExternalLink, File, FileText, Microscope, Search, X, Presentation } from "lucide-react";
 import { getMaterialFileUrl, listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { describeApiError } from "@/lib/errors";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
@@ -160,10 +161,11 @@ export default function MaterialsPage() {
       ) : null}
 
       {loading ? <SkeletonCards count={6} /> : visible.length === 0 ? (
-        <div className="card p-12 text-center text-slate-500">
-          <div className="font-semibold">Материалы пока не загружены</div>
-          <p className="mt-1 text-sm">После импорта пакета документы появятся здесь уже как страницы сайта.</p>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="Материалы пока не загружены"
+          description="После импорта пакета документы появятся здесь уже как страницы сайта."
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((m) => (

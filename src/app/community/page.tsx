@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createCommunityPost, getAvatarUrl, listCommunityPosts, me } from "@/lib/api";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, MessageSquare, Send } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { PostDiscussion } from "@/components/community/PostDiscussion";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 type Post = {
   id: string;
@@ -144,11 +146,13 @@ export default function CommunityPage() {
       </form>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
-        </div>
+        <SkeletonList count={3} rows={3} />
       ) : posts.length === 0 ? (
-        <p className="text-sm text-slate-500">Пока нет постов — будьте первым.</p>
+        <EmptyState
+          icon={MessageSquare}
+          title="Пока нет постов — будьте первым"
+          description="Опубликуйте первый пост через форму выше: вопрос, заметка или разбор — обсуждение увидит вся группа."
+        />
       ) : (
         <ul className="space-y-4">
           {posts.map((p) => {

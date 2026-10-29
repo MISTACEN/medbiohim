@@ -7,6 +7,7 @@ import { listAttestations } from "@/lib/api";
 import type { AttestationSummary, AttestationType } from "@/types/attestations";
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
 import { describeApiError } from "@/lib/errors";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const ACCENT: Record<AttestationType, string> = {
   colloquium: "from-indigo-500 to-violet-500",
@@ -73,13 +74,11 @@ export default function AttestationList({
 
   if (!items.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/60 p-10 text-center">
-        <ClipboardList className="mx-auto h-8 w-8 text-slate-300" />
-        <p className="mt-3 font-serif text-lg font-semibold text-[var(--text)]">Пока ничего не опубликовано</p>
-        <p className="mt-1 text-sm text-slate-500">
-          {emptyHint || "Преподаватель ещё не открыл аттестации по этому предмету."}
-        </p>
-      </div>
+      <EmptyState
+        icon={ClipboardList}
+        title="Пока ничего не опубликовано"
+        description={emptyHint || "Преподаватель ещё не открыл аттестации по этому предмету."}
+      />
     );
   }
 

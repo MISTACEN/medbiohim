@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { getProgress, getProgressSummary } from "@/lib/api";
 import { RadialProgress } from "@/components/ui/RadialProgress";
-import { Award, Loader2, Target } from "lucide-react";
+import { Award, Target } from "lucide-react";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCard, SkeletonCards } from "@/components/ui/Skeleton";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
@@ -100,11 +102,7 @@ export default function ProgressPage() {
         />
       )}
 
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
-        </div>
-      )}
+      {loading && <SkeletonCards count={4} />}
       {loadError && (
         <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">
           {loadError}
@@ -136,15 +134,15 @@ export default function ProgressPage() {
       )}
 
       {!loading && payload && !payload.degraded && !payload.service_notice && !hasProgressData && (
-        <div className="card text-sm text-slate-500">Пока недостаточно данных для расчёта прогресса.</div>
+        <EmptyState
+          icon={Target}
+          title="Пока недостаточно данных для расчёта прогресса"
+          description="Как только появятся попытки тестов, сданные ДЗ и отметки посещаемости — здесь появится расчёт по предметам."
+        />
       )}
 
       {/* FA3: сводка «что подтянуть» из попыток, тренажёров, посещаемости и SRS */}
-      {summaryLoading && (
-        <div className="card flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Считаем сводку…
-        </div>
-      )}
+      {summaryLoading && <SkeletonCard height={120} />}
       {summary && (
         <>
           {summary.focus.length > 0 && (

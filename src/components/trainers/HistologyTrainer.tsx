@@ -16,6 +16,7 @@ import { topicLabel, ImageBox, Dots, historyLabel } from "@/components/trainers/
 import { HistologyAtlas } from "@/components/trainers/HistologyAtlas";
 import { groupAtlasCards } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 
 type AnswerRow = {
   id: string;
@@ -256,7 +257,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     />
   );
 
-  if (loading) return <div className="card p-8 text-sm text-slate-500">Загрузка…</div>;
+  if (loading) return <SkeletonCard height={160} />;
 
   if (setup && !training) {
     return (
@@ -536,7 +537,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
 export default function HistologyTrainer({ embedded = false }: { embedded?: boolean }) {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка…</div>}>
+    <Suspense fallback={<SkeletonCard height={160} />}>
       <HistologyTrainerInner embedded={embedded} />
     </Suspense>
   );

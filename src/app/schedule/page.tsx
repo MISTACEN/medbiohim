@@ -9,7 +9,8 @@ import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasTo
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { nowParts as sharedNowParts } from "@/lib/now-parts";
-import { SkeletonCards } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCards, SkeletonText } from "@/components/ui/Skeleton";
 import IcalImportCard from "@/components/schedule/IcalImportCard";
 import { describeApiError } from "@/lib/errors";
 
@@ -700,9 +701,12 @@ export default function SchedulePage() {
                 </div>
               </div>
               {weekCount===0 && (
-                <p className="p-4 text-center text-sm" style={{ color: "var(--muted)" }}>
-                  На эту неделю занятий нет (в семестре загружено {totalCount}). Листайте ← →, откройте «Месяц» или «Семестр».
-                </p>
+                <EmptyState
+                  compact
+                  icon={CalendarDays}
+                  title="На эту неделю занятий нет"
+                  description={`В семестре загружено ${totalCount}. Листайте ← →, откройте «Месяц» или «Семестр».`}
+                />
               )}
             </div>
             </div>
@@ -719,7 +723,12 @@ export default function SchedulePage() {
               </div>
               <div className="card divide-y overflow-hidden p-0">
                 {currentDayItems.length===0 ? (
-                  <div className="p-8 text-center text-sm" style={{ color: "var(--muted)" }}>На сегодня занятий нет.</div>
+                  <EmptyState
+                    compact
+                    icon={CalendarDays}
+                    title="На сегодня занятий нет"
+                    description="Выберите другой день pill-кнопками выше или проверьте «Неделю» и «Месяц»."
+                  />
                 ) : currentDayItems.map((item)=>(
                   <button key={item.id||item.start_time} type="button" className="flex w-full gap-4 p-4 text-left hover:bg-black/5" onClick={()=>openLesson(item)}>
                     <div className="w-24 shrink-0 text-sm font-semibold" style={{ color: "var(--primary)" }}>{item.start_time.slice(0,5)}–{item.end_time.slice(0,5)}</div>
@@ -871,7 +880,7 @@ export default function SchedulePage() {
             </section>
 
             {lessonLoading ? (
-              <p className="text-sm opacity-60">Загрузка плана занятия…</p>
+              <SkeletonText lines={2} />
             ) : lesson ? (
               <div className="space-y-3 text-sm">
                 {lesson.lecture && (

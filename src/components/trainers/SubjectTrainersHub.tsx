@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, Brain, Check, ChevronRight, Droplets, Flame, Loader2, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Brain, Check, ChevronRight, Droplets, Flame, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
 import BloodPreparationTrainer from "@/components/trainers/BloodPreparationTrainer";
 import { describeApiError } from "@/lib/errors";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
   srsSummary, srsDue, srsReview, srsEnsure, srsAddCard,
   type SrsCard, type SrsSummary,
@@ -112,7 +113,7 @@ function SrsPanel() {
   const card = queue[idx] || null;
 
   if (loading) {
-    return <div className="flex items-center gap-2 p-8 text-sm text-[var(--muted)]"><Loader2 className="h-5 w-5 animate-spin" /> Загрузка SRS…</div>;
+    return <SkeletonCard height={140} />;
   }
 
   return (

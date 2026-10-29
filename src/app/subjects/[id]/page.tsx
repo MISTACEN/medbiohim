@@ -30,6 +30,7 @@ import ChemPlan from "@/components/chem/ChemPlan";
 import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
 import LatinRecipes from "@/components/portals/LatinRecipes";
 import { legacyPortalConfig, loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
+import { EmptyState } from "@/components/ui/EmptyState";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -880,10 +881,18 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                   </>
                 )}
               </>
-            ) : (
+            ) : resourceErrors.tickets ? (
               <p className="mt-4 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
-                {resourceErrors.tickets || "Банк билетов для этого предмета пока не подключён."}
+                {resourceErrors.tickets}
               </p>
+            ) : (
+              <div className="mt-4">
+                <EmptyState
+                  icon={GraduationCap}
+                  title="Банк билетов для этого предмета пока не подключён"
+                  description="Преподаватель ещё не привязал экзаменационные билеты к предмету — как только они появятся, генератор станет доступен здесь."
+                />
+              </div>
             )}
           </section>
         )}

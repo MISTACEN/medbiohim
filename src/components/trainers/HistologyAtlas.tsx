@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Loader2, Maximize2, Microscope, Search, X } from "lucide-react";
+import { GraduationCap, Maximize2, Microscope, Search, X } from "lucide-react";
 import { listTrainerFeed } from "@/lib/content-api";
 import { describeApiError } from "@/lib/errors";
+import { SkeletonCards } from "@/components/ui/Skeleton";
 import { AtlasThumb, topicLabel } from "@/components/trainers/HistologyTrainerParts";
 import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
 import { lessonKeyOf } from "@/lib/histologyOrder";
@@ -160,11 +161,7 @@ export function HistologyAtlas({
   }
 
   if (externalLoading || fetching) {
-    return (
-      <div className="card flex items-center gap-2 p-6 text-sm text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin" /> Загружаем атлас микропрепаратов…
-      </div>
-    );
+    return <SkeletonCards count={3} />;
   }
 
   const filtersActive = Boolean(lesson || query || kind !== "preparation");

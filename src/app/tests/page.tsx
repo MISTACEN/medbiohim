@@ -8,7 +8,6 @@ import {
   FlaskConical,
   History,
   ListChecks,
-  Loader2,
   Search,
 } from "lucide-react";
 import {
@@ -17,6 +16,8 @@ import {
   listMyAttempts,
 } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCard, SkeletonList } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
@@ -121,18 +122,22 @@ function TestsPageInner() {
 
   if (authLoading) {
     return (
-      <div className="card flex items-center gap-3 p-8 text-sm text-[var(--muted)]">
-        <Loader2 className="h-5 w-5 animate-spin" /> Загрузка…
+      <div className="space-y-5">
+        <SkeletonCard height={56} />
+        <SkeletonCard />
       </div>
     );
   }
 
   if (!hasToken()) {
     return (
-      <div className="card p-8 text-center">
-        <p className="text-sm text-[var(--muted)]">Войдите, чтобы проходить тесты и открывать банки вопросов.</p>
-        <Link href="/login" className="btn-primary mt-4 inline-flex">Войти</Link>
-      </div>
+      <EmptyState
+        icon={ClipboardCheck}
+        title="Войдите, чтобы проходить тесты"
+        description="Банки вопросов, генератор вариантов и история попыток доступны после входа в аккаунт."
+        action="Войти"
+        actionHref="/login"
+      />
     );
   }
 
@@ -241,11 +246,14 @@ function TestsPageInner() {
             )}
 
             {chemistryLoading ? (
-              <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-5 text-sm text-[var(--muted)]">
-                <Loader2 className="h-4 w-4 animate-spin" /> Загружаю задания…
-              </div>
+              <SkeletonList count={3} />
             ) : chemistryItems.length === 0 ? (
-              <div className="rounded-xl bg-slate-50 p-5 text-sm text-[var(--muted)]">По заданным фильтрам ничего не найдено.</div>
+              <EmptyState
+                compact
+                icon={Search}
+                title="По заданным фильтрам ничего не найдено"
+                description="Смягчите фильтры по типу и формуле или измените поисковый запрос — банк по химии большой."
+              />
             ) : (
               <div className="space-y-2">
                 {chemistryItems.map((item: any, index: number) => (
@@ -327,11 +335,18 @@ function TestsPageInner() {
           )}
 
           {attemptsLoading ? (
-            <div className="mt-4 flex items-center gap-2 text-sm text-[var(--muted)]">
-              <Loader2 className="h-4 w-4 animate-spin" /> Загружаю историю…
+            <div className="mt-4">
+              <SkeletonList count={3} rows={1} />
             </div>
           ) : attempts.length === 0 ? (
-            <p className="mt-4 rounded-xl bg-slate-50 p-5 text-sm text-[var(--muted)]">Попыток пока нет. Начните с любого банка во вкладке «Тесты и банки».</p>
+            <div className="mt-4">
+              <EmptyState
+                compact
+                icon={History}
+                title="Попыток пока нет"
+                description="Начните с любого банка во вкладке «Тесты и банки» — результат появится здесь сразу после первой попытки."
+              />
+            </div>
           ) : (
             <div className="mt-4 space-y-2">
               {attempts.map((attempt: any) => (
@@ -357,7 +372,7 @@ function TestsPageInner() {
 
 export default function TestsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Загрузка…</div>}>
+    <Suspense fallback={<SkeletonCard />}>
       <TestsPageInner />
     </Suspense>
   );

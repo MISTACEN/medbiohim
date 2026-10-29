@@ -1539,3 +1539,27 @@ next build ok, test:contrast — 6 тем, 0 провалов.
 
 Проверки: node 216/216, vitest 210/210, tsc 0, eslint 0 errors,
 contrast 6 тем/0 провалов, next build ok.
+
+## Сессия 33 (2026-10-30): F8 + F12 + E1 — EmptyState, скелетоны, RFC cookies
+
+- **F8**: компонент EmptyState (иконка + заголовок + пояснение + действие);
+  применён на 13 точках 10 ключевых экранов — tests (фильтры/история/гейт
+  входа с CTA), community, materials (+source), schedule (день/неделя),
+  homework (CTA на расписание сохранён), progress, вкладка «Билеты»
+  предмета, attestations, search (rich-состояние с примерами не сломан),
+  lectures (+вариант «по запросу ничего не найдено»).
+- **F12**: набор Skeleton (List/Table/Text/Card к существующему Cards);
+  22 блока спиннер/«Загрузка…» заменены скелетонами на tests, community,
+  progress, lectures, homework, materials/source, search, schedule,
+  university-компонентах и тренажёрах. Спиннеры в кнопках и при загрузке
+  изображений оставлены уместно.
+- **E1 (RFC)**: docs/COOKIES-RFC-E1.md — дизайн перехода с
+  localStorage-токенов на HttpOnly Secure SameSite=Lax куки: серверные
+  session/refresh/logout на Vercel-прокси, dual-read в переходный период,
+  CSRF (SameSite + Origin-проверка), план 3 этапов с откатом одним revert,
+  риски (ротация refresh, вкладки, PWA). Расширение остаётся на Bearer.
+- Контрактного теста на EmptyState не нужно (визуальный компонент);
+  проверки — tsc/build/тесты.
+
+Проверки: node 216/216, vitest 210/210, tsc 0, eslint 0 errors, contrast 0,
+next build ok.
