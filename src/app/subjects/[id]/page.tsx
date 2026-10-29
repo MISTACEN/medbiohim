@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
-import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, getSubjectPlanProgress, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, setTopicProgress, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
@@ -154,6 +154,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const [lectures, setLectures] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
+  // Прогресс по темам плана: «сдано / не сдано / отработка» на вкладке «План».
+  const [planProgress, setPlanProgress] = useState<any | null>(null);
+  const [topicBusy, setTopicBusy] = useState<string | null>(null);
   const [resourceErrors, setResourceErrors] = useState<Record<string, string>>({});
   const [subjectId, setSubjectId] = useState("");
   const [tab, setTab] = useState<TabId>("plan");
@@ -310,6 +313,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         getProgress(auxSubjectId, user?.groupId, { signal }),
         listMaterials(auxSlug ? { subjectSlug: auxSlug } : {}, { signal }),
         listLectures(auxSlug, { signal }),
+        getSubjectPlanProgress(auxSubjectId, { signal }),
       ]);
     },
     [auxSubjectId, auxSlug]
@@ -318,7 +322,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   // Этап 2: применяем вспомогательные данные к состояниям страницы.
   useEffect(() => {
     if (!auxLoad) return;
-    const [gb, mm, bb, pg, mr, ll] = auxLoad;
+    const [gb, mm, bb, pg, mr, ll, pp] = auxLoad;
     setResourceErrors((current) => ({
       ...current,
       ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
@@ -329,6 +333,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     if (pg.ok) setProgress(pg.data);
     if (mr.ok) setMaterialsRich(mr.data.items || []);
     if (ll.ok) setLectures(ll.data.items || []);
+    if (pp.ok) setPlanProgress(pp.data || null);
   }, [auxLoad]);
 
   const loading = coreLoading || !coreLoad?.ready;
@@ -342,6 +347,75 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       url.hash = id;
       window.history.replaceState(null, "", url.toString());
     }
+  }
+
+  // Личный статус темы: клик по чипу переводит его по циклу, сервер хранит
+  // только свою строку (topic_progress). Синхронизация плана статусы не трогает.
+  const TOPIC_STATUS_CYCLE: Record<string, string> = {
+    pending: "in_progress",
+    in_progress: "passed",
+    passed: "failed",
+    failed: "retake_needed",
+    retake_needed: "pending",
+  };
+  const TOPIC_STATUS_LABEL: Record<string, string> = {
+    pending: "не начато",
+    in_progress: "в процессе",
+    passed: "сдано",
+    failed: "не сдано",
+    retake_needed: "отработка",
+  };
+  const TOPIC_STATUS_CLASS: Record<string, string> = {
+    pending: "bg-slate-100 text-slate-600",
+    in_progress: "bg-amber-100 text-amber-800",
+    passed: "bg-emerald-100 text-emerald-800",
+    failed: "bg-rose-100 text-rose-800",
+    retake_needed: "bg-orange-100 text-orange-800",
+  };
+
+  const topicProgressById = new Map<string, any>(
+    ((planProgress?.items || []) as any[]).map((item) => [String(item.topic_id), item])
+  );
+  const planSummary = planProgress?.summary as
+    | { total: number; passed: number; in_progress: number; failed_or_retake: number }
+    | undefined;
+
+  async function cycleTopicStatus(topicId: string, current: string) {
+    const next = TOPIC_STATUS_CYCLE[current] || "in_progress";
+    setTopicBusy(topicId);
+    // Оптимистично: чип меняется сразу, откат — если сервер отказал.
+    const previous = topicProgressById.get(topicId);
+    topicProgressById.set(topicId, { ...(previous || { topic_id: topicId }), status: next });
+    setPlanProgress((currentData: any) =>
+      currentData
+        ? {
+            ...currentData,
+            items: (currentData.items || []).map((item: any) =>
+              item.topic_id === topicId ? { ...item, status: next } : item
+            ),
+          }
+        : currentData
+    );
+    const res = await setTopicProgress(topicId, { status: next });
+    if (!res.ok) {
+      setPlanProgress((currentData: any) =>
+        currentData
+          ? {
+              ...currentData,
+              items: (currentData.items || []).map((item: any) =>
+                item.topic_id === topicId ? { ...item, status: previous?.status || "pending" } : item
+              ),
+            }
+          : currentData
+      );
+      setResourceErrors((current) => ({ ...current, topicProgress: describeApiError(res.error) }));
+    } else {
+      setResourceErrors((current) => {
+        const { topicProgress: _drop, ...rest } = current;
+        return rest;
+      });
+    }
+    setTopicBusy(null);
   }
 
   const course = subject?.course_number ?? 2;
@@ -653,15 +727,67 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
               </div>
             ) : modules.length ? (
               <div className="mt-4 space-y-2">
+                {planSummary && planSummary.total > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-4 py-2 text-sm">
+                    <b>Мой прогресс:</b>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                      сдано {planSummary.passed} из {planSummary.total}
+                    </span>
+                    {planSummary.in_progress > 0 && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">в процессе {planSummary.in_progress}</span>
+                    )}
+                    {planSummary.failed_or_retake > 0 && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-800">отработка {planSummary.failed_or_retake}</span>
+                    )}
+                    <span className="text-xs text-slate-500">отметка видна только вам</span>
+                  </div>
+                )}
+                {resourceErrors.topicProgress && (
+                  <div className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{resourceErrors.topicProgress}</div>
+                )}
                 {modules.map((m, i) => (
                   <details key={m.id || i} className="rounded-xl border" open={i === 0}>
                     <summary className="cursor-pointer px-4 py-3 font-semibold">{m.title || "Модуль " + (i + 1)}</summary>
                     <div className="border-t px-4 py-2 text-sm">
-                      {(m.topics || []).map((tp, j) => (
-                        <div key={tp.id || j} className="border-b py-2 last:border-0">
-                          {tp.title}
-                        </div>
-                      ))}
+                      {(m.topics || []).map((tp, j) => {
+                        const item = topicProgressById.get(String(tp.id));
+                        const status = item?.status || "pending";
+                        const nextDate = (item?.schedule_dates || [])[0];
+                        return (
+                          <div key={tp.id || j} className="border-b py-2 last:border-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={topicBusy === String(tp.id)}
+                                onClick={() => cycleTopicStatus(String(tp.id), status)}
+                                title="Клик меняет статус: не начато → в процессе → сдано → не сдано → отработка. Отметка видна только вам."
+                                className={"rounded-full px-2 py-0.5 text-xs font-semibold disabled:opacity-50 " + (TOPIC_STATUS_CLASS[status] || TOPIC_STATUS_CLASS.pending)}
+                              >
+                                {TOPIC_STATUS_LABEL[status] || TOPIC_STATUS_LABEL.pending}
+                              </button>
+                              <span className="flex-1">{tp.title}</span>
+                              {(item?.tests_count || 0) > 0 && (
+                                <button type="button" onClick={() => selectTab("tests")} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-100">
+                                  📝 тестов: {item.tests_count}
+                                </button>
+                              )}
+                              {(item?.exam_questions_count || 0) > 0 && (
+                                <button type="button" onClick={() => selectTab("exam")} className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100">
+                                  ❓ вопросов: {item.exam_questions_count}
+                                </button>
+                              )}
+                              {nextDate?.date && (
+                                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700" title="Занятие по расписанию, привязанное к теме">
+                                  📅 {nextDate.date.slice(5)}{nextDate.type ? " · " + nextDate.type : ""}
+                                </span>
+                              )}
+                            </div>
+                            {item?.grade ? (
+                              <div className="mt-1 text-xs text-slate-500">Оценка: {item.grade}</div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </details>
                 ))}

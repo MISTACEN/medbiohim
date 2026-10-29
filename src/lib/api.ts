@@ -938,6 +938,10 @@ export async function getDashboard(options:RequestInit={}){const r=await api<Das
 export async function getProgress(subjectId?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/progress${q.toString()?`?${q}`:""}`,options)}
 export async function getCurriculum(){return api<any>("/curriculum")}
 export async function getSubject(id:string,options:RequestInit={}){return apiCached<any>(`/subjects/${id}`,options)}
+/** План предмета с личным прогрессом по темам: статус, счётчики тестов/вопросов, даты занятий. */
+export async function getSubjectPlanProgress(id:string,options:RequestInit={}){const clean=String(id??"").trim();if(!clean)return{ok:false as const,error:{code:"VALIDATION_ERROR",message:"subject id required"},requestId:"client"};return api<any>(`/subjects/${encodeURIComponent(clean)}/plan-progress`,options)}
+/** Личная отметка по теме: status (pending/in_progress/passed/failed/retake_needed), grade, note, attempts. */
+export async function setTopicProgress(topicId:string,patch:{status?:string;grade?:string|null;note?:string|null;attempts?:number},options:RequestInit={}){const clean=String(topicId??"").trim();if(!clean)return{ok:false as const,error:{code:"VALIDATION_ERROR",message:"topic id required"},requestId:"client"};return api<any>(`/topics/${encodeURIComponent(clean)}/progress`,{...options,method:"PATCH",body:JSON.stringify(patch)})}
 export async function listMaterials(params:Record<string,unknown>={},options:RequestInit={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return apiCached<any>(`/materials${q.toString()?`?${q}`:""}`,options)}
 export async function syncAcademicState(){return api<any>("/academic/sync",{method:"POST",body:"{}"})}
 export async function getAcademicState(options:RequestInit={}){return api<AcademicState>("/academic/state",options)}

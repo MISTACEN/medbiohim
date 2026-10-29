@@ -113,6 +113,128 @@ subjects.get("/:id", requireAuth, async (c) => {
   return c.json(ok(data, rid));
 });
 
+/**
+ * План предмета с личным прогрессом по темам: темы модулей + мой статус
+ * (topic_progress) + счётчики тестов (tests.topic_id) и вопросов к экзамену
+ * (exam_questions.plan_topic_id) + даты занятий, привязанных к теме
+ * (schedule_entries.topic_id). Всё одним ответом, чтобы вкладка «План» не
+ * делала N+1. Прогресс читается только свой; правки плана и расписания его
+ * никогда не перезаписывают.
+ */
+subjects.get("/:id/plan-progress", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const id = String(c.req.param("id") ?? "");
+
+  const { data: rows, error } = UUID.test(id)
+    ? await db.from("subjects").select("id").eq("id", id).limit(1)
+    : await db.from("subjects").select("id").in("slug", slugVariants(id)).eq("is_active", true).limit(1);
+  if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subject unavailable", 503, rid); return c.json(body, status as 503); }
+  const subject = (rows || [])[0];
+  if (!subject) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
+  const subjectId = String(subject.id);
+
+  const { data: moduleRows, error: modulesError } = await db
+    .from("modules")
+    .select("id,title,order_index")
+    .eq("subject_id", subjectId)
+    .order("order_index", { ascending: true })
+    .limit(200);
+  if (modulesError) { const { body, status } = fail("DB_UNAVAILABLE", "Modules unavailable", 503, rid); return c.json(body, status as 503); }
+  const moduleIds = (moduleRows || []).map((m: any) => String(m.id));
+
+  let topicRows: any[] = [];
+  if (moduleIds.length) {
+    const { data, error: topicsError } = await db
+      .from("topics")
+      .select("id,module_id,title,order_index,is_published")
+      .in("module_id", moduleIds)
+      .order("order_index", { ascending: true })
+      .limit(1000);
+    if (topicsError) { const { body, status } = fail("DB_UNAVAILABLE", "Topics unavailable", 503, rid); return c.json(body, status as 503); }
+    topicRows = data || [];
+  }
+  const topicIds = topicRows.map((t) => String(t.id));
+
+  const [progressRes, testsRes, examRes, scheduleRes] = await Promise.all([
+    topicIds.length
+      ? db.from("topic_progress").select("topic_id,status,grade,note,attempts").eq("user_id", user.id).in("topic_id", topicIds)
+      : Promise.resolve({ data: [] as any[], error: null as any }),
+    db.from("tests").select("topic_id").eq("subject_id", subjectId).eq("is_published", true).is("archived_at", null).limit(2000),
+    db.from("exam_questions").select("id,plan_topic_id").eq("subject_id", subjectId).eq("is_published", true).limit(3000),
+    // Ближайшие занятия предмета: и привязанные к темам, и вообще (чтобы
+    // вкладка «План» показывала «когда по расписанию» без ручной привязки).
+    db.from("schedule_entries")
+      .select("topic_id,date,type,start_time,is_cancelled,subject_name")
+      .eq("subject_id", subjectId)
+      .gte("date", new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))
+      .order("date", { ascending: true })
+      .limit(400),
+  ]);
+  if (progressRes.error || testsRes.error || examRes.error || scheduleRes.error) {
+    console.error("[plan-progress] reads failed", { progress: progressRes.error, tests: testsRes.error, exam: examRes.error, schedule: scheduleRes.error });
+    const { body, status } = fail("DB_UNAVAILABLE", "Прогресс плана недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+
+  const progressByTopic = new Map<string, any>();
+  for (const row of progressRes.data || []) progressByTopic.set(String(row.topic_id), row);
+
+  const testsCount = new Map<string, number>();
+  for (const row of testsRes.data || []) {
+    if (row.topic_id) testsCount.set(String(row.topic_id), (testsCount.get(String(row.topic_id)) || 0) + 1);
+  }
+  const examCount = new Map<string, number>();
+  for (const row of examRes.data || []) {
+    if (row.plan_topic_id) examCount.set(String(row.plan_topic_id), (examCount.get(String(row.plan_topic_id)) || 0) + 1);
+  }
+  const scheduleByTopic = new Map<string, any[]>();
+  const upcoming: any[] = [];
+  for (const row of scheduleRes.data || []) {
+    upcoming.push(row);
+    if (row.topic_id && !row.is_cancelled) {
+      const key = String(row.topic_id);
+      if (!scheduleByTopic.has(key)) scheduleByTopic.set(key, []);
+      scheduleByTopic.get(key)!.push({ date: row.date, type: row.type, start_time: row.start_time, subject_name: row.subject_name });
+    }
+  }
+
+  const items = topicRows.map((t) => {
+    const progress = progressByTopic.get(String(t.id));
+    return {
+      topic_id: String(t.id),
+      module_id: String(t.module_id),
+      title: t.title,
+      order_index: t.order_index,
+      is_published: t.is_published !== false,
+      status: progress?.status || "pending",
+      grade: progress?.grade ?? null,
+      note: progress?.note ?? null,
+      attempts: progress?.attempts ?? 0,
+      tests_count: testsCount.get(String(t.id)) || 0,
+      exam_questions_count: examCount.get(String(t.id)) || 0,
+      schedule_dates: scheduleByTopic.get(String(t.id)) || [],
+    };
+  });
+
+  const summary = {
+    total: items.length,
+    passed: items.filter((i) => i.status === "passed").length,
+    in_progress: items.filter((i) => i.status === "in_progress").length,
+    failed_or_retake: items.filter((i) => i.status === "failed" || i.status === "retake_needed").length,
+    pending: items.filter((i) => i.status === "pending").length,
+  };
+
+  return c.json(ok({
+    subject_id: subjectId,
+    modules: (moduleRows || []).map((m: any) => ({ id: String(m.id), title: m.title, order_index: m.order_index })),
+    items,
+    upcoming: upcoming.slice(0, 60),
+    summary,
+  }, rid));
+});
+
 subjects.post("/", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
   if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
