@@ -161,6 +161,7 @@ telegramIngest.get("/ingest/health", async (c) => {
       verifier: "bot",
       reachable: false,
       error: error instanceof Error ? error.name : "UnknownError",
+      message: error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
       latencyMs: Date.now() - started,
     }, rid));
   }
