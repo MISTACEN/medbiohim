@@ -15,7 +15,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#4f46e5",
     lang: "ru",
     categories: ["education", "medical"],
+    // Chrome/Tide не декодирует SVG-иконки надёжно: растровые PNG обязательны,
+    // SVG остаётся подстраховкой для любого size (PWA-установки старых билдов).
     icons: [
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/apple-icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }
     ]

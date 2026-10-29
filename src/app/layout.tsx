@@ -31,8 +31,11 @@ export const metadata: Metadata = {
     title: "MEDBIOHIM",
   },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon-180.png", sizes: "180x180", type: "image/png" }],
     shortcut: ["/icon.svg"],
   },
   openGraph: {
