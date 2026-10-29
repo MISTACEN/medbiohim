@@ -722,3 +722,43 @@ eslint .          0 errors (40 warnings, все прежние)
 
 D9-остаток (второстепенные страницы с ручными `cancelled`-паттернами), G1 (vitest),
 SA3–SA6/SA8, химия-волны H3–H9, React #130 в `next dev`.
+
+## Сессия 12 (2026-10-29, продолжение): SA3, H5, G1–G2, SA4
+
+### SA3 — аватар профиля
+- Миграция `database/migrations/20261029_user_avatar.sql`: `users.avatar_key` (+ проверка длины). Применена к прод-БД, колонка читается через PostgREST.
+- Worker: `POST /storage/avatar` (JPEG/PNG/WebP, до 2 МБ, ключ `users/<id>/avatars/<uuid>.<ext>`, старый файл удаляется), `GET /storage/avatar/:userId` (аутентифицированный прокси, `private`-кэш, честный 404), `DELETE /storage/avatar`. Ключ хранилища наружу не отдаётся — только `has_uploaded_avatar` и `avatar_proxy_url`.
+- UI: превью/загрузка/удаление в профиле, аватар в топбаре вместо инициалов, имя и аватар автора в ленте сообщества.
+- **Живая проверка прод-воркера выявила инфраструктурный пробел**: `POST /storage/avatar` и существующий `POST /storage/upload` отвечают 502 — Upstash Blob не принимает запись (на воркере нет рабочего токена хранилища). Гейты при этом корректны: без токена 401, чужой тип 415, отсутствующая картинка 404. Чтобы пользователь не шёл в 502, `/settings/account` отдаёт `avatar_upload_enabled`, а профиль скрывает кнопку и честно пишет «временно недоступна: файловое хранилище не настроено».
+- По пути исправлен баг: `bucket.put` получал `cache: "public, max-age=3600"`, а Upstash принимает `Duration | immutable | revalidate | no-store` — теперь `cache: "1h"`.
+
+### H5 — медицинские калькуляторы (каталог 8 → 15)
+- Общий модуль `integrations/cloudflare-api/src/calculators.js` (единый источник для канонического и shadow-воркера): ABG (первичное нарушение, Winter, метаболический алкалоз, респираторные формулы, anion gap с поправкой на альбумин, delta ratio, base excess, лактат), Михаэлис–Ментен, Аррениус, АТФ глюкозы (30/32 по шаттлу), АТФ β-окисления (пальмитат 106), конверсии концентраций и давления.
+- Каждый калькулятор отдаёт `steps[]`, `approximate`, `notes`; старые ключи `result/interpretation/warnings` не изменены, валидация — честные русские 422.
+- UI `/calculators`: подсказки единиц, бейдж «приблизительно», блок пошагового решения, оговорки, `ErrorState`/`describeApiError`.
+- Проверено вживую на модуле: ABG 7.22/26/10 → метаболический ацидоз, ожидаемый PaCO₂ 21–25, AG 28, delta 1.14; АТФ 30/32; пальмитат 106; 120 мм рт. ст. = 15.999 кПа; 90 мг/дл глюкозы = 4.996 ммоль/л.
+
+### G1–G2 — vitest, 106 unit-тестов
+- vitest 5 + jsdom + @testing-library/* + @vitejs/plugin-react только в devDependencies; jsdom в runtime запрещён guard-тестом университетской интеграции.
+- `vitest.config.mts`: проект `unit` (node) и `dom` (jsdom); include ограничен `src`, поэтому `test/**/*.test.mjs` остаётся за `node --test`. Скрипты `test:unit` / `test:unit:watch`, шаг добавлен в CI (`MEDBIOHIM code checks`).
+- Покрытие: errors, guards/filterSafe, safeNextPath (open redirect), now-parts, api() (ошибки, retry, 401→refresh, отмена), apiCached (hit/stale/изоляция), session refresh (20 параллельных → 1 fetch), useApiRequest, device.
+- **Тесты нашли три реальных бага, все исправлены**: (1) `AbortError` в `api()` превращался в `NETWORK`, считался временным сбоем и отменённый GET уходил в сеть второй раз, показывая «Нет связи» — теперь `ABORTED` (не ретраится) и `TIMEOUT` отдельно; (2) сообщение из одних цифр («500») считалось человеческим — теперь машинное; (3) `pickNextLesson` сравнивал время строкой («9:00» > «12:30») — теперь по минутам, некорректное время не выбирается вместо корректного.
+
+### SA4 — активные сессии и «выйти на всех других»
+- Миграция `database/migrations/20261029_user_sessions.sql` (применена к прод-БД): три SECURITY DEFINER функции над `auth.sessions`, ограниченные `auth.uid()` и текущей сессией из JWT claims; `anon`/`public` лишены `execute`.
+- Роуты: `GET /settings/sessions`, `DELETE /settings/sessions/:id` (текущее → 409 `CURRENT_SESSION`, уже завершённое → 404, битый id → 422), `POST /settings/sessions/revoke-others`.
+- UI: секция «Активные устройства» — человекочитаемое устройство (`src/lib/device.ts`: браузер+ОС, mobile/tablet/bot, неизвестный UA не приукрашивается), давность входа и активности, бейдж «это устройство».
+- Живая проверка прод-воркера: две сессии (Windows Chrome + iPhone Safari) видны обе, `is_current` верен; завершение чужой → 200 и refresh-токен этой сессии перестаёт работать (`400 refresh_token_not_found`); завершение текущей → 409; битый id → 422; `revoke-others` вернул `revoked: 1`, текущий токен продолжил работать.
+
+### Проверки (все зелёные)
+| команда | результат |
+| --- | --- |
+| `cd workers/api && npx.cmd tsc --noEmit` | 0 ошибок |
+| `cd workers/api && npm.cmd test` | 166/166 |
+| `npx.cmd tsc --noEmit` (корень) | 0 ошибок |
+| `npx.cmd eslint .` | 0 errors (41 warning, все pre-existing) |
+| `npm.cmd test` (node --test) | 200/200 |
+| `npm.cmd run test:unit` (vitest) | 106/106 |
+| `integrations/cloudflare-api`: `node --test` | 405/405 |
+
+CI на каждом пакете: `MEDBIOHIM code checks`, `Deploy MEDBIOHIM API to Cloudflare`, `Deploy MEDBIOHIM Frontend`, `smoke`, `package` — success.
