@@ -26,6 +26,9 @@ const CODE_TEXT: Record<string, string> = {
   RATE_LIMITED: "Слишком много запросов. Подождите минуту и повторите.",
   RATE_LIMIT: "Слишком много запросов. Подождите минуту и повторите.",
   EMAIL_NOT_CONFIRMED: "Email не подтверждён. Проверьте письмо или войдите через Google.",
+  // Запрос отменён вызывающей стороной (уход со страницы, смена фильтра) — это
+  // не ошибка для пользователя; текст нужен лишь если код всё же показывают.
+  ABORTED: "Запрос отменён.",
 };
 
 const STATUS_TEXT: Record<number, string> = {
@@ -52,6 +55,8 @@ export function isTechnicalMessage(text: string): boolean {
   const value = String(text || "").trim();
   if (!value) return true;
   if (/[А-Яа-яЁё]/.test(value)) return false;
+  // Ни одной буквы («500», «404», «-1», «0.5») — это код, а не текст для человека.
+  if (!/\p{L}/u.test(value)) return true;
   return /[A-Za-z]/.test(value);
 }
 

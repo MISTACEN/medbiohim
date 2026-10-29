@@ -1146,7 +1146,11 @@ test("§3 every feed item and schedule row gets a Save action gated on hasToken(
 test("§4 no new npm dependency was added", () => {
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   const names = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-  for (const name of ["cheerio", "jsdom", "node-html-parser", "parse5", "axios", "got", "undici", "puppeteer", "playwright"]) {
+  // jsdom is allowed only as a test-runner dev dependency (docs/TECH-AUDIT-PLAN-2026-10-27
+  // G1–G2: vitest + jsdom + @testing-library/react). In runtime dependencies it stays
+  // banned — otherwise it would drag an HTML parser into the university integration.
+  assert.equal("jsdom" in (pkg.dependencies ?? {}), false, "jsdom must stay dev-only (test DOM), not a runtime dependency");
+  for (const name of ["cheerio", "node-html-parser", "parse5", "axios", "got", "undici", "puppeteer", "playwright"]) {
     assert.equal(name in names, false, `${name} must not be a dependency`);
   }
   assert.equal("typescript" in (pkg.devDependencies ?? {}), true, "the loader hook relies on the existing typescript dev dependency");

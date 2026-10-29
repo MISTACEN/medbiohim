@@ -338,15 +338,26 @@ async function request<T>(path:string,options:RequestInit={},tokenOverride?:stri
     }
     return{res,text:await res.text()};
   }catch(error){
+    // Отмена вызывающей стороной и таймаут клиента — не «нет связи»: первая
+    // вообще не ошибка (страница ушла/сменились зависимости), второй даёт
+    // отдельный код. Иначе отменённый запрос повторялся бы как сетевой сбой.
+    const cancelled=Boolean(externalSignal?.aborted);
+    const timedOut=!cancelled&&controller.signal.aborted;
     if(typeof window!=="undefined"){
       const safePath=path.split("?")[0].replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi,":id");
-      const entry={at:Date.now(),method,path:safePath,status:0,durationMs:Date.now()-startedAt,source:"unavailable",requestId:"",fallback:false,ok:false,kind:controller.signal.aborted?"timeout":"network_error"};
+      const entry={at:Date.now(),method,path:safePath,status:0,durationMs:Date.now()-startedAt,source:"unavailable",requestId:"",fallback:false,ok:false,kind:cancelled?"cancelled":timedOut?"timeout":"network_error"};
       try{
         const key="mbh:api-log-buffer";
         const prior=JSON.parse(sessionStorage.getItem(key)||"[]");
         sessionStorage.setItem(key,JSON.stringify([entry,...(Array.isArray(prior)?prior:[])].slice(0,1000)));
       }catch{}
       window.dispatchEvent(new CustomEvent("mbh:api-log",{detail:entry}));
+    }
+    if(cancelled||timedOut){
+      const classified=new Error(cancelled?"Запрос отменён":"Сервер отвечает слишком долго");
+      classified.name=cancelled?"AbortError":"TimeoutError";
+      (classified as Error&{code?:string}).code=cancelled?"ABORTED":"TIMEOUT";
+      throw classified;
     }
     throw error;
   }finally{
@@ -448,8 +459,12 @@ async function requestOnce<T>(path:string,options:RequestInit):Promise<ApiResult
     } catch {
       return {ok:false,error:{code:"BAD_RESPONSE",message:describeApiError({code:"BAD_RESPONSE"},res.status)},requestId:res.headers.get("x-request-id")||"client"};
     }
-  } catch {
-    return {ok:false,error:{code:"NETWORK",message:describeApiError({code:"NETWORK"})},requestId:"client"};
+  } catch (cause) {
+    // Код отмены/таймаута проставляет request(); всё остальное — сетевой сбой.
+    // ABORTED нет в списке временных сбоев, поэтому повторной отправки не будет.
+    const causeCode = String((cause as { code?: string } | null)?.code || "");
+    const code = causeCode === "ABORTED" ? "ABORTED" : causeCode === "TIMEOUT" ? "TIMEOUT" : "NETWORK";
+    return {ok:false,error:{code,message:describeApiError({code})},requestId:"client"};
   }
 }
 
