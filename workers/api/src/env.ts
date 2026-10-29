@@ -64,6 +64,8 @@ export type Env = {
   // Telegram group ingestion. The bot Worker forwards group updates here with
   // TELEGRAM_WEBHOOK_SECRET; no user session exists in that flow.
   TELEGRAM_INGEST_SECRET?: string;
+  /** Bot Worker route that confirms the forwarded ingest secret without storing it here. */
+  TELEGRAM_BOT_VERIFY_INGEST_URL?: string;
   LLM_PRIMARY_API_KEY?: string;
   AI_BACKEND_REGION?: string;
   GEMINI_VERCEL_PROXY_URL?: string;

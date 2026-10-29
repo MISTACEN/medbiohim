@@ -22,7 +22,14 @@ function payload(env: Env) {
       cloudflareAiModel: workersAiModel(env),
       gigachatConfigured: gigachatConfigured(env),
       gigachatTransport: gigachatTransport(env),
-      telegramIngestConfigured: Boolean(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET),
+      telegramIngestConfigured: Boolean(
+        env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || env.TELEGRAM_BOT_VERIFY_INGEST_URL
+      ),
+      telegramIngestVerifier: env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET
+        ? "local"
+        : env.TELEGRAM_BOT_VERIFY_INGEST_URL
+          ? "bot"
+          : "none",
     },
     rid
   );

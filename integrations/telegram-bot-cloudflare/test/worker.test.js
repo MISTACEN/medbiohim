@@ -525,3 +525,45 @@ test("health reports whether the internal endpoint is usable", async () => {
   const withoutSecret = await handleRequest(request("/health", { method: "GET" }), { TELEGRAM_BOT_TOKEN: "test-token" });
   assert.equal((await withoutSecret.json()).internal, false);
 });
+
+/* ------------------------------------------------------------------ *
+ * /api/verify-ingest — the API Worker delegates ingest-secret checks
+ * here, so it does not need a second copy of the secret.
+ * ------------------------------------------------------------------ */
+
+function verifyIngestRequest(secret = "test-secret", method = "POST") {
+  return new Request("https://worker.example/api/verify-ingest", {
+    method,
+    headers: secret === null ? {} : { "x-telegram-bot-api-secret-token": secret },
+    body: method === "POST" ? "{}" : undefined,
+  });
+}
+
+test("verify-ingest accepts only the configured secret", async (t) => {
+  stubFetch(t);
+  const ok = await handleRequest(verifyIngestRequest(), baseEnv);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(await ok.json(), { ok: true });
+
+  const wrong = await handleRequest(verifyIngestRequest("wrong"), baseEnv);
+  assert.equal(wrong.status, 401);
+  assert.equal((await wrong.json()).error, "UNAUTHORIZED");
+
+  const missing = await handleRequest(verifyIngestRequest(null), baseEnv);
+  assert.equal(missing.status, 401);
+});
+
+test("verify-ingest prefers a dedicated ingest secret and rejects GET", async (t) => {
+  stubFetch(t);
+  const env = { ...baseEnv, TELEGRAM_INGEST_SECRET: "ingest-only" };
+  assert.equal((await handleRequest(verifyIngestRequest("test-secret"), env)).status, 401);
+  assert.equal((await handleRequest(verifyIngestRequest("ingest-only"), env)).status, 200);
+  assert.equal((await handleRequest(verifyIngestRequest("ingest-only", "GET"), env)).status, 405);
+});
+
+test("verify-ingest is unavailable without any ingest secret", async (t) => {
+  stubFetch(t);
+  const response = await handleRequest(verifyIngestRequest(), { TELEGRAM_BOT_TOKEN: "test-token" });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "INGEST_NOT_CONFIGURED");
+});

@@ -10,6 +10,7 @@
  */
 import { Hono } from "hono";
 import type { Env } from "../env";
+import { isHttpsUrl } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { createServiceClient } from "../lib/supabase";
 import { classificationProviderLabel, classifyMessage, type Classification } from "../lib/telegram-classify";
@@ -35,6 +36,59 @@ function constantTimeEqual(actual: string, expected: string): boolean {
 
 function ingestSecret(env: Env): string {
   return String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+}
+
+// Per-isolate guard for the delegated verifier. The secret is high entropy, but
+// an online oracle should still be expensive to probe.
+const verifyAttempts = new Map<string, { start: number; count: number }>();
+const VERIFY_WINDOW_MS = 60_000;
+const VERIFY_LIMIT = 60;
+
+function verifyRateLimited(c: any): boolean {
+  const key = String(c.req.header("cf-connecting-ip") || c.req.header("x-forwarded-for") || "unknown");
+  const now = Date.now();
+  const current = verifyAttempts.get(key);
+  if (!current || now - current.start > VERIFY_WINDOW_MS) {
+    verifyAttempts.set(key, { start: now, count: 1 });
+    return false;
+  }
+  current.count += 1;
+  return current.count > VERIFY_LIMIT;
+}
+
+type IngestVerification = "ok" | "unauthorized" | "unavailable" | "unconfigured" | "rate_limited";
+
+async function verifyIngestRequest(c: any): Promise<IngestVerification> {
+  const provided = String(c.req.header("x-telegram-bot-api-secret-token") || "");
+  const expected = ingestSecret(c.env);
+  if (expected) {
+    return constantTimeEqual(provided, expected) ? "ok" : "unauthorized";
+  }
+
+  // No local copy: ask the bot Worker, which owns the secret. This is the same
+  // delegation model as /auth/telegram/webapp and keeps the API stateless.
+  const verifier = String(c.env.TELEGRAM_BOT_VERIFY_INGEST_URL || "").trim();
+  if (!verifier || !isHttpsUrl(verifier)) return "unconfigured";
+  if (verifyRateLimited(c)) return "rate_limited";
+
+  try {
+    const response = await fetch(verifier, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-telegram-bot-api-secret-token": provided,
+      },
+      body: "{}",
+      redirect: "error",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (response.status === 401) return "unauthorized";
+    if (!response.ok) return "unavailable";
+    const body: any = await response.json().catch(() => null);
+    return body?.ok === true ? "ok" : "unavailable";
+  } catch {
+    return "unavailable";
+  }
 }
 
 function formatDue(iso: string | null): string {
@@ -78,14 +132,18 @@ function replyForCandidate(classification: Classification): { text: string; path
 
 telegramIngest.post("/ingest", async (c) => {
   const rid = requestId();
-  const expected = ingestSecret(c.env);
-  if (!expected) {
+  const verification = await verifyIngestRequest(c);
+  if (verification !== "ok") {
+    if (verification === "unauthorized") {
+      const { body, status } = fail("UNAUTHORIZED", "Недействительный секрет Telegram", 401, rid);
+      return c.json(body, status as 401);
+    }
+    if (verification === "rate_limited") {
+      const { body, status } = fail("RATE_LIMITED", "Слишком много попыток проверки секрета", 429, rid);
+      return c.json(body, status as 429);
+    }
     const { body, status } = fail("BOT_NOT_CONFIGURED", "Приём сообщений Telegram не настроен", 503, rid);
     return c.json(body, status as 503);
-  }
-  if (!constantTimeEqual(c.req.header("x-telegram-bot-api-secret-token") || "", expected)) {
-    const { body, status } = fail("UNAUTHORIZED", "Недействительный секрет Telegram", 401, rid);
-    return c.json(body, status as 401);
   }
 
   const declared = Number(c.req.header("content-length") || 0);

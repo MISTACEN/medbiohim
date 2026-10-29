@@ -39,10 +39,21 @@ binding = "AI"
 Ключи и сертификаты не нужны. После деплоя `/api/v1/health` должен показать
 `cloudflareAiConfigured: true` и `cloudflareAiModel`.
 
-### 2. Общий секрет бота и API
+### 2. Проверка секрета без копии на API
 
-Это единственная настройка, которую нельзя закоммитить. Сгенерируйте значение
-и положите его **в оба** воркера под одним именем `TELEGRAM_INGEST_SECRET`:
+API не хранит `TELEGRAM_INGEST_SECRET`: он отправляет полученный заголовок на
+бот-воркер `POST /api/verify-ingest`, а тот сравнивает его со своим секретом.
+Поэтому достаточно, чтобы секрет был **только на боте** (он там уже есть как
+`TELEGRAM_WEBHOOK_SECRET`).
+
+`wrangler.toml` уже содержит:
+
+```toml
+TELEGRAM_BOT_VERIFY_INGEST_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-ingest"
+```
+
+Если хочется убрать сетевой хоп, можно положить одинаковый
+`TELEGRAM_INGEST_SECRET` на оба воркера — тогда API проверяет локально:
 
 ```bash
 openssl rand -hex 32
@@ -52,12 +63,9 @@ cd ../../integrations/telegram-bot-cloudflare
 npx wrangler secret put TELEGRAM_INGEST_SECRET --name medbiohim-telegram
 ```
 
-Секрет webhook при этом не меняется: бот продолжает проверять Telegram старым
-`TELEGRAM_WEBHOOK_SECRET`, а для пересылки в API использует новый
-`TELEGRAM_INGEST_SECRET`.
-
-Проверка: `/api/v1/health` → `telegramIngestConfigured: true`; в админке
-`/admin/telegram` блок «Приём из групп» зелёный.
+Проверка: `/api/v1/health` → `telegramIngestConfigured: true`,
+`telegramIngestVerifier: "bot"` (или `"local"`); в админке `/admin/telegram`
+блок «Приём из групп» зелёный.
 
 ### 3. Webhook и Privacy Mode
 

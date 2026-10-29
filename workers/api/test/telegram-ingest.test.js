@@ -10,6 +10,8 @@ test("Telegram ingest is mounted and protected by a shared secret", async () => 
   assert.match(index, /v1\.route\("\/telegram", telegramIngest\)/);
   assert.match(route, /telegramIngest\.post\("\/ingest"/);
   assert.match(route, /env\.TELEGRAM_INGEST_SECRET \|\| env\.TELEGRAM_WEBHOOK_SECRET/);
+  assert.match(route, /TELEGRAM_BOT_VERIFY_INGEST_URL/);
+  assert.match(route, /verifyRateLimited/);
   assert.match(route, /x-telegram-bot-api-secret-token/);
   assert.match(route, /constantTimeEqual/);
   assert.doesNotMatch(route, /console\.log\([^)]*secret/i);

@@ -474,6 +474,25 @@ function internalSecret(env) {
  * signed string. Every verification failure collapses to one generic answer so
  * the endpoint cannot be used as an oracle.
  */
+/**
+ * `POST /api/verify-ingest` — API Worker confirms that a forwarded group update
+ * carries the bot's ingest secret. This lets the API stay stateless: it does not
+ * need a copy of the secret, exactly like Mini App initData verification.
+ */
+async function handleVerifyIngest(request, env) {
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {
+      status: 405,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", allow: "POST" },
+    });
+  }
+  const expected = String((env && (env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET)) || "").trim();
+  if (!expected) return json({ ok: false, error: "INGEST_NOT_CONFIGURED" }, 503);
+  const provided = request.headers.get("x-telegram-bot-api-secret-token") || "";
+  if (!safeEqual(provided, expected)) return json({ ok: false, error: "UNAUTHORIZED" }, 401);
+  return json({ ok: true });
+}
+
 async function handleVerifyInitData(request, env) {
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {
@@ -525,6 +544,7 @@ export async function handleRequest(request, env) {
     });
   }
   if (url.pathname === "/api/verify-initdata") return handleVerifyInitData(request, env);
+  if (url.pathname === "/api/verify-ingest") return handleVerifyIngest(request, env);
   if (url.pathname !== "/api/webhook") return json({ ok: false, error: "NOT_FOUND" }, 404);
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {

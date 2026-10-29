@@ -19,7 +19,7 @@ type AiStatus = {
   provider?: string;
   cloudflareAi?: { configured?: boolean; model?: string };
   gigachat?: { configured?: boolean; transport?: string; model?: string };
-  ingest?: { configured?: boolean };
+  ingest?: { configured?: boolean; verifier?: string };
   webhook?: { configured?: boolean };
 };
 type TelegramMessage = {
@@ -180,8 +180,10 @@ export default function AdminTelegramPage() {
         <div className="flex items-center gap-2 font-semibold"><Send className="h-4 w-4" /> Приём из групп</div>
         <p className="mt-1">
           {ingestReady
-            ? "Секрет бота и API совпадает: сообщения принимаются."
-            : "Нет общего секрета бота и API: сообщения из групп отклоняются с 503."}
+            ? aiStatus?.ingest?.verifier === "bot"
+              ? "API проверяет секрет через бота: сообщения принимаются."
+              : "Секрет бота и API совпадает: сообщения принимаются."
+            : "Приём из групп не настроен: сообщения отклоняются с 503."}
         </p>
       </div>
     </div>

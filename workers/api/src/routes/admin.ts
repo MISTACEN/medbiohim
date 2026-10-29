@@ -679,7 +679,14 @@ admin.get("/telegram/ai-status", requireAuth, async (c) => {
       model: String(c.env.GIGACHAT_MODEL || "GigaChat"),
     },
     ingest: {
-      configured: Boolean(c.env.TELEGRAM_INGEST_SECRET || c.env.TELEGRAM_WEBHOOK_SECRET),
+      configured: Boolean(
+        c.env.TELEGRAM_INGEST_SECRET || c.env.TELEGRAM_WEBHOOK_SECRET || c.env.TELEGRAM_BOT_VERIFY_INGEST_URL
+      ),
+      verifier: c.env.TELEGRAM_INGEST_SECRET || c.env.TELEGRAM_WEBHOOK_SECRET
+        ? "local"
+        : c.env.TELEGRAM_BOT_VERIFY_INGEST_URL
+          ? "bot"
+          : "none",
     },
     webhook: {
       configured: Boolean(c.env.TELEGRAM_BOT_TOKEN && (c.env.TELEGRAM_WEBHOOK_URL || c.env.TELEGRAM_WEBHOOK_ORIGIN)),

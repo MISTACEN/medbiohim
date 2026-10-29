@@ -1067,14 +1067,12 @@ Telegram: страница больше не уходит на t.me; бот от
 
 ### Что осталось настроить вручную
 
-Один общий секрет на двух воркерах (значение не коммитится):
+Секрет на API больше не нужен: API проверяет заголовок через бот-воркер
+`POST /api/verify-ingest` (тот же приём, что для Mini App). Достаточно, чтобы
+секрет был только на боте; опционально можно положить одинаковый
+`TELEGRAM_INGEST_SECRET` на оба воркера, чтобы убрать сетевой хоп.
 
-```bash
-openssl rand -hex 32
-cd workers/api && npx wrangler secret put TELEGRAM_INGEST_SECRET --name medbiohim-api
-cd ../../integrations/telegram-bot-cloudflare && npx wrangler secret put TELEGRAM_INGEST_SECRET --name medbiohim-telegram
-```
-
-После этого — «Настроить webhook» в `/admin/telegram`, отключить Privacy Mode
-и привязать чат к группе. Живой E2E не прогнан: нет Cloudflare-авторизации и
-бота-токена в этой сессии; без секрета API вернёт 503.
+Осталось «Настроить webhook» в `/admin/telegram`, отключить Privacy Mode и
+привязать чат к группе. Живой E2E с реальным сообщением не прогнан: нет
+бота-токена в этой сессии. Проверено, что API и бот задеплоены, биндинг AI
+виден, а ingest отвечает 401 на неверный секрет вместо 503.
