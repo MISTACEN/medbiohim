@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { resolveLinkRedirect } from "../lib/link-redirect";
 
 const settings = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -338,23 +339,15 @@ async function startIdentityLink(c: any) {
     const { body, status } = fail("VALIDATION_ERROR", "Провайдер не поддерживается", 400, rid);
     return c.json(body, status as 400);
   }
-  const configuredOrigins = (c.env.CORS_ORIGINS || c.env.APP_ORIGIN || "")
-    .split(",").map((value: string) => value.trim()).filter(Boolean);
   const fallbackOrigin = c.env.APP_ORIGIN || "https://medbiohim.vercel.app";
   let redirectTo = fallbackOrigin;
   if (typeof input.redirect_to === "string" && input.redirect_to.trim()) {
-    try {
-      const requested = new URL(input.redirect_to.trim());
-      const allowed = configuredOrigins.some((origin: string) => {
-        try { return new URL(origin).origin === requested.origin; } catch { return false; }
-      }) || requested.origin === new URL(fallbackOrigin).origin;
-      if (requested.protocol !== "https:" && requested.hostname !== "localhost") throw new Error("HTTPS required");
-      if (!allowed) throw new Error("Origin not allowed");
-      redirectTo = requested.toString();
-    } catch {
+    const resolved = resolveLinkRedirect(input.redirect_to.trim(), c.env.CORS_ORIGINS || "", fallbackOrigin);
+    if (!resolved) {
       const { body, status } = fail("VALIDATION_ERROR", "Недопустимый адрес возврата", 400, rid);
       return c.json(body, status as 400);
     }
+    redirectTo = resolved;
   }
   try {
     const response = await fetch(new URL("/auth/v1/user/identities/authorize", c.env.SUPABASE_URL), {
@@ -371,6 +364,15 @@ async function startIdentityLink(c: any) {
     const url = typeof result.url === "string" ? result.url
       : typeof result.authorize_url === "string" ? result.authorize_url : null;
     if (!response.ok || !url) {
+      const reason = String(result.msg || result.message || "").toLowerCase();
+      console.warn("[settings:identity-link]", { status: response.status, reason, requestId: rid });
+      // Supabase отвечает 404/«Manual linking is disabled», пока в проекте не
+      // включена привязка второго способа входа. Это настройка сервера, не
+      // ошибка пользователя — говорим прямо, а не «попробуйте позже».
+      if (reason.includes("manual linking")) {
+        const { body, status } = fail("IDENTITY_LINK_DISABLED", "Привязка второго способа входа выключена на сервере", 503, rid);
+        return c.json(body, status as 503);
+      }
       const { body, status } = fail("IDENTITY_LINK_FAILED", "Не удалось начать привязку способа входа", 502, rid);
       return c.json(body, status as 502);
     }

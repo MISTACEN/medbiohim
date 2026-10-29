@@ -29,3 +29,13 @@ Add the exact callback URL shown by Supabase as an Authorized redirect URI. Then
 Google users are normal Supabase Auth users. `/auth/me` creates/loads the matching `public.users` profile. Application roles remain in `public.user_roles`; Google login never grants admin automatically.
 
 Never put the Google Client Secret in Vercel, frontend `.env`, GitHub or browser code. It belongs only in the Supabase provider configuration.
+
+## Adding Google as the second sign-in method
+
+`/settings` → «Способы входа» → «Привязать Google». Two project settings are required:
+
+1. Supabase → Authentication → Providers → **Enable manual linking**. Without it the API answers `503 IDENTITY_LINK_DISABLED` («Привязка второго способа входа выключена на сервере»), and Google is never linked.
+2. Supabase → Authentication → URL Configuration → Redirect URLs: `https://medbiohim.vercel.app/**`, plus the exact local origin (`http://localhost:3000/**`, `http://localhost:3010/**` — whatever port the dev server uses).
+
+The Worker accepts any `localhost`/`127.0.0.1`/`[::1]` port as a return address for local development; every other host must be listed in `CORS_ORIGINS` or match `APP_ORIGIN`. Unlinking returns the account to a single sign-in method and is refused when it is the last one.
+

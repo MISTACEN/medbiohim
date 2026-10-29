@@ -81,6 +81,7 @@ function SettingsPageInner() {
     const tg = await getTelegramLinkStatus();
     if (tg.ok) setTelegramStatus(tg.data);
     setLoading(false);
+    return r;
   }, [user?.name, user?.email]);
 
   useEffect(() => { void load(); }, [load]);
@@ -197,11 +198,15 @@ function SettingsPageInner() {
 
   useEffect(() => {
     if (recoveryFromQuery) setRecoveryMode(true);
-    if (linkedFromQuery) {
-      setMsg("Провайдер привязан. Данные остаются на том же аккаунте.");
-      void load();
-      window.history.replaceState({}, "", "/settings");
-    }
+    if (!linkedFromQuery) return;
+    window.history.replaceState({}, "", "/settings");
+    // Возврат с OAuth сам по себе не доказывает, что привязка удалась:
+    // пользователь мог отменить вход. Проверяем, что Google реально в identities.
+    void load().then((r) => {
+      const linked = r.ok && (r.data.identities || []).some((item) => item.provider === "google");
+      if (linked) setMsg("Google привязан. Данные остаются на том же аккаунте.");
+      else setErr("Google не привязан: привязка не завершена. Попробуйте ещё раз.");
+    });
   }, [recoveryFromQuery, linkedFromQuery, load]);
 
   async function onSaveProfile(e: FormEvent) {
