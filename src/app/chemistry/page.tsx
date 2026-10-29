@@ -1,7 +1,35 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight, FlaskConical } from "lucide-react";
 import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
 
 export default function ChemistryPage() {
-  return <ChemistryWorkbench />;
+  return (
+    <div className="space-y-6">
+      <ChemistryWorkbench />
+
+      <nav aria-label="Разделы химии" className="mx-auto max-w-6xl">
+        <Link
+          href="/chemistry/elements"
+          className="card flex items-center gap-4 p-4 hover:border-[var(--primary)] sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--accent))" }}
+          >
+            <FlaskConical className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">Периодическая таблица элементов</span>
+            <span className="mt-0.5 block text-sm" style={{ color: "var(--muted)" }}>
+              118 элементов: поиск по символу, названию или номеру, фильтр по категориям и карточка элемента.
+            </span>
+          </span>
+          <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
+        </Link>
+      </nav>
+    </div>
+  );
 }
