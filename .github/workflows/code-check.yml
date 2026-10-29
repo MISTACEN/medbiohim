@@ -42,7 +42,7 @@ jobs:
         run: npm run lint
       - name: Unit tests (root test/ suite)
         run: npm test
-      - name: Unit tests (vitest: api, cache, session, guards)
+      - name: "Unit tests (vitest, jsdom)"
         run: npm run test:unit
       - name: Test Cloudflare-first fallback policy
         run: npm run test:api-failover
