@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { AuthHashCatcher } from "@/components/auth/AuthHashCatcher";
+import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const viewport: Viewport = {
@@ -49,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="ru" data-theme="classic-light" suppressHydrationWarning>
       <body className="antialiased">
+        <PwaRegister />
         <ThemeProvider>
           <AuthProvider>
             <AuthHashCatcher />
