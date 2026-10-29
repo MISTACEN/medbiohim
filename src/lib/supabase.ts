@@ -27,6 +27,23 @@ export function startGoogleOAuth(redirectTo?: string) {
   window.location.href = url;
 }
 
+/**
+ * OAuth-ответ Supabase приходит в hash (#access_token=… / #error=…).
+ * Query-параметр error — это уже наша страница (например, причины отмены
+ * Google), и глобальный перехватчик не должен его трогать: иначе
+ * /login?error=… и /settings?error=… перезагружаются бесконечно.
+ */
+export function isOAuthCallbackHash(href: string): boolean {
+  const index = String(href || "").indexOf("#");
+  if (index < 0) return false;
+  const hash = href.slice(index + 1);
+  return (
+    hash.includes("access_token=") ||
+    hash.includes("error=") ||
+    hash.includes("error_description=")
+  );
+}
+
 export function parseOAuthTokensFromUrl(href: string): {
   access_token?: string;
   refresh_token?: string;

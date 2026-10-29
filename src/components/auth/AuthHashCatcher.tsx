@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { setTokens } from "@/lib/api";
-import { parseOAuthTokensFromUrl } from "@/lib/supabase";
+import { isOAuthCallbackHash, parseOAuthTokensFromUrl } from "@/lib/supabase";
 
 function AuthHashCatcherInner() {
   const searchParams = useSearchParams();
@@ -11,7 +11,10 @@ function AuthHashCatcherInner() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const href = window.location.href;
-    if (!href.includes("access_token=") && !href.includes("error=")) return;
+    // Только hash-ответ OAuth. Query error=… приходит от нашего же редиректа
+    // (отмена привязки Google) и разбирается страницей, а не здесь: иначе
+    // получится вечная перезагрузка /login?error=… сама в себя.
+    if (!isOAuthCallbackHash(href)) return;
 
     const parsed = parseOAuthTokensFromUrl(href);
     if (parsed.access_token) {

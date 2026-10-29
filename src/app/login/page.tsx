@@ -55,6 +55,18 @@ function LoginPageInner() {
     setNextPath(safeNextPath(rawNext));
   }, [rawNext]);
 
+  // Возврат после отмены OAuth приходит с query-причиной (/login?error=…).
+  // Показываем её текстом, а не пустой страницей и не «попробуйте ещё раз».
+  const oauthFailure = searchParams.get("error_description") || searchParams.get("error") || "";
+  useEffect(() => {
+    if (!oauthFailure) return;
+    const known: Record<string, string> = {
+      access_denied: "вы отменили вход у провайдера — аккаунт не изменился",
+      server_error: "провайдер вернул ошибку, повторите позже",
+    };
+    setError(`Вход не завершён: ${known[oauthFailure] || oauthFailure}`);
+  }, [oauthFailure]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
