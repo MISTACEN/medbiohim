@@ -31,6 +31,84 @@ function systemPrompt(subjectSlug?: string | null): string {
     + (subjectSlug ? ` Текущий предмет: ${subjectSlug}.` : "");
 }
 
+/**
+ * FA9: RAG-контекст тьютора — топ-5 фрагментов лекций курса в system prompt.
+ * Корпус небольшой (десятки лекций, ~75 КБ на предмет), поэтому скоринг по
+ * вхождениям слов запроса делается в памяти воркера на каждое сообщение;
+ * фрагменты вырезаются вокруг первых вхождений.
+ */
+async function buildLectureContext(
+  supabase: any,
+  subjectSlug: string | null | undefined,
+  query: string
+): Promise<{ block: string; sources: string[] }> {
+  try {
+    let lectureQuery = supabase
+      .from("histology_lectures")
+      .select("id,title,body_markdown,subject_slug")
+      .eq("is_published", true)
+      .limit(40);
+    if (subjectSlug) lectureQuery = lectureQuery.eq("subject_slug", subjectSlug);
+    const { data: lectures, error } = await lectureQuery;
+    if (error || !lectures?.length) return { block: "", sources: [] };
+
+    const tokens = Array.from(
+      new Set(
+        String(query || "")
+          .toLowerCase()
+          .split(/[^a-zа-яё0-9]+/i)
+          .filter((token) => token.length >= 4)
+      )
+    );
+    if (!tokens.length) return { block: "", sources: [] };
+
+    const scored = (lectures as any[])
+      .map((lecture) => {
+        const title = String(lecture.title || "");
+        const body = String(lecture.body_markdown || "");
+        const lowerBody = body.toLowerCase();
+        let score = 0;
+        let firstAt = -1;
+        for (const token of tokens) {
+          const inTitle = title.toLowerCase().split(token).length - 1;
+          const at = lowerBody.indexOf(token);
+          if (at >= 0 && (firstAt < 0 || at < firstAt)) firstAt = at;
+          score += inTitle * 5 + (at >= 0 ? 1 : 0) + Math.min(lowerBody.split(token).length - 1, 20) * 0.1;
+        }
+        return { title, body, score, firstAt };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    if (!scored.length) return { block: "", sources: [] };
+
+    const FRAGMENT = 600;
+    const parts: string[] = [];
+    const sources: string[] = [];
+    for (const entry of scored) {
+      let fragment: string;
+      if (entry.firstAt >= 0) {
+        const start = Math.max(0, entry.firstAt - 120);
+        fragment = (start > 0 ? "…" : "") + entry.body.slice(start, start + FRAGMENT).trim() + (start + FRAGMENT < entry.body.length ? "…" : "");
+      } else {
+        fragment = entry.body.slice(0, FRAGMENT).trim() + (entry.body.length > FRAGMENT ? "…" : "");
+      }
+      parts.push(`Лекция «${entry.title}»:\n${fragment}`);
+      sources.push(entry.title);
+    }
+    const block =
+      "\n\nМатериалы курса (фрагменты лекций). Используй их как первоисточник по предмету; " +
+      "если фрагментов недостаточно для ответа — честно скажи, чего не хватает, и не выдумывай:\n\n" +
+      parts.join("\n\n");
+    return { block, sources };
+  } catch (error) {
+    // RAG — украшение: чат работает и без фрагментов.
+    console.error("[ai:rag-context]", error);
+    return { block: "", sources: [] };
+  }
+}
+
 ai.get("/providers", requireAuth, async (c) => {
   return c.json(ok(getAiProviderStatus(c.env), requestId()));
 });
@@ -160,8 +238,11 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     return c.json(body, status as 503);
   }
 
+  // FA9: фрагменты лекций курса в контекст — до сборки messages.
+  const rag = await buildLectureContext(supabase, payload.subject_slug || conversation.subject_slug, content);
+
   const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt(payload.subject_slug || conversation.subject_slug) },
+    { role: "system", content: systemPrompt(payload.subject_slug || conversation.subject_slug) + rag.block },
     ...(history || []).reverse().filter((item) => item.role === "user" || item.role === "assistant")
       .map((item) => ({ role: item.role as "user" | "assistant", content: String(item.content || "") })),
     { role: "user", content },
@@ -205,7 +286,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
       content: generated.text,
       provider: generated.provider,
       model: generated.model,
-      metadata: { mode: "api" },
+      metadata: rag.sources.length ? { mode: "api", sources: rag.sources } : { mode: "api" },
     })
     .select("id,role,content,provider,model,metadata,created_at")
     .single();

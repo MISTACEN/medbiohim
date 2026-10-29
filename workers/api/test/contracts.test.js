@@ -440,3 +440,14 @@ test("FA6: личная статистика тренажёра — accuracy и 
   // Честная ошибка вместо пустого ответа.
   assert.match(body, /DB_UNAVAILABLE/);
 });
+
+test("FA9: RAG-контекст тьютора — фрагменты лекций в system prompt", async () => {
+  const route = await source("../src/routes/ai.ts");
+  assert.match(route, /buildLectureContext/);
+  assert.match(route, /histology_lectures/);
+  assert.match(route, /eq\("is_published", true\)/);
+  // Только опубликованные лекции; сбой RAG не ломает чат.
+  assert.match(route, /RAG — украшение/);
+  // Источники сохраняются в metadata ответа.
+  assert.match(route, /sources: rag\.sources/);
+});
