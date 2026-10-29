@@ -73,13 +73,28 @@ export type SearchHit = {
   title: string;
   snippet: string;
   subject: string;
-  subject_slug: string;
+  subject_slug: string | null;
   topic: string;
   type: string;
+  type_label?: string;
+  hint?: string;
+  count?: number;
   score: number;
   has_answer: boolean;
   answer?: string;
   href: string;
+};
+
+/** Подсказка в поле поиска: препарат, учебник/материал или предмет. */
+export type SearchSuggestion = {
+  id: string;
+  type: string;
+  type_label: string;
+  title: string;
+  subject: string;
+  hint: string;
+  href: string;
+  count: number;
 };
 export async function globalSearch(q: string, opts?: { limit?: number; subject_slug?: string; type?: string }) {
   const p = new URLSearchParams();
@@ -89,10 +104,26 @@ export async function globalSearch(q: string, opts?: { limit?: number; subject_s
   if (opts?.type) p.set("type", opts.type);
   return api<{
     query: string;
+    original?: string;
     total: number;
     items: SearchHit[];
+    intent?: { kind: string | null; hint: string };
+    examples?: string[];
     facets: { subjects: Array<{ subject: string; subject_slug: string; count: number }>; types: Record<string, number> };
   }>(`/search?${p.toString()}`);
+}
+
+/** Живые подсказки для поля поиска (предметы, препараты, материалы). */
+export async function suggestSearch(q: string, limit = 8) {
+  const p = new URLSearchParams();
+  p.set("q", q);
+  p.set("limit", String(limit));
+  return api<{
+    items: SearchSuggestion[];
+    query: string;
+    hint: string;
+    examples: string[];
+  }>(`/search/suggest?${p.toString()}`);
 }
 
 /* —— SRS cards —— */

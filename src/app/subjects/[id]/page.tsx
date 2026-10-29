@@ -10,6 +10,7 @@ import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { platformsForSubject } from "@/data/external-platforms";
+import { LIBRARY_FILES } from "@/lib/library";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
@@ -116,20 +117,6 @@ const slugNames: Record<string, string> = {
 };
 const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
 
-type LibraryFile = { title: string; href: string; type: string };
-
-// Исходные пособия кафедры физиологии (папка «физиологии»): каждое пособие —
-// отдельный файл, поэтому они показываются в «Материалах» прямо в предмете.
-const PHYSIOLOGY_LIBRARY: LibraryFile[] = [
-  { title: "Вводное занятие. Физиология возбудимых систем", href: "/library/physiology/vozbudimye-sistemy.docx", type: "Word · практические занятия" },
-  { title: "Физиология ЦНС", href: "/library/physiology/cns.doc", type: "Word · практические работы и самоподготовка" },
-  { title: "Физиология крови и эндокринной системы", href: "/library/physiology/krov-endokrin.doc", type: "Word · методичка" },
-  { title: "Физиология системы кровообращения", href: "/library/physiology/serdce-sosudistaya.doc", type: "Word · методичка" },
-  { title: "Физиология дыхания и выделения", href: "/library/physiology/dyhanie-vydelenie.doc", type: "Word · методичка" },
-  { title: "Физиология пищеварения и обмена веществ", href: "/library/physiology/pishchevarenie-obmen.docx", type: "Word · методичка" },
-  { title: "Сенсорные системы и ВНД", href: "/library/physiology/sensornye-vnd.doc", type: "Word · методичка" },
-  { title: "Агаджанян Н.А. Основы физиологии человека, том 1", href: "/library/physiology/agadzhanyan-fiziologiya-t1.pdf", type: "PDF · учебник" },
-];
 
 const STATIC_PLANS: Record<string, string> = {
   organic_chemistry: "chem/plan-organic-2025-2026.json",
@@ -377,7 +364,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     const bankName = String(b.subject || b.subject_name || "").toLowerCase().trim();
     return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
   });
-  const subjectLibrary: LibraryFile[] = slug === "physiology" ? PHYSIOLOGY_LIBRARY : [];
+  // Пособия кафедры физиологии лежат файлами в public/library, а не в таблице
+  // materials, поэтому берутся из общего индекса — того же, что у поиска.
+  const subjectLibrary = LIBRARY_FILES.filter((file) => file.subject_slug === slug);
   // Лекции привязаны через subject_slug ("histology"), а не к русскому названию.
   const subjectLectures = lectures.filter((l) => {
     const slugKey = String(slug || "").toLowerCase().trim();

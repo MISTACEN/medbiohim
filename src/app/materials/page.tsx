@@ -88,9 +88,11 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
 export default function MaterialsPage() {
   const searchParams = useSearchParams();
   const initialSubjectSlug = searchParams.get("subject_slug") || "";
+  // Ссылка из поиска ведёт сразу к нужному материалу: заполняем и фильтр.
+  const initialQuery = searchParams.get("q") || "";
   const [items, setItems] = useState<ApiMaterial[]>([]);
   const [filter, setFilter] = useState("all");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
   const [noteIsError, setNoteIsError] = useState(false);
@@ -115,9 +117,9 @@ export default function MaterialsPage() {
       setNote("Войдите, чтобы открыть материалы.");
       return;
     }
-    void load("");
+    void load(initialQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSubjectSlug]);
+  }, [initialSubjectSlug, initialQuery]);
 
   const visible = items.filter((m) => filter === "all" || String(m.subject_name || "") === filter);
   const subjectNames = Array.from(new Set(items.map((m) => String(m.subject_name || "")).filter(Boolean))).sort();

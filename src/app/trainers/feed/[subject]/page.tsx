@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, CheckCircle2, ChevronRight, CircleHelp, ListChecks, Loader2, RotateCcw, SkipForward } from "lucide-react";
 import { answerTrainerCard, getTrainerFeed, getTrainerImageUrl, hasToken, type TrainerFeedCard } from "@/lib/api";
@@ -52,6 +52,25 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
   const note = actionNote ?? feed?.note ?? null;
 
   const card = queue ? queue[index] : undefined;
+
+  // Глубокая ссылка из поиска: /trainers/feed/histology?card=<id> сразу
+  // открывает конкретный препарат, а не экран выбора.
+  const [deepLinked, setDeepLinked] = useState(false);
+  useEffect(() => {
+    if (deepLinked || !allCards.length) return;
+    const id = new URLSearchParams(window.location.search).get("card");
+    setDeepLinked(true);
+    if (!id) return;
+    const target = allCards.findIndex((item) => item.id === id);
+    if (target < 0) {
+      setActionNote("Препарат из ссылки не найден в текущем банке — выберите карточку вручную.");
+      return;
+    }
+    setQueue(allCards);
+    setIndex(target);
+    setSelected(null);
+    setResult(null);
+  }, [allCards, deepLinked]);
 
   const { data: imageUrl, loading: imageLoading } = useApiRequest<string | null>(
     async () => (card ? getTrainerImageUrl(card.id) : null),
