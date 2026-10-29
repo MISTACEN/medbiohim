@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, CheckCircle2, ChevronRight, CircleHelp, ListChecks, Loader2, RotateCcw, SkipForward } from "lucide-react";
 import { answerTrainerCard, getTrainerFeed, getTrainerImageUrl, hasToken, type TrainerFeedCard } from "@/lib/api";
@@ -8,6 +8,7 @@ import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/
 import { AtlasThumb } from "@/components/trainers/HistologyTrainerParts";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 const HISTO_PLAN_ORDER = [
   ["клетка и ее пр. животная","Клетка животная"],["симпласт","Симпласт"],["межклет","Межклеточное"],["гольдж","Аппарат Гольджи"],["липид","Липидные включения"],["гликоген","Гликоген"],["ядро","Ядро"],["митоз","Митоз"],["тимидин","Тимидин"],["сперматозоид","Сперматозоиды"],["яйцеклет","Яйцеклетка"],["зародышевых лист","зародышевых лист"],["осевых органов","осевых органов"],["мезотел","Мезотелий"],["цилиндрический эпител","Цилиндрический"],["многорядн","Многорядный"],["многослойный плос","Многослойный плос"],["переходный","Переходный"],["мезенхим","Мезенхима"],["кровь","Кровь человека"],["рыхлая волокнист","Рыхлая волокнист"],["фибробласт","Фибробласт"],["эластические волок","Эластические волокна"],["ретикуляр","Ретикулярная"],["жиров","Жировая"],["пигмент","Пигмент"],["сухожил","Сухожилие"],["гиалинов","Гиалинов"],["волокнистый хрящ","Волокнистый"],["эластический хрящ","Эластический"],["трубчатая кость","Трубчатая кость"],["развитие кости","Развитие кости"],["гладкая мыш","Гладкая мыш"],["поперечно-полосат","Поперечно-полосат"],["сердечн","Сердечная"],["нейрофибрил","Нейрофибрил"],["тигроид","Тигроид"],["астроцит","Астроцит"],["миелин","Миелин"],["тактильн","Тактильное"],["пластинчат","Пластинчатое"],["спинной мозг","Спинной мозг"],["спинальный ганг","Спинальный ганг"],["периферический нерв","Периферический нерв"],["кора больших","Кора больших"],["кора мозжеч","Кора мозжеч"],["грушевид","Грушевид"],["передняя часть","Передняя часть"],["задняя стенка","Задняя стенка"],["развитие глаза","Развитие глаза"],["вкусовая почка","Вкусовая почка"],["улитка","Улитка"]
@@ -27,51 +28,35 @@ const sortCardsByPlan = (items: TrainerFeedCard[]) =>
 type PickFilter = "all" | "preparation" | "electronogram";
 
 export default function TrainerFeedPage({ params }: { params: Promise<{ subject: string }> }) {
-  const [subject, setSubject] = useState("histology");
-  const [allCards, setAllCards] = useState<TrainerFeedCard[]>([]);
   const [queue, setQueue] = useState<TrainerFeedCard[] | null>(null); // null = экран выбора
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [pickFilter, setPickFilter] = useState<PickFilter>("all");
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [result, setResult] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
+  const [actionNote, setActionNote] = useState<string | null>(null);
   const startedAt = useMemo(() => Date.now(), [index]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const p = await params;
-      if (cancelled) return;
-      const slug = p.subject || "histology";
-      setSubject(slug);
-      if (!hasToken()) { setNote("Войдите, чтобы проходить тренажёр."); setLoading(false); return; }
-      const r = await getTrainerFeed(slug, "mbh", 500, 0);
-      if (cancelled) return;
-      if (r.ok) setAllCards(slug === "histology" ? sortCardsByPlan(r.data.items || []) : (r.data.items || [])); else setNote(describeApiError(r.error));
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
+  const { data: feed, loading } = useApiRequest<{ slug: string; cards: TrainerFeedCard[]; note: string | null }>(async () => {
+    const p = await params;
+    const slug = p.subject || "histology";
+    if (!hasToken()) return { slug, cards: [], note: "Войдите, чтобы проходить тренажёр." };
+    const r = await getTrainerFeed(slug, "mbh", 500, 0);
+    if (!r.ok) return { slug, cards: [], note: describeApiError(r.error) };
+    return { slug, cards: slug === "histology" ? sortCardsByPlan(r.data.items || []) : (r.data.items || []), note: null };
   }, [params]);
+
+  const subject = feed?.slug ?? "histology";
+  const allCards = useMemo(() => feed?.cards ?? [], [feed]);
+  const note = actionNote ?? feed?.note ?? null;
 
   const card = queue ? queue[index] : undefined;
 
-  useEffect(() => {
-    let cancelled = false;
-    setImageUrl(null);
-    if (!card) return;
-    setImageLoading(true);
-    void getTrainerImageUrl(card.id).then((url) => {
-      if (!cancelled) setImageUrl(url);
-    }).finally(() => {
-      if (!cancelled) setImageLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [card?.id]);
+  const { data: imageUrl, loading: imageLoading } = useApiRequest<string | null>(
+    async () => (card ? getTrainerImageUrl(card.id) : null),
+    [card?.id]
+  );
 
   // --- выбор карточек ---
   const prepCount = useMemo(() => allCards.filter((c) => !isElectronogramCard(c)).length, [allCards]);
@@ -119,7 +104,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
     setSelected(optionId);
     setBusy(true);
     const r = await answerTrainerCard({ card_id: card.id, option_id: optionId, time_ms: Date.now() - startedAt });
-    if (r.ok) setResult(r.data.correct); else setNote(describeApiError(r.error));
+    if (r.ok) setResult(r.data.correct); else setActionNote(describeApiError(r.error));
     setBusy(false);
   }
 
@@ -127,7 +112,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
     if (!card || busy || result !== null) return;
     setBusy(true);
     const r = await answerTrainerCard({ card_id: card.id, is_skipped: true, time_ms: Date.now() - startedAt });
-    if (!r.ok) setNote(describeApiError(r.error));
+    if (!r.ok) setActionNote(describeApiError(r.error));
     next();
     setBusy(false);
   }

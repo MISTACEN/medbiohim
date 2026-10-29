@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createCommunityPost, getAvatarUrl, listCommunityPosts, me } from "@/lib/api";
 import { Loader2, Send } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type Post = {
   id: string;
@@ -23,13 +24,10 @@ type Post = {
  * остаются инициалы (внешний avatar_url в ленте не раскрываем).
  */
 function AuthorAvatar({ userId, name, hasAvatar }: { userId?: string; name: string; hasAvatar?: boolean }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!userId || !hasAvatar) { setUrl(null); return () => { cancelled = true; }; }
-    void getAvatarUrl(userId).then((value) => { if (!cancelled) setUrl(value); });
-    return () => { cancelled = true; };
-  }, [userId, hasAvatar]);
+  const { data: url } = useApiRequest<string | null>(
+    async () => (!userId || !hasAvatar ? null : getAvatarUrl(userId)),
+    [userId, hasAvatar]
+  );
   return (
     <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary/15 text-sm font-bold text-primary">
       {url

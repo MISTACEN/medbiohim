@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import { listSubjects, listSubjectsCatalog } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type Item = {
   id: string;
@@ -68,10 +69,6 @@ export default function SubjectsPage() {
   const { user } = useAuth();
   const [course, setCourse] = useState<number | "">(user?.course ?? "");
   const [semester, setSemester] = useState<number | "">(user?.semester ?? "");
-  const [items, setItems] = useState<Item[]>([]);
-  const [tools, setTools] = useState<Tool[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [note, setNote] = useState<string | null>(null);
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -79,55 +76,51 @@ export default function SubjectsPage() {
     if (user?.semester != null) setSemester(user.semester);
   }, [user?.course, user?.semester]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setNote(null);
-    (async () => {
-      try {
-        const [cat, r] = await Promise.all([
-          listSubjectsCatalog(),
-          listSubjects(
-            course === "" ? undefined : course,
-            semester === "" ? undefined : semester
-          ),
-        ]);
-        const catalogMeta = cat.ok ? (cat.data as { items?: Item[]; tools?: Tool[] }) : null;
-        if (catalogMeta?.tools) setTools(catalogMeta.tools);
-        if (cancelled) return;
+  const { data, loading } = useApiRequest<{ items: Item[]; tools: Tool[]; note: string | null }>(async () => {
+    try {
+      const [cat, r] = await Promise.all([
+        listSubjectsCatalog(),
+        listSubjects(
+          course === "" ? undefined : course,
+          semester === "" ? undefined : semester
+        ),
+      ]);
+      const catalogMeta = cat.ok ? (cat.data as { items?: Item[]; tools?: Tool[] }) : null;
+      const tools = catalogMeta?.tools || [];
 
-        if (r.ok && (r.data.items || []).length > 0) {
-          const byName = new Map((catalogMeta?.items || []).map((x) => [x.name.toLowerCase(), x]));
-          setItems(
-            (r.data.items || []).map((s: any) => {
-              const meta = byName.get((s.name || "").toLowerCase());
-              return {
-                ...s,
-                category: meta?.category || "Другое",
-                icon: meta?.icon,
-                blurb: meta?.blurb,
-                slug: s.slug || meta?.slug || s.id,
-              };
-            })
-          );
-        } else if (cat.ok) {
-          setItems([]);
-          setNote("Для выбранного курса и семестра данные из основной БД недоступны. Устаревший каталог не подставляется.");
-        } else {
-          setItems([]);
-          setNote(r.ok ? "Пусто" : describeApiError(r.error));
-        }
-      } catch {
-        if (!cancelled) {
-          setItems([]);
-          setNote("Не удалось загрузить предметы");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (r.ok && (r.data.items || []).length > 0) {
+        const byName = new Map((catalogMeta?.items || []).map((x) => [x.name.toLowerCase(), x]));
+        return {
+          tools,
+          note: null,
+          items: (r.data.items || []).map((s: any) => {
+            const meta = byName.get((s.name || "").toLowerCase());
+            return {
+              ...s,
+              category: meta?.category || "Другое",
+              icon: meta?.icon,
+              blurb: meta?.blurb,
+              slug: s.slug || meta?.slug || s.id,
+            };
+          }),
+        };
       }
-    })();
-    return () => { cancelled = true; };
+      if (cat.ok) {
+        return {
+          items: [],
+          tools,
+          note: "Для выбранного курса и семестра данные из основной БД недоступны. Устаревший каталог не подставляется.",
+        };
+      }
+      return { items: [], tools, note: r.ok ? "Пусто" : describeApiError(r.error) };
+    } catch {
+      return { items: [], tools: [], note: "Не удалось загрузить предметы" };
+    }
   }, [course, semester]);
+
+  const items = useMemo(() => data?.items ?? [], [data]);
+  const tools = data?.tools ?? [];
+  const note = data?.note ?? null;
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

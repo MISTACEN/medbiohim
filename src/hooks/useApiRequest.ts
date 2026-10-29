@@ -29,8 +29,10 @@ export type UseApiRequestResult<T> = {
  */
 export function useApiRequest<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
-  deps: DependencyList
+  deps: DependencyList,
+  options: { enabled?: boolean } = {}
 ): UseApiRequestResult<T> {
+  const enabled = options.enabled ?? true;
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,9 @@ export function useApiRequest<T>(
   });
 
   useEffect(() => {
+    // Пока данных для запроса нет (например, ещё идёт проверка авторизации),
+    // не запускаем fetcher и не показываем ложное «пусто».
+    if (!enabled) return;
     let active = true;
     const controller = new AbortController();
     setLoading(true);
@@ -73,7 +78,7 @@ export function useApiRequest<T>(
     };
     // deps передаются динамически вызывающей стороной.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, attempt]);
+  }, [...deps, attempt, enabled]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 

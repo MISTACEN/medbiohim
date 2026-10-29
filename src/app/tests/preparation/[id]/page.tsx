@@ -19,6 +19,7 @@ import {
   type PreparationQuestion,
 } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type QuestionOption = string | { key?: unknown; label?: unknown; correct?: boolean };
 
@@ -132,7 +133,6 @@ export default function PreparationPage() {
   const [mode, setMode] = useState<"full" | "count" | "sequential" | null>(null);
   const [limit, setLimit] = useState(10);
   const [bankProgress, setBankProgress] = useState<any>(null);
-  const [meta, setMeta] = useState<{ title: string; subject: string } | null>(null);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const subjectParam = search.get("subject") || "";
   const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
@@ -200,27 +200,22 @@ export default function PreparationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, mode, authLoading, user?.groupId]);
 
-  useEffect(() => {
-    if (authLoading) return;
-    let cancelled = false;
-    void (async () => {
-      const result: any = await getTest(id, user?.groupId);
-      if (cancelled || !result?.ok) return;
-      const test = result.data?.test || {};
-      const title = String(test.title || "");
-      let subject = String(test.subject_name || subjectParam || "");
-      if (!subject && test.subject_id) {
-        const subjectResult: any = await getSubject(String(test.subject_id));
-        if (!cancelled && subjectResult?.ok) {
-          const payload: any = subjectResult.data;
-          const selected = payload?.subject || payload?.item || payload;
-          subject = String(selected?.name || "");
-        }
+  const { data: meta } = useApiRequest<{ title: string; subject: string } | null>(async () => {
+    const result: any = await getTest(id, user?.groupId);
+    if (!result?.ok) return null;
+    const test = result.data?.test || {};
+    const title = String(test.title || "");
+    let subject = String(test.subject_name || subjectParam || "");
+    if (!subject && test.subject_id) {
+      const subjectResult: any = await getSubject(String(test.subject_id));
+      if (subjectResult?.ok) {
+        const payload: any = subjectResult.data;
+        const selected = payload?.subject || payload?.item || payload;
+        subject = String(selected?.name || "");
       }
-      if (!cancelled) setMeta({ title, subject });
-    })().catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [id, authLoading, user?.groupId, subjectParam]);
+    }
+    return { title, subject };
+  }, [id, user?.groupId, subjectParam], { enabled: !authLoading });
 
   function queueSave(payload: Record<string, unknown>, onError?: (message: string) => void) {
     const task = saveQueue.current.then(async () => {

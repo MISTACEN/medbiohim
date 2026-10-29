@@ -9,6 +9,7 @@ import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type BankOption = string | { key?: unknown; label?: unknown; correct?: boolean };
 type BankQuestion = {
@@ -62,15 +63,9 @@ type EditOption = { label: string; correct: boolean };
 function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const [testId, setTestId] = useState("");
-  const [test, setTest] = useState<ApiTest | null>(null);
-  const [questions, setQuestions] = useState<BankQuestion[]>([]);
-  const [progress, setProgress] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [showAnswers, setShowAnswers] = useState(true);
   const [topicFilter, setTopicFilter] = useState("all");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [questionEdits, setQuestionEdits] = useState<Record<string, Partial<BankQuestion>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ text: string; answer: string; options: EditOption[] } | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
@@ -97,28 +92,27 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
     setContext(queryContext);
   }, [queryContext]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const p = await params;
-      if (cancelled) return;
-      setTestId(p.id);
-      if (authLoading) return;
-      if (!hasToken()) {
-        setLoading(false);
-        return;
-      }
-      const [detail, bankProgress, meRes] = await Promise.all([
-        getTestBank(p.id, user?.groupId),
-        getBankProgress(p.id, user?.groupId),
-        me(),
-      ]);
-      setIsAdmin(meRes.ok && isAdminResponse(meRes));
-      if (cancelled) return;
-      if (detail.ok) {
-        setTest(detail.data.test);
-        setQuestions(
-          (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => ({
+  const { data: load, loading } = useApiRequest<{
+    testId: string;
+    test: ApiTest | null;
+    questions: BankQuestion[];
+    progress: any;
+    isAdmin: boolean;
+    error: string;
+  }>(async () => {
+    const p = await params;
+    const empty = { testId: p.id, test: null, questions: [], progress: null, isAdmin: false, error: "" };
+    if (!hasToken()) return empty;
+    const [detail, bankProgress, meRes] = await Promise.all([
+      getTestBank(p.id, user?.groupId),
+      getBankProgress(p.id, user?.groupId),
+      me(),
+    ]);
+    return {
+      testId: p.id,
+      test: detail.ok ? detail.data.test : null,
+      questions: detail.ok
+        ? (detail.data.questions || []).map((q: Record<string, unknown>, i: number) => ({
             id: String(q.id || i),
             text: String(q.text || q.body || q.q || ""),
             answer: q.answer == null ? null : String(q.answer),
@@ -129,15 +123,22 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
             requires_order: q.requires_order === true,
             topicTitle: q.topic_title == null ? null : String(q.topic_title),
           }))
-        );
-      } else setError(describeApiError(detail.error));
-      if (bankProgress.ok) setProgress(bankProgress.data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
+        : [],
+      progress: bankProgress.ok ? bankProgress.data : null,
+      isAdmin: meRes.ok && isAdminResponse(meRes),
+      error: detail.ok ? "" : describeApiError(detail.error),
     };
-  }, [params, authLoading, user?.groupId]);
+  }, [params, user?.groupId], { enabled: !authLoading });
+
+  const testId = load?.testId ?? "";
+  const test = load?.test ?? null;
+  const progress = load?.progress ?? null;
+  const isAdmin = load?.isAdmin ?? false;
+  const error = load?.error ?? "";
+  const questions = useMemo(
+    () => (load?.questions ?? []).map((q) => questionEdits[q.id] ? { ...q, ...questionEdits[q.id] } : q),
+    [load?.questions, questionEdits]
+  );
 
   const completedCorrect = Number(progress?.correct ?? 0);
   const answered = Number(progress?.answered ?? 0);
@@ -230,13 +231,10 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
       return;
     }
 
-    setQuestions((items) => items.map((item) => item.id === editingId ? {
-      ...item,
-      text,
-      answer: draft.answer.trim(),
-      options,
-      type: "mcq",
-    } : item));
+    setQuestionEdits((items) => ({
+      ...items,
+      [editingId]: { text, answer: draft.answer.trim(), options, type: "mcq" },
+    }));
     setSaveMessage(`Сохранено. Версия ${r.data?.version_no ?? "—"}.`);
   }
 

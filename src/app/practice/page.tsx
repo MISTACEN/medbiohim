@@ -31,6 +31,7 @@ import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { resolveSubjectSlug, subjectDisplayName } from "@/lib/subjectSlug";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type SubjectOption = {
   id: string;
@@ -147,14 +148,6 @@ function referenceText(question: any) {
 function PracticePageInner() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
-  const [subjectCounts, setSubjectCounts] = useState<Record<string, number>>({});
-  const [allQuestionsTotal, setAllQuestionsTotal] = useState<number | null>(null);
-  const [subjectsLoading, setSubjectsLoading] = useState(true);
-  const [subjectsError, setSubjectsError] = useState<string | null>(null);
-  const [items, setItems] = useState<BankQuestion[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [subjectId, setSubjectId] = useState("");
@@ -169,9 +162,7 @@ function PracticePageInner() {
   const [noteSaving, setNoteSaving] = useState(false);
   const [page, setPage] = useState(0);
   const [filtersReady, setFiltersReady] = useState(false);
-  const [queryError, setQueryError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -188,132 +179,109 @@ function PracticePageInner() {
     setFiltersReady(true);
   }, [initialId, initialSlug]);
 
-  useEffect(() => {
-    if (authLoading || !hasToken()) return;
-    let cancelled = false;
-    setSubjectsLoading(true);
-    setSubjectsError(null);
-    void listQuestionSubjects()
-      .then((result: any) => {
-        if (cancelled) return;
-        if (!result.ok) {
-          setSubjectsError(result.error?.message || "Не удалось загрузить предметы.");
-          return;
-        }
-        const map = new Map<string, SubjectOption>();
-        for (const raw of result.data?.items || []) {
-          const id = String(raw.subject_id || "");
-          const slug = resolveSubjectSlug(raw.subject_slug, raw.subject);
-          const key = id || slug;
-          if (!key) continue;
-          map.set(key, { id, slug, label: subjectDisplayName(slug, raw.subject) });
-        }
-        const next = Array.from(map.values()).sort((a, b) => {
-          const rank = subjectRank(a.slug) - subjectRank(b.slug);
-          return rank !== 0 ? rank : a.label.localeCompare(b.label, "ru");
-        });
-        setSubjects(next);
-      })
-      .catch(() => {
-        if (!cancelled) setSubjectsError("Не удалось загрузить предметы.");
-      })
-      .finally(() => {
-        if (!cancelled) setSubjectsLoading(false);
+  const { data: subjectsLoad, loading: subjectsLoading } = useApiRequest<{ subjects: SubjectOption[]; error: string | null }>(async () => {
+    if (!hasToken()) return { subjects: [], error: null };
+    try {
+      const result: any = await listQuestionSubjects();
+      if (!result.ok) {
+        return { subjects: [], error: result.error?.message || "Не удалось загрузить предметы." };
+      }
+      const map = new Map<string, SubjectOption>();
+      for (const raw of result.data?.items || []) {
+        const id = String(raw.subject_id || "");
+        const slug = resolveSubjectSlug(raw.subject_slug, raw.subject);
+        const key = id || slug;
+        if (!key) continue;
+        map.set(key, { id, slug, label: subjectDisplayName(slug, raw.subject) });
+      }
+      const next = Array.from(map.values()).sort((a, b) => {
+        const rank = subjectRank(a.slug) - subjectRank(b.slug);
+        return rank !== 0 ? rank : a.label.localeCompare(b.label, "ru");
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, user?.id]);
+      return { subjects: next, error: null };
+    } catch {
+      return { subjects: [], error: "Не удалось загрузить предметы." };
+    }
+  }, [user?.id], { enabled: !authLoading });
+
+  const subjects = useMemo(() => subjectsLoad?.subjects ?? [], [subjectsLoad]);
+  const subjectsError = subjectsLoad?.error ?? null;
+
+  const { data: countsLoad } = useApiRequest<{ all: number | null; counts: Record<string, number> }>(async () => {
+    if (!hasToken() || !subjects.length) return { all: null, counts: {} };
+    try {
+      const [allResult, ...rows]: any[] = await Promise.all([
+        listQuestions({ limit: 1, include_answer: 1 }),
+        ...subjects.map((subject) => listQuestions({
+          subject_id: subject.id || undefined,
+          subject_slug: subject.id ? undefined : (subject.slug || undefined),
+          limit: 1,
+          include_answer: 1,
+        }).then((result: any) => [
+          subject.id || subject.slug,
+          result.ok ? Number(result.data?.total || 0) : 0,
+        ] as const)),
+      ]);
+      return {
+        all: allResult?.ok ? Number(allResult.data?.total || 0) : null,
+        counts: Object.fromEntries(rows),
+      };
+    } catch {
+      return { all: null, counts: {} };
+    }
+  }, [subjects, user?.id], { enabled: !authLoading });
+
+  const allQuestionsTotal = countsLoad?.all ?? null;
+  const subjectCounts = countsLoad?.counts ?? {};
+
+  const { data: fetchedFavoriteIds } = useApiRequest<Set<string>>(async () => {
+    if (!hasToken()) return new Set<string>();
+    const result: any = await listFavorites();
+    if (!result.ok) return new Set<string>();
+    return new Set(
+      (result.data?.items || [])
+        .filter((item: any) => item.target_type === "question")
+        .map((item: any) => String(item.target_id)),
+    );
+  }, [user?.id], { enabled: !authLoading });
 
   useEffect(() => {
-    if (authLoading || !hasToken() || !subjects.length) return;
-    let cancelled = false;
-    void Promise.all([
-      listQuestions({ limit: 1, include_answer: 1 }),
-      ...subjects.map((subject) => listQuestions({
-        subject_id: subject.id || undefined,
-        subject_slug: subject.id ? undefined : (subject.slug || undefined),
-        limit: 1,
-        include_answer: 1,
-      }).then((result: any) => [
-        subject.id || subject.slug,
-        result.ok ? Number(result.data?.total || 0) : 0,
-      ] as const)),
-    ])
-      .then(([allResult, ...rows]: any[]) => {
-        if (cancelled) return;
-        if (allResult?.ok) setAllQuestionsTotal(Number(allResult.data?.total || 0));
-        setSubjectCounts(Object.fromEntries(rows));
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, subjects, user?.id]);
-
-  useEffect(() => {
-    if (authLoading || !hasToken()) return;
-    let cancelled = false;
-    void listFavorites()
-      .then((result: any) => {
-        if (cancelled || !result.ok) return;
-        setFavoriteIds(
-          new Set(
-            (result.data?.items || [])
-              .filter((item: any) => item.target_type === "question")
-              .map((item: any) => String(item.target_id)),
-          ),
-        );
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, user?.id]);
+    if (fetchedFavoriteIds) setFavoriteIds(fetchedFavoriteIds);
+  }, [fetchedFavoriteIds]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  useEffect(() => {
-    if (!filtersReady || authLoading || !hasToken()) return;
-    let cancelled = false;
-    setLoading(true);
-    void listQuestions({
-      subject_id: subjectId || undefined,
-      subject_slug: subjectId ? undefined : (subjectSlug || undefined),
-      kind: kind || undefined,
-      q: debouncedQuery || undefined,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
-      include_answer: 1,
-    })
-      .then((result: any) => {
-        if (cancelled) return;
-        if (result.ok) {
-          setItems(result.data?.items || []);
-          setTotal(Number(result.data?.total || 0));
-          setQueryError(null);
-        } else {
-          setItems([]);
-          setTotal(0);
-          setQueryError(result.error?.message || "Не удалось загрузить вопросы.");
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setItems([]);
-        setTotal(0);
-        setQueryError("Не удалось загрузить вопросы.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+  const { data: listLoad, loading, reload: reloadList } = useApiRequest<{
+    items: BankQuestion[];
+    total: number;
+    error: string | null;
+  }>(async () => {
+    if (!hasToken()) return { items: [], total: 0, error: null };
+    try {
+      const result: any = await listQuestions({
+        subject_id: subjectId || undefined,
+        subject_slug: subjectId ? undefined : (subjectSlug || undefined),
+        kind: kind || undefined,
+        q: debouncedQuery || undefined,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
+        include_answer: 1,
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [filtersReady, authLoading, subjectId, subjectSlug, kind, debouncedQuery, page, reloadKey, user?.id]);
+      if (!result.ok) {
+        return { items: [], total: 0, error: result.error?.message || "Не удалось загрузить вопросы." };
+      }
+      return { items: result.data?.items || [], total: Number(result.data?.total || 0), error: null };
+    } catch {
+      return { items: [], total: 0, error: "Не удалось загрузить вопросы." };
+    }
+  }, [filtersReady, subjectId, subjectSlug, kind, debouncedQuery, page, user?.id], { enabled: filtersReady && !authLoading });
+
+  const items = listLoad?.items ?? [];
+  const total = listLoad?.total ?? 0;
+  const queryError = listLoad?.error ?? null;
 
   useEffect(() => {
     // A question from the previous filter should not stay open when the
@@ -482,7 +450,7 @@ function PracticePageInner() {
           <span>{queryError}</span>
           <button
             type="button"
-            onClick={() => setReloadKey((value) => value + 1)}
+            onClick={reloadList}
             className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700"
           >
             Повторить

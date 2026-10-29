@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { getProgress } from "@/lib/api";
 import { RadialProgress } from "@/components/ui/RadialProgress";
 import { Award, Loader2 } from "lucide-react";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type ProgressPayload = {
   overall_pct?: number | null;
@@ -20,44 +20,34 @@ type ProgressPayload = {
 
 export default function ProgressPage() {
   const { user, loading: authLoading } = useAuth();
-  const [data, setData] = useState<ProgressPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (authLoading) return;
-      setLoading(true);
-      try {
-        const res = await getProgress(undefined, user?.groupId);
-        if (cancelled) return;
-        if (res.ok) {
-          setData(res.data as ProgressPayload);
-          setError(null);
-        } else {
-          setError(describeApiError(res.error));
-          setData({
-            degraded: true,
-            service_notice: "Данные прогресса временно недоступны. Повторите попытку позже.",
-            service_notice_title: "Прогресс недоступен",
-          });
-        }
-      } catch {
-        if (!cancelled) setError("Не удалось загрузить прогресс");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, user?.groupId]);
+  const { data, loading } = useApiRequest<{
+    payload: ProgressPayload | null;
+    error: string | null;
+  }>(async () => {
+    try {
+      const res = await getProgress(undefined, user?.groupId);
+      if (res.ok) return { payload: res.data as ProgressPayload, error: null };
+      return {
+        payload: {
+          degraded: true,
+          service_notice: "Данные прогресса временно недоступны. Повторите попытку позже.",
+          service_notice_title: "Прогресс недоступен",
+        },
+        error: describeApiError(res.error),
+      };
+    } catch {
+      return { payload: null, error: "Не удалось загрузить прогресс" };
+    }
+  }, [user?.groupId], { enabled: !authLoading });
 
-  const hw = data?.homework;
-  const tests = data?.tests;
-  const overall = data?.overall_pct ?? null;
-  const hasProgressData = Boolean(data && !data.degraded && !data.service_notice && overall !== null && hw && tests);
+  const payload = data?.payload ?? null;
+  const loadError = data?.error ?? null;
+
+  const hw = payload?.homework;
+  const tests = payload?.tests;
+  const overall = payload?.overall_pct ?? null;
+  const hasProgressData = Boolean(payload && !payload.degraded && !payload.service_notice && overall !== null && hw && tests);
   const hwPct = hw?.percent ?? (hw && hw.total ? Math.round((hw.done / hw.total) * 100) : 0);
   const testPct = tests && tests.attempts > 0 ? Math.round(((tests.finished ?? 0) / tests.attempts) * 100) : 0;
   const avg = tests?.avg_score != null ? Math.round(Number(tests.avg_score)) : null;
@@ -69,11 +59,11 @@ export default function ProgressPage() {
         <p className="page-subtitle">Реальный расчёт по ДЗ и тестам</p>
       </div>
 
-      {(data?.degraded || data?.service_notice || data?.note === "degraded") && (
+      {(payload?.degraded || payload?.service_notice || payload?.note === "degraded") && (
         <ServiceNoticeBanner
-          title={data?.service_notice_title || "Что-то пошло не так"}
+          title={payload?.service_notice_title || "Что-то пошло не так"}
           message={
-            data?.service_notice ||
+            payload?.service_notice ||
             "Раздел прогресса временно работает в ограниченном режиме. Скоро всё починят."
           }
         />
@@ -84,9 +74,9 @@ export default function ProgressPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
         </div>
       )}
-      {error && (
+      {loadError && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {error}
+          {loadError}
         </div>
       )}
 
@@ -114,7 +104,7 @@ export default function ProgressPage() {
         </div>
       )}
 
-      {!loading && data && !data.degraded && !data.service_notice && !hasProgressData && (
+      {!loading && payload && !payload.degraded && !payload.service_notice && !hasProgressData && (
         <div className="card text-sm text-slate-500">Пока недостаточно данных для расчёта прогресса.</div>
       )}
 

@@ -1,34 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Search } from "lucide-react";
 import { listLectures, type LectureListItem } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 export default function LecturesPage() {
-  const [items, setItems] = useState<LectureListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void listLectures(subject || undefined).then((r) => {
-      if (cancelled) return;
-      if (r.ok) {
-        setItems(r.data.items || []);
-        setError(null);
-      } else {
-        setItems([]);
-        setError(describeApiError(r.error) || "Не удалось загрузить лекции");
-      }
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
+  // D9: единый слой отмены вместо ручного cancelled-флага.
+  const { data, loading, error } = useApiRequest<LectureListItem[]>(async () => {
+    const r = await listLectures(subject || undefined);
+    if (!r.ok) throw new Error(describeApiError(r.error) || "Не удалось загрузить лекции");
+    return r.data.items || [];
   }, [subject]);
+  const items = useMemo(() => data ?? [], [data]);
 
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();

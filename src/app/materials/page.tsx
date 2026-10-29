@@ -8,6 +8,7 @@ import { SkeletonCards } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { describeApiError } from "@/lib/errors";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 function FileIcon({ type }: { type?: string | null }) {
   const t = String(type || "").toLowerCase();
@@ -29,28 +30,15 @@ function stripHtml(html?: string | null) {
 function MaterialBody({ material }: { material: ApiMaterial }) {
   const directUrl = material.source?.download_url ? String(material.source.download_url) : "";
   const mime = String(material.source?.mime_type || "").toLowerCase();
-  const [physicalUrl, setPhysicalUrl] = useState<string | null>(null);
-  const [fileLoading, setFileLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
+  const { data: physicalUrl, loading: fileLoading } = useApiRequest<string | null>(async () => {
     const hasPhysicalSource = Boolean(
       directUrl ||
       material.source?.file_id ||
       material.source?.source_path ||
       material.file_id
     );
-    if (directUrl || !hasPhysicalSource || material.external_url) {
-      setPhysicalUrl(null);
-      return;
-    }
-    setFileLoading(true);
-    void getMaterialFileUrl(String(material.id)).then((url) => {
-      if (!cancelled) setPhysicalUrl(url);
-    }).finally(() => {
-      if (!cancelled) setFileLoading(false);
-    });
-    return () => { cancelled = true; };
+    if (directUrl || !hasPhysicalSource || material.external_url) return null;
+    return getMaterialFileUrl(String(material.id));
   }, [material.id, material.content_html, material.external_url, material.subject_slug, directUrl]);
 
   const url = directUrl || physicalUrl || "";

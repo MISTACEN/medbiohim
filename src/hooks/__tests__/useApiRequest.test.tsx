@@ -90,6 +90,22 @@ describe("useApiRequest: отмена", () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
+  it("не запускает fetcher, пока enabled=false, и запускает после", async () => {
+    const fetcher = vi.fn(async () => "payload");
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useApiRequest<string>(fetcher, [], { enabled }),
+      { initialProps: { enabled: false } }
+    );
+
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(true);
+
+    rerender({ enabled: true });
+
+    await waitFor(() => expect(result.current.data).toBe("payload"));
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
   it("смена deps перезапускает запрос и отменяет предыдущий", async () => {
     const signals: AbortSignal[] = [];
     const fetcher = vi.fn((signal: AbortSignal) => {

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { getSubject } from "@/lib/api";
 import { resolveSubjectSlug } from "@/lib/subjectSlug";
 import TestsHub from "@/components/tests/TestsHub";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 type SubjectInfo = {
   id: string;
@@ -16,30 +16,20 @@ type SubjectInfo = {
 };
 
 export default function SubjectTestsPage({ params }: { params: Promise<{ id: string }> }) {
-  const [info, setInfo] = useState<SubjectInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const route = await params;
-      if (cancelled) return;
-      const result = await getSubject(route.id);
-      if (cancelled) return;
-      const payload: any = result.ok ? result.data : null;
-      const selected = payload?.subject || payload?.item || (payload?.id ? payload : null) || {};
-      const name = String(selected?.name || "");
-      const slug = resolveSubjectSlug(selected?.slug || "", name) || resolveSubjectSlug(route.id, name);
-      setInfo({
-        id: String(selected?.id || route.id),
-        name: name || "Тесты",
-        slug,
-        course: selected?.course_number ?? null,
-        semester: selected?.semester ?? null,
-      });
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
+  const { data: info, loading } = useApiRequest<SubjectInfo>(async () => {
+    const route = await params;
+    const result = await getSubject(route.id);
+    const payload: any = result.ok ? result.data : null;
+    const selected = payload?.subject || payload?.item || (payload?.id ? payload : null) || {};
+    const name = String(selected?.name || "");
+    const slug = resolveSubjectSlug(selected?.slug || "", name) || resolveSubjectSlug(route.id, name);
+    return {
+      id: String(selected?.id || route.id),
+      name: name || "Тесты",
+      slug,
+      course: selected?.course_number ?? null,
+      semester: selected?.semester ?? null,
+    };
   }, [params]);
 
   if (loading) {

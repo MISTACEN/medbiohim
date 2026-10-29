@@ -14,6 +14,7 @@ import { describeApiError } from "@/lib/errors";
 import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/api";
 import { describeLastSeen, describeUserAgent } from "@/lib/device";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import {
   changeAccountPassword,
   getAccountSettings,
@@ -51,8 +52,6 @@ function SettingsPageInner() {
   const [password2, setPassword2] = useState("");
   const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
   const [telegramStatus, setTelegramStatus] = useState<TelegramLinkStatus | null>(null);
-  // SA3: превью аватара — object URL для загруженного файла или внешний https.
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   // SA4: активные устройства. null — ещё не загружали, [] — сессий нет.
   const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
@@ -89,20 +88,13 @@ function SettingsPageInner() {
   // Превью аватара: приоритет у загруженного файла (приватный прокси), иначе
   // внешний https-адрес из профиля (например, Google). Ошибку сети не показываем
   // баннером — просто остаются инициалы.
-  useEffect(() => {
-    let cancelled = false;
+  const { data: avatarPreview } = useApiRequest<string | null>(async () => {
     const userId = String(account?.user?.id || user?.id || "");
     const external = String(account?.user?.avatar_url || "");
     const uploaded = Boolean(account?.user?.has_uploaded_avatar);
-    if (!uploaded) {
-      setAvatarPreview(/^https:\/\//i.test(external) ? external : null);
-      return () => { cancelled = true; };
-    }
-    if (!userId) return () => { cancelled = true; };
-    void getAvatarUrl(userId).then((url) => {
-      if (!cancelled && url) setAvatarPreview(url);
-    });
-    return () => { cancelled = true; };
+    if (!uploaded) return /^https:\/\//i.test(external) ? external : null;
+    if (!userId) return null;
+    return getAvatarUrl(userId);
   }, [account?.user?.id, account?.user?.avatar_url, account?.user?.has_uploaded_avatar, user?.id]);
 
   // Сервер сам сообщает, доступна ли загрузка: без хранилища кнопка вела бы в

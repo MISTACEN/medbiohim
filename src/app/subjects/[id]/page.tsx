@@ -389,16 +389,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   });
 
   // Архивный билетный банк кафедры (статические questions_by_subject).
-  const [archiveBank, setArchiveBank] = useState<PortalTicketBank | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    setArchiveBank(null);
-    loadTicketBank(slug).then((bank) => {
-      if (!cancelled && bank?.items?.length) setArchiveBank(bank);
-    });
-    return () => {
-      cancelled = true;
-    };
+  const { data: archiveBank } = useApiRequest<PortalTicketBank | null>(async () => {
+    const bank = await loadTicketBank(slug);
+    return bank?.items?.length ? bank : null;
   }, [slug]);
 
   // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
@@ -8,32 +7,18 @@ import { getLecture, type Lecture } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { LectureLearningLinks } from "@/components/lectures/LectureLearningLinks";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 
 export default function LectureViewPage() {
   const params = useParams();
   const id = String(params?.id || "");
-  const [lec, setLec] = useState<Lecture | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    setLoading(true);
-    void getLecture(id).then((r) => {
-      if (cancelled) return;
-      if (r.ok) {
-        // API отдаёт лекцию плоско (поля в data), но старые сборки — в data.lecture.
-        setLec(r.data?.lecture || r.data || null);
-        setError(null);
-      } else {
-        setLec(null);
-        setError(describeApiError(r.error) || "Не найдено");
-      }
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [id]);
+  const { data: lec, error, loading } = useApiRequest<Lecture | null>(async () => {
+    const r = await getLecture(id);
+    if (!r.ok) throw new Error(describeApiError(r.error) || "Не найдено");
+    // API отдаёт лекцию плоско (поля в data), но старые сборки — в data.lecture.
+    return r.data?.lecture || r.data || null;
+  }, [id], { enabled: Boolean(id) });
 
   if (loading) return <div className="card p-6 text-sm text-[var(--muted)]">Загрузка лекции…</div>;
   if (error || !lec) {
