@@ -48,6 +48,8 @@ jobs:
         run: npm run test:api-failover
       - name: Physiology content regression tests
         run: npm run test:physiology
+      - name: "Contrast gate: status tokens WCAG AA (F1-F2)"
+        run: node scripts/check-contrast.mjs
       # --- Contract checks ---
       - name: Verify Vercel API proxy uses Cloudflare only
         run: |

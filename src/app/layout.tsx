@@ -53,6 +53,7 @@ export default function RootLayout({
   return (
     <html lang="ru" data-theme="classic-light" suppressHydrationWarning>
       <body className="antialiased">
+        <a href="#main" className="skip-link">Перейти к содержимому</a>
         <PwaRegister />
         <ThemeProvider>
           <AuthProvider>

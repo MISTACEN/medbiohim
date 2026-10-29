@@ -20,7 +20,29 @@ html[data-theme="classic-light"] {
   --sidebar: #0f172a;
   --sidebar-text: #e2e8f0;
   --sidebar-active: #2563eb;
-  --border: rgba(15, 23, 42, 0.08);
+  --border: rgba(15, 23, 42, 0.16);
+  /* F1-F2: семантические статусы — цвет + фон + рамка (AA на тексте). */
+  --status-ok-fg: #047857;
+  --status-ok-bg: #ecfdf5;
+  --status-ok-border: rgba(4, 120, 87, 0.3);
+  --status-warn-fg: #92400e;
+  --status-warn-bg: #fffbeb;
+  --status-warn-border: rgba(146, 64, 14, 0.3);
+  --status-critical-fg: #be123c;
+  --status-critical-bg: #fff1f2;
+  --status-critical-border: rgba(190, 18, 60, 0.3);
+  --status-info-fg: #1d4ed8;
+  --status-info-bg: #eff6ff;
+  --status-info-border: rgba(29, 78, 216, 0.3);
+  --status-neutral-fg: #475569;
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-border: rgba(71, 85, 105, 0.3);
+  --status-pending-fg: #6d28d9;
+  --status-pending-bg: #f5f3ff;
+  --status-pending-border: rgba(109, 40, 217, 0.3);
+  /* Рамка полей ввода ≥ 3:1 к фону (декоративный --border мягче). */
+  --input-border: rgba(15, 23, 42, 0.55);
+
   --hero-from: #eff6ff;
   --hero-to: #f8fafc;
   --body-art: none;
@@ -44,6 +66,27 @@ html.dark[data-theme="classic-dark"] {
   --sidebar-text: #e2e8f0;
   --sidebar-active: #2563eb;
   --border: rgba(255, 255, 255, 0.08);
+  /* F1-F2: семантические статусы для тёмных тем — пастель на тёмной подложке. */
+  --status-ok-fg: #34d399;
+  --status-ok-bg: rgba(52, 211, 153, 0.12);
+  --status-ok-border: rgba(52, 211, 153, 0.35);
+  --status-warn-fg: #fbbf24;
+  --status-warn-bg: rgba(251, 191, 36, 0.12);
+  --status-warn-border: rgba(251, 191, 36, 0.35);
+  --status-critical-fg: #f87171;
+  --status-critical-bg: rgba(248, 113, 113, 0.12);
+  --status-critical-border: rgba(248, 113, 113, 0.35);
+  --status-info-fg: #93c5fd;
+  --status-info-bg: rgba(147, 197, 253, 0.12);
+  --status-info-border: rgba(147, 197, 253, 0.35);
+  --status-neutral-fg: #cbd5e1;
+  --status-neutral-bg: rgba(203, 213, 225, 0.12);
+  --status-neutral-border: rgba(203, 213, 225, 0.35);
+  --status-pending-fg: #c4b5fd;
+  --status-pending-bg: rgba(196, 181, 253, 0.12);
+  --status-pending-border: rgba(196, 181, 253, 0.35);
+  --input-border: rgba(226, 232, 240, 0.5);
+
   --hero-from: #0f172a;
   --hero-to: #111827;
   --body-art: none;
@@ -67,6 +110,27 @@ html.dark[data-theme="midnight"] {
   --sidebar-text: #e0e7ff;
   --sidebar-active: #6366f1;
   --border: rgba(167, 139, 250, 0.12);
+  /* F1-F2: семантические статусы для тёмных тем — пастель на тёмной подложке. */
+  --status-ok-fg: #34d399;
+  --status-ok-bg: rgba(52, 211, 153, 0.12);
+  --status-ok-border: rgba(52, 211, 153, 0.35);
+  --status-warn-fg: #fbbf24;
+  --status-warn-bg: rgba(251, 191, 36, 0.12);
+  --status-warn-border: rgba(251, 191, 36, 0.35);
+  --status-critical-fg: #f87171;
+  --status-critical-bg: rgba(248, 113, 113, 0.12);
+  --status-critical-border: rgba(248, 113, 113, 0.35);
+  --status-info-fg: #93c5fd;
+  --status-info-bg: rgba(147, 197, 253, 0.12);
+  --status-info-border: rgba(147, 197, 253, 0.35);
+  --status-neutral-fg: #cbd5e1;
+  --status-neutral-bg: rgba(203, 213, 225, 0.12);
+  --status-neutral-border: rgba(203, 213, 225, 0.35);
+  --status-pending-fg: #c4b5fd;
+  --status-pending-bg: rgba(196, 181, 253, 0.12);
+  --status-pending-border: rgba(196, 181, 253, 0.35);
+  --input-border: rgba(226, 232, 240, 0.5);
+
   --hero-from: #1e1b4b;
   --hero-to: #0f0a1a;
   --body-art: none;
@@ -89,6 +153,28 @@ html[data-theme="aurora-glass"] {
   --sidebar-text: #294966;
   --sidebar-active: #168cff;
   --border: rgba(66, 176, 224, 0.18);
+  /* F1-F2: семантические статусы — цвет + фон + рамка (AA на тексте). */
+  --status-ok-fg: #047857;
+  --status-ok-bg: #ecfdf5;
+  --status-ok-border: rgba(4, 120, 87, 0.3);
+  --status-warn-fg: #92400e;
+  --status-warn-bg: #fffbeb;
+  --status-warn-border: rgba(146, 64, 14, 0.3);
+  --status-critical-fg: #be123c;
+  --status-critical-bg: #fff1f2;
+  --status-critical-border: rgba(190, 18, 60, 0.3);
+  --status-info-fg: #1d4ed8;
+  --status-info-bg: #eff6ff;
+  --status-info-border: rgba(29, 78, 216, 0.3);
+  --status-neutral-fg: #475569;
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-border: rgba(71, 85, 105, 0.3);
+  --status-pending-fg: #6d28d9;
+  --status-pending-bg: #f5f3ff;
+  --status-pending-border: rgba(109, 40, 217, 0.3);
+  /* Рамка полей ввода ≥ 3:1 к фону (декоративный --border мягче). */
+  --input-border: rgba(15, 23, 42, 0.55);
+
   --hero-from: rgba(205, 244, 255, 0.86);
   --hero-to: rgba(235, 255, 247, 0.84);
   --body-art: radial-gradient(circle at 8% 12%, rgba(69, 209, 255, 0.28), transparent 31%), radial-gradient(circle at 88% 18%, rgba(42, 224, 188, 0.2), transparent 27%), radial-gradient(circle at 58% 88%, rgba(98, 167, 255, 0.16), transparent 30%);
@@ -111,6 +197,28 @@ html[data-theme="medical-glass"] {
   --sidebar-text: #294463;
   --sidebar-active: #2b74e8;
   --border: rgba(98, 152, 214, 0.18);
+  /* F1-F2: семантические статусы — цвет + фон + рамка (AA на тексте). */
+  --status-ok-fg: #047857;
+  --status-ok-bg: #ecfdf5;
+  --status-ok-border: rgba(4, 120, 87, 0.3);
+  --status-warn-fg: #92400e;
+  --status-warn-bg: #fffbeb;
+  --status-warn-border: rgba(146, 64, 14, 0.3);
+  --status-critical-fg: #be123c;
+  --status-critical-bg: #fff1f2;
+  --status-critical-border: rgba(190, 18, 60, 0.3);
+  --status-info-fg: #1d4ed8;
+  --status-info-bg: #eff6ff;
+  --status-info-border: rgba(29, 78, 216, 0.3);
+  --status-neutral-fg: #475569;
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-border: rgba(71, 85, 105, 0.3);
+  --status-pending-fg: #6d28d9;
+  --status-pending-bg: #f5f3ff;
+  --status-pending-border: rgba(109, 40, 217, 0.3);
+  /* Рамка полей ввода ≥ 3:1 к фону (декоративный --border мягче). */
+  --input-border: rgba(15, 23, 42, 0.55);
+
   --hero-from: rgba(216, 236, 255, 0.92);
   --hero-to: rgba(240, 233, 255, 0.88);
   --body-art: radial-gradient(circle at 6% 8%, rgba(55, 151, 255, 0.18), transparent 28%), radial-gradient(circle at 92% 12%, rgba(126, 108, 239, 0.16), transparent 25%), linear-gradient(180deg, rgba(255,255,255,0.35), transparent 42%);
@@ -133,6 +241,28 @@ html[data-theme="crystal-glass"] {
   --sidebar-text: #2b4863;
   --sidebar-active: #198fe7;
   --border: rgba(83, 153, 219, 0.15);
+  /* F1-F2: семантические статусы — цвет + фон + рамка (AA на тексте). */
+  --status-ok-fg: #047857;
+  --status-ok-bg: #ecfdf5;
+  --status-ok-border: rgba(4, 120, 87, 0.3);
+  --status-warn-fg: #92400e;
+  --status-warn-bg: #fffbeb;
+  --status-warn-border: rgba(146, 64, 14, 0.3);
+  --status-critical-fg: #be123c;
+  --status-critical-bg: #fff1f2;
+  --status-critical-border: rgba(190, 18, 60, 0.3);
+  --status-info-fg: #1d4ed8;
+  --status-info-bg: #eff6ff;
+  --status-info-border: rgba(29, 78, 216, 0.3);
+  --status-neutral-fg: #475569;
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-border: rgba(71, 85, 105, 0.3);
+  --status-pending-fg: #6d28d9;
+  --status-pending-bg: #f5f3ff;
+  --status-pending-border: rgba(109, 40, 217, 0.3);
+  /* Рамка полей ввода ≥ 3:1 к фону (декоративный --border мягче). */
+  --input-border: rgba(15, 23, 42, 0.55);
+
   --hero-from: rgba(225, 248, 255, 0.92);
   --hero-to: rgba(243, 245, 255, 0.94);
   --body-art: radial-gradient(circle at 10% 18%, rgba(74, 204, 247, 0.15), transparent 24%), radial-gradient(circle at 88% 17%, rgba(83, 126, 243, 0.12), transparent 24%), radial-gradient(circle at 50% 100%, rgba(94, 231, 196, 0.08), transparent 34%);
@@ -165,9 +295,9 @@ body {
   .page-title { @apply text-2xl font-bold tracking-tight sm:text-3xl; color: var(--text); }
   .page-subtitle { @apply mt-1 text-sm; color: var(--muted); }
   .skeleton { @apply animate-pulse rounded-xl; background: color-mix(in srgb, var(--muted) 20%, transparent); }
-  .badge-success { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
-  .badge-danger { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
-  .badge-warning { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
+  .badge-success { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-ok-bg); color: var(--status-ok-fg); border: 1px solid var(--status-ok-border); }
+  .badge-danger { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-critical-bg); color: var(--status-critical-fg); border: 1px solid var(--status-critical-border); }
+  .badge-warning { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-warn-bg); color: var(--status-warn-fg); border: 1px solid var(--status-warn-border); }
   .badge-primary { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--primary-soft); color: var(--primary); }
   .app-sidebar { background: var(--sidebar); color: var(--sidebar-text); }
   .app-sidebar-active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
@@ -792,4 +922,26 @@ button {
   outline: none;
   border-color: #66a7ea !important;
   box-shadow: 0 0 0 3px rgba(8,127,232,.12);
+}
+
+/* F3: фокус с клавиатуры виден всегда, мышью — не мешает. */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Skip-link: для скринридеров и клавиатуры, до фокуса скрыт. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+.skip-link:focus-visible {
+  left: 0;
 }
