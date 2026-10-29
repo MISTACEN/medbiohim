@@ -188,10 +188,14 @@ function SearchPageInner() {
     void listSubjectsCatalog().then((result) => {
       if (result.ok) {
         const list = (result.data as { items?: Array<{ name?: string; slug?: string }> })?.items || [];
+        // Дедупликация по слагу: у предмета бывает несколько активных строк
+        // (курсы/семестры), а пункты фильтра ключуются слагом.
+        const seen = new Set<string>();
         setSubjects(
           list
             .map((item) => ({ name: String(item.name || ""), slug: String(item.slug || "") }))
             .filter((item) => item.name && item.slug)
+            .filter((item) => (seen.has(item.slug) ? false : (seen.add(item.slug), true)))
         );
       }
     });

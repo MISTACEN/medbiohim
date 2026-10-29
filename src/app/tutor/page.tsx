@@ -54,9 +54,14 @@ export default function TutorPage() {
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
     if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available}); setPsRegionHint(ps.data.region==="ru" && !!ps.data.providers.gemini?.reason); }
     if(ss.ok) {
+      // В БД предмет может занимать несколько активных строк под одним слагом
+      // (курсы/семестры) — в селекторе нужен один пункт на слаг, иначе React
+      // падает на дублирующихся ключах.
+      const seen = new Set<string>();
       const list = (ss.data.items || [])
         .map((s: any) => ({ name: String(s.name || ""), slug: String(s.slug || "").trim() }))
-        .filter((s: { name: string; slug: string }): s is { name: string; slug: string } => Boolean(s.slug));
+        .filter((s: { name: string; slug: string }): s is { name: string; slug: string } => Boolean(s.slug))
+        .filter((s: { name: string; slug: string }) => (seen.has(s.slug) ? false : (seen.add(s.slug), true)));
       setSubjects(list);
     }
     if(!cs.ok){setError(describeApiError(cs.error));setBooting(false);return;}
