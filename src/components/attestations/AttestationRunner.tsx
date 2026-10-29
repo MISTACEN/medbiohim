@@ -399,7 +399,9 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                                     >
                                       {String.fromCharCode(1040 + optionIndex)}
                                     </span>
-                                    <span className="text-sm leading-6 text-slate-700">{option}</span>
+                                    <div className="text-sm leading-6 text-slate-700">
+                                      <ChemRichText text={option} className="space-y-1" />
+                                    </div>
                                     {isChecked && right && <CheckCircle2 className="ml-auto mt-1 h-4 w-4 shrink-0 text-emerald-500" />}
                                     {isChecked && active && !right && <X className="ml-auto mt-1 h-4 w-4 shrink-0 text-rose-500" />}
                                   </button>
@@ -459,7 +461,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                               {revealed[item.id] && item.answer && (
                                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3.5 py-3 text-sm leading-6 text-emerald-900">
                                   <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Эталонный ответ</div>
-                                  {item.answer}
+                                  <ChemRichText text={item.answer} className="space-y-1" />
                                 </div>
                               )}
                             </div>
@@ -475,7 +477,9 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                             </button>
                           )}
                           {isTheory && revealed[item.id] && item.answer && (
-                            <p className="mt-2 rounded-xl bg-slate-50 px-3.5 py-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+                            <div className="mt-2 rounded-xl bg-slate-50 px-3.5 py-3 text-sm leading-6 text-slate-600">
+                              <ChemRichText text={item.answer} className="space-y-2" />
+                            </div>
                           )}
                           {isTheory && !item.answer && (
                             <button
