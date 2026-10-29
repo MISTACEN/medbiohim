@@ -14,6 +14,7 @@ import {
   type PracticeDifficulty,
   type PracticeTopic,
 } from "@/lib/chemistry/practice";
+import { CHEM_PLAN_HREF, planAnchorLabel, planLinkFor } from "@/lib/chemistry/planLinks";
 import { csvFilename, downloadCsv, printCurrentView, toCsv } from "@/lib/chemistry/export";
 
 const CSV_COLUMNS = [
@@ -154,6 +155,28 @@ export function PracticeRunner() {
               );
             })}
           </div>
+          {/* Честная связь с планом: ссылка ставится только там, где в плане
+              кафедры есть дословная тема, иначе так и написано. */}
+          <details className="mt-2 rounded-xl border border-[var(--border)] bg-slate-50/60 px-3 py-2 text-xs print:hidden">
+            <summary className="cursor-pointer font-semibold text-slate-600">Как темы связаны с планом кафедры</summary>
+            <ul className="mt-2 space-y-1">
+              {PRACTICE_TOPICS.map((topic) => {
+                const link = planLinkFor(topic.id);
+                return (
+                  <li key={topic.id} className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-medium text-slate-700">{topic.label}:</span>
+                    {link?.anchor ? (
+                      <a href={CHEM_PLAN_HREF} className="text-indigo-600 hover:underline">
+                        {planAnchorLabel(link.anchor)} · {link.note}
+                      </a>
+                    ) : (
+                      <span className="text-slate-500">{link?.note ?? "вне плана кафедры"}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
         </fieldset>
 
         <div className="flex flex-wrap items-center gap-3 text-sm">

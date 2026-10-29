@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Microscope,
   Save,
   Search,
   SlidersHorizontal,
@@ -424,10 +425,17 @@ function PracticePageInner() {
               <h1 className="mt-1 text-2xl font-extrabold text-slate-950 sm:text-3xl">База вопросов</h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
                 Гистология, физиология и органическая химия в одном месте. Выберите предмет и тип вопроса — откройте карточку, чтобы сразу увидеть эталон.
+                Микропрепараты с фото и подписями — в отдельном атласе, тренажёр открывается оттуда же.
               </p>
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2 text-xs">
+            <Link
+              href="/atlas"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50"
+            >
+              <Microscope className="h-3.5 w-3.5" /> Атлас микропрепаратов
+            </Link>
             <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
               {total} {plural(total, "вопрос", "вопроса", "вопросов")}
             </span>

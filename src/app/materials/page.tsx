@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, ExternalLink, File, FileText, Search, X, Presentation } from "lucide-react";
+import { BookOpen, ExternalLink, File, FileText, Microscope, Search, X, Presentation } from "lucide-react";
 import { getMaterialFileUrl, listMaterials, type ApiMaterial, hasToken } from "@/lib/api";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -129,9 +130,18 @@ export default function MaterialsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Материалы</h1>
-          <p className="page-subtitle">Документы и конспекты превращаются в страницы сайта. Оригинал остаётся доступным отдельно.</p>
+          <p className="page-subtitle">
+            Документы и конспекты превращаются в страницы сайта. Оригинал остаётся доступным отдельно.
+            Фотографии микропрепаратов удобнее смотреть в атласе — там только препараты, без схем и методичек.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/atlas"
+            className="btn-pill inline-flex items-center gap-1.5 text-sm font-semibold"
+          >
+            <Microscope className="h-4 w-4" /> Атлас микропрепаратов
+          </Link>
           <label className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input type="search" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void load(); }} placeholder="Поиск по материалам…" className="w-64 rounded-pill border border-slate-200 bg-white/90 py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/25" />

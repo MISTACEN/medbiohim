@@ -22,6 +22,7 @@ import {
   Search,
   Landmark,
   ListChecks,
+  Microscope,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/schedule", label: "Расписание", icon: Calendar },
   { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
   { href: "/subjects", label: "Предметы", icon: BookOpen },
+  { href: "/atlas", label: "Атлас", icon: Microscope },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
   { href: "/academic", label: "Учебный план", icon: ClipboardList },
   { href: "/assignments", label: "Отработки", icon: ListChecks },

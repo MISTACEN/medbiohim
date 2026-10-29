@@ -1,19 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Menu } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu, Microscope } from "lucide-react";
 import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
   getTraining, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
   type TrainingLabelMode, type TrainingLayout, type TrainingQuestion,
 } from "@/lib/content-api";
-import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
+import { compareLessons, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
-import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
-import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
+import { topicLabel, ImageBox, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
+import { HistologyAtlas } from "@/components/trainers/HistologyAtlas";
+import { groupAtlasCards } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
 
 type AnswerRow = {
@@ -53,9 +54,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const [layout, setLayout] = useState<TrainingLayout>("top");
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [section, setSection] = useState<"atlas" | "trainer">("atlas");
-  const [atlasTopic, setAtlasTopic] = useState<string>("");
-  const [atlasSort, setAtlasSort] = useState<"plan" | "name-asc" | "name-desc">("plan");
-  const [lightbox, setLightbox] = useState<any | null>(null);
+  const [atlasOpen, setAtlasOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -109,6 +108,28 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     if (trainingFromQuery) void loadSession(trainingFromQuery);
   }, [trainingFromQuery]);
+
+  // Прямые ссылки из атласа и поиска:
+  //  ?cards=<id,id> — сразу выбранные карточки,  ?topic=<занятие> — тема,
+  //  ?all=1 — все карточки,  ?card=<id> — открытый препарат в атласе.
+  const cardsParam = searchParams.get("cards") || "";
+  const topicParam = searchParams.get("topic") || "";
+  const allParam = searchParams.get("all") || "";
+  const kindParam = searchParams.get("kind") || "";
+  const cardParam = searchParams.get("card") || "";
+  const deepLinkApplied = useRef(false);
+  useEffect(() => {
+    if (deepLinkApplied.current || !feedItems.length) return;
+    if (!cardsParam && !topicParam && !allParam) return;
+    deepLinkApplied.current = true;
+    if (topicParam) setSelectedTopics([topicParam]);
+    if (cardsParam) setSelectedCardIds(cardsParam.split(",").map((id) => id.trim()).filter(Boolean));
+    if (kindParam === "preparation" || kindParam === "electronogram" || kindParam === "all") {
+      setContentType(kindParam);
+    }
+    if (allParam === "1") setAllQuestions(true);
+    setSection("trainer");
+  }, [feedItems.length, cardsParam, topicParam, allParam, kindParam]);
 
   const start = async () => {
     setWorking(true);
@@ -191,6 +212,8 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const current = answers[active];
   const answered = answers.filter((x) => x.user_answer != null || x.is_skipped).length;
   const wrong = answers.filter((x) => x.is_correct === false);
+  // Атлас «под рукой» открывается на теме текущего препарата.
+  const currentLesson = current ? lessonKeyOf((current.question_snapshot || {}) as never) : "";
 
   // Фильтр атласа — по темам занятий (название темы плана; если привязки к
   // плану ещё нет, lessonKeyOf возвращается к первой метке карточки).
@@ -206,54 +229,14 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     return Array.from(set).sort(compareLessons);
   }, [topics, feedItems, contentType]);
 
-  const atlasItems = useMemo(() => {
-    let list = feedItems.slice();
-    if (contentType === "electronogram") list = list.filter(isElectronogramCard);
-    else if (contentType === "preparation") list = list.filter((x) => !isElectronogramCard(x));
-    if (atlasTopic) list = list.filter((x) => lessonKeyOf(x) === atlasTopic);
-    const seenId = new Set<string>(), seenKey = new Set<string>(), seenEmName = new Set<string>();
-    const deduped: any[] = [];
-    for (const item of list) {
-      const id = String(item?.id || "");
-      const src = String(item?.source_key || item?.preparation?.imagePath || item?.preparation?.imageUrl || "");
-      const name = String(item?.preparation?.name || "").trim().toLowerCase();
-      const em = isElectronogramCard(item);
-      if (id && seenId.has(id)) continue;
-      if (src && seenKey.has(src)) continue;
-      if (em && name && seenEmName.has(name)) continue;
-      if (id) seenId.add(id);
-      if (src) seenKey.add(src);
-      if (em && name) seenEmName.add(name);
-      deduped.push(item);
-    }
-    return deduped;
-  }, [feedItems, contentType, atlasTopic]);
-
-  const atlasByTopic = useMemo(() => {
-    const map = new Map<string, any[]>();
-    // Электронограммы без фильтра по занятию показываем одним блоком: только
-    // так выдерживается порядок трёх рядов атласа из методички.
-    const singleEmBlock = contentType === "electronogram" && !atlasTopic;
-    for (const item of atlasItems) {
-      const key = singleEmBlock ? "Электронограммы · порядок атласа" : (atlasTopic || lessonKeyOf(item));
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(item);
-    }
-    // Внутри занятия: препараты по алфавиту, затем электронограммы в
-    // фиксированном порядке атласа (три ряда).
-    const within = (a: any, b: any) => {
-      const ea = isElectronogramCard(a), eb = isElectronogramCard(b);
-      const byName = String(a.preparation?.name || "").localeCompare(String(b.preparation?.name || ""), "ru");
-      if (atlasSort === "name-asc") return byName;
-      if (atlasSort === "name-desc") return -byName;
-      if (ea !== eb) return ea ? 1 : -1;
-      if (ea && eb) return emPlanRank(a) - emPlanRank(b) || byName;
-      return byName;
-    };
-    return Array.from(map.entries())
-      .sort((a, b) => compareLessons(a[0], b[0]))
-      .map(([title, items]) => [title, items.sort(within)] as [string, any[]]);
-  }, [atlasItems, atlasTopic, atlasSort, contentType]);
+  // Список для выбора конкретных карточек: тот же порядок, что и в атласе.
+  const atlasByTopic = useMemo(
+    () =>
+      groupAtlasCards(feedItems, { kind: contentType, sort: "plan" }).map(
+        (group) => [group.lesson, group.items] as [string, any[]],
+      ),
+    [feedItems, contentType],
+  );
 
   const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
   const hasMoreHistory = sessions.length > 4;
@@ -282,7 +265,9 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
           <header>
             <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предметам</Link>
             <h1 className="page-title mt-3">Микропрепараты</h1>
-            <p className="page-subtitle">Полный атлас по материалам тренажёра.</p>
+            <p className="page-subtitle">
+              Атлас — только препараты; схемы, методички, тесты и учебники остаются в материалах предмета.
+            </p>
           </header>
         )}
         {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас с подписями или тренажёр.</p></div>)}
@@ -293,67 +278,16 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {section === "atlas" && (
-          <div className="space-y-5">
-            <section className="card space-y-4 p-5">
-              <div>
-                <h2 className="font-bold">Тип</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {([["all", "Всё"], ["preparation", "Микропрепараты"], ["electronogram", "Электронограммы"]] as [TrainingContentType, string][]).map((x) => (
-                    <label key={x[0]} className={"rounded-xl border px-4 py-2 text-sm " + (contentType === x[0] ? "border-indigo-400 bg-indigo-50" : "")}>
-                      <input type="radio" className="mr-2" checked={contentType === x[0]} onChange={() => { setContentType(x[0]); setAtlasTopic(""); }} />{x[1]}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h2 className="font-bold">Темы занятий</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setAtlasTopic("")} className={"rounded-xl border px-3 py-2 text-sm " + (!atlasTopic ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>Все темы</button>
-                  {topicsForSetup.map((tg) => (
-                    <button key={tg} type="button" onClick={() => setAtlasTopic(atlasTopic === tg ? "" : tg)} className={"rounded-xl border px-3 py-2 text-sm " + (atlasTopic === tg ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>{topicLabel(tg)}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <label htmlFor="histology-atlas-sort" className="text-sm font-semibold">Сортировка препаратов</label>
-                <select
-                  id="histology-atlas-sort"
-                  value={atlasSort}
-                  onChange={(event) => setAtlasSort(event.target.value as typeof atlasSort)}
-                  className="rounded-xl border bg-white px-3 py-2 text-sm"
-                >
-                  <option value="plan">По плану занятий</option>
-                  <option value="name-asc">По названию: А—Я</option>
-                  <option value="name-desc">По названию: Я—А</option>
-                </select>
-              </div>
-            </section>
-            {atlasByTopic.length === 0 ? (
-              <div className="card p-8 text-center text-sm text-slate-500">Нет фото по выбранному фильтру.</div>
-            ) : atlasByTopic.map(([topic, items]) => (
-              <section key={topic} className="card p-5">
-                <h3 className="text-lg font-bold">{topicLabel(topic)}</h3>
-                <p className="mt-1 text-xs text-slate-500">{items.length} фото · нажмите, чтобы открыть препарат</p>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                  {items.map((card: any) => (
-                    <button key={card.id} type="button" onClick={() => setLightbox(card)} className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-indigo-300">
-                      <div className="relative aspect-square bg-slate-100">
-                        <AtlasThumb id={String(card.id)} />
-                        <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
-                          <Maximize2 className="h-3 w-3" /> Открыть
-                        </span>
-                      </div>
-                      <div className="p-2 text-xs font-semibold text-slate-800 line-clamp-2">{card.preparation?.name || "Препарат"}</div>
-                      <div className="px-2 pb-1 text-[10px] font-medium text-indigo-500 line-clamp-1">{topicLabel(lessonKeyOf(card))}</div>
-                      {/(кров|эритроцит|лейкоцит|лимфоцит|нейтрофил|эозинофил|базофил|моноцит|тромбоцит|blood|smear)/i.test(`${card.preparation?.name || ""} ${lessonKeyOf(card)}`) ? (
-                        <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wide text-rose-700">Мазок крови</div>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          <HistologyAtlas
+            cards={feedItems}
+            loading={loading}
+            focusCardId={cardParam || undefined}
+            onTrain={({ ids, lesson: chosenLesson }) => {
+              setSelectedTopics(chosenLesson ? [chosenLesson] : []);
+              setSelectedCardIds(ids);
+              setSection("trainer");
+            }}
+          />
         )}
 
         {section === "trainer" && (
@@ -479,15 +413,6 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
           </div>
         )}
 
-        {lightbox && (
-          <TrainerImageViewer
-            id={String(lightbox.id)}
-            title={String(lightbox.preparation?.name || "Гистологический препарат")}
-            lesson={topicLabel(lessonKeyOf(lightbox))}
-            captions={Array.isArray(lightbox.preparation?.captions) ? lightbox.preparation.captions : []}
-            onClose={() => setLightbox(null)}
-          />
-        )}
       </div>
     );
   }
@@ -533,7 +458,17 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
       <div className="sticky top-16 z-20 -mx-1 rounded-2xl border bg-white/95 p-3 shadow-sm backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0 text-sm text-slate-500">Отвечено {answered} / {answers.length}</div>
-          {finishBar}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAtlasOpen(true)}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-300"
+              title="Атлас препаратов по теме"
+            >
+              <Microscope className="h-4 w-4" /> Атлас
+            </button>
+            {finishBar}
+          </div>
         </div>
         {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
         {layout === "top" && <div className="mt-2">{statusNav}</div>}
@@ -565,8 +500,35 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             <button type="button" disabled={active >= answers.length - 1} onClick={() => setActive(active + 1)} className="min-h-11 flex-1 rounded-xl border px-4 py-2">
               Далее<ChevronRight className="inline h-4 w-4" />
             </button>
+          </div>          </>
+        )}
+
+      {atlasOpen && (
+        <div
+          className="fixed inset-0 z-50 flex bg-slate-950/55"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Атлас препаратов"
+        >
+          <button type="button" className="hidden flex-1 sm:block" onClick={() => setAtlasOpen(false)} aria-label="Закрыть атлас" />
+          <div className="h-full w-full max-w-2xl overflow-y-auto bg-slate-50 p-3 shadow-2xl sm:p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-sm font-bold text-slate-900">
+                {currentLesson ? topicLabel(currentLesson) : "Атлас препаратов"}
+              </div>
+              <Link href="/atlas" className="text-xs font-semibold text-indigo-700 hover:underline">
+                Открыть полный атлас →
+              </Link>
+            </div>
+            <HistologyAtlas
+              cards={feedItems}
+              compact
+              initialLesson={currentLesson}
+              onClose={() => setAtlasOpen(false)}
+              showAtlasLink={false}
+            />
           </div>
-        </>
+        </div>
       )}
     </div>
   );

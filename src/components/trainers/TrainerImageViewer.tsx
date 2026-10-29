@@ -1,9 +1,9 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { getTrainerImageUrl, retryTrainerImage } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 
@@ -13,9 +13,25 @@ type Props = {
   lesson?: string;
   captions?: string[];
   onClose: () => void;
+  /** Листание препаратов внутри атласа без возврата к сетке. */
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number };
+  /** Дополнительные действия в подвале просмотрщика. */
+  actions?: ReactNode;
 };
 
-export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }: Props) {
+export function TrainerImageViewer({
+  id,
+  title,
+  lesson,
+  captions = [],
+  onClose,
+  onPrev,
+  onNext,
+  position,
+  actions,
+}: Props) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
@@ -109,6 +125,32 @@ export function TrainerImageViewer({ id, title, lesson, captions = [], onClose }
               {captions.map((caption, index) => <li key={index}>{caption}</li>)}
             </ul>
           ) : null}
+          {onPrev || onNext || position ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onPrev}
+                disabled={!onPrev}
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" /> Назад
+              </button>
+              {position ? (
+                <span className="px-1 text-xs font-semibold text-slate-500">
+                  {position.index} / {position.total}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={onNext}
+                disabled={!onNext}
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
+              >
+                Далее <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+          {actions}
           <div className="flex flex-wrap gap-2">
             <Link
               href="/subjects/histology?tab=materials"
