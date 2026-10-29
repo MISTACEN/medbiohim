@@ -795,7 +795,12 @@ export async function health(){return api<any>("/health")}
 export async function presenceHeartbeat(){return api<any>("/presence/heartbeat",{method:"POST",body:"{}"})}
 export async function adminPresence(within=180){return api<any>("/admin/presence?within="+encodeURIComponent(String(within)))} 
 export async function listSubjects(course?:number,semester?:number,options:RequestInit={}){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<SubjectListData>(`/subjects${q.toString()?`?${q}`:""}`,options);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isSubjectCard)};return r}
-export async function listGroups(){return api<any>("/groups")}
+export async function listGroups(includeInactive=false){return api<any>(`/groups${includeInactive?"?include_inactive=1":""}`)}
+/** Админский справочник предметов: с архивными строками (для восстановления). */
+export async function listSubjectsAdmin(){return api<any>("/subjects?include_inactive=1")}
+export async function groupMembers(id:string){return api<any>("/groups/" + encodeURIComponent(id) + "/members") as any;}
+export async function addGroupMember(id:string,payload:{email?:string;user_id?:string}){return api<any>("/groups/" + encodeURIComponent(id) + "/members",{method:"POST",body:JSON.stringify(payload)}) as any;}
+export async function removeGroupMember(id:string,userId:string){return api<any>("/groups/" + encodeURIComponent(id) + "/members/" + encodeURIComponent(userId),{method:"DELETE"}) as any;}
 export async function trackExternalPlatformClick(payload:{platform:string;title:string;href:string;subject_slug?:string|null}){return api<any>("/external-platforms/click",{method:"POST",body:JSON.stringify(payload)})}
 export async function externalPlatformStats(){return api<any>("/external-platforms/stats")}
 /**
