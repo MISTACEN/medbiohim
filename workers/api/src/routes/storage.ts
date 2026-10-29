@@ -6,6 +6,14 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const storage = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+// Аватар — маленькая картинка, которую грузят с телефона: отдельный лимит,
+// чтобы нельзя было залить 12 МБ в профиль и замедлить ленту сообщества.
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const AVATAR_TYPES = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+]);
 const ALLOWED_TYPES = new Set([
   "image/jpeg", "image/png", "image/webp", "image/gif",
   "application/pdf",
@@ -210,6 +218,166 @@ storage.delete("/object", requireAuth, async (c) => {
   } catch (error) {
     console.error("[storage:delete]", error);
     const { body, status } = fail("STORAGE_ERROR", "Не удалось удалить файл", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
+// --- SA3: аватар профиля -------------------------------------------------
+// Файл кладётся по уникальному ключу (uuid в имени), поэтому старую картинку
+// можно удалить сразу, а новая ссылка не столкнётся с кэшем браузера.
+
+type AvatarRow = { avatar_key: string | null };
+
+async function readAvatarKey(supabase: any, userId: string): Promise<{ key: string | null; error: unknown }> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("avatar_key")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return { key: null, error };
+  return { key: (data as AvatarRow | null)?.avatar_key ?? null, error: null };
+}
+
+storage.post("/avatar", requireAuth, async (c) => {
+  const rid = requestId();
+  const bucket = getBucket(c.env);
+  if (!bucket) {
+    const { body, status } = fail("NOT_CONFIGURED", "Хранилище для аватара не настроено", 503, rid);
+    return c.json(body, status as 503);
+  }
+
+  let form: FormData;
+  try {
+    form = await c.req.formData();
+  } catch {
+    const { body, status } = fail("VALIDATION", "Ожидается multipart/form-data с полем file", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const fileValue: unknown = form.get("file");
+  if (
+    !fileValue ||
+    typeof fileValue !== "object" ||
+    !("size" in fileValue) ||
+    !("type" in fileValue) ||
+    !("arrayBuffer" in fileValue)
+  ) {
+    const { body, status } = fail("VALIDATION", "Файл не передан", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const file = fileValue as File;
+  const ext = AVATAR_TYPES.get(file.type);
+  if (!ext) {
+    const { body, status } = fail("FILE_TYPE", "Аватар может быть только JPEG, PNG или WebP", 415, rid);
+    return c.json(body, status as 415);
+  }
+  if (file.size < 1 || file.size > MAX_AVATAR_BYTES) {
+    const { body, status } = fail("FILE_SIZE", "Размер аватара должен быть от 1 байта до 2 МБ", 413, rid);
+    return c.json(body, status as 413);
+  }
+
+  const user = c.get("user");
+  const supabase = c.get("supabase");
+  try {
+    const previous = await readAvatarKey(supabase, user.id);
+    if (previous.error) throw previous.error;
+
+    const key = `users/${user.id}/avatars/${crypto.randomUUID()}.${ext}`;
+    await bucket.put(key, file, { contentType: file.type, cache: "public, max-age=3600" });
+
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ avatar_key: key })
+      .eq("id", user.id);
+    if (updateError) {
+      // Файл уже в хранилище, но профиль не обновлён — убираем сироту.
+      try { await bucket.del(key); } catch { /* best effort */ }
+      throw updateError;
+    }
+
+    if (previous.key && previous.key !== key) {
+      try { await bucket.del(previous.key); } catch (cleanupError) {
+        // Не роняем успешную загрузку из-за неудачной уборки старого файла.
+        console.error("[storage:avatar:cleanup]", cleanupError);
+      }
+    }
+
+    return c.json(ok({ avatar_key: key, avatar_url: `/api/v1/storage/avatar/${encodeURIComponent(user.id)}` }, rid), 201);
+  } catch (error) {
+    console.error("[storage:avatar:upload]", error);
+    const { body, status } = fail("STORAGE_ERROR", "Не удалось сохранить аватар", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
+storage.get("/avatar/:userId", requireAuth, async (c) => {
+  const rid = requestId();
+  const bucket = getBucket(c.env);
+  if (!bucket) {
+    const { body, status } = fail("NOT_CONFIGURED", "Хранилище для аватара не настроено", 503, rid);
+    return c.json(body, status as 503);
+  }
+  const userId = String(c.req.param("userId") || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    const { body, status } = fail("VALIDATION", "Некорректный идентификатор пользователя", 422, rid);
+    return c.json(body, status as 422);
+  }
+
+  try {
+    const { key, error } = await readAvatarKey(c.get("supabase"), userId);
+    if (error) throw error;
+    if (!key) {
+      const { body, status } = fail("NOT_FOUND", "У пользователя нет загруженного аватара", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const object = await bucket.get(key);
+    return new Response(object.body, {
+      headers: {
+        "content-type": object.contentType || "application/octet-stream",
+        // Ключ уникален для каждой загрузки, поэтому кэш безопасен.
+        "cache-control": "private, max-age=3600",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  } catch (error) {
+    if (BlobError.is(error) && error.code === "not_found") {
+      // Ключ в профиле есть, объекта нет: показываем честный 404, а не 502.
+      const { body, status } = fail("NOT_FOUND", "Файл аватара не найден", 404, rid);
+      return c.json(body, status as 404);
+    }
+    console.error("[storage:avatar:get]", error);
+    const { body, status } = fail("STORAGE_ERROR", "Не удалось прочитать аватар", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
+storage.delete("/avatar", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const supabase = c.get("supabase");
+  const bucket = getBucket(c.env);
+  if (!bucket) {
+    const { body, status } = fail("NOT_CONFIGURED", "Хранилище для аватара не настроено", 503, rid);
+    return c.json(body, status as 503);
+  }
+  try {
+    const { key, error } = await readAvatarKey(supabase, user.id);
+    if (error) throw error;
+    if (!key) {
+      const { body, status } = fail("NOT_FOUND", "Загруженного аватара нет", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ avatar_key: null })
+      .eq("id", user.id);
+    if (updateError) throw updateError;
+    try { await bucket.del(key); } catch (cleanupError) {
+      console.error("[storage:avatar:delete-object]", cleanupError);
+    }
+    return c.json(ok({ deleted: true }, rid));
+  } catch (error) {
+    console.error("[storage:avatar:delete]", error);
+    const { body, status } = fail("STORAGE_ERROR", "Не удалось удалить аватар", 502, rid);
     return c.json(body, status as 502);
   }
 });

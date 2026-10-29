@@ -57,7 +57,29 @@ community.get("/posts", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Сообщество недоступно", 503, rid);
       return c.json(body, status as 503);
     }
-    return c.json(ok({ items: data || [], group_id: groupId || null }, rid));
+    // SA3: у поста показываем автора (имя + факт наличия аватара). Один
+    // запрос по списку авторов вместо join на каждый пост; наружу отдаём
+    // только имя и признак аватара — не профиль целиком.
+    const items = Array.isArray(data) ? [...data] : [];
+    const authorIds = [...new Set(items.map((post: any) => String(post.author_id || "")).filter(Boolean))];
+    if (authorIds.length) {
+      const { data: authors, error: authorsError } = await supabase
+        .from("users")
+        .select("id,full_name,avatar_key")
+        .in("id", authorIds);
+      if (authorsError) {
+        // Не роняем ленту из-за имён: посты важнее подписи автора.
+        console.error("[community:authors]", authorsError);
+      } else {
+        const byId = new Map((authors || []).map((row: any) => [String(row.id), row]));
+        for (const post of items as any[]) {
+          const author = byId.get(String(post.author_id || ""));
+          post.author_name = author?.full_name || null;
+          post.author_has_avatar = Boolean(author?.avatar_key);
+        }
+      }
+    }
+    return c.json(ok({ items, group_id: groupId || null }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Сообщество недоступно", 503, rid);
     return c.json(body, status as 503);

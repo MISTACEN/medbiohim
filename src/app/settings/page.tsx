@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useCallback, useEffect, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import clsx from "clsx";
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
 import { describeApiError } from "@/lib/errors";
+import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   changeAccountPassword,
@@ -45,6 +46,9 @@ function SettingsPageInner() {
   const [password2, setPassword2] = useState("");
   const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
   const [telegramStatus, setTelegramStatus] = useState<TelegramLinkStatus | null>(null);
+  // SA3: превью аватара — object URL для загруженного файла или внешний https.
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   const referenceThemes = THEMES.filter((t) => (t as { family?: string }).family === "reference");
   const otherThemes = THEMES.filter((t) => (t as { family?: string }).family !== "reference");
@@ -72,6 +76,71 @@ function SettingsPageInner() {
   }, [user?.name, user?.email]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Превью аватара: приоритет у загруженного файла (приватный прокси), иначе
+  // внешний https-адрес из профиля (например, Google). Ошибку сети не показываем
+  // баннером — просто остаются инициалы.
+  useEffect(() => {
+    let cancelled = false;
+    const userId = String(account?.user?.id || user?.id || "");
+    const external = String(account?.user?.avatar_url || "");
+    const uploaded = Boolean(account?.user?.has_uploaded_avatar);
+    if (!uploaded) {
+      setAvatarPreview(/^https:\/\//i.test(external) ? external : null);
+      return () => { cancelled = true; };
+    }
+    if (!userId) return () => { cancelled = true; };
+    void getAvatarUrl(userId).then((url) => {
+      if (!cancelled && url) setAvatarPreview(url);
+    });
+    return () => { cancelled = true; };
+  }, [account?.user?.id, account?.user?.avatar_url, account?.user?.has_uploaded_avatar, user?.id]);
+
+  async function onAvatarPick(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      setErr("Аватар может быть только JPEG, PNG или WebP");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setErr("Размер аватара — не больше 2 МБ");
+      return;
+    }
+    setAvatarBusy(true); setErr(null); setMsg(null);
+    const r = await uploadAvatar(file);
+    if (!r.ok) {
+      setAvatarBusy(false);
+      return setErr(describeApiError(r.error));
+    }
+    // Файл загружен сервером; перечитываем аккаунт, чтобы взять новый ключ,
+    // а не показывать optimistic-состояние.
+    forgetAvatar();
+    await load();
+    setAvatarBusy(false);
+    setMsg("Аватар обновлён");
+    if (refresh) void refresh();
+  }
+
+  async function onAvatarRemove() {
+    setAvatarBusy(true); setErr(null); setMsg(null);
+    const r = await deleteAvatar();
+    if (!r.ok) {
+      setAvatarBusy(false);
+      // 404 значит «уже нет загруженного» — это не ошибка для пользователя.
+      if (String((r.error as { code?: string }).code || "") === "NOT_FOUND") {
+        await load();
+        return setMsg("Загруженного аватара нет");
+      }
+      return setErr(describeApiError(r.error));
+    }
+    forgetAvatar();
+    await load();
+    setAvatarBusy(false);
+    setMsg("Аватар удалён");
+    if (refresh) void refresh();
+  }
 
   const recoveryFromQuery = searchParams.get("recovery") === "1";
   const linkedFromQuery = searchParams.get("linked") === "1" || searchParams.get("link") === "ok";
@@ -273,6 +342,47 @@ function SettingsPageInner() {
 
       <section className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><Mail className="h-5 w-5" /> Профиль</h2>
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-bold text-white"
+            style={{ background: "linear-gradient(135deg,var(--primary),var(--accent))" }}
+            aria-hidden={avatarPreview ? undefined : true}
+          >
+            {avatarPreview
+              ? /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarPreview} alt="Аватар" className="h-full w-full object-cover" />
+              : String(String(fullName || user?.name || "?").trim().charAt(0) || "?").toUpperCase()}
+          </div>
+          <div className="min-w-0 space-y-2">
+            <div className="text-xs text-[var(--muted)]">JPEG, PNG или WebP, до 2 МБ.</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className={clsx(
+                "cursor-pointer rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold",
+                avatarBusy && "pointer-events-none opacity-60"
+              )}>
+                {avatarBusy ? "Загрузка…" : avatarPreview ? "Заменить фото" : "Загрузить фото"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void onAvatarPick(e)} disabled={avatarBusy} />
+              </label>
+              {account?.user?.has_uploaded_avatar ? (
+                <button
+                  type="button"
+                  onClick={() => void onAvatarRemove()}
+                  disabled={avatarBusy}
+                  className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-60"
+                >
+                  Удалить фото
+                </button>
+              ) : null}
+            </div>
+            {account?.user?.avatar_url && !account?.user?.has_uploaded_avatar ? (
+              <div className="text-xs text-[var(--muted)]">
+                Сейчас показывается внешний аватар из{" "}
+                {String((account.user as { provider_hint?: string }).provider_hint || "подключённого сервиса")}.
+                Загрузка своего фото заменит его.
+              </div>
+            ) : null}
+          </div>
+        </div>
         <form onSubmit={onSaveProfile} className="space-y-3">
           <label className="block text-sm"><span className="mb-1 block text-xs text-[var(--muted)]">Имя</span>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" /></label>

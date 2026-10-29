@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createCommunityPost, listCommunityPosts, me } from "@/lib/api";
+import { createCommunityPost, getAvatarUrl, listCommunityPosts, me } from "@/lib/api";
 import { Loader2, Send } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 
@@ -9,11 +9,36 @@ type Post = {
   id: string;
   title: string;
   body: string;
+  author_id?: string;
   author_name?: string;
+  author_has_avatar?: boolean;
   author?: string;
   created_at?: string;
   createdAt?: string;
 };
+
+/**
+ * SA3: аватар автора. Загруженный файл отдаётся только через
+ * аутентифицированный прокси, поэтому сначала берём object URL; если его нет —
+ * остаются инициалы (внешний avatar_url в ленте не раскрываем).
+ */
+function AuthorAvatar({ userId, name, hasAvatar }: { userId?: string; name: string; hasAvatar?: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId || !hasAvatar) { setUrl(null); return () => { cancelled = true; }; }
+    void getAvatarUrl(userId).then((value) => { if (!cancelled) setUrl(value); });
+    return () => { cancelled = true; };
+  }, [userId, hasAvatar]);
+  return (
+    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary/15 text-sm font-bold text-primary">
+      {url
+        ? /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={url} alt="" className="h-full w-full object-cover" />
+        : name.slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -133,9 +158,7 @@ export default function CommunityPage() {
             return (
               <li key={p.id} className="card p-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
-                    {author.slice(0, 2).toUpperCase()}
-                  </div>
+                  <AuthorAvatar userId={p.author_id} name={author} hasAvatar={p.author_has_avatar} />
                   <div>
                     <div className="font-semibold">{author}</div>
                     <div className="text-xs text-slate-500">{date || "—"}</div>

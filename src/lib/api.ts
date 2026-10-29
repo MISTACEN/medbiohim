@@ -552,8 +552,93 @@ export async function getTrainerImageUrl(id:string):Promise<string|null>{
   if(cacheKey)trainerImageInflight.set(cacheKey,promise);
   return promise;
 }
-const materialFileCache=new Map<string,string>();
+// --- SA3: аватар ---------------------------------------------------------
+// Загруженный аватар отдаётся только аутентифицированным прокси, поэтому в
+// <img src> его нельзя подставить напрямую: скачиваем блоб с Bearer-токеном
+// и кэшируем object URL на время жизни вкладки (как в тренировочных картинках).
+const avatarCache=new Map<string,string>();
+const avatarInflight=new Map<string,Promise<string|null>>();
 
+/** Сбросить кэш аватара: после загрузки/удаления старая картинка уже неверна. */
+export function forgetAvatar(userId?:string){
+  if(!userId){
+    for(const url of avatarCache.values()){try{URL.revokeObjectURL(url);}catch{}}
+    avatarCache.clear();
+    avatarInflight.clear();
+    return;
+  }
+  const scope=cacheUserScope();
+  const key=scope===null?null:`${scope}|${userId}`;
+  if(!key)return;
+  const cached=avatarCache.get(key);
+  if(cached){try{URL.revokeObjectURL(cached);}catch{}}
+  avatarCache.delete(key);
+  avatarInflight.delete(key);
+}
+
+/** Object URL аватара пользователя или null, если аватара нет/он недоступен. */
+export async function getAvatarUrl(userId:string):Promise<string|null>{
+  if(typeof window==="undefined")return null;
+  const idKey=String(userId);
+  const userScope=cacheUserScope();
+  const cacheKey=userScope===null?null:`${userScope}|${idKey}`;
+  if(cacheKey){
+    const cached=avatarCache.get(cacheKey);
+    if(cached)return cached;
+    const pending=avatarInflight.get(cacheKey);
+    if(pending)return pending;
+  }
+  const run=async()=>{
+    let token=getToken();
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        const bust=attempt===0?"":`?retry=${attempt}-${Date.now()}`;
+        const res=await fetch(`${API_URL}/storage/avatar/${encodeURIComponent(idKey)}${bust}`,{
+          headers:token?{Authorization:`Bearer ${token}`}:{},
+          cache:"no-store",
+          signal:AbortSignal.timeout(12000),
+        });
+        if(res.status===401&&attempt===0){
+          const refreshed=await refreshAccessToken();
+          if(refreshed){token=refreshed;continue;}
+        }
+        if(res.ok){
+          const blob=await res.blob();
+          if(blob.size>0){
+            const url=URL.createObjectURL(blob);
+            if(cacheKey&&cacheUserScope()===userScope)avatarCache.set(cacheKey,url);
+            return url;
+          }
+        }
+        // 404 — аватара просто нет; повторять бессмысленно.
+        if([400,401,403,404,422].includes(res.status))return null;
+      }catch{}
+      if(attempt<1)await new Promise(resolve=>setTimeout(resolve,200*(attempt+1)));
+    }
+    return null;
+  };
+  const promise=run().finally(()=>{if(cacheKey)avatarInflight.delete(cacheKey);});
+  if(cacheKey)avatarInflight.set(cacheKey,promise);
+  return promise;
+}
+
+/** Загрузить аватар (JPEG/PNG/WebP до 2 МБ). Сервер проверяет тип и размер сам. */
+export async function uploadAvatar(file:File):Promise<ApiResult<{avatar_key:string;avatar_url:string}>>{
+  const form=new FormData();
+  form.append("file",file);
+  const result=await api<{avatar_key:string;avatar_url:string}>("/storage/avatar",{method:"POST",body:form});
+  if(result.ok)forgetAvatar();
+  return result;
+}
+
+/** Удалить загруженный аватар (внешний avatar_url из Google не затрагивается). */
+export async function deleteAvatar():Promise<ApiResult<{deleted:boolean}>>{
+  const result=await api<{deleted:boolean}>("/storage/avatar",{method:"DELETE"});
+  if(result.ok)forgetAvatar();
+  return result;
+}
+
+const materialFileCache=new Map<string,string>();
 export async function getMaterialFileUrl(id:string):Promise<string|null>{
   if(typeof window==="undefined")return null;
   const idKey=String(id);

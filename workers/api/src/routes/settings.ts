@@ -34,7 +34,7 @@ async function readAccount(c: any) {
   const supabase = c.get("supabase");
   try {
     const [{ data: profile, error: profileError }, { data: prefRow, error: prefError }] = await Promise.all([
-      supabase.from("users").select("id,full_name,avatar_url,course_number,semester").eq("id", user.id).maybeSingle(),
+      supabase.from("users").select("id,full_name,avatar_url,avatar_key,course_number,semester").eq("id", user.id).maybeSingle(),
       supabase.from("user_preferences").select("preferences").eq("user_id", user.id).maybeSingle(),
     ]);
     if (profileError) throw profileError;
@@ -73,6 +73,10 @@ async function readAccount(c: any) {
         phone: user.phone || null,
         full_name: profile?.full_name || metadata.full_name || metadata.name || null,
         avatar_url: profile?.avatar_url || metadata.avatar_url || null,
+        // SA3: загруженный файл показывается через аутентифицированный прокси;
+        // ключ объекта наружу не отдаём, только факт наличия и адрес.
+        has_uploaded_avatar: Boolean(profile?.avatar_key),
+        avatar_proxy_url: profile?.avatar_key ? `/api/v1/storage/avatar/${encodeURIComponent(user.id)}` : null,
         course_number: profile?.course_number ?? null,
         semester: profile?.semester ?? null,
         created_at: user.created_at || null,

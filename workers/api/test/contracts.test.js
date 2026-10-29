@@ -369,3 +369,45 @@ test("admin test-question editor covers text, options, answer and type via the s
   assert.match(page, /removeOption/);
   assert.match(page, /Правильный ответ \/ объяснение/);
 });
+
+test("avatar upload is authenticated, size/type limited and served through a private proxy (SA3)", async () => {
+  const storage = await source("../src/routes/storage.ts");
+  const uploadStart = storage.indexOf('storage.post("/avatar"');
+  assert.ok(uploadStart >= 0, "avatar upload route exists");
+  const upload = storage.slice(uploadStart, storage.indexOf('storage.get("/avatar/:userId"'));
+  assert.match(upload, /requireAuth/);
+  assert.match(upload, /MAX_AVATAR_BYTES/);
+  assert.match(upload, /AVATAR_TYPES\.get\(file\.type\)/, "avatar type is checked against an allowlist");
+  // Внешний https-аватар остаётся в avatar_url, поэтому загруженный файл живёт
+  // в отдельном ключе, а не в подписанной ссылке с истечением.
+  assert.match(upload, /avatar_key: key/);
+  assert.match(upload, /users\/\$\{user\.id\}\/avatars\//);
+  assert.match(upload, /bucket\.del\(previous\.key\)/, "старый файл удаляется после замены");
+
+  const proxyStart = storage.indexOf('storage.get("/avatar/:userId"');
+  const proxy = storage.slice(proxyStart, storage.indexOf('storage.delete("/avatar"'));
+  assert.match(proxy, /requireAuth/);
+  assert.match(proxy, /readAvatarKey\(/, "прокси читает ключ из профиля, а не из URL");
+  assert.match(proxy, /cache-control": "private/);
+  assert.match(proxy, /BlobError\.is\(error\)/, "отсутствующий объект отдаётся как честный 404");
+
+  const delStart = storage.indexOf('storage.delete("/avatar"');
+  const del = storage.slice(delStart);
+  assert.match(del, /requireAuth/);
+  assert.match(del, /avatar_key: null/);
+
+  // Профиль отдаёт только признак и адрес прокси — сам ключ хранилища наружу не уходит.
+  const settings = await source("../src/routes/settings.ts");
+  assert.match(settings, /has_uploaded_avatar:/);
+  assert.match(settings, /avatar_proxy_url:/);
+  assert.doesNotMatch(settings, /avatar_key: profile/);
+
+  // Лента сообщества подписывает посты автором, не раскрывая профиль целиком.
+  const community = await source("../src/routes/community.ts");
+  assert.match(community, /author_name/);
+  assert.match(community, /author_has_avatar/);
+  assert.doesNotMatch(community, /select\("\*"\)/);
+
+  const migration = await source("../../../database/migrations/20261029_user_avatar.sql");
+  assert.match(migration, /add column if not exists avatar_key text/);
+});
