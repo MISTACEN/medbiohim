@@ -19,6 +19,9 @@ test("canonical API mounts protected administration endpoints", async () => {
     'admin.post("/content/import"',
     'admin.post("/content/package/import"',
     'admin.get("/telegram/chats"',
+    'admin.get("/telegram/ai-status"',
+    'admin.get("/telegram/messages"',
+    'admin.post("/telegram/messages/:id/publish"',
     'admin.post("/telegram/set-webhook"',
   ]) assert.ok(routes.includes(contract), "missing admin contract: " + contract);
 });

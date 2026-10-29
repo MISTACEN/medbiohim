@@ -1018,3 +1018,63 @@ Telegram: страница больше не уходит на t.me; бот от
   добавлять карточку без изображения и методических данных нельзя.
 - Полный вход в браузере не прогнан: тестового аккаунта нет, а создавать
   пользователя в прод-БД без разрешения нельзя.
+
+## Сессия 17 (2026-10-29): Telegram-бот — рабочая сортировка на Cloudflare AI
+
+### Что было сломано
+
+- Бот пересылал сообщения групп в API, но API не имел общего секрета:
+  `/api/v1/telegram/ingest` отвечал 503, поэтому ни один чат не попадал в
+  `telegram_bot_chats` (проверено по прод-БД: 0 строк).
+- Классификатор отправлял в GigaChat только сообщения, где эвристика уже
+  нашла слово «дз»; остальное молча уходило в «other». Это противоречило
+  исходной задаче — нейросеть должна сортировать всё.
+- Прямой GigaChat из Workers не работает: цепочка НУЦ Минцифры не входит в
+  хранилище Cloudflare (`SELF_SIGNED_CERT_IN_CHAIN`).
+- Админка `/admin/telegram` показывала только чаты: сообщения с низкой
+  уверенностью нельзя было увидеть и опубликовать вручную.
+
+### Что сделано
+
+- `workers/api/src/lib/workers-ai.ts`: клиент Cloudflare Workers AI, биндинг
+  `AI`, модель `@cf/meta/llama-3.1-8b-instruct-fp8`, таймаут 25 с,
+  защита от пустого ответа. Ключи и сертификаты не нужны.
+- `workers/api/src/lib/telegram-classify.ts`: AI получает **каждое**
+  содержательное сообщение; Cloudflare AI по умолчанию, GigaChat только при
+  `AI_SORT_PROVIDER=gigachat|auto`. Срок принимается только если модель
+  процитировала его из текста (`verifiedDueHint`), дата считается `parseDueAt`.
+  Добавлены падежи дней недели и сильные пары «действие + объект» для fallback.
+- `workers/api/src/routes/telegram-ingest.ts`: секрет `TELEGRAM_INGEST_SECRET`
+  (fallback на webhook-секрет), подтверждение только для задания/материала,
+  обычная болтовня не получает ответа.
+- `workers/api/src/routes/admin.ts`: `GET /admin/telegram/ai-status`,
+  сообщения с категорией/уверенностью/предметом/сроком, ручная публикация.
+- `src/app/admin/telegram/page.tsx`: статус Cloudflare AI, список последних
+  сообщений, кнопка «Создать задание», фильтр по чату.
+- `integrations/telegram-bot-cloudflare`: URL ingest в `wrangler.toml`,
+  подтверждение в группу, тест на ответ API.
+- `docs/TELEGRAM-BOT-PIPELINE-2026-10-29.md`: архитектура и настройка.
+
+### Проверки
+
+| команда | результат |
+| --- | --- |
+| `cd workers/api && npx tsc --noEmit` | 0 |
+| `cd workers/api && npm test` | 235/235 |
+| `cd workers/api && npx wrangler deploy --dry-run` | OK, биндинг `AI` виден |
+| `cd integrations/telegram-bot-cloudflare && npm test` | 32/32 |
+| `npx tsc --noEmit` (корень) | 0 |
+
+### Что осталось настроить вручную
+
+Один общий секрет на двух воркерах (значение не коммитится):
+
+```bash
+openssl rand -hex 32
+cd workers/api && npx wrangler secret put TELEGRAM_INGEST_SECRET --name medbiohim-api
+cd ../../integrations/telegram-bot-cloudflare && npx wrangler secret put TELEGRAM_INGEST_SECRET --name medbiohim-telegram
+```
+
+После этого — «Настроить webhook» в `/admin/telegram`, отключить Privacy Mode
+и привязать чат к группе. Живой E2E не прогнан: нет Cloudflare-авторизации и
+бота-токена в этой сессии; без секрета API вернёт 503.

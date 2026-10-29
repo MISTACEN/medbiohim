@@ -13,7 +13,10 @@
 #   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY
 #   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_BLOB_TOKEN
 #   OPENAI_API_KEY (optional)
-#   TELEGRAM_WEBHOOK_SECRET, TELEGRAM_BOT_USERNAME (optional)
+#   GIGACHAT_CREDENTIALS (optional) — только если AI_SORT_PROVIDER=auto|gigachat
+#   Сортировка Telegram по умолчанию — Cloudflare Workers AI (биндинг AI ниже).
+#   TELEGRAM_WEBHOOK_SECRET / TELEGRAM_INGEST_SECRET — общий секрет с ботом
+#   TELEGRAM_BOT_USERNAME (optional)
 #   Telegram Mini App login (POST /auth/telegram/webapp) verifies initData and needs ONE of:
 #     1. TELEGRAM_BOT_TOKEN set here — validated locally in this Worker, or
 #     2. TELEGRAM_BOT_VERIFY_URL (a [vars] entry, see below) plus a shared secret
@@ -31,6 +34,10 @@ compatibility_flags = ["nodejs_compat"]
 
 workers_dev = true
 
+# Workers AI: без ключей и сертификатов. Бот сортирует сообщения здесь.
+[ai]
+binding = "AI"
+
 # SA6: раз в сутки исполняем запросы на удаление аккаунта с истёкшим grace-периодом.
 # Время UTC; результат пишется в логи воркера как [account-deletion-sweep].
 [triggers]
@@ -43,6 +50,9 @@ UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io"
 # Mini App initData verification is delegated to the bot Worker (it owns the bot token).
 # Needs a shared secret: TELEGRAM_INTERNAL_SECRET or TELEGRAM_WEBHOOK_SECRET.
 TELEGRAM_BOT_VERIFY_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-initdata"
+# Cloudflare Workers AI — основной сортировщик. GigaChat не обязателен.
+AI_SORT_PROVIDER = "cloudflare"
+CLOUDFLARE_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8"
 
 # Fallback only for routes still 501 on this Worker. Not a second production API.
 [[services]]
@@ -52,7 +62,10 @@ service = "medbiohim-api-shadow"
 [env.production]
 name = "medbiohim-api"
 workers_dev = false
-vars = { APP_ENV = "production", CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000", UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io" }
+vars = { APP_ENV = "production", CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000", UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io", AI_SORT_PROVIDER = "cloudflare", CLOUDFLARE_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8" }
+
+[env.production.ai]
+binding = "AI"
 
 [[env.production.services]]
 binding = "MEDBIOHIM_UPSTREAM"

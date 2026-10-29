@@ -59,6 +59,7 @@ import adminSchedule from "./routes/admin-schedule";
 import histology from "./routes/histology";
 import files from "./routes/files";
 import telegram from "./routes/telegram";
+import telegramIngest from "./routes/telegram-ingest";
 import labs from "./routes/labs";
 import attestations from "./routes/attestations";
 import adminAttestations from "./routes/admin-attestations";
@@ -161,6 +162,7 @@ v1.route("/sessions", sessions);
 v1.route("/settings", settings);
 // SA6: экспорт данных аккаунта и удаление с grace-периодом (/account/export, /account/deletion).
 v1.route("/account", accountData);
+v1.route("/telegram", telegramIngest);
 v1.route("/telegram", telegram);
 v1.route("/presence", presence);
 v1.route("/community", community);

@@ -1082,6 +1082,9 @@ export async function adminSaveSchedule(payload:Record<string,unknown>): Promise
 export async function adminSetTelegramWebhook(): Promise<any> { return api("/admin/telegram/set-webhook", { method:"POST", body:"{}" }) as any; }
 export async function adminSetUserRole(userId:string,role:string,action="assign"): Promise<any> { return api("/admin/users/roles", { method:"POST", body:JSON.stringify({user_id:userId,role,action}) }) as any; }
 export async function adminTelegramChats(): Promise<any> { return api("/admin/telegram/chats") as any; }
+export async function adminTelegramAiStatus(): Promise<any> { return api("/admin/telegram/ai-status") as any; }
+export async function adminTelegramMessages(chatId?:string|number,limit=50): Promise<any> { const q=new URLSearchParams({limit:String(limit)}); if(chatId!=null&&String(chatId)!=="")q.set("chat_id",String(chatId)); return api("/admin/telegram/messages?"+q.toString()) as any; }
+export async function adminPublishTelegramMessage(id:string): Promise<any> { return api("/admin/telegram/messages/" + encodeURIComponent(id) + "/publish", { method:"POST", body:"{}" }) as any; }
 export async function adminUpdateCommunity(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/community/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
 export async function adminUpdateLecture(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/lectures/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
 export async function adminUpdateQuestion(id:string,payload:Record<string,unknown>): Promise<any> { return api("/admin/questions/" + encodeURIComponent(id), { method:"PUT", body:JSON.stringify(payload) }) as any; }

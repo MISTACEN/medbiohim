@@ -9,7 +9,12 @@ MEDBIOHIM_APP_URL = "https://medbiohim.vercel.app"
 # Optional: TELEGRAM_BOT_USERNAME = "your_bot_username"
 # Optional: TELEGRAM_HOMEWORK_WEBHOOK_URL = "https://your-php-api.example/api/v1/telegram/webhook"
 TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/account-link/confirm"
+# Group messages are sorted by GigaChat in the API Worker. The bot only forwards
+# updates and sends the short confirmation back to the group.
+TELEGRAM_INGEST_URL = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/ingest"
 # Set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET as Worker secrets, not here.
+# The API Worker must have the SAME TELEGRAM_WEBHOOK_SECRET (or a dedicated
+# TELEGRAM_INGEST_SECRET), otherwise it answers 503 and no homework is created.
 
 # Optional idempotency. Bind a KV namespace named TELEGRAM_UPDATES to skip
 # repeated Telegram update_id values for 24 hours. Without this binding the

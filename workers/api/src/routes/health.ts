@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, requestId } from "../lib/response";
+import { gigachatConfigured, gigachatTransport } from "../lib/gigachat";
+import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
 
 const health = new Hono<{ Bindings: Env }>();
 
@@ -16,6 +18,11 @@ function payload(env: Env) {
       supabaseConfigured: Boolean(env.SUPABASE_URL && env.SUPABASE_ANON_KEY),
       redisConfigured: Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
       openaiConfigured: Boolean(env.OPENAI_API_KEY),
+      cloudflareAiConfigured: workersAiConfigured(env),
+      cloudflareAiModel: workersAiModel(env),
+      gigachatConfigured: gigachatConfigured(env),
+      gigachatTransport: gigachatTransport(env),
+      telegramIngestConfigured: Boolean(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET),
     },
     rid
   );

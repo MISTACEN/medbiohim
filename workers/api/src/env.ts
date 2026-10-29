@@ -1,5 +1,10 @@
 /** Typed environment bindings for the Worker. */
 export type Env = {
+  // Cloudflare Workers AI (no API key; bound in wrangler.toml).
+  AI?: Ai;
+  CLOUDFLARE_AI_MODEL?: string;
+  /** cloudflare (default) | auto | gigachat. */
+  AI_SORT_PROVIDER?: string;
   // Compatibility service binding for legacy routes not yet ported to Hono.
   MEDBIOHIM_UPSTREAM?: { fetch: (request: Request | string, init?: RequestInit) => Promise<Response> };
   // Supabase
@@ -49,6 +54,16 @@ export type Env = {
   GIGACHAT_ACCESS_TOKEN?: string;
   GIGACHAT_MODEL?: string;
   GIGACHAT_SCOPE?: string;
+  GIGACHAT_BASE_URL?: string;
+  /** HTTPS relay for runtimes that do not trust the Russian Trusted CA. */
+  GIGACHAT_RELAY_URL?: string;
+  GIGACHAT_RELAY_SECRET?: string;
+  /** "1" forces direct OAuth + chat from the Worker (local tests/diagnostics). */
+  GIGACHAT_DIRECT?: string;
+
+  // Telegram group ingestion. The bot Worker forwards group updates here with
+  // TELEGRAM_WEBHOOK_SECRET; no user session exists in that flow.
+  TELEGRAM_INGEST_SECRET?: string;
   LLM_PRIMARY_API_KEY?: string;
   AI_BACKEND_REGION?: string;
   GEMINI_VERCEL_PROXY_URL?: string;

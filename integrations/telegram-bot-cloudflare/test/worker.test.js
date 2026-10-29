@@ -231,19 +231,41 @@ test("forwards group update only to configured HTTPS relay", async (t) => {
     forwarded = true;
     assert.equal(call.url, "https://api.example.test/api/v1/telegram/webhook");
     assert.equal(call.headers["x-telegram-bot-api-secret-token"], "test-secret");
-    return new Response("{}", { status: 200 });
+    return new Response(JSON.stringify({ ok: true, data: { status: "classified" } }), { status: 200 });
   });
   const response = await handleRequest(request("/api/webhook", {
     body: { update_id: 2, message: { text: "homework", chat: { id: -1001, type: "supergroup" } } },
   }), { ...baseEnv, TELEGRAM_HOMEWORK_WEBHOOK_URL: "https://api.example.test/api/v1/telegram/webhook" });
   assert.equal(response.status, 200);
   assert.equal(forwarded, true);
-  assert.equal((await response.json()).forwarded, true);
+  const body = await response.json();
+  assert.equal(body.forwarded, true);
+  assert.equal(body.status, "classified");
+});
+
+test("sends the API's confirmation back to the group", async (t) => {
+  const calls = stubFetch(t, (call) => {
+    if (call.url === "https://api.example.test/ingest") {
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { status: "homework_created", reply: { text: "✅ Задание добавлено", path: "/homework" } },
+      }), { status: 200 });
+    }
+    return null;
+  });
+  const response = await handleRequest(request("/api/webhook", {
+    body: { update_id: 3, message: { text: "ДЗ на завтра", chat: { id: -1001, type: "supergroup" } } },
+  }), { ...baseEnv, TELEGRAM_INGEST_URL: "https://api.example.test/ingest" });
+  assert.equal(response.status, 200);
+  const sent = sendMessageCalls(calls);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].payload.text, "✅ Задание добавлено");
+  assert.match(emittedUrls(sent[0])[0], /\/homework$/);
 });
 
 test("relay and account link share the KV dedup path when bound", async (t) => {
   const calls = stubFetch(t, (call) => {
-    if (call.url === "https://api.example.test/api/v1/telegram/webhook") return new Response("{}", { status: 200 });
+    if (call.url === "https://api.example.test/api/v1/telegram/webhook") return new Response(JSON.stringify({ ok: true, data: { status: "classified" } }), { status: 200 });
     return null;
   });
   const kv = makeKv();

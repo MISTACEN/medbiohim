@@ -410,10 +410,14 @@ async function confirmAccountLink(env, message, token) {
   return true;
 }
 
+function ingestUrl(env) {
+  return String((env && (env.TELEGRAM_INGEST_URL || env.TELEGRAM_HOMEWORK_WEBHOOK_URL)) || "").trim();
+}
+
 async function relayGroupUpdate(env, update) {
-  const endpoint = env.TELEGRAM_HOMEWORK_WEBHOOK_URL;
-  if (!endpoint) return { configured: false };
-  const secret = env.TELEGRAM_WEBHOOK_SECRET;
+  const endpoint = ingestUrl(env);
+  if (!endpoint) return { configured: false, data: null };
+  const secret = String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "");
   let target;
   try { target = new URL(endpoint); } catch { throw new Error("Invalid relay URL"); }
   if (target.protocol !== "https:") throw new Error("Relay URL must use HTTPS");
@@ -422,8 +426,35 @@ async function relayGroupUpdate(env, update) {
     headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": secret },
     body: JSON.stringify(update),
   });
-  if (!result.ok) throw new Error("Homework relay failed");
-  return { configured: true };
+  let body = null;
+  try { body = await result.json(); } catch { body = null; }
+  if (!result.ok || !body || body.ok !== true) throw new Error("Homework relay failed");
+  return { configured: true, data: body.data || null };
+}
+
+/** A short group reply, only when the API says something useful happened. */
+async function sendIngestReply(env, chatId, reply) {
+  if (!reply || typeof reply.text !== "string" || !reply.text.trim()) return;
+  const payload = {
+    chat_id: chatId,
+    text: reply.text.trim().slice(0, 4000),
+    disable_web_page_preview: true,
+  };
+  if (typeof reply.path === "string" && reply.path.startsWith("/")) {
+    payload.reply_markup = {
+      inline_keyboard: [[{ text: "Открыть MEDBIOHIM", url: appUrl(env, reply.path) }]],
+    };
+  }
+  try {
+    await fetchWithTimeout(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // The message is already stored by the API; a failed courtesy reply must
+    // not make Telegram retry and duplicate the homework.
+  }
 }
 
 /**
@@ -490,6 +521,7 @@ export async function handleRequest(request, env) {
       service: "medbiohim-telegram-bot",
       configured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET),
       internal: Boolean(internalSecret(env)),
+      ingest: Boolean(ingestUrl(env)),
     });
   }
   if (url.pathname === "/api/verify-initdata") return handleVerifyInitData(request, env);
@@ -521,7 +553,12 @@ export async function handleRequest(request, env) {
   if (message.chat.type === "group" || message.chat.type === "supergroup") {
     try {
       const result = await relayGroupUpdate(env, update);
-      return json({ ok: true, forwarded: result.configured });
+      if (result.data?.reply) await sendIngestReply(env, message.chat.id, result.data.reply);
+      return json({
+        ok: true,
+        forwarded: result.configured,
+        status: result.data?.status || null,
+      });
     } catch {
       // Do not log payloads, chat IDs, secrets, or upstream response bodies.
       return json({ ok: false, error: "HOMEWORK_RELAY_FAILED" }, 502);
