@@ -9,14 +9,20 @@
  * not installed). CDN loading matches how 3Dmol.js is already loaded here.
  */
 
+export type RdkitMol = {
+  is_valid: () => boolean;
+  get_svg: (w?: number, h?: number) => string;
+  get_svg_with_highlights?: (details: string) => string;
+  get_smiles: () => string;
+  get_molblock: () => string;
+  get_json?: () => string;
+  get_substruct_matches?: (query: RdkitMol) => string;
+  delete: () => void;
+};
+
 export type RdkitModule = {
-  get_mol: (input: string) => {
-    is_valid: () => boolean;
-    get_svg: (w?: number, h?: number) => string;
-    get_smiles: () => string;
-    get_molblock: () => string;
-    delete: () => void;
-  } | null;
+  get_mol: (input: string) => RdkitMol | null;
+  get_qmol?: (input: string) => RdkitMol | null;
 };
 
 declare global {
@@ -89,6 +95,7 @@ export async function smilesToSvg(
   smiles: string,
   width = 400,
   height = 300,
+  highlightAtoms: number[] = [],
 ): Promise<string | null> {
   const RDKit = await loadRdkit();
   if (!RDKit) return null;
@@ -98,8 +105,40 @@ export async function smilesToSvg(
     return null;
   }
   try {
-    const svg = mol.get_svg(width, height);
+    const svg = highlightAtoms.length && mol.get_svg_with_highlights
+      ? mol.get_svg_with_highlights(JSON.stringify({
+          atoms: highlightAtoms,
+          highlightColour: [0.98, 0.75, 0.14, 0.55],
+        }))
+      : mol.get_svg(width, height);
     return svg || null;
+  } finally {
+    mol.delete();
+  }
+}
+
+/** SMILES → атомы/связи (UST JSON) + индексы ароматических атомов. */
+export async function moleculeStructure(smiles: string): Promise<string | null> {
+  const RDKit = await loadRdkit();
+  if (!RDKit) return null;
+  const mol = RDKit.get_mol(smiles);
+  if (!mol || !mol.is_valid()) {
+    mol?.delete();
+    return null;
+  }
+  try {
+    const json = mol.get_json?.();
+    if (!json) return null;
+    // JSON RDKit отдаёт кекулевскую форму, поэтому ароматичность спрашиваем
+    // отдельным SMARTS-запросом [a]: у пиррола/фурана иначе получилась бы
+    // ложная пирамидальная геометрия.
+    const query = RDKit.get_qmol?.("[a]");
+    const raw = query && mol.get_substruct_matches ? mol.get_substruct_matches(query) : "[]";
+    query?.delete();
+    const aromatic = raw.trim().startsWith("[")
+      ? (JSON.parse(raw) as Array<{ atoms?: number[] }>).map((match) => match.atoms?.[0]).filter((i): i is number => typeof i === "number")
+      : [];
+    return JSON.stringify({ json, aromatic });
   } finally {
     mol.delete();
   }

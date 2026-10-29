@@ -6,11 +6,13 @@ import type { ProjectionKind } from "@/lib/chemistry/projections";
 import { StructureView } from "@/components/chemistry/StructureView";
 import { ProjectionView } from "@/components/chemistry/ProjectionView";
 import { MechanismView } from "@/components/chemistry/MechanismView";
+import { VseprView } from "@/components/chemistry/VseprView";
 import { mechanismDemos } from "@/lib/chemistry/mechanism";
 
 const structureTabs = [
   { key: "2d", label: "2D", available: true },
   { key: "3d", label: "3D", available: true },
+  { key: "vsepr", label: "VSEPR", available: true },
   { key: "fischer", label: "Fischer", available: true },
   { key: "haworth", label: "Haworth", available: true },
   { key: "newman", label: "Newman", available: true },
@@ -110,7 +112,11 @@ export function ChemistryWorkbench({ embedded = false }: { embedded?: boolean })
           </div>
 
           <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_1fr]">
-            {isProjection ? (
+            {tab === "vsepr" ? (
+              <div className="md:col-span-2">
+                <VseprView molecule={molecule} />
+              </div>
+            ) : isProjection ? (
               <ProjectionView molecule={molecule} kind={tab as ProjectionKind} />
             ) : (
               <StructureView molecule={molecule} representation={tab === "3d" ? "3d" : "2d"} />
