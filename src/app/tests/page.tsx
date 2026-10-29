@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FlaskConical,
   History,
+  ListChecks,
   Loader2,
   Search,
 } from "lucide-react";
@@ -188,9 +189,19 @@ function TestsPageInner() {
                   </p>
                 </div>
               </div>
-              <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
-                {chemistryTotal} найдено
-              </span>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
+                  {chemistryTotal} найдено
+                </span>
+                {/* H6: банк из методичек дополняется процедурными задачами —
+                    из того же раздела можно собрать вариант по seed. */}
+                <Link
+                  href="/chemistry/practice"
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  <ListChecks className="h-3.5 w-3.5" /> Генератор вариантов
+                </Link>
+              </div>
             </div>
           </header>
 
