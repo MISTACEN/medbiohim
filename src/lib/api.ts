@@ -1142,9 +1142,10 @@ export async function getBankProgress(testId:string,groupId?:string): Promise<an
 export async function updateGroup(id:string,payload:Record<string,unknown>): Promise<any> { return api("/groups/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
 export async function updateSubject(id:string,payload:Record<string,unknown>): Promise<any> { return api("/subjects/" + encodeURIComponent(id), { method:"PATCH", body:JSON.stringify(payload) }) as any; }
 
-export async function listNotes(){return api<any>("/notes")}
+export async function listNotes(options:RequestInit={}){return api<any>("/notes",options)}
+export async function deleteNote(id:string){return api<any>("/notes/"+encodeURIComponent(id),{method:"DELETE"})}
 export async function upsertNote(targetType:string,targetId:string,body:string){return api<any>("/notes",{method:"POST",body:JSON.stringify({target_type:targetType,target_id:targetId,body})})}
-export async function listFavorites(){return api<any>("/favorites")}
+export async function listFavorites(options:RequestInit={}){return api<any>("/favorites",options)}
 export async function toggleFavorite(targetType:string,targetId:string){return api<any>("/favorites/toggle",{method:"POST",body:JSON.stringify({target_type:targetType,target_id:targetId})})}
 
 export async function adminImportScheduleXlsx(file:File,groupId:string,semester?:number){const fd=new FormData();fd.append("file",file);fd.append("group_id",groupId);if(semester!=null)fd.append("semester",String(semester));return api<any>("/admin/schedule/import",{method:"POST",body:fd})}
