@@ -1,12 +1,32 @@
 "use client";
 
-import { getProgress } from "@/lib/api";
+import Link from "next/link";
+import { getProgress, getProgressSummary } from "@/lib/api";
 import { RadialProgress } from "@/components/ui/RadialProgress";
-import { Award, Loader2 } from "lucide-react";
+import { Award, Loader2, Target } from "lucide-react";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+
+type SubjectSummary = {
+  subject_id: string;
+  name: string | null;
+  slug: string | null;
+  test_attempts: number;
+  test_accuracy: number | null;
+  trainer_answered: number;
+  trainer_accuracy: number | null;
+  attendance?: { present: number; total: number; percent: number } | null;
+  srs?: { total: number; due: number };
+};
+
+type SummaryPayload = {
+  subjects: SubjectSummary[];
+  focus: Array<{ subject_id: string; name: string | null; slug: string | null; accuracy: number; source: string }>;
+  activity30: Array<{ date: string; count: number }>;
+  srs: { total: number; due: number };
+};
 
 type ProgressPayload = {
   overall_pct?: number | null;
@@ -43,6 +63,17 @@ export default function ProgressPage() {
 
   const payload = data?.payload ?? null;
   const loadError = data?.error ?? null;
+
+  // FA3: сводка v2 — независимый запрос; сбой не роняет базовые карточки.
+  const { data: summaryData, loading: summaryLoading } = useApiRequest<{ summary: SummaryPayload | null; error: string | null }>(
+    async (signal) => {
+      const res = await getProgressSummary({ signal });
+      return res.ok ? { summary: res.data as SummaryPayload, error: null } : { summary: null, error: describeApiError(res.error) };
+    },
+    [user?.groupId],
+    { enabled: !authLoading }
+  );
+  const summary = summaryData?.summary ?? null;
 
   const hw = payload?.homework;
   const tests = payload?.tests;
@@ -106,6 +137,99 @@ export default function ProgressPage() {
 
       {!loading && payload && !payload.degraded && !payload.service_notice && !hasProgressData && (
         <div className="card text-sm text-slate-500">Пока недостаточно данных для расчёта прогресса.</div>
+      )}
+
+      {/* FA3: сводка «что подтянуть» из попыток, тренажёров, посещаемости и SRS */}
+      {summaryLoading && (
+        <div className="card flex items-center gap-2 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" /> Считаем сводку…
+        </div>
+      )}
+      {summary && (
+        <>
+          {summary.focus.length > 0 && (
+            <div className="card p-5">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                <Target className="h-5 w-5 text-rose-500" />
+                Что подтянуть
+              </h2>
+              <ul className="mt-3 space-y-2">
+                {summary.focus.map((item) => (
+                  <li key={item.subject_id} className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800 tabular-nums">{item.accuracy}%</span>
+                    <Link href={`/subjects/${item.slug || item.subject_id}`} className="font-medium text-indigo-700 hover:underline">
+                      {item.name || "Предмет"}
+                    </Link>
+                    <span className="text-xs text-slate-500">по {item.source}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {summary.subjects.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-lg font-bold text-slate-900">По предметам</h2>
+              <div className="mt-3 space-y-4">
+                {summary.subjects.map((s) => {
+                  const accuracy = s.test_accuracy ?? s.trainer_accuracy;
+                  return (
+                    <div key={s.subject_id}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                        <Link href={`/subjects/${s.slug || s.subject_id}`} className="font-medium text-slate-800 hover:text-indigo-700">
+                          {s.name || "Предмет"}
+                        </Link>
+                        <span className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          {s.test_accuracy != null && <span>тесты: {s.test_accuracy}% ({s.test_attempts})</span>}
+                          {s.trainer_accuracy != null && <span>тренажёр: {s.trainer_accuracy}% ({s.trainer_answered})</span>}
+                          {s.attendance && <span>посещаемость: {s.attendance.percent}% ({s.attendance.present}/{s.attendance.total}, самоотчёт)</span>}
+                          {s.srs && s.srs.due > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-900">SRS к повтору: {s.srs.due}</span>}
+                        </span>
+                      </div>
+                      {accuracy != null && (
+                        <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className={"h-full rounded-full " + (accuracy >= 80 ? "bg-emerald-500" : accuracy >= 50 ? "bg-amber-500" : "bg-rose-500")}
+                            style={{ width: `${Math.max(3, accuracy)}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {summary.activity30.some((day) => day.count > 0) && (
+            <div className="card p-5">
+              <h2 className="text-lg font-bold text-slate-900">Активность за 30 дней</h2>
+              <p className="mt-1 text-xs text-slate-500">Попытки тестов и ответы в тренажёре по дням.</p>
+              <div className="mt-3 flex h-16 items-end gap-1" role="img" aria-label="Активность за 30 дней">
+                {summary.activity30.map((day) => {
+                  const max = Math.max(...summary.activity30.map((d) => d.count), 1);
+                  const height = day.count ? Math.max(8, Math.round((day.count / max) * 100)) : 4;
+                  return (
+                    <div
+                      key={day.date}
+                      className={"flex-1 rounded-t " + (day.count ? "bg-indigo-500" : "bg-slate-100")}
+                      style={{ height: `${height}%` }}
+                      title={`${day.date}: ${day.count}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {summary.srs.total > 0 && (
+            <div className="card p-4 text-sm text-slate-600">
+              Карточки SRS: всего {summary.srs.total}, к повтору{" "}
+              <b className={summary.srs.due ? "text-amber-700" : "text-emerald-700"}>{summary.srs.due}</b> —{" "}
+              <Link href="/cards" className="font-semibold text-indigo-600">повторить в карточках</Link>.
+            </div>
+          )}
+        </>
       )}
 
       <div className="card flex items-start gap-3">

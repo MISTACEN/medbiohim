@@ -451,3 +451,20 @@ test("FA9: RAG-контекст тьютора — фрагменты лекци
   // Источники сохраняются в metadata ответа.
   assert.match(route, /sources: rag\.sources/);
 });
+
+test("FA3: сводка прогресса v2 — свои данные, независимые источники", async () => {
+  const route = await source("../src/routes/progress.ts");
+  const start = route.indexOf('progress.get("/summary"');
+  assert.ok(start >= 0, "summary route missing");
+  const body = route.slice(start, start + 9000);
+  assert.match(body, /\.eq\("user_id", user\.id\)/);
+  // Тесты, тренажёр, посещаемость, SRS — все четыре источника.
+  assert.match(body, /test_attempts/);
+  assert.match(body, /trainer_feed_answers/);
+  assert.match(body, /attendance_records/);
+  assert.match(body, /srs_cards/);
+  // «Что подтянуть» и активность за 30 дней.
+  assert.match(body, /focus/);
+  assert.match(body, /activity30/);
+  assert.match(body, /DB_UNAVAILABLE/);
+});

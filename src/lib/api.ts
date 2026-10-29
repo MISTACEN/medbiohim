@@ -938,6 +938,8 @@ export async function listIcalEvents(from?:string,to?:string){const q=new URLSea
 export async function deleteIcalEvent(id:string){return api<any>(`/schedule/ical/${encodeURIComponent(id)}`,{method:"DELETE"})}
 export async function getDashboard(options:RequestInit={}){const r=await api<Dashboard>("/dashboard",options);if(r?.ok&&r.data)r.data={...r.data,announcements:filterSafe(r.data?.announcements,isAnnouncement)};return r}
 export async function getProgress(subjectId?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/progress${q.toString()?`?${q}`:""}`,options)}
+/** FA3: сводка прогресса v2 — точность по предметам, активность 30 дней, SRS, «что подтянуть». */
+export async function getProgressSummary(options:RequestInit={}){return api<any>("/progress/summary",options)}
 export async function getCurriculum(){return api<any>("/curriculum")}
 export async function getSubject(id:string,options:RequestInit={}){return apiCached<any>(`/subjects/${id}`,options)}
 /** План предмета с личным прогрессом по темам: статус, счётчики тестов/вопросов, даты занятий. */
