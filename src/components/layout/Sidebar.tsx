@@ -6,6 +6,7 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   Home,
   Calendar,
@@ -25,21 +26,29 @@ import {
   Microscope,
   Sparkles,
   Bookmark,
+  MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
 
+// C8 (TECH-AUDIT-PLAN §5.7, чеклист #52-54): 5 плоских пунктов + «Ещё».
+// Главная — ежедневный вход; расписание, предметы, прогресс, сообщество —
+// частые разделы; остальное собрано в раскрывающийся «Ещё».
 const navItems = [
   { href: "/", label: "Главная", icon: Home },
-  { href: "/search", label: "Поиск", icon: Search },
   { href: "/schedule", label: "Расписание", icon: Calendar },
-  { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
   { href: "/subjects", label: "Предметы", icon: BookOpen },
-  { href: "/atlas", label: "Атлас", icon: Microscope },
   { href: "/progress", label: "Прогресс", icon: TrendingUp },
+  { href: "/community", label: "Сообщество", icon: Users },
+];
+
+const moreItems = [
+  { href: "/search", label: "Поиск", icon: Search },
+  { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
+  { href: "/atlas", label: "Атлас", icon: Microscope },
   { href: "/academic", label: "Учебный план", icon: ClipboardList },
   { href: "/assignments", label: "Отработки", icon: ListChecks },
-  { href: "/community", label: "Сообщество", icon: Users },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
   { href: "/attestations", label: "Аттестации", icon: ClipboardList },
   { href: "/tutor", label: "AI-тьютор", icon: Bot },
@@ -75,6 +84,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const showAdmin =
     user?.role === "admin" || user?.role === "moderator" || user?.role === "teacher";
+
+  // C8: «Ещё» раскрыто по умолчанию, если активен один из его разделов.
+  const moreActive = moreItems.some((item) =>
+    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+  );
+  const [moreOpen, setMoreOpen] = useState(moreActive);
 
   return (
     <aside className="app-sidebar fixed left-0 top-0 z-40 flex h-[100dvh] w-64 flex-col overflow-hidden shadow-xl">
@@ -119,6 +134,52 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             );
           })}
         </ul>
+
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setMoreOpen((value) => !value)}
+            aria-expanded={moreOpen}
+            className={clsx(
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              moreActive
+                ? "app-sidebar-active shadow-md"
+                : "opacity-80 hover:bg-white/10 hover:opacity-100"
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5 shrink-0" strokeWidth={2} />
+            <span className="flex-1 text-left">Ещё</span>
+            <ChevronDown className={clsx("h-4 w-4 transition-transform", moreOpen && "rotate-180")} />
+          </button>
+          {moreOpen && (
+            <ul className="mt-1 space-y-1">
+              {moreItems.map((item) => {
+                const active =
+                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={onNavigate}
+                      aria-current={active ? "page" : undefined}
+                      className={clsx(
+                        "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
+                        active
+                          ? "app-sidebar-active shadow-md"
+                          : "opacity-75 hover:bg-white/10 hover:opacity-100"
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
+                      <span className="flex-1">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
         <p className="mt-4 px-3 text-[10px] leading-relaxed opacity-50">
           Лекции, билеты, практика, материалы и карточки — внутри выбранного предмета.
         </p>

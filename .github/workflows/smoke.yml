@@ -26,10 +26,22 @@ jobs:
       - name: Check public pages
         run: |
           set -euo pipefail
-          for path in / /tests /schedule /subjects /materials /trainers; do
+          for path in / /tests /schedule /subjects /materials /trainers /atlas /assignments /progress /community /calculators /changelog /help; do
             code=$(curl -L --fail --silent --show-error --max-time 20 -o /tmp/page.html -w "%{http_code}" "$APP_URL$path")
             test "$code" = "200"
             grep -q "Медбиохим" /tmp/page.html
+          done
+
+      - name: Check authenticated gates render (guest view)
+        run: |
+          set -euo pipefail
+          # гостю показывается честный гейт входа, а не ошибка/пустая страница
+          for path in /homework /bookmarks /tutor; do
+            html=$(curl -L --silent --max-time 20 "$APP_URL$path")
+            echo "$html" | grep -q "Медбиохим"
+            if echo "$html" | grep -q "Не удалось показать страницу"; then
+              echo "error boundary on $path"; exit 1
+            fi
           done
 
       - name: Check API health
