@@ -130,6 +130,42 @@ function replyForCandidate(classification: Classification): { text: string; path
   };
 }
 
+/**
+ * Публичная проверка связки «API → бот»: отправляет заведомо пустой секрет и
+ * ждёт 401. Никаких секретов и текстов сообщений здесь нет, поэтому маршрут
+ * безопасен и не является оракулом для подбора.
+ */
+telegramIngest.get("/ingest/health", async (c) => {
+  const rid = requestId();
+  const verifier = String(c.env.TELEGRAM_BOT_VERIFY_INGEST_URL || "").trim();
+  if (!verifier) return c.json(ok({ configured: false, verifier: "none" }, rid));
+  const started = Date.now();
+  try {
+    const response = await fetch(verifier, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+      redirect: "error",
+      signal: AbortSignal.timeout(5000),
+    });
+    return c.json(ok({
+      configured: true,
+      verifier: "bot",
+      reachable: response.status === 401,
+      botStatus: response.status,
+      latencyMs: Date.now() - started,
+    }, rid));
+  } catch (error) {
+    return c.json(ok({
+      configured: true,
+      verifier: "bot",
+      reachable: false,
+      error: error instanceof Error ? error.name : "UnknownError",
+      latencyMs: Date.now() - started,
+    }, rid));
+  }
+});
+
 telegramIngest.post("/ingest", async (c) => {
   const rid = requestId();
   const verification = await verifyIngestRequest(c);
