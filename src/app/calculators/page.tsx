@@ -1,42 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   listCalculators,
   computeCalculator,
   type CalculatorDef,
   type CalcField,
+  type CalcStep,
 } from "@/lib/features-api";
 import { Calculator, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
+import { ErrorState } from "@/components/ui/ErrorState";
+
+type ComputeView = {
+  result: Record<string, unknown>;
+  interpretation: string;
+  warnings: string[];
+  steps: CalcStep[];
+  approximate: boolean;
+  notes: string[];
+};
 
 export default function CalculatorsPage() {
   const [items, setItems] = useState<CalculatorDef[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [computing, setComputing] = useState(false);
-  const [result, setResult] = useState<{
-    result: Record<string, unknown>;
-    interpretation: string;
-    warnings: string[];
-  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<ComputeView | null>(null);
   const [category, setCategory] = useState<string>("all");
 
-  useEffect(() => {
-    listCalculators().then((res) => {
-      setLoading(false);
-      if (!res.ok) {
-        setError(describeApiError(res.error));
-        return;
-      }
-      setItems(res.data.items || []);
-      if (res.data.items?.length) {
-        setActiveId(res.data.items[0].id);
-      }
-    });
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    const res = await listCalculators();
+    setLoading(false);
+    if (!res.ok) {
+      setLoadError(describeApiError(res.error));
+      return;
+    }
+    const list = res.data.items || [];
+    setItems(list);
+    setActiveId((current) =>
+      current && list.some((i) => i.id === current) ? current : list[0]?.id ?? null
+    );
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -89,6 +103,9 @@ export default function CalculatorsPage() {
       result: res.data.result,
       interpretation: res.data.interpretation,
       warnings: res.data.warnings || [],
+      steps: res.data.steps || [],
+      approximate: Boolean(res.data.approximate),
+      notes: res.data.notes || [],
     });
   }
 
@@ -130,6 +147,18 @@ export default function CalculatorsPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-3xl py-8">
+        <ErrorState
+          title="Не удалось загрузить калькуляторы"
+          message={loadError}
+          retry={() => void load()}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -139,6 +168,7 @@ export default function CalculatorsPage() {
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Клинические и фармацевтические расчёты для всех дисциплин: почки, дозы, шкалы, лаборатория.
+          Расчёты справочные и учебные, а не диагноз.
         </p>
       </div>
 
@@ -186,6 +216,7 @@ export default function CalculatorsPage() {
               <div className="font-medium leading-snug">{c.name}</div>
               <div className={`mt-0.5 text-[11px] capitalize ${activeId === c.id ? "text-white/80" : "text-[var(--muted)]"}`}>
                 {c.category}
+                {c.approximate ? " · приблизительно" : ""}
               </div>
             </button>
           ))}
@@ -196,7 +227,14 @@ export default function CalculatorsPage() {
             <p className="text-[var(--muted)]">Выберите калькулятор</p>
           ) : (
             <>
-              <h2 className="text-lg font-bold">{active.name}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-bold">{active.name}</h2>
+                {active.approximate && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                    приблизительно
+                  </span>
+                )}
+              </div>
               <p className="mt-1 text-sm text-[var(--muted)]">{active.description}</p>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -207,6 +245,9 @@ export default function CalculatorsPage() {
                       {f.optional ? " (опц.)" : ""}
                     </span>
                     {renderField(f)}
+                    {f.hint && (
+                      <span className="block text-[11px] leading-snug text-[var(--muted)]">{f.hint}</span>
+                    )}
                   </label>
                 ))}
               </div>
@@ -231,19 +272,51 @@ export default function CalculatorsPage() {
               )}
 
               {result && (
-                <div className="mt-5 space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--success)]">
+                <div className="mt-5 space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--success)]">
                     <CheckCircle2 className="h-4 w-4" /> Результат
+                    {result.approximate && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                        приблизительно
+                      </span>
+                    )}
                   </div>
+
                   <div className="grid gap-2 sm:grid-cols-2">
                     {Object.entries(result.result).map(([k, v]) => (
                       <div key={k} className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2">
                         <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">{k}</div>
-                        <div className="text-lg font-bold tabular-nums">{String(v)}</div>
+                        <div className="break-words text-lg font-bold tabular-nums">{String(v)}</div>
                       </div>
                     ))}
                   </div>
+
                   <p className="text-sm leading-relaxed">{result.interpretation}</p>
+
+                  {result.steps.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        Пошаговое решение
+                      </div>
+                      <ol className="space-y-2">
+                        {result.steps.map((s, i) => (
+                          <li
+                            key={`${i}-${s.label}`}
+                            className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2"
+                          >
+                            <div className="text-xs font-semibold">
+                              {i + 1}. {s.label}
+                            </div>
+                            <div className="mt-0.5 break-words font-mono text-[11px] leading-relaxed text-[var(--muted)]">
+                              {s.formula}
+                            </div>
+                            <div className="mt-1 break-words text-sm font-semibold tabular-nums">{s.value}</div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
                   {result.warnings.length > 0 && (
                     <ul className="space-y-1 text-xs text-amber-700 dark:text-amber-300">
                       {result.warnings.map((w, i) => (
@@ -254,6 +327,15 @@ export default function CalculatorsPage() {
                       ))}
                     </ul>
                   )}
+
+                  {result.notes.length > 0 && (
+                    <ul className="list-disc space-y-1 pl-5 text-[11px] leading-relaxed text-[var(--muted)]">
+                      {result.notes.map((n, i) => (
+                        <li key={i}>{n}</li>
+                      ))}
+                    </ul>
+                  )}
+
                   <p className="text-[11px] text-[var(--muted)]">
                     Расчёты справочные. Клинические решения принимает врач / преподаватель по актуальным рекомендациям.
                   </p>

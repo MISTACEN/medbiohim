@@ -29,14 +29,20 @@ export type CalcField = {
   step?: number;
   default?: string | number;
   optional?: boolean;
+  /** Подсказка под полем: единицы измерения, референс или допущение. */
+  hint?: string;
   options?: Array<{ value: string; label: string }>;
 };
+/** Один шаг пошагового решения: формула → подстановка → результат. */
+export type CalcStep = { label: string; formula: string; value: string };
 export type CalculatorDef = {
   id: string;
   name: string;
   category: string;
   description: string;
   fields: CalcField[];
+  /** Итог опирается на приближённую формулу/коэффициент. */
+  approximate?: boolean;
 };
 export async function listCalculators() {
   return api<{
@@ -51,6 +57,9 @@ export async function computeCalculator(id: string, input: Record<string, string
     result: Record<string, unknown>;
     interpretation: string;
     warnings: string[];
+    steps: CalcStep[];
+    approximate: boolean;
+    notes: string[];
   }>(`/calculators/${encodeURIComponent(id)}/compute`, {
     method: "POST",
     body: JSON.stringify(input),
