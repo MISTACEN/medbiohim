@@ -119,7 +119,7 @@ export default function TutorPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История сохраняется и восстанавливается после перезагрузки страницы.</p></div>
         <div className="flex items-center gap-2 text-xs">
-          {(["groq","gigachat","gemini","mistral","openrouter"] as const).map(p=><span key={p} className={available[p]?"rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{p==="groq"?"Groq":p==="gigachat"?"GigaChat":p==="gemini"?"Gemini":p==="mistral"?"Mistral":"OpenRouter"} {available[p]?"●":"○"}</span>)}
+          {(["groq","gigachat","gemini","mistral","openrouter"] as const).map(p=><span key={p} className={available[p]?"rounded-full bg-[var(--status-ok-bg)] px-2.5 py-1 text-[var(--status-ok-fg)]":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{p==="groq"?"Groq":p==="gigachat"?"GigaChat":p==="gemini"?"Gemini":p==="mistral"?"Mistral":"OpenRouter"} {available[p]?"●":"○"}</span>)}
         </div>
       </div>
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm md:grid-cols-[280px_1fr]">

@@ -445,7 +445,7 @@ function PracticePageInner() {
               </span>
             )}
             {favoriteIds.size > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 font-semibold text-amber-700 shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 font-semibold text-[var(--status-warn-fg)] shadow-sm">
                 <Star className="h-3.5 w-3.5 fill-current" /> {favoriteIds.size}
               </span>
             )}
@@ -454,22 +454,22 @@ function PracticePageInner() {
       </section>
 
       {queryError && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
           <span>{queryError}</span>
           <button
             type="button"
             onClick={reloadList}
-            className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700"
+            className="rounded-lg border border-[var(--status-critical-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)]"
           >
             Повторить
           </button>
         </div>
       )}
       {actionError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{actionError}</div>
+        <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{actionError}</div>
       )}
       {subjectsError && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{subjectsError}</div>
+        <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">{subjectsError}</div>
       )}
 
       <section className="card space-y-4 p-4 sm:p-5">
@@ -632,17 +632,17 @@ function PracticePageInner() {
                             <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700">{typeLabel}</span>
                           )}
                           {item.has_answer ? (
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">Ответ есть</span>
+                            <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 font-semibold text-[var(--status-ok-fg)]">Ответ есть</span>
                           ) : (
-                            <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">Без ответа</span>
+                            <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 font-semibold text-[var(--status-warn-fg)]">Без ответа</span>
                           )}
-                          {favoriteIds.has(String(item.id)) && <Star className="h-3.5 w-3.5 fill-current text-amber-500" />}
+                          {favoriteIds.has(String(item.id)) && <Star className="h-3.5 w-3.5 fill-current text-[var(--status-warn-fg)]" />}
                         </div>
                         <div className="mt-2 line-clamp-3 text-sm font-semibold leading-5 text-slate-900">
                           {item.text || item.stem || "Вопрос"}
                         </div>
                         {preview && (
-                          <div className="mt-1.5 line-clamp-2 text-xs leading-5 text-emerald-700">
+                          <div className="mt-1.5 line-clamp-2 text-xs leading-5 text-[var(--status-ok-fg)]">
                             <span className="font-semibold">Ответ:</span> {preview}
                           </div>
                         )}
@@ -725,8 +725,8 @@ function PracticePageInner() {
                     className={
                       "rounded-xl border p-2 " +
                       (favoriteIds.has(String(selected.id))
-                        ? "border-amber-300 bg-amber-50 text-amber-700"
-                        : "border-[var(--border)] bg-[var(--card)] text-slate-500 hover:text-amber-600")
+                        ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
+                        : "border-[var(--border)] bg-[var(--card)] text-slate-500 hover:text-[var(--status-warn-fg)]")
                     }
                     aria-label="Добавить в избранное"
                     title="Избранное"
@@ -765,7 +765,7 @@ function PracticePageInner() {
                   <Save className="h-3.5 w-3.5" />
                   {noteSaving ? "Сохранение…" : "Сохранить заметку"}
                 </button>
-                {savedMessage && <div className="text-xs font-semibold text-emerald-700">{savedMessage}</div>}
+                {savedMessage && <div className="text-xs font-semibold text-[var(--status-ok-fg)]">{savedMessage}</div>}
               </div>
 
               {isChoiceQuestion(selected) ? (
@@ -774,9 +774,9 @@ function PracticePageInner() {
                     const isSelected = draft === String(index);
                     const isCorrect = correctOptionIndexes(selected).includes(index);
                     const stateClass = showAnswer && isCorrect
-                      ? "border-emerald-300 bg-emerald-50"
+                      ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
                       : showAnswer && isSelected && !isCorrect
-                        ? "border-rose-300 bg-rose-50"
+                        ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
                         : isSelected
                           ? "border-indigo-400 bg-indigo-50"
                           : "border-[var(--border)] bg-white";
@@ -789,12 +789,12 @@ function PracticePageInner() {
                       >
                         <span className={
                           "mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " +
-                          (showAnswer && isCorrect ? "bg-emerald-600 text-white" : "bg-white text-slate-500")
+                          (showAnswer && isCorrect ? "bg-[var(--status-ok-fg)] text-white" : "bg-white text-slate-500")
                         }>
                           {optionKey(option, index)}
                         </span>
                         <span className="min-w-0 flex-1">{optionText(option)}</span>
-                        {showAnswer && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
+                        {showAnswer && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />}
                       </button>
                     );
                   })}
@@ -818,8 +818,8 @@ function PracticePageInner() {
               </button>
 
               {showAnswer && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-slate-800">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                <div className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/80 p-4 text-sm text-slate-800">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--status-ok-fg)]">
                     Официальный ответ
                   </div>
                   {isChoiceQuestion(selected) && correctOptionIndexes(selected).length ? (

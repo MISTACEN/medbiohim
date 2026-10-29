@@ -55,7 +55,7 @@ export function AtlasThumb({ id }: { id: string }) {
 
 export function Dots({ answers, current, onSelect }: { answers: Array<{ id: string; is_correct?: boolean | null; is_skipped?: boolean }>; current: number; onSelect: (n: number) => void }) {
   return <div className="flex flex-wrap gap-1.5">{answers.map((a, i) => {
-    const cls = a.is_correct === true ? "bg-emerald-500 text-white" : a.is_correct === false ? "bg-rose-500 text-white" : a.is_skipped ? "bg-slate-300" : "border bg-white";
+    const cls = a.is_correct === true ? "bg-[var(--status-ok-fg)] text-white" : a.is_correct === false ? "bg-[var(--status-critical-fg)] text-white" : a.is_skipped ? "bg-slate-300" : "border bg-white";
     return <button key={a.id} onClick={() => onSelect(i)} className={"h-8 min-w-8 rounded-full px-2 text-xs font-bold " + (i === current && !a.is_correct && !a.is_skipped ? "ring-2 ring-indigo-300 " : "") + cls}>{i + 1}</button>;
   })}</div>;
 }

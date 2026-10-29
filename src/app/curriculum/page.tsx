@@ -166,14 +166,14 @@ export default function CurriculumPage() {
       </header>
 
       {error && (
-        <div role="alert" className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div role="alert" className="flex items-start gap-2 rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span>
         </div>
       )}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Всего пунктов</p><p className="mt-1 text-2xl font-semibold text-slate-900">{totals.total}</p></div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Пройдено</p><p className="mt-1 text-2xl font-semibold text-emerald-700">{totals.completed}</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Пройдено</p><p className="mt-1 text-2xl font-semibold text-[var(--status-ok-fg)]">{totals.completed}</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Осталось</p><p className="mt-1 text-2xl font-semibold text-indigo-700">{totals.remaining}</p></div>
       </section>
 
@@ -209,7 +209,7 @@ export default function CurriculumPage() {
                       {item.course_number ? <span>{item.course_number} курс</span> : null}
                       {item.semester ? <span>{item.semester} сем.</span> : null}
                       {item.planned_date ? <span>{item.planned_date}</span> : null}
-                      {item.is_required ? <span className="text-amber-700">обязательно</span> : null}
+                      {item.is_required ? <span className="text-[var(--status-warn-fg)]">обязательно</span> : null}
                     </div>
                     <h2 className="mt-2 text-base font-semibold text-slate-900 sm:text-lg">{item.title || "Без названия"}</h2>
                     {subject ? (
@@ -224,7 +224,7 @@ export default function CurriculumPage() {
                   </div>
                   <div className="flex shrink-0 flex-col items-stretch gap-2 sm:w-40">
                     <div className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">
-                      {done ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Circle className="h-4 w-4 text-slate-400" />}
+                      {done ? <CheckCircle2 className="h-4 w-4 text-[var(--status-ok-fg)]" /> : <Circle className="h-4 w-4 text-slate-400" />}
                       {done ? "Пройдено" : "Не отмечено"}
                     </div>
                     <button

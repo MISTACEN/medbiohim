@@ -55,7 +55,7 @@ export function TrainerStatsCard() {
         </h2>
         <div className="flex flex-wrap gap-2 text-sm">
           <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">ответов: {summary.answered}</span>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-800">
+          <span className="rounded-full bg-[var(--status-ok-bg)] px-3 py-1 text-[var(--status-ok-fg)]">
             точность: {summary.accuracy != null ? summary.accuracy + "%" : "—"}
           </span>
           <span className="rounded-full bg-indigo-50 px-3 py-1 text-indigo-800">карточек: {summary.cards}</span>
@@ -74,7 +74,7 @@ export function TrainerStatsCard() {
                 </div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className={"h-full rounded-full " + (accuracy >= 80 ? "bg-emerald-500" : accuracy >= 50 ? "bg-amber-500" : "bg-rose-500")}
+                    className={"h-full rounded-full " + (accuracy >= 80 ? "bg-[var(--status-ok-fg)]" : accuracy >= 50 ? "bg-[var(--status-warn-fg)]" : "bg-[var(--status-critical-fg)]")}
                     style={{ width: `${Math.max(3, accuracy)}%` }}
                   />
                 </div>

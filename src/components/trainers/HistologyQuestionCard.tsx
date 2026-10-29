@@ -126,7 +126,7 @@ export function HistologyQuestionCard({
               "mb-3 rounded-xl p-3 text-sm " +
               (answeredNow
                 ? a.is_correct
-                  ? "bg-emerald-50 text-emerald-900"
+                  ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
                   : "bg-indigo-50 text-indigo-900"
                 : "bg-indigo-50")
             }
@@ -208,9 +208,9 @@ export function HistologyQuestionCard({
                   className={
                     "flex w-full items-center gap-3 rounded-xl border p-3 text-left " +
                     (good
-                      ? "border-emerald-400 bg-emerald-50"
+                      ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
                       : bad
-                        ? "border-rose-400 bg-rose-50"
+                        ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
                         : "hover:bg-slate-50")
                   }
                 >

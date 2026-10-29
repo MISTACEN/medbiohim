@@ -90,8 +90,8 @@ export default function AdminAnnouncementsPage() {
         <h1 className="page-title">Объявления и сайт</h1>
         <p className="page-subtitle">Новости для студентов и тексты главной страницы.</p>
       </header>
-      {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-      {ok && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ok}</div>}
+      {error && <div className="rounded-xl bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+      {ok && <div className="rounded-xl bg-[var(--status-ok-bg)] px-4 py-3 text-sm text-[var(--status-ok-fg)]">{ok}</div>}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <form
@@ -176,7 +176,7 @@ export default function AdminAnnouncementsPage() {
                       </button>
                       <button
                         type="button"
-                        className="text-rose-600"
+                        className="text-[var(--status-critical-fg)]"
                         onClick={async () => {
                           const agreed = await confirm({
                             title: "Удалить объявление?",

@@ -70,7 +70,7 @@ export function useConfirm() {
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start gap-3">
-          {pending.options.danger && <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />}
+          {pending.options.danger && <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--status-critical-fg)]" />}
           <div className="min-w-0">
             <h2 id="confirm-dialog-title" className="font-bold leading-snug">{pending.options.title}</h2>
             {pending.options.description && (
@@ -86,7 +86,7 @@ export function useConfirm() {
             ref={confirmButtonRef}
             type="button"
             className={pending.options.danger
-              ? "rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+              ? "rounded-xl bg-[var(--status-critical-fg)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--status-critical-fg)]"
               : "btn-primary"}
             onClick={() => close(true)}
           >

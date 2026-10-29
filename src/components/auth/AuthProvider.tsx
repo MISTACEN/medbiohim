@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {telegramNotice ? (
         <div
           role="status"
-          className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-lg dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-100"
+          className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-[var(--status-warn-border)]/80 bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)] shadow-lg dark:border-[var(--status-warn-border)]/50 dark:bg-[var(--status-warn-fg)]/40 dark:text-[var(--status-warn-fg)]"
         >
           <div className="font-bold">Telegram не привязан</div>
           <p className="mt-1 leading-relaxed opacity-95">

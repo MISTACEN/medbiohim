@@ -145,7 +145,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
 
   if (!hasToken()) return <div className="card mx-auto mt-10 max-w-md p-8 text-center"><p className="text-slate-600">Войдите, чтобы проходить тренажёр.</p><Link href="/login" className="btn-primary mt-4 inline-flex">Войти</Link></div>;
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Загружаем тренажёр…</div>;
-  if (!allCards.length) return <div className="card mx-auto mt-10 max-w-2xl p-8 text-center"><CircleHelp className="mx-auto h-8 w-8 text-indigo-500" /><h1 className="mt-3 text-xl font-bold">Тренажёр пока пуст</h1><p className="mt-2 text-sm text-slate-500">Для предмета «{subject}» опубликованные карточки ещё не импортированы.</p>{note && <p className="mt-2 text-sm text-rose-500">{note}</p>}<Link href="/subjects" className="btn-primary mt-5 inline-flex">К предметам</Link></div>;
+  if (!allCards.length) return <div className="card mx-auto mt-10 max-w-2xl p-8 text-center"><CircleHelp className="mx-auto h-8 w-8 text-indigo-500" /><h1 className="mt-3 text-xl font-bold">Тренажёр пока пуст</h1><p className="mt-2 text-sm text-slate-500">Для предмета «{subject}» опубликованные карточки ещё не импортированы.</p>{note && <p className="mt-2 text-sm text-[var(--status-critical-fg)]">{note}</p>}<Link href="/subjects" className="btn-primary mt-5 inline-flex">К предметам</Link></div>;
 
   // --- Экран выбора карточек ---
   if (!queue) {
@@ -256,10 +256,10 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                   {(card.question?.options || []).map((option: { id: string; label: string; correct?: boolean }) => {
                     const active = selected === option.id;
                     const correct = result !== null && option.correct;
-                    return <button key={option.id} type="button" disabled={busy || result !== null} onClick={() => void choose(option.id)} className={"rounded-2xl border px-4 py-3 text-left text-sm transition " + (correct ? "border-emerald-400 bg-emerald-50 text-emerald-800" : active && result === false ? "border-rose-400 bg-rose-50 text-rose-800" : active ? "border-indigo-400 bg-indigo-50 text-indigo-800" : "border-slate-200 hover:bg-slate-50")}>{option.label}</button>;
+                    return <button key={option.id} type="button" disabled={busy || result !== null} onClick={() => void choose(option.id)} className={"rounded-2xl border px-4 py-3 text-left text-sm transition " + (correct ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : active && result === false ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" : active ? "border-indigo-400 bg-indigo-50 text-indigo-800" : "border-slate-200 hover:bg-slate-50")}>{option.label}</button>;
                   })}
                 </div>
-                {result !== null && <div className={"mt-5 rounded-2xl p-4 text-sm " + (result ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800")}><div className="flex items-center gap-2 font-bold">{result ? <CheckCircle2 className="h-5 w-5" /> : <CircleHelp className="h-5 w-5" />}{result ? "Правильно" : "Неверно"}</div>{result ? (
+                {result !== null && <div className={"mt-5 rounded-2xl p-4 text-sm " + (result ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")}><div className="flex items-center gap-2 font-bold">{result ? <CheckCircle2 className="h-5 w-5" /> : <CircleHelp className="h-5 w-5" />}{result ? "Правильно" : "Неверно"}</div>{result ? (
                   <p className="mt-2">Эталон не показываем — ты ответил правильно.</p>
                 ) : (
                   <>
@@ -285,7 +285,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                 </div>
               </div>
             </div>
-            {note && <div className="mt-3 rounded-xl bg-rose-500/10 p-3 text-sm text-rose-200">{note}</div>}
+            {note && <div className="mt-3 rounded-xl bg-[var(--status-critical-fg)]/10 p-3 text-sm text-[var(--status-critical-fg)]">{note}</div>}
           </div>
         </main>
       </div>

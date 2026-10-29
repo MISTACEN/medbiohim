@@ -287,14 +287,14 @@ export default function BloodPreparationTrainer() {
             </div>
 
             {isChecked ? (
-              <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
+              <div className="mt-3 rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] p-4 text-sm leading-6 text-[var(--status-ok-fg)]">
                 <b>Самопроверка:</b> сверяем смысловые ориентиры, а не дословную формулировку.
                 <div className="mt-1"><b>Ключевые признаки:</b> {matched.length} / {card.clues.length}</div>
               </div>
             ) : null}
 
             {showGuide ? (
-              <div className="mt-3 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+              <div className="mt-3 space-y-3 rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm leading-6 text-[var(--status-warn-fg)]">
                 <div><b>Как определить:</b> {card.answer}</div>
                 <div><b>Функция:</b> {card.function}</div>
                 <div><b>Не перепутать:</b> {card.avoid}</div>

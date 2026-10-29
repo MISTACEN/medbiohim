@@ -796,7 +796,7 @@ export function RichLectureEditor({
           )}
         </div>
         {busyUpload&&<div className="lecture-uploading"><Loader2 className="h-4 w-4 animate-spin"/> Загружаю файл…</div>}
-        {uploadError&&<div role="alert" className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"><span className="min-w-0 flex-1">{uploadError}</span><button type="button" onClick={()=>setUploadError("")} aria-label="Закрыть сообщение об ошибке" className="font-semibold">×</button></div>}
+        {uploadError&&<div role="alert" className="mt-2 flex items-start gap-2 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-3 py-2 text-xs text-[var(--status-critical-fg)]"><span className="min-w-0 flex-1">{uploadError}</span><button type="button" onClick={()=>setUploadError("")} aria-label="Закрыть сообщение об ошибке" className="font-semibold">×</button></div>}
       </div>
 
       {block&&<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-3" role="dialog" aria-modal="true">

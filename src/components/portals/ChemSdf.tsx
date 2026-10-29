@@ -55,8 +55,8 @@ function TestsView({ tests }: { tests: PortalSdf["tests"] }) {
                     {q.options.map((opt, oi) => {
                       let cls = "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40";
                       if (answered) {
-                        if (oi === q.correct) cls = "border-emerald-300 bg-emerald-50";
-                        else if (oi === pick) cls = "border-rose-300 bg-rose-50";
+                        if (oi === q.correct) cls = "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]";
+                        else if (oi === pick) cls = "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]";
                         else cls = "border-slate-200 opacity-70";
                       }
                       return (
@@ -166,7 +166,7 @@ export default function ChemSdf() {
 
   const stats = useMemo(() => data?.stats, [data]);
 
-  if (error) return <div className="card p-5 text-sm text-rose-600">{error}</div>;
+  if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!data) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">

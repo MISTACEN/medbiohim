@@ -615,7 +615,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-800">
                 <ClipboardCheck className="h-3.5 w-3.5" /> Практическая карточка
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold text-emerald-800">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-1 text-[10px] font-extrabold text-[var(--status-ok-fg)]">
                 Гарантировано: все 5 видов за каждые 5 карточек
               </div>
             </div>
@@ -656,7 +656,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                     (active
                       ? "border-indigo-400 bg-indigo-100 text-indigo-800"
                       : saved
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)] hover:bg-[var(--status-ok-bg)]"
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
                   }
                   title={
@@ -680,7 +680,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
         <div className="min-w-0 space-y-5">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-800">
+              <span className="inline-flex items-center rounded-full border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-2.5 py-1 text-[10px] font-extrabold text-[var(--status-ok-fg)]">
                 На изображении: один целевой лейкоцит
               </span>
               <span className="text-[10px] font-semibold text-slate-500">
@@ -777,7 +777,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
               <input value={answers.conclusion} onChange={(e) => update("conclusion", e.target.value)} disabled={Boolean(evaluation)} className="mt-4 w-full rounded-xl border px-3 py-3 text-sm" placeholder="Норма / нейтрофилия / ..." />
             </div>
 
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 md:col-span-2 xl:col-span-4">
+            <div className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/70 p-3 md:col-span-2 xl:col-span-4">
               <div className="text-sm font-extrabold text-slate-900">5. Предварительный диагноз / гипотеза для «5»</div>
               <div className="mt-2 text-xs leading-5 text-slate-600">Сначала назови функцию клетки, затем свяжи её с найденным отклонением. Это учебная гипотеза, а не окончательный диагноз.</div>
               <input value={answers.diagnosis} onChange={(e) => update("diagnosis", e.target.value)} disabled={Boolean(evaluation)} className="mt-4 w-full rounded-xl border px-3 py-3 text-sm" placeholder="Например: предполагаю бактериальную инфекцию" />
@@ -794,7 +794,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
 
           {evaluation ? (
             <div className="space-y-4">
-              <div className={"rounded-3xl border p-4 " + (evaluation.grade === 2 ? "border-rose-200 bg-rose-50" : evaluation.grade === 5 ? "border-emerald-200 bg-emerald-50" : "border-indigo-200 bg-indigo-50")}>
+              <div className={"rounded-3xl border p-4 " + (evaluation.grade === 2 ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]" : evaluation.grade === 5 ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-indigo-200 bg-indigo-50")}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Результат карточки</div>
@@ -814,9 +814,9 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                   ["Вывод", evaluation.conclusion],
                   ["Гипотеза", evaluation.diagnosis],
                 ].map(([label, ok]) => (
-                  <div key={String(label)} className={"rounded-xl border px-3 py-3 text-xs " + (ok ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50")}>
+                  <div key={String(label)} className={"rounded-xl border px-3 py-3 text-xs " + (ok ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]")}>
                     <div className="font-bold text-slate-500">{label}</div>
-                    <div className="mt-1 flex items-center gap-1 font-extrabold">{ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-rose-600" />}{ok ? "Верно" : "Ошибка"}</div>
+                    <div className="mt-1 flex items-center gap-1 font-extrabold">{ok ? <CheckCircle2 className="h-4 w-4 text-[var(--status-ok-fg)]" /> : <XCircle className="h-4 w-4 text-[var(--status-critical-fg)]" />}{ok ? "Верно" : "Ошибка"}</div>
                   </div>
                 ))}
               </div>
@@ -830,7 +830,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                   <div><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">4. Вывод</div><div className="mt-1 font-bold">{currentCase.deviation === "normal" ? "Норма" : currentCase.deviation === "high" ? cell.highTerm : cell.lowTerm || "отклонение"}</div></div>
                 </div>
                 <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-700"><b>Функция клетки:</b> {cell.function}</div>
-                <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm leading-6 text-emerald-900">
+                <div className="mt-3 rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] p-3 text-sm leading-6 text-[var(--status-ok-fg)]">
                   <b>Для «5»:</b>{" "}
                   {currentCase.deviation === "normal"
                     ? "при нормальном результате по этому показателю отдельная патологическая гипотеза не формируется."
@@ -867,9 +867,9 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="text-sm font-extrabold text-slate-900">Критерии оценки</div>
             <div className="mt-3 space-y-2 text-xs leading-5 text-slate-600">
-              <div className="rounded-xl bg-rose-50 p-3"><b>2</b> — ошибка хотя бы в одном из первых 4 столбиков.</div>
+              <div className="rounded-xl bg-[var(--status-critical-bg)] p-3"><b>2</b> — ошибка хотя бы в одном из первых 4 столбиков.</div>
               <div className="rounded-xl bg-indigo-50 p-3"><b>4</b> — все 4 основных столбика верны.</div>
-              <div className="rounded-xl bg-emerald-50 p-3"><b>5</b> — все 4 верны + предварительная гипотеза связана с функцией клетки.</div>
+              <div className="rounded-xl bg-[var(--status-ok-bg)] p-3"><b>5</b> — все 4 верны + предварительная гипотеза связана с функцией клетки.</div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <b>Орфография не оценивается.</b> Регистр, «ё/е», «й/и», пробелы, дефисы и обычные окончания слов не влияют на оценку.
                 Допускаются небольшие опечатки в длинных терминах. Например, «базофил» и «базофилы» считаются одним правильным ответом.
@@ -879,12 +879,12 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-            <div className="text-sm font-extrabold text-emerald-950">Как отличать клетку</div>
-            <div className="mt-2 text-[11px] leading-5 text-emerald-900">
+          <div className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/70 p-4">
+            <div className="text-sm font-extrabold text-[var(--status-ok-fg)]">Как отличать клетку</div>
+            <div className="mt-2 text-[11px] leading-5 text-[var(--status-ok-fg)]">
               В каждом раунде показывается именно <b>одна конкретная клетка</b>. Не нужно угадывать популяцию по всему полю мазка.
             </div>
-            <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-emerald-900">
+            <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-[var(--status-ok-fg)]">
               <div><b>Нейтрофил:</b> 3–5 сегментов ядра у зрелой формы, мелкая нейтрофильная зернистость.</div>
               <div><b>Лимфоцит:</b> крупное плотное округлое ядро, узкий ободок цитоплазмы.</div>
               <div><b>Моноцит:</b> крупная клетка, светлое рыхлое бобовидное/подковообразное ядро.</div>
@@ -905,7 +905,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 </div>
               ))}
             </div>
-            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] leading-5 text-amber-900">
+            <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-[10px] leading-5 text-[var(--status-warn-fg)]">
               Эозинофилы и базофилы в курсовой таблице имеют только оценку «норма/повышение» для этой карточки: отдельный термин снижения в исходном документе не указан.
             </div>
           </div>
@@ -987,7 +987,7 @@ export function LeukocyteDifferentialTrainer({ raw }: { raw: string }) {
                 </div>
               </section>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] leading-4 text-amber-900">
+              <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-[10px] leading-4 text-[var(--status-warn-fg)]">
                 В практической карточке сейчас всегда требуется определить <b>одну конкретную клетку</b>. После распознавания уже выбирай возрастную норму и оценивай результат исследования.
               </div>
             </div>

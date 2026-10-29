@@ -1519,3 +1519,23 @@ next build ok, test:contrast — 6 тем, 0 провалов.
   поиска).
 - Проверено: @import в CSS = 0; tsc 0; contrast-гейт 6 тем / 0 провалов;
   node 215/215; vitest 210/210; next build ok.
+
+## Сессия 32 (2026-10-30): кодмод статусных цветов — DoD F1–F2 выполнен
+
+- **993 замены в 103 файлах**: сырые Tailwind-классы статусов переведены на
+  семантические токены темы — text-* → --status-*-fg, bg-*-50/100 →
+  --status-*-bg, сплошные заливки кнопок bg-*-500/600 → --status-*-fg
+  (белый текст на них теперь AA: ok 5.21, warn 6.84, critical 5.72),
+  border-* → --status-*-border; focus:ring-* → --status-*-border.
+  emerald→ok, rose→critical, amber→warn.
+- Осознанно остались сырыми только декоративные градиенты (иконки типов
+  файлов в материалах, шапка тестов, логин) — они не статус, гейт их
+  не ловит (from-/to-/via-/ring- в исключениях).
+- **Тест-страж** test/status-tokens.test.mjs: падает при появлении сырых
+  text-/bg-/border-emerald|rose|amber-* в src/** — DoD «0 вхождений» теперь
+  закреплён в suite (node 216/216).
+- Визуальная проверка кодмода в реальном браузере (prod-сборка next start):
+  светлая и тёмная темы рендерятся без разрывов, шрифт Inter применился.
+
+Проверки: node 216/216, vitest 210/210, tsc 0, eslint 0 errors,
+contrast 6 тем/0 провалов, next build ok.

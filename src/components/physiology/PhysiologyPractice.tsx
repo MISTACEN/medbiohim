@@ -48,8 +48,8 @@ function Chip({ children, tone = "slate" }: { children: React.ReactNode; tone?: 
   const styles = {
     slate: "bg-slate-100 text-slate-600",
     indigo: "bg-indigo-50 text-indigo-700",
-    emerald: "bg-emerald-50 text-emerald-700",
-    amber: "bg-amber-50 text-amber-800",
+    emerald: "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]",
+    amber: "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]",
   }[tone];
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${styles}`}>{children}</span>;
 }
@@ -129,7 +129,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
   }, [manual, query]);
 
   if (error) {
-    return <div className="card p-6 text-sm text-rose-600">{error}</div>;
+    return <div className="card p-6 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   }
 
   if (loading && !index) {
@@ -335,7 +335,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 ))}
               </ol>
             ) : (
-              <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 В этом занятии вопросы для самоподготовки в пособии не выделены — смотрите конспект и задачи.
               </p>
             )}
@@ -369,7 +369,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 </article>
               ))
             ) : (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 Отдельных практических работ в этом занятии нет.
               </p>
             )}
@@ -397,7 +397,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 </article>
               ))
             ) : (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 В этом занятии ситуационные задачи в пособии не приведены.
               </p>
             )}
@@ -427,7 +427,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 </article>
               ))
             ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 К занятию не привязан отдельный банк тестов.{" "}
                 {manual.banks.length > 0 && (
                   <button
@@ -452,7 +452,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
               {lesson.notes.length ? (
                 lesson.notes.slice(0, 80).map((paragraph, position) => <p key={position}>{paragraph}</p>)
               ) : (
-                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                   Информационный блок в пособии для этого занятия отсутствует.
                 </p>
               )}
@@ -537,7 +537,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                         {item.tests.length > 0 && (
                           <>
                             <span>·</span>
-                            <span className="font-semibold text-emerald-600">тесты</span>
+                            <span className="font-semibold text-[var(--status-ok-fg)]">тесты</span>
                           </>
                         )}
                       </span>

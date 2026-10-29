@@ -144,7 +144,7 @@ function ArchiveBankView({ bank }: { bank: PortalTicketBank }) {
                       <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700">{typeLabel(item.type)}</span>
                     )}
                     {item.topic && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">{String(item.topic)}</span>}
-                    {!answer && <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">без эталона</span>}
+                    {!answer && <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 font-semibold text-[var(--status-warn-fg)]">без эталона</span>}
                   </div>
                   <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
                     <ChemRichText text={String(item.text || "Вопрос")} />
@@ -167,7 +167,7 @@ function ArchiveBankView({ bank }: { bank: PortalTicketBank }) {
                     Спросить ИИ
                   </button>
                   {isOpen && (
-                    <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-950">
+                    <div className="mt-3 rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm leading-6 text-[var(--status-ok-fg)]">
                       {answer ? <ChemRichText text={String(item.answer)} asHtml /> : "Эталон для этого вопроса пока не заполнен."}
                     </div>
                   )}
@@ -448,7 +448,7 @@ export default function SubjectQuestionBank({
             </label>
           </div>
 
-          {error && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}</div>}
+          {error && <div className="mt-4 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">{error}</div>}
 
           {loading ? (
             <div className="mt-6 flex items-center gap-2 text-sm text-slate-500">
@@ -475,7 +475,7 @@ export default function SubjectQuestionBank({
                         )}
                         {item.topic && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">{String(item.topic)}</span>}
                         {!item.has_answer && answer === "" && (
-                          <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">без эталона</span>
+                          <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 font-semibold text-[var(--status-warn-fg)]">без эталона</span>
                         )}
                       </div>
                       <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
@@ -486,8 +486,8 @@ export default function SubjectQuestionBank({
                           {options.map((option: any, optionIndex: number) => {
                             const correct = option && typeof option === "object" && option.correct === true;
                             return (
-                              <li key={optionIndex} className={"flex items-start gap-2 rounded-lg px-1.5 py-1 " + (correct ? "bg-emerald-50" : "")}>
-                                <span className={"mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " + (correct ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500")}>
+                              <li key={optionIndex} className={"flex items-start gap-2 rounded-lg px-1.5 py-1 " + (correct ? "bg-[var(--status-ok-bg)]" : "")}>
+                                <span className={"mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " + (correct ? "bg-[var(--status-ok-fg)] text-white" : "bg-slate-100 text-slate-500")}>
                                   {option?.key != null && String(option.key).trim() ? String(option.key) : String.fromCharCode(65 + optionIndex)}
                                 </span>
                                 <span className="min-w-0 flex-1">{optionText(option)}</span>
@@ -525,7 +525,7 @@ export default function SubjectQuestionBank({
                         Обсуждение
                       </button>
                       {isOpen && (
-                        <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-950">
+                        <div className="mt-3 rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm leading-6 text-[var(--status-ok-fg)]">
                           {answer ? <ChemRichText text={String(item.answer_display || item.answer)} asHtml /> : "Эталон для этого вопроса пока не заполнен."}
                         </div>
                       )}

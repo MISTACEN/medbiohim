@@ -58,7 +58,7 @@ export default function AcademicPage() {
   };
 
   if(loading) return <div className="space-y-4"><div className="h-32 animate-pulse rounded-2xl bg-slate-100"/><div className="h-64 animate-pulse rounded-2xl bg-slate-100"/></div>;
-  if(!state) return <div className="rounded-2xl border bg-white p-6 text-rose-600">{error || "Не удалось загрузить академическое состояние"}</div>;
+  if(!state) return <div className="rounded-2xl border bg-white p-6 text-[var(--status-critical-fg)]">{error || "Не удалось загрузить академическое состояние"}</div>;
 
   const session=state.session;
   const events=state.upcoming.slice(0,12);
@@ -87,7 +87,7 @@ export default function AcademicPage() {
             </button>
           </div>
         </div>
-        {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
+        {error && <p className="mt-3 text-sm text-[var(--status-critical-fg)]">{error}</p>}
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -110,14 +110,14 @@ export default function AcademicPage() {
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-emerald-500"/><h2 className="font-semibold">Официальный учебный план</h2></div>
+          <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-[var(--status-ok-fg)]"/><h2 className="font-semibold">Официальный учебный план</h2></div>
           {state.plan?.available ? (
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-slate-50 p-3"><b>{state.plan?.items}</b><div className="text-xs text-slate-500">элементов</div></div>
               <div className="rounded-xl bg-slate-50 p-3"><b>{state.plan?.concrete_items}</b><div className="text-xs text-slate-500">конкретных требований</div></div>
             </div>
           ) : (
-            <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="mt-4 rounded-xl bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">
               План текущего курса/семестра ещё не загружен. Система продолжает использовать доступные прогресс и расписание и не создаёт вымышленные даты.
             </div>
           )}
@@ -137,8 +137,8 @@ export default function AcademicPage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2"><TriangleAlert className="h-5 w-5 text-rose-500"/><h2 className="font-semibold">Академические долги</h2></div>
-        {state.debts.length ? <div className="mt-4 space-y-2">{state.debts.map((d,i)=><div key={String(d.id||i)} className="rounded-xl border border-rose-100 bg-rose-50/50 p-3"><b>{String(d.subject_name||"Предмет")}</b><span className="ml-2 text-sm text-slate-500">{String(d.note||"Требование не закрыто")}</span></div>)}</div> : <p className="mt-4 text-sm text-emerald-700">Незакрытых долгов по известным данным нет.</p>}
+        <div className="flex items-center gap-2"><TriangleAlert className="h-5 w-5 text-[var(--status-critical-fg)]"/><h2 className="font-semibold">Академические долги</h2></div>
+        {state.debts.length ? <div className="mt-4 space-y-2">{state.debts.map((d,i)=><div key={String(d.id||i)} className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]/50 p-3"><b>{String(d.subject_name||"Предмет")}</b><span className="ml-2 text-sm text-slate-500">{String(d.note||"Требование не закрыто")}</span></div>)}</div> : <p className="mt-4 text-sm text-[var(--status-ok-fg)]">Незакрытых долгов по известным данным нет.</p>}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">

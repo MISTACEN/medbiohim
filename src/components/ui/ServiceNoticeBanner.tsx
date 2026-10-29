@@ -17,7 +17,7 @@ export function ServiceNoticeBanner({
   return (
     <div
       role="status"
-      className={`rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-100 ${className}`}
+      className={`rounded-2xl border border-[var(--status-warn-border)]/80 bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)] shadow-sm dark:border-[var(--status-warn-border)]/50 dark:bg-[var(--status-warn-fg)]/40 dark:text-[var(--status-warn-fg)] ${className}`}
     >
       <div className="font-bold">{title || "Что-то пошло не так"}</div>
       <p className="mt-1 leading-relaxed opacity-95">{message}</p>

@@ -382,7 +382,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                   </div>
                 )}
               </div>
-              {error && <p className="text-sm text-rose-600">{error}</p>}
+              {error && <p className="text-sm text-[var(--status-critical-fg)]">{error}</p>}
               <button disabled={working} onClick={() => void start()} className="btn-primary">
                 {selectedCardIds.length ? `Начать (${selectedCardIds.length})` : "Начать"}
               </button>
@@ -398,7 +398,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                       <div className="flex gap-2">
                         {t.status === "in_progress" && <button type="button" onClick={() => void loadSession(t.id)} className="rounded-lg border px-2 py-1">Продолжить</button>}
                         {t.status === "completed" && <button type="button" onClick={() => void loadSession(t.id, true)} className="rounded-lg border px-2 py-1">Разбор</button>}
-                        {t.status === "in_progress" && <button type="button" onClick={() => void restart(t.id)} className="rounded-lg border px-2 py-1 text-rose-600">Отменить</button>}
+                        {t.status === "in_progress" && <button type="button" onClick={() => void restart(t.id)} className="rounded-lg border px-2 py-1 text-[var(--status-critical-fg)]">Отменить</button>}
                       </div>
                     </div>
                   ))}
@@ -470,7 +470,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             {finishBar}
           </div>
         </div>
-        {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+        {error && <p className="mt-2 text-sm text-[var(--status-critical-fg)]">{error}</p>}
         {layout === "top" && <div className="mt-2">{statusNav}</div>}
       </div>
 

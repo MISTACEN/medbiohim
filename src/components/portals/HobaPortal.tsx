@@ -95,7 +95,7 @@ export default function HobaPortal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, module, topic, query]);
 
-  if (error) return <div className="card p-5 text-sm text-rose-600">{error}</div>;
+  if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!theory) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">

@@ -102,7 +102,7 @@ const FALLBACK_SERVICES: ServiceStatus[] = [
 function ReachBadge({ service }: { service: ServiceStatus }) {
   if (service.reachable === true) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--status-ok-fg)]">
         <CheckCircle2 className="h-3 w-3" /> доступно
         {typeof service.latency_ms === "number" ? ` · ${service.latency_ms} мс` : ""}
       </span>
@@ -110,7 +110,7 @@ function ReachBadge({ service }: { service: ServiceStatus }) {
   }
   if (service.reachable === false) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--status-critical-fg)]">
         <AlertCircle className="h-3 w-3" /> недоступно
         {typeof service.http_status === "number" ? ` · HTTP ${service.http_status}` : ""}
       </span>
@@ -181,7 +181,7 @@ export default function ServiceGrid({ services, fetchedAt }: Props) {
       </div>
 
       {probeError && (
-        <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="mb-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3 py-2 text-xs text-[var(--status-warn-fg)]">
           Не удалось проверить доступность: {probeError}. Ссылки ниже продолжают работать.
         </p>
       )}

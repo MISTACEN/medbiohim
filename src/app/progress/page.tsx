@@ -106,7 +106,7 @@ export default function ProgressPage() {
         </div>
       )}
       {loadError && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">
           {loadError}
         </div>
       )}
@@ -150,13 +150,13 @@ export default function ProgressPage() {
           {summary.focus.length > 0 && (
             <div className="card p-5">
               <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Target className="h-5 w-5 text-rose-500" />
+                <Target className="h-5 w-5 text-[var(--status-critical-fg)]" />
                 Что подтянуть
               </h2>
               <ul className="mt-3 space-y-2">
                 {summary.focus.map((item) => (
                   <li key={item.subject_id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800 tabular-nums">{item.accuracy}%</span>
+                    <span className="rounded-full bg-[var(--status-critical-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-critical-fg)] tabular-nums">{item.accuracy}%</span>
                     <Link href={`/subjects/${item.slug || item.subject_id}`} className="font-medium text-indigo-700 hover:underline">
                       {item.name || "Предмет"}
                     </Link>
@@ -183,13 +183,13 @@ export default function ProgressPage() {
                           {s.test_accuracy != null && <span>тесты: {s.test_accuracy}% ({s.test_attempts})</span>}
                           {s.trainer_accuracy != null && <span>тренажёр: {s.trainer_accuracy}% ({s.trainer_answered})</span>}
                           {s.attendance && <span>посещаемость: {s.attendance.percent}% ({s.attendance.present}/{s.attendance.total}, самоотчёт)</span>}
-                          {s.srs && s.srs.due > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-900">SRS к повтору: {s.srs.due}</span>}
+                          {s.srs && s.srs.due > 0 && <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[var(--status-warn-fg)]">SRS к повтору: {s.srs.due}</span>}
                         </span>
                       </div>
                       {accuracy != null && (
                         <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
                           <div
-                            className={"h-full rounded-full " + (accuracy >= 80 ? "bg-emerald-500" : accuracy >= 50 ? "bg-amber-500" : "bg-rose-500")}
+                            className={"h-full rounded-full " + (accuracy >= 80 ? "bg-[var(--status-ok-fg)]" : accuracy >= 50 ? "bg-[var(--status-warn-fg)]" : "bg-[var(--status-critical-fg)]")}
                             style={{ width: `${Math.max(3, accuracy)}%` }}
                           />
                         </div>
@@ -225,7 +225,7 @@ export default function ProgressPage() {
           {summary.srs.total > 0 && (
             <div className="card p-4 text-sm text-slate-600">
               Карточки SRS: всего {summary.srs.total}, к повтору{" "}
-              <b className={summary.srs.due ? "text-amber-700" : "text-emerald-700"}>{summary.srs.due}</b> —{" "}
+              <b className={summary.srs.due ? "text-[var(--status-warn-fg)]" : "text-[var(--status-ok-fg)]"}>{summary.srs.due}</b> —{" "}
               <Link href="/cards" className="font-semibold text-indigo-600">повторить в карточках</Link>.
             </div>
           )}

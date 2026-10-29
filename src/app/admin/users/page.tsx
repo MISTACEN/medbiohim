@@ -137,8 +137,8 @@ export default function AdminUsersPage() {
           Поиск по почте и имени, фильтры по роли и группе · всего {total}
         </p>
       </header>
-      {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-      {ok && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ok}</div>}
+      {error && <div role="alert" className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+      {ok && <div className="rounded-xl bg-[var(--status-ok-bg)] px-4 py-3 text-sm text-[var(--status-ok-fg)]">{ok}</div>}
 
       <form onSubmit={applyFilters} className="card grid gap-2 md:grid-cols-[minmax(0,1fr)_170px_200px_auto]">
         <input

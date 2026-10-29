@@ -260,9 +260,9 @@ function DocumentView({ blob, title }: { blob: Blob; title: string }) {
 
   if (kind === "download") {
     return (
-      <div className="mx-auto max-w-xl rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center text-sm text-amber-900">
+      <div className="mx-auto max-w-xl rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-8 text-center text-sm text-[var(--status-warn-fg)]">
         <p className="font-semibold">Этот файл нельзя безопасно разобрать в браузере.</p>
-        {error ? <p className="mt-2 text-xs text-amber-800">{error}</p> : null}
+        {error ? <p className="mt-2 text-xs text-[var(--status-warn-fg)]">{error}</p> : null}
         <button type="button" onClick={openBinary} className="btn-primary mt-5 inline-flex items-center gap-2">
           <FileDown className="h-4 w-4" /> Открыть оригинал
         </button>
@@ -520,10 +520,10 @@ export default function HistologyMaterials() {
           </button>
         </div>
 
-        {error ? <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div> : null}
-        {feedError ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Микропрепараты временно недоступны: {feedError}</div> : null}
+        {error ? <div className="mt-3 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-3 text-sm text-[var(--status-critical-fg)]">{error}</div> : null}
+        {feedError ? <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">Микропрепараты временно недоступны: {feedError}</div> : null}
         {textbookError ? (
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
             Не удалось прочитать каталог «Учебники» в подключённом файловом хранилище: {textbookError}
           </div>
         ) : null}

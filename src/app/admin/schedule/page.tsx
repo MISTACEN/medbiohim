@@ -316,7 +316,7 @@ export default function AdminSchedulePage() {
         </div>
       </div>
 
-      {note && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{note}</div>}
+      {note && <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-2 text-sm text-[var(--status-warn-fg)]">{note}</div>}
 
       {draftOffer && (
         <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-900">
@@ -324,7 +324,7 @@ export default function AdminSchedulePage() {
             Найден несохранённый черновик расписания от {formatDraftTime(draftOffer.savedAt)} — {draftOffer.data.items.length} занятий.
           </span>
           <button type="button" className="btn-secondary text-xs" onClick={restoreDraft}>Восстановить</button>
-          <button type="button" className="text-xs font-semibold text-rose-700" onClick={discardDraft}>Удалить черновик</button>
+          <button type="button" className="text-xs font-semibold text-[var(--status-critical-fg)]" onClick={discardDraft}>Удалить черновик</button>
         </div>
       )}
       {loading ? (
@@ -448,7 +448,7 @@ export default function AdminSchedulePage() {
             <div className="flex justify-between gap-2">
               <button
                 type="button"
-                className="text-rose-600"
+                className="text-[var(--status-critical-fg)]"
                 onClick={() => { setItems((p) => p.filter((x) => x.id !== edit.id)); setEdit(null); }}
               >
                 <Trash2 className="inline h-4 w-4" /> Удалить

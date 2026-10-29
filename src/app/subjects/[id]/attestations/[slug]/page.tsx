@@ -54,7 +54,7 @@ export default function AttestationPage() {
   if (error || !item) {
     return (
       <div className="mx-auto max-w-lg py-16 text-center">
-        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]">
           <AlertCircle className="h-6 w-6" />
         </div>
         <h1 className="mt-4 font-serif text-2xl font-semibold">{error || "Аттестация недоступна"}</h1>

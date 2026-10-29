@@ -349,7 +349,7 @@ export default function AdminAttestationsPage() {
           </button>
           <button
             type="button"
-            className="text-xs font-semibold text-rose-700"
+            className="text-xs font-semibold text-[var(--status-critical-fg)]"
             onClick={() => { clearDraft(attestationDraftKey); setDraftOffer(null); }}
           >
             Удалить черновик
@@ -360,7 +360,7 @@ export default function AdminAttestationsPage() {
       {notice && (
         <div
           className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
-            notice.tone === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-700"
+            notice.tone === "ok" ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
           }`}
         >
           <span className="inline-flex items-center gap-2">
@@ -389,7 +389,7 @@ export default function AdminAttestationsPage() {
               <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
             </div>
           )}
-          {listError && <div className="p-6 text-sm text-rose-600">{listError}</div>}
+          {listError && <div className="p-6 text-sm text-[var(--status-critical-fg)]">{listError}</div>}
           {!loading && !listError && filtered.length === 0 && (
             <div className="p-10 text-center text-sm text-slate-400">Аттестаций пока нет. Создайте первую.</div>
           )}
@@ -397,7 +397,7 @@ export default function AdminAttestationsPage() {
           <ul className="divide-y divide-[var(--border)]">
             {filtered.map((item) => (
               <li key={`${item.subject_slug}:${item.slug}`} className="flex flex-wrap items-center gap-3 p-4">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${item.is_published ? "bg-emerald-500" : "bg-amber-400"}`} />
+                <span className={`h-2 w-2 shrink-0 rounded-full ${item.is_published ? "bg-[var(--status-ok-fg)]" : "bg-[var(--status-warn-fg)]"}`} />
                 <div className="min-w-0 flex-1">
                   <button type="button" onClick={() => void openExisting(item)} className="block text-left">
                     <span className="block text-sm font-semibold text-[var(--text)] hover:text-indigo-600">{item.title}</span>
@@ -418,7 +418,7 @@ export default function AdminAttestationsPage() {
                   <button
                     type="button"
                     onClick={() => void remove(item)}
-                    className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-rose-200 hover:text-rose-600"
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-[var(--status-critical-border)] hover:text-[var(--status-critical-fg)]"
                     aria-label="Удалить"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -570,7 +570,7 @@ export default function AdminAttestationsPage() {
                   <button type="button" onClick={() => moveStage(stageIndex, 1)} disabled={stageIndex === draft.stages.length - 1} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-500 disabled:opacity-30" aria-label="Ниже">
                     <ArrowDown className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={() => void removeStage(stageIndex)} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-rose-200 hover:text-rose-600" aria-label="Удалить этап">
+                  <button type="button" onClick={() => void removeStage(stageIndex)} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-[var(--status-critical-border)] hover:text-[var(--status-critical-fg)]" aria-label="Удалить этап">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -614,7 +614,7 @@ export default function AdminAttestationsPage() {
                         <button type="button" onClick={() => moveItem(stageIndex, itemIndex, 1)} disabled={itemIndex === stage.items.length - 1} className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border)] text-slate-500 disabled:opacity-30" aria-label="Ниже">
                           <ArrowDown className="h-3.5 w-3.5" />
                         </button>
-                        <button type="button" onClick={() => removeItem(stageIndex, itemIndex)} className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border)] text-slate-400 hover:border-rose-200 hover:text-rose-600" aria-label="Удалить материал">
+                        <button type="button" onClick={() => removeItem(stageIndex, itemIndex)} className="grid h-7 w-7 place-items-center rounded-md border border-[var(--border)] text-slate-400 hover:border-[var(--status-critical-border)] hover:text-[var(--status-critical-fg)]" aria-label="Удалить материал">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -654,7 +654,7 @@ export default function AdminAttestationsPage() {
                                   else set.delete(optionIndex);
                                   updateItem(stageIndex, itemIndex, { correct: [...set].sort((a, b) => a - b) });
                                 }}
-                                className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                                className="h-4 w-4 rounded border-slate-300 text-[var(--status-ok-fg)]"
                                 aria-label={`Правильный вариант ${optionIndex + 1}`}
                               />
                               <span className="font-mono text-[11px] text-slate-400">{String.fromCharCode(1040 + optionIndex)}</span>
@@ -678,7 +678,7 @@ export default function AdminAttestationsPage() {
                                   updateItem(stageIndex, itemIndex, { options, correct });
                                 }}
                                 disabled={(item.options || []).length <= 2}
-                                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-rose-200 hover:text-rose-600 disabled:opacity-30"
+                                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--border)] text-slate-400 hover:border-[var(--status-critical-border)] hover:text-[var(--status-critical-fg)] disabled:opacity-30"
                                 aria-label="Удалить вариант"
                               >
                                 <X className="h-4 w-4" />

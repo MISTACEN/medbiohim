@@ -474,7 +474,7 @@ export default function AdminDatabaseConsole() {
                     <span className="min-w-0 flex-1 truncate text-sm font-bold">{connection.label}</span>
                   </div>
                   <div className="mt-1 truncate text-[11px] text-slate-500">{connection.host}{connection.port ? ":" + connection.port : ""} · {connection.database_name}</div>
-                  <div className={"mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold " + (status.good ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                  <div className={"mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold " + (status.good ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-slate-100 text-slate-500")}>
                     {status.good ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                     {status.text}
                   </div>
@@ -597,7 +597,7 @@ export default function AdminDatabaseConsole() {
                     </thead>
                     <tbody>
                       {rows.map((row, index) => (
-                        <tr key={String(index)} className={dirty(row) ? "bg-amber-50" : "bg-white"}>
+                        <tr key={String(index)} className={dirty(row) ? "bg-[var(--status-warn-bg)]" : "bg-white"}>
                           {columns.map((column) => (
                             <td key={column.column_name} className="border-b border-r p-0 align-top">
                               <textarea
@@ -609,10 +609,10 @@ export default function AdminDatabaseConsole() {
                             </td>
                           ))}
                           <td className="sticky right-0 border-b bg-white px-2 align-top">
-                            <button type="button" className="mr-1 rounded-lg bg-emerald-50 p-2 text-emerald-700 disabled:opacity-40" onClick={() => void saveRow(row)} disabled={!dirty(row) || busy || !pks.length} title="Сохранить">
+                            <button type="button" className="mr-1 rounded-lg bg-[var(--status-ok-bg)] p-2 text-[var(--status-ok-fg)] disabled:opacity-40" onClick={() => void saveRow(row)} disabled={!dirty(row) || busy || !pks.length} title="Сохранить">
                               <Save className="h-4 w-4" />
                             </button>
-                            <button type="button" className="rounded-lg bg-rose-50 p-2 text-rose-700 disabled:opacity-40" onClick={() => void deleteRow(row)} disabled={busy || !pks.length} title="Удалить">
+                            <button type="button" className="rounded-lg bg-[var(--status-critical-bg)] p-2 text-[var(--status-critical-fg)] disabled:opacity-40" onClick={() => void deleteRow(row)} disabled={busy || !pks.length} title="Удалить">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </td>
@@ -662,7 +662,7 @@ export default function AdminDatabaseConsole() {
                   <h3 className="font-bold">SQL Editor</h3>
                   <p className="text-xs text-slate-500">Один оператор за запуск. SELECT/EXPLAIN/SHOW выполняются сразу; изменение схемы или данных требует подтверждения.</p>
                 </div>
-                <label className="inline-flex items-center gap-2 text-xs font-semibold text-rose-700">
+                <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--status-critical-fg)]">
                   <input type="checkbox" checked={confirmDanger} onChange={(e) => setConfirmDanger(e.target.checked)} />
                   Подтвердить изменение БД
                 </label>
@@ -671,7 +671,7 @@ export default function AdminDatabaseConsole() {
                 <div role="status" className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
                   <span className="min-w-0 flex-1">Найден невыполненный запрос от {formatDraftTime(sqlDraftOffer.savedAt)}.</span>
                   <button type="button" className="font-semibold" onClick={() => { setSql(sqlDraftOffer.value); setSqlDraftOffer(null); }}>Вставить</button>
-                  <button type="button" className="font-semibold text-rose-700" onClick={() => { clearDraft(SQL_DRAFT_KEY); setSqlDraftOffer(null); }}>Удалить</button>
+                  <button type="button" className="font-semibold text-[var(--status-critical-fg)]" onClick={() => { clearDraft(SQL_DRAFT_KEY); setSqlDraftOffer(null); }}>Удалить</button>
                 </div>
               )}
               <textarea value={sql} onChange={(e) => setSql(e.target.value)} className="mt-3 min-h-[260px] w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-sm text-white outline-none" spellCheck={false} />
@@ -749,7 +749,7 @@ function ConnectionPanel({
         <label className="text-sm font-semibold">Кодировка<input value={draft.charset || (draft.driver === "pgsql" ? "UTF8" : "utf8mb4")} onChange={(e) => set("charset", e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
         <label className="flex items-end gap-2 rounded-xl border bg-slate-50 px-3 py-2 text-sm font-semibold"><input type="checkbox" checked={draft.enabled !== "false"} onChange={(e) => set("enabled", e.target.checked ? "true" : "false")} /> Подключение активно</label>
       </div>
-      <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+      <div className="mt-4 rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs leading-5 text-[var(--status-warn-fg)]">
         Для сохранения пароля backend использует server-side DB_CREDENTIALS_KEY. В репозитории секретов нет; пароль сохраняется только в зашифрованном виде.
       </div>
       <div className="mt-4 flex flex-wrap justify-end gap-2">

@@ -17,8 +17,8 @@ type Rating = 1 | 2 | 3 | 4;
 
 const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
   { r: 1, label: "Снова", hint: "~1 мин", className: "bg-red-500 hover:bg-red-600 text-white" },
-  { r: 2, label: "Трудно", hint: "короче", className: "bg-amber-500 hover:bg-amber-600 text-white" },
-  { r: 3, label: "Хорошо", hint: "SM-2", className: "bg-emerald-500 hover:bg-emerald-600 text-white" },
+  { r: 2, label: "Трудно", hint: "короче", className: "bg-[var(--status-warn-fg)] hover:bg-[var(--status-warn-fg)] text-white" },
+  { r: 3, label: "Хорошо", hint: "SM-2", className: "bg-[var(--status-ok-fg)] hover:bg-[var(--status-ok-fg)] text-white" },
   { r: 4, label: "Легко", hint: "длиннее", className: "bg-sky-500 hover:bg-sky-600 text-white" },
 ];
 
@@ -240,7 +240,7 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
                   <h3 className="mt-1 text-lg font-extrabold text-slate-950">Кровь и лимфа</h3>
                   <p className="mt-1 text-sm leading-5 text-[var(--muted)]">Лекция 5 · ткани внутренней среды · практические занятия № 12–13</p>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">4 упражнения</span>
+                <span className="rounded-full bg-[var(--status-ok-bg)] px-3 py-1 text-xs font-bold text-[var(--status-ok-fg)]">4 упражнения</span>
               </div>
             </div>
             <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4">

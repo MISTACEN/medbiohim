@@ -88,7 +88,7 @@ export function ChemistryWorkbench({ embedded = false }: { embedded?: boolean })
         </button>
       </form>
 
-      {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {error && <p role="alert" className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">{error}</p>}
 
       {molecule && (
         <section className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-6">

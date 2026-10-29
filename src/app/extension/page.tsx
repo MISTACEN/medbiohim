@@ -83,7 +83,7 @@ export default function ExtensionPage() {
           {SOURCES.map((source) => (
             <div key={source.name} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/50 p-4">
               <div className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                source.tone === "sky" ? "bg-sky-50 text-sky-600" : source.tone === "indigo" ? "bg-indigo-50 text-indigo-600" : source.tone === "violet" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"
+                source.tone === "sky" ? "bg-sky-50 text-sky-600" : source.tone === "indigo" ? "bg-indigo-50 text-indigo-600" : source.tone === "violet" ? "bg-violet-50 text-violet-600" : "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
               }`}>
                 {source.name}
               </div>
@@ -94,11 +94,11 @@ export default function ExtensionPage() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
-          <h2 className="inline-flex items-center gap-2 text-sm font-bold text-emerald-900">
+        <div className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/50 p-5">
+          <h2 className="inline-flex items-center gap-2 text-sm font-bold text-[var(--status-ok-fg)]">
             <ShieldCheck className="h-4 w-4" /> Что расширение не делает
           </h2>
-          <ul className="mt-2 space-y-1.5 text-[13px] leading-6 text-emerald-900/80">
+          <ul className="mt-2 space-y-1.5 text-[13px] leading-6 text-[var(--status-ok-fg)]/80">
             <li>· не обходит оплату и авторизацию платных платформ;</li>
             <li>· не копирует закрытые материалы и не парсит сайты в фоне;</li>
             <li>· не отправляет данные без вашего нажатия «Импортировать».</li>

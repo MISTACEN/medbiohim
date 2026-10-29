@@ -314,19 +314,19 @@ export default function AdminTestsPage() {
             Тест — это контейнер: название + предмет/тема + настройки + список вопросов. Сам вопрос хранится отдельно в общем банке и может входить в несколько разных тестов.
           </p>
         </div>
-        <div className="rounded-2xl bg-emerald-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+        <div className="rounded-2xl bg-[var(--status-ok-bg)] p-4">
+          <div className="flex items-center gap-2 text-sm font-bold text-[var(--status-ok-fg)]">
             <Info className="h-4 w-4" /> Как отличить хороший тест
           </div>
-          <p className="mt-2 text-xs leading-5 text-emerald-900">
+          <p className="mt-2 text-xs leading-5 text-[var(--status-ok-fg)]">
             У него однозначное название, правильный предмет и тема, реальное количество вопросов, нет случайных вопросов другого раздела и опубликован только после проверки состава.
           </p>
         </div>
-        <div className="rounded-2xl bg-amber-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
+        <div className="rounded-2xl bg-[var(--status-warn-bg)] p-4">
+          <div className="flex items-center gap-2 text-sm font-bold text-[var(--status-warn-fg)]">
             <Shuffle className="h-4 w-4" /> Сбор нескольких
           </div>
-          <p className="mt-2 text-xs leading-5 text-amber-900">
+          <p className="mt-2 text-xs leading-5 text-[var(--status-warn-fg)]">
             Выбираешь общий пул вопросов, указываешь число вариантов и размер каждого. Каждый вариант получает свой набор вопросов и имя «… — Вариант 1», «… — Вариант 2» и т.д.
           </p>
         </div>
@@ -386,10 +386,10 @@ export default function AdminTestsPage() {
                   <td className="p-3 font-medium">{String(t.title)}</td>
                   <td className="p-3">{String(subjects.find((s) => String(s.id) === String(t.subject_id))?.name ?? "—")}</td>
                   <td className="p-3">{String(topics.find((x) => String(x.id) === String(t.topic_id))?.name ?? topics.find((x) => String(x.id) === String(t.topic_id))?.title ?? "—")}</td>
-                  <td className="p-3">{t.is_published ? <span className="text-emerald-600">Опубликован</span> : <span className="text-slate-500">Черновик</span>}</td>
+                  <td className="p-3">{t.is_published ? <span className="text-[var(--status-ok-fg)]">Опубликован</span> : <span className="text-slate-500">Черновик</span>}</td>
                   <td className="p-3">
                     <button className="mr-2 rounded-lg bg-indigo-50 p-2 text-indigo-700" onClick={() => setEditing({ ...t })} title="Редактировать"><Pencil className="h-4 w-4" /></button>
-                    <button className="rounded-lg bg-rose-50 p-2 text-rose-700" onClick={() => void remove(t)} title="Архивировать"><Trash2 className="h-4 w-4" /></button>
+                    <button className="rounded-lg bg-[var(--status-critical-bg)] p-2 text-[var(--status-critical-fg)]" onClick={() => void remove(t)} title="Архивировать"><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -483,9 +483,9 @@ export default function AdminTestsPage() {
               </div>
 
               <aside className="space-y-4">
-                <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <div className="text-sm font-black text-emerald-950">Что произойдёт при сборке</div>
-                  <div className="mt-2 space-y-2 text-xs leading-5 text-emerald-950">
+                <section className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] p-4">
+                  <div className="text-sm font-black text-[var(--status-ok-fg)]">Что произойдёт при сборке</div>
+                  <div className="mt-2 space-y-2 text-xs leading-5 text-[var(--status-ok-fg)]">
                     <div><b>{variants}</b> тест{variants === 1 ? "" : "а"} будет создано.</div>
                     <div>В каждом будет по <b>{perTest}</b> разных вопросов из выбранного пула.</div>
                     <div>При нескольких вариантах порядок и состав перемешиваются отдельно для каждого варианта.</div>

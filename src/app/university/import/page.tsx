@@ -418,7 +418,7 @@ export default function UniversityImportPage() {
   if (!isAdmin) {
     return (
       <div className="card mx-auto max-w-lg p-8">
-        <h1 className="page-title flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-amber-600" /> Нужен доступ администратора</h1>
+        <h1 className="page-title flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-[var(--status-warn-fg)]" /> Нужен доступ администратора</h1>
         <p className="mt-2 text-sm text-slate-600">
           Сбор и импорт вопросов доступен только администратору. Это защищает учебную базу от случайной публикации
           непроверенных материалов. Вы можете вернуться в университетский хаб и открыть официальную систему тестирования.
@@ -433,10 +433,10 @@ export default function UniversityImportPage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
-      <header className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-indigo-50 p-5 shadow-sm sm:p-6">
+      <header className="rounded-2xl border border-[var(--status-warn-border)] bg-gradient-to-br from-amber-50 via-white to-indigo-50 p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-800">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--status-warn-border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--status-warn-fg)]">
               <ClipboardCheck className="h-3.5 w-3.5" /> Bridge → preview → импорт
             </div>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">Сбор тестов из оригинальной системы</h1>
@@ -494,11 +494,11 @@ export default function UniversityImportPage() {
               </button>
             )}
           </div>
-          {parseError && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{parseError}</p>}
+          {parseError && <p className="mt-3 rounded-lg bg-[var(--status-critical-bg)] px-3 py-2 text-xs text-[var(--status-critical-fg)]">{parseError}</p>}
         </section>
 
         <section className="card">
-          <h2 className="flex items-center gap-2 font-bold text-slate-900"><ShieldCheck className="h-4 w-4 text-emerald-600" /> Куда импортировать</h2>
+          <h2 className="flex items-center gap-2 font-bold text-slate-900"><ShieldCheck className="h-4 w-4 text-[var(--status-ok-fg)]" /> Куда импортировать</h2>
           <label className="field-label mt-3" htmlFor="import-subject">Предмет</label>
           <select id="import-subject" value={subjectKey} onChange={(event) => setSubjectKey(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             <option value="">Выберите предмет…</option>
@@ -506,7 +506,7 @@ export default function UniversityImportPage() {
               <option key={subject.id} value={subject.slug || subject.name}>{subject.name}</option>
             ))}
           </select>
-          {subjectsError && <p className="mt-1 text-xs text-rose-600">{subjectsError}</p>}
+          {subjectsError && <p className="mt-1 text-xs text-[var(--status-critical-fg)]">{subjectsError}</p>}
           <label className="field-label mt-3" htmlFor="import-test-title">Название теста</label>
           <input id="import-test-title" value={testTitle} onChange={(event) => setTestTitle(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Например: Физиология — итоговый тест" />
           <label className="mt-3 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
@@ -525,17 +525,17 @@ export default function UniversityImportPage() {
       </div>
 
       {message && (
-        <div className={`rounded-xl px-4 py-3 text-sm ${errors.length ? "border border-amber-200 bg-amber-50 text-amber-800" : "border border-indigo-100 bg-indigo-50 text-indigo-700"}`}>
+        <div className={`rounded-xl px-4 py-3 text-sm ${errors.length ? "border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]" : "border border-indigo-100 bg-indigo-50 text-indigo-700"}`}>
           {message}
         </div>
       )}
 
       {errors.length > 0 && (
-        <section className="card border-rose-200">
-          <h2 className="font-bold text-rose-700">Ошибки API ({errors.length})</h2>
+        <section className="card border-[var(--status-critical-border)]">
+          <h2 className="font-bold text-[var(--status-critical-fg)]">Ошибки API ({errors.length})</h2>
           <div className="mt-3 max-h-64 space-y-2 overflow-auto">
             {errors.map((error, index) => (
-              <div key={`${error.sheet}-${error.row}-${index}`} className="rounded-lg bg-rose-50 p-2 text-xs text-rose-700">
+              <div key={`${error.sheet}-${error.row}-${index}`} className="rounded-lg bg-[var(--status-critical-bg)] p-2 text-xs text-[var(--status-critical-fg)]">
                 {error.sheet}, строка {error.row}: {error.error}
               </div>
             ))}
@@ -559,7 +559,7 @@ export default function UniversityImportPage() {
           </div>
 
           {bundle.skipped.length > 0 && (
-            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs text-[var(--status-warn-fg)]">
               <div className="font-semibold">Пропущено при разборе: {bundle.skipped.length}</div>
               <ul className="mt-1 list-disc pl-5">
                 {bundle.skipped.slice(0, 6).map((warning, index) => <li key={index}>{warning}</li>)}
@@ -578,13 +578,13 @@ export default function UniversityImportPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">{index + 1}</span>
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{question.type === "open" ? "Открытый" : question.correctCount > 1 ? "Несколько ответов" : "Один ответ"}</span>
-                        {question.warning && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{question.warning}</span>}
+                        {question.warning && <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--status-warn-fg)]">{question.warning}</span>}
                       </div>
                       <div className="mt-2 whitespace-pre-wrap text-sm font-medium text-slate-900">{question.text}</div>
                       {question.options.length > 0 && (
                         <ul className="mt-2 space-y-1">
                           {question.options.map((option, optionIndex) => (
-                            <li key={`${option.label}-${optionIndex}`} className={`rounded-lg px-2 py-1 text-xs ${option.correct ? "bg-emerald-50 font-semibold text-emerald-800" : "text-slate-600"}`}>
+                            <li key={`${option.label}-${optionIndex}`} className={`rounded-lg px-2 py-1 text-xs ${option.correct ? "bg-[var(--status-ok-bg)] font-semibold text-[var(--status-ok-fg)]" : "text-slate-600"}`}>
                               {option.correct ? "✓" : "○"} {option.label}
                             </li>
                           ))}

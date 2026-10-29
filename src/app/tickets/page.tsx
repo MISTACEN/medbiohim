@@ -101,7 +101,7 @@ function TicketsPageInner() {
       </div>
 
       {note && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">
           {note}
         </div>
       )}
@@ -172,8 +172,8 @@ function TicketsPageInner() {
                     : String.fromCharCode(65 + optionIndex);
                   const isCorrect = mode === "practice" && reveal[qq.id] && option?.correct === true;
                   return (
-                    <div key={key + "-" + optionIndex} className={"flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " + (isCorrect ? "border-emerald-300 bg-emerald-50" : "border-slate-100 bg-white")}>
-                      <span className={"inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " + (isCorrect ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600")}>{key}</span>
+                    <div key={key + "-" + optionIndex} className={"flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " + (isCorrect ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-slate-100 bg-white")}>
+                      <span className={"inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " + (isCorrect ? "bg-[var(--status-ok-fg)] text-white" : "bg-slate-100 text-slate-600")}>{key}</span>
                       <ChemRichText text={String(option?.label ?? option ?? "")} className="inline flex-1" />
                     </div>
                   );
@@ -196,7 +196,7 @@ function TicketsPageInner() {
                     {String(qq.answer_display || qq.answer || "").trim() ? (
                       <ChemRichText text={String(qq.answer_display || qq.answer || "")} asHtml />
                     ) : (
-                      <div className="text-amber-700">Эталон для этого вопроса не заполнен.</div>
+                      <div className="text-[var(--status-warn-fg)]">Эталон для этого вопроса не заполнен.</div>
                     )}
                   </div>
                 )}

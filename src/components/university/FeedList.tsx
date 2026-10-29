@@ -100,7 +100,7 @@ export default function FeedList({ feeds, loading, retrying, onRetry }: Props) {
           <Loader2 className="h-4 w-4 animate-spin" /> Загружаем публичные данные...
         </div>
       ) : current?.error ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{current.error}. Данные могли измениться — откройте раздел на сайте ДВГМУ.</span>
           <a href={sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">
@@ -110,7 +110,7 @@ export default function FeedList({ feeds, loading, retrying, onRetry }: Props) {
             type="button"
             onClick={onRetry}
             disabled={retrying}
-            className="ml-auto inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 disabled:opacity-50"
+            className="ml-auto inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[var(--status-warn-fg)] disabled:opacity-50"
           >
             {retrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Повторить
           </button>
@@ -147,12 +147,12 @@ export default function FeedList({ feeds, loading, retrying, onRetry }: Props) {
 
       {current && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-400">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-ok-fg)]" />
           <span>Источник: {current.label || tab.label} ФЕСМУ</span>
           <span>·</span>
           <span>получено {formatDateTime(current.fetched_at)}</span>
           {current.cached && <span className="rounded-full bg-slate-100 px-2 py-0.5">кэш 30 мин</span>}
-          {current.stale && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">устаревшие данные</span>}
+          {current.stale && <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[var(--status-warn-fg)]">устаревшие данные</span>}
           <a href={sourceUrl} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-slate-500 hover:text-indigo-600">
             Первоисточник <ArrowUpRight className="h-3 w-3" />
           </a>

@@ -119,8 +119,8 @@ export default function AdminAcademicPage() {
           <Link href="/admin/users" className="text-indigo-600 underline">в разделе «Пользователи»</Link>.
         </p>
       </header>
-      {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-      {ok && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ok}</div>}
+      {error && <div className="rounded-xl bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+      {ok && <div className="rounded-xl bg-[var(--status-ok-bg)] px-4 py-3 text-sm text-[var(--status-ok-fg)]">{ok}</div>}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="space-y-4">
@@ -190,7 +190,7 @@ export default function AdminAcademicPage() {
                       setEditingSubjectId(String(s.id));
                       setEditingSubject({ name: String(s.name || ""), course: String(s.course_number || 1), semester: String(s.semester || 1) });
                     }}><Pencil className="h-4 w-4" /></button>
-                    <button type="button" className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50" title="Удалить" onClick={async () => {
+                    <button type="button" className="rounded-lg border p-2 text-[var(--status-critical-fg)] hover:bg-[var(--status-critical-bg)]" title="Удалить" onClick={async () => {
                       const agreed = await confirm({
                         title: "Удалить предмет?",
                         description: `«${String(s.name || "")}» — связанные модули, темы и материалы станут недоступны. Строку можно вернуть из архива.`,
@@ -221,7 +221,7 @@ export default function AdminAcademicPage() {
                     {archivedSubjects.map((s) => (
                       <div key={s.id} className="flex items-center justify-between gap-3 py-2 text-sm text-slate-500">
                         <span className="line-through">{s.name}{s.course_number ? ` · ${s.course_number} курс` : ""}{s.semester ? ` · ${s.semester} сем` : ""}</span>
-                        <button type="button" className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50" onClick={async () => {
+                        <button type="button" className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-[var(--status-ok-fg)] hover:bg-[var(--status-ok-bg)]" onClick={async () => {
                           const r = await updateSubject(String(s.id), { is_active: true });
                           if (!r.ok) return msg(describeApiError(r.error));
                           msg("", "Предмет восстановлен");
@@ -309,7 +309,7 @@ export default function AdminAcademicPage() {
                             setEditingGroupId(id);
                             setEditingGroup({ name: String(g.name || ""), code: String(g.code || ""), course: String(g.course_number || 1) });
                           }}><Pencil className="h-4 w-4" /></button>
-                          <button type="button" className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50" title="Удалить" onClick={async () => {
+                          <button type="button" className="rounded-lg border p-2 text-[var(--status-critical-fg)] hover:bg-[var(--status-critical-bg)]" title="Удалить" onClick={async () => {
                             const agreed = await confirm({
                               title: "Удалить группу?",
                               description: `«${String(g.name || "")}» — группа исчезнет из справочника. Студенты сначала должны быть переведены или убраны.`,
@@ -364,7 +364,7 @@ export default function AdminAcademicPage() {
                                   <option key={other.id} value={String(other.id)}>{other.name || other.code}</option>
                                 ))}
                               </select>
-                              <button type="button" className="inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-1 text-xs text-rose-600 hover:bg-rose-50" onClick={async () => {
+                              <button type="button" className="inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-1 text-xs text-[var(--status-critical-fg)] hover:bg-[var(--status-critical-bg)]" onClick={async () => {
                                 const r = await removeGroupMember(id, m.user_id);
                                 if (!r.ok) return msg(describeApiError(r.error));
                                 msg("", "Студент убран из группы");
@@ -418,7 +418,7 @@ export default function AdminAcademicPage() {
                     {archivedGroups.map((g) => (
                       <div key={String(g.id)} className="flex items-center justify-between gap-3 py-2 text-sm text-slate-500">
                         <span className="line-through">{g.name}{g.code ? ` · ${g.code}` : ""}</span>
-                        <button type="button" className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50" onClick={async () => {
+                        <button type="button" className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-[var(--status-ok-fg)] hover:bg-[var(--status-ok-bg)]" onClick={async () => {
                           const r = await updateGroup(String(g.id), { is_active: true });
                           if (!r.ok) return msg(describeApiError(r.error));
                           msg("", "Группа восстановлена");

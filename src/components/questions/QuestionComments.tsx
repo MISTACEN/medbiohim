@@ -63,7 +63,7 @@ export default function QuestionComments({ questionId }: { questionId: string })
         <MessageSquare className="size-3.5" /> Обсуждение
       </div>
 
-      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-[var(--status-critical-fg)]">{error}</p>}
 
       {items == null ? (
         <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
@@ -84,7 +84,7 @@ export default function QuestionComments({ questionId }: { questionId: string })
                       type="button"
                       onClick={() => remove(c.id)}
                       title="Удалить свой комментарий"
-                      className="text-slate-300 transition hover:text-rose-500"
+                      className="text-slate-300 transition hover:text-[var(--status-critical-fg)]"
                     >
                       <Trash2 className="size-3.5" />
                     </button>

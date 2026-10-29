@@ -270,12 +270,12 @@ function MiniQuizBlock({ raw }: { raw: string }) {
   }
 
   if (loading) return <section className="my-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-800">Загружаем вопросы этого блока из банка…</section>;
-  if (questions.length === 0) return <section className="my-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Для этого блока в базе пока нет подходящих опубликованных вопросов.</section>;
+  if (questions.length === 0) return <section className="my-6 rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">Для этого блока в базе пока нет подходящих опубликованных вопросов.</section>;
   if (index >= questions.length) return (
-    <section className="my-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-      <div className="text-xs font-bold uppercase tracking-wide text-emerald-700">Блок проверен</div>
-      <div className="mt-1 text-lg font-extrabold text-emerald-900">{spec.title || "Мини-тест"} · {score}/{questions.length}</div>
-      <p className="mt-1 text-sm text-emerald-800">Вопросы взяты из опубликованного банка MEDBIOHIM; эталонный ответ не передаётся в браузер.</p>
+    <section className="my-6 rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] p-4">
+      <div className="text-xs font-bold uppercase tracking-wide text-[var(--status-ok-fg)]">Блок проверен</div>
+      <div className="mt-1 text-lg font-extrabold text-[var(--status-ok-fg)]">{spec.title || "Мини-тест"} · {score}/{questions.length}</div>
+      <p className="mt-1 text-sm text-[var(--status-ok-fg)]">Вопросы взяты из опубликованного банка MEDBIOHIM; эталонный ответ не передаётся в браузер.</p>
     </section>
   );
 
@@ -291,11 +291,11 @@ function MiniQuizBlock({ raw }: { raw: string }) {
           <button key={option.index} type="button" disabled={checked !== null || busy} onClick={() => setSelected(option.index)} className={"rounded-xl border px-3 py-2.5 text-left text-sm transition " + (selected === option.index ? "border-indigo-500 bg-indigo-100 text-indigo-900" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50")}>{option.label}</button>
         ))}
       </div>
-      {checked !== null ? <div className={"mt-4 rounded-xl px-3 py-2.5 text-sm font-semibold " + (checked ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")}>{checked ? "✓ Правильно" : "✕ Пока неверно — перечитай блок и попробуй ещё раз."}</div> : null}
+      {checked !== null ? <div className={"mt-4 rounded-xl px-3 py-2.5 text-sm font-semibold " + (checked ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")}>{checked ? "✓ Правильно" : "✕ Пока неверно — перечитай блок и попробуй ещё раз."}</div> : null}
       <div className="mt-4 flex justify-end gap-2">
         {checked === false ? <button type="button" onClick={() => { setSelected(null); setChecked(null); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Повторить</button> : checked === true ? <button type="button" onClick={next} className="btn-primary px-4 py-2 text-sm">Следующий вопрос</button> : <button type="button" disabled={selected === null || busy} onClick={() => void check()} className="btn-primary px-4 py-2 text-sm disabled:opacity-40">Проверить</button>}
       </div>
-      {error ? <div className="mt-3 text-xs text-rose-600">{error}</div> : null}
+      {error ? <div className="mt-3 text-xs text-[var(--status-critical-fg)]">{error}</div> : null}
     </section>
   );
 }

@@ -89,7 +89,7 @@ export default function UniversityPage() {
             </div>
             <div className="rounded-2xl border border-white/70 bg-white/80 p-4 text-sm shadow-sm lg:max-w-xs">
               <div className="flex items-center gap-2 font-semibold text-slate-900">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Без подмены источника
+                <ShieldCheck className="h-4 w-4 text-[var(--status-ok-fg)]" /> Без подмены источника
               </div>
               <p className="mt-2 text-xs leading-relaxed text-slate-600">
                 Официальные данные помечены ссылкой на ФЕСМУ. Мы не выдаём локальные проверки за
@@ -103,7 +103,7 @@ export default function UniversityPage() {
         </header>
 
         {error && (
-          <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <div className="font-semibold">Публичные данные ФЕСМУ временно недоступны</div>
@@ -113,7 +113,7 @@ export default function UniversityPage() {
               type="button"
               onClick={() => void loadOverview()}
               disabled={loading}
-              className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50"
+              className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Повторить
             </button>
@@ -161,13 +161,13 @@ export default function UniversityPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
+        <section className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/60 p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-2xl">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-amber-900">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-[var(--status-warn-fg)]">
                 <ClipboardCheck className="h-5 w-5" /> Сбор тестов из оригинальной системы
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-amber-900/80">
+              <p className="mt-2 text-sm leading-relaxed text-[var(--status-warn-fg)]/80">
                 Вопросы собираются только по действию пользователя из его собственной сессии в{" "}
                 <a href={portal?.testing_url || "http://test.fesmu.ru:8080/"} target="_blank" rel="noreferrer" className="font-semibold underline">
                   test.fesmu.ru
@@ -175,7 +175,7 @@ export default function UniversityPage() {
                 . Расширение Bridge извлекает текст и варианты, вы отмечаете правильные ответы, затем проверяете JSON
                 на странице импорта. Пароль ЕИОС не сохраняется.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-amber-800">
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-[var(--status-warn-fg)]">
                 <span className="rounded-full bg-white/80 px-2.5 py-1">1. Открыть тест</span>
                 <span className="rounded-full bg-white/80 px-2.5 py-1">2. Считать вопрос</span>
                 <span className="rounded-full bg-white/80 px-2.5 py-1">3. Проверить preview</span>
@@ -183,7 +183,7 @@ export default function UniversityPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href="/university/import" className="btn-primary inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500">
+              <Link href="/university/import" className="btn-primary inline-flex items-center gap-2 bg-[var(--status-warn-fg)] hover:bg-[var(--status-warn-fg)]">
                 Открыть импорт <ChevronRight className="h-4 w-4" />
               </Link>
               <a href={portal?.testing_url || "http://test.fesmu.ru:8080/"} target="_blank" rel="noreferrer" className="btn-secondary inline-flex items-center gap-2">

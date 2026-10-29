@@ -149,13 +149,13 @@ export function PostDiscussion({ post, onChanged }: { post: Post; onChanged: () 
           </button>
         )}
         {!isAuthor && !reporting && (
-          <button type="button" onClick={() => setReporting(true)} className="inline-flex items-center gap-1 text-slate-400 hover:text-rose-600">
+          <button type="button" onClick={() => setReporting(true)} className="inline-flex items-center gap-1 text-slate-400 hover:text-[var(--status-critical-fg)]">
             <Flag className="h-3.5 w-3.5" /> Жалоба
           </button>
         )}
       </div>
 
-      {error && <p className={"mt-2 text-xs " + (error.startsWith("Жалоба") ? "text-emerald-600" : "text-rose-600")}>{error}</p>}
+      {error && <p className={"mt-2 text-xs " + (error.startsWith("Жалоба") ? "text-[var(--status-ok-fg)]" : "text-[var(--status-critical-fg)]")}>{error}</p>}
 
       {editingPost && (
         <div className="mt-2 space-y-2 rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
@@ -169,18 +169,18 @@ export function PostDiscussion({ post, onChanged }: { post: Post; onChanged: () 
       )}
 
       {reporting && (
-        <div className="mt-2 rounded-xl bg-rose-50 p-3">
+        <div className="mt-2 rounded-xl bg-[var(--status-critical-bg)] p-3">
           <textarea
             value={reportReason}
             onChange={(e) => setReportReason(e.target.value)}
             rows={2}
             maxLength={500}
             placeholder="Что не так с этим постом? (до 500 знаков)"
-            className="w-full rounded-xl border border-rose-200 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-[var(--status-critical-border)] px-3 py-2 text-sm"
           />
           <div className="mt-2 flex gap-2">
-            <button type="button" disabled={busy || !reportReason.trim()} onClick={() => void sendReport()} className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Отправить жалобу</button>
-            <button type="button" onClick={() => setReporting(false)} className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs">Отмена</button>
+            <button type="button" disabled={busy || !reportReason.trim()} onClick={() => void sendReport()} className="rounded-xl bg-[var(--status-critical-fg)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Отправить жалобу</button>
+            <button type="button" onClick={() => setReporting(false)} className="rounded-xl border border-[var(--status-critical-border)] px-3 py-1.5 text-xs">Отмена</button>
           </div>
         </div>
       )}
@@ -200,7 +200,7 @@ export function PostDiscussion({ post, onChanged }: { post: Post; onChanged: () 
                   {String(user?.id || "") === String(comment.user_id) && editingId !== comment.id && (
                     <>
                       <button type="button" onClick={() => { setEditingId(comment.id); setEditText(comment.body); }} className="text-indigo-600">правка</button>
-                      <button type="button" onClick={() => void removeComment(comment.id)} className="inline-flex items-center gap-0.5 text-rose-500"><Trash2 className="h-3 w-3" /> удалить</button>
+                      <button type="button" onClick={() => void removeComment(comment.id)} className="inline-flex items-center gap-0.5 text-[var(--status-critical-fg)]"><Trash2 className="h-3 w-3" /> удалить</button>
                     </>
                   )}
                 </div>

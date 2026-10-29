@@ -117,15 +117,15 @@ export default function AdminToolsPage() {
               transport.source === "compatibility-fallback" ? "Совместимый fallback" :
               "Cloudflare недоступен"}
           </span>
-          {transport.fallback && <span className="font-medium text-amber-700">Основной запрос не обслужен Cloudflare; использован резервный маршрут.</span>}
+          {transport.fallback && <span className="font-medium text-[var(--status-warn-fg)]">Основной запрос не обслужен Cloudflare; использован резервный маршрут.</span>}
           <span className="text-slate-500">Последний запрос: <code>{transport.path}</code></span>
           <span className="text-slate-400">{new Date(transport.at).toLocaleTimeString()}</span>
         </div>
       )}
 
-      {error && <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {error && <div className="rounded-xl bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
       {validation && (
-        <div className={"rounded-xl border px-4 py-3 text-sm " + (validation.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900")}>
+        <div className={"rounded-xl border px-4 py-3 text-sm " + (validation.ok ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")}>
           <div className="font-semibold">{validation.ok ? "Целостность контента в норме" : "Найдены проблемы: " + validation.count}</div>
           <div className="mt-1 text-xs opacity-80">Проверено: тесты {validation.checked?.tests ?? "—"}, вопросы {validation.checked?.questions ?? "—"}, связи {validation.checked?.test_questions ?? "—"}, карточки {validation.checked?.trainer_cards ?? "—"}, материалы {validation.checked?.materials ?? "—"}, exam_questions {validation.checked?.exam_questions ?? "—"}.</div>
           {!validation.ok && <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(validation.issues || [], null, 2)}</pre>}
@@ -204,7 +204,7 @@ export default function AdminToolsPage() {
                 ].map(([label, ok]) => (
                   <div key={String(label)} className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs">
                     <span>{String(label)}</span>
-                    <b className={ok ? "text-emerald-600" : "text-slate-400"}>{ok ? "есть" : "нет"}</b>
+                    <b className={ok ? "text-[var(--status-ok-fg)]" : "text-slate-400"}>{ok ? "есть" : "нет"}</b>
                   </div>
                 ))}
               </div>
@@ -231,7 +231,7 @@ export default function AdminToolsPage() {
                   <Mini label="Ограничен список" value={fileAudit.b2.scan_truncated ? "да" : "нет"} />
                 </div>
               ) : null}
-              {fileAudit.b2.error ? <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{fileAudit.b2.error}</div> : null}
+              {fileAudit.b2.error ? <div className="mt-3 rounded-lg bg-[var(--status-warn-bg)] px-3 py-2 text-xs text-[var(--status-warn-fg)]">{fileAudit.b2.error}</div> : null}
             </div>
           )}
 
@@ -278,7 +278,7 @@ export default function AdminToolsPage() {
                 <div className="font-semibold">Сейчас онлайн</div>
                 <div className="text-xs text-slate-500">heartbeat за последние 3 минуты</div>
               </div>
-              <div className="text-2xl font-bold text-emerald-600">{presence.length}</div>
+              <div className="text-2xl font-bold text-[var(--status-ok-fg)]">{presence.length}</div>
             </div>
             {presence.length > 0 && (
               <div className="mt-3 space-y-2">

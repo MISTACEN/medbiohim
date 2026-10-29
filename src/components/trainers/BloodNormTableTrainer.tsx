@@ -171,19 +171,19 @@ export function BloodNormTableTrainer() {
                           className={
                             "w-full rounded-xl border px-3 py-2.5 text-center text-sm outline-none transition " +
                             (correct
-                              ? "border-emerald-400 bg-emerald-50 text-emerald-900"
+                              ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
                               : wrong
-                                ? "border-rose-400 bg-rose-50 text-rose-900"
+                                ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
                                 : "border-slate-200 bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100")
                           }
                         />
                         {wrong && value.trim() ? (
-                          <div className="mt-1 text-center text-[11px] leading-4 text-rose-700">
+                          <div className="mt-1 text-center text-[11px] leading-4 text-[var(--status-critical-fg)]">
                             Эталон: <b>{row.values[columnIndex]}</b>
                           </div>
                         ) : null}
                         {wrong && !value.trim() ? (
-                          <div className="mt-1 text-center text-[11px] leading-4 text-rose-700">
+                          <div className="mt-1 text-center text-[11px] leading-4 text-[var(--status-critical-fg)]">
                             Пусто · <b>{row.values[columnIndex]}</b>
                           </div>
                         ) : null}
@@ -244,31 +244,31 @@ export function BloodNormTableTrainer() {
       ) : null}
 
       {showReference ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
-          <div className="mb-3 text-sm font-extrabold text-amber-950">Эталон из 4.Кровь.docx</div>
-          <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-white">
+        <div className="rounded-3xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4">
+          <div className="mb-3 text-sm font-extrabold text-[var(--status-warn-fg)]">Эталон из 4.Кровь.docx</div>
+          <div className="overflow-x-auto rounded-2xl border border-[var(--status-warn-border)] bg-white">
             <table className="w-full min-w-[880px] border-collapse text-sm">
               <thead>
-                <tr className="bg-amber-50">
-                  <th className="min-w-[220px] border-b border-r border-amber-200 px-4 py-3 text-left font-bold">Показатель</th>
+                <tr className="bg-[var(--status-warn-bg)]">
+                  <th className="min-w-[220px] border-b border-r border-[var(--status-warn-border)] px-4 py-3 text-left font-bold">Показатель</th>
                   {AGE_COLUMNS.map((column) => (
-                    <th key={column.id} className="border-b border-amber-200 px-3 py-3 text-center font-bold">{column.label}</th>
+                    <th key={column.id} className="border-b border-[var(--status-warn-border)] px-3 py-3 text-center font-bold">{column.label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {NORMS.map((row) => (
-                  <tr key={row.id} className="border-b border-amber-100 last:border-b-0">
-                    <th className="border-r border-amber-100 px-4 py-3 text-left font-semibold">{row.label}</th>
+                  <tr key={row.id} className="border-b border-[var(--status-warn-border)] last:border-b-0">
+                    <th className="border-r border-[var(--status-warn-border)] px-4 py-3 text-left font-semibold">{row.label}</th>
                     {row.values.map((value, index) => (
-                      <td key={AGE_COLUMNS[index].id} className="border-l border-amber-100 px-3 py-3 text-center font-semibold">{value}</td>
+                      <td key={AGE_COLUMNS[index].id} className="border-l border-[var(--status-warn-border)] px-3 py-3 text-center font-semibold">{value}</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="mt-3 text-xs leading-5 text-amber-900">
+          <div className="mt-3 text-xs leading-5 text-[var(--status-warn-fg)]">
             Использованы только значения исходной таблицы; внешние справочные диапазоны сюда не подмешаны.
           </div>
         </div>

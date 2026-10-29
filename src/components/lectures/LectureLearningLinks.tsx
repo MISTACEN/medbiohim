@@ -127,7 +127,7 @@ export function LectureLearningLinks({ relatedLearning }: Props) {
                   className="rounded-2xl border border-[var(--border)] bg-white/[0.55] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50"
                 >
                   <div className="flex items-start gap-3">
-                    <Images className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <Images className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />
                     <div className="min-w-0">
                       <div className="text-sm font-semibold">{item.title || "Файл"}</div>
                       <div className="mt-1 text-[11px] text-[var(--muted)]">

@@ -227,7 +227,7 @@ export default function TestQuestionsPage() {
       render: (row) => (
         <div className="max-w-[46rem]">
           <div className="line-clamp-2 leading-snug" title={String(row.text || "")}>{String(row.text || "")}</div>
-          {row.topic_id ? <div className="mt-1 text-xs text-slate-400">тема привязана</div> : <div className="mt-1 text-xs text-amber-600">без темы</div>}
+          {row.topic_id ? <div className="mt-1 text-xs text-slate-400">тема привязана</div> : <div className="mt-1 text-xs text-[var(--status-warn-fg)]">без темы</div>}
         </div>
       ),
     },
@@ -254,7 +254,7 @@ export default function TestQuestionsPage() {
           <button
             type="button"
             aria-label="Архивировать вопрос"
-            className="rounded-lg bg-rose-50 p-2 text-rose-700 disabled:opacity-50"
+            className="rounded-lg bg-[var(--status-critical-bg)] p-2 text-[var(--status-critical-fg)] disabled:opacity-50"
             disabled={busy === "archive-" + String(row.id)}
             onClick={() => void archive(row)}
           >
@@ -282,7 +282,7 @@ export default function TestQuestionsPage() {
         <p className="page-subtitle">Полное редактирование вопросов: текст, варианты ответов, правильный ответ, тип и объяснение.</p>
       </header>
 
-      {note && <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{note}</div>}
+      {note && <div className="rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm text-[var(--status-ok-fg)]">{note}</div>}
 
       <section className="card">
         <DataTable
@@ -343,7 +343,7 @@ export default function TestQuestionsPage() {
               </button>
             </div>
 
-            {error && <div className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
+            {error && <div className="mt-3 rounded-xl bg-[var(--status-critical-bg)] p-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
 
             <label className="mt-4 block text-sm">
               Текст вопроса
@@ -397,7 +397,7 @@ export default function TestQuestionsPage() {
                           role={draft.type === "mcq" ? "radio" : "checkbox"}
                           aria-checked={option.correct}
                           aria-label={"Пометить вариант " + (index + 1) + " правильным"}
-                          className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-bold transition " + (option.correct ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50")}
+                          className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-bold transition " + (option.correct ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50")}
                           onClick={() => updateOption(index, { correct: !option.correct })}
                         >
                           <Check className="h-4 w-4" />
@@ -413,7 +413,7 @@ export default function TestQuestionsPage() {
                       <button
                         type="button"
                         aria-label={"Удалить вариант " + (index + 1)}
-                        className="rounded-lg bg-rose-50 p-2 text-rose-700"
+                        className="rounded-lg bg-[var(--status-critical-bg)] p-2 text-[var(--status-critical-fg)]"
                         onClick={() => removeOption(index)}
                       >
                         <Trash2 className="h-4 w-4" />

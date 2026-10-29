@@ -89,7 +89,7 @@ export function ExternalPlatformStats() {
   return (
     <section className="card p-5">
       <h2 className="flex items-center gap-2 text-lg font-bold">
-        <Flame className="size-5 text-amber-500" /> Популярные переходы
+        <Flame className="size-5 text-[var(--status-warn-fg)]" /> Популярные переходы
       </h2>
       <p className="mt-1 text-sm text-slate-500">Считаем только факт перехода по публичной ссылке — без профилей и истории.</p>
       <ol className="mt-3 grid gap-2">
@@ -103,7 +103,7 @@ export function ExternalPlatformStats() {
               className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2 text-sm hover:border-indigo-200 hover:bg-indigo-50/40"
             >
               <span className="min-w-0 flex-1 truncate font-semibold text-slate-700">{item.title}</span>
-              <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">
+              <span className="shrink-0 rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs font-bold text-[var(--status-warn-fg)]">
                 {item.clicks} переход{item.clicks === 1 ? "" : item.clicks < 5 ? "а" : "ов"}
               </span>
             </a>

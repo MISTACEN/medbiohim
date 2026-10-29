@@ -172,8 +172,8 @@ export default function AdminAuditPage() {
         </div>
       </header>
 
-      {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-      {ok && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ok}</div>}
+      {error && <div role="alert" className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+      {ok && <div className="rounded-xl bg-[var(--status-ok-bg)] px-4 py-3 text-sm text-[var(--status-ok-fg)]">{ok}</div>}
 
       {rows.length === 0 && !loading && (
         <div className="card text-sm text-slate-500">
@@ -222,7 +222,7 @@ export default function AdminAuditPage() {
                           </button>
                           <button
                             type="button"
-                            className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-40"
+                            className="rounded-xl border border-[var(--status-critical-border)] px-3 py-2 text-xs font-semibold text-[var(--status-critical-fg)] transition hover:bg-[var(--status-critical-bg)] disabled:opacity-40"
                             disabled={!supported || busy === "rollback-" + row.id}
                             title={supported ? "Вернуть значения этой версии" : "Откат поддерживается только для вопросов, тестов и материалов"}
                             onClick={() => void rollback(row)}
@@ -236,7 +236,7 @@ export default function AdminAuditPage() {
                       <tr className="border-b bg-slate-50/60">
                         <td colSpan={5} className="px-3 py-3">
                           {detail.row_missing ? (
-                            <p className="text-xs text-amber-700">
+                            <p className="text-xs text-[var(--status-warn-fg)]">
                               Исходная запись удалена — автоматическое восстановление удалённых строк отключено.
                             </p>
                           ) : (
@@ -303,8 +303,8 @@ function DiffTable({ detail }: { detail: AuditDetail }) {
         {changed.map((key) => (
           <tr key={key} className="border-t border-slate-200 align-top">
             <td className="py-1 pr-3 font-mono text-[11px] text-slate-600">{key}</td>
-            <td className="py-1 pr-3 text-emerald-800">{formatValue(detail.snapshot[key])}</td>
-            <td className="py-1 text-rose-800">{formatValue((detail.current || {})[key])}</td>
+            <td className="py-1 pr-3 text-[var(--status-ok-fg)]">{formatValue(detail.snapshot[key])}</td>
+            <td className="py-1 text-[var(--status-critical-fg)]">{formatValue((detail.current || {})[key])}</td>
           </tr>
         ))}
       </tbody>

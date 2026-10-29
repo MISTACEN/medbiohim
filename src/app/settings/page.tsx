@@ -412,7 +412,7 @@ function SettingsPageInner() {
       {recoveryMode && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"><b>Восстановление пароля.</b> Сессия подтверждена. Задайте новый пароль ниже.</div>}
 
       {(msg || err) && (
-        <div className={clsx("rounded-xl border px-4 py-3 text-sm", err ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-900")}>
+        <div className={clsx("rounded-xl border px-4 py-3 text-sm", err ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" : "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]")}>
           {err || msg}
         </div>
       )}
@@ -447,11 +447,11 @@ function SettingsPageInner() {
                 : "не привязан",
             },
           ].map((item) => (
-            <div key={item.key} className={clsx("rounded-xl border px-3 py-2.5", item.active ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)]")}>
+            <div key={item.key} className={clsx("rounded-xl border px-3 py-2.5", item.active ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-[var(--border)]")}>
               <div className="flex items-center gap-2 text-sm font-semibold">
                 {item.icon}
                 {item.title}
-                {item.active && <Check className="ml-auto h-3.5 w-3.5 text-emerald-600" />}
+                {item.active && <Check className="ml-auto h-3.5 w-3.5 text-[var(--status-ok-fg)]" />}
               </div>
               <div className="mt-1 truncate text-xs text-[var(--muted)]">{item.detail}</div>
             </div>
@@ -489,7 +489,7 @@ function SettingsPageInner() {
                   type="button"
                   onClick={() => void onAvatarRemove()}
                   disabled={avatarBusy}
-                  className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-60"
+                  className="rounded-lg border border-[var(--status-critical-border)] px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-60"
                 >
                   Удалить фото
                 </button>
@@ -516,7 +516,7 @@ function SettingsPageInner() {
             <label htmlFor="settings-email" className="mb-1 block text-xs text-[var(--muted)]">Email</label>
             <input id="settings-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
             {emailPending ? (
-              <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <div className="mt-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs text-[var(--status-warn-fg)]">
                 <div className="font-semibold">Адрес {emailPending} ждёт подтверждения</div>
                 <p className="mt-1 leading-relaxed">
                   Пока вы не перейдёте по ссылке из письма, вход остаётся на{" "}
@@ -526,7 +526,7 @@ function SettingsPageInner() {
                   type="button"
                   disabled={busy === "email-resend"}
                   onClick={() => void onResendEmailChange()}
-                  className="mt-2 rounded-lg border border-amber-400 px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                  className="mt-2 rounded-lg border border-[var(--status-warn-border)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
                 >
                   {busy === "email-resend" ? "Отправляем…" : "Отправить письмо снова"}
                 </button>
@@ -563,7 +563,7 @@ function SettingsPageInner() {
           Где сейчас выполнен вход в аккаунт. Завершение устройства сбрасывает его сессию: на нём потребуется войти заново.
         </p>
         {sessionsError ? (
-          <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
             {sessionsError}{" "}
             <button type="button" onClick={() => void loadSessions()} className="font-semibold underline">Повторить</button>
           </div>
@@ -637,7 +637,7 @@ function SettingsPageInner() {
                 <div className="font-semibold">{id.provider_label}</div>
                 <div className="text-xs text-[var(--muted)]">{[id.email, id.name].filter(Boolean).join(" · ") || id.provider}</div>
               </div>
-              <button type="button" disabled={!id.can_unlink} onClick={() => void onUnlink(id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-40">
+              <button type="button" disabled={!id.can_unlink} onClick={() => void onUnlink(id)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--status-critical-border)] px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-40">
                 <Unlink className="h-3.5 w-3.5" /> Отвязать
               </button>
             </div>
@@ -650,7 +650,7 @@ function SettingsPageInner() {
             onClick={() => void onLink("google")}
             className={clsx(
               "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm",
-              linkedProviders.has("google") ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-[var(--border)] hover:bg-slate-50",
+              linkedProviders.has("google") ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-[var(--border)] hover:bg-slate-50",
             )}
           >
             <span>
@@ -667,12 +667,12 @@ function SettingsPageInner() {
         <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Telegram</h2>
         <p className="text-sm text-[var(--muted)]">Свяжите Telegram с текущим аккаунтом MEDBIOHIM. Ссылка одноразовая и действует 10 минут; пароль и токены бот не запрашивает.</p>
         {telegramStatus?.linked ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-3 text-[var(--status-ok-fg)]">
             <div>
               <div className="font-semibold">✓ Telegram привязан</div>
               <div className="text-xs">{telegramStatus.account?.username ? "@" + telegramStatus.account.username : telegramStatus.account?.first_name || "Аккаунт Telegram"}</div>
             </div>
-            <button type="button" disabled={!!busy} onClick={() => void onUnlinkTelegram()} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50">
+            <button type="button" disabled={!!busy} onClick={() => void onUnlinkTelegram()} className="inline-flex items-center gap-1 rounded-lg border border-[var(--status-critical-border)] px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-50">
               <Unlink className="h-3.5 w-3.5" /> Отвязать
             </button>
           </div>
@@ -703,7 +703,7 @@ function SettingsPageInner() {
           </button>
         )}
         {telegramStatusError && !telegramStatus?.linked && (
-          <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <p role="alert" className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3 py-2 text-xs text-[var(--status-warn-fg)]">
             Статус привязки временно недоступен: {telegramStatusError}. Это не значит, что Telegram отвязан.
           </p>
         )}
@@ -778,7 +778,7 @@ function SettingsPageInner() {
                 <div className="mb-3 rounded-xl border bg-white p-2">
                   {id === "sidebar" && (
                     <div className="grid grid-cols-[28%_1fr] gap-2">
-                      <div className="space-y-1 rounded-lg bg-slate-100 p-2"><span className="block h-2 rounded bg-indigo-300" /><span className="block h-2 rounded bg-emerald-300" /><span className="block h-2 rounded bg-slate-300" /><span className="block h-2 rounded bg-slate-300" /></div>
+                      <div className="space-y-1 rounded-lg bg-slate-100 p-2"><span className="block h-2 rounded bg-indigo-300" /><span className="block h-2 rounded bg-[var(--status-ok-fg)]" /><span className="block h-2 rounded bg-slate-300" /><span className="block h-2 rounded bg-slate-300" /></div>
                       <div className="space-y-2"><span className="block h-3 w-1/2 rounded bg-slate-200" /><span className="block h-14 rounded-lg bg-slate-100" /><span className="block h-3 rounded bg-slate-200" /></div>
                     </div>
                   )}

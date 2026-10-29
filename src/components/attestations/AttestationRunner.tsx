@@ -30,10 +30,10 @@ const EMPTY: Progress = { read: [], correct: [], tasks: [] };
 
 const TYPE_STYLE: Record<AttestationType, { stamp: string; ring: string; soft: string }> = {
   colloquium: { stamp: "bg-indigo-600", ring: "ring-indigo-200", soft: "bg-indigo-50 text-indigo-700" },
-  exam: { stamp: "bg-rose-600", ring: "ring-rose-200", soft: "bg-rose-50 text-rose-700" },
-  credit: { stamp: "bg-emerald-600", ring: "ring-emerald-200", soft: "bg-emerald-50 text-emerald-700" },
+  exam: { stamp: "bg-[var(--status-critical-fg)]", ring: "ring-rose-200", soft: "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" },
+  credit: { stamp: "bg-[var(--status-ok-fg)]", ring: "ring-emerald-200", soft: "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" },
   test: { stamp: "bg-sky-600", ring: "ring-sky-200", soft: "bg-sky-50 text-sky-700" },
-  control: { stamp: "bg-amber-500", ring: "ring-amber-200", soft: "bg-amber-50 text-amber-700" },
+  control: { stamp: "bg-[var(--status-warn-fg)]", ring: "ring-amber-200", soft: "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]" },
 };
 
 function itemLabel(item: AttestationItem) {
@@ -142,7 +142,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
         </Link>
         <div className="flex items-center gap-2">
           {passed && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-ok-bg)] px-3 py-1 text-xs font-bold text-[var(--status-ok-fg)] ring-1 ring-emerald-200">
               <BadgeCheck className="h-3.5 w-3.5" /> Порог {passScore}% пройден
             </span>
           )}
@@ -211,7 +211,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                   strokeWidth="8"
                   strokeLinecap="round"
                   strokeDasharray={`${Math.max(percent, 1) * 3.267} 327`}
-                  className={passed ? "text-emerald-500" : "text-indigo-500"}
+                  className={passed ? "text-[var(--status-ok-fg)]" : "text-indigo-500"}
                 />
               </svg>
               <div className="absolute text-center">
@@ -294,7 +294,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                     </span>
                   )}
                   {stage.items.some((item) => item.kind === "task") && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-warn-bg)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--status-warn-fg)]">
                       <Sparkles className="h-3 w-3" /> задачи
                     </span>
                   )}
@@ -325,8 +325,8 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                       className={`group rounded-2xl border bg-[var(--card)] p-5 transition sm:p-6 ${
                         isTest && isChecked
                           ? isCorrect
-                            ? "border-emerald-200"
-                            : "border-rose-200"
+                            ? "border-[var(--status-ok-border)]"
+                            : "border-[var(--status-critical-border)]"
                           : "border-[var(--border)] hover:border-slate-300"
                       }`}
                     >
@@ -338,9 +338,9 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${
                               isRead || isTaskDone || (isTest && progress.correct.includes(item.id))
-                                ? "bg-emerald-500"
+                                ? "bg-[var(--status-ok-fg)]"
                                 : isTest && isChecked
-                                  ? "bg-rose-400"
+                                  ? "bg-[var(--status-critical-fg)]"
                                   : "bg-slate-200"
                             }`}
                           />
@@ -350,12 +350,12 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{itemLabel(item)}</span>
                             {isTheory && isRead && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--status-ok-fg)]">
                                 <Check className="h-3 w-3" /> изучено
                               </span>
                             )}
                             {isTask && isTaskDone && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--status-ok-fg)]">
                                 <Check className="h-3 w-3" /> решено
                               </span>
                             )}
@@ -378,9 +378,9 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                                 const right = (item.correct || []).includes(optionIndex);
                                 const tone = isChecked
                                   ? right
-                                    ? "border-emerald-300 bg-emerald-50/60"
+                                    ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/60"
                                     : active
-                                      ? "border-rose-300 bg-rose-50/60"
+                                      ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]/60"
                                       : "border-[var(--border)] bg-transparent"
                                   : active
                                     ? "border-indigo-300 bg-indigo-50/60"
@@ -402,8 +402,8 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                                     <div className="text-sm leading-6 text-slate-700">
                                       <ChemRichText text={option} className="space-y-1" />
                                     </div>
-                                    {isChecked && right && <CheckCircle2 className="ml-auto mt-1 h-4 w-4 shrink-0 text-emerald-500" />}
-                                    {isChecked && active && !right && <X className="ml-auto mt-1 h-4 w-4 shrink-0 text-rose-500" />}
+                                    {isChecked && right && <CheckCircle2 className="ml-auto mt-1 h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />}
+                                    {isChecked && active && !right && <X className="ml-auto mt-1 h-4 w-4 shrink-0 text-[var(--status-critical-fg)]" />}
                                   </button>
                                 );
                               })}
@@ -418,7 +418,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                                   Проверить
                                 </button>
                                 {isChecked && (
-                                  <span className={`text-xs font-semibold ${isCorrect ? "text-emerald-600" : "text-rose-600"}`}>
+                                  <span className={`text-xs font-semibold ${isCorrect ? "text-[var(--status-ok-fg)]" : "text-[var(--status-critical-fg)]"}`}>
                                     {isCorrect ? "Верно" : "Есть ошибка — посмотрите выделенные варианты"}
                                   </span>
                                 )}
@@ -452,15 +452,15 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                                   type="button"
                                   onClick={() => mark("tasks", item.id, !isTaskDone)}
                                   className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                                    isTaskDone ? "bg-emerald-50 text-emerald-700" : "bg-slate-900 text-white hover:bg-slate-700"
+                                    isTaskDone ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-slate-900 text-white hover:bg-slate-700"
                                   }`}
                                 >
                                   <Check className="h-3.5 w-3.5" /> {isTaskDone ? "Решено" : "Отметить решённой"}
                                 </button>
                               </div>
                               {revealed[item.id] && item.answer && (
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3.5 py-3 text-sm leading-6 text-emerald-900">
-                                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Эталонный ответ</div>
+                                <div className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/50 px-3.5 py-3 text-sm leading-6 text-[var(--status-ok-fg)]">
+                                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--status-ok-fg)]">Эталонный ответ</div>
                                   <ChemRichText text={item.answer} className="space-y-1" />
                                 </div>
                               )}
@@ -486,7 +486,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                               type="button"
                               onClick={() => mark("read", item.id, !isRead)}
                               className={`mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                                isRead ? "bg-emerald-50 text-emerald-700" : "border border-[var(--border)] text-slate-600 hover:border-slate-300"
+                                isRead ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border border-[var(--border)] text-slate-600 hover:border-slate-300"
                               }`}
                             >
                               <Check className="h-3.5 w-3.5" /> {isRead ? "Изучено" : "Отметить изученным"}
@@ -497,7 +497,7 @@ export default function AttestationRunner({ attestation }: { attestation: Attest
                               type="button"
                               onClick={() => mark("read", item.id, !isRead)}
                               className={`ml-2 mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                                isRead ? "bg-emerald-50 text-emerald-700" : "border border-[var(--border)] text-slate-600 hover:border-slate-300"
+                                isRead ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border border-[var(--border)] text-slate-600 hover:border-slate-300"
                               }`}
                             >
                               <Check className="h-3.5 w-3.5" /> {isRead ? "Изучено" : "Отметить изученным"}

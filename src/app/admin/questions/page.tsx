@@ -105,7 +105,7 @@ export default function AdminQuestionsPage() {
       render: (item) => (
         <div className="flex justify-end gap-2">
           <button type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold" onClick={() => setEdit(item)}>Изменить</button>
-          <button type="button" aria-label={`Удалить билет «${item.text.slice(0, 40)}»`} className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs text-rose-600" onClick={() => void remove(item.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+          <button type="button" aria-label={`Удалить билет «${item.text.slice(0, 40)}»`} className="rounded-lg bg-[var(--status-critical-bg)] px-2.5 py-1.5 text-xs text-[var(--status-critical-fg)]" onClick={() => void remove(item.id)}><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
       ),
     },
@@ -149,7 +149,7 @@ export default function AdminQuestionsPage() {
         <div className="flex flex-wrap gap-2">{banks.map((bank) => <button key={bank.id} type="button" className="rounded-full border px-3 py-1.5 text-xs font-semibold hover:bg-slate-50" onClick={() => { const slug = slugForBank(bank.subject); setSubjectSlug(slug); void reload(); }}>{bank.subject} · {bank.count}</button>)}</div>
       </section>
 
-      {note && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{note}</div>}
+      {note && <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">{note}</div>}
       {edit && <section className="card space-y-3 p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">{edit.id ? "Редактирование билета" : "Новый экзаменационный билет"}</h2><p className="text-xs text-slate-500">kind=ticket · for_exam=true · for_ticket=true</p></div><span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Общая база</span></div><div className="grid gap-3 md:grid-cols-2"><select className="rounded-xl border px-3 py-2 text-sm" value={edit.subject_slug || subjectSlug} onChange={(e) => { const slug = e.target.value; setEdit({ ...edit, subject_slug: slug, subject: SUBJECTS.find(([s]) => s === slug)?.[1] || "" }); setSubjectSlug(slug); }}>{SUBJECTS.map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}</select><input className="rounded-xl border px-3 py-2 text-sm" placeholder="Тема" value={edit.topic || ""} onChange={(e) => setEdit({ ...edit, topic: e.target.value })} /></div><textarea className="min-h-[120px] w-full rounded-xl border px-3 py-2 text-sm" placeholder="Формулировка вопроса" value={edit.text || ""} onChange={(e) => setEdit({ ...edit, text: e.target.value })} /><textarea className="min-h-[100px] w-full rounded-xl border px-3 py-2 text-sm" placeholder="Эталонный ответ (виден в режиме подготовки)" value={edit.answer || ""} onChange={(e) => setEdit({ ...edit, answer: e.target.value })} /><div className="flex gap-2"><button type="button" disabled={busy} className="btn-primary inline-flex items-center gap-2 text-sm" onClick={save}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Сохранить</button><button type="button" className="rounded-xl bg-slate-100 px-4 py-2 text-sm" onClick={() => setEdit(null)}>Отмена</button></div></section>}
       <DataTable
         rows={items}

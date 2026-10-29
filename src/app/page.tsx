@@ -321,12 +321,12 @@ export default function DashboardPage() {
               </span>
             </span>
             {!user?.groupId ? (
-              <span className="text-xs text-amber-700">Админ может назначить группу в разделе «Пользователи»</span>
+              <span className="text-xs text-[var(--status-warn-fg)]">Админ может назначить группу в разделе «Пользователи»</span>
             ) : null}
           </div>
 
           <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-600 shadow-sm" role="status" aria-live="polite">
-            <span className={`h-2 w-2 rounded-full ${!apiTransport ? "bg-slate-300" : apiTransport.source === "cloudflare" ? "bg-emerald-500" : apiTransport.source === "spaceweb" ? "bg-amber-500" : apiTransport.source.includes("fallback") ? "bg-amber-500" : "bg-rose-500"}`} />
+            <span className={`h-2 w-2 rounded-full ${!apiTransport ? "bg-slate-300" : apiTransport.source === "cloudflare" ? "bg-[var(--status-ok-fg)]" : apiTransport.source === "spaceweb" ? "bg-[var(--status-warn-fg)]" : apiTransport.source.includes("fallback") ? "bg-[var(--status-warn-fg)]" : "bg-[var(--status-critical-fg)]"}`} />
             <span className="font-semibold text-slate-700">API:</span>
             <span>
               {!apiTransport ? "проверяем источник…" :
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                 apiTransport.source === "cloudflare-unavailable" ? "Cloudflare недоступен" :
                 apiTransport.source === "unavailable" ? "бэкенд не настроен" : "источник не определён"}
             </span>
-            {apiTransport?.fallback && <span className="rounded-md bg-amber-50 px-2 py-0.5 font-medium text-amber-700">резервный маршрут</span>}
+            {apiTransport?.fallback && <span className="rounded-md bg-[var(--status-warn-bg)] px-2 py-0.5 font-medium text-[var(--status-warn-fg)]">резервный маршрут</span>}
             {apiTransport?.path && <span className="text-slate-400">· последний запрос {apiTransport.path}</span>}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -403,7 +403,7 @@ export default function DashboardPage() {
           </div>
         </div>
         {academicError ? (
-          <p className="mt-4 text-sm text-rose-600">{academicError}</p>
+          <p className="mt-4 text-sm text-[var(--status-critical-fg)]">{academicError}</p>
         ) : metrics ? (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
@@ -422,7 +422,7 @@ export default function DashboardPage() {
           <p className="mt-4 text-sm text-slate-500">Метрики появятся после загрузки академического состояния. Нули не подставляются.</p>
         )}
         {academic && !academic.plan?.available ? (
-          <p className="mt-4 text-sm text-amber-700">{academic.plan?.message || "Учебный план ещё не загружен."}</p>
+          <p className="mt-4 text-sm text-[var(--status-warn-fg)]">{academic.plan?.message || "Учебный план ещё не загружен."}</p>
         ) : null}
         {recs.length ? (
           <div className="mt-4 space-y-2">
@@ -442,7 +442,7 @@ export default function DashboardPage() {
             })}
           </div>
         ) : null}
-        {planNotice ? <p className="mt-3 text-sm text-emerald-700">{planNotice}</p> : null}
+        {planNotice ? <p className="mt-3 text-sm text-[var(--status-ok-fg)]">{planNotice}</p> : null}
       </section>
 
       <section>
@@ -555,7 +555,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         {subjectsError ? (
-          <p className="text-sm text-rose-600">{subjectsError}</p>
+          <p className="text-sm text-[var(--status-critical-fg)]">{subjectsError}</p>
         ) : subjects.length === 0 ? (
           <p className="text-sm text-slate-500">Предметы курса появятся после загрузки каталога. Демо-список не подставляется.</p>
         ) : (
@@ -577,7 +577,7 @@ export default function DashboardPage() {
         )}
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/subjects/physiology/lessons" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <BookOpen className="h-4 w-4 text-emerald-500" /> Практикум по физиологии
+            <BookOpen className="h-4 w-4 text-[var(--status-ok-fg)]" /> Практикум по физиологии
           </Link>
           <Link href="/trainers" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Microscope className="h-4 w-4 text-indigo-500" /> Тренажёр
@@ -634,8 +634,8 @@ export default function DashboardPage() {
       </div>
 
       {academic?.debts?.length ? (
-        <section className="rounded-2xl border border-rose-100 bg-rose-50/40 p-5 shadow-sm">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-rose-700">
+        <section className="rounded-2xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]/40 p-5 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--status-critical-fg)]">
             <AlertTriangle className="h-4 w-4" /> Академические долги
           </div>
           <ul className="space-y-2">

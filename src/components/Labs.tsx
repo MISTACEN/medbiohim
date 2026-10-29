@@ -116,9 +116,9 @@ export default function Labs({ sessionId, subject }: LabsProps) {
   if (error) {
     return (
       <div className="labs-container">
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+        <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">
           <p>{error}</p>
-          <Link href="/login" className="mt-2 inline-flex font-semibold text-rose-900 underline">
+          <Link href="/login" className="mt-2 inline-flex font-semibold text-[var(--status-critical-fg)] underline">
             Войти
           </Link>
         </div>

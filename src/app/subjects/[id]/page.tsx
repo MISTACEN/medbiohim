@@ -367,9 +367,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   };
   const TOPIC_STATUS_CLASS: Record<string, string> = {
     pending: "bg-slate-100 text-slate-600",
-    in_progress: "bg-amber-100 text-amber-800",
-    passed: "bg-emerald-100 text-emerald-800",
-    failed: "bg-rose-100 text-rose-800",
+    in_progress: "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]",
+    passed: "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]",
+    failed: "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]",
     retake_needed: "bg-orange-100 text-orange-800",
   };
 
@@ -554,7 +554,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       <div className="card min-h-48 animate-pulse p-5" />
     </div>
   );
-  if (error && !subject) return <div className="card p-6 text-sm text-rose-600">{error}</div>;
+  if (error && !subject) return <div className="card p-6 text-sm text-[var(--status-critical-fg)]">{error}</div>;
 
   return (
     <div className="space-y-6">
@@ -698,7 +698,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                     )}
                     {w.practice && (
                       <div className="text-sm whitespace-pre-line">
-                        <b className="text-emerald-700">Практика:</b> {w.practice}
+                        <b className="text-[var(--status-ok-fg)]">Практика:</b> {w.practice}
                       </div>
                     )}
                     {Array.isArray(w.preparations) && w.preparations.length > 0 && (
@@ -730,11 +730,11 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                 {planSummary && planSummary.total > 0 && (
                   <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-4 py-2 text-sm">
                     <b>Мой прогресс:</b>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                    <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-ok-fg)]">
                       сдано {planSummary.passed} из {planSummary.total}
                     </span>
                     {planSummary.in_progress > 0 && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">в процессе {planSummary.in_progress}</span>
+                      <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs text-[var(--status-warn-fg)]">в процессе {planSummary.in_progress}</span>
                     )}
                     {planSummary.failed_or_retake > 0 && (
                       <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-800">отработка {planSummary.failed_or_retake}</span>
@@ -743,7 +743,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                   </div>
                 )}
                 {resourceErrors.topicProgress && (
-                  <div className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{resourceErrors.topicProgress}</div>
+                  <div className="rounded-xl bg-[var(--status-critical-bg)] px-4 py-2 text-sm text-[var(--status-critical-fg)]">{resourceErrors.topicProgress}</div>
                 )}
                 {modules.map((m, i) => (
                   <details key={m.id || i} className="rounded-xl border" open={i === 0}>
@@ -846,7 +846,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                     Сгенерировать билет
                   </button>
                 </div>
-                {ticketNote && <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{ticketNote}</div>}
+                {ticketNote && <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">{ticketNote}</div>}
                 {ticketQuestions.length > 0 && (
                   <>
                     {ticketTitle && <h3 className="mt-5 text-base font-semibold">{ticketTitle}</h3>}
@@ -881,7 +881,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                 )}
               </>
             ) : (
-              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="mt-4 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 {resourceErrors.tickets || "Банк билетов для этого предмета пока не подключён."}
               </p>
             )}
@@ -947,7 +947,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             <h2 className="text-lg font-bold">Лекции</h2>
             <p className="mt-1 text-sm text-slate-500">Лекции этого предмета — читаются прямо здесь.</p>
             {lectureLoading && <p className="mt-3 text-sm text-slate-500">Открываю лекцию…</p>}
-            {lectureError && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{lectureError}</p>}
+            {lectureError && <p className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">{lectureError}</p>}
             {subjectLectures.length > 0 ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {subjectLectures.map((lec: any) => (
@@ -978,7 +978,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                 ))}
               </div>
             ) : (
-              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="mt-4 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 Опубликованных лекций по этому предмету пока нет.
               </p>
             )}

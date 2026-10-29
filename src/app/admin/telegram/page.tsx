@@ -47,9 +47,9 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 function categoryClass(category: string | null | undefined) {
-  if (category === "homework") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (category === "homework") return "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)] border-[var(--status-ok-border)]";
   if (category === "material_candidate") return "bg-sky-50 text-sky-700 border-sky-200";
-  if (category === "schedule") return "bg-amber-50 text-amber-700 border-amber-200";
+  if (category === "schedule") return "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)] border-[var(--status-warn-border)]";
   return "bg-slate-50 text-slate-600 border-slate-200";
 }
 
@@ -166,7 +166,7 @@ export default function AdminTelegramPage() {
     </div>
 
     <div className="grid gap-3 md:grid-cols-2">
-      <div className={"rounded-xl border p-4 text-sm " + (cloudflareAiReady ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900")}>
+      <div className={"rounded-xl border p-4 text-sm " + (cloudflareAiReady ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")}>
         <div className="flex items-center gap-2 font-semibold"><Sparkles className="h-4 w-4" /> Сортировка Cloudflare AI</div>
         <p className="mt-1">
           {cloudflareAiReady
@@ -176,7 +176,7 @@ export default function AdminTelegramPage() {
         {provider === "gigachat" && <p className="mt-1">Выбран GigaChat: {gigachatReady ? "настроен" : "нет кредов, работает резерв"}.</p>}
         {provider === "auto" && <p className="mt-1">Режим auto: Cloudflare AI, затем GigaChat.</p>}
       </div>
-      <div className={"rounded-xl border p-4 text-sm " + (ingestReady ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800")}>
+      <div className={"rounded-xl border p-4 text-sm " + (ingestReady ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")}>
         <div className="flex items-center gap-2 font-semibold"><Send className="h-4 w-4" /> Приём из групп</div>
         <p className="mt-1">
           {ingestReady
@@ -188,7 +188,7 @@ export default function AdminTelegramPage() {
       </div>
     </div>
 
-    {(error || note) && <div className={"rounded-xl border bg-white p-3 text-sm " + (error ? "text-rose-700" : "text-gray-700")}>{error || note}</div>}
+    {(error || note) && <div className={"rounded-xl border bg-white p-3 text-sm " + (error ? "text-[var(--status-critical-fg)]" : "text-gray-700")}>{error || note}</div>}
 
     <div className="card overflow-hidden">
       <div className="border-b px-4 py-3 font-semibold">Обнаруженные Telegram-чаты</div>
@@ -199,8 +199,8 @@ export default function AdminTelegramPage() {
           <div className="font-medium">{chat.telegram_title || "Без названия"}</div>
           <div className="mt-1 text-xs text-gray-500">{chat.telegram_chat_type} · ID {chat.telegram_chat_id}</div>
           <div className="mt-2 text-xs">{chat.is_verified && chat.group_name
-            ? <span className="inline-flex items-center gap-1 text-emerald-700"><CheckCircle2 className="h-4 w-4" /> {chat.group_name}{chat.group_code ? " · " + chat.group_code : ""}</span>
-            : <span className="text-amber-700">Не привязан</span>}</div>
+            ? <span className="inline-flex items-center gap-1 text-[var(--status-ok-fg)]"><CheckCircle2 className="h-4 w-4" /> {chat.group_name}{chat.group_code ? " · " + chat.group_code : ""}</span>
+            : <span className="text-[var(--status-warn-fg)]">Не привязан</span>}</div>
         </div>
         <div className="flex items-center gap-2">
           <Link2 className="h-4 w-4 text-gray-400" />
@@ -240,7 +240,7 @@ export default function AdminTelegramPage() {
             {message.ai_due_hint && <span>Срок: {message.ai_due_hint}</span>}
             {message.ai_reason && <span title={message.ai_reason}>Источник: {message.ai_reason.startsWith("rules_") ? "правила" : message.ai_reason.includes("cloudflare") ? "Cloudflare AI" : message.ai_reason.includes("gigachat") ? "GigaChat" : "правила"}</span>}
           </div>
-          {linked ? <div className="text-xs font-medium text-emerald-700">Задание создано · {linked.slice(0, 8)}</div> : <button
+          {linked ? <div className="text-xs font-medium text-[var(--status-ok-fg)]">Задание создано · {linked.slice(0, 8)}</div> : <button
             type="button"
             onClick={() => void publish(message)}
             disabled={publishing === message.id}

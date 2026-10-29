@@ -101,8 +101,8 @@ function ExamView({ test }: { test: PortalMatchingTest }) {
                 {q.options.map((opt, oi) => {
                   let cls = "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40";
                   if (checked) {
-                    if (oi === q.correct) cls = "border-emerald-300 bg-emerald-50";
-                    else if (oi === pick) cls = "border-rose-300 bg-rose-50";
+                    if (oi === q.correct) cls = "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]";
+                    else if (oi === pick) cls = "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]";
                     else cls = "border-slate-200 opacity-60";
                   } else if (pick === oi) {
                     cls = "border-indigo-400 bg-indigo-50";
@@ -117,8 +117,8 @@ function ExamView({ test }: { test: PortalMatchingTest }) {
                     >
                       <span className="mt-0.5 text-xs font-bold text-slate-400">{String.fromCharCode(65 + oi)}</span>
                       <span className="flex-1">{opt}</span>
-                      {checked && oi === q.correct && <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />}
-                      {checked && pick === oi && oi !== q.correct && <XCircle className="size-4 shrink-0 text-rose-500" />}
+                      {checked && oi === q.correct && <CheckCircle2 className="size-4 shrink-0 text-[var(--status-ok-fg)]" />}
+                      {checked && pick === oi && oi !== q.correct && <XCircle className="size-4 shrink-0 text-[var(--status-critical-fg)]" />}
                     </button>
                   );
                 })}
@@ -200,7 +200,7 @@ export default function MatchingTrainer() {
     setQuery("");
   }, [testId]);
 
-  if (error) return <div className="card p-5 text-sm text-rose-600">{error}</div>;
+  if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!bank) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">
@@ -308,7 +308,7 @@ export default function MatchingTrainer() {
                     className={
                       "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition " +
                       (isHidden
-                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        ? "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)] hover:bg-[var(--status-warn-bg)]"
                         : "bg-slate-100 text-slate-500 hover:bg-slate-200")
                     }
                   >
@@ -353,7 +353,7 @@ export default function MatchingTrainer() {
                               <button
                                 type="button"
                                 onClick={() => revealCell(realIdx, c.key)}
-                                className="w-full rounded-lg bg-amber-50 px-2 py-1.5 text-left text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
+                                className="w-full rounded-lg bg-[var(--status-warn-bg)] px-2 py-1.5 text-left text-xs font-semibold text-[var(--status-warn-fg)] transition hover:bg-[var(--status-warn-bg)]"
                               >
                                 Нажмите, чтобы открыть
                               </button>

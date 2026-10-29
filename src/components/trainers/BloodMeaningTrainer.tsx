@@ -273,13 +273,13 @@ export function BloodMeaningTrainer() {
                 <b>Что ещё нужно вспомнить:</b> {evaluation.missing.map((concept) => concept.label).join(", ")}.
               </div>
             ) : (
-              <div className="mt-3 text-sm font-semibold text-emerald-700">Все ключевые идеи из эталона отражены.</div>
+              <div className="mt-3 text-sm font-semibold text-[var(--status-ok-fg)]">Все ключевые идеи из эталона отражены.</div>
             )}
           </div>
         ) : null}
 
         {showReference ? (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+          <div className="mt-4 rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm leading-6 text-[var(--status-warn-fg)]">
             <div className="font-extrabold">Эталон по 4.Кровь.docx</div>
             <div className="mt-2">{question.sourceAnswer}</div>
           </div>

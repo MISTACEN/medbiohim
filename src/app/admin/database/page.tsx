@@ -29,7 +29,7 @@ export default function AdminDatabasePage() {
             Подключение, настройка, схема, редактирование строк и SQL прямо из админ-панели.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+        <div className="inline-flex items-center gap-2 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-2 text-xs font-semibold text-[var(--status-ok-fg)]">
           <ShieldCheck className="h-4 w-4" />
           Доступ только администратору
         </div>

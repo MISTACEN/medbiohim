@@ -27,7 +27,7 @@ export default function LectureViewPage() {
         <Link href="/lectures" className="inline-flex items-center gap-2 text-sm text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" /> К списку
         </Link>
-        <div className="card p-6 text-sm text-rose-700">{error || "Лекция не найдена"}</div>
+        <div className="card p-6 text-sm text-[var(--status-critical-fg)]">{error || "Лекция не найдена"}</div>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function LectureViewPage() {
                 const isRu = String(m.region || "") === "ru";
                 return (
                   <li key={i} className="rounded-xl border border-[var(--border)] p-3">
-                    <span className={`mr-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${isRu ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                    <span className={`mr-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${isRu ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-slate-100 text-slate-600"}`}>
                       {isRu ? "без VPN" : "VPN?"}
                     </span>
                     {url ? (

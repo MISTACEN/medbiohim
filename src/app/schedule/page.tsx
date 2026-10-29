@@ -854,7 +854,7 @@ export default function SchedulePage() {
                 <button type="button" disabled={homeworkBusy==="add"} onClick={()=>void addHomeworkForSelected()} className="btn-primary w-full">{homeworkBusy==="add"?"Сохранение…":"Добавить ДЗ к этому занятию"}</button>
               </div>}
               {selectedHomeworks.length===0 ? <div className="rounded-xl border border-dashed p-4 text-center text-sm opacity-60">На это занятие ДЗ пока нет.</div> : <div className="space-y-2">
-                {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-emerald-600":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{h.description}</p>}
+                {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-[var(--status-ok-fg)]":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{h.description}</p>}
                 {<HomeworkGrade homework={h}/>}
                 {Array.isArray(h.attachments) && h.attachments.length>0 && <div className="mt-3 grid grid-cols-2 gap-2">
                   {h.attachments.map((att:any,index:number)=>{
@@ -893,7 +893,7 @@ export default function SchedulePage() {
                   </div>
                 )}
                 {lesson.control && (
-                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                  <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-[var(--status-warn-fg)]">
                     <div className="mb-1 font-semibold">Контроль</div>
                     <p>{lesson.control}</p>
                   </div>
@@ -928,11 +928,11 @@ export default function SchedulePage() {
               {selected.academic_hours && <div><b>Академическая нагрузка:</b> {selected.academic_hours} ак. ч.</div>}
               {selected.week_parity && <div><b>Чередование:</b> {selected.week_parity === "numerator" ? "числитель" : selected.week_parity === "denominator" ? "знаменатель" : "все недели"}</div>}
               {selected.source_detail && <div className="sm:col-span-2"><b>Источник/уточнение:</b> {selected.source_detail}</div>}
-              {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-amber-700">Отработка — это не обычное занятие</div>}
+              {selected.is_makeup && <div className="sm:col-span-2 font-semibold text-[var(--status-warn-fg)]">Отработка — это не обычное занятие</div>}
             <div className="sm:col-span-2">
               <div className="mb-1 font-semibold">
                 Посещение
-                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[10px] font-semibold text-amber-800" title="Отметку ставит сам студент; преподаватель её не подтверждает">
+                <span className="ml-2 rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 align-middle text-[10px] font-semibold text-[var(--status-warn-fg)]" title="Отметку ставит сам студент; преподаватель её не подтверждает">
                   самоотчёт
                 </span>
               </div>

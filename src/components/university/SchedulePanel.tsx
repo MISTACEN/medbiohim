@@ -95,7 +95,7 @@ function ScheduleRow({ item }: { item: ScheduleItem }) {
           {item.program && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{item.program}</span>}
           {item.context && <span>{item.context}</span>}
           {item.course && <span>{item.course}</span>}
-          {item.is_debt && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">задолженность</span>}
+          {item.is_debt && <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 font-semibold text-[var(--status-warn-fg)]">задолженность</span>}
         </span>
       </a>
       <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-300 group-hover:text-indigo-500" />
@@ -303,10 +303,10 @@ export default function SchedulePanel({
                       <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700">потоки</span>
                     )}
                     {summary?.ok && summary.has_forms && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">формы обучения</span>
+                      <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-[var(--status-ok-fg)]">формы обучения</span>
                     )}
                     {summary && summary.ok === false && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">состав уточняется</span>
+                      <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[var(--status-warn-fg)]">состав уточняется</span>
                     )}
                   </span>
                   {programs.length > 0 && (
@@ -333,7 +333,7 @@ export default function SchedulePanel({
             <div className="text-xs text-slate-400">
               {current ? `${items.length} файлов · получено ${formatDateTime(current.fetched_at)}` : "Загрузка..."}
               {current?.cached && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5">кэш 30 мин</span>}
-              {current?.stale && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">устаревшие данные</span>}
+              {current?.stale && <span className="ml-2 rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[var(--status-warn-fg)]">устаревшие данные</span>}
             </div>
           </div>
 
@@ -342,7 +342,7 @@ export default function SchedulePanel({
               <Loader2 className="h-4 w-4 animate-spin" /> Читаем официальную страницу факультета...
             </div>
           ) : (error && !current) || current?.error ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error || current?.error}</span>
               <a href={current?.faculty?.url || sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">
@@ -352,7 +352,7 @@ export default function SchedulePanel({
                 type="button"
                 onClick={() => void loadFaculty(selected)}
                 disabled={loading}
-                className="ml-auto inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-rose-700 disabled:opacity-50"
+                className="ml-auto inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-50"
               >
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Повторить
               </button>
@@ -403,14 +403,14 @@ export default function SchedulePanel({
           <div className="flex items-center gap-2 text-[11px] text-slate-400">
             {documentsFetchedAt && <span>получено {formatDateTime(documentsFetchedAt)}</span>}
             {documentsCached && <span className="rounded-full bg-slate-100 px-2 py-0.5">кэш 30 мин</span>}
-            {documentsStale && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">устаревшие данные</span>}
+            {documentsStale && <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[var(--status-warn-fg)]">устаревшие данные</span>}
           </div>
         </div>
         {documentsError ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3 py-2 text-xs text-[var(--status-warn-fg)]">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{documentsError}</span>
-            <button type="button" onClick={onRetryDocuments} className="ml-auto rounded-lg bg-white px-2.5 py-1 font-semibold text-amber-800">
+            <button type="button" onClick={onRetryDocuments} className="ml-auto rounded-lg bg-white px-2.5 py-1 font-semibold text-[var(--status-warn-fg)]">
               Повторить
             </button>
             <a href={sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">

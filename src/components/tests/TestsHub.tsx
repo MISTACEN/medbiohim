@@ -495,7 +495,7 @@ export function TestsHub({
       )}
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+        <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{error}</div>
       )}
 
       {!scoped && subjects.length > 0 && (
@@ -654,7 +654,7 @@ export function TestsHub({
                       <span>{group.tests.length} {plural(group.tests.length, "банк", "банка", "банков")}</span>
                       <span>{group.questionCount} {plural(group.questionCount, "вопрос", "вопроса", "вопросов")}</span>
                       {group.plannedDate && <span>Занятие: {dateLabel(group.plannedDate)}</span>}
-                      {group.isExtra && <span className="font-semibold text-amber-700">Вне текущего плана</span>}
+                      {group.isExtra && <span className="font-semibold text-[var(--status-warn-fg)]">Вне текущего плана</span>}
                     </div>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
@@ -690,7 +690,7 @@ export function TestsHub({
                       </Link>
                       <Link
                         href={buildBankHref(test, mode, count)}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
+                        className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-2 text-sm font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
                       >
                         <BookOpenCheck className="h-4 w-4" />
                         Банк
@@ -710,7 +710,7 @@ export function TestsHub({
             href="/tests?view=chemistry"
             className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:border-indigo-300 hover:bg-indigo-50/40"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]">
               <FlaskConical className="h-5 w-5" />
             </span>
             <span>

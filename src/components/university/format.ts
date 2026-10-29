@@ -26,9 +26,9 @@ export function toneClasses(tone: string): string {
     indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
     violet: "bg-violet-50 text-violet-700 border-violet-100",
     sky: "bg-sky-50 text-sky-700 border-sky-100",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-100",
-    rose: "bg-rose-50 text-rose-700 border-rose-100",
+    emerald: "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)] border-[var(--status-ok-border)]",
+    amber: "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)] border-[var(--status-warn-border)]",
+    rose: "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)] border-[var(--status-critical-border)]",
   };
   return map[tone] || "bg-slate-50 text-slate-700 border-slate-100";
 }

@@ -110,11 +110,11 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
       {controls.length ? (
         <section className="card p-5">
           <h2 className="flex items-center gap-2 text-base font-bold">
-            <ClipboardCheck className="size-5 text-amber-500" /> Контрольные и подготовка к ним
+            <ClipboardCheck className="size-5 text-[var(--status-warn-fg)]" /> Контрольные и подготовка к ним
           </h2>
           <ol className="mt-3 grid gap-2">
             {controls.map((c) => (
-              <li key={c.n} className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+              <li key={c.n} className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/50 p-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-sm font-bold text-slate-800">{c.title}</span>
                   {renderDate(c.date)}
@@ -141,7 +141,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
       {weeks.length ? (
         <section className="card p-5">
           <h2 className="flex items-center gap-2 text-base font-bold">
-            <FlaskConical className="size-5 text-emerald-500" /> Лекции и лабораторные занятия
+            <FlaskConical className="size-5 text-[var(--status-ok-fg)]" /> Лекции и лабораторные занятия
           </h2>
           <ol className="mt-3 grid gap-2">
             {weeks.map((w) => (
@@ -149,7 +149,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
                 key={w.num}
                 className={
                   "rounded-xl border p-3 " +
-                  (w.control ? "border-amber-300 bg-amber-50/60" : "border-slate-100")
+                  (w.control ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/60" : "border-slate-100")
                 }
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -217,7 +217,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
       {plan.labs?.length ? (
         <section className="card p-5">
           <h2 className="flex items-center gap-2 text-base font-bold">
-            <FlaskConical className="size-5 text-emerald-500" /> Лабораторные занятия
+            <FlaskConical className="size-5 text-[var(--status-ok-fg)]" /> Лабораторные занятия
           </h2>
           <ol className="mt-3 grid gap-2">
             {plan.labs.map((l) => (
@@ -225,7 +225,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
                 key={l.n}
                 className={
                   "rounded-xl border p-3 " +
-                  (l.control ? "border-amber-300 bg-amber-50/60" : "border-slate-100")
+                  (l.control ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/60" : "border-slate-100")
                 }
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -233,7 +233,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
                     {l.n}. {l.title}
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                    {l.control && <ClipboardCheck className="size-3.5 text-amber-500" />}
+                    {l.control && <ClipboardCheck className="size-3.5 text-[var(--status-warn-fg)]" />}
                     <CalendarDays className="size-3.5" /> {formatDate(l.date)}
                   </span>
                 </div>
@@ -265,7 +265,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
       {practicals.length ? (
         <section className="card p-5">
           <h2 className="flex items-center gap-2 text-base font-bold">
-            <FlaskConical className="size-5 text-emerald-500" /> Практические занятия
+            <FlaskConical className="size-5 text-[var(--status-ok-fg)]" /> Практические занятия
           </h2>
           <ol className="mt-3 grid gap-2">
             {practicals.map((p) => (

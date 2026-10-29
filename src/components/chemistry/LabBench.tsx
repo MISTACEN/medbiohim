@@ -194,7 +194,7 @@ function TitrationTab() {
       </div>
 
       {!result.ok ? (
-        <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{result.message}</p>
+        <p role="alert" className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">{result.message}</p>
       ) : (
         <>
           <div className="rounded-xl border border-[var(--border)] bg-white p-2">
@@ -217,12 +217,12 @@ function TitrationTab() {
               <div className="text-xs text-[var(--muted)]">pH эквивалентности</div>
               <div className="text-xl font-bold tabular-nums">{fmt(result.data.equivalencePh, 2)}</div>
             </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <div className="text-xs text-emerald-700">Индикатор</div>
-              <div className="text-sm font-bold text-emerald-900">
+            <div className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] p-3">
+              <div className="text-xs text-[var(--status-ok-fg)]">Индикатор</div>
+              <div className="text-sm font-bold text-[var(--status-ok-fg)]">
                 {result.data.indicators.find((item) => item.recommended)?.name}
               </div>
-              <div className="text-xs text-emerald-800">{result.data.indicators.find((item) => item.recommended)?.range}</div>
+              <div className="text-xs text-[var(--status-ok-fg)]">{result.data.indicators.find((item) => item.recommended)?.range}</div>
             </div>
           </div>
 
@@ -233,7 +233,7 @@ function TitrationTab() {
               </thead>
               <tbody>
                 {result.data.indicators.map((indicator) => (
-                  <tr key={indicator.name} className={indicator.recommended ? "bg-emerald-50/40" : ""}>
+                  <tr key={indicator.name} className={indicator.recommended ? "bg-[var(--status-ok-bg)]/40" : ""}>
                     <td className="border-t border-[var(--border)] px-3 py-2 font-medium">{indicator.name}</td>
                     <td className="border-t border-[var(--border)] px-3 py-2 tabular-nums">{indicator.range}</td>
                     <td className="border-t border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)]">{indicator.reason}</td>
@@ -244,7 +244,7 @@ function TitrationTab() {
           </div>
 
           {result.data.warnings.map((warning) => (
-            <p key={warning} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{warning}</p>
+            <p key={warning} className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs text-[var(--status-warn-fg)]">{warning}</p>
           ))}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <ul className="space-y-1 text-xs text-[var(--muted)]">
@@ -314,7 +314,7 @@ function ElectrochemistryTab() {
       </div>
 
       {!result.ok ? (
-        <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{result.message}</p>
+        <p role="alert" className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">{result.message}</p>
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -330,9 +330,9 @@ function ElectrochemistryTab() {
               <div className="text-xs text-[var(--muted)]">ΔG°</div>
               <div className="text-xl font-bold tabular-nums">{fmt(result.data.deltaG0Kj, 1)} кДж/моль</div>
             </div>
-            <div className={`rounded-xl border p-3 ${result.data.spontaneous ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+            <div className={`rounded-xl border p-3 ${result.data.spontaneous ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"}`}>
               <div className="text-xs text-[var(--muted)]">Направление</div>
-              <div className={`text-sm font-bold ${result.data.spontaneous ? "text-emerald-800" : "text-rose-800"}`}>
+              <div className={`text-sm font-bold ${result.data.spontaneous ? "text-[var(--status-ok-fg)]" : "text-[var(--status-critical-fg)]"}`}>
                 {result.data.spontaneous ? "реакция идёт сама" : "нужен внешний источник тока"}
               </div>
             </div>
@@ -419,7 +419,7 @@ function SpectroscopyTab() {
       </div>
 
       {!result.ok ? (
-        <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{result.message}</p>
+        <p role="alert" className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">{result.message}</p>
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -431,7 +431,7 @@ function SpectroscopyTab() {
               <div className="text-xs text-[var(--muted)]">Пропускание T = 10⁻ᴬ</div>
               <div className="text-xl font-bold tabular-nums">{fmt(result.data.transmittancePercent, 1)} %</div>
             </div>
-            <div className={`rounded-xl border p-3 ${result.data.linear ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+            <div className={`rounded-xl border p-3 ${result.data.linear ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]"}`}>
               <div className="text-xs text-[var(--muted)]">Линейный участок</div>
               <div className="text-sm font-bold">{result.data.linear ? "0,05 ≤ A ≤ 1,5 — да" : "вне 0,05…1,5"}</div>
             </div>
@@ -458,16 +458,16 @@ function SpectroscopyTab() {
               {inverse.ok ? (
                 <p className="text-sm">
                   c = A/(ε·l) = <strong className="tabular-nums">{fmt(inverse.data.concentration * 1e6, 2)} мкмоль/л</strong>
-                  {inverse.data.warnings.map((warning) => <span key={warning} className="mt-1 block text-xs text-amber-700">{warning}</span>)}
+                  {inverse.data.warnings.map((warning) => <span key={warning} className="mt-1 block text-xs text-[var(--status-warn-fg)]">{warning}</span>)}
                 </p>
               ) : (
-                <p className="text-sm text-amber-800">{inverse.message}</p>
+                <p className="text-sm text-[var(--status-warn-fg)]">{inverse.message}</p>
               )}
             </div>
           </div>
 
           {result.data.warnings.map((warning) => (
-            <p key={warning} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{warning}</p>
+            <p key={warning} className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs text-[var(--status-warn-fg)]">{warning}</p>
           ))}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-[var(--muted)]">Модель не учитывает рассеяние, фоновое поглощение и ширину щели прибора.</p>

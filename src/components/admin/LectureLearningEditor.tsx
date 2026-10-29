@@ -156,7 +156,7 @@ export function LectureLearningEditor({value,onChange,subject}:Props) {
     <div className="mt-3 space-y-2">
       {(local[bucket]||[]).map((item,index)=><div key={(item.material_id||item.trainer_id||item.source_key||"row")+"-"+index} className="rounded-xl border border-[var(--border)] bg-slate-50/70 p-3">
         <div className="flex items-start gap-2">
-          {bucket==="preparations"||bucket==="electronograms"?<ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/>:<FilePlus2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600"/>}
+          {bucket==="preparations"||bucket==="electronograms"?<ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-ok-fg)]"/>:<FilePlus2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600"/>}
           <div className="min-w-0 flex-1">
             <div className="text-xs font-semibold">{item.original_name||item.title||item.name||item.label||"Связанный материал"}</div>
             {item.exact_section&&<div className="mt-1 text-[11px] text-[var(--muted)]">{item.exact_section}</div>}
@@ -167,7 +167,7 @@ export function LectureLearningEditor({value,onChange,subject}:Props) {
             </div>}
             {(bucket==="methodics")&&<><input value={item.exact_section||""} onChange={(e)=>updateItem(bucket,index,{exact_section:e.target.value})} className="mt-2 w-full rounded-lg border px-2 py-1.5 text-xs" placeholder="Точный раздел методички"/><input value={item.page_note||""} onChange={(e)=>updateItem(bucket,index,{page_note:e.target.value})} className="mt-2 w-full rounded-lg border px-2 py-1.5 text-xs" placeholder="Примечание по пагинации"/></>}
           </div>
-          <button type="button" onClick={()=>removeItem(bucket,index)} className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50" title="Удалить связь"><Trash2 className="h-3.5 w-3.5"/></button>
+          <button type="button" onClick={()=>removeItem(bucket,index)} className="rounded-lg p-1.5 text-[var(--status-critical-fg)] hover:bg-[var(--status-critical-bg)]" title="Удалить связь"><Trash2 className="h-3.5 w-3.5"/></button>
         </div>
       </div>)}
       {(local[bucket]?.length||0)===0&&<div className="rounded-xl border border-dashed border-[var(--border)] p-3 text-xs text-[var(--muted)]">Связей пока нет.</div>}

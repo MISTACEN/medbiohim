@@ -19,15 +19,15 @@ export function QuestionReport({questionId}:{questionId:string}){
   setBusy(false);
  }
  return <div className="mt-2"><LoadingBar active={busy} />
-  <button type="button" onClick={()=>setOpen(true)} className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-600"><Flag className="h-3.5 w-3.5"/>Сообщить об ошибке</button>
+  <button type="button" onClick={()=>setOpen(true)} className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-[var(--status-critical-fg)]"><Flag className="h-3.5 w-3.5"/>Сообщить об ошибке</button>
   {open&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onMouseDown={()=>setOpen(false)}>
    <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onMouseDown={e=>e.stopPropagation()}>
     <div className="text-lg font-bold">Сообщить об ошибке</div>
-    {done?<div className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-700">✓ Сообщение отправлено. Спасибо!</div>:<>
+    {done?<div className="mt-4 rounded-xl bg-[var(--status-ok-bg)] p-4 text-sm text-[var(--status-ok-fg)]">✓ Сообщение отправлено. Спасибо!</div>:<>
     <p className="mt-1 text-sm text-slate-500">Укажите, что именно нужно проверить.</p>
     <div className="mt-4 grid gap-2">{categories.map(([v,l])=><label key={v} className="flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm"><input type="radio" checked={category===v} onChange={()=>setCategory(v)}/>{l}</label>)}</div>
     <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={3} placeholder="Что именно здесь не так? (необязательно)" className="mt-3 w-full rounded-xl border px-3 py-2 text-sm"/>
-    {error&&<div className="mt-2 text-sm text-rose-600">{error}</div>}
+    {error&&<div className="mt-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
     <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setOpen(false)} className="rounded-xl border px-4 py-2 text-sm">Отмена</button><button type="button" disabled={busy} onClick={()=>void send()} className="btn-primary">{busy?"Отправка…":"Отправить"}</button></div>
     </>}
    </div>

@@ -90,7 +90,7 @@ export default function RegisterPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              ФИО / Имя <span className="text-rose-500">*</span>
+              ФИО / Имя <span className="text-[var(--status-critical-fg)]">*</span>
             </label>
             <input
               value={fullName}
@@ -104,20 +104,20 @@ export default function RegisterPage() {
             <p className="mt-1 text-xs text-slate-500">Как в зачётке — видно в профиле, заданиях и рейтинге</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email <span className="text-rose-500">*</span></label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Email <span className="text-[var(--status-critical-fg)]">*</span></label>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="email" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Пароль <span className="text-rose-500">*</span></label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Пароль <span className="text-[var(--status-critical-fg)]">*</span></label>
             <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="new-password" />
             <p className="mt-1 text-xs text-slate-500">Не короче 8 символов</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Повтор пароля <span className="text-rose-500">*</span></label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Повтор пароля <span className="text-[var(--status-critical-fg)]">*</span></label>
             <input type="password" required minLength={8} value={password2} onChange={(e) => setPassword2(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="new-password" />
           </div>
-          {error && <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
-          {info && <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div>}
+          {error && <div className="rounded-xl bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+          {info && <div className="rounded-xl bg-[var(--status-ok-bg)] px-3 py-2 text-sm text-[var(--status-ok-fg)]">{info}</div>}
           <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {loading ? "Создание…" : "Создать аккаунт"}
           </button>

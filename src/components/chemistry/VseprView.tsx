@@ -71,7 +71,7 @@ export function VseprView({ molecule }: { molecule: ChemicalMolecule }) {
     return <p className="text-sm text-slate-500">Считаем стереохимию…</p>;
   }
   if (state.status === "error") {
-    return <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{state.message}</p>;
+    return <p role="alert" className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">{state.message}</p>;
   }
   if (!atoms.length) {
     return <p className="text-sm text-slate-500">В этой структуре нет атомов-центров, для которых VSEPR даёт геометрию.</p>;
@@ -100,7 +100,7 @@ export function VseprView({ molecule }: { molecule: ChemicalMolecule }) {
                 <tr
                   key={atom.index}
                   onClick={() => setSelected(active ? null : atom.index)}
-                  className={`cursor-pointer border-t border-[var(--border)] transition ${active ? "bg-amber-50" : "hover:bg-slate-50"}`}
+                  className={`cursor-pointer border-t border-[var(--border)] transition ${active ? "bg-[var(--status-warn-bg)]" : "hover:bg-slate-50"}`}
                 >
                   <td className="px-3 py-2 font-semibold">{atom.symbol}<span className="ml-1 text-[11px] font-normal text-slate-400">#{atom.index + 1}</span></td>
                   <td className="px-3 py-2 text-slate-600">{atom.neighbors}</td>

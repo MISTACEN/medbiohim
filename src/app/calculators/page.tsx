@@ -230,7 +230,7 @@ export default function CalculatorsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold">{active.name}</h2>
                 {active.approximate && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                  <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--status-warn-fg)] dark:bg-[var(--status-warn-fg)]/50 dark:text-[var(--status-warn-fg)]">
                     приблизительно
                   </span>
                 )}
@@ -276,7 +276,7 @@ export default function CalculatorsPage() {
                   <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--success)]">
                     <CheckCircle2 className="h-4 w-4" /> Результат
                     {result.approximate && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                      <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--status-warn-fg)] dark:bg-[var(--status-warn-fg)]/50 dark:text-[var(--status-warn-fg)]">
                         приблизительно
                       </span>
                     )}
@@ -318,7 +318,7 @@ export default function CalculatorsPage() {
                   )}
 
                   {result.warnings.length > 0 && (
-                    <ul className="space-y-1 text-xs text-amber-700 dark:text-amber-300">
+                    <ul className="space-y-1 text-xs text-[var(--status-warn-fg)] dark:text-[var(--status-warn-fg)]">
                       {result.warnings.map((w, i) => (
                         <li key={i} className="flex gap-1.5">
                           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

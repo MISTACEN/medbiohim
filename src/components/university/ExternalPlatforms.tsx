@@ -38,7 +38,7 @@ export default function ExternalPlatforms() {
                 <div className="flex items-start justify-between gap-3">
                   <span
                     className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${
-                      accent === "emerald" ? "bg-emerald-50 text-emerald-700" : "bg-violet-50 text-violet-700"
+                      accent === "emerald" ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-violet-50 text-violet-700"
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -66,7 +66,7 @@ export default function ExternalPlatforms() {
                     target="_blank"
                     rel="noreferrer"
                     className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-white ${
-                      accent === "emerald" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-violet-600 hover:bg-violet-700"
+                      accent === "emerald" ? "bg-[var(--status-ok-fg)] hover:bg-[var(--status-ok-fg)]" : "bg-violet-600 hover:bg-violet-700"
                     }`}
                   >
                     Открыть платформу <ArrowUpRight className="h-3.5 w-3.5" />

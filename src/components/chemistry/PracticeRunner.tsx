@@ -267,17 +267,17 @@ export function PracticeRunner() {
                   {showSteps ? "Скрыть решение" : "Показать решение"}
                 </button>
                 {status === "correct" && (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--status-ok-fg)]">
                     <CheckCircle2 className="h-4 w-4" /> верно
                   </span>
                 )}
                 {status === "incorrect" && (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--status-critical-fg)]">
                     <XCircle className="h-4 w-4" /> {check && "hint" in check ? check.hint : "неверно"}
                   </span>
                 )}
                 {status === "invalid" && (
-                  <span className="text-xs font-semibold text-amber-700">{check && "message" in check ? check.message : "Проверьте формат"}</span>
+                  <span className="text-xs font-semibold text-[var(--status-warn-fg)]">{check && "message" in check ? check.message : "Проверьте формат"}</span>
                 )}
               </div>
 

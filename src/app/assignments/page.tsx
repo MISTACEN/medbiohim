@@ -34,10 +34,10 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 const STATUSES: { id: MyAssignmentStatus; label: string; badge: string }[] = [
-  { id: "pending", label: "Ожидает", badge: "bg-amber-50 text-amber-700" },
+  { id: "pending", label: "Ожидает", badge: "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]" },
   { id: "retake_needed", label: "Отработка", badge: "bg-indigo-50 text-indigo-700" },
-  { id: "passed", label: "Сдано", badge: "bg-emerald-50 text-emerald-700" },
-  { id: "failed", label: "Не сдано", badge: "bg-rose-50 text-rose-700" },
+  { id: "passed", label: "Сдано", badge: "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" },
+  { id: "failed", label: "Не сдано", badge: "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" },
 ];
 
 function statusMeta(status: string) {
@@ -308,9 +308,9 @@ export default function AssignmentsPage() {
       <div className="grid gap-2 sm:grid-cols-4">
         {[
           { label: "Всего", value: counts.all, tone: "text-slate-700" },
-          { label: "Ожидают", value: counts.pending, tone: "text-amber-700" },
+          { label: "Ожидают", value: counts.pending, tone: "text-[var(--status-warn-fg)]" },
           { label: "На отработку", value: counts.retake_needed, tone: "text-indigo-700" },
-          { label: "Сдано", value: counts.passed, tone: "text-emerald-700" },
+          { label: "Сдано", value: counts.passed, tone: "text-[var(--status-ok-fg)]" },
         ].map((card) => (
           <div key={card.label} className="card px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{card.label}</div>
@@ -451,7 +451,7 @@ export default function AssignmentsPage() {
         <SkeletonCards count={3} />
       ) : filtered.length === 0 ? (
         <div className="card p-8 text-center">
-          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
+          <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--status-ok-fg)]" />
           <p className="mt-3 font-semibold">
             {filter === "all" ? "Записей пока нет" : "В этом статусе пусто"}
           </p>
@@ -478,13 +478,13 @@ export default function AssignmentsPage() {
                       <span className="font-semibold">{item.topic}</span>
                       <span className={"rounded-full px-2 py-0.5 text-xs font-semibold " + meta.badge}>{meta.label}</span>
                       {overdue && (
-                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Просрочено</span>
+                        <span className="rounded-full bg-[var(--status-critical-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-critical-fg)]">Просрочено</span>
                       )}
                       {item.grade && <span className="text-xs font-semibold text-indigo-600">Оценка: {item.grade}</span>}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
                       <span>{item.subject}</span>
-                      <span className={"inline-flex items-center gap-1 " + (overdue ? "font-semibold text-rose-600" : "")}>
+                      <span className={"inline-flex items-center gap-1 " + (overdue ? "font-semibold text-[var(--status-critical-fg)]" : "")}>
                         <CalendarDays className="h-3.5 w-3.5" /> {fmtDate(item.due_date)}
                       </span>
                       <span>{item.source === "csv" ? "из CSV" : "вручную"}</span>
@@ -553,7 +553,7 @@ export default function AssignmentsPage() {
                         type="button"
                         onClick={() => void remove(item)}
                         disabled={busyId === item.id}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--status-critical-border)] px-3 py-2 text-sm font-semibold text-[var(--status-critical-fg)] disabled:opacity-40"
                       >
                         {busyId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         Удалить
@@ -568,12 +568,12 @@ export default function AssignmentsPage() {
       )}
 
       {notice && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
+        <div className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-3 text-sm text-[var(--status-ok-fg)]" role="status">
           {notice}
         </div>
       )}
       {actionError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+        <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]" role="alert">
           {actionError}
         </div>
       )}

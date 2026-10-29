@@ -170,7 +170,7 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
   if (loading) return <div className="card p-8 text-sm text-slate-500">Загрузка банка…</div>;
 
   if (error || !test) {
-    return <div className="card p-8 text-sm text-rose-600">{error || "Банк не найден"}</div>;
+    return <div className="card p-8 text-sm text-[var(--status-critical-fg)]">{error || "Банк не найден"}</div>;
   }
 
   function openEditor(q: BankQuestion) {
@@ -289,7 +289,7 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
             <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
               <div className="font-semibold">Прогресс всего банка</div>
               <div className="mt-1 text-slate-600">{answered} / {total} · {percent}% · правильно {completedCorrect}</div>
-              {progress.completed && <div className="mt-1 font-semibold text-emerald-600">Банк полностью пройден</div>}
+              {progress.completed && <div className="mt-1 font-semibold text-[var(--status-ok-fg)]">Банк полностью пройден</div>}
             </div>
           )}
         </div>
@@ -310,10 +310,10 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
             <div className="mt-2 font-semibold">Экзамен</div>
             <div className="mt-1 text-xs text-slate-300">без показа эталонов до конца</div>
           </Link>
-          <Link href={modeLinks.sequential} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-            <RotateCcw className="h-5 w-5 text-emerald-700" />
-            <div className="mt-2 font-semibold text-emerald-800">Весь банк подряд</div>
-            <div className="mt-1 text-xs text-emerald-700">1 → {questions.length} без пропусков</div>
+          <Link href={modeLinks.sequential} className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-4">
+            <RotateCcw className="h-5 w-5 text-[var(--status-ok-fg)]" />
+            <div className="mt-2 font-semibold text-[var(--status-ok-fg)]">Весь банк подряд</div>
+            <div className="mt-1 text-xs text-[var(--status-ok-fg)]">1 → {questions.length} без пропусков</div>
           </Link>
         </div>
       </section>
@@ -384,35 +384,35 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
                         className={
                           "flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " +
                           (showAnswers && isCorrect
-                            ? "border-emerald-300 bg-emerald-50"
+                            ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
                             : "border-slate-100 bg-white")
                         }
                       >
                         <span className={
                           "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " +
-                          (showAnswers && isCorrect ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600")
+                          (showAnswers && isCorrect ? "bg-[var(--status-ok-fg)] text-white" : "bg-slate-100 text-slate-600")
                         }>{keyOf(option, oi)}</span>
                         <ChemRichText text={label} className="inline flex-1" />
-                        {showAnswers && isCorrect && <span className="text-xs font-bold text-emerald-700">✓ эталон</span>}
+                        {showAnswers && isCorrect && <span className="text-xs font-bold text-[var(--status-ok-fg)]">✓ эталон</span>}
                       </div>
                     );
                   })}
                 </div>
 
                 {q.is_closed && q.options.length === 0 && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                     Закрытый вопрос без вариантов ответа: их нужно заполнить в редакторе банка.
                   </div>
                 )}
 
                 {showAnswers && reference && (
-                  <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                  <div className="mt-3 rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm text-[var(--status-ok-fg)]">
                     <span className="font-semibold">Эталон: </span>
                     <ChemRichText text={reference} asHtml={q.is_closed !== true} className="inline" />
                     {q.is_closed && !hasStructuredAnswers && (
-                      <span className="ml-2 text-xs text-amber-700">эталон не сопоставлен с вариантами</span>
+                      <span className="ml-2 text-xs text-[var(--status-warn-fg)]">эталон не сопоставлен с вариантами</span>
                     )}
-                    {q.requires_order && <span className="ml-2 text-xs text-emerald-700">порядок вариантов</span>}
+                    {q.requires_order && <span className="ml-2 text-xs text-[var(--status-ok-fg)]">порядок вариантов</span>}
                   </div>
                 )}
 
@@ -469,7 +469,7 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
                             <button
                               type="button"
                               onClick={() => updateDraftOption(oi, { correct: !option.correct })}
-                              className={"inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border " + (option.correct ? "border-emerald-300 bg-emerald-100 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-400")}
+                              className={"inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border " + (option.correct ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-slate-200 bg-slate-50 text-slate-400")}
                               title={option.correct ? "Сделать неправильным" : "Отметить правильным"}
                             >
                               <Check className="h-4 w-4" />
@@ -484,7 +484,7 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
                               type="button"
                               onClick={() => removeDraftOption(oi)}
                               disabled={draft.options.length <= 2}
-                              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 disabled:opacity-30"
+                              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)] disabled:opacity-30"
                               title="Удалить вариант"
                             >
                               <Trash2 className="h-4 w-4" />

@@ -172,14 +172,14 @@ export default function ExamQuestionsPanel({ subjectSlug }: { subjectSlug: strin
                         <button
                           type="button"
                           onClick={() => toggleAnswer(item.id)}
-                          className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700"
+                          className="inline-flex items-center gap-1 rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 font-semibold text-[var(--status-ok-fg)]"
                           aria-expanded={open}
                         >
                           {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {open ? "Скрыть ответ" : "Показать ответ"}
                         </button>
                       ) : (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">ответ готовится</span>
+                        <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[var(--status-warn-fg)]">ответ готовится</span>
                       )}
                     </div>
                     {open && item.answer && (

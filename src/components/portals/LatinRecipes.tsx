@@ -34,7 +34,7 @@ export default function LatinRecipes({ embedded = false }: { embedded?: boolean 
 
   const labelOf = (id: string) => data?.groups.find((g) => g.id === id)?.label || id;
 
-  if (error) return <div className="card p-5 text-sm text-rose-600">{error}</div>;
+  if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!data) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">

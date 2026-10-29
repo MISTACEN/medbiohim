@@ -49,7 +49,7 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
     }
   }
 
-  if (error) return <div className="card p-5 text-sm text-rose-600">{error}</div>;
+  if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!index) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">
@@ -95,8 +95,8 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
                         const isCorrect = q.correct === oi;
                         let cls = "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40";
                         if (checked) {
-                          if (isCorrect) cls = "border-emerald-300 bg-emerald-50";
-                          else if (isPick) cls = "border-rose-300 bg-rose-50";
+                          if (isCorrect) cls = "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]";
+                          else if (isPick) cls = "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]";
                           else cls = "border-slate-200 opacity-70";
                         } else if (isPick) {
                           cls = "border-indigo-400 bg-indigo-50";
@@ -111,8 +111,8 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
                           >
                             <span className="mt-0.5 text-xs font-bold text-slate-400">{String.fromCharCode(65 + oi)}</span>
                             <span className="flex-1">{opt}</span>
-                            {checked && isCorrect && <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />}
-                            {checked && isPick && !isCorrect && <XCircle className="size-4 shrink-0 text-rose-500" />}
+                            {checked && isCorrect && <CheckCircle2 className="size-4 shrink-0 text-[var(--status-ok-fg)]" />}
+                            {checked && isPick && !isCorrect && <XCircle className="size-4 shrink-0 text-[var(--status-critical-fg)]" />}
                           </button>
                         );
                       })}

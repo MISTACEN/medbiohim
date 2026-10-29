@@ -116,9 +116,9 @@ export default function TestRunner({
               className={
                 "flex items-start gap-3 rounded-xl border p-3 text-left text-sm transition " +
                 (isRight
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
                   : isWrong
-                    ? "border-rose-300 bg-rose-50 text-rose-900"
+                    ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
                     : selected
                       ? "border-indigo-400 bg-indigo-50 text-indigo-900"
                       : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300")
@@ -137,7 +137,7 @@ export default function TestRunner({
         <div
           className={
             "mt-4 flex items-start gap-2 rounded-xl p-3 text-sm " +
-            (isCorrect(picks, question.answer) ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800")
+            (isCorrect(picks, question.answer) ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")
           }
         >
           {isCorrect(picks, question.answer) ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}

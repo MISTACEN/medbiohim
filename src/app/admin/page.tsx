@@ -91,7 +91,7 @@ export default function AdminPage() {
       </header>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div role="alert" className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
           <b className="block font-semibold">Сводка недоступна</b>
           <span>{error} Разделы ниже по-прежнему открываются — не работает только счётчик.</span>
           <button type="button" className="btn-secondary mt-2" disabled={loading} onClick={() => void load()}>
@@ -101,7 +101,7 @@ export default function AdminPage() {
       )}
 
       {!error && partial && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+        <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-2 text-xs text-[var(--status-warn-fg)]">
           Часть показателей недоступна — плитки без данных не показаны. Остальное верно.
         </div>
       )}

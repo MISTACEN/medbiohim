@@ -18,7 +18,7 @@ export default function SaveButton({ payload, label = "Сохранить" }: { 
     return (
       <span
         title="Материал уже в «Сохранённом из порталов вуза»"
-        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700"
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-2 py-1 text-[10px] font-semibold text-[var(--status-ok-fg)]"
       >
         <CheckCircle2 className="h-3 w-3" /> В списке
       </span>

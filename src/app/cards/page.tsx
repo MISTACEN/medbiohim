@@ -23,8 +23,8 @@ type Rating = 1 | 2 | 3 | 4;
 
 const RATING_BTNS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
   { r: 1, label: "Снова", hint: "~1 мин", className: "bg-red-500 hover:bg-red-600 text-white" },
-  { r: 2, label: "Трудно", hint: "короче", className: "bg-amber-500 hover:bg-amber-600 text-white" },
-  { r: 3, label: "Хорошо", hint: "SM-2", className: "bg-emerald-500 hover:bg-emerald-600 text-white" },
+  { r: 2, label: "Трудно", hint: "короче", className: "bg-[var(--status-warn-fg)] hover:bg-[var(--status-warn-fg)] text-white" },
+  { r: 3, label: "Хорошо", hint: "SM-2", className: "bg-[var(--status-ok-fg)] hover:bg-[var(--status-ok-fg)] text-white" },
   { r: 4, label: "Легко", hint: "длиннее", className: "bg-sky-500 hover:bg-sky-600 text-white" },
 ];
 

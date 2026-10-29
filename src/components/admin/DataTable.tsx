@@ -127,7 +127,7 @@ export function DataTable<T>({
       )}
 
       {error && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
           <span className="min-w-0 flex-1">{error}</span>
           {onRetry && (
             <button type="button" className="btn-secondary text-xs" onClick={onRetry}>

@@ -190,7 +190,7 @@ export default function AdminContentPackagePage() {
           <input type="file" accept=".json,application/json" className="mt-4 block w-full text-sm" onChange={(e) => { const f = e.target.files?.[0] || null; setBundleFile(f); void prepareManifest(f); }} />
         </label>
         <label className="rounded-2xl border-2 border-dashed border-slate-200 p-5">
-          <div className="flex items-center gap-3"><FileArchive className="h-6 w-6 text-emerald-600" /><div><div className="font-semibold">Исходный ZIP</div><div className="text-xs text-slate-500">features.zip с Word и фотографиями</div></div></div>
+          <div className="flex items-center gap-3"><FileArchive className="h-6 w-6 text-[var(--status-ok-fg)]" /><div><div className="font-semibold">Исходный ZIP</div><div className="text-xs text-slate-500">features.zip с Word и фотографиями</div></div></div>
           <input type="file" accept=".zip,application/zip" className="mt-4 block w-full text-sm" onChange={(e) => setZipFile(e.target.files?.[0] || null)} />
         </label>
       </div>
@@ -212,11 +212,11 @@ export default function AdminContentPackagePage() {
         </button>
         {busy && <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-indigo-600 transition-all" style={{ width: progress + "%" }} /></div>}
         {status && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">{status}</div>}
-        {result && <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">{Object.entries(result).map(([k,v]) => <div key={k} className="rounded-xl border bg-emerald-50 p-3"><div className="text-[11px] uppercase text-emerald-700">{k}</div><div className="text-xl font-bold text-emerald-900">{String(v)}</div></div>)}</div>}
-        {result && <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 className="h-5 w-5" /> Контент сохранён, оригиналы привязаны к файлам.</div>}
+        {result && <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">{Object.entries(result).map(([k,v]) => <div key={k} className="rounded-xl border bg-[var(--status-ok-bg)] p-3"><div className="text-[11px] uppercase text-[var(--status-ok-fg)]">{k}</div><div className="text-xl font-bold text-[var(--status-ok-fg)]">{String(v)}</div></div>)}</div>}
+        {result && <div className="flex items-center gap-2 text-sm font-semibold text-[var(--status-ok-fg)]"><CheckCircle2 className="h-5 w-5" /> Контент сохранён, оригиналы привязаны к файлам.</div>}
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">
         Весь этот пакет помечается специальностью <strong>МБХ</strong>. Это не UI-фильтр: backend проверяет specialty через активную группу пользователя. «Стом. гистология» из архива также остаётся внутри МБХ.
       </div>
 

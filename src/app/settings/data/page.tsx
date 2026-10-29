@@ -184,8 +184,8 @@ export default function AccountDataPage() {
           className={clsx(
             "rounded-xl border px-4 py-3 text-sm",
             actionError
-              ? "border-rose-200 bg-rose-50 text-rose-800"
-              : "border-emerald-200 bg-emerald-50 text-emerald-900"
+              ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
+              : "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
           )}
           role="status"
         >
@@ -240,7 +240,7 @@ export default function AccountDataPage() {
 
       <section className="card space-y-4 p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]">
             <Trash2 className="h-5 w-5" />
           </div>
           <div>
@@ -265,7 +265,7 @@ export default function AccountDataPage() {
             compact
           />
         ) : executed ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
             <div className="font-semibold">Аккаунт помечен как удалённый</div>
             <p className="mt-1">
               Запрос исполнен {formatAccountDate(deletion?.executed_at)}. Отменить его нельзя. Если это
@@ -274,7 +274,7 @@ export default function AccountDataPage() {
           </div>
         ) : scheduled ? (
           <div className="space-y-3">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">
               <div className="flex items-center gap-2 font-semibold">
                 <Clock className="h-4 w-4" /> Удаление запланировано
               </div>
@@ -292,7 +292,7 @@ export default function AccountDataPage() {
             </div>
             <p className="text-sm text-[var(--muted)]">{deletion?.message}</p>
             {deletion?.execution_configured === false && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
                 <div className="flex items-center gap-2 font-semibold">
                   <AlertTriangle className="h-4 w-4" /> Автоматическое удаление не настроено
                 </div>
@@ -306,7 +306,7 @@ export default function AccountDataPage() {
               type="button"
               onClick={() => void onCancelDeletion()}
               disabled={busy !== null}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-2 text-sm font-semibold text-[var(--status-ok-fg)] disabled:opacity-60"
             >
               {busy === "cancel" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               {busy === "cancel" ? "Отменяем…" : "Отменить удаление"}
@@ -315,7 +315,7 @@ export default function AccountDataPage() {
         ) : (
           <div className="space-y-3">
             {status === "cancelled" && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <div className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-3 text-sm text-[var(--status-ok-fg)]">
                 Предыдущий запрос отменён {formatAccountDate(deletion?.cancelled_at)}. Аккаунт активен.
               </div>
             )}
@@ -352,7 +352,7 @@ export default function AccountDataPage() {
               type="button"
               onClick={() => void onRequestDeletion()}
               disabled={busy !== null}
-              className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--status-critical-fg)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--status-critical-fg)] disabled:opacity-60"
             >
               {busy === "request" ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
               {busy === "request" ? "Создаём запрос…" : "Запросить удаление аккаунта"}

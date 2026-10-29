@@ -227,7 +227,7 @@ export default function HomeworkPage() {
         <SkeletonCards count={4} />
       ) : filtered.length === 0 ? (
         <div className="card p-8 text-center">
-          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
+          <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--status-ok-fg)]" />
           <p className="mt-3 font-semibold">
             {filter === "active" ? "Активных заданий нет" : filter === "overdue" ? "Просроченных заданий нет" : "Заданий пока нет"}
           </p>
@@ -255,13 +255,13 @@ export default function HomeworkPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold">{h.title || "Без названия"}</span>
-                      {done && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Выполнено</span>}
-                      {overdue && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Просрочено</span>}
+                      {done && <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-ok-fg)]">Выполнено</span>}
+                      {overdue && <span className="rounded-full bg-[var(--status-critical-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-critical-fg)]">Просрочено</span>}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
                       {h.subjects?.name && <span>{h.subjects.name}</span>}
                       {(h.due_at || h.due_date) && (
-                        <span className={"inline-flex items-center gap-1 " + (overdue ? "font-semibold text-rose-600" : "")}>
+                        <span className={"inline-flex items-center gap-1 " + (overdue ? "font-semibold text-[var(--status-critical-fg)]" : "")}>
                           <CalendarDays className="h-3.5 w-3.5" /> до {fmtDate(h.due_at || h.due_date)}
                         </span>
                       )}
@@ -352,7 +352,7 @@ export default function HomeworkPage() {
       )}
 
       {actionError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+        <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]" role="alert">
           {actionError}
         </div>
       )}

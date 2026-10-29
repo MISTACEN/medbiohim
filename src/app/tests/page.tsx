@@ -175,14 +175,14 @@ function TestsPageInner() {
 
       {view === "chemistry" && (
         <section className="space-y-4">
-          <header className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-sm sm:p-6">
+          <header className="rounded-2xl border border-[var(--status-ok-border)] bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]">
                   <FlaskConical className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-600">Отдельный банк</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-[var(--status-ok-fg)]">Отдельный банк</p>
                   <h2 className="mt-1 text-2xl font-extrabold text-slate-950 sm:text-3xl">Задания по химии</h2>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
                     Открытые задания и тестовые вопросы из методических источников. Формулы и эталоны не подменяются догадками.
@@ -197,7 +197,7 @@ function TestsPageInner() {
                     из того же раздела можно собрать вариант по seed. */}
                 <Link
                   href="/chemistry/practice"
-                  className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-[var(--status-ok-fg)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--status-ok-fg)]"
                 >
                   <ListChecks className="h-3.5 w-3.5" /> Генератор вариантов
                 </Link>
@@ -213,7 +213,7 @@ function TestsPageInner() {
                   value={chemistryQuery}
                   onChange={(event) => { setChemistryQuery(event.target.value); setChemistryPage(1); }}
                   placeholder="Поиск по вопросу или теме…"
-                  className="min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-400"
+                  className="min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2 pl-9 pr-3 text-sm outline-none focus:border-[var(--status-ok-border)]"
                 />
               </div>
               <select
@@ -237,7 +237,7 @@ function TestsPageInner() {
             </div>
 
             {chemistryError && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{chemistryError}</div>
+              <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">{chemistryError}</div>
             )}
 
             {chemistryLoading ? (
@@ -259,7 +259,7 @@ function TestsPageInner() {
                             <span>{item.kind === "test_question" ? "Тест" : "Задание"}</span>
                             {item.topic && <span>· {String(item.topic)}</span>}
                             {item.formula_preserved && <span className="font-medium text-indigo-600">· формула сохранена</span>}
-                            {item.answer_status === "prepared_from_text" && <span className="font-medium text-emerald-600">· ответ подготовлен</span>}
+                            {item.answer_status === "prepared_from_text" && <span className="font-medium text-[var(--status-ok-fg)]">· ответ подготовлен</span>}
                           </div>
                         </div>
                       </div>
@@ -269,7 +269,7 @@ function TestsPageInner() {
                       {item.answer ? (
                         <ChemRichText text={String(item.answer)} className="mt-2 space-y-2 text-sm text-slate-700" />
                       ) : (
-                        <p className="mt-2 text-sm text-amber-700">Ответ ещё не подготовлен. Исходная формулировка сохранена.</p>
+                        <p className="mt-2 text-sm text-[var(--status-warn-fg)]">Ответ ещё не подготовлен. Исходная формулировка сохранена.</p>
                       )}
                       <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
                         {item.source && <span className="rounded-full border bg-white px-2 py-1">Источник: {String(item.source)}</span>}

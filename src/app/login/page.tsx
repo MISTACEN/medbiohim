@@ -207,7 +207,7 @@ function LoginPageInner() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="student@example.com"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[var(--status-ok-border)] focus:ring-2 focus:ring-[var(--status-ok-border)]"
                     autoComplete="email"
                   />
                 </label>
@@ -219,7 +219,7 @@ function LoginPageInner() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[var(--status-ok-border)] focus:ring-2 focus:ring-[var(--status-ok-border)]"
                     autoComplete="current-password"
                   />
                 </label>
@@ -253,12 +253,12 @@ function LoginPageInner() {
                   value={magicEmail}
                   onChange={(e) => setMagicEmail(e.target.value)}
                   placeholder="email для ссылки"
-                  className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[var(--status-ok-border)] focus:ring-2 focus:ring-[var(--status-ok-border)]"
                 />
                 <button
                   type="submit"
                   disabled={magicLoading}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-600 px-3 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--status-ok-border)] px-3 py-2.5 text-sm font-semibold text-[var(--status-ok-fg)] hover:bg-[var(--status-ok-bg)] disabled:opacity-60"
                 >
                   <Mail className="h-4 w-4" />
                   {magicLoading ? "…" : "Ссылка"}
@@ -266,7 +266,7 @@ function LoginPageInner() {
               </form>
               <p className="text-xs text-slate-500">
                 Ссылка входит в уже созданный аккаунт. Если аккаунта ещё нет —
-                воспользуйтесь <Link href="/register" className="font-semibold text-emerald-700">регистрацией</Link>.
+                воспользуйтесь <Link href="/register" className="font-semibold text-[var(--status-ok-fg)]">регистрацией</Link>.
               </p>
             </div>
           )}
@@ -302,9 +302,9 @@ function LoginPageInner() {
                 </p>
               </div>
               <ol className="space-y-2 text-sm text-slate-600">
-                <li className="flex gap-2"><span className="font-bold text-emerald-700">1.</span> Откройте бота и нажмите «Войти на сайт».</li>
-                <li className="flex gap-2"><span className="font-bold text-emerald-700">2.</span> Бот пришлёт защищённую ссылку на эту платформу.</li>
-                <li className="flex gap-2"><span className="font-bold text-emerald-700">3.</span> Если аккаунт ещё не привязан — сначала войдите по почте или Google и привяжите Telegram в настройках.</li>
+                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">1.</span> Откройте бота и нажмите «Войти на сайт».</li>
+                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">2.</span> Бот пришлёт защищённую ссылку на эту платформу.</li>
+                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">3.</span> Если аккаунт ещё не привязан — сначала войдите по почте или Google и привяжите Telegram в настройках.</li>
               </ol>
               <a
                 href="https://t.me/MEDBIOCHIM_bot"
@@ -321,8 +321,8 @@ function LoginPageInner() {
             </div>
           )}
 
-          {error && <div className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
-          {info && <div className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div>}
+          {error && <div className="mt-4 rounded-xl bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+          {info && <div className="mt-4 rounded-xl bg-[var(--status-ok-bg)] px-3 py-2 text-sm text-[var(--status-ok-fg)]">{info}</div>}
         </div>
 
         <p className="text-center text-xs leading-relaxed text-slate-500">

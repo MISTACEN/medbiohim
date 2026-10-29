@@ -60,7 +60,7 @@ function BookmarkRow({ item, onRemove, busy }: { item: BookmarkItem; onRemove: (
         disabled={busy}
         onClick={() => onRemove(item)}
         title="Убрать из избранного"
-        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-[var(--status-critical-bg)] hover:text-[var(--status-critical-fg)] disabled:opacity-50"
       >
         <Trash2 className="h-4 w-4" />
       </button>
@@ -178,7 +178,7 @@ export default function BookmarksPage() {
       ) : (
         <>
           {shownError && (
-            <div className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700" role="alert">
+            <div className="mt-4 rounded-xl bg-[var(--status-critical-bg)] px-4 py-2 text-sm text-[var(--status-critical-fg)]" role="alert">
               {shownError}
             </div>
           )}
@@ -216,7 +216,7 @@ export default function BookmarksPage() {
                       disabled={busyId === note.id}
                       onClick={() => removeNote(note)}
                       title="Удалить заметку"
-                      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-[var(--status-critical-bg)] hover:text-[var(--status-critical-fg)] disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

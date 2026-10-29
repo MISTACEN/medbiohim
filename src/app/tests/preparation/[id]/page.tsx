@@ -371,7 +371,7 @@ export default function PreparationPage() {
           <h1 className="page-title">{meta?.title || "Тест"}</h1>
           <p className="page-subtitle">Выберите режим прохождения. Настройки действуют только для этого банка.</p>
         </div>
-        {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+        {error && <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">{error}</div>}
         <div className="grid gap-3 sm:grid-cols-3">
           {[
             { id: "prepare" as const, title: "Подготовка", desc: "Проверка сразу после каждого ответа" },
@@ -411,7 +411,7 @@ export default function PreparationPage() {
               type="button"
               disabled={loading}
               onClick={() => startExperience("prepare", "sequential")}
-              className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 disabled:opacity-50"
+              className="rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-3 text-sm font-bold text-[var(--status-ok-fg)] disabled:opacity-50"
             >
               Пройти весь банк подряд
             </button>
@@ -464,7 +464,7 @@ export default function PreparationPage() {
                 key={qq.id}
                 className={
                   "rounded-xl border p-4 text-sm " +
-                  (ok ? "border-emerald-200 bg-emerald-50/50" : missed ? "border-slate-200 bg-white" : "border-rose-200 bg-rose-50/40")
+                  (ok ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]/50" : missed ? "border-slate-200 bg-white" : "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]/40")
                 }
               >
                 <div className="text-xs text-slate-500">Вопрос {i + 1}</div>
@@ -476,7 +476,7 @@ export default function PreparationPage() {
                   </div>
                   <div>
                     <span className="text-slate-500">Правильный ответ: </span>
-                    <div className="font-semibold text-emerald-800"><ChemRichText text={etalon || "—"} asHtml={qq.is_closed !== true} className="inline" /></div>
+                    <div className="font-semibold text-[var(--status-ok-fg)]"><ChemRichText text={etalon || "—"} asHtml={qq.is_closed !== true} className="inline" /></div>
                   </div>
                 </div>
               </div>
@@ -489,7 +489,7 @@ export default function PreparationPage() {
   if (!q)
     return (
       <div className="mx-auto max-w-3xl space-y-4 p-6">
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+        <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">
           <div className="font-semibold">Не удалось загрузить вопросы сессии.</div>
           <div className="mt-1">
             {error || (questions.length === 0
@@ -583,9 +583,9 @@ export default function PreparationPage() {
               className={
                 "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold tabular-nums " +
                 (timeExpired
-                  ? "bg-rose-100 text-rose-800"
+                  ? "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
                   : remainingSec < 300
-                    ? "bg-amber-100 text-amber-900"
+                    ? "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
                     : "border border-indigo-200 bg-indigo-50 text-indigo-900")
               }
               title={timeExpired ? "Время теста вышло" : "Лимит времени этого теста"}
@@ -611,7 +611,7 @@ export default function PreparationPage() {
 
       {mode === "sequential" && bankProgress && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800">Банк: {bankProgress.answered ?? 0} / {bankProgress.total ?? questions.length}{bankProgress.completed ? " · пройден полностью" : ""}</div>}
 
-      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+      {error && <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">{error}</div>}
 
       <div className="h-2 rounded bg-slate-100 sticky-progress">
         <div className="h-2 rounded bg-indigo-500" style={{ width: ((idx + 1) / questions.length) * 100 + "%" }} />
@@ -649,7 +649,7 @@ export default function PreparationPage() {
         ) : (
           <>
             {options.length === 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">
                 Это закрытый вопрос, но варианты ответа не заполнены в банке. Ответ можно дать текстом — он уйдёт на ручную проверку.
               </div>
             )}
@@ -660,9 +660,9 @@ export default function PreparationPage() {
               const isCorrectOption = checked[q.id] && correctOptionKeys.has(key);
               const stateClass = checked[q.id]
                 ? isCorrectOption
-                  ? "border-emerald-400 bg-emerald-50"
+                  ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
                   : selected
-                    ? "border-rose-400 bg-rose-50"
+                    ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
                     : "border-slate-200"
                 : selected
                   ? "border-indigo-400 bg-indigo-50"
@@ -683,12 +683,12 @@ export default function PreparationPage() {
                   />
                   <span className={
                     "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " +
-                    (isCorrectOption ? "bg-emerald-600 text-white" : selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600")
+                    (isCorrectOption ? "bg-[var(--status-ok-fg)] text-white" : selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600")
                   }>
                     {position ?? key}
                   </span>
                   <ChemRichText text={label} className="flex-1 space-y-1" />
-                  {isCorrectOption && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">эталон</span>}
+                  {isCorrectOption && <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--status-ok-fg)]">эталон</span>}
                 </label>
               );
             })}
@@ -717,7 +717,7 @@ export default function PreparationPage() {
         <QuestionReport questionId={q.id} />
 
         {checked[q.id] && experience === "prepare" && (
-          <div className={unresolved ? "rounded-xl bg-amber-50 p-4 text-amber-800" : correct ? "rounded-xl bg-emerald-50 p-4 text-emerald-700" : "rounded-xl bg-rose-50 p-4 text-rose-700"}>
+          <div className={unresolved ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : correct ? "rounded-xl bg-[var(--status-ok-bg)] p-4 text-[var(--status-ok-fg)]" : "rounded-xl bg-[var(--status-critical-bg)] p-4 text-[var(--status-critical-fg)]"}>
             {unresolved
               ? "↻ Ответ сохранён; автоматическая проверка по эталону невозможна"
               : correct
@@ -737,7 +737,7 @@ export default function PreparationPage() {
               <button type="button" disabled={loading} onClick={() => void retryPreparationGrading(session.id, q.id).then((r) => {
                 if (r.ok && r.data?.items?.[0]) setGrading((g) => ({ ...g, [q.id]: r.data.items[0] }));
                 else if (!r.ok) setError(describeApiError(r.error));
-              })} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50">
+              })} className="mt-2 rounded-lg border border-[var(--status-warn-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--status-warn-fg)] disabled:opacity-50">
                 Повторить проверку
               </button>
             ) : null}

@@ -27,7 +27,7 @@ export default function ArchiveLectures({ setId }: { setId: "bio" | "math" | "ch
     };
   }, [setId]);
 
-  if (error) return <div className="card p-5 text-sm text-rose-600">{error}</div>;
+  if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!set) {
     return (
       <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">
