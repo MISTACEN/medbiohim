@@ -23,6 +23,7 @@ import {
   Landmark,
   ListChecks,
   Microscope,
+  Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -50,6 +51,7 @@ const bottomItems: Array<{
   adminOnly?: boolean;
 }> = [
   { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/changelog", label: "Что нового", icon: Sparkles },
   { href: "/help", label: "Помощь", icon: HelpCircle },
   { href: "/admin", label: "Админ", icon: LayoutDashboard, adminOnly: true },
 ];

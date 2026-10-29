@@ -58,7 +58,9 @@ examQuestions.get("/", requireAuth, async (c) => {
       .eq("for_exam", true)
       .eq("is_published", true);
     if (search) base = base.ilike("text", `%${search}%`);
-    if (topic) base = base.eq("topic", topic);
+    // Клиент передаёт агрегированное «Без темы» (пустые/обрывочные topic
+    // обнуляются на стороне данных) — фильтр должен ловить null, а не литерал.
+    if (topic) base = topic === "Без темы" ? base.is("topic", null) : base.eq("topic", topic);
 
     const { data, error, count } = await base
       .order("topic", { ascending: true })
