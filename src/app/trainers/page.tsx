@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Microscope, ScanSearch } from "lucide-react";
+import { TrainerStatsCard } from "@/components/trainers/TrainerStatsCard";
 
 export default function TrainersPage() {
   return (
@@ -8,6 +9,7 @@ export default function TrainersPage() {
         <h1 className="page-title">Тренажёры</h1>
         <p className="page-subtitle">Актуальные интерактивные тренажёры. Старый JSON-каталог больше не используется.</p>
       </div>
+      <TrainerStatsCard />
       <Link href="/trainers/feed/histology" className="card group block p-5 transition hover:-translate-y-0.5 hover:shadow-md">
         <div className="flex items-start justify-between gap-4">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><Microscope className="h-6 w-6" /></div>

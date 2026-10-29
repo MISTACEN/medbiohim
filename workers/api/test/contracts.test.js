@@ -425,3 +425,18 @@ test("FA11: подготовка отдаёт дедлайн и не прини�
   assert.match(route, /TIME_EXCEEDED/);
   assert.match(route, /time_exceeded/);
 });
+
+test("FA6: личная статистика тренажёра — accuracy и очередь ошибок", async () => {
+  const route = await source("../src/routes/trainers.ts");
+  const start = route.indexOf('trainers.get("/feed/stats"');
+  assert.ok(start >= 0, "stats route missing");
+  const body = route.slice(start, start + 4000);
+  assert.match(body, /requireAuth/);
+  // Только свои ответы; агрегаты по карточке и теме.
+  assert.match(body, /\.eq\("user_id", user\.id\)/);
+  assert.match(body, /by_topic/);
+  assert.match(body, /mistakes/);
+  assert.match(body, /accuracy/);
+  // Честная ошибка вместо пустого ответа.
+  assert.match(body, /DB_UNAVAILABLE/);
+});

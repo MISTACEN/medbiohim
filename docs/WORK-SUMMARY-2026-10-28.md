@@ -1384,3 +1384,22 @@ AI (grading_status/feedback в test_preparation_results + retry-grading),
   time_exceeded.
 
 Проверки: worker 245/245, tsc 0 (root+worker), eslint 0 errors, next build ok.
+
+## Сессия 26 (2026-10-30): FA6 — личная статистика тренажёров и очередь «повторить ошибки»
+
+Данные уже писались (trainer_feed_answers: card_id, is_correct, is_skipped,
+time_ms), статистики не было нигде.
+
+- **Воркер**: GET /trainers/feed/stats — только свои ответы; accuracy по
+  карточке (attempts/correct/skipped, без пропусков в знаменателе) и по теме
+  (через plan_topic_id → topics.title), сводка (ответов/точность/карточек),
+  очередь ошибок: карточки, где последний ответ неверный или был пропуском,
+  самые старые — первыми (лимит 50). Честная DB_UNAVAILABLE вместо пустоты.
+- **UI**: карточка «Моя статистика» на /trainers — сводка, полосы точности
+  пяти самых слабых тем, блок «Повторить ошибки» со ссылкой на тренажёр
+  с deep-link ?cards=<id,…> (механизм из сессии атласа) — ошибки сразу
+  уходят в прохождение. Пустое состояние — до первых ответов.
+- Контрактный тест в contracts.test.js (245→246 тестов воркера).
+
+Проверки: worker 246/246, node 215/215, tsc 0 (root+worker), eslint 0 errors,
+next build ok.

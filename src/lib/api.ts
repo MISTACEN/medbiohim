@@ -883,6 +883,8 @@ export async function fetchMaterialFile(id:string):Promise<Blob|null>{
 }
 
 export async function getTrainerFeed(subject="histology",specialty="mbh",limit=30,offset=0){const q=new URLSearchParams({subject,specialty,limit:String(limit),offset:String(offset)});return api<any>(`/trainers/feed?${q}`)}
+/** FA6: личная статистика тренажёра — accuracy по карточке/теме и очередь ошибок. */
+export async function getTrainerStats(options:RequestInit={}){return api<any>("/trainers/feed/stats",options)}
 const trainerCardCache=new Map<string, any>();
 const trainerCardInflight=new Map<string, Promise<ApiResult<any>>>();
 

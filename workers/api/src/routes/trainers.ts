@@ -360,6 +360,106 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
   }
 });
 
+/**
+ * FA6: личная статистика тренажёра из уже пишущихся ответов — accuracy по
+ * карточке и по теме, плюс очередь «повторить ошибки» (последний ответ
+ * неверный или пропуск; самые старые ошибки — первыми).
+ */
+trainers.get("/feed/stats", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const supabase = c.get("supabase");
+  try {
+    const { data: answers, error } = await supabase
+      .from("trainer_feed_answers")
+      .select("card_id,is_correct,is_skipped,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(5000);
+    if (error) throw error;
+    const rows = answers || [];
+    if (!rows.length) {
+      return c.json(ok({ summary: { answered: 0, correct: 0, accuracy: null, cards: 0 }, by_card: [], by_topic: [], mistakes: [] }, rid));
+    }
+
+    const cardIds = Array.from(new Set(rows.map((row: any) => String(row.card_id))));
+    const { data: cards, error: cardsError } = await supabase
+      .from("trainer_feed_cards")
+      .select("id,plan_topic_id,topics(title)")
+      .in("id", cardIds)
+      .limit(500);
+    if (cardsError) throw cardsError;
+    const topicByCard = new Map<string, string | null>(
+      (cards || []).map((row: any) => [String(row.id), (Array.isArray(row.topics) ? row.topics[0]?.title : row.topics?.title) || null])
+    );
+
+    const byCard = new Map<string, { attempts: number; correct: number; skipped: number; last_correct: boolean | null; last_skipped: boolean; last_at: string }>();
+    for (const row of rows) {
+      const key = String(row.card_id);
+      const agg = byCard.get(key) || { attempts: 0, correct: 0, skipped: 0, last_correct: null, last_skipped: false, last_at: "" };
+      agg.attempts += 1;
+      if (row.is_correct === true) agg.correct += 1;
+      if (row.is_skipped === true) agg.skipped += 1;
+      if (row.is_skipped === true) {
+        agg.last_skipped = true;
+      } else {
+        agg.last_correct = row.is_correct === true;
+        agg.last_skipped = false;
+      }
+      agg.last_at = String(row.created_at || "");
+      byCard.set(key, agg);
+    }
+
+    const byCardItems = Array.from(byCard, ([card_id, agg]) => {
+      const graded = agg.attempts - agg.skipped;
+      return {
+        card_id,
+        topic: topicByCard.get(card_id) || null,
+        attempts: agg.attempts,
+        correct: agg.correct,
+        skipped: agg.skipped,
+        accuracy: graded > 0 ? Math.round((agg.correct / graded) * 100) : null,
+        last_correct: agg.last_correct,
+        last_skipped: agg.last_skipped,
+        last_answered_at: agg.last_at,
+      };
+    });
+
+    const byTopicMap = new Map<string, { topic: string; attempts: number; correct: number; cards: number }>();
+    for (const item of byCardItems) {
+      const key = item.topic || "Без темы";
+      const agg = byTopicMap.get(key) || { topic: key, attempts: 0, correct: 0, cards: 0 };
+      agg.attempts += item.attempts - item.skipped;
+      agg.correct += item.correct;
+      agg.cards += 1;
+      byTopicMap.set(key, agg);
+    }
+    const byTopic = Array.from(byTopicMap.values())
+      .map((agg) => ({ ...agg, accuracy: agg.attempts > 0 ? Math.round((agg.correct / agg.attempts) * 100) : null }))
+      .sort((a, b) => (a.accuracy ?? 101) - (b.accuracy ?? 101));
+
+    // Очередь ошибок: последний ответ неверный или был пропуском.
+    const mistakes = byCardItems
+      .filter((item) => item.last_correct === false || item.last_skipped)
+      .sort((a, b) => String(a.last_answered_at).localeCompare(String(b.last_answered_at)))
+      .slice(0, 50);
+
+    const answered = rows.filter((row: any) => row.is_skipped !== true).length;
+    const correct = rows.filter((row: any) => row.is_correct === true).length;
+
+    return c.json(ok({
+      summary: { answered, correct, accuracy: answered ? Math.round((correct / answered) * 100) : null, cards: byCard.size },
+      by_card: byCardItems.sort((a, b) => String(b.last_answered_at).localeCompare(String(a.last_answered_at))).slice(0, 100),
+      by_topic: byTopic,
+      mistakes,
+    }, rid));
+  } catch (error) {
+    console.error("[trainers:stats]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Статистика тренажёра недоступна", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 trainers.get("/feed/:id/image", async (c) => {
   const rid = requestId();
   // Public media endpoint: only published cards can resolve to image bytes.
