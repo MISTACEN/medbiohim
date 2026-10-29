@@ -134,6 +134,9 @@ export default function PreparationPage() {
   const [limit, setLimit] = useState(10);
   const [bankProgress, setBankProgress] = useState<any>(null);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  // FA11: дедлайн попытки отдаёт сервер (started_at + time_limit_sec теста).
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const autoFinished = useRef(false);
   const subjectParam = search.get("subject") || "";
   const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
     (search.get("mode") as any) === "exam"
@@ -243,8 +246,28 @@ export default function PreparationPage() {
     });
   }
 
+  // FA11: обратный отсчёт и автофиниш. Тик раз в секунду только пока
+  // есть дедлайн и попытка не завершена (статистика ещё не показана).
+  const deadlineMs = session?.deadline_at ? Date.parse(String(session.deadline_at)) : null;
+  const timeExpired = stats == null && deadlineMs != null && Number.isFinite(deadlineMs) && nowMs > deadlineMs;
+  const remainingSec = deadlineMs != null && Number.isFinite(deadlineMs) ? Math.max(0, Math.floor((deadlineMs - nowMs) / 1000)) : null;
+
+  useEffect(() => {
+    if (deadlineMs == null || stats) return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [deadlineMs, stats]);
+
+  useEffect(() => {
+    if (!timeExpired || autoFinished.current || !session) return;
+    autoFinished.current = true;
+    // Автофиниш без confirm: время вышло, выбор у студента отсутствует.
+    void finish(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeExpired]);
+
   function answer(v: string) {
-    if (!q || !session || checked[q.id]) return;
+    if (!q || !session || checked[q.id] || timeExpired) return;
     const questionId = q.id;
 
     // Не заставляем интерфейс ждать SpaceWeb/Vercel round-trip:
@@ -555,6 +578,23 @@ export default function PreparationPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {remainingSec != null && !stats && (
+            <div
+              className={
+                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold tabular-nums " +
+                (timeExpired
+                  ? "bg-rose-100 text-rose-800"
+                  : remainingSec < 300
+                    ? "bg-amber-100 text-amber-900"
+                    : "border border-indigo-200 bg-indigo-50 text-indigo-900")
+              }
+              title={timeExpired ? "Время теста вышло" : "Лимит времени этого теста"}
+              role="timer"
+              aria-label={"Осталось времени: " + Math.floor(remainingSec / 60) + " мин " + (remainingSec % 60) + " с"}
+            >
+              {timeExpired ? "Время вышло" : "Осталось " + Math.floor(remainingSec / 60) + ":" + String(remainingSec % 60).padStart(2, "0")}
+            </div>
+          )}
           <button
             type="button"
             disabled={loading}

@@ -414,3 +414,14 @@ test("avatar upload is authenticated, size/type limited and served through a pri
   const migration = await source("../../../database/migrations/20261029_user_avatar.sql");
   assert.match(migration, /add column if not exists avatar_key text/);
 });
+
+test("FA11: подготовка отдаёт дедлайн и не принимает ответы после срока", async () => {
+  const route = await source("../src/routes/preparation.ts");
+  // Дедлайн считается на сервере из started_at + time_limit_sec теста.
+  assert.match(route, /loadDeadline/);
+  assert.match(route, /time_limit_sec/);
+  assert.match(route, /deadline_at/);
+  // Сохранение после срока отклоняется, завершение разрешено с пометкой.
+  assert.match(route, /TIME_EXCEEDED/);
+  assert.match(route, /time_exceeded/);
+});

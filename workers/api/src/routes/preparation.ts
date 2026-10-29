@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
-
 // Reuse the archived, already hardened Supabase/RLS preparation implementation while
 // the API is consolidated into one Worker. This is bundled into this Worker, not a
 // runtime proxy to PHP/SpaceWeb or the Shadow Worker.
@@ -44,6 +43,42 @@ async function readBody(c: any) {
   } catch { return null; }
 }
 
+/**
+ * FA11: дедлайн попытки = started_at + tests.time_limit_sec (если лимит задан).
+ * Архивная реализация подготовки лимит не знает — дедлайн считается на уровне
+ * роута и отдаётся клиенту как deadline_at; сохранение ответов после срока
+ * отклоняется, завершение разрешено всегда (автофиниш честно фиксирует время).
+ */
+async function loadDeadline(supabase: any, sessionId: string): Promise<string | null> {
+  try {
+    const { data: session } = await supabase
+      .from("test_preparation_sessions")
+      .select("test_id,status,started_at")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (!session?.test_id || !session.started_at) return null;
+    const started = Date.parse(String(session.started_at));
+    if (Number.isNaN(started)) return null;
+    const { data: testRows } = await supabase
+      .from("tests")
+      .select("time_limit_sec")
+      .eq("id", String(session.test_id))
+      .limit(1);
+    const limit = Number(testRows?.[0]?.time_limit_sec || 0);
+    if (!Number.isFinite(limit) || limit <= 0) return null;
+    return new Date(started + limit * 1000).toISOString();
+  } catch (error) {
+    console.error("[preparation:deadline]", error);
+    return null;
+  }
+}
+
+function isExpired(deadline: string | null): boolean {
+  if (!deadline) return false;
+  const at = Date.parse(deadline);
+  return Number.isFinite(at) && Date.now() > at;
+}
+
 preparation.post("/:id/preparation/start", requireAuth, async (c) => {
   const rid = requestId();
   const testId = String(c.req.param("id") || "");
@@ -58,6 +93,10 @@ preparation.post("/:id/preparation/start", requireAuth, async (c) => {
   }
   try {
     const result = await startSupabasePreparation(c.req.raw.clone(), c.env, testId, input);
+    if (result?.ok && result.data?.session?.id) {
+      const deadline = await loadDeadline(c.get("supabase"), String(result.data.session.id));
+      if (deadline) result.data.session.deadline_at = deadline;
+    }
     return respond(c, rid, result, "Не удалось начать подготовку");
   } catch (error) {
     console.error("MEDBIOHIM_PREPARATION_START_ROUTE", String(error));
@@ -74,7 +113,12 @@ preparation.get("/preparation/:id", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
-    return respond(c, rid, await getSupabasePreparation(c.req.raw.clone(), c.env, id), "Подготовка временно недоступна");
+    const result = await getSupabasePreparation(c.req.raw.clone(), c.env, id);
+    if (result?.ok && result.data?.session?.id) {
+      const deadline = await loadDeadline(c.get("supabase"), String(result.data.session.id));
+      if (deadline) result.data.session.deadline_at = deadline;
+    }
+    return respond(c, rid, result, "Подготовка временно недоступна");
   } catch {
     const { body, status } = fail("PREPARATION_UNAVAILABLE", "Подготовка временно недоступна", 503, rid);
     return c.json(body, status as 503);
@@ -94,6 +138,13 @@ preparation.patch("/preparation/:id", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
+    // Серверный контроль срока: после дедлайна ответы не принимаются — иначе
+    // клиентский таймер можно было бы просто проигнорировать.
+    const deadline = await loadDeadline(c.get("supabase"), id);
+    if (deadline && isExpired(deadline)) {
+      const { body, status } = fail("TIME_EXCEEDED", "Время теста вышло — завершите попытку, чтобы увидеть результат", 422, rid, { deadline_at: deadline });
+      return c.json(body, status as 422);
+    }
     return respond(c, rid, await saveSupabasePreparation(c.req.raw.clone(), c.env, id, input), "Не удалось сохранить ответ");
   } catch {
     const { body, status } = fail("PREPARATION_UNAVAILABLE", "Не удалось сохранить ответ", 503, rid);
@@ -109,7 +160,15 @@ preparation.post("/preparation/:id/finish", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
-    return respond(c, rid, await finishSupabasePreparation(c.req.raw.clone(), c.env, id), "Не удалось завершить подготовку");
+    // Завершение разрешено всегда (автофиниш по таймеру в том числе), но
+    // честно помечаем, что лимит был превышен.
+    const deadline = await loadDeadline(c.get("supabase"), id);
+    const result = await finishSupabasePreparation(c.req.raw.clone(), c.env, id);
+    if (result?.ok && result.data && deadline && isExpired(deadline)) {
+      result.data.time_exceeded = true;
+      result.data.deadline_at = deadline;
+    }
+    return respond(c, rid, result, "Не удалось завершить подготовку");
   } catch {
     const { body, status } = fail("PREPARATION_UNAVAILABLE", "Не удалось завершить подготовку", 503, rid);
     return c.json(body, status as 503);
