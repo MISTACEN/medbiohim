@@ -336,11 +336,10 @@ function SettingsPageInner() {
     const expiresAt = Date.now() + Math.max(60, r.data.expires_in_seconds || 600) * 1000;
     setTelegramWait({ url: r.data.url, expiresAt });
     setClock(Date.now());
-    setMsg("Ссылка открыта в новой вкладке. Подтвердите привязку в Telegram — статус обновится сам.");
-    // Не уводим страницу на t.me: пользователь должен увидеть результат.
-    // Если браузер заблокировал новую вкладку — переходим сами.
-    const opened = window.open(r.data.url, "_blank", "noopener,noreferrer");
-    if (!opened) window.location.href = r.data.url;
+    // Не открываем t.me сами: после await браузер блокирует popup, а запасной
+    // переход увёл бы со страницы и сломал автоподтверждение. Ссылка — кнопкой
+    // в карточке ожидания, это действие пользователя и открывается всегда.
+    setMsg("Ссылка готова. Откройте бота кнопкой ниже — статус обновится сам.");
   }
 
   async function onUnlinkTelegram() {
@@ -681,9 +680,9 @@ function SettingsPageInner() {
           <div className="space-y-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 text-indigo-950">
             <div className="font-semibold">Ждём подтверждение в Telegram</div>
             <p className="text-xs leading-5">
-              Откройте <strong>@MEDBIOCHIM_bot</strong> и отправьте команду из ссылки. Ссылка одноразовая,
+              Откройте <strong>@MEDBIOCHIM_bot</strong> кнопкой ниже и нажмите «Start». Ссылка одноразовая,
               осталось <strong className="tabular-nums">{clock ? formatWait(telegramWait.expiresAt - clock) : "10:00"}</strong>.
-              Статус обновится сам — перезагружать страницу не нужно.
+              После подтверждения статус обновится сам — перезагружать страницу не нужно.
             </p>
             <div className="flex flex-wrap gap-2">
               <a href={telegramWait.url} target="_blank" rel="noreferrer" className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold">

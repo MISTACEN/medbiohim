@@ -64,7 +64,7 @@ test("Telegram: одноразовая ссылка, автоподтвержд�
   assert.match(page, /setInterval\(\(\) => \{ void tick\(\); \}, 3000\)/, "статус опрашивается сам");
   assert.match(page, /formatWait\(telegramWait\.expiresAt - clock\)/);
   assert.match(page, /Ссылка на привязку истекла/);
-  assert.match(page, /window\.open\(r\.data\.url/);
+  assert.match(page, /href=\{telegramWait\.url\}/, "ссылка открывается кнопкой, а не блокируемым popup");
   assert.match(page, /Это не значит, что Telegram отвязан/);
   assert.match(page, /setTelegramStatusError\(describeApiError\(tg\.error\)\)/);
 });
