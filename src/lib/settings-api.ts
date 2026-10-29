@@ -89,3 +89,37 @@ export async function unlinkTelegramAccount() {
     body: JSON.stringify({}),
   });
 }
+
+// --- SA4: активные сессии ---------------------------------------------------
+
+export type ActiveSession = {
+  session_id: string;
+  created_at?: string | null;
+  last_used_at?: string | null;
+  user_agent?: string | null;
+  ip_hint?: string | null;
+  aal?: string | null;
+  is_current: boolean;
+};
+
+/** Список устройств, где аккаунт ещё активен (текущее помечено is_current). */
+export async function listActiveSessions() {
+  return api<{ sessions: ActiveSession[] }>("/settings/sessions");
+}
+
+/** Завершить конкретное устройство. Текущее устройство сервер отклонит (409). */
+export async function revokeActiveSession(sessionId: string) {
+  return api<{ revoked: boolean; session_id: string }>(
+    `/settings/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+}
+
+/** «Выйти на всех других устройствах»: текущая сессия остаётся рабочей. */
+export async function revokeOtherSessions() {
+  return api<{ revoked: number; kept_current: boolean }>("/settings/sessions/revoke-others", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+

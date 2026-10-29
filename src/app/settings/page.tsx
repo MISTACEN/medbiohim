@@ -6,10 +6,12 @@ import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import {
   Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
+  MonitorSmartphone, LogOut,
 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
 import { describeApiError } from "@/lib/errors";
 import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/api";
+import { describeLastSeen, describeUserAgent } from "@/lib/device";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   changeAccountPassword,
@@ -20,9 +22,11 @@ import {
   unlinkIdentity,
   updateAccountProfile,
   startTelegramLink, getTelegramLinkStatus, unlinkTelegramAccount,
+  listActiveSessions, revokeActiveSession, revokeOtherSessions,
   type TelegramLinkStatus,
   type AccountSettings,
   type LinkedIdentity,
+  type ActiveSession,
 } from "@/lib/settings-api";
 
 type TrainerLayout = "sidebar" | "list" | "top";
@@ -49,6 +53,10 @@ function SettingsPageInner() {
   // SA3: превью аватара — object URL для загруженного файла или внешний https.
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  // SA4: активные устройства. null — ещё не загружали, [] — сессий нет.
+  const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [sessionsBusy, setSessionsBusy] = useState<string | null>(null);
 
   const referenceThemes = THEMES.filter((t) => (t as { family?: string }).family === "reference");
   const otherThemes = THEMES.filter((t) => (t as { family?: string }).family !== "reference");
@@ -144,6 +152,51 @@ function SettingsPageInner() {
     setAvatarBusy(false);
     setMsg("Аватар удалён");
     if (refresh) void refresh();
+  }
+
+  // SA4: список устройств. Ошибка не прячется за пустым списком — иначе
+  // пользователь решит, что сессий нет, хотя сервер их не отдал.
+  const loadSessions = useCallback(async () => {
+    setSessionsError(null);
+    const r = await listActiveSessions();
+    if (r.ok) {
+      setSessions(r.data.sessions);
+    } else {
+      setSessions([]);
+      setSessionsError(describeApiError(r.error));
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  async function onRevokeSession(sessionId: string) {
+    setSessionsBusy(sessionId); setErr(null); setMsg(null);
+    const r = await revokeActiveSession(sessionId);
+    setSessionsBusy(null);
+    if (!r.ok) {
+      const code = String((r.error as { code?: string }).code || "");
+      if (code === "NOT_FOUND") {
+        // Сессия уже истекла сама — это не ошибка, список просто устарел.
+        await loadSessions();
+        return setMsg("Устройство уже завершено");
+      }
+      return setErr(describeApiError(r.error));
+    }
+    await loadSessions();
+    setMsg("Устройство завершено: для входа на нём потребуется пароль");
+  }
+
+  async function onRevokeOtherSessions() {
+    setSessionsBusy("others"); setErr(null); setMsg(null);
+    const r = await revokeOtherSessions();
+    setSessionsBusy(null);
+    if (!r.ok) return setErr(describeApiError(r.error));
+    await loadSessions();
+    setMsg(r.data.revoked > 0
+      ? `Завершено устройств: ${r.data.revoked}. Текущее устройство осталось в аккаунте.`
+      : "Других активных устройств не было");
   }
 
   const recoveryFromQuery = searchParams.get("recovery") === "1";
@@ -440,6 +493,67 @@ function SettingsPageInner() {
           </label>
           <button type="submit" disabled={busy === "password"} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-semibold">Сменить пароль</button>
         </form>
+      </section>
+
+      <section className="card space-y-4 p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><MonitorSmartphone className="h-5 w-5" /> Активные устройства</h2>
+        <p className="text-sm text-[var(--muted)]">
+          Где сейчас выполнен вход в аккаунт. Завершение устройства сбрасывает его сессию: на нём потребуется войти заново.
+        </p>
+        {sessionsError ? (
+          <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {sessionsError}{" "}
+            <button type="button" onClick={() => void loadSessions()} className="font-semibold underline">Повторить</button>
+          </div>
+        ) : sessions === null ? (
+          <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+            <RefreshCw className="h-4 w-4 animate-spin" /> Загрузка устройств…
+          </div>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">Список устройств пуст.</p>
+        ) : (
+          <ul className="space-y-2">
+            {sessions.map((s) => {
+              const device = describeUserAgent(s.user_agent);
+              return (
+                <li key={s.session_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 font-semibold">
+                      {device.label}
+                      {s.is_current ? (
+                        <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-xs font-semibold text-[var(--primary)]">это устройство</span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-[var(--muted)]">
+                      Вход: {describeLastSeen(s.created_at)} · Активность: {describeLastSeen(s.last_used_at)}
+                      {s.ip_hint ? ` · ${s.ip_hint}` : ""}
+                    </div>
+                  </div>
+                  {s.is_current ? (
+                    <span className="text-xs text-[var(--muted)]">Выход — кнопкой «Выйти» в меню</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void onRevokeSession(s.session_id)}
+                      disabled={sessionsBusy === s.session_id}
+                      className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                    >
+                      {sessionsBusy === s.session_id ? "Завершаем…" : "Завершить"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={() => void onRevokeOtherSessions()}
+          disabled={sessionsBusy === "others" || (sessions?.length ?? 0) < 2}
+          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
+        >
+          <LogOut className="h-4 w-4" /> {sessionsBusy === "others" ? "Завершаем…" : "Выйти на всех других устройствах"}
+        </button>
       </section>
 
       <section className="card space-y-4 p-5">
