@@ -222,7 +222,7 @@ async function collect(c: any, options: CollectOptions) {
           snippet: prompt || [kindLabel, stain, section].filter(Boolean).join(" · "),
           hint: [kindLabel, stain, section].filter(Boolean).join(" · "),
           has_answer: false,
-          href: `/trainers/feed/histology?card=${encodeURIComponent(String(raw.id))}`,
+          href: `/atlas?card=${encodeURIComponent(String(raw.id))}`,
           score,
         },
       });

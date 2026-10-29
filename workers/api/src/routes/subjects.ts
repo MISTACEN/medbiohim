@@ -13,6 +13,18 @@ const SLUG_ALIASES: Record<string, string> = {
   organic_chemistry: "chemistry_organic_physical",
   histology: "histology_cytology",
 };
+// Кириллица раньше просто вырезалась, и все русские названия получали слаг
+// "-" — дальше такие предметы не различить ни в адресе, ни при удалении.
+const TRANSLIT: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y",
+  к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f",
+  х: "h", ц: "c", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+};
+export function slugify(raw: string): string {
+  const transliterated = raw.trim().toLowerCase().split("").map((ch) => TRANSLIT[ch] ?? ch).join("");
+  const slug = transliterated.replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100);
+  return slug || `subject-${Date.now().toString(36)}`;
+}
 function slugVariants(raw: string): string[] {
   const variants = [raw];
   const alias = SLUG_ALIASES[raw];
@@ -34,7 +46,11 @@ async function isManager(c: any) {
 subjects.get("/", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
   const course = c.req.query("course"); const semester = c.req.query("semester");
-  let q = db.from("subjects").select("id,name,slug,course_number,semester,color_hex,is_active,specialty_slug,control_type,credits,total_hours,lecture_hours,practice_hours,self_study_hours").eq("is_active", true).order("name", { ascending: true }).limit(500);
+  // Админке нужен архив, чтобы удалённый предмет можно было вернуть. Обычный
+  // каталог по-прежнему видит только активные строки.
+  const includeInactive = ["1", "true", "yes"].includes(String(c.req.query("include_inactive") || "").toLowerCase());
+  let q = db.from("subjects").select("id,name,slug,course_number,semester,color_hex,is_active,specialty_slug,control_type,credits,total_hours,lecture_hours,practice_hours,self_study_hours").order("name", { ascending: true }).limit(500);
+  if (!includeInactive) q = q.eq("is_active", true);
   if (course) q = q.eq("course_number", Number(course));
   if (semester) q = q.eq("semester", Number(semester));
   const { data, error } = await q;
@@ -103,7 +119,7 @@ subjects.post("/", requireAuth, async (c) => {
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const name = String(input.name || "").trim();
   if (!name) { const { body, status } = fail("VALIDATION_ERROR", "name required", 422, rid); return c.json(body, status as 422); }
-  const slug = String(input.slug || name).trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").slice(0, 100);
+  const slug = slugify(String(input.slug || name));
   const row: any = { name, slug, is_active: input.is_active !== false };
   if (input.course_number != null || input.course != null) row.course_number = Number(input.course_number ?? input.course);
   if (input.semester != null) row.semester = Number(input.semester);
@@ -136,10 +152,24 @@ subjects.delete("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
   if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
-  const { data, error } = await db.from("subjects").update({ is_active: false }).eq("id", id).select("id").maybeSingle();
-  if (error) { const { body, status } = fail("DB_ERROR", error.message || "delete failed", 503, rid); return c.json(body, status as 503); }
-  if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
-  return c.json(ok({ deleted: true, id }, rid));
+  // Удаляется ровно та строка, которую выбрали в списке. Раньше архивировалось
+  // всё slug-семейство, а у предметов с кириллическим названием слаг получался
+  // одинаковым («анатомия» → "-"): удаление одной строки сносило десятки
+  // соседних. Семейство по слагу остаётся только для новых корректных слагов.
+  try {
+    const { data: row, error: rowError } = await db.from("subjects").select("id,slug").eq("id", id).maybeSingle();
+    if (rowError) { const { body, status } = fail("DB_ERROR", rowError.message || "delete failed", 503, rid); return c.json(body, status as 503); }
+    if (!row) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
+    const slug = String(row.slug || "");
+    const usableSlug = slug.length > 1 && /[a-z0-9]/.test(slug);
+    const { data: archived, error: updateError } = await (usableSlug
+      ? db.from("subjects").update({ is_active: false }).eq("slug", slug).select("id")
+      : db.from("subjects").update({ is_active: false }).eq("id", id).select("id"));
+    if (updateError) { const { body, status } = fail("DB_ERROR", updateError.message || "delete failed", 503, rid); return c.json(body, status as 503); }
+    return c.json(ok({ deleted: true, id, archived: (archived || []).length }, rid));
+  } catch {
+    const { body, status } = fail("DB_ERROR", "delete failed", 503, rid); return c.json(body, status as 503);
+  }
 });
 
 export default subjects;
