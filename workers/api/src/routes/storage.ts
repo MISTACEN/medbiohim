@@ -282,7 +282,10 @@ storage.post("/avatar", requireAuth, async (c) => {
     if (previous.error) throw previous.error;
 
     const key = `users/${user.id}/avatars/${crypto.randomUUID()}.${ext}`;
-    await bucket.put(key, file, { contentType: file.type, cache: "public, max-age=3600" });
+    // Upstash Blob принимает только Duration | 'immutable' | 'revalidate' | 'no-store'
+    // в cache — сырая строка Cache-Control роняет put. Час достаточно: ссылка на
+    // файл отдаётся через приватный прокси и меняется вместе с uuid ключа.
+    await bucket.put(key, file, { contentType: file.type, cache: "1h" });
 
     const { error: updateError } = await supabase
       .from("users")
