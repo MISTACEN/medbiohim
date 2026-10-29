@@ -67,13 +67,14 @@ export { getTrainerImageUrl };
 
 export async function listSubjectMaterials(
   params: { subjectId?: string; subjectSlug?: string; type?: string } = {},
+  options: RequestInit = {},
 ) {
   const q = new URLSearchParams();
   if (params.subjectId) q.set("subject_id", params.subjectId);
   if (params.subjectSlug) q.set("subject_slug", params.subjectSlug);
   if (params.type) q.set("type", params.type);
   const s = q.toString() ? "?" + q.toString() : "";
-  return apiCached<{ items: SubjectMaterial[]; source: string }>("/subject-materials" + s);
+  return apiCached<{ items: SubjectMaterial[]; source: string }>("/subject-materials" + s, options);
 }
 
 export async function getContentSource(id: string) {

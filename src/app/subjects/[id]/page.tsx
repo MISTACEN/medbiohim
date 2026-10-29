@@ -30,7 +30,9 @@ import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
 import LatinRecipes from "@/components/portals/LatinRecipes";
 import { legacyPortalConfig, loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { describeApiError } from "@/lib/errors";
 
 type Subject = {
   id: string;
@@ -43,6 +45,24 @@ type Subject = {
   slug?: string | null;
 };
 type Module = { id?: string; title?: string; topics?: { id?: string; title?: string }[] };
+
+/**
+ * D9: результат первого этапа загрузки предмета — ядро страницы (предмет,
+ * модули, план, тесты). `ready: false` — версия «ещё не готовы» (bootstrap
+ * авторизации), страница показывает скелетон.
+ */
+type SubjectCoreLoad =
+  | { ready: false }
+  | {
+      ready: true;
+      subjectId: string;
+      slug: string;
+      subject: Subject;
+      modules: Module[];
+      plan: SubjectPlan | null;
+      tests: ApiTest[];
+      resourceErrors: Record<string, string>;
+    };
 
 type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin";
 type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
@@ -147,8 +167,6 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const [lectures, setLectures] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [resourceErrors, setResourceErrors] = useState<Record<string, string>>({});
   const [subjectId, setSubjectId] = useState("");
   const [tab, setTab] = useState<TabId>("plan");
@@ -185,27 +203,23 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, [tabFromQuery]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (authLoading) return () => { cancelled = true; };
-    (async () => {
+  // D9: ручной useEffect с cancelled-флагом заменён на useApiRequest.
+  // Этап 1 — ядро страницы: каталог, предмет, план и тесты ( AbortSignal
+  // отменяет запросы при unmount и смене предмета/группы).
+  const { data: coreLoad, loading: coreLoading, error: coreError } = useApiRequest<SubjectCoreLoad>(
+    async (signal) => {
+      if (authLoading) return { ready: false } as SubjectCoreLoad;
       try {
         const p = await params;
-        if (cancelled) return;
-        setSubjectId(p.id);
+        const routeId = p.id;
         // Catalog and subject are independent: start both requests immediately
         // so Vercel -> SpaceWeb latency does not create a waterfall.
-        const [cat, r] = await Promise.all([listSubjectsCatalog(), getSubject(p.id)]);
+        const [cat, r] = await Promise.all([listSubjectsCatalog({ signal }), getSubject(routeId, { signal })]);
         const hit = cat.ok
-          ? cat.data.items.find((x: any) => x.id === p.id || x.slug === p.id) ||
-            cat.data.items.find((x: any) => x.name.toLowerCase() === decodeURIComponent(p.id).toLowerCase())
+          ? cat.data.items.find((x: any) => x.id === routeId || x.slug === routeId) ||
+            cat.data.items.find((x: any) => x.name.toLowerCase() === decodeURIComponent(routeId).toLowerCase())
           : null;
-        if (cancelled) return;
-        if (!r.ok && !hit) {
-          setError(r.error.message);
-          setLoading(false);
-          return;
-        }
+        if (!r.ok && !hit) throw new Error(describeApiError(r.error));
         // Cloudflare returns the subject row directly; the legacy SpaceWeb
         // contract may wrap it as { subject, modules }. Accept both shapes and
         // retain the catalog row as a safe fallback so a shape mismatch cannot
@@ -218,27 +232,21 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         if (!s.slug && hit?.slug) s.slug = hit.slug;
         if (s.course_number == null && hit?.course_number != null) s.course_number = hit.course_number;
         if (s.semester == null && hit?.semester != null) s.semester = hit.semester;
-        setSubject(s);
         const moduleRows = responseData?.modules || responseData?.subject?.modules || [];
-        setModules(Array.isArray(moduleRows) ? (moduleRows as Module[]) : []);
+        const modules: Module[] = Array.isArray(moduleRows) ? (moduleRows as Module[]) : [];
         const slug = slugNames[(s?.name || "").toLowerCase()] || s?.slug || "";
+        let subject: Subject = s;
+        let plan: SubjectPlan | null = null;
+        let tests: ApiTest[] = [];
+        const resourceErrors: Record<string, string> = {};
         if (s?.id) {
           // Render the core subject view as soon as its plan and test catalog
           // arrive. Slow auxiliary panels (progress, tickets, media and CMS)
           // should not leave the whole subject page on a skeleton.
-          const planRequest = slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3) : Promise.resolve({ ok: false } as any);
-          const testsRequest = listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3);
-          const auxiliaryRequest = Promise.all([
-            getSubjectGradebook(s.id),
-            listSubjectMaterials({ subjectId: s.id }),
-            listTicketBanks(),
-            getProgress(s.id, user?.groupId),
-            listMaterials(slug ? { subjectSlug: slug } : {}),
-            listLectures(slug),
-          ]);
+          const planRequest = slug ? getSubjectPlan(slug, s.course_number ?? 2, s.semester ?? 3, { signal }) : Promise.resolve({ ok: false } as any);
+          const testsRequest = listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3, { signal });
           const [pr, tt] = await Promise.all([planRequest, testsRequest]);
-          if (cancelled) return;
-          if (!cancelled && pr.ok) {
+          if (pr.ok) {
             const planData = pr.data.plan || pr.data;
             const planSubject = pr.data.subject && typeof pr.data.subject === "object" ? pr.data.subject : {};
             const planWeeks = Array.isArray(planData.weeks) ? planData.weeks : (Array.isArray(planData.items) ? planData.items.map((item: any, index: number) => {
@@ -270,47 +278,74 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
               self_study_hours: planSubject.self_study_hours ?? planData.hours?.self_study,
               description: planSubject.description ?? planData.description,
             };
-            setSubject((current: any) => {
-              const merged = { ...(planSubject || {}), ...(current || {}) };
-              for (const [key, value] of Object.entries(planSubjectFields)) {
-                if ((merged[key] == null || merged[key] === "") && value != null && value !== "") merged[key] = value;
-              }
-              return merged;
-            });
-            setPlan({ ...planData, weeks: planWeeks, control: planData.control || pr.data.plan_meta?.control });
+            const merged: any = { ...(planSubject || {}), ...(s || {}) };
+            for (const [key, value] of Object.entries(planSubjectFields)) {
+              if ((merged[key] == null || merged[key] === "") && value != null && value !== "") merged[key] = value;
+            }
+            subject = merged;
+            plan = { ...planData, weeks: planWeeks, control: planData.control || pr.data.plan_meta?.control };
+          } else {
+            resourceErrors.plan = pr.error?.message || "Не удалось загрузить учебный план.";
           }
-          if (!cancelled) {
-            setResourceErrors({
-              ...(!pr.ok ? { plan: pr.error?.message || "Не удалось загрузить учебный план." } : {}),
-              ...(!tt.ok ? { tests: tt.error?.message || "Не удалось загрузить тесты." } : {}),
-            });
-            if (tt.ok) setTests(tt.data.items || []);
-            setLoading(false);
-          }
-          const [gb, mm, bb, pg, mr, ll] = await auxiliaryRequest;
-          if (!cancelled) {
-            setResourceErrors((current) => ({
-              ...current,
-              ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
-            }));
-            if (gb.ok) setGradebook(gb.data.items || []);
-            if (mm.ok) setMaterials(mm.data.items || []);
-            if (bb.ok) setBanks(bb.data.items || []);
-            if (pg.ok) setProgress(pg.data);
-            if (mr.ok) setMaterialsRich(mr.data.items || []);
-            if (ll.ok) setLectures(ll.data.items || []);
-          }
+          if (!tt.ok) resourceErrors.tests = tt.error?.message || "Не удалось загрузить тесты.";
+          else tests = tt.data.items || [];
         }
-      } catch {
-        if (!cancelled) setError("Не удалось загрузить предмет");
-      } finally {
-        if (!cancelled) setLoading(false);
+        return { ready: true, subjectId: routeId, slug, subject, modules, plan, tests, resourceErrors };
+      } catch (cause) {
+        throw new Error(cause instanceof Error && cause.message ? cause.message : "Не удалось загрузить предмет");
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [params, authLoading, user?.groupId]);
+    },
+    [params, authLoading, user?.groupId]
+  );
+
+  // Этап 1: применяем готовое ядро к состояниям страницы.
+  useEffect(() => {
+    if (!coreLoad?.ready) return;
+    setSubjectId(coreLoad.subjectId);
+    setSubject(coreLoad.subject);
+    setModules(coreLoad.modules);
+    setPlan(coreLoad.plan);
+    setTests(coreLoad.tests);
+    setResourceErrors(coreLoad.resourceErrors);
+  }, [coreLoad]);
+
+  const auxSubjectId = coreLoad?.ready ? coreLoad.subjectId : "";
+  const auxSlug = coreLoad?.ready ? coreLoad.slug : "";
+  // Этап 2 — медленные вспомогательные панели (зачётка, материалы, банки,
+  // прогресс): не блокируют ядро страницы, отменяются тем же хуком.
+  const { data: auxLoad } = useApiRequest(
+    async (signal) => {
+      if (!auxSubjectId) return null;
+      return Promise.all([
+        getSubjectGradebook(auxSubjectId, { signal }),
+        listSubjectMaterials({ subjectId: auxSubjectId }, { signal }),
+        listTicketBanks({ signal }),
+        getProgress(auxSubjectId, user?.groupId, { signal }),
+        listMaterials(auxSlug ? { subjectSlug: auxSlug } : {}, { signal }),
+        listLectures(auxSlug, { signal }),
+      ]);
+    },
+    [auxSubjectId, auxSlug]
+  );
+
+  // Этап 2: применяем вспомогательные данные к состояниям страницы.
+  useEffect(() => {
+    if (!auxLoad) return;
+    const [gb, mm, bb, pg, mr, ll] = auxLoad;
+    setResourceErrors((current) => ({
+      ...current,
+      ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
+    }));
+    if (gb.ok) setGradebook(gb.data.items || []);
+    if (mm.ok) setMaterials(mm.data.items || []);
+    if (bb.ok) setBanks(bb.data.items || []);
+    if (pg.ok) setProgress(pg.data);
+    if (mr.ok) setMaterialsRich(mr.data.items || []);
+    if (ll.ok) setLectures(ll.data.items || []);
+  }, [auxLoad]);
+
+  const loading = coreLoading || !coreLoad?.ready;
+  const error = coreError;
 
   function selectTab(id: TabId) {
     setTab(id);
@@ -401,7 +436,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     const res = await generateTicket(ticketBankId, ticketCount, ticketMode);
     setTicketBusy(false);
     if (!res.ok) {
-      setTicketNote(res.error.message);
+      setTicketNote(describeApiError(res.error));
       return;
     }
     setTicketQuestions(res.data.questions || []);
@@ -818,7 +853,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                         // API отдаёт лекцию и вложенно (data.lecture), и плоско.
                         const payload = result.ok ? (result.data?.lecture || result.data) : null;
                         if (result.ok && payload) setActiveLecture(payload);
-                        else setLectureError(result.error.message || "Не удалось открыть лекцию.");
+                        else setLectureError(describeApiError(result.error) || "Не удалось открыть лекцию.");
                         setLectureLoading(false);
                       });
                     }}

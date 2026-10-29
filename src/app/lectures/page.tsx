@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Search } from "lucide-react";
 import { listLectures, type LectureListItem } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 export default function LecturesPage() {
   const [items, setItems] = useState<LectureListItem[]>([]);
@@ -22,7 +23,7 @@ export default function LecturesPage() {
         setError(null);
       } else {
         setItems([]);
-        setError(r.error.message || "Не удалось загрузить лекции");
+        setError(describeApiError(r.error) || "Не удалось загрузить лекции");
       }
       setLoading(false);
     });

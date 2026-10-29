@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiConversation, type AiMessage, type AiProvider } from "@/lib/features-api";
 import { listSubjectsCatalog } from "@/lib/api";
 import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
+import { describeApiError } from "@/lib/errors";
 
 export default function TutorPage() {
   const [items,setItems]=useState<AiConversation[]>([]);
@@ -27,7 +28,7 @@ export default function TutorPage() {
     setLoading(true); setError(null);
     const r=await aiGetConversation(id);
     setLoading(false);
-    if(!r.ok){setError(r.error.message);return;}
+    if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
     setProvider(r.data.conversation.provider);
     setSubjectSlug(r.data.conversation.subject_slug||"");
@@ -58,13 +59,13 @@ export default function TutorPage() {
         .filter((s: { name: string; slug: string }): s is { name: string; slug: string } => Boolean(s.slug));
       setSubjects(list);
     }
-    if(!cs.ok){setError(cs.error.message);setBooting(false);return;}
+    if(!cs.ok){setError(describeApiError(cs.error));setBooting(false);return;}
     setItems(cs.data.items||[]);
     if(cs.data.items?.[0]) await loadConversation(cs.data.items[0].id);
     else {
       const created=await aiCreateConversation({provider:"auto"});
       if(created.ok){setItems([created.data.conversation]);await loadConversation(created.data.conversation.id);}
-      else setError(created.error.message);
+      else setError(describeApiError(created.error));
     }
     setBooting(false);
   }
@@ -74,14 +75,14 @@ export default function TutorPage() {
 
   async function newChat(){
     const r=await aiCreateConversation({provider,subject_slug:subjectSlug||undefined});
-    if(!r.ok){setError(r.error.message);return;}
+    if(!r.ok){setError(describeApiError(r.error));return;}
     setItems(x=>[r.data.conversation,...x]);setConversation(r.data.conversation);setMessages([]);setMobileList(false);setError(null);
     setTimeout(()=>inputRef.current?.focus(),50);
   }
 
   async function removeChat(id:string){
     const r=await aiDeleteConversation(id);
-    if(!r.ok){setError(r.error.message);return;}
+    if(!r.ok){setError(describeApiError(r.error));return;}
     const next=items.filter(x=>x.id!==id);setItems(next);
     if(conversation?.id===id){
       if(next[0]) await loadConversation(next[0].id);
@@ -96,7 +97,7 @@ export default function TutorPage() {
     setMessages(m=>[...m,{id:"local-"+Date.now(),role:"user",content:q,created_at:new Date().toISOString()}]);
     const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined);
     setLoading(false);
-    if(!r.ok){setError(r.error.message);return;}
+    if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
     setItems(x=>x.map(c=>c.id===conversation.id?r.data.conversation:c));
     setMessages(m=>[...m.filter(x=>!x.id.startsWith("local-")),r.data.user_message,r.data.assistant_message]);

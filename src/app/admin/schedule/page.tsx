@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2, Upload } from "lucide-react";
 import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
+import { describeApiError } from "@/lib/errors";
 
 const TZ = "Asia/Vladivostok";
 const TYPE_LABELS: Record<string, string> = {
@@ -160,7 +161,7 @@ export default function AdminSchedulePage() {
         setNote(`Загружено ${list.length} занятий · источник: ${src || "db"}`);
       }
     } else {
-      setNote(`Что-то пошло не так: ${res.error.message}. Скоро всё починят — попробуйте позже.`);
+      setNote(`Что-то пошло не так: ${describeApiError(res.error)}. Скоро всё починят — попробуйте позже.`);
     }
   }, [groupId]);
 
@@ -243,7 +244,7 @@ export default function AdminSchedulePage() {
     setImporting(true); setNote(null);
     const res = await adminImportScheduleXlsx(file, groupId, 3);
     setImporting(false);
-    if (!res.ok) { setNote(res.error.message); return; }
+    if (!res.ok) { setNote(describeApiError(res.error)); return; }
     setNote("Расписание из XLSX импортировано. Обновляем сетку…");
     await load();
   }
@@ -260,7 +261,7 @@ export default function AdminSchedulePage() {
     const db = await adminSaveSchedule({ group_id: groupId, semester: 3, entries: clean });
     setSaving(false);
     if (!db.ok) {
-      setNote(db.error.message);
+      setNote(describeApiError(db.error));
       return;
     }
     clearDraft(draftKey);
@@ -364,7 +365,7 @@ export default function AdminSchedulePage() {
                           >
                             <div className="font-semibold">{it.subject_name || "—"}</div>
                             <div className="text-[10px] text-slate-500">{it.teacher || ""}{it.week_parity ? ` · ${it.week_parity === "numerator" ? "числ." : it.week_parity === "denominator" ? "знам." : "все"}` : ""}</div>
-                            <div className="text-[10px] text-slate-500">{TYPE_LABELS[it.type] || it.type} · {(it.start_time || "").slice(0, 5)}</div>
+                            <div className="text-[10px] text-slate-500">{TYPE_LABELS[it.type || ""] || it.type} · {(it.start_time || "").slice(0, 5)}</div>
                           </div>
                         ))}
                       </td>

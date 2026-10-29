@@ -7,6 +7,7 @@ import { answerTrainerCard, getTrainerFeed, getTrainerImageUrl, hasToken, type T
 import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { AtlasThumb } from "@/components/trainers/HistologyTrainerParts";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
+import { describeApiError } from "@/lib/errors";
 
 const HISTO_PLAN_ORDER = [
   ["клетка и ее пр. животная","Клетка животная"],["симпласт","Симпласт"],["межклет","Межклеточное"],["гольдж","Аппарат Гольджи"],["липид","Липидные включения"],["гликоген","Гликоген"],["ядро","Ядро"],["митоз","Митоз"],["тимидин","Тимидин"],["сперматозоид","Сперматозоиды"],["яйцеклет","Яйцеклетка"],["зародышевых лист","зародышевых лист"],["осевых органов","осевых органов"],["мезотел","Мезотелий"],["цилиндрический эпител","Цилиндрический"],["многорядн","Многорядный"],["многослойный плос","Многослойный плос"],["переходный","Переходный"],["мезенхим","Мезенхима"],["кровь","Кровь человека"],["рыхлая волокнист","Рыхлая волокнист"],["фибробласт","Фибробласт"],["эластические волок","Эластические волокна"],["ретикуляр","Ретикулярная"],["жиров","Жировая"],["пигмент","Пигмент"],["сухожил","Сухожилие"],["гиалинов","Гиалинов"],["волокнистый хрящ","Волокнистый"],["эластический хрящ","Эластический"],["трубчатая кость","Трубчатая кость"],["развитие кости","Развитие кости"],["гладкая мыш","Гладкая мыш"],["поперечно-полосат","Поперечно-полосат"],["сердечн","Сердечная"],["нейрофибрил","Нейрофибрил"],["тигроид","Тигроид"],["астроцит","Астроцит"],["миелин","Миелин"],["тактильн","Тактильное"],["пластинчат","Пластинчатое"],["спинной мозг","Спинной мозг"],["спинальный ганг","Спинальный ганг"],["периферический нерв","Периферический нерв"],["кора больших","Кора больших"],["кора мозжеч","Кора мозжеч"],["грушевид","Грушевид"],["передняя часть","Передняя часть"],["задняя стенка","Задняя стенка"],["развитие глаза","Развитие глаза"],["вкусовая почка","Вкусовая почка"],["улитка","Улитка"]
@@ -51,7 +52,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
       if (!hasToken()) { setNote("Войдите, чтобы проходить тренажёр."); setLoading(false); return; }
       const r = await getTrainerFeed(slug, "mbh", 500, 0);
       if (cancelled) return;
-      if (r.ok) setAllCards(slug === "histology" ? sortCardsByPlan(r.data.items || []) : (r.data.items || [])); else setNote(r.error.message);
+      if (r.ok) setAllCards(slug === "histology" ? sortCardsByPlan(r.data.items || []) : (r.data.items || [])); else setNote(describeApiError(r.error));
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -118,7 +119,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
     setSelected(optionId);
     setBusy(true);
     const r = await answerTrainerCard({ card_id: card.id, option_id: optionId, time_ms: Date.now() - startedAt });
-    if (r.ok) setResult(r.data.correct); else setNote(r.error.message);
+    if (r.ok) setResult(r.data.correct); else setNote(describeApiError(r.error));
     setBusy(false);
   }
 
@@ -126,7 +127,7 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
     if (!card || busy || result !== null) return;
     setBusy(true);
     const r = await answerTrainerCard({ card_id: card.id, is_skipped: true, time_ms: Date.now() - startedAt });
-    if (!r.ok) setNote(r.error.message);
+    if (!r.ok) setNote(describeApiError(r.error));
     next();
     setBusy(false);
   }

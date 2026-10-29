@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, ListChecks, Loader2, Search } from "lucide-reac
 import { listExamQuestions } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { describeApiError } from "@/lib/errors";
 
 type ExamQuestion = {
   id: string;
@@ -54,7 +55,7 @@ export default function ExamQuestionsPanel({ subjectSlug }: { subjectSlug: strin
       setLoading(false);
       setLoadingMore(false);
       if (!response.ok) {
-        setError({ message: response.error.message, requestId: response.requestId });
+        setError({ message: describeApiError(response.error), requestId: response.requestId });
         return;
       }
       const nextItems: ExamQuestion[] = Array.isArray(response.data?.items) ? response.data.items : [];

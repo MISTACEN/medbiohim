@@ -7,6 +7,7 @@ import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
+import { describeApiError } from "@/lib/errors";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
@@ -241,7 +242,7 @@ function MiniQuizBlock({ raw }: { raw: string }) {
           const byId = new Map((r.data?.items || []).map((item: MiniQuizQuestion) => [String(item.id), item]));
           setQuestions(ids.map((id) => byId.get(id)).filter(Boolean) as MiniQuizQuestion[]);
           setError(null);
-        } else setError(r.error.message);
+        } else setError(describeApiError(r.error));
         setLoading(false);
       });
     } catch { setError("Мини-тест настроен некорректно."); setLoading(false); }
@@ -257,7 +258,7 @@ function MiniQuizBlock({ raw }: { raw: string }) {
     if (r.ok) {
       setChecked(Boolean(r.data?.correct));
       if (r.data?.correct) setScore((value) => value + 1);
-    } else setError(r.error.message);
+    } else setError(describeApiError(r.error));
     setBusy(false);
   }
 

@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { LectureLearningLinks } from "@/components/lectures/LectureLearningLinks";
+import { describeApiError } from "@/lib/errors";
 
 export default function LectureViewPage() {
   const params = useParams();
@@ -27,7 +28,7 @@ export default function LectureViewPage() {
         setError(null);
       } else {
         setLec(null);
-        setError(r.error.message || "Не найдено");
+        setError(describeApiError(r.error) || "Не найдено");
       }
       setLoading(false);
     });

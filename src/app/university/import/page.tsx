@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { adminContentImport, adminDbList, hasToken } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { describeApiError } from "@/lib/errors";
 
 type SubjectRow = {
   id: string;
@@ -261,7 +262,7 @@ export default function UniversityImportPage() {
     if (!hasToken() || !isAdmin) return;
     void adminDbList("subjects", 500).then((response) => {
       if (!response.ok) {
-        setSubjectsError(response.error.message || "Не удалось загрузить предметы");
+        setSubjectsError(describeApiError(response.error) || "Не удалось загрузить предметы");
         return;
       }
       const items = Array.isArray(response.data?.items) ? response.data.items : [];
@@ -372,7 +373,7 @@ export default function UniversityImportPage() {
       const payload = buildPayload(dryRun);
       const response = await adminContentImport(payload);
       if (!response.ok) {
-        setMessage(response.error.message || "Импорт отклонён");
+        setMessage(describeApiError(response.error) || "Импорт отклонён");
         return;
       }
       const responseErrors = Array.isArray(response.data?.errors) ? response.data.errors : [];

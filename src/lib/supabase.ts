@@ -66,8 +66,9 @@ export async function startMagicLink(email: string): Promise<{ ok: true } | { ok
       },
       body: JSON.stringify({
         email,
-        create_user: true,
-        data: {},
+        // SA10: magic link не создаёт учётку — иначе появлялись аккаунты без
+        // ФИО. Новый аккаунт заводится через /register, где имя обязательно.
+        create_user: false,
         gotrue_meta_security: {},
         options: { emailRedirectTo: redirectTo },
       }),

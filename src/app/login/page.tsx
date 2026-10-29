@@ -8,6 +8,7 @@ import { clearTokens, login, recoverPassword, setTokens } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeNextPath } from "@/lib/navigation";
 import { startGoogleOAuth, startMagicLink } from "@/lib/supabase";
+import { describeApiError } from "@/lib/errors";
 
 type LoginMethod = "email" | "google" | "telegram";
 
@@ -63,7 +64,7 @@ function LoginPageInner() {
       clearTokens();
       const res = await login(email.trim(), password);
       if (!res.ok) {
-        setError(mapLoginError(res.error.code, res.error.message));
+        setError(mapLoginError(res.error.code, describeApiError(res.error)));
         return;
       }
       const payload = res.data as any;
@@ -101,7 +102,7 @@ function LoginPageInner() {
     try {
       const res = await recoverPassword(target);
       if (!res.ok) {
-        setError(res.error.message);
+        setError(describeApiError(res.error));
         return;
       }
       setInfo("Ссылка для восстановления пароля отправлена на почту.");
@@ -120,7 +121,13 @@ function LoginPageInner() {
     try {
       const res = await startMagicLink(magicEmail.trim());
       if (!res.ok) {
-        setError(res.error || "Не удалось отправить ссылку");
+        // Ссылка входит только в существующий аккаунт: Supabase отвечает
+        // ошибкой на незнакомый email (SA10 — без автосоздания учётки).
+        if (/signups? not allowed|not found|invalid/i.test(res.error)) {
+          setError("Аккаунт с таким email не найден. Создайте его через «Регистрация».");
+        } else {
+          setError(res.error || "Не удалось отправить ссылку");
+        }
         return;
       }
       setInfo("Ссылка для входа отправлена на почту. Откройте письмо и перейдите по ссылке.");
@@ -245,6 +252,10 @@ function LoginPageInner() {
                   {magicLoading ? "…" : "Ссылка"}
                 </button>
               </form>
+              <p className="text-xs text-slate-500">
+                Ссылка входит в уже созданный аккаунт. Если аккаунта ещё нет —
+                воспользуйтесь <Link href="/register" className="font-semibold text-emerald-700">регистрацией</Link>.
+              </p>
             </div>
           )}
 

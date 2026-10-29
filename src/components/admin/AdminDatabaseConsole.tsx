@@ -35,6 +35,7 @@ import {
   adminDatabaseUpdate,
   type AdminDatabaseConnection,
 } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type Column = {
   column_name: string;
@@ -144,7 +145,7 @@ export default function AdminDatabaseConsole() {
   async function loadConnections(selectId?: string) {
     const result = await adminDatabaseConnections();
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     const list = (result.data.items || []) as AdminDatabaseConnection[];
@@ -167,7 +168,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseTables(id);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     const items = (result.data.items || []) as TableInfo[];
@@ -181,7 +182,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseRows(id, tableName, pageSize, (page - 1) * pageSize, query);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     setColumns((result.data.columns || []) as Column[]);
@@ -196,7 +197,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseSchema(id, tableName);
     setSchemaBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     setColumns((result.data.columns || []) as Column[]);
@@ -287,7 +288,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseUpdate(selectedId, table, keyOf(row, columns), row);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     setMessage("Строка сохранена");
@@ -310,7 +311,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseDelete(selectedId, table, keyOf(row, columns));
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     setMessage("Строка удалена");
@@ -324,7 +325,7 @@ export default function AdminDatabaseConsole() {
       const result = await adminDatabaseInsert(selectedId, table, payload);
       setBusy(false);
       if (!result.ok) {
-        setMessage(result.error.message);
+        setMessage(describeApiError(result.error));
         return;
       }
       setShowNew(false);
@@ -342,7 +343,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseSql(selectedId, sql, confirmDanger);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     setMessage("SQL выполнен");
@@ -358,7 +359,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseTestConnection(id);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       await loadConnections();
       return;
     }
@@ -385,7 +386,7 @@ export default function AdminDatabaseConsole() {
     const result = await adminDatabaseSaveConnection(isNewConnection ? "new" : selectedId, payload);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.error.message);
+      setMessage(describeApiError(result.error));
       return;
     }
     setMessage("Подключение сохранено");

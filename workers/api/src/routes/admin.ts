@@ -215,8 +215,27 @@ admin.put("/question-bank/:id", requireAuth, async (c) => {
     if (!Array.isArray(options) || options.length < 2 || options.length > 30) return error(c, rid, 422, "VALIDATION_ERROR", "Нужно от 2 до 30 вариантов ответа");
     options = options.map((option: any) => typeof option === "string" ? { label: option.trim(), correct: false } : { label: String(option?.label || "").trim(), correct: option?.correct === true });
     if (options.some((option: any) => !option.label) || !options.some((option: any) => option.correct)) return error(c, rid, 422, "VALIDATION_ERROR", "Укажите текст вариантов и хотя бы один правильный ответ");
+    if (options.some((option: any) => option.label.length > 500)) return error(c, rid, 422, "VALIDATION_ERROR", "Текст варианта ответа не должен превышать 500 символов");
     if (type === "mcq" && options.filter((option: any) => option.correct).length !== 1) return error(c, rid, 422, "VALIDATION_ERROR", "Для одиночного выбора должен быть один правильный вариант");
   } else if (options != null && !Array.isArray(options)) return error(c, rid, 422, "VALIDATION_ERROR", "options должен быть массивом");
+  if (answer.length > 10000) return error(c, rid, 422, "VALIDATION_ERROR", "Ответ/объяснение не должен превышать 10000 символов");
+  const patch: Record<string, unknown> = { type, text, answer, options: options || [], updated_at: new Date().toISOString() };
+  if (input?.is_published !== undefined) {
+    if (typeof input.is_published !== "boolean") return error(c, rid, 422, "VALIDATION_ERROR", "is_published должен быть булевым значением");
+    patch.is_published = input.is_published;
+  }
+  if (input?.difficulty !== undefined && input?.difficulty !== null && input?.difficulty !== "") {
+    const difficulty = Number(input.difficulty);
+    if (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5) return error(c, rid, 422, "VALIDATION_ERROR", "Сложность должна быть целым числом от 1 до 5");
+    patch.difficulty = difficulty;
+  }
+  for (const key of ["subject_id", "module_id", "topic_id"] as const) {
+    const value = input?.[key];
+    if (value === undefined) continue;
+    if (value === null || value === "") { patch[key] = null; continue; }
+    if (!UUID.test(String(value))) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID привязки вопроса (" + key + ")");
+    patch[key] = String(value);
+  }
   try {
     const { data: current, error: readError } = await db.from("questions").select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").eq("id", id).maybeSingle();
     if (readError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить вопрос");
@@ -227,10 +246,92 @@ admin.put("/question-bank/:id", requireAuth, async (c) => {
       const { error: versionError } = await db.from("content_versions").insert({ table_name: "questions", row_key: { id }, version_no: versionNo, data: current, source: "admin_ui", actor_user_id: c.get("user").id });
       if (versionError) console.warn("[admin:question-version]", versionError.message);
     }
-    const { data, error: writeError } = await db.from("questions").update({ type, text, answer, options: options || [], updated_at: new Date().toISOString() }).eq("id", id).select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
+    const { data, error: writeError } = await db.from("questions").update(patch).eq("id", id).select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
     if (writeError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
     return c.json(ok({ question: data }, rid));
   } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось выполнить операцию с вопросом"); }
+});
+
+// MA10: атомарная сборка вариантов теста. Вместо цепочки клиентских POST'ов
+// (тест -> по одному на каждую ссылку test_questions) всё делает один RPC:
+// либо собраны все варианты целиком, либо не записано ничего.
+const VARIANT_BUILDER_ERRORS: Array<[RegExp, string | ((m: RegExpMatchArray) => string)]> = [
+  [/invalid test title/, "Укажи корректное название теста (1–300 символов)."],
+  [/subject is required/, "Выбери предмет."],
+  [/subject not found/, "Предмет не найден."],
+  [/question pool is empty/, "Выбери хотя бы один вопрос из пула."],
+  [/variants must be between 1 and 20/, "Вариантов должно быть от 1 до 20."],
+  [/questions per test must be between 1 and 200/, "Вопросов в одном тесте должно быть от 1 до 200."],
+  [/time limit must not be negative/, "Лимит времени не может быть отрицательным."],
+  [/max attempts must not be negative/, "Количество попыток не может быть отрицательным."],
+  [/module does not belong to subject/, "Выбранный модуль не относится к этому предмету."],
+  [/topic does not belong to module/, "Выбранная тема не относится к этому модулю."],
+  [/eligible question pool is too small: (\d+) available, (\d+) required/, (m) => `Подходящих опубликованных вопросов: ${m[1]}, а нужно ${m[2]} на один вариант.`],
+  [/failed to assemble variant/, "Не удалось собрать вариант: вопросы закончились в пуле."],
+  [/failed to link questions/, "Не удалось привязать вопросы к варианту."],
+  [/administrator role required/, "Недостаточно прав для административной операции."],
+];
+function variantBuilderMessage(rawMessage: string): string {
+  const text = String(rawMessage || "");
+  for (const [pattern, message] of VARIANT_BUILDER_ERRORS) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    return typeof message === "function" ? message(match) : message;
+  }
+  return "Не удалось собрать тесты. Изменения не сохранены.";
+}
+
+admin.post("/tests/build-variants", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user"), input = await bodyJson(c);
+  if (!await gate(c)) return;
+  const title = String(input?.title || "").trim();
+  const subjectId = String(input?.subject_id || "");
+  const questionIds = Array.isArray(input?.question_ids) ? [...new Set((input.question_ids as unknown[]).map((id) => String(id)))] : [];
+  const variants = Number(input?.variants ?? 1);
+  const perTest = Number(input?.per_test ?? 10);
+  const moduleId = input?.module_id ? String(input.module_id) : null;
+  const topicId = input?.topic_id ? String(input.topic_id) : null;
+  const timeLimitSec = input?.time_limit_sec == null || input.time_limit_sec === "" ? null : Number(input.time_limit_sec);
+  const maxAttempts = input?.max_attempts == null || input.max_attempts === "" ? null : Number(input.max_attempts);
+  const isPublished = input?.is_published === true;
+
+  if (!validText(title, 300)) return error(c, rid, 422, "VALIDATION_ERROR", "Укажи корректное название теста (1–300 символов).");
+  if (!UUID.test(subjectId)) return error(c, rid, 422, "VALIDATION_ERROR", "Выбери предмет.");
+  if (!questionIds.length || questionIds.some((id) => !UUID.test(id))) return error(c, rid, 422, "VALIDATION_ERROR", "В пуле есть некорректные ID вопросов.");
+  if (!Number.isInteger(variants) || variants < 1 || variants > 20) return error(c, rid, 422, "VALIDATION_ERROR", "Вариантов должно быть от 1 до 20.");
+  if (!Number.isInteger(perTest) || perTest < 1 || perTest > 200) return error(c, rid, 422, "VALIDATION_ERROR", "Вопросов в одном тесте должно быть от 1 до 200.");
+  if (questionIds.length < perTest) return error(c, rid, 422, "VALIDATION_ERROR", `Выбрано ${questionIds.length} вопросов, а на один вариант нужно ${perTest}.`);
+  if (timeLimitSec !== null && (!Number.isInteger(timeLimitSec) || timeLimitSec < 0)) return error(c, rid, 422, "VALIDATION_ERROR", "Лимит времени должен быть целым неотрицательным числом.");
+  if (maxAttempts !== null && (!Number.isInteger(maxAttempts) || maxAttempts < 0)) return error(c, rid, 422, "VALIDATION_ERROR", "Количество попыток должно быть целым неотрицательным числом.");
+
+  try {
+    const { data, error: rpcError } = await db.rpc("medbiohim_build_test_variants", {
+      p_actor_id: user.id,
+      p_title: title,
+      p_subject_id: subjectId,
+      p_question_ids: questionIds,
+      p_variants: variants,
+      p_per_test: perTest,
+      p_description: String(input?.description || "").trim() || null,
+      p_module_id: moduleId,
+      p_topic_id: topicId,
+      p_time_limit_sec: timeLimitSec,
+      p_max_attempts: maxAttempts,
+      p_is_published: isPublished,
+    });
+    if (rpcError) {
+      console.error("[admin:tests:build-variants]", rpcError.message, rpcError.code, rpcError.details);
+      const code = String(rpcError.code || "");
+      if (code === "42501") return error(c, rid, 403, "FORBIDDEN", variantBuilderMessage(rpcError.message));
+      if (code === "22023" || code === "P0002") return error(c, rid, 422, "VALIDATION_ERROR", variantBuilderMessage(rpcError.message));
+      // Любая другая ошибка означает откат всей транзакции: ничего не записано.
+      return error(c, rid, 503, "BUILD_FAILED", "Не удалось собрать тесты. Изменения не сохранены.");
+    }
+    return c.json(ok(data, rid), 201);
+  } catch (rpcFailure) {
+    console.error("[admin:tests:build-variants]", rpcFailure);
+    return error(c, rid, 503, "BUILD_FAILED", "Не удалось собрать тесты. Изменения не сохранены.");
+  }
 });
 
 // Lectures are stored in site_content.payload.items; keep the legacy JSON document contract.

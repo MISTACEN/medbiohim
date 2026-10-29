@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BookOpen, CheckCircle2, ChevronDown, Circle, Loader2, RefreshCw, Search, TriangleAlert } from "lucide-react";
 import { getAcademicState, getCurriculum, saveAcademicState } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type CurriculumItem = {
   id: string;
@@ -74,7 +75,7 @@ export default function CurriculumPage() {
     setError(null);
     const [curriculumResult, academicResult] = await Promise.all([getCurriculum(), getAcademicState()]);
     if (!curriculumResult.ok) {
-      setError(curriculumResult.error.message || "Не удалось загрузить учебный план");
+      setError(describeApiError(curriculumResult.error) || "Не удалось загрузить учебный план");
       setItems([]);
     } else {
       const rows = Array.isArray(curriculumResult.data?.items) ? curriculumResult.data.items : [];
@@ -136,7 +137,7 @@ export default function CurriculumPage() {
       metadata: item.metadata || {},
     });
     setSavingId(null);
-    if (!result.ok) setError(result.error.message || "Не удалось сохранить прогресс");
+    if (!result.ok) setError(describeApiError(result.error) || "Не удалось сохранить прогресс");
     else {
       const refreshed = await getAcademicState();
       if (refreshed.ok) setStates(Array.isArray(refreshed.data?.states) ? refreshed.data.states : []);

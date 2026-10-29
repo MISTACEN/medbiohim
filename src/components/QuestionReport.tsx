@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Flag } from "lucide-react";
 import { reportQuestion } from "@/lib/api";
 import { LoadingBar } from "@/components/ui/LoadingBar";
+import { describeApiError } from "@/lib/errors";
 
 const categories=[
  ["wrong_answer","Неверный ответ"],["wording","Ошибка в формулировке"],["multiple_correct","Несколько правильных ответов"],
@@ -14,7 +15,7 @@ export function QuestionReport({questionId}:{questionId:string}){
  async function send(){
   setBusy(true);setError("");
   const r=await reportQuestion(questionId,category,message);
-  if(r.ok){setDone(true);setTimeout(()=>{setOpen(false);setDone(false)},1400)} else setError(r.error.message);
+  if(r.ok){setDone(true);setTimeout(()=>{setOpen(false);setDone(false)},1400)} else setError(describeApiError(r.error));
   setBusy(false);
  }
  return <div className="mt-2"><LoadingBar active={busy} />

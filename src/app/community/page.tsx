@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createCommunityPost, listCommunityPosts, me } from "@/lib/api";
 import { Loader2, Send } from "lucide-react";
+import { describeApiError } from "@/lib/errors";
 
 type Post = {
   id: string;
@@ -32,7 +33,7 @@ export default function CommunityPage() {
         setPosts((res.data.items as Post[]) || []);
         setNote(null);
       } else {
-        setNote(res.error.message);
+        setNote(describeApiError(res.error));
       }
     } catch {
       setNote("Сообщество недоступно");
@@ -61,7 +62,7 @@ export default function CommunityPage() {
     try {
       const res = await createCommunityPost(title.trim(), body.trim(), groupId || undefined);
       if (!res.ok) {
-        setNote(res.error.message);
+        setNote(describeApiError(res.error));
         return;
       }
       setTitle("");

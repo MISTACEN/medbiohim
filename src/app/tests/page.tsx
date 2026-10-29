@@ -18,6 +18,7 @@ import {
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { describeApiError } from "@/lib/errors";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import TestsHub from "@/components/tests/TestsHub";
 
@@ -53,19 +54,10 @@ function TestsPageInner() {
   const requestedView = searchParams.get("view");
   const { user, loading: authLoading } = useAuth();
   const [view, setView] = useState<View>("tests");
-  const [attempts, setAttempts] = useState<any[]>([]);
-  const [attemptsLoading, setAttemptsLoading] = useState(false);
-  const [attemptsError, setAttemptsError] = useState("");
-
-  const [chemistryItems, setChemistryItems] = useState<any[]>([]);
-  const [chemistryTotal, setChemistryTotal] = useState(0);
   const [chemistryPage, setChemistryPage] = useState(1);
-  const [chemistryPages, setChemistryPages] = useState(1);
   const [chemistryQuery, setChemistryQuery] = useState("");
   const [chemistryKind, setChemistryKind] = useState("");
   const [chemistryFormula, setChemistryFormula] = useState("");
-  const [chemistryLoading, setChemistryLoading] = useState(false);
-  const [chemistryError, setChemistryError] = useState("");
 
   useEffect(() => {
     if (requestedView === "chemistry" || requestedView === "history" || requestedView === "tests") setView(requestedView);
@@ -81,71 +73,50 @@ function TestsPageInner() {
     }
   }
 
-  useEffect(() => {
-    if (authLoading || !hasToken()) return;
-    let cancelled = false;
-    setAttemptsLoading(true);
-    setAttemptsError("");
-    void listMyAttempts(undefined, user?.groupId)
-      .then((result: any) => {
-        if (cancelled) return;
-        if (result.ok) setAttempts(Array.isArray(result.data?.items) ? result.data.items : []);
-        else setAttemptsError(describeApiError(result.error));
-      })
-      .catch(() => {
-        if (!cancelled) setAttemptsError("История попыток недоступна.");
-      })
-      .finally(() => {
-        if (!cancelled) setAttemptsLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [authLoading, user?.groupId]);
+  // D9: история попыток через useApiRequest — ручные cancelled-флаги и
+  // дублирующая ручная загрузка заменены на reload() хука.
+  const {
+    data: attemptsLoad,
+    loading: attemptsLoading,
+    error: attemptsLoadError,
+    reload: reloadAttempts,
+  } = useApiRequest(
+    async (signal) => {
+      if (authLoading || !hasToken()) return null;
+      const result = await listMyAttempts(undefined, user?.groupId, { signal });
+      if (!result.ok) throw new Error(describeApiError(result.error));
+      return Array.isArray(result.data?.items) ? result.data.items : [];
+    },
+    [authLoading, user?.groupId]
+  );
+  const attempts = attemptsLoad ?? [];
+  const attemptsError = attemptsLoadError ?? "";
 
-  /** Повтор истории попыток по кнопке «Повторить». */
-  async function loadAttempts() {
-    setAttemptsError("");
-    setAttemptsLoading(true);
-    const result = await listMyAttempts(undefined, user?.groupId);
-    if (result.ok) setAttempts(Array.isArray(result.data?.items) ? (result.data.items as any[]) : []);
-    else setAttemptsError(describeApiError(result.error));
-    setAttemptsLoading(false);
-  }
-
-  useEffect(() => {
-    if (authLoading || !hasToken() || view !== "chemistry") return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setChemistryLoading(true);
-      setChemistryError("");
-      void getChemistryMaster({
-        q: chemistryQuery,
-        kind: chemistryKind,
-        formula: chemistryFormula,
-        page: chemistryPage,
-        limit: 12,
-      })
-        .then((result: any) => {
-          if (cancelled) return;
-          if (result.ok) {
-            setChemistryItems(Array.isArray(result.data?.items) ? result.data.items : []);
-            setChemistryTotal(Number(result.data?.pagination?.total || 0));
-            setChemistryPages(Math.max(1, Number(result.data?.pagination?.pages || 1)));
-          } else {
-            setChemistryError(result.error?.message || "Не удалось загрузить банк по химии.");
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setChemistryError("Не удалось загрузить банк по химии.");
-        })
-        .finally(() => {
-          if (!cancelled) setChemistryLoading(false);
-        });
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [authLoading, view, chemistryQuery, chemistryKind, chemistryFormula, chemistryPage]);
+  // D9: банк по химии — тот же хук; пауза 250 мс до запроса сохранена,
+  // отмена при смене запроса/страницы выполняется через AbortSignal.
+  const { data: chemLoad, loading: chemistryLoading, error: chemistryLoadError } = useApiRequest(
+    async (signal) => {
+      if (authLoading || !hasToken() || view !== "chemistry") return null;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const result = await getChemistryMaster(
+        {
+          q: chemistryQuery,
+          kind: chemistryKind,
+          formula: chemistryFormula,
+          page: chemistryPage,
+          limit: 12,
+        },
+        { signal },
+      );
+      if (!result.ok) throw new Error(result.error?.message || "Не удалось загрузить банк по химии.");
+      return result.data;
+    },
+    [authLoading, view, chemistryQuery, chemistryKind, chemistryFormula, chemistryPage]
+  );
+  const chemistryItems = chemLoad?.items ?? [];
+  const chemistryTotal = Number(chemLoad?.pagination?.total || 0);
+  const chemistryPages = Math.max(1, Number(chemLoad?.pagination?.pages || 1));
+  const chemistryError = chemistryLoadError ?? "";
 
   if (authLoading) {
     return (
@@ -339,7 +310,7 @@ function TestsPageInner() {
                 compact
                 title="История попыток не загрузилась"
                 message={attemptsError}
-                retry={() => void loadAttempts()}
+                retry={() => reloadAttempts()}
               />
             </div>
           )}

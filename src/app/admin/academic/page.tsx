@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { createGroup, createSubject, deleteGroup, deleteSubject, hasToken, listGroups, listSubjects, updateGroup, updateSubject } from "@/lib/api";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { describeApiError } from "@/lib/errors";
 
 type Subject = { id: string; name?: string; course_number?: number; semester?: number };
 type Group = { id: string; name?: string; code?: string; course_number?: number };
@@ -29,9 +30,9 @@ export default function AdminAcademicPage() {
   async function load() {
     const [g, s] = await Promise.all([listGroups(), listSubjects()]);
     if (g.ok) setGroups(g.data.items as Group[]);
-    else msg(g.error.message);
+    else msg(describeApiError(g.error));
     if (s.ok) setSubjects(s.data.items as Subject[]);
-    else msg(s.error.message);
+    else msg(describeApiError(s.error));
   }
 
   useEffect(() => { void load(); }, []);
@@ -64,7 +65,7 @@ export default function AdminAcademicPage() {
               setBusy(true);
               const r = await createSubject({ name: subjectForm.name.trim(), course_number: Number(subjectForm.course) || 1, semester: Number(subjectForm.semester) || 1 });
               setBusy(false);
-              if (!r.ok) return msg(r.error.message);
+              if (!r.ok) return msg(describeApiError(r.error));
               setSubjectForm({ ...subjectForm, name: "" });
               msg("", "Предмет создан");
               await load();
@@ -96,7 +97,7 @@ export default function AdminAcademicPage() {
                   <div className="flex gap-2">
                     <button type="button" className="btn-primary inline-flex items-center gap-1" onClick={async () => {
                       const r = await updateSubject(String(s.id), { name: editingSubject.name.trim(), course_number: Number(editingSubject.course) || 1, semester: Number(editingSubject.semester) || 1 });
-                      if (!r.ok) return msg(r.error.message);
+                      if (!r.ok) return msg(describeApiError(r.error));
                       setEditingSubjectId(null);
                       msg("", "Предмет обновлён");
                       await load();
@@ -125,7 +126,7 @@ export default function AdminAcademicPage() {
                       });
                       if (!agreed) return;
                       const r = await deleteSubject(String(s.id));
-                      if (!r.ok) return msg(r.error.message);
+                      if (!r.ok) return msg(describeApiError(r.error));
                       msg("", "Предмет удалён");
                       await load();
                     }}><Trash2 className="h-4 w-4" /></button>
@@ -145,7 +146,7 @@ export default function AdminAcademicPage() {
               setBusy(true);
               const r = await createGroup({ name: groupForm.name.trim(), code: groupForm.code.trim(), course_number: Number(groupForm.course) || 1 });
               setBusy(false);
-              if (!r.ok) return msg(r.error.message);
+              if (!r.ok) return msg(describeApiError(r.error));
               setGroupForm({ ...groupForm, name: "", code: "" });
               msg("", "Группа создана");
               await load();
@@ -175,7 +176,7 @@ export default function AdminAcademicPage() {
                   <div className="flex gap-2">
                     <button type="button" className="btn-primary inline-flex items-center gap-1" onClick={async () => {
                       const r = await updateGroup(String(g.id), { name: editingGroup.name.trim(), code: editingGroup.code.trim(), course_number: Number(editingGroup.course) || 1 });
-                      if (!r.ok) return msg(r.error.message);
+                      if (!r.ok) return msg(describeApiError(r.error));
                       setEditingGroupId(null);
                       msg("", "Группа обновлена");
                       await load();
@@ -204,7 +205,7 @@ export default function AdminAcademicPage() {
                       });
                       if (!agreed) return;
                       const r = await deleteGroup(String(g.id));
-                      if (!r.ok) return msg(r.error.message);
+                      if (!r.ok) return msg(describeApiError(r.error));
                       msg("", "Группа удалена");
                       await load();
                     }}><Trash2 className="h-4 w-4" /></button>

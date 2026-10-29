@@ -6,6 +6,7 @@ import { ArrowUpRight, CalendarClock, ClipboardList, FileQuestion, ListChecks, S
 import { listAttestations } from "@/lib/api";
 import type { AttestationSummary, AttestationType } from "@/types/attestations";
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
+import { describeApiError } from "@/lib/errors";
 
 const ACCENT: Record<AttestationType, string> = {
   colloquium: "from-indigo-500 to-violet-500",
@@ -49,7 +50,7 @@ export default function AttestationList({
       if (!alive) return;
       setLoading(false);
       if (result.ok) setItems((result.data.items || []) as AttestationSummary[]);
-      else setError(result.error.code === "ROUTE_NOT_IMPLEMENTED" ? "Раздел аттестаций ещё не подключён." : result.error.message);
+      else setError(result.error.code === "ROUTE_NOT_IMPLEMENTED" ? "Раздел аттестаций ещё не подключён." : describeApiError(result.error));
     });
     return () => {
       alive = false;

@@ -7,6 +7,7 @@ import { AlertCircle, ArrowLeft, CalendarClock } from "lucide-react";
 import { getAttestation } from "@/lib/api";
 import type { Attestation } from "@/types/attestations";
 import AttestationRunner from "@/components/attestations/AttestationRunner";
+import { describeApiError } from "@/lib/errors";
 
 export default function AttestationPage() {
   const params = useParams<{ id: string; slug: string }>();
@@ -27,7 +28,7 @@ export default function AttestationPage() {
       if (result.ok) setItem(result.data.item as Attestation);
       else if (result.error.code === "NOT_AVAILABLE") setError("Аттестация сейчас закрыта. Проверьте сроки проведения.");
       else if (result.error.code === "NOT_FOUND") setError("Аттестация не найдена или ещё не опубликована.");
-      else setError(result.error.message || "Не удалось загрузить аттестацию.");
+      else setError(describeApiError(result.error) || "Не удалось загрузить аттестацию.");
     });
     return () => {
       alive = false;

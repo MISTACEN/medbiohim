@@ -252,7 +252,9 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
   assert.ok(ticketsSource.includes("answer_display: normalized.answer_display"));
   assert.ok(ticketsSource.includes('title.includes("ситуационные задачи")'));
   assert.ok(ticketsSource.includes('title.includes("экзаменационные препараты")'));
-  assert.ok(apiClientSource.includes('apiCached("/tickets/banks")'));
+  // listTicketBanks прокидывает RequestInit в кэширующий клиент (options
+  // участвуют в ключе кэша), поэтому сигнатура вызова с аргументом.
+  assert.ok(apiClientSource.includes('apiCached("/tickets/banks", options)'));
   assert.ok(subjectPageSource.includes('disabled={Number(b.count ?? 0) <= 0}'));
   assert.ok(subjectPageSource.includes('const firstAvailableBank = subjectBanks.find'));
   assert.ok(subjectPageSource.includes('setTicketQuestions([])'));
@@ -263,11 +265,15 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
 });
 
 test("subject test pages keep catalog queries scoped to canonical subject, course, and semester", () => {
-  assert.ok(subjectPageSource.includes("listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3)"));
+  assert.ok(subjectPageSource.includes("listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3"));
+  // D9: каталог тестов запрашивается с AbortSignal, чтобы смена предмета или
+  // unmount отменяли медленный ответ, а не перезаписывали новое состояние.
+  assert.ok(subjectPageSource.includes("s.semester ?? 3, { signal })"));
   assert.ok(subjectTestsPageSource.includes("subjectSlug={info?.slug}"));
   assert.ok(subjectTestsPageSource.includes("course={info?.course}"));
   assert.ok(subjectTestsPageSource.includes("semester={info?.semester}"));
-  assert.ok(testsHubSource.includes("listTests(requestSubjectId, user?.groupId, requestSubjectSlug, course ?? undefined, semester ?? undefined)"));
+  assert.ok(testsHubSource.includes("listTests(requestSubjectId, user?.groupId, requestSubjectSlug, course ?? undefined, semester ?? undefined"));
+  assert.ok(testsHubSource.includes("semester ?? undefined, { signal })"));
 });
 
 test("subject detail accepts the Cloudflare response shape and preserves workload fields", () => {

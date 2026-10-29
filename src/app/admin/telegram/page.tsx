@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bot, RefreshCw, Link2, CheckCircle2, AlertCircle } from "lucide-react";
 import { adminBindTelegramChat, adminSetTelegramWebhook, adminTelegramChats, listGroups, type TelegramAdminChat } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type Group = { id:string; name?:string; code?:string };
 
@@ -16,7 +17,7 @@ export default function AdminTelegramPage(){
     setBusy(true); setNote(null);
     try{
       const [c,g]=await Promise.all([adminTelegramChats(),listGroups()]);
-      if(c.ok) setChats(c.data.items||[]); else setNote(c.error.message);
+      if(c.ok) setChats(c.data.items||[]); else setNote(describeApiError(c.error));
       if(g.ok) setGroups((g.data.items||[]) as Group[]);
     }catch(e){setNote(e instanceof Error?e.message:"Ошибка загрузки");}
     finally{setBusy(false);}
@@ -29,7 +30,7 @@ export default function AdminTelegramPage(){
     setBusy(true); setNote(null);
     const r=await adminBindTelegramChat(chat.telegram_chat_id,groupId);
     if(r.ok){setChats(prev=>prev.map(x=>x.telegram_chat_id===chat.telegram_chat_id?r.data.chat:x));setNote("Группа Telegram привязана к учебной группе.");}
-    else setNote(r.error.message);
+    else setNote(describeApiError(r.error));
     setBusy(false);
   }
 
@@ -37,7 +38,7 @@ export default function AdminTelegramPage(){
     setBusy(true); setNote(null);
     const r=await adminSetTelegramWebhook();
     if(r.ok) setNote("Webhook настроен: "+r.data.url);
-    else setNote(r.error.message);
+    else setNote(describeApiError(r.error));
     setBusy(false);
   }
 

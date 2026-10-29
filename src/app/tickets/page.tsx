@@ -11,6 +11,7 @@ import { generateTicket, listTicketBanks, type BankQuestion } from "@/lib/api";
 import { Loader2, RefreshCw, Eye, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { describeApiError } from "@/lib/errors";
 
 type Bank = {
   id: string;
@@ -41,7 +42,7 @@ function TicketsPageInner() {
   useEffect(() => {
     listTicketBanks().then((res) => {
       if (!res.ok) {
-        setNote(res.error.message);
+        setNote(describeApiError(res.error));
         return;
       }
       const items = (res.data.items || []) as Bank[];
@@ -71,7 +72,7 @@ function TicketsPageInner() {
     const res = await generateTicket(bankId, count, mode);
     setLoading(false);
     if (!res.ok) {
-      setNote(res.error.message);
+      setNote(describeApiError(res.error));
       return;
     }
     setQuestions(res.data.questions);

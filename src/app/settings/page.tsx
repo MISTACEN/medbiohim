@@ -62,7 +62,7 @@ function SettingsPageInner() {
       const savedLayout = String(r.data.preferences?.trainer_layout || "top");
       if (savedLayout === "sidebar" || savedLayout === "list" || savedLayout === "top") setTrainerLayout(savedLayout);
     } else {
-      setErr(r.error.message);
+      setErr(describeApiError(r.error));
       setFullName(user?.name || "");
       setEmail(user?.email || "");
     }
@@ -90,7 +90,7 @@ function SettingsPageInner() {
     setBusy("profile"); setMsg(null); setErr(null);
     const r = await updateAccountProfile({ full_name: fullName.trim() || undefined, email: email.trim() || undefined });
     setBusy(null);
-    if (!r.ok) return setErr(r.error.message);
+    if (!r.ok) return setErr(describeApiError(r.error));
     setAccount(r.data);
     const pending = String(r.data?.user?.email_change_pending || "");
     setEmailPending(pending);
@@ -135,7 +135,7 @@ function SettingsPageInner() {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://medbiohim.vercel.app";
     const r = await startLinkIdentity(provider, `${origin}/settings?linked=1`);
     setBusy(null);
-    if (!r.ok) return setErr(r.error.message);
+    if (!r.ok) return setErr(describeApiError(r.error));
     if (r.data.url) window.location.href = r.data.url;
     else setErr("Нет URL для привязки");
   }
@@ -144,7 +144,7 @@ function SettingsPageInner() {
     setBusy("telegram-link"); setErr(null); setMsg(null);
     const r = await startTelegramLink();
     setBusy(null);
-    if (!r.ok) return setErr(r.error.message);
+    if (!r.ok) return setErr(describeApiError(r.error));
     window.location.href = r.data.url;
   }
 
@@ -153,7 +153,7 @@ function SettingsPageInner() {
     setBusy("telegram-unlink"); setErr(null);
     const r = await unlinkTelegramAccount();
     setBusy(null);
-    if (!r.ok) return setErr(r.error.message);
+    if (!r.ok) return setErr(describeApiError(r.error));
     const status = await getTelegramLinkStatus();
     if (status.ok) setTelegramStatus(status.data);
     setMsg("Telegram отвязан");
@@ -165,14 +165,14 @@ function SettingsPageInner() {
     setBusy("unlink-" + id.id);
     const r = await unlinkIdentity(id.id);
     setBusy(null);
-    if (!r.ok) return setErr(r.error.message);
+    if (!r.ok) return setErr(describeApiError(r.error));
     setAccount(r.data);
     setMsg(`${id.provider_label} отвязан`);
   }
 
   async function togglePref(key: string, value: boolean) {
     const r = await saveAccountPreferences({ [key]: value });
-    if (!r.ok) return setErr(r.error.message);
+    if (!r.ok) return setErr(describeApiError(r.error));
     setAccount((prev) => prev ? { ...prev, preferences: { ...prev.preferences, ...r.data.preferences } } : prev);
   }
 
@@ -384,7 +384,7 @@ function SettingsPageInner() {
             {busy === "telegram-link" ? "Создаём ссылку…" : "Привязать через @MEDBIOCHIM_bot"}
           </button>
         )}
-        <button type="button" disabled={loading} onClick={() => void getTelegramLinkStatus().then((r) => { if (r.ok) setTelegramStatus(r.data); else setErr(r.error.message); })} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
+        <button type="button" disabled={loading} onClick={() => void getTelegramLinkStatus().then((r) => { if (r.ok) setTelegramStatus(r.data); else setErr(describeApiError(r.error)); })} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
           Проверить статус привязки
         </button>
       </section>
@@ -419,7 +419,7 @@ function SettingsPageInner() {
                 setTrainerLayout(id);
                 const saved = await saveAccountPreferences({ trainer_layout: id });
                 if (!saved.ok) {
-                  setErr(saved.error.message);
+                  setErr(describeApiError(saved.error));
                   return;
                 }
                 setAccount((prev) => prev ? { ...prev, preferences: { ...prev.preferences, ...saved.data.preferences } } : prev);

@@ -1,7 +1,20 @@
 /** Shared same-origin API client for the Vercel `/api/v1` proxy. */
 import { describeApiError } from "@/lib/errors";
 import { isTemporaryFailure, withRetry } from "@/lib/retry";
-import { filterSafe, isAnnouncement, isScheduleRow, isSubjectCard, isTestItem } from "@/lib/guards";
+import {
+  filterSafe,
+  isAnnouncement,
+  isScheduleRow,
+  isSubjectCard,
+  isTestItem,
+  // D1: доменные типы переиспользуются из type guards (src/lib/guards.ts),
+  // чтобы guard'ы и типы не расходились.
+  type Announcement,
+  type Profile,
+  type ScheduleRow,
+  type SubjectCard,
+  type TestItem,
+} from "@/lib/guards";
 import {
   clearSessionTokens,
   currentUserScope,
@@ -18,18 +31,241 @@ const API_URL="/api/v1";
 export type ApiSuccess<T>={ok:true;data:T;requestId:string;stale?:boolean};
 export type ApiError={ok:false;error:{code:string;message:string;details?:unknown};requestId:string};
 export type ApiResult<T>=ApiSuccess<T>|ApiError;
+// ---- D1: доменные типы (TECH-AUDIT-PLAN-2026-10-27 §6) ----
+// Типы объявлены как type-алиасы (не interface), чтобы оставались совместимы
+// с `Record<string, unknown>`-хелперами в клиентском коде (str(row, ...) и т.п.).
+
+/** Академическое событие (/academic/state → upcoming). */
+export type AcademicEvent = {
+  id?: string;
+  subject_name?: string | null;
+  event_kind?: string | null;
+  date?: string | null;
+  start_time?: string | null;
+  room?: string | null;
+  [key: string]: unknown;
+};
+
+/** Слабая тема (/academic/state → weak_topics). */
+export type AcademicWeakTopic = {
+  topic_id?: string;
+  subject_name?: string | null;
+  topic_name?: string | null;
+  percent?: number | null;
+  [key: string]: unknown;
+};
+
+/** Рекомендация AI/правил (/academic/state → recommendations). */
+export type AcademicRecommendation = {
+  title?: string | null;
+  reason?: string | null;
+  when?: string | null;
+  where?: string | null;
+  subject_id?: string | null;
+  schedule_entry_id?: string | null;
+  topic_id?: string | null;
+  [key: string]: unknown;
+};
+
+/** Незакрытое академическое требование (/academic/state → debts). */
+export type AcademicDebt = {
+  id?: string;
+  subject_name?: string | null;
+  note?: string | null;
+  [key: string]: unknown;
+};
+
+/** Числовой прогресс по темам (/academic/state → topic_progress). */
+export type AcademicTopicProgress = {
+  topic_id?: string;
+  percent?: number | null;
+  [key: string]: unknown;
+};
+
+/** Снимок состояния учебного элемента (/academic/state → states). */
+export type AcademicStateRow = {
+  id?: string;
+  target_type?: string;
+  target_id?: string;
+  learning_status?: string;
+  academic_status?: string;
+  execution_status?: string;
+  note?: string | null;
+  [key: string]: unknown;
+};
+
+export type AcademicMetrics = {
+  closed?: number | null;
+  in_progress?: number | null;
+  not_started?: number | null;
+  debts?: number | null;
+  tracked?: number | null;
+  [key: string]: unknown;
+};
+
+export type AcademicSession = {
+  id?: string;
+  title?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  type?: string | null;
+  [key: string]: unknown;
+};
+
+export type AcademicPlan = {
+  available?: boolean;
+  items?: number | null;
+  concrete_items?: number | null;
+  message?: string | null;
+  [key: string]: unknown;
+};
+
+/** Шаг AI-плана подготовки (/academic/ai-plan → items). */
+export type AcademicPlanItem = {
+  target_id?: string;
+  order_index?: number | null;
+  title?: string | null;
+  [key: string]: unknown;
+};
+
+/** Полное академическое состояние студента (/academic/state). */
 export type AcademicState = {
-  profile?: any;
-  session: any;
-  plan: any;
-  metrics: any;
-  debts: any[];
-  upcoming: any[];
-  weak_topics: any[];
-  recommendations: any[];
-  states?: any[];
-  topic_progress?: any[];
+  profile?: Profile;
+  session: AcademicSession | null;
+  plan: AcademicPlan | null;
+  metrics: AcademicMetrics | null;
+  debts: AcademicDebt[];
+  upcoming: AcademicEvent[];
+  weak_topics: AcademicWeakTopic[];
+  recommendations: AcademicRecommendation[];
+  states?: AcademicStateRow[];
+  topic_progress?: AcademicTopicProgress[];
   generated_at?: string;
+};
+
+/** Карточка предмета — общий домен с guard'ом isSubjectCard. */
+export type Subject = SubjectCard;
+
+/** Занятие в расписании: домен поверх guard-типа ScheduleRow. */
+export type ScheduleEntry = ScheduleRow & {
+  // start_time/end_time обязательны на практике: клиент рендерит их напрямую.
+  start_time: string;
+  end_time: string;
+  type?: string | null;
+  room?: string | null;
+  building?: string | null;
+  teacher?: string | null;
+  notes?: string | null;
+  is_makeup?: boolean | null;
+  week_parity?: string | null;
+  academic_hours?: number | null;
+  attendance_status?: string | null;
+  breaks?: string[];
+  source?: string | null;
+  source_detail?: string | null;
+  course_number?: number | null;
+  semester?: number | null;
+  group_id?: string | null;
+  group_name?: string | null;
+  group_code?: string | null;
+  [key: string]: unknown;
+};
+
+/** Историческое имя домена занятия — сохранено для существующих импортов. */
+export type ScheduleItem = ScheduleEntry;
+
+export type SchedulePeriod = {
+  id?: string;
+  title?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  notes?: string | null;
+  [key: string]: unknown;
+};
+
+export type ScheduleDurationRule = {
+  [key: string]: unknown;
+};
+
+export type ScheduleMeta = {
+  periods: SchedulePeriod[];
+  duration_rules: ScheduleDurationRule[];
+  [key: string]: unknown;
+};
+
+/** Неделя учебного плана предмета (/subject-plans). */
+export type SubjectPlanWeek = {
+  date?: string | null;
+  week?: number | null;
+  lecture?: string | null;
+  practice?: string | null;
+  control?: string | null;
+  study?: string[];
+  preparations?: unknown[];
+  [key: string]: unknown;
+};
+
+/** Учебный план предмета (/subject-plans/:slug). */
+export type SubjectPlan = {
+  subject?: Subject;
+  weeks?: SubjectPlanWeek[];
+  control?: string | null;
+  [key: string]: unknown;
+};
+
+/** Домашнее задание в блоках главной страницы (/dashboard → homeworks). */
+export type DashboardHomework = {
+  id?: string;
+  title?: string | null;
+  due_at?: string | null;
+  my_status?: string | null;
+  submission_status?: string | null;
+  status?: string | null;
+  subject_id?: string | null;
+  subjectId?: string | null;
+  [key: string]: unknown;
+};
+
+/** Тест в блоках главной страницы (/dashboard → tests). */
+export type DashboardTestSummary = {
+  id?: string;
+  title?: string | null;
+  name?: string | null;
+  subject_name?: string | null;
+  [key: string]: unknown;
+};
+
+/** Полезная нагрузка /dashboard. */
+export type Dashboard = {
+  announcements: Announcement[];
+  homeworks: DashboardHomework[];
+  schedule: ScheduleEntry[];
+  tests: DashboardTestSummary[];
+  degraded?: boolean;
+  degraded_sources?: string[];
+  service_notice?: string | null;
+  [key: string]: unknown;
+};
+
+/** Полезная нагрузка /subjects (listSubjects). */
+export type SubjectListData = {
+  items: SubjectCard[];
+  total?: number;
+  [key: string]: unknown;
+};
+
+/** Полезная нагрузка /tests (listTests). */
+export type TestListData = {
+  items: TestItem[];
+  total?: number;
+  [key: string]: unknown;
+};
+
+/** Полезная нагрузка /schedule (listSchedule). */
+export type ScheduleListData = {
+  items: ScheduleEntry[];
+  source?: string;
+  [key: string]: unknown;
 };
 // Session storage lives in one module (`@/lib/auth/session`); these aliases keep
 // the existing `@/lib/api` surface working for every caller.
@@ -458,7 +694,7 @@ export const refreshSession = refreshSessionResult;
 export async function health(){return api<any>("/health")}
 export async function presenceHeartbeat(){return api<any>("/presence/heartbeat",{method:"POST",body:"{}"})}
 export async function adminPresence(within=180){return api<any>("/admin/presence?within="+encodeURIComponent(String(within)))} 
-export async function listSubjects(course?:number,semester?:number){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<any>(`/subjects${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isSubjectCard)};return r}
+export async function listSubjects(course?:number,semester?:number,options:RequestInit={}){const q=new URLSearchParams();if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<SubjectListData>(`/subjects${q.toString()?`?${q}`:""}`,options);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isSubjectCard)};return r}
 export async function listGroups(){return api<any>("/groups")}
 export async function trackExternalPlatformClick(payload:{platform:string;title:string;href:string;subject_slug?:string|null}){return api<any>("/external-platforms/click",{method:"POST",body:JSON.stringify(payload)})}
 export async function externalPlatformStats(){return api<any>("/external-platforms/stats")}
@@ -497,12 +733,12 @@ export async function listQuestionComments(questionId:string){return api<any>(`/
 export async function addQuestionComment(questionId:string,body:string){return api<any>(`/questions/${encodeURIComponent(questionId)}/comments`,{method:"POST",body:JSON.stringify({body})})}
 export async function deleteQuestionComment(commentId:string){return api<any>(`/questions/comments/${encodeURIComponent(commentId)}`,{method:"DELETE"})}
 export type ApiTest=any;
-export async function listTests(subjectId?:string,groupId?:string,subjectSlug?:string,course?:number,semester?:number){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);if(subjectSlug)q.set("subject_slug",subjectSlug);if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<any>(`/tests${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isTestItem)};return r}
-export async function getChemistryMaster(params:Record<string,unknown>={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});return apiCached<any>(`/tests/chemistry-master${q.toString()?`?${q}`:""}`)}
-export async function getTestCurriculumMap(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return apiCached<any>(`/tests/curriculum-map${q.toString()?`?${q}`:""}`)}
+export async function listTests(subjectId?:string,groupId?:string,subjectSlug?:string,course?:number,semester?:number,options:RequestInit={}){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);if(subjectSlug)q.set("subject_slug",subjectSlug);if(course!=null)q.set("course",String(course));if(semester!=null)q.set("semester",String(semester));const r=await apiCached<TestListData>(`/tests${q.toString()?`?${q}`:""}`,options);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isTestItem)};return r}
+export async function getChemistryMaster(params:Record<string,unknown>={},options:RequestInit={}){const q=new URLSearchParams();Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))});return apiCached<any>(`/tests/chemistry-master${q.toString()?`?${q}`:""}`,options)}
+export async function getTestCurriculumMap(subjectId?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return apiCached<any>(`/tests/curriculum-map${q.toString()?`?${q}`:""}`,options)}
 export async function getTest(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}${q}`)}
 export async function getTestBank(id:string,groupId?:string){const q=new URLSearchParams({view:"bank"});if(groupId)q.set("group_id",groupId);return api<any>(`/tests/${encodeURIComponent(id)}?${q.toString()}`)}
-export async function listMyAttempts(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/my/attempts${q.toString()?`?${q}`:""}`)}
+export async function listMyAttempts(subjectId?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/my/attempts${q.toString()?`?${q}`:""}`,options)}
 export async function startTestAttempt(id:string,groupId?:string){const q=groupId?`?group_id=${encodeURIComponent(groupId)}`:"";return api<any>(`/tests/${id}/start${q}`,{method:"POST",body:"{}"})}
 export async function saveTestAnswer(attemptId:string,questionId:string,answerText:string|null){return api<any>(`/tests/attempts/${encodeURIComponent(attemptId)}/answers`,{method:"POST",body:JSON.stringify({question_id:questionId,answer_text:answerText})})}
 export async function finishAttempt(id:string){return api<any>(`/tests/attempts/${id}/finish`,{method:"POST",body:"{}"})}
@@ -510,7 +746,7 @@ export async function retryTestAnswerGrading(attemptId:string,questionId:string)
 export async function listHomeworks(groupId?:string){const q=groupId?"?group_id="+encodeURIComponent(groupId):"";return api<any>("/homeworks"+q)}
 export async function createHomework(payload:{title:string;description?:string;subject_id?:string;due_date?:string;due_at?:string;group_id?:string;scope?:"group"|"personal";schedule_entry_id?:string;attachment_file_ids?:string[]}){return api<any>("/homeworks",{method:"POST",body:JSON.stringify(payload)})}
 export async function setHomeworkDone(id:string,done:boolean){return api<any>(`/homeworks/${encodeURIComponent(id)}/progress`,{method:"POST",body:JSON.stringify({done})})}
-export async function getStudentPlanner(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);return api<any>(`/planner${q.toString()?`?${q}`:""}`)}
+export async function getStudentPlanner(from?:string,to?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);return api<any>(`/planner${q.toString()?`?${q}`:""}`,options)}
 export async function markAttendance(entryId:string,status:"present"|"excused"|"sick"|"unexcused",note?:string,groupId?:string){const q=groupId?"?group_id="+encodeURIComponent(groupId):"";return api<any>(`/attendance/${encodeURIComponent(entryId)}${q}`,{method:"POST",body:JSON.stringify({status,note})})}
 export async function submitHomework(id:string,textAnswer?:string,fileId?:string){return api<any>(`/homeworks/${id}/submit`,{method:"POST",body:JSON.stringify({text_answer:textAnswer,file_id:fileId})})}
 export async function listHomeworkSubmissions(id:string){return api<any>(`/homeworks/${encodeURIComponent(id)}/submissions`)}
@@ -588,20 +824,20 @@ export async function checkLectureMiniQuizAnswer(questionId:string,selectedIndex
   });
 }
 export async function answerTrainerCard(payload:any){return api<any>("/trainers/feed/answer",{method:"POST",body:JSON.stringify(payload)})}
-export async function listSchedule(from?:string,to?:string,groupId?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);const r=await api<any>(`/schedule${q.toString()?`?${q}`:""}`);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isScheduleRow)};return r}
+export async function listSchedule(from?:string,to?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);if(groupId)q.set("group_id",groupId);const r=await api<ScheduleListData>(`/schedule${q.toString()?`?${q}`:""}`,options);if(r?.ok&&r.data)r.data={...r.data,items:filterSafe(r.data?.items,isScheduleRow) as ScheduleEntry[]};return r}
 export async function importIcalCalendar(payload:{text?:string;url?:string;dry_run?:boolean}){return api<any>("/schedule/ical",{method:"POST",body:JSON.stringify(payload)})}
 export async function getScheduleFeedLink(){return api<any>("/schedule/feed-link")}
 export async function listIcalEvents(from?:string,to?:string){const q=new URLSearchParams();if(from)q.set("from",from);if(to)q.set("to",to);return api<any>(`/schedule/ical${q.toString()?`?${q}`:""}`)}
 export async function deleteIcalEvent(id:string){return api<any>(`/schedule/ical/${encodeURIComponent(id)}`,{method:"DELETE"})}
-export async function getDashboard(){const r=await api<any>("/dashboard");if(r?.ok&&r.data)r.data={...r.data,announcements:filterSafe(r.data?.announcements,isAnnouncement)};return r}
-export async function getProgress(subjectId?:string,groupId?:string){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/progress${q.toString()?`?${q}`:""}`)}
+export async function getDashboard(options:RequestInit={}){const r=await api<Dashboard>("/dashboard",options);if(r?.ok&&r.data)r.data={...r.data,announcements:filterSafe(r.data?.announcements,isAnnouncement)};return r}
+export async function getProgress(subjectId?:string,groupId?:string,options:RequestInit={}){const q=new URLSearchParams();if(subjectId)q.set("subject_id",subjectId);if(groupId)q.set("group_id",groupId);return api<any>(`/progress${q.toString()?`?${q}`:""}`,options)}
 export async function getCurriculum(){return api<any>("/curriculum")}
-export async function getSubject(id:string){return apiCached<any>(`/subjects/${id}`)}
-export async function listMaterials(params:any={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return apiCached<any>(`/materials${q.toString()?`?${q}`:""}`)}
+export async function getSubject(id:string,options:RequestInit={}){return apiCached<any>(`/subjects/${id}`,options)}
+export async function listMaterials(params:Record<string,unknown>={},options:RequestInit={}){const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(String(k),String(v))});return apiCached<any>(`/materials${q.toString()?`?${q}`:""}`,options)}
 export async function syncAcademicState(){return api<any>("/academic/sync",{method:"POST",body:"{}"})}
-export async function getAcademicState(){return api<AcademicState>("/academic/state")}
+export async function getAcademicState(options:RequestInit={}){return api<AcademicState>("/academic/state",options)}
 export async function saveAcademicState(payload:Record<string,unknown>){return api<any>("/academic/state",{method:"PUT",body:JSON.stringify(payload)})}
-export async function generateAcademicAiPlan(){return api<{plan:any;items:any[];source_state:AcademicState}>("/academic/ai-plan",{method:"POST",body:"{}"})}
+export async function generateAcademicAiPlan(options:RequestInit={}){return api<{plan:AcademicPlan;items:AcademicPlanItem[];source_state:AcademicState}>("/academic/ai-plan",{...options,method:"POST",body:"{}"})}
 
 export type AdminDatabaseConnection = {
   id: string;
@@ -677,10 +913,6 @@ export type BankQuestion = any;
 export type Lecture = any;
 export type LectureListItem = any;
 export type PreparationQuestion = any;
-export type ScheduleItem = any;
-export type ScheduleMeta = any;
-export type SubjectPlan = any;
-export type SubjectPlanWeek = any;
 export type TelegramAdminChat = any;
 export type TrainerFeedCard = any;
 
@@ -703,6 +935,10 @@ export async function adminDbList(table:string,limit=200): Promise<any> { return
 export async function adminDbMeta(..._args: any[]): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/tables`) as any; }
 export async function adminDbUpdate(table:string,id:string,payload:Record<string,unknown>): Promise<any> { return api(`/admin/database/${ADMIN_DB_ID}/rows/${encodeURIComponent(table)}`, { method:"PATCH", body:JSON.stringify({id,patch:payload}) }) as any; }
 export async function adminDbUpdateByKey(table:string,key:Record<string,unknown>,payload:Record<string,unknown>): Promise<any> { return adminDbUpdate(table, String(key.id || ""), payload); }
+// MA10: атомарная сборка одного теста или нескольких вариантов одним запросом.
+// Сервер (RPC medbiohim_build_test_variants) создаёт все тесты и ссылки на
+// вопросы в одной транзакции: частичного успеха не бывает.
+export async function adminBuildTestVariants(payload:Record<string,unknown>): Promise<any> { return api("/admin/tests/build-variants", { method:"POST", body:JSON.stringify(payload) }) as any; }
 export async function adminBindTelegramChat(chatId:string|number,groupId:string): Promise<any> { return api("/admin/telegram/chats/" + encodeURIComponent(String(chatId)) + "/bind", { method:"POST", body:JSON.stringify({group_id:groupId}) }) as any; }
 export async function adminContentArchive(table:string,id:string): Promise<any> { return api("/admin/content/archive", { method:"POST", body:JSON.stringify({table,id}) }) as any; }
 export async function adminContentMove(table:string,id:string,payload:Record<string,unknown>={}): Promise<any> { return api("/admin/content/move", { method:"POST", body:JSON.stringify({table,id,...payload}) }) as any; }
@@ -765,15 +1001,15 @@ export async function getLecture(id:string): Promise<any> { return api("/lecture
 export async function getLessonPlan(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); return api("/lesson-plan" + (q.toString()?"?"+q:"")) as any; }
 export async function getPreparation(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId)) as any; }
 export async function getQuestion(id:string): Promise<any> { return api("/questions/" + encodeURIComponent(id)) as any; }
-export async function getScheduleMeta(course?:number,semester?:number): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api("/schedule/meta" + (q.toString()?"?"+q:"")) as any; }
-export async function getSubjectGradebook(id:string): Promise<any> { const clean=String(id??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api("/subjects/" + encodeURIComponent(clean) + "/gradebook") as any; }
+export async function getScheduleMeta(course?:number,semester?:number,options:RequestInit={}): Promise<any> { const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return api("/schedule/meta" + (q.toString()?"?"+q:""), options) as any; }
+export async function getSubjectGradebook(id:string, options:RequestInit={}): Promise<any> { const clean=String(id??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject id required"}, requestId:"client" }; return api("/subjects/" + encodeURIComponent(clean) + "/gradebook", options) as any; }
 export async function listCommunityPosts(groupId?:string): Promise<any> { const q=groupId?"?group_id="+encodeURIComponent(groupId):""; return api("/community/posts"+q) as any; }
-export async function listLectures(subject?:string): Promise<any> { const q=subject?"?subject="+encodeURIComponent(subject):""; return apiCached("/lectures"+q) as any; }
+export async function listLectures(subject?:string, options:RequestInit={}): Promise<any> { const q=subject?"?subject="+encodeURIComponent(subject):""; return apiCached("/lectures"+q, options) as any; }
 export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api("/questions/subjects") as any; }
 export async function listQuestions(params:Record<string,unknown>={}): Promise<any> { const q=new URLSearchParams(); Object.entries(params).forEach(([k,v])=>{if(v!=null&&v!=="")q.set(k,String(v))}); if(!q.has("include_answer")) q.set("include_answer","1"); return api("/questions"+(q.toString()?"?"+q:"")) as any; }
 export async function listQuestionTopics(subjectId:string): Promise<any> { return api("/questions/topics?subject_id=" + encodeURIComponent(subjectId)) as any; }
-export async function listSubjectsCatalog(..._args: any[]): Promise<any> { return apiCached("/subjects-catalog") as any; }
-export async function listTicketBanks(..._args: any[]): Promise<any> { return apiCached("/tickets/banks") as any; }
+export async function listSubjectsCatalog(..._args: any[]): Promise<any> { const options = _args[0] as RequestInit | undefined; return apiCached("/subjects-catalog", options) as any; }
+export async function listTicketBanks(..._args: any[]): Promise<any> { const options = _args[0] as RequestInit | undefined; return apiCached("/tickets/banks", options) as any; }
 export async function listExamQuestions(params:{subject:string;q?:string;topic?:string;limit?:number;offset?:number}): Promise<any> {
   const query=new URLSearchParams({subject:params.subject});
   if(params.q)query.set("q",params.q);
@@ -783,7 +1019,7 @@ export async function listExamQuestions(params:{subject:string;q?:string;topic?:
   return api<any>(`/exam-questions?${query.toString()}`);
 }
 export async function getExamQuestionsSummary(): Promise<any> { return apiCached("/exam-questions/summary") as any; }
-export async function getSubjectPlan(slug:string, course?:number|null, semester?:number|null): Promise<any> { const clean=String(slug??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return apiCached("/subject-plans/" + encodeURIComponent(clean) + (q.toString()?"?"+q:"")) as any; }
+export async function getSubjectPlan(slug:string, course?:number|null, semester?:number|null, options:RequestInit={}): Promise<any> { const clean=String(slug??"").trim(); if(!clean) return { ok:false, error:{code:"VALIDATION_ERROR",message:"subject slug required"}, requestId:"client" }; const q=new URLSearchParams(); if(course!=null)q.set("course",String(course)); if(semester!=null)q.set("semester",String(semester)); return apiCached("/subject-plans/" + encodeURIComponent(clean) + (q.toString()?"?"+q:""), options) as any; }
 export async function preparationAiReview(sessionId:string): Promise<any> { return api("/tests/preparation/" + encodeURIComponent(sessionId) + "/ai-review", {method:"POST",body:"{}"}) as any; }
 export async function register(email:string,password:string,fullName:string): Promise<any> { return api("/auth/register", { method:"POST", body:JSON.stringify({email,password,full_name:fullName}) }) as any; }
 export async function reportQuestion(questionId:string,category:string,message=""): Promise<any> { return api("/questions/" + encodeURIComponent(questionId) + "/report", { method:"POST", body:JSON.stringify({category,message}) }) as any; }

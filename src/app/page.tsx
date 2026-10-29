@@ -24,29 +24,37 @@ import {
   hasToken,
   listSubjects,
   type AcademicState,
+  type Dashboard,
 } from "@/lib/api";
+import type { SubjectCard } from "@/lib/guards";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
+import { describeApiError } from "@/lib/errors";
 
 type DashRow = Record<string, unknown>;
 
-type Dash = {
-  announcements: Array<{ id: string; title: string; body: string; created_at?: string }>;
-  homeworks: DashRow[];
-  schedule: DashRow[];
-  tests: DashRow[];
-  degraded?: boolean;
-  degraded_sources?: string[];
-  service_notice?: string | null;
+/**
+ * D9: совокупный результат загрузки главной — один объект на три параллельных
+ * запроса (dashboard, academic state, subjects).
+ */
+type DashboardBundle = {
+  dash: Dashboard | null;
+  dashError: string | null;
+  academic: AcademicState | null;
+  academicError: string | null;
+  subjects: SubjectCard[];
+  subjectsError: string | null;
 };
 
-type SubjectCard = {
-  id: string;
-  name: string;
-  slug?: string | null;
-  course_number?: number | null;
-  semester?: number | null;
+const EMPTY_BUNDLE: DashboardBundle = {
+  dash: null,
+  dashError: null,
+  academic: null,
+  academicError: null,
+  subjects: [],
+  subjectsError: null,
 };
 
 function str(row: DashRow | null | undefined, ...keys: string[]): string {
@@ -78,16 +86,96 @@ function subjectHref(row: DashRow): string | null {
 
 export default function DashboardPage() {
   const { user, loading: authLoading, refresh } = useAuth();
-  const [data, setData] = useState<Dash | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [academic, setAcademic] = useState<AcademicState | null>(null);
+  // D9: ручной useEffect с cancelled-флагом заменён на useApiRequest —
+  // запросы отменяются через AbortSignal при unmount и смене зависимостей.
+  const { data: bundle, loading, error: loadError } = useApiRequest<DashboardBundle>(
+    async (signal) => {
+      if (!hasToken()) return EMPTY_BUNDLE;
+      try {
+        const [dashRes, academicRes, subjectsRes] = await Promise.all([
+          getDashboard({ signal }),
+          getAcademicState({ signal }),
+          listSubjects(user?.course, user?.semester, { signal }),
+        ]);
+
+        let dash: Dashboard | null = null;
+        let dashError: string | null = null;
+        if (dashRes.ok) {
+          const payload = dashRes.data;
+          dash = {
+            announcements: payload.announcements || [],
+            homeworks: payload.homeworks || [],
+            schedule: payload.schedule || [],
+            tests: payload.tests || [],
+            degraded: Boolean(payload.degraded),
+            degraded_sources: Array.isArray(payload.degraded_sources) ? payload.degraded_sources : [],
+            service_notice: payload.service_notice || null,
+          };
+          dashError = payload.degraded ? payload.service_notice || "Часть блоков главной временно недоступна." : null;
+        } else {
+          const code = dashRes.error.code || "";
+          const msg = describeApiError(dashRes.error) || "Ошибка загрузки";
+          if (/token|auth|unauthorized|bearer/i.test(code + msg) || msg.includes("Bearer")) {
+            clearTokens();
+            await refresh();
+          } else {
+            dashError = msg;
+          }
+        }
+
+        let academic: AcademicState | null = null;
+        let academicError: string | null = null;
+        if (academicRes.ok) {
+          academic = academicRes.data;
+        } else {
+          academicError = describeApiError(academicRes.error) || "Академическое состояние недоступно";
+        }
+
+        let subjects: SubjectCard[] = [];
+        let subjectsError: string | null = null;
+        if (subjectsRes.ok) {
+          const raw = subjectsRes.data as { items?: SubjectCard[] } | SubjectCard[];
+          const items = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
+          subjects = items
+            .map((item) => ({
+              id: String(item.id || ""),
+              name: String(item.name || "Предмет"),
+              slug: item.slug,
+              course_number: item.course_number ?? null,
+              semester: item.semester ?? null,
+            }))
+            .filter((item) => item.id);
+        } else {
+          subjectsError = describeApiError(subjectsRes.error) || "Предметы временно недоступны";
+        }
+
+        return { dash, dashError, academic, academicError, subjects, subjectsError };
+      } catch {
+        // Оригинальное поведение: общий текст и пустые блоки без частичных данных.
+        throw new Error("Не удалось загрузить данные");
+      }
+    },
+    [refresh, user?.course, user?.semester]
+  );
+
+  const [generatedAcademic, setGeneratedAcademic] = useState<AcademicState | null>(null);
+  const [academicErrorOverride, setAcademicErrorOverride] = useState<string | null>(null);
   const [academicLoading, setAcademicLoading] = useState(false);
-  const [academicError, setAcademicError] = useState<string | null>(null);
   const [planNotice, setPlanNotice] = useState<string | null>(null);
-  const [subjects, setSubjects] = useState<SubjectCard[]>([]);
-  const [subjectsError, setSubjectsError] = useState<string | null>(null);
   const [apiTransport, setApiTransport] = useState<{source:string;fallback:boolean;path:string;at:number}|null>(null);
+
+  // Сгенерированный план и его ошибка действуют только до следующей загрузки состояния.
+  useEffect(() => {
+    setGeneratedAcademic(null);
+    setAcademicErrorOverride(null);
+  }, [bundle]);
+
+  const data = bundle?.dash ?? null;
+  const error = loadError ?? bundle?.dashError ?? null;
+  const academic = generatedAcademic ?? bundle?.academic ?? null;
+  const academicError = academicErrorOverride ?? bundle?.academicError ?? null;
+  const subjects = bundle?.subjects ?? [];
+  const subjectsError = bundle?.subjectsError ?? null;
 
   useEffect(() => {
     const onTransport = (event: Event) => {
@@ -104,104 +192,16 @@ export default function DashboardPage() {
     return () => window.removeEventListener("mbh:api-transport", onTransport);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!hasToken()) {
-        setLoading(false);
-        setData(null);
-        setAcademic(null);
-        setSubjects([]);
-        return;
-      }
-      setLoading(true);
-      try {
-        const [dashRes, academicRes, subjectsRes] = await Promise.all([
-          getDashboard(),
-          getAcademicState(),
-          listSubjects(user?.course, user?.semester),
-        ]);
-        if (cancelled) return;
-
-        if (dashRes.ok) {
-          const payload = dashRes.data as Dash;
-          setData({
-            announcements: payload.announcements || [],
-            homeworks: payload.homeworks || [],
-            schedule: payload.schedule || [],
-            tests: payload.tests || [],
-            degraded: Boolean(payload.degraded),
-            degraded_sources: Array.isArray(payload.degraded_sources) ? payload.degraded_sources : [],
-            service_notice: payload.service_notice || null,
-          });
-          setError(payload.degraded ? payload.service_notice || "Часть блоков главной временно недоступна." : null);
-        } else {
-          const code = dashRes.error.code || "";
-          const msg = dashRes.error.message || "Ошибка загрузки";
-          if (/token|auth|unauthorized|bearer/i.test(code + msg) || msg.includes("Bearer")) {
-            clearTokens();
-            await refresh();
-            setError(null);
-            setData(null);
-          } else {
-            setError(msg);
-            setData(null);
-          }
-        }
-
-        if (academicRes.ok) {
-          setAcademic(academicRes.data);
-          setAcademicError(null);
-        } else {
-          setAcademic(null);
-          setAcademicError(academicRes.error.message || "Академическое состояние недоступно");
-        }
-
-        if (subjectsRes.ok) {
-          const raw = subjectsRes.data as { items?: SubjectCard[] } | SubjectCard[];
-          const items = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
-          setSubjects(
-            items
-              .map((item) => ({
-                id: String(item.id || ""),
-                name: String(item.name || "Предмет"),
-                slug: item.slug,
-                course_number: item.course_number ?? null,
-                semester: item.semester ?? null,
-              }))
-              .filter((item) => item.id)
-          );
-          setSubjectsError(null);
-        } else {
-          setSubjects([]);
-          setSubjectsError(subjectsRes.error.message || "Предметы временно недоступны");
-        }
-      } catch {
-        if (!cancelled) {
-          setError("Не удалось загрузить данные");
-          setData(null);
-          setAcademic(null);
-          setSubjects([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh, user?.course, user?.semester]);
-
   const name = user?.name?.split(" ")[0] || "студент";
 
   const generatePlan = async () => {
     setAcademicLoading(true);
-    setAcademicError(null);
+    setAcademicErrorOverride(null);
     setPlanNotice(null);
     try {
       const res = await generateAcademicAiPlan();
-      if (!res.ok) throw new Error(res.error.message);
-      setAcademic(res.data.source_state);
+      if (!res.ok) throw new Error(describeApiError(res.error));
+      setGeneratedAcademic(res.data.source_state);
       const generatedBy = String((res.data.plan as { generated_by?: string } | undefined)?.generated_by || "");
       setPlanNotice(
         generatedBy === "rule_engine"
@@ -209,7 +209,7 @@ export default function DashboardPage() {
           : "План подготовки обновлён."
       );
     } catch (e) {
-      setAcademicError(e instanceof Error ? e.message : "Не удалось сформировать план");
+      setAcademicErrorOverride(e instanceof Error ? e.message : "Не удалось сформировать план");
     } finally {
       setAcademicLoading(false);
     }
@@ -239,7 +239,6 @@ export default function DashboardPage() {
   const nextAfterNow = pickNextLesson(dashboardSchedule as any, kh);
 
   const metrics = academic?.metrics;
-  const hasMetrics = Boolean(academic && metrics);
   const testsPreview = (data?.tests || []).slice(0, 4);
   const recs = (academic?.recommendations || []).slice(0, 3);
 
@@ -405,13 +404,13 @@ export default function DashboardPage() {
         </div>
         {academicError ? (
           <p className="mt-4 text-sm text-rose-600">{academicError}</p>
-        ) : hasMetrics ? (
+        ) : metrics ? (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              ["Закрыто", metrics.closed ?? 0],
-              ["В процессе", metrics.in_progress ?? 0],
-              ["Не начато", metrics.not_started ?? 0],
-              ["Долги", metrics.debts ?? 0],
+              ["Закрыто", metrics?.closed ?? 0],
+              ["В процессе", metrics?.in_progress ?? 0],
+              ["Не начато", metrics?.not_started ?? 0],
+              ["Долги", metrics?.debts ?? 0],
             ].map(([label, value]) => (
               <div key={String(label)} className="rounded-xl bg-slate-50 p-3">
                 <div className="text-xl font-bold text-slate-900">{String(value)}</div>

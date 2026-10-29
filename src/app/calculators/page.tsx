@@ -8,6 +8,7 @@ import {
   type CalcField,
 } from "@/lib/features-api";
 import { Calculator, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { describeApiError } from "@/lib/errors";
 
 export default function CalculatorsPage() {
   const [items, setItems] = useState<CalculatorDef[]>([]);
@@ -27,7 +28,7 @@ export default function CalculatorsPage() {
     listCalculators().then((res) => {
       setLoading(false);
       if (!res.ok) {
-        setError(res.error.message);
+        setError(describeApiError(res.error));
         return;
       }
       setItems(res.data.items || []);
@@ -81,7 +82,7 @@ export default function CalculatorsPage() {
     const res = await computeCalculator(active.id, input);
     setComputing(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       return;
     }
     setResult({

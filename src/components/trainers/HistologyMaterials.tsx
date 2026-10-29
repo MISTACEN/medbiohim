@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { listHistologySourceFiles, listSubjectMaterials, listTrainerFeed } from "@/lib/content-api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
+import { describeApiError } from "@/lib/errors";
 
 type Item = any;
 
@@ -316,13 +317,13 @@ export default function HistologyMaterials() {
     ])
       .then(([materialsResult, feedResult, textbooksResult]) => {
         if (!materialsResult.ok) {
-          setError(materialsResult.error.message);
+          setError(describeApiError(materialsResult.error));
           return;
         }
 
         const feed = feedResult.ok ? (feedResult.data.items || []) : [];
         if (!feedResult.ok) {
-          setFeedError(feedResult.error.message || "Не удалось загрузить микропрепараты.");
+          setFeedError(describeApiError(feedResult.error) || "Не удалось загрузить микропрепараты.");
         }
         const currentEmNames = new Set(
           feed
@@ -377,7 +378,7 @@ export default function HistologyMaterials() {
           : [];
 
         if (!textbooksResult.ok) {
-          setTextbookError(textbooksResult.error.message);
+          setTextbookError(describeApiError(textbooksResult.error));
         }
 
         setItems([...docs, ...photos, ...textbooks]);

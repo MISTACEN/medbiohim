@@ -33,6 +33,7 @@ import type {
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
+import { describeApiError } from "@/lib/errors";
 
 const TYPES = Object.keys(ATTESTATION_TYPE_LABELS) as AttestationType[];
 const KINDS: { value: AttestationItemKind; label: string }[] = [
@@ -107,7 +108,7 @@ export default function AdminAttestationsPage() {
     const result = await adminListAttestations();
     setLoading(false);
     if (result.ok) setItems((result.data.items || []) as AttestationSummary[]);
-    else setListError(result.error.code === "FORBIDDEN" ? "Нужны права преподавателя или администратора." : result.error.message);
+    else setListError(result.error.code === "FORBIDDEN" ? "Нужны права преподавателя или администратора." : describeApiError(result.error));
   }, []);
 
   useEffect(() => {
@@ -129,7 +130,7 @@ export default function AdminAttestationsPage() {
     setNotice(null);
     const result = await adminGetAttestation(item.subject_slug, item.slug);
     if (!result.ok) {
-      setNotice({ tone: "error", text: result.error.message });
+      setNotice({ tone: "error", text: describeApiError(result.error) });
       return;
     }
     const loaded = result.data.item as Attestation;
@@ -268,7 +269,7 @@ export default function AdminAttestationsPage() {
     const result = await adminSaveAttestation(subject, slug, { ...draft, subject_slug: subject, slug });
     setSaving(false);
     if (!result.ok) {
-      setNotice({ tone: "error", text: result.error.message });
+      setNotice({ tone: "error", text: describeApiError(result.error) });
       return;
     }
     setNotice({ tone: "ok", text: isNew ? "Аттестация создана." : "Изменения сохранены." });
@@ -291,7 +292,7 @@ export default function AdminAttestationsPage() {
     if (!agreed) return;
     const result = await adminDeleteAttestation(item.subject_slug, item.slug);
     if (!result.ok) {
-      setNotice({ tone: "error", text: result.error.message });
+      setNotice({ tone: "error", text: describeApiError(result.error) });
       return;
     }
     if (draft && draft.slug === item.slug && draft.subject_slug === item.subject_slug) {

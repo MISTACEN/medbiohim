@@ -5,11 +5,13 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3, ClipboardList, Plus, Upload, Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, type ScheduleItem, type SubjectPlanWeek, type ScheduleMeta } from "@/lib/api";
+import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, type ScheduleItem, type ScheduleMeta, type SubjectPlanWeek } from "@/lib/api";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { nowParts as sharedNowParts } from "@/lib/now-parts";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import IcalImportCard from "@/components/schedule/IcalImportCard";
+import { describeApiError } from "@/lib/errors";
 
 /**
  * Оценка и отзыв преподавателя по этой работе. Бэкенд их возвращал, но в интерфейсе
@@ -59,7 +61,7 @@ function subjectColor(item:any): string {
   let h=0; for(let i=0;i<raw.length;i++) h=((h<<5)-h+raw.charCodeAt(i))|0;
   return SUBJECT_PALETTE[Math.abs(h)%SUBJECT_PALETTE.length];
 }
-function attendanceLabel(status?:string){return status==="present"?"Был":status==="excused"?"Уважительная":status==="sick"?"Болезнь":status==="unexcused"?"Пропуск":"";}
+function attendanceLabel(status?: string | null){return status==="present"?"Был":status==="excused"?"Уважительная":status==="sick"?"Болезнь":status==="unexcused"?"Пропуск":"";}
 
 // FD8: общая реализация с дашбордом — src/lib/now-parts.ts
 const nowParts = () => sharedNowParts();
@@ -113,7 +115,7 @@ function shortDateRu(ymd: string): string {
   const {y,m,d}=parseYmd(ymd);
   return new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"2-digit",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,d,12)));
 }
-function subjectColorKey(type: string): string {
+function subjectColorKey(type?: string | null): string {
   if (type==="practice") return "practice";
   if (type==="laboratory") return "lab";
   if (type==="exam" || type==="credit") return "exam";
@@ -193,12 +195,12 @@ function ScheduleCard({
   const end = timeToMinutes(item.end_time);
   const top = Math.max(0, (start - GRID_START_MIN) * PX_PER_MIN);
   const height = Math.max(66, (end - start) * PX_PER_MIN);
-  const type = TYPE_CLASS[item.type] || TYPE_CLASS.other;
+  const type = TYPE_CLASS[item.type || ""] || TYPE_CLASS.other;
   const subject = item.subject_name || "Занятие";
   const location = [item.building, item.room].filter(Boolean).join(", ");
-  const typeLabel = TYPE_LABELS[item.type] || "Занятие";
+  const typeLabel = TYPE_LABELS[item.type || ""] || "Занятие";
   const accent = subjectColor(item);
-  const typeColor = TYPE_COLORS[item.type] || TYPE_COLORS.other;
+  const typeColor = TYPE_COLORS[item.type || ""] || TYPE_COLORS.other;
   const attendance = item.attendance_status as string | undefined;
   const parityLabel =
     item.week_parity === "numerator" ? "числитель" :
@@ -317,6 +319,19 @@ function ScheduleCard({
   );
 }
 
+/**
+ * D9: совокупный результат загрузки страницы расписания — расписание, мета
+ * (периоды) и planner (ДЗ/проработка) одним объектом.
+ */
+type ScheduleBundle = {
+  items: ScheduleItem[];
+  source: string;
+  meta: ScheduleMeta;
+  homeworks: any[];
+  recovery: any[];
+  message: string | null;
+};
+
 export default function SchedulePage() {
   const { user } = useAuth();
   const [now, setNow] = useState(() => nowParts());
@@ -329,7 +344,6 @@ export default function SchedulePage() {
   const [recovery, setRecovery] = useState<any[]>([]);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [source, setSource] = useState("db");
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string|null>(null);
   const [selected, setSelected] = useState<ScheduleItem|null>(null);
   const [lesson, setLesson] = useState<SubjectPlanWeek|null>(null);
@@ -355,43 +369,69 @@ export default function SchedulePage() {
     return () => window.clearInterval(id);
   }, [user?.course, user?.semester]);
 
-  useEffect(() => {
-    if (!hasToken()) { setLoading(false); return; }
-    setLoading(true); setError(null);
-    void Promise.all([listSchedule(SEMESTER_FROM, SEMESTER_TO, user?.groupId), getScheduleMeta(user?.course, user?.semester), getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId)]).then(([res, metaRes, plannerRes]) => {
+  // D9: загрузка расписания, меты и planner'а через useApiRequest —
+  // AbortSignal отменяет запросы при unmount и смене группы/курса.
+  const { data: scheduleBundle, loading, error: loadError } = useApiRequest<ScheduleBundle | null>(
+    async (signal) => {
+      if (!hasToken()) return null;
+      const [res, metaRes, plannerRes] = await Promise.all([
+        listSchedule(SEMESTER_FROM, SEMESTER_TO, user?.groupId, { signal }),
+        getScheduleMeta(user?.course, user?.semester, { signal }),
+        getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId, { signal }),
+      ]);
+      let items: ScheduleItem[] = [];
+      let source = "db";
+      let message: string | null = null;
       if (res.ok) {
-        setAllItems(Array.isArray(res.data.items) ? res.data.items : []);
-        const payload = res.data as { items: ScheduleItem[]; source?: string };
-        setSource(payload.source || "db");
-        if ((res.data.items || []).length === 0) {
-          setError(
-            user?.groupName
-              ? "Для назначенной группы пока не найдено занятий. Возможно, расписание ещё не опубликовано — попробуйте позже или сообщите администратору."
-              : "Учебная группа не назначена. Назначьте её в CMS, чтобы расписание могло быть загружено."
-          );
+        items = Array.isArray(res.data.items) ? res.data.items : [];
+        source = res.data.source || "db";
+        if (items.length === 0) {
+          message = user?.groupName
+            ? "Для назначенной группы пока не найдено занятий. Возможно, расписание ещё не опубликовано — попробуйте позже или сообщите администратору."
+            : "Учебная группа не назначена. Назначьте её в CMS, чтобы расписание могло быть загружено.";
         }
       } else {
-        setAllItems([]);
-        setError(res.error.message || "Не удалось загрузить расписание");
+        message = describeApiError(res.error) || "Не удалось загрузить расписание";
       }
+      let meta: ScheduleMeta = { periods: [], duration_rules: [] };
       if (metaRes.ok && metaRes.data) {
-  const raw = metaRes.data as Partial<{ periods: unknown; duration_rules: unknown }> & Record<string, unknown>;
-  setMeta({
-    ...raw,
-    periods: Array.isArray(raw.periods) ? raw.periods : [],
-    duration_rules: Array.isArray(raw.duration_rules) ? raw.duration_rules : [],
-  } as ScheduleMeta);
-}
-      if (plannerRes.ok) {
-        setHomeworks(Array.isArray(plannerRes.data.homeworks) ? plannerRes.data.homeworks : []);
-        setRecovery(Array.isArray(plannerRes.data.recovery) ? plannerRes.data.recovery : []);
-        const byEntry=new Map<string,string>();
-        for(const a of (plannerRes.data.attendance||[])) byEntry.set(String(a.schedule_entry_id),String(a.status));
-        setAllItems(prev=>prev.map(it=>({...it,attendance_status:byEntry.get(String(it.id))||it.attendance_status})));
+        const raw = metaRes.data as Partial<{ periods: unknown; duration_rules: unknown }> & Record<string, unknown>;
+        meta = {
+          ...raw,
+          periods: Array.isArray(raw.periods) ? raw.periods : [],
+          duration_rules: Array.isArray(raw.duration_rules) ? raw.duration_rules : [],
+        } as ScheduleMeta;
       }
-      setLoading(false);
-    });
-  }, [user?.groupId, user?.course, user?.semester]);
+      let homeworks: any[] = [];
+      let recovery: any[] = [];
+      if (plannerRes.ok) {
+        homeworks = Array.isArray(plannerRes.data.homeworks) ? plannerRes.data.homeworks : [];
+        recovery = Array.isArray(plannerRes.data.recovery) ? plannerRes.data.recovery : [];
+        const byEntry = new Map<string, string>();
+        for (const a of (plannerRes.data.attendance || [])) byEntry.set(String(a.schedule_entry_id), String(a.status));
+        items = items.map((it) => ({ ...it, attendance_status: byEntry.get(String(it.id)) || it.attendance_status }));
+      }
+      return { items, source, meta, homeworks, recovery, message };
+    },
+    [user?.groupId, user?.course, user?.semester]
+  );
+
+  useEffect(() => {
+    if (!scheduleBundle) return;
+    setAllItems(scheduleBundle.items);
+    setSource(scheduleBundle.source);
+    setMeta(scheduleBundle.meta);
+    setHomeworks(scheduleBundle.homeworks);
+    setRecovery(scheduleBundle.recovery);
+    setError(scheduleBundle.message);
+  }, [scheduleBundle]);
+
+  // Как и раньше: при старте новой загрузки прошлая ошибка сбрасывается.
+  useEffect(() => {
+    if (loading) setError(null);
+  }, [loading]);
+
+  const displayError = error ?? loadError;
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => ({ key: addDaysYmd(weekStart, i) })), [weekStart]);
   const weekEnd = addDaysYmd(weekStart, 6);
@@ -405,7 +445,7 @@ export default function SchedulePage() {
     const r=await markAttendance(String(item.id),status,undefined,user?.groupId);
     setAttendanceBusy(false);
     if(r.ok) setAllItems(prev=>prev.map(it=>String(it.id)===String(item.id)?{...it,attendance_status:status}:it));
-    else setError(r.error.message);
+    else setError(describeApiError(r.error));
   }
 
   const selectedHomeworks = useMemo(() => {
@@ -430,7 +470,7 @@ export default function SchedulePage() {
     const done = homeworkStatus(h) !== "done";
     const r = await setHomeworkDone(String(h.id), done);
     if (r.ok) setHomeworks(prev => prev.map(x => String(x.id) === String(h.id) ? {...x, my_status: done ? "done" : "pending", my_completed: done} : x));
-    else setError(r.error.message);
+    else setError(describeApiError(r.error));
     setHomeworkBusy(null);
   }
 
@@ -440,7 +480,7 @@ export default function SchedulePage() {
     if (file) {
       const targetGroupId = user?.groupId || (selected as any)?.group_id || undefined;
       const uploaded = await uploadFile(file, targetGroupId);
-      if (!uploaded.ok) { setError(uploaded.error.message); setHomeworkBusy(null); return; }
+      if (!uploaded.ok) { setError(describeApiError(uploaded.error)); setHomeworkBusy(null); return; }
       fileId = uploaded.data.file?.id;
     }
     const r = await submitHomework(String(h.id), homeworkAnswer || undefined, fileId);
@@ -448,7 +488,7 @@ export default function SchedulePage() {
       setHomeworks(prev => prev.map(x => String(x.id) === String(h.id) ? {...x, my_completed:true, my_status:"done", submission_status:"submitted"} : x));
       setHomeworkAnswer("");
       setHomeworkOpenId(null);
-    } else setError(r.error.message);
+    } else setError(describeApiError(r.error));
     setHomeworkBusy(null);
   }
 
@@ -471,7 +511,7 @@ export default function SchedulePage() {
       }
       const uploaded = await uploadFile(file, user?.groupId);
       if (!uploaded.ok) {
-        setError(uploaded.error.message);
+        setError(describeApiError(uploaded.error));
         setHomeworkBusy(null);
         return;
       }
@@ -500,7 +540,7 @@ export default function SchedulePage() {
       setAddHomeworkOpen(false);
       const refreshed = await getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId);
       if (refreshed.ok) setHomeworks(Array.isArray(refreshed.data.homeworks) ? refreshed.data.homeworks : []);
-    } else setError(r.error.message);
+    } else setError(describeApiError(r.error));
     setHomeworkBusy(null);
   }
 
@@ -618,7 +658,7 @@ export default function SchedulePage() {
           <div><b>Учебная группа не назначена.</b><p>CMS → Пользователи: назначьте учебную группу. Расписание без подтверждённой группы не подставляется автоматически.</p></div>
         </div>
       )}
-      {error && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb,var(--danger) 10%,transparent)", color: "var(--danger)" }}>{error}</div>}
+      {displayError && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb,var(--danger) 10%,transparent)", color: "var(--danger)" }}>{displayError}</div>}
 
       {loading ? <SkeletonCards count={4} /> : (
         <>
@@ -685,7 +725,7 @@ export default function SchedulePage() {
                     <div className="w-24 shrink-0 text-sm font-semibold" style={{ color: "var(--primary)" }}>{item.start_time.slice(0,5)}–{item.end_time.slice(0,5)}</div>
                     <div>
                       <div className="font-bold" style={{borderLeft:`3px solid ${subjectColor(item)}`,paddingLeft:8}}>{item.subject_name||"Занятие"}</div>
-                      <div className="text-xs" style={{ color: "var(--muted)" }}>{item.is_makeup?"ОТРАБОТКА":TYPE_LABELS[item.type]||item.type} · {attendanceLabel(item.attendance_status) || "отметьте посещение"}</div>
+                      <div className="text-xs" style={{ color: "var(--muted)" }}>{item.is_makeup?"ОТРАБОТКА":TYPE_LABELS[item.type || ""]||item.type} · {attendanceLabel(item.attendance_status) || "отметьте посещение"}</div>
                     </div>
                   </button>
                 ))}
@@ -736,7 +776,7 @@ export default function SchedulePage() {
                       <button key={it.id||`${it.start_time}-${it.subject_name}`} type="button" className={`schedule-side-item schedule-side-${subjectColorKey(it.type)}`} onClick={()=>openLesson(it)}>
                         <div className="schedule-side-time">{it.start_time.slice(0,5)}–{it.end_time.slice(0,5)}</div>
                         <div className="schedule-side-subject">{it.subject_name||"Занятие"}</div>
-                        <div className="schedule-side-meta">{TYPE_LABELS[it.type]||it.type}{it.room?` · Ауд. ${it.room}`:""}</div>
+                        <div className="schedule-side-meta">{TYPE_LABELS[it.type || ""]||it.type}{it.room?` · Ауд. ${it.room}`:""}</div>
                       </button>
                     )}
                   </div>
@@ -785,7 +825,7 @@ export default function SchedulePage() {
           <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-5 shadow-xl" onClick={(e)=>e.stopPropagation()}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wide opacity-60">{TYPE_LABELS[selected.type]||selected.type}</div>
+                <div className="text-xs font-semibold uppercase tracking-wide opacity-60">{TYPE_LABELS[selected.type || ""]||selected.type}</div>
                 <h2 className="text-xl font-bold">{selected.subject_name}</h2>
                 <p className="text-sm opacity-70">{selected.date} · {selected.start_time.slice(0,5)}–{selected.end_time.slice(0,5)} · Хабаровск</p>
               </div>

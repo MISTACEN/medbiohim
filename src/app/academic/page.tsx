@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, CheckCircle2, Clock3, RefreshCw, Sparkles, TriangleAlert } from "lucide-react";
 import { getAcademicState, generateAcademicAiPlan, syncAcademicState, type AcademicState } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 const label: Record<string,string> = {
   retake:"пересдача", makeup:"досдача", exam:"экзамен", credit:"зачёт",
@@ -32,7 +33,7 @@ export default function AcademicPage() {
       upcoming: Array.isArray(r.data.upcoming) ? r.data.upcoming : [],
       weak_topics: Array.isArray(r.data.weak_topics) ? r.data.weak_topics : [],
       recommendations: Array.isArray(r.data.recommendations) ? r.data.recommendations : [],
-    }); else setError(r.error.message);
+    }); else setError(describeApiError(r.error));
     setLoading(false);
   },[]);
 
@@ -41,7 +42,7 @@ export default function AcademicPage() {
   const syncNow=async()=>{
     setSyncing(true); setError(null);
     const r=await syncAcademicState();
-    if(r.ok) await load(); else setError(r.error.message);
+    if(r.ok) await load(); else setError(describeApiError(r.error));
     setSyncing(false);
   };
 
@@ -52,7 +53,7 @@ export default function AcademicPage() {
       setPlanItems(Array.isArray(r.data.items) ? r.data.items : []);
       if(r.data.source_state) setState({ ...r.data.source_state, plan: r.data.source_state.plan ?? state?.plan ?? { available: false, items: 0, concrete_items: 0 } });
       else await load();
-    } else setError(r.error.message);
+    } else setError(describeApiError(r.error));
     setGenerating(false);
   };
 
@@ -91,11 +92,11 @@ export default function AcademicPage() {
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          ["Закрыто",state.metrics.closed],
-          ["В процессе",state.metrics.in_progress],
-          ["Не начато",state.metrics.not_started],
-          ["Долги",state.metrics.debts],
-          ["Отслеживается",state.metrics.tracked]
+          ["Закрыто",state.metrics?.closed],
+          ["В процессе",state.metrics?.in_progress],
+          ["Не начато",state.metrics?.not_started],
+          ["Долги",state.metrics?.debts],
+          ["Отслеживается",state.metrics?.tracked]
         ].map(([k,v])=><div key={String(k)} className="rounded-2xl border bg-white p-4 shadow-sm"><div className="text-2xl font-bold text-slate-900">{String(v)}</div><div className="text-xs text-slate-500">{String(k)}</div></div>)}
       </section>
 
@@ -110,10 +111,10 @@ export default function AcademicPage() {
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-emerald-500"/><h2 className="font-semibold">Официальный учебный план</h2></div>
-          {state.plan.available ? (
+          {state.plan?.available ? (
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 p-3"><b>{state.plan.items}</b><div className="text-xs text-slate-500">элементов</div></div>
-              <div className="rounded-xl bg-slate-50 p-3"><b>{state.plan.concrete_items}</b><div className="text-xs text-slate-500">конкретных требований</div></div>
+              <div className="rounded-xl bg-slate-50 p-3"><b>{state.plan?.items}</b><div className="text-xs text-slate-500">элементов</div></div>
+              <div className="rounded-xl bg-slate-50 p-3"><b>{state.plan?.concrete_items}</b><div className="text-xs text-slate-500">конкретных требований</div></div>
             </div>
           ) : (
             <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">

@@ -8,6 +8,7 @@ import { adminUpdateBankQuestion, getBankProgress, getTestBank, hasToken, me, ty
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { describeApiError } from "@/lib/errors";
 
 type BankOption = string | { key?: unknown; label?: unknown; correct?: boolean };
 type BankQuestion = {
@@ -129,7 +130,7 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
             topicTitle: q.topic_title == null ? null : String(q.topic_title),
           }))
         );
-      } else setError(detail.error.message);
+      } else setError(describeApiError(detail.error));
       if (bankProgress.ok) setProgress(bankProgress.data);
       setLoading(false);
     })();
@@ -225,7 +226,7 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
     setSaving(false);
 
     if (!r.ok) {
-      setSaveMessage(r.error.message);
+      setSaveMessage(describeApiError(r.error));
       return;
     }
 

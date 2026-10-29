@@ -6,6 +6,7 @@ import { RadialProgress } from "@/components/ui/RadialProgress";
 import { Award, Loader2 } from "lucide-react";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { describeApiError } from "@/lib/errors";
 
 type ProgressPayload = {
   overall_pct?: number | null;
@@ -35,7 +36,7 @@ export default function ProgressPage() {
           setData(res.data as ProgressPayload);
           setError(null);
         } else {
-          setError(res.error.message);
+          setError(describeApiError(res.error));
           setData({
             degraded: true,
             service_notice: "Данные прогресса временно недоступны. Повторите попытку позже.",

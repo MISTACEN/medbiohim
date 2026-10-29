@@ -18,6 +18,7 @@ import {
   retryPreparationGrading,
   type PreparationQuestion,
 } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type QuestionOption = string | { key?: unknown; label?: unknown; correct?: boolean };
 
@@ -148,7 +149,7 @@ export default function PreparationPage() {
     setError("");
     const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined, user?.groupId);
     if (!s.ok) {
-      setError(s.error.message);
+      setError(describeApiError(s.error));
       setLoading(false);
       return;
     }
@@ -180,7 +181,7 @@ export default function PreparationPage() {
       }
       setChecked(c);
       setGrading(g);
-    } else setError(d.error.message);
+    } else setError(describeApiError(d.error));
     setLoading(false);
   }
 
@@ -225,7 +226,7 @@ export default function PreparationPage() {
     const task = saveQueue.current.then(async () => {
       const r = await savePreparation(session.id, payload);
       if (!r.ok) {
-        onError?.(r.error.message);
+        onError?.(describeApiError(r.error));
       }
       return r;
     });
@@ -323,7 +324,7 @@ export default function PreparationPage() {
       }
       const a = await preparationAiReview(session.id);
       if (a.ok) setAi(a.data.review);
-    } else setError(r.error.message);
+    } else setError(describeApiError(r.error));
     setLoading(false);
   }
 
@@ -700,7 +701,7 @@ export default function PreparationPage() {
             {unresolved ? (
               <button type="button" disabled={loading} onClick={() => void retryPreparationGrading(session.id, q.id).then((r) => {
                 if (r.ok && r.data?.items?.[0]) setGrading((g) => ({ ...g, [q.id]: r.data.items[0] }));
-                else if (!r.ok) setError(r.error.message);
+                else if (!r.ok) setError(describeApiError(r.error));
               })} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50">
                 Повторить проверку
               </button>

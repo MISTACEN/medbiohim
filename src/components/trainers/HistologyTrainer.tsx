@@ -14,6 +14,7 @@ import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
 import { topicLabel, ImageBox, AtlasThumb, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
 import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
+import { describeApiError } from "@/lib/errors";
 
 type AnswerRow = {
   id: string;
@@ -86,7 +87,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     setWorking(true);
     setError(null);
     const r = await getTraining(id);
-    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    if (!r.ok) { setError(describeApiError(r.error)); setWorking(false); return; }
     const nextAnswers = r.data.answers as AnswerRow[];
     setTraining(r.data.training);
     setAnswers(nextAnswers);
@@ -123,7 +124,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
       card_ids: selectedCardIds.length ? selectedCardIds : undefined,
       force: true,
     });
-    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    if (!r.ok) { setError(describeApiError(r.error)); setWorking(false); return; }
     const tid = r.data.training.id;
     if (embedded && typeof window !== "undefined") {
       window.location.assign("/trainers/feed/histology?training=" + encodeURIComponent(tid));
@@ -138,7 +139,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     if (a.user_answer != null || a.is_skipped) return;
     setWorking(true);
     const r = await answerTrainingQuestion(training.id, a.order, value, skip);
-    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    if (!r.ok) { setError(describeApiError(r.error)); setWorking(false); return; }
     const snapshot = a.question_snapshot as any;
     const mode = String(snapshot?.mode_set || snapshot?.modeSet || "").toLowerCase();
     const tags = Array.isArray(snapshot?.tags) ? snapshot.tags.map(String) : [];
@@ -172,7 +173,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     if (!training) return;
     setWorking(true);
     const r = await completeTraining(training.id);
-    if (!r.ok) { setError(r.error.message); setWorking(false); return; }
+    if (!r.ok) { setError(describeApiError(r.error)); setWorking(false); return; }
     setTraining(r.data.training);
     setResult(r.data.stats);
     setSessions((v) => v.map((x) => x.id === training.id ? { ...x, ...r.data.training, answered_count: answers.length } : x));
@@ -182,7 +183,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const restart = async (id: string) => {
     setWorking(true);
     const r = await cancelTraining(id);
-    if (!r.ok) setError(r.error.message);
+    if (!r.ok) setError(describeApiError(r.error));
     else setSessions((v) => v.map((x) => x.id === id ? { ...x, status: "cancelled" } : x));
     setWorking(false);
   };

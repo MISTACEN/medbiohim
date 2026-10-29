@@ -146,7 +146,7 @@ adminSchedule.post("/schedule/save", requireAuth, async (c) => {
  * Rollback schedule to previous version
  */
 adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase");
+  const rid = requestId();
   const scheduleId = String(c.req.param("scheduleId") || "");
   const targetVersion = parseInt(String(c.req.param("targetVersion") || ""), 10);
   
@@ -161,29 +161,15 @@ adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion", requireAuth,
       return c.json(fail("FORBIDDEN", "Нет прав доступа", 403, rid), 403);
     }
     
-    // Start transaction
-    const { error: beginError } = await db.rpc("pg_begin_transaction"); // Would need proper transaction wrapper
-    
-    // Fetch old entries
-    const { data: oldEntries, error: fetchError } = await db
-      .from("schedule_entries")
-      .select("*")
-      .eq("schedule_id", scheduleId)
-      .not("archived_at", "is", null)
-      .or(`archived_version.eq.${targetVersion - 1},and(status.eq.scheduled,archived_version.lt.${targetVersion})`);
-    
-    if (fetchError) throw fetchError;
-    
-    if (!oldEntries || oldEntries.length === 0) {
-      return c.json(fail("NOT_FOUND", "Старые данные не найдены", 404, rid), 404);
-    }
-    
-    // TODO: Implement actual rollback logic here
-    // This would restore entries from target version
-    
-    return c.json(ok({ 
-      message: "Расписание откатно к версии " + targetVersion 
-    }, rid));
+    // Откат пока не реализован: раньше эндпоинт отвечал «Расписание откатно
+    // к версии N», ничего не меняя, — это ложный успех. Честно сообщаем, что
+    // операция недоступна, вместо того чтобы делать вид, что она выполнена.
+    return c.json(fail(
+      "ROLLBACK_NOT_IMPLEMENTED",
+      "Откат расписания к прежней версии ещё не реализован. Сохраните расписание заново — прежняя версия останется в истории версий.",
+      501,
+      rid,
+    ), 501);
   } catch (error) {
     console.error("[admin:schedule:rollback]", error);
     return c.json(fail("ROLLBACK_FAILED", "Не удалось откатить расписание", 503, rid), 503);
@@ -195,7 +181,7 @@ adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion", requireAuth,
  * Update single schedule entry
  */
 adminSchedule.patch("/schedule/entries/:id", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase"), user = c.get("user");
+  const rid = requestId(), db = c.get("supabase");
   const entryId = String(c.req.param("id") || "");
 
   // Проверка прав: правка записей расписания — не студенческая операция.

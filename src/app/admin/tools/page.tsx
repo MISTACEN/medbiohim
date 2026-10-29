@@ -6,6 +6,7 @@ import { Activity, HardDrive, RefreshCw, Settings2, ShieldCheck } from "lucide-r
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AdminMissingTools } from "@/components/admin/AdminMissingTools";
 import { adminPresence, adminValidateContent, adminFileAudit, adminMediaCapabilities, health, hasToken } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 /** ДЗ, файлы и диагностика. Навигация по разделам — в общем AdminNav. */
 export default function AdminToolsPage() {
@@ -43,7 +44,7 @@ export default function AdminToolsPage() {
     const [h, p] = await Promise.all([health(), adminPresence(180)]);
     if (h.ok) setBackendHealth(h.data);
     if (p.ok) setPresence(p.data.items || []);
-    else setError(p.error.message);
+    else setError(describeApiError(p.error));
     setRefreshing(false);
   }
 
@@ -52,7 +53,7 @@ export default function AdminToolsPage() {
     const r = await adminValidateContent();
     setValidating(false);
     if (r.ok) setValidation(r.data);
-    else setError(r.error.message);
+    else setError(describeApiError(r.error));
   }
 
   async function validateFiles() {
@@ -60,9 +61,9 @@ export default function AdminToolsPage() {
     const [r, caps] = await Promise.all([adminFileAudit(300), adminMediaCapabilities()]);
     setFileAuditing(false);
     if (r.ok) setFileAudit(r.data);
-    else setError(r.error.message);
+    else setError(describeApiError(r.error));
     if (caps.ok) setMediaCapabilities(caps.data);
-    else setError(caps.error.message);
+    else setError(describeApiError(caps.error));
   }
 
   useEffect(() => {

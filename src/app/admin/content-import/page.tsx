@@ -5,6 +5,7 @@ import Link from "next/link";
 import * as XLSX from "xlsx";
 import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { adminContentImport, adminDbList, adminImportCurriculumXlsx, hasToken } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type Row = Record<string, unknown>;
 type ImportData = { tests: Row[]; questions: Row[]; test_questions: Row[] };
@@ -60,7 +61,7 @@ export default function AdminContentImportPage(){
     setCurriculumBusy(true); setCurriculumMessage("Импорт учебного плана…");
     const r=await adminImportCurriculumXlsx(file);
     setCurriculumBusy(false);
-    if(!r.ok){setCurriculumMessage(r.error.message);return;}
+    if(!r.ok){setCurriculumMessage(describeApiError(r.error));return;}
     setCurriculumMessage("Учебный план импортирован.");
   }
 
@@ -79,7 +80,7 @@ export default function AdminContentImportPage(){
       setMessage(dry_run
         ? (res.data.errors.length?"Есть ошибки — исправьте файл и проверьте снова.":"Проверка пройдена: можно импортировать.")
         : "Импорт завершён: тестов "+res.data.created.tests+", вопросов "+res.data.created.questions+", связей "+res.data.created.test_questions+".");
-    }else setMessage(res.error.message);
+    }else setMessage(describeApiError(res.error));
     setBusy(false);
   }
   if(!hasToken())return <div className="card mx-auto max-w-md p-8 text-center"><h1 className="page-title">Импорт контента</h1><p className="page-subtitle">Сначала войдите.</p><Link href="/login" className="btn-primary mt-4 inline-flex">Войти</Link></div>;

@@ -17,6 +17,7 @@ import {
 } from "@/lib/features-api";
 import { Brain, Loader2, RotateCcw, Check, Flame, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug } from "@/lib/subjectSlug";
+import { describeApiError } from "@/lib/errors";
 
 type Rating = 1 | 2 | 3 | 4;
 
@@ -81,7 +82,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
     const [sumRes, dueRes] = await Promise.all([srsSummary(), srsDue(25, slug || undefined, selectedScope)]);
     setLoading(false);
     if (!sumRes.ok) {
-      setError(sumRes.error.message);
+      setError(describeApiError(sumRes.error));
       return;
     }
     setSummary(sumRes.data);
@@ -90,7 +91,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
       setIdx(0);
       setFlipped(false);
     } else {
-      setError(dueRes.error.message);
+      setError(describeApiError(dueRes.error));
     }
   }, [scopeFromUrl]);
 
@@ -108,7 +109,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
     const res = await srsEnsure(20, subjectSlug || undefined);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       return;
     }
     await refresh(subjectSlug || undefined, scope);
@@ -120,7 +121,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
     const res = await srsReview(card.id, r);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       return;
     }
     setSummary(res.data.summary);
@@ -136,7 +137,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
     setAdding(true); setError(null);
     const res = await srsAddCard({ front: front.trim(), back: back.trim(), subject_slug: subjectSlug || fromUrl || undefined });
     setAdding(false);
-    if (!res.ok) { setError(res.error.message); return; }
+    if (!res.ok) { setError(describeApiError(res.error)); return; }
     setFront(""); setBack("");
     await refresh(subjectSlug || fromUrl || undefined, "personal");
   }

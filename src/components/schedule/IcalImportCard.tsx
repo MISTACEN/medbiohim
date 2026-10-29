@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CalendarPlus, Download, Link2, Loader2, Trash2 } from "lucide-react";
 import { deleteIcalEvent, getScheduleFeedLink, importIcalCalendar, listIcalEvents } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type IcalRow = {
   id: string;
@@ -80,7 +81,7 @@ export default function IcalImportCard() {
     const response = await importIcalCalendar(mode === "url" ? { url: url.trim() } : { text });
     setBusy(false);
     if (!response.ok) {
-      setError(response.error.message);
+      setError(describeApiError(response.error));
       return;
     }
     setResult(response.data as ImportResult);
@@ -104,7 +105,7 @@ export default function IcalImportCard() {
     const response = await deleteIcalEvent(id);
     setBusy(false);
     if (!response.ok) {
-      setError(response.error.message);
+      setError(describeApiError(response.error));
       return;
     }
     setEvents((current) => current.filter((item) => item.id !== id));

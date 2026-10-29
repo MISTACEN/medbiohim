@@ -3,19 +3,20 @@ import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {CheckCheck,Save,Plus,CheckCircle2,Search} from "lucide-react";
 import {adminProblemCenter,adminUpdateBankQuestion,adminUpdateQuestionReport,adminCreateWork,adminUpdateWork,hasToken} from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 const labels:Record<string,string>={wrong_answer:"Неверный ответ",wording:"Ошибка формулировки",multiple_correct:"Несколько правильных",no_correct:"Нет правильного",typo:"Опечатка",other:"Другое"};
 
 export default function ProblemCenter(){
  const [problems,setProblems]=useState<any[]>([]),[works,setWorks]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[draft,setDraft]=useState<any>(null),[tab,setTab]=useState("problems"),[msg,setMsg]=useState("");
  const [query,setQuery]=useState(""),[checked,setChecked]=useState<Set<string>>(new Set()),[batchBusy,setBatchBusy]=useState(false);
- async function load(){const r=await adminProblemCenter();if(r.ok){setProblems(r.data.problems||[]);setWorks(r.data.works||[])}else setMsg(r.error.message)}
+ async function load(){const r=await adminProblemCenter();if(r.ok){setProblems(r.data.problems||[]);setWorks(r.data.works||[])}else setMsg(describeApiError(r.error))}
  useEffect(()=>{if(hasToken())void load()},[]);
  useEffect(()=>setDraft(selected?.question?{...selected.question}:null),[selected]);
- async function save(){if(!draft?.id)return;const r=await adminUpdateBankQuestion(draft.id,{text:draft.text,answer:draft.answer,options:draft.options});if(r.ok){setMsg("Вопрос исправлен.");setDraft(r.data.question);await load()}else setMsg(r.error.message)}
+ async function save(){if(!draft?.id)return;const r=await adminUpdateBankQuestion(draft.id,{text:draft.text,answer:draft.answer,options:draft.options});if(r.ok){setMsg("Вопрос исправлен.");setDraft(r.data.question);await load()}else setMsg(describeApiError(r.error))}
  async function close(p:any,status:any){for(const r of p.reports||[])await adminUpdateQuestionReport(r.id,status);await load();setMsg(status==="fixed"?"Проблема закрыта.":"Статус обновлён.")}
  async function closeMany(ids:string[],status:any){setBatchBusy(true);for(const id of ids){const p=problems.find((x:any)=>String(x.question_id)===id);for(const r of p?.reports||[])await adminUpdateQuestionReport(r.id,status)}await load();setChecked(new Set());setBatchBusy(false);setMsg(status==="fixed"?`Закрыто проблем: ${ids.length}.`:"Статус обновлён.")}
- async function work(p:any){const r=await adminCreateWork({title:"Исправить вопрос",description:(p.reports||[]).map((x:any)=>x.message).filter(Boolean).join("\n")||labels[p.category],question_id:p.question_id,report_id:p.reports?.[0]?.id,priority:"normal"});if(r.ok){setMsg("Работа создана.");await load()}else setMsg(r.error.message)}
+ async function work(p:any){const r=await adminCreateWork({title:"Исправить вопрос",description:(p.reports||[]).map((x:any)=>x.message).filter(Boolean).join("\n")||labels[p.category],question_id:p.question_id,report_id:p.reports?.[0]?.id,priority:"normal"});if(r.ok){setMsg("Работа создана.");await load()}else setMsg(describeApiError(r.error))}
  const filtered=useMemo(()=>{
    const q=query.trim().toLowerCase();
    if(!q)return problems;

@@ -19,7 +19,9 @@ import {
   type ApiTest,
 } from "@/lib/api";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { describeApiError } from "@/lib/errors";
 
 type Mode = "prepare" | "solve" | "exam" | "sequential";
 
@@ -94,6 +96,14 @@ type SubjectOption = {
   slug: string;
   count: number;
 };
+
+/**
+ * D9: совокупный результат загрузки хаба тестов. `ready: false` — версия
+ * «ещё не готовы» (идёт bootstrap авторизации), страница показывает скелетон.
+ */
+type TestsLoad =
+  | { ready: false }
+  | { ready: true; tests: TestItem[]; curriculum: CurriculumSubject[] };
 
 const MAIN_SUBJECT_LABELS: Record<string, string> = {
   histology: "Гистология",
@@ -187,8 +197,6 @@ export function TestsHub({
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
   const [curriculum, setCurriculum] = useState<CurriculumSubject[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [mode, setMode] = useState<Mode>("prepare");
   const [count, setCount] = useState(10);
   const [search, setSearch] = useState("");
@@ -198,66 +206,69 @@ export function TestsHub({
   const scoped = Boolean(subjectId || subjectSlug || subjectName);
   const resolvedSlug = resolveSubjectSlug(subjectSlug, subjectName) || subjectSlug;
 
+  // D9: ручной useEffect с cancelled-флагом заменён на useApiRequest —
+  // запросы меню тестов отменяются при unmount и смене зависимостей.
+  const { data: testsLoad, loading: testsLoading, error: testsError } = useApiRequest<TestsLoad>(
+    async (signal) => {
+      try {
+        if (authLoading) return { ready: false } as TestsLoad;
+        if (!hasToken()) return { ready: true, tests: [], curriculum: [] };
+        const requestSubjectId = UUID.test(subjectId) ? subjectId : undefined;
+        const requestSubjectSlug = requestSubjectId ? undefined : (subjectSlug || undefined);
+        const [testsRes, mapRes] = await Promise.all([
+          listTests(requestSubjectId, user?.groupId, requestSubjectSlug, course ?? undefined, semester ?? undefined, { signal }),
+          getTestCurriculumMap(requestSubjectId, user?.groupId, { signal }),
+        ]);
+        if (!testsRes.ok) throw new Error(describeApiError(testsRes.error) || "Не удалось загрузить меню тестов.");
+        const rows: ApiTest[] = Array.isArray(testsRes.data?.items) ? testsRes.data.items : [];
+        const mapped = rows.map((raw: ApiTest, index: number): TestItem => {
+          const subjectRow = (raw?.subjects && (Array.isArray(raw.subjects) ? raw.subjects[0] : raw.subjects)) || {};
+          const rowSubjectSlug = String(raw?.subject_slug || subjectRow?.slug || "");
+          const rowSubjectName = String(raw?.subject_name || subjectRow?.name || "");
+          return {
+            id: String(raw?.id ?? ""),
+            title: String(raw?.title || raw?.name || "Тест"),
+            subjectId: String(raw?.subject_id || ""),
+            subjectName: rowSubjectName,
+            subjectSlug: rowSubjectSlug,
+            moduleId: String(raw?.module_id || ""),
+            moduleTitle: String(raw?.module_title || ""),
+            topicId: String(raw?.topic_id || ""),
+            topicTitle: String(raw?.topic_title || ""),
+            moduleKey: "",
+            topicKey: "",
+            moduleRank: 999,
+            isFallbackModule: false,
+            questionCount: Number(raw?.questions_count ?? raw?.question_count ?? 0),
+            source: String(raw?.source_file_name || raw?.source_key || "база тестов"),
+            orderIndex: Number(raw?.order_index ?? index),
+          };
+        }).filter((item) => item.id);
+        return {
+          ready: true,
+          tests: mapped,
+          curriculum: mapRes.ok && Array.isArray(mapRes.data?.items) ? mapRes.data.items : [],
+        };
+      } catch (cause) {
+        throw new Error(cause instanceof Error && cause.message ? cause.message : "Не удалось загрузить меню тестов.");
+      }
+    },
+    [authLoading, user?.groupId, subjectId, subjectSlug, resolvedSlug, course, semester]
+  );
+
   useEffect(() => {
-    let cancelled = false;
-    if (authLoading) return () => { cancelled = true; };
-    if (!hasToken()) {
-      setLoading(false);
-      return () => { cancelled = true; };
+    if (testsError) {
+      // Как и раньше: при ошибке меню тестов пустеет вместо устаревшего списка.
+      setTests([]);
+      return;
     }
-    setLoading(true);
-    setError("");
-    const requestSubjectId = UUID.test(subjectId) ? subjectId : undefined;
-    const requestSubjectSlug = requestSubjectId ? undefined : (subjectSlug || undefined);
-    void Promise.all([
-      listTests(requestSubjectId, user?.groupId, requestSubjectSlug, course ?? undefined, semester ?? undefined),
-      getTestCurriculumMap(requestSubjectId, user?.groupId),
-    ])
-      .then(([testsRes, mapRes]) => {
-        if (cancelled) return;
-        if (!testsRes.ok) {
-          setError(testsRes.error.message || "Не удалось загрузить тесты.");
-          setTests([]);
-        } else {
-          const rows: ApiTest[] = Array.isArray(testsRes.data?.items) ? testsRes.data.items : [];
-          setTests(
-            rows.map((raw: ApiTest, index: number): TestItem => {
-              const subjectRow = (raw?.subjects && (Array.isArray(raw.subjects) ? raw.subjects[0] : raw.subjects)) || {};
-              const rowSubjectSlug = String(raw?.subject_slug || subjectRow?.slug || "");
-              const rowSubjectName = String(raw?.subject_name || subjectRow?.name || "");
-              return {
-                id: String(raw?.id ?? ""),
-                title: String(raw?.title || raw?.name || "Тест"),
-                subjectId: String(raw?.subject_id || ""),
-                subjectName: rowSubjectName,
-                subjectSlug: rowSubjectSlug,
-                moduleId: String(raw?.module_id || ""),
-                moduleTitle: String(raw?.module_title || ""),
-                topicId: String(raw?.topic_id || ""),
-                topicTitle: String(raw?.topic_title || ""),
-                moduleKey: "",
-                topicKey: "",
-                moduleRank: 999,
-                isFallbackModule: false,
-                questionCount: Number(raw?.questions_count ?? raw?.question_count ?? 0),
-                source: String(raw?.source_file_name || raw?.source_key || "база тестов"),
-                orderIndex: Number(raw?.order_index ?? index),
-              };
-            }).filter((item) => item.id),
-          );
-        }
-        if (mapRes.ok) {
-          setCurriculum(Array.isArray(mapRes.data?.items) ? mapRes.data.items : []);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError("Не удалось загрузить меню тестов.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [authLoading, user?.groupId, subjectId, subjectSlug, resolvedSlug, course, semester]);
+    if (!testsLoad?.ready) return;
+    setTests(testsLoad.tests);
+    setCurriculum(testsLoad.curriculum);
+  }, [testsLoad, testsError]);
+
+  const loading = testsLoading || !testsLoad?.ready;
+  const error = testsError ?? "";
 
   const topicMeta = useMemo(() => {
     const map = new Map<string, { moduleId: string; topicId: string; moduleTitle: string; topicTitle: string; plannedDate: string | null; isExtra: boolean; moduleOrder: number; topicOrder: number }>();

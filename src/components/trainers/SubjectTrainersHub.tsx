@@ -6,6 +6,7 @@ import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDif
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
 import BloodPreparationTrainer from "@/components/trainers/BloodPreparationTrainer";
+import { describeApiError } from "@/lib/errors";
 import {
   srsSummary, srsDue, srsReview, srsEnsure, srsAddCard,
   type SrsCard, type SrsSummary,
@@ -44,12 +45,12 @@ function SrsPanel() {
     ]);
     setLoading(false);
     if (!sumRes.ok) {
-      setError(sumRes.error.message);
+      setError(describeApiError(sumRes.error));
       return;
     }
     setSummary(sumRes.data);
     if (!dueRes.ok) {
-      setError(dueRes.error.message);
+      setError(describeApiError(dueRes.error));
       return;
     }
     setQueue(dueRes.data.items || []);
@@ -65,7 +66,7 @@ function SrsPanel() {
     const res = await srsEnsure(20, "histology");
     setBusy(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       return;
     }
     await refresh(scope);
@@ -78,7 +79,7 @@ function SrsPanel() {
     const res = await srsReview(card.id, r);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       return;
     }
     setSummary(res.data.summary);
@@ -99,7 +100,7 @@ function SrsPanel() {
     });
     setAdding(false);
     if (!res.ok) {
-      setError(res.error.message);
+      setError(describeApiError(res.error));
       return;
     }
     setFront("");

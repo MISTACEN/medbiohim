@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { describeApiError } from "@/lib/errors";
 import {
   hasToken,
   integrationImport,
@@ -87,7 +88,7 @@ export function ImportsProvider({ children }: { children: ReactNode }) {
       setAuthRequired(true);
       setError(null);
     } else {
-      setError(isDownError(result.error.code) ? UNAVAILABLE_HINT : result.error.message || "Не удалось загрузить сохранённое");
+      setError(isDownError(result.error.code) ? UNAVAILABLE_HINT : describeApiError(result.error) || "Не удалось загрузить сохранённое");
     }
     setLoading(false);
   }, []);
@@ -126,7 +127,7 @@ export function ImportsProvider({ children }: { children: ReactNode }) {
           setAuthRequired(true);
           setNotice({ tone: "warn", text: AUTH_HINT });
         } else {
-          setNotice({ tone: "error", text: isDownError(result.error.code) ? UNAVAILABLE_HINT : result.error.message || "Не удалось сохранить материал." });
+          setNotice({ tone: "error", text: isDownError(result.error.code) ? UNAVAILABLE_HINT : describeApiError(result.error) || "Не удалось сохранить материал." });
         }
       } catch {
         setNotice({ tone: "error", text: UNAVAILABLE_HINT });
@@ -152,7 +153,7 @@ export function ImportsProvider({ children }: { children: ReactNode }) {
         setAuthRequired(true);
         setNotice({ tone: "warn", text: AUTH_HINT });
       } else {
-        setNotice({ tone: "error", text: isDownError(result.error.code) ? UNAVAILABLE_HINT : result.error.message || "Не удалось удалить запись." });
+        setNotice({ tone: "error", text: isDownError(result.error.code) ? UNAVAILABLE_HINT : describeApiError(result.error) || "Не удалось удалить запись." });
       }
     },
     [],

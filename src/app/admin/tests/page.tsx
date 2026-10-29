@@ -17,13 +17,14 @@ import {
 } from "lucide-react";
 import {
   adminContentArchive,
-  adminDbInsert,
+  adminBuildTestVariants,
   adminDbList,
   adminDbUpdate,
   AdminDbRow,
   hasToken,
 } from "@/lib/api";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { describeApiError } from "@/lib/errors";
 
 type BuildQuestion = AdminDbRow & {
   id: string | number;
@@ -41,15 +42,6 @@ type BuildQuestion = AdminDbRow & {
 
 function questionText(item: BuildQuestion) {
   return String(item.text ?? item.body ?? item.question ?? "Вопрос без текста");
-}
-
-function shuffle<T>(items: T[]) {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
 }
 
 export default function AdminTestsPage() {
@@ -208,62 +200,34 @@ export default function AdminTestsPage() {
 
     setBuilderBusy(true);
     setMessage("");
-    const created: string[] = [];
 
     try {
-      for (let variant = 1; variant <= variants; variant += 1) {
-        const chosen = shuffle(pool).slice(0, perTest);
-        const finalTitle =
-          variants === 1 ? title : title + " — Вариант " + variant;
-
-        const createdTest = await adminDbInsert("tests", {
-          title: finalTitle,
-          description:
-            builderDescription.trim() ||
-            "Собран через конструктор тестов. Вопросов: " +
-              perTest +
-              ". Вариант: " +
-              variant +
-              "/" +
-              variants +
-              ".",
-          subject_id: builderSubject,
-          module_id: builderModule || null,
-          topic_id: builderTopic || null,
-          time_limit_sec:
-            builderTimeLimit.trim() === "" ? null : Number(builderTimeLimit),
-          max_attempts:
-            builderMaxAttempts.trim() === "" ? null : Number(builderMaxAttempts),
-          is_published: builderPublished,
-        });
-
-        if (!createdTest.ok) {
-          throw new Error(createdTest.error?.message || "Не удалось создать тест");
-        }
-
-        const testId = String(createdTest.data?.item?.id || "");
-        if (!testId) throw new Error("Сервер не вернул id нового теста");
-        created.push(testId);
-
-        for (let order = 0; order < chosen.length; order += 1) {
-          const link = await adminDbInsert("test_questions", {
-            test_id: testId,
-            question_id: String(chosen[order].id),
-            order_index: order,
-          });
-          if (!link.ok) {
-            await adminContentArchive("tests", testId);
-            throw new Error(
-              link.error?.message || "Не удалось добавить вопрос №" + (order + 1),
-            );
-          }
-        }
+      // MA10: вся сборка — один запрос. На бэке RPC собирает все варианты и
+      // ссылки на вопросы в одной транзакции: либо всё записано, либо ничего,
+      // «частичного успеха» больше не бывает.
+      const result = await adminBuildTestVariants({
+        title,
+        description: builderDescription.trim(),
+        subject_id: builderSubject,
+        module_id: builderModule || null,
+        topic_id: builderTopic || null,
+        time_limit_sec: builderTimeLimit.trim() === "" ? null : Number(builderTimeLimit),
+        max_attempts: builderMaxAttempts.trim() === "" ? null : Number(builderMaxAttempts),
+        is_published: builderPublished,
+        variants,
+        per_test: perTest,
+        question_ids: pool.map((item) => String(item.id)),
+      });
+      if (!result.ok) {
+        throw new Error(describeApiError(result.error));
       }
 
+      const created = Array.isArray(result.data?.created) ? result.data.created : [];
+      const questionCount = Number(result.data?.questions_per_test || perTest);
       setMessage(
         variants === 1
-          ? "Тест «" + title + "» собран: " + perTest + " вопросов."
-          : "Собрано тестов: " + variants + ". В каждом по " + perTest + " вопросов.",
+          ? "Тест «" + title + "» собран: " + questionCount + " вопросов."
+          : "Собрано тестов: " + created.length + ". В каждом по " + questionCount + " вопросов.",
       );
       setBuilderOpen(false);
       resetBuilder();
@@ -272,11 +236,6 @@ export default function AdminTestsPage() {
       setMessage(
         error instanceof Error ? error.message : "Не удалось собрать тесты.",
       );
-      if (created.length) {
-        setMessage(
-          (prev) => prev + " Создано до ошибки: " + created.length + ".",
-        );
-      }
     } finally {
       setBuilderBusy(false);
     }
@@ -291,7 +250,7 @@ export default function AdminTestsPage() {
       setMessage("Тест сохранён");
       setEditing(null);
       await load();
-    } else setMessage(r.error.message);
+    } else setMessage(describeApiError(r.error));
   }
 
   async function remove(t: AdminDbRow) {
@@ -306,7 +265,7 @@ export default function AdminTestsPage() {
     if (r.ok) {
       setMessage("Тест архивирован");
       await load();
-    } else setMessage(r.error.message);
+    } else setMessage(describeApiError(r.error));
   }
 
   if (!hasToken())

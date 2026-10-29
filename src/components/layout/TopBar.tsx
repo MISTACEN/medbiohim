@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getDashboard } from "@/lib/api";
+import type { Announcement } from "@/lib/guards";
 import { Bell, MessageSquare, Menu, Search, Moon, Sun, LogIn, LogOut, Palette } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -16,7 +17,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const [searchText, setSearchText] = useState("");
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [noticeLoading, setNoticeLoading] = useState(false);
-  const [announcements, setAnnouncements] = useState<Array<{id:string;title:string;body:string;created_at?:string}>>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const initials = (user?.name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   const course = user?.course ?? null;
   const semester = user?.semester ?? null;

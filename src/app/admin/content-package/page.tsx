@@ -5,6 +5,7 @@ import Link from "next/link";
 import JSZip from "jszip";
 import { CheckCircle2, FileArchive, FileJson, Loader2, UploadCloud } from "lucide-react";
 import { adminImportContentPackage, hasToken, uploadFile } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type Bundle = {
   package_id: string;
@@ -53,7 +54,7 @@ async function uploadPool(items: Array<{ path: string; entry: JSZip.JSZipObject 
       const blob = await item.entry.async("blob");
       const file = new File([blob], item.path.split("/").pop() || "source.bin", { type: blob.type || "application/octet-stream" });
       const r = await uploadFile(file, undefined, "mbh");
-      if (!r.ok) throw new Error((item.path || "file") + ": " + r.error.message);
+      if (!r.ok) throw new Error((item.path || "file") + ": " + describeApiError(r.error));
       result.set(item.path, String(r.data.file.id));
       done += 1;
       onProgress(done, items.length);
@@ -160,7 +161,7 @@ export default function AdminContentPackagePage() {
         trainer_cards,
         tests: bundle.tests,
       });
-      if (!r.ok) throw new Error(r.error.message);
+      if (!r.ok) throw new Error(describeApiError(r.error));
       setProgress(100);
       setResult(r.data.stats || {});
       setStatus("Импорт завершён.");

@@ -7,6 +7,7 @@ import { Shield } from "lucide-react";
 import { register, setTokens } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { startGoogleOAuth } from "@/lib/supabase";
+import { describeApiError } from "@/lib/errors";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function RegisterPage() {
     try {
       const res = await register(email.trim(), password, fullName.trim());
       if (!res.ok) {
-        const msg = res.error.message || "Ошибка регистрации";
+        const msg = describeApiError(res.error) || "Ошибка регистрации";
         if (/rate limit/i.test(msg)) {
           setError("Слишком много писем за короткое время. Подождите и попробуйте снова или войдите через Google.");
         } else if (/already|registered|exists/i.test(msg)) {

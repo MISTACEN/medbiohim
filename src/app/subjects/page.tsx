@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { listSubjects, listSubjectsCatalog } from "@/lib/api";
+import { describeApiError } from "@/lib/errors";
 
 type Item = {
   id: string;
@@ -114,7 +115,7 @@ export default function SubjectsPage() {
           setNote("Для выбранного курса и семестра данные из основной БД недоступны. Устаревший каталог не подставляется.");
         } else {
           setItems([]);
-          setNote(r.ok ? "Пусто" : r.error.message);
+          setNote(r.ok ? "Пусто" : describeApiError(r.error));
         }
       } catch {
         if (!cancelled) {

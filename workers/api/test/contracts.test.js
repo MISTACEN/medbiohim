@@ -169,6 +169,18 @@ test("every admin-schedule handler is staff-gated (D3)", async () => {
   }
 });
 
+test("schedule rollback reports honestly instead of pretending to succeed", async () => {
+  const route = await source("../src/routes/admin-schedule.ts");
+  const start = route.indexOf('adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion"');
+  assert.ok(start >= 0, "rollback handler not found");
+  const body = route.slice(start, start + 1200);
+  // Пока логика отката не реализована, эндпоинт не имеет права отвечать
+  // «Расписание откатно к версии N»: это ложный успех для админа.
+  assert.match(body, /ROLLBACK_NOT_IMPLEMENTED/);
+  assert.match(body, /501/);
+  assert.doesNotMatch(body, /Расписание откатно к версии/);
+});
+
 test("assignment tracker is mounted and scoped to the caller only", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import assignments from "\.\/routes\/assignments"/);
@@ -284,4 +296,76 @@ test("email change stays truthful: pending address is reported and resend is exp
   assert.match(route, /type: "email_change"/);
   // Почта меняется только в Auth, не прямой записью в таблицу users.
   assert.doesNotMatch(route, /from\("users"\)\s*\.update\(\s*\{[^}]*email/);
+});
+
+test("test variant builder is a single atomic server-side transaction (MA10)", async () => {
+  // Роут воркера: один RPC, гейт по ролям, честные 422 — и никаких
+  // построчных вставок tests/test_questions из кода роута.
+  const admin = await source("../src/routes/admin.ts");
+  const routeStart = admin.indexOf('admin.post("/tests/build-variants"');
+  assert.ok(routeStart >= 0, "build-variants route exists");
+  const route = admin.slice(routeStart, admin.indexOf("// Lectures are stored"));
+  assert.match(route, /await gate\(c\)/, "build-variants is not staff-gated");
+  assert.match(route, /medbiohim_build_test_variants/);
+  assert.match(route, /VALIDATION_ERROR/);
+  assert.doesNotMatch(route, /\.from\("tests"\)/);
+  assert.doesNotMatch(route, /\.from\("test_questions"\)/);
+  // Откат RPC не маскируется пустым успехом.
+  assert.match(route, /BUILD_FAILED/);
+  assert.match(route, /Изменения не сохранены/);
+
+  // Миграция: SECURITY DEFINER RPC с внутренней проверкой роли, сборка
+  // вариантов и ссылок в одной функции (одна транзакция PostgreSQL).
+  const migration = await source("../../../database/migrations/20261029_atomic_test_variant_builder.sql");
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.medbiohim_build_test_variants/);
+  assert.match(migration, /SECURITY DEFINER/);
+  assert.match(migration, /administrator role required/);
+  assert.match(migration, /INSERT INTO public\.tests\(/);
+  assert.match(migration, /INSERT INTO public\.test_questions\(/);
+  assert.match(migration, /ORDER BY random\(\)/, "each variant gets its own server-side shuffle");
+  assert.match(migration, /eligible question pool is too small/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.medbiohim_build_test_variants/);
+
+  // Клиент больше не собирает варианты цепочкой запросов и не «откатывает»
+  // частичный успех архивацией.
+  const page = await source("../../../src/app/admin/tests/page.tsx");
+  assert.match(page, /adminBuildTestVariants\(/);
+  assert.doesNotMatch(page, /adminDbInsert\("tests"/);
+  assert.doesNotMatch(page, /adminDbInsert\("test_questions"/);
+  assert.doesNotMatch(page, /adminContentArchive\("tests", testId\)/);
+  const apiLib = await source("../../../src/lib/api.ts");
+  assert.match(apiLib, /export async function adminBuildTestVariants/);
+});
+
+test("admin test-question editor covers text, options, answer and type via the staff-gated bank route (MA8)", async () => {
+  // Роут question-bank PUT: гейт, валидация и честные 422, полная замена
+  // редактируемых полей вопроса.
+  const admin = await source("../src/routes/admin.ts");
+  const routeStart = admin.indexOf('admin.put("/question-bank/:id"');
+  assert.ok(routeStart >= 0, "question-bank route exists");
+  const route = admin.slice(routeStart, admin.indexOf('admin.post("/tests/build-variants"'));
+  assert.match(route, /await gate\(c\)/, "question-bank PUT is not staff-gated");
+  // type/text/answer/options заменяются целиком, is_published/difficulty и
+  // учебная привязка — опционально.
+  assert.match(route, /\{ type, text, answer, options: options \|\| \[\], updated_at/);
+  for (const field of ["is_published", "difficulty"]) {
+    assert.ok(route.includes("patch." + field), "question-bank PUT drops field: " + field);
+  }
+  // Учебная привязка (subject/module/topic) правится тем же роутом.
+  assert.match(route, /\["subject_id", "module_id", "topic_id"\]/);
+  assert.match(route, /patch\[key\] =/);
+  assert.match(route, /Недопустимый тип вопроса/);
+  assert.match(route, /Для одиночного выбора должен быть один правильный вариант/);
+  assert.match(route, /options должен быть массивом/);
+
+  // Редактор в админке правит вопрос целиком через этот роут, а не через
+  //-generic PATCH /admin/database.
+  const page = await source("../../../src/app/admin/test-questions/page.tsx");
+  assert.match(page, /adminUpdateBankQuestion\(/);
+  assert.doesNotMatch(page, /adminDbUpdate\("questions"/);
+  assert.match(page, /QUESTION_TYPES/);
+  assert.match(page, /updateOption\(index, \{ correct: !option\.correct \}\)/, "correct flag is toggleable per option");
+  assert.match(page, /addOption/);
+  assert.match(page, /removeOption/);
+  assert.match(page, /Правильный ответ \/ объяснение/);
 });
