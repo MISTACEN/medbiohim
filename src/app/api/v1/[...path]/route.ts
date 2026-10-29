@@ -22,9 +22,15 @@ export const runtime = "nodejs";
 // Keep the proxy alive long enough for those bounded upstream operations.
 export const maxDuration = 30;
 
+// Dual-read (RFC docs/COOKIES-RFC-E1.md §5 этап 1): Authorization header first
+// (legacy localStorage client and browser extension), then the HttpOnly cookie.
 function bearer(req: NextRequest) {
   const value = req.headers.get("authorization") || "";
-  return value.startsWith("Bearer ") ? value.slice(7).trim() : "";
+  if (value.startsWith("Bearer ")) {
+    const token = value.slice(7).trim();
+    if (token) return token;
+  }
+  return req.cookies.get("mb_at")?.value || "";
 }
 
 async function isCanonicalAdminRequest(req: NextRequest): Promise<boolean> {
