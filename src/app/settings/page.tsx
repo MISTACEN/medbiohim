@@ -33,6 +33,12 @@ import {
 
 type TrainerLayout = "sidebar" | "list" | "top";
 
+/** Остаток ожидания привязки в формате мм:сс. */
+function formatWait(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
 function SettingsPageInner() {
   const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
@@ -52,6 +58,11 @@ function SettingsPageInner() {
   const [password2, setPassword2] = useState("");
   const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
   const [telegramStatus, setTelegramStatus] = useState<TelegramLinkStatus | null>(null);
+  // Отдельно от «не привязан»: недоступный статус нельзя выдавать за отсутствие привязки.
+  const [telegramStatusError, setTelegramStatusError] = useState<string | null>(null);
+  // Ожидание подтверждения в боте: пока ждём, статус опрашивается сам.
+  const [telegramWait, setTelegramWait] = useState<{ url: string; expiresAt: number } | null>(null);
+  const [clock, setClock] = useState(0);
   const [avatarBusy, setAvatarBusy] = useState(false);
   // SA4: активные устройства. null — ещё не загружали, [] — сессий нет.
   const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
@@ -79,7 +90,12 @@ function SettingsPageInner() {
       setEmail(user?.email || "");
     }
     const tg = await getTelegramLinkStatus();
-    if (tg.ok) setTelegramStatus(tg.data);
+    if (tg.ok) {
+      setTelegramStatus(tg.data);
+      setTelegramStatusError(null);
+    } else {
+      setTelegramStatusError(describeApiError(tg.error));
+    }
     setLoading(false);
     return r;
   }, [user?.name, user?.email]);
@@ -195,19 +211,59 @@ function SettingsPageInner() {
 
   const recoveryFromQuery = searchParams.get("recovery") === "1";
   const linkedFromQuery = searchParams.get("linked") === "1" || searchParams.get("link") === "ok";
+  const oauthError = searchParams.get("error_description") || searchParams.get("error") || "";
 
   useEffect(() => {
     if (recoveryFromQuery) setRecoveryMode(true);
-    if (!linkedFromQuery) return;
+    if (!linkedFromQuery && !oauthError) return;
     window.history.replaceState({}, "", "/settings");
     // Возврат с OAuth сам по себе не доказывает, что привязка удалась:
-    // пользователь мог отменить вход. Проверяем, что Google реально в identities.
+    // пользователь мог отменить вход. Проверяем, что Google реально в identities,
+    // а причину отказа показываем текстом, а не «попробуйте ещё раз».
+    setMsg(linkedFromQuery ? "Проверяем привязку Google…" : null);
     void load().then((r) => {
       const linked = r.ok && (r.data.identities || []).some((item) => item.provider === "google");
-      if (linked) setMsg("Google привязан. Данные остаются на том же аккаунте.");
-      else setErr("Google не привязан: привязка не завершена. Попробуйте ещё раз.");
+      if (linked) {
+        setMsg("Google привязан. Данные остаются на том же аккаунте.");
+        return;
+      }
+      setMsg(null);
+      setErr(oauthError
+        ? `Привязка Google не завершена: ${oauthError}`
+        : "Google не привязан: привязка не завершена. Попробуйте ещё раз.");
     });
-  }, [recoveryFromQuery, linkedFromQuery, load]);
+  }, [recoveryFromQuery, linkedFromQuery, oauthError, load]);
+
+  // Автоподтверждение Telegram: пока ждём, проверяем статус раз в 3 секунды.
+  // Таймер честно истекает: просроченная ссылка не «висит» вечно.
+  useEffect(() => {
+    if (!telegramWait || telegramStatus?.linked) return;
+    // Это остановка интервала опроса, а не ручной cancelled-флаг загрузки данных
+    // (D9 требует useApiRequest для запросов страницы).
+    let stopped = false;
+    const tick = async () => {
+      const current = Date.now();
+      setClock(current);
+      if (current >= telegramWait.expiresAt) {
+        setTelegramWait(null);
+        setErr("Ссылка на привязку истекла. Создайте новую — старая больше не работает.");
+        return;
+      }
+      const status = await getTelegramLinkStatus();
+      if (stopped) return;
+      if (status.ok) {
+        setTelegramStatusError(null);
+        if (status.data.linked) {
+          setTelegramStatus(status.data);
+          setTelegramWait(null);
+          setMsg("Telegram привязан. Теперь бот узнаёт ваш аккаунт.");
+        }
+      }
+    };
+    void tick();
+    const timer = setInterval(() => { void tick(); }, 3000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [telegramWait, telegramStatus?.linked]);
 
   async function onSaveProfile(e: FormEvent) {
     e.preventDefault();
@@ -257,9 +313,17 @@ function SettingsPageInner() {
   async function onLink(provider: string) {
     setBusy("link-" + provider); setErr(null);
     const origin = typeof window !== "undefined" ? window.location.origin : "https://medbiohim.vercel.app";
-    const r = await startLinkIdentity(provider, `${origin}/settings?linked=1`);
+    const r = await startLinkIdentity(provider, `${origin}/auth/callback?linked=google`);
     setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
+    if (!r.ok) {
+      // Гонка: привязку могли завершить в другой вкладке. Тогда это не ошибка.
+      if (r.error.code === "IDENTITY_ALREADY_LINKED") {
+        await load();
+        setMsg("Google уже привязан к этому аккаунту");
+        return;
+      }
+      return setErr(describeApiError(r.error));
+    }
     if (r.data.url) window.location.href = r.data.url;
     else setErr("Нет URL для привязки");
   }
@@ -269,7 +333,14 @@ function SettingsPageInner() {
     const r = await startTelegramLink();
     setBusy(null);
     if (!r.ok) return setErr(describeApiError(r.error));
-    window.location.href = r.data.url;
+    const expiresAt = Date.now() + Math.max(60, r.data.expires_in_seconds || 600) * 1000;
+    setTelegramWait({ url: r.data.url, expiresAt });
+    setClock(Date.now());
+    setMsg("Ссылка открыта в новой вкладке. Подтвердите привязку в Telegram — статус обновится сам.");
+    // Не уводим страницу на t.me: пользователь должен увидеть результат.
+    // Если браузер заблокировал новую вкладку — переходим сами.
+    const opened = window.open(r.data.url, "_blank", "noopener,noreferrer");
+    if (!opened) window.location.href = r.data.url;
   }
 
   async function onUnlinkTelegram() {
@@ -278,8 +349,9 @@ function SettingsPageInner() {
     const r = await unlinkTelegramAccount();
     setBusy(null);
     if (!r.ok) return setErr(describeApiError(r.error));
+    setTelegramWait(null);
     const status = await getTelegramLinkStatus();
-    if (status.ok) setTelegramStatus(status.data);
+    if (status.ok) { setTelegramStatus(status.data); setTelegramStatusError(null); }
     setMsg("Telegram отвязан");
   }
 
@@ -605,12 +677,51 @@ function SettingsPageInner() {
               <Unlink className="h-3.5 w-3.5" /> Отвязать
             </button>
           </div>
+        ) : telegramWait ? (
+          <div className="space-y-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 text-indigo-950">
+            <div className="font-semibold">Ждём подтверждение в Telegram</div>
+            <p className="text-xs leading-5">
+              Откройте <strong>@MEDBIOCHIM_bot</strong> и отправьте команду из ссылки. Ссылка одноразовая,
+              осталось <strong className="tabular-nums">{clock ? formatWait(telegramWait.expiresAt - clock) : "10:00"}</strong>.
+              Статус обновится сам — перезагружать страницу не нужно.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a href={telegramWait.url} target="_blank" rel="noreferrer" className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold">
+                Открыть бота
+              </a>
+              <button
+                type="button"
+                onClick={() => { setTelegramWait(null); setMsg("Ожидание привязки отменено. Ссылка больше не используется."); }}
+                className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold"
+              >
+                Отменить ожидание
+              </button>
+            </div>
+          </div>
         ) : (
           <button type="button" disabled={!!busy} onClick={() => void onStartTelegramLink()} className="btn-primary disabled:opacity-60">
             {busy === "telegram-link" ? "Создаём ссылку…" : "Привязать через @MEDBIOCHIM_bot"}
           </button>
         )}
-        <button type="button" disabled={loading} onClick={() => void getTelegramLinkStatus().then((r) => { if (r.ok) setTelegramStatus(r.data); else setErr(describeApiError(r.error)); })} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
+        {telegramStatusError && !telegramStatus?.linked && (
+          <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Статус привязки временно недоступен: {telegramStatusError}. Это не значит, что Telegram отвязан.
+          </p>
+        )}
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void getTelegramLinkStatus().then((r) => {
+            if (r.ok) {
+              setTelegramStatus(r.data);
+              setTelegramStatusError(null);
+              setMsg(r.data.linked ? "Telegram привязан" : "Telegram пока не привязан");
+            } else {
+              setErr(describeApiError(r.error));
+            }
+          })}
+          className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs"
+        >
           Проверить статус привязки
         </button>
       </section>

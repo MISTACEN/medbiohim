@@ -35,3 +35,23 @@ export function resolveLinkRedirect(
   }) || requested.origin === new URL(appOrigin).origin;
   return allowed ? requested.toString() : null;
 }
+
+/**
+ * Адрес возврата по умолчанию: туда, где пользователь нажимал «Привязать».
+ * Раньше возврат шёл на корень сайта, и сообщение о привязке было негде показать.
+ */
+export function defaultLinkRedirect(appOrigin: string): string {
+  return `${appOrigin.replace(/\/+$/, "")}/auth/callback?linked=google`;
+}
+
+/**
+ * URL привязки идентичности GoTrue. Именно GET с query-параметрами —
+ * supabase-js linkIdentity использует тот же контракт; POST с JSON отвечал 404.
+ */
+export function identityAuthorizeUrl(supabaseUrl: string, provider: string, redirectTo: string): URL {
+  const url = new URL("/auth/v1/user/identities/authorize", supabaseUrl);
+  url.searchParams.set("provider", provider);
+  url.searchParams.set("redirect_to", redirectTo);
+  url.searchParams.set("skip_http_redirect", "true");
+  return url;
+}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { parseOAuthTokensFromUrl } from "@/lib/supabase";
+import { resolveLinkReturn } from "@/lib/auth/link-return";
 import { setTokens } from "@/lib/api";
 
 export default function AuthCallbackPage() {
@@ -13,7 +14,18 @@ export default function AuthCallbackPage() {
     const currentUrl = new URL(window.location.href);
     const hashParams = new URLSearchParams(currentUrl.hash.replace(/^#/, ""));
     const isRecovery = hashParams.get("type") === "recovery";
+    const linkReturn = resolveLinkReturn(currentUrl.search);
     const parsed = parseOAuthTokensFromUrl(window.location.href);
+
+    // OAuth-привязка Google возвращается сюда же. Ошибку провайдера показываем
+    // текстом и возвращаем в настройки: «попробуйте ещё раз» без причины — враньё.
+    if (linkReturn.kind === "error") {
+      setStatus("error");
+      setMessage(linkReturn.message);
+      window.history.replaceState({}, "", "/auth/callback");
+      setTimeout(() => { window.location.href = linkReturn.target; }, 1500);
+      return;
+    }
     if (parsed.error) {
       setStatus("error");
       setMessage(parsed.error_description || parsed.error || "Ошибка OAuth");
@@ -22,11 +34,27 @@ export default function AuthCallbackPage() {
     if (parsed.access_token) {
       setTokens(parsed.access_token, parsed.refresh_token);
       setStatus("ok");
-      setMessage(isRecovery ? "Сессия восстановления активна. Открываем смену пароля…" : "Вход выполнен. Перенаправление…");
+      setMessage(
+        isRecovery
+          ? "Сессия восстановления активна. Открываем смену пароля…"
+          : linkReturn.kind === "linked"
+            ? linkReturn.message
+            : "Вход выполнен. Перенаправление…",
+      );
       window.history.replaceState({}, "", "/auth/callback");
+      const target = isRecovery ? "/settings?recovery=1" : linkReturn.kind === "linked" ? linkReturn.target : "/";
       setTimeout(() => {
-        window.location.href = isRecovery ? "/settings?recovery=1" : "/";
+        window.location.href = target;
       }, 600);
+      return;
+    }
+    if (linkReturn.kind === "linked") {
+      // Supabase может завершить привязку без токенов в URL. Не объявляем успех
+      // сами: /settings заново загрузит identities и покажет фактическое состояние.
+      setStatus("ok");
+      setMessage(linkReturn.message);
+      window.history.replaceState({}, "", "/auth/callback");
+      setTimeout(() => { window.location.href = linkReturn.target; }, 400);
       return;
     }
     setStatus("error");

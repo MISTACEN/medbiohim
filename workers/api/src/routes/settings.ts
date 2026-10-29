@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
-import { resolveLinkRedirect } from "../lib/link-redirect";
+import { defaultLinkRedirect, identityAuthorizeUrl, resolveLinkRedirect } from "../lib/link-redirect";
 
 const settings = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -340,7 +340,9 @@ async function startIdentityLink(c: any) {
     return c.json(body, status as 400);
   }
   const fallbackOrigin = c.env.APP_ORIGIN || "https://medbiohim.vercel.app";
-  let redirectTo = fallbackOrigin;
+  // Возвращаем пользователя туда, где он нажал кнопку: иначе Supabase
+  // открывает корень сайта, и «Google привязан» негде показать.
+  let redirectTo = defaultLinkRedirect(fallbackOrigin);
   if (typeof input.redirect_to === "string" && input.redirect_to.trim()) {
     const resolved = resolveLinkRedirect(input.redirect_to.trim(), c.env.CORS_ORIGINS || "", fallbackOrigin);
     if (!resolved) {
@@ -350,22 +352,28 @@ async function startIdentityLink(c: any) {
     redirectTo = resolved;
   }
   try {
-    const response = await fetch(new URL("/auth/v1/user/identities/authorize", c.env.SUPABASE_URL), {
-      method: "POST",
+    // GoTrue ждёт GET с query-параметрами (так это делает supabase-js
+    // linkIdentity → _getUrlForProvider). POST с JSON отвечал 404, и привязка
+    // Google не начиналась вовсе.
+    const authorizeUrl = identityAuthorizeUrl(c.env.SUPABASE_URL, provider, redirectTo);
+    const response = await fetch(authorizeUrl, {
+      method: "GET",
       headers: {
         apikey: c.env.SUPABASE_ANON_KEY,
         Authorization: `Bearer ${c.get("accessToken")}`,
-        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ provider, redirect_to: redirectTo, skip_http_redirect: true }),
       signal: AbortSignal.timeout(10000),
     });
     const result = await response.json().catch(() => ({})) as Record<string, unknown>;
     const url = typeof result.url === "string" ? result.url
       : typeof result.authorize_url === "string" ? result.authorize_url : null;
     if (!response.ok || !url) {
-      const reason = String(result.msg || result.message || "").toLowerCase();
+      const reason = `${String(result.error_code || "")} ${String(result.msg || result.message || "")}`.toLowerCase();
       console.warn("[settings:identity-link]", { status: response.status, reason, requestId: rid });
+      if (reason.includes("already") && reason.includes("link")) {
+        const { body, status } = fail("IDENTITY_ALREADY_LINKED", "Этот способ входа уже привязан к аккаунту", 409, rid);
+        return c.json(body, status as 409);
+      }
       // Supabase отвечает 404/«Manual linking is disabled», пока в проекте не
       // включена привязка второго способа входа. Это настройка сервера, не
       // ошибка пользователя — говорим прямо, а не «попробуйте позже».
