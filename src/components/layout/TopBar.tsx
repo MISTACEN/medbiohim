@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getAvatarUrl, getDashboard } from "@/lib/api";
 import type { Announcement } from "@/lib/guards";
@@ -10,6 +10,19 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useTheme } from "@/components/theme/ThemeProvider";
 
 export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
+  const searchRef = useRef<HTMLInputElement>(null);
+  // C11: Ctrl/Cmd+K — фокус в поиск из любого места платформы.
+  useEffect(() => {
+    function onHotkey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", onHotkey);
+    return () => window.removeEventListener("keydown", onHotkey);
+  }, []);
+
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -40,7 +53,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
     >
       <button type="button" onClick={onMenuClick} className="mr-1 rounded-xl p-2 transition hover:opacity-80 lg:hidden" style={{ color: "var(--muted)" }} aria-label="Открыть меню"><Menu className="h-5 w-5" /></button>
       <div className="mr-3 min-w-0 lg:hidden"><div className="truncate text-[15px] font-extrabold tracking-tight" style={{ color: "var(--text)" }}>{pageTitle}</div><div className="text-[9px] font-medium uppercase tracking-[.12em]" style={{ color: "var(--muted)" }}>Медбиохим</div></div>
-      <form className="relative hidden max-w-md flex-1 sm:block" onSubmit={(e) => { e.preventDefault(); const q = searchText.trim(); if (q) router.push(`/search?q=${encodeURIComponent(q)}`); }}><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} /><input type="search" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Поиск по платформе..." className="w-full rounded-full border py-2 pl-10 pr-4 text-sm outline-none transition focus:ring-2" style={{ borderColor: "var(--border)", background: "var(--background)", color: "var(--text)" }} /></form>
+      <form className="relative hidden max-w-md flex-1 sm:block" onSubmit={(e) => { e.preventDefault(); const q = searchText.trim(); if (q) router.push(`/search?q=${encodeURIComponent(q)}`); }}><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted)" }} /><input ref={searchRef} type="search" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Поиск по платформе..." aria-keyshortcuts="Control+K Meta+K" className="w-full rounded-full border py-2 pl-10 pr-14 text-sm outline-none transition focus:ring-2" style={{ borderColor: "var(--border)", background: "var(--background)", color: "var(--text)" }} /><kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:block" style={{ borderColor: "var(--border)" }}>Ctrl K</kbd></form>
       <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
         <span className="hidden rounded-full px-2.5 py-1 text-xs font-medium md:inline" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>{course != null ? `Курс ${course}` : "Курс не указан"}</span>
         <span className="hidden rounded-full px-2.5 py-1 text-xs font-medium md:inline" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>{semester != null ? `Сем. ${semester}` : "Семестр не указан"}</span>

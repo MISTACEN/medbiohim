@@ -1501,3 +1501,21 @@ eslint 0 errors, next build ok.
 
 Проверки: node 215/215, tsc 0, eslint по изменённым файлам 0 errors,
 next build ok, test:contrast — 6 тем, 0 провалов.
+
+## Сессия 31 (2026-10-30): F5/F4/F11/C11 — типографика и быстрые UX-пункты волны 3
+
+- **F5**: блокирующий `@import` Google Fonts удалён из globals.css; Inter
+  подключена через `next/font/google` (subsets cyrillic+latin, display swap,
+  self-hosted). Один источник истины: `--font-inter` → body и tailwind
+  fontFamily; дублирующее «Plus Jakarta Sans» из связки убрано.
+- **F4**: `table { font-variant-numeric: tabular-nums }` — одной строкой
+  закрывает «цифры пляшут» во всех 18 таблицах аудита.
+- **F11**: inline-скрипт в <head> применяет сохранённую тему до первой
+  отрисовки (mb_app_theme → mb_theme=dark → classic-light, класс .dark для
+  тёмных) — вспышка светлой темы на тёмных темах устранена ещё до гидрации
+  ThemeProvider (логика повторена один-в-один).
+- **C11**: Ctrl/Cmd+K фокусирует поиск TopBar из любого места (глобальный
+  keydown, aria-keyshortcuts на поле, подсказка-«Ctrl K» в правой части
+  поиска).
+- Проверено: @import в CSS = 0; tsc 0; contrast-гейт 6 тем / 0 провалов;
+  node 215/215; vitest 210/210; next build ok.
