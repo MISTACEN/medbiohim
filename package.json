@@ -25,6 +25,7 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "unpdf": "2.1.0",
     "xlsx": "npm:@keep-lts/xlsx@^0.18.6"
   },
   "devDependencies": {
