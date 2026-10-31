@@ -1877,3 +1877,12 @@ errors, predeploy PASS WITH WARNINGS, next build ok.
 - `/auth/register` и `POST /settings/password` отклоняют пароли из утечек:
   422 PASSWORD_PWNED «Этот пароль найден в базах утечек — выберите другой».
 - Контрактный тест в contracts.test.js (274/274).
+
+Live-проверка на проде (после деплоя): POST /auth/register с паролем
+`password123` → **422 PASSWORD_PWNED**; регистрация с сильным паролем →
+200 (needs_email_confirm) — обычный флоу не задет. Тестовый пользователь
+создан и удалён через admin API.
+
+Нюанс, пойманный при проверке: GoTrue отказывает secret-ключу с браузерным
+User-Agent («Forbidden use of secret API key in browser»). В админ-скриптах
+User-Agent передавать нельзя — только в запросах к воркеру.
