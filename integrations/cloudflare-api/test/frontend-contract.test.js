@@ -6,17 +6,28 @@ import { dirname, resolve } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../../..");
+// D5: клиент разложен на src/lib/api/* — контракт читает бочонок + модули.
 const [apiSource, settingsSource, worker] = await Promise.all([
-  readFile(resolve(root, "src/lib/api.ts"), "utf8"),
+  (async () => {
+    const { readdir } = await import("node:fs/promises");
+    const barrel = await readFile(resolve(root, "src/lib/api.ts"), "utf8");
+    const endpoints = await readFile(resolve(root, "src/lib/endpoints.ts"), "utf8");
+    const modulesDir = resolve(root, "src/lib/api");
+    const files = (await readdir(modulesDir)).filter((name) => name.endsWith(".ts"));
+    const parts = [barrel, endpoints];
+    for (const name of files) parts.push(await readFile(resolve(modulesDir, name), "utf8"));
+    return parts.join("\n");
+  })(),
   readFile(resolve(root, "src/lib/settings-api.ts"), "utf8"),
   readFile(resolve(root, "integrations/cloudflare-api/src/index.js"), "utf8"),
 ]);
 const frontend = apiSource + "\n" + settingsSource;
 
 test("frontend and Worker keep the same API envelope and base path", () => {
-  assert.match(frontend, /const API_URL\s*=\s*["']\/api\/v1["']/);
-  assert.match(frontend, /ok:true;data:T;requestId:string/);
-  assert.match(frontend, /ok:false;error:/);
+  // D4/D5: базовый путь переехал в реестр эндпоинтов; D1: конверт типизирован.
+  assert.match(frontend, /const API_URL\s*:\s*string\s*=\s*["']\/api\/v1["']/);
+  assert.match(frontend, /ok:\s*true;\s*data:\s*T;\s*requestId:\s*string/);
+  assert.match(frontend, /ok:\s*false;\s*error:/);
   assert.match(worker, /const API_PREFIX\s*=\s*["']\/api\/v1["']/);
 });
 
@@ -47,9 +58,10 @@ test("frontend group and subject CRUD routes are wired to the database-guarded a
     "/groups",
     "/subjects",
   ]) assert.ok(frontend.includes(path));
-  assert.ok(frontend.includes('method:"POST"'));
-  assert.ok(frontend.includes('method:"PATCH"'));
-  assert.ok(frontend.includes('method:"DELETE"'));
+  // D5-форматирование: пробелы после двоеточий в литералах опций.
+  assert.ok(frontend.includes('method: "POST"'));
+  assert.ok(frontend.includes('method: "PATCH"'));
+  assert.ok(frontend.includes('method: "DELETE"'));
   assert.ok(worker.includes("mutateSupabaseAdminEntity"));
   assert.ok(worker.includes("groupMutationMatch"));
   assert.ok(worker.includes("subjectMutationMatch"));

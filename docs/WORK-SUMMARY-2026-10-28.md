@@ -1816,3 +1816,11 @@ Code checks упали на пушах этапа 3 — найдены и исп
    обновлены на актуальные строки. Локально: DEPLOY STATUS: PASS WITH WARNINGS.
 2. Падение аналогичной природы в контрактных тестах воркера уже чинилось
    ранее (attestations/contracts/supabase-contract) — тот же паттерн.
+
+### CI-инцидент 2 (383-я итерация): frontend-contract после D5
+
+Step «Test Cloudflare API Worker routes and helpers» (integrations/cloudflare-api
+node --test) падал на пушах с D5: frontend-contract.test.js читал api.ts как
+один файл. Переведён на бочонок + src/lib/api/* + endpoints.ts; маркеры
+обновлены на актуальные (API_URL с типом, конверт D1-формата, пробелы в
+method-литералах). 403/403 интеграционных тестов зелёные.
