@@ -99,8 +99,19 @@ if (existsSync(proxyPath)) {
 }
 
 const apiClientPath = join(root, "src/lib/api.ts");
-if (existsSync(apiClientPath)) {
-  const apiClient = await readFile(apiClientPath, "utf8");
+// D5: клиент разложен на src/lib/api/* — аудит читает всю поверхность
+// (бочонок + модули), иначе маркеры контрактов теряются.
+const apiModulesDir = join(root, "src/lib/api");
+let apiModuleSources = [];
+if (existsSync(apiModulesDir)) {
+  for (const name of (await readdir(apiModulesDir)).filter((name) => name.endsWith(".ts"))) {
+    apiModuleSources.push(await readFile(join(apiModulesDir, name), "utf8"));
+  }
+}
+// Объединённая поверхность клиента: бочонок + все модули D5-разбиения.
+let apiClient = existsSync(apiClientPath) ? await readFile(apiClientPath, "utf8") : "";
+for (const source of apiModuleSources) apiClient += "\n" + source;
+{
   // The scope itself is derived in the session module; the cache must bypass it
   // when the token is opaque or malformed.
   const sessionPath = join(root, "src/lib/auth/session.ts");
@@ -109,7 +120,7 @@ if (existsSync(apiClientPath)) {
     sessionClient.includes("Никогда не делим bucket кэша между непрозрачными или битыми токенами") &&
     sessionClient.includes("if (!part) return null;") &&
     sessionClient.includes("export function currentUserScope()");
-  if (apiClient.includes("const userScope = cacheUserScope();") &&
+  if (apiClient.includes("const userScope = currentUserScope();") &&
       apiClient.includes("if (userScope === null) return api<T>(path, options);") &&
       scopeIsGuarded) {
     pass("API cache bypasses malformed/opaque token scopes");
@@ -118,12 +129,11 @@ if (existsSync(apiClientPath)) {
   }
 }
 
-const privateMediaCacheContract = apiClientPath;
-if (existsSync(privateMediaCacheContract)) {
-  const apiClient = await readFile(privateMediaCacheContract, "utf8");
+// Контракт приватных кэшей — по той же объединённой поверхности apiClient.
+{
   const clearsUserScopedCaches = ["function clearUserScopedCaches()", "trainerImageCache.clear()", "materialFileCache.clear()", "trainerCardCache.clear()"].every((marker) => apiClient.includes(marker));
-  const doesNotCacheSignedUrls = apiClient.includes('if(meta.mode==="presigned" || meta.mode==="upstash-blob" || Number(meta.expires_in)>0) return meta.url;');
-  const bypassesHttpCache = apiClient.includes('cache:"no-store"');
+  const doesNotCacheSignedUrls = apiClient.includes('meta.mode === "presigned" || meta.mode === "upstash-blob" || Number(meta.expires_in) > 0');
+  const bypassesHttpCache = apiClient.includes('cache: "no-store"');
   if (clearsUserScopedCaches && doesNotCacheSignedUrls && bypassesHttpCache) {
     pass("private trainer/material caches are user-scoped and signed URLs are not cached");
   } else {
