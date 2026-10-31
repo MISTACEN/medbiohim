@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3, ClipboardList, Plus, Upload, Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, type ScheduleItem, type ScheduleMeta, type SubjectPlanWeek } from "@/lib/api";
+import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, smartParseHomework, type ScheduleItem, type ScheduleMeta, type SubjectPlanWeek } from "@/lib/api";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { nowParts as sharedNowParts } from "@/lib/now-parts";
@@ -355,6 +355,11 @@ export default function SchedulePage() {
   const [homeworkAnswer, setHomeworkAnswer] = useState("");
   const [homeworkBusy, setHomeworkBusy] = useState<string|null>(null);
   const [addHomeworkOpen, setAddHomeworkOpen] = useState(false);
+  const [smartPasteText, setSmartPasteText] = useState("");
+  const [smartPasteOpen, setSmartPasteOpen] = useState(false);
+  const [smartPasteBusy, setSmartPasteBusy] = useState(false);
+  const [smartPasteNote, setSmartPasteNote] = useState<string | null>(null);
+  const smartPasteAppliedRef = useRef<string | null>(null);
   const [addHomeworkTitle, setAddHomeworkTitle] = useState("");
   const [addHomeworkDescription, setAddHomeworkDescription] = useState("");
   const [addHomeworkFiles, setAddHomeworkFiles] = useState<File[]>([]);
@@ -545,10 +550,49 @@ export default function SchedulePage() {
     setHomeworkBusy(null);
   }
 
+  // §8 Smart Paste: разобрать вставленный из чата текст и подставить в форму.
+  // Заполняются только поля, которые парсер распознал честно; дедлайн не
+  // перезаписывает привязку к занятию — форма уже привязана к выбранному.
+  async function applySmartPaste() {
+    if (!smartPasteText.trim() || smartPasteBusy) return;
+    setSmartPasteBusy(true);
+    setSmartPasteNote(null);
+    const res = await smartParseHomework(smartPasteText.trim());
+    setSmartPasteBusy(false);
+    if (!res.ok) {
+      setSmartPasteNote(describeApiError(res.error));
+      return;
+    }
+    const parsed = res.data as { ok: boolean; reason?: string; title: string | null; dueDate: string | null; checklist: string[]; criteria: string | null };
+    if (!parsed.ok) {
+      setSmartPasteNote(parsed.reason || "Не удалось разобрать текст");
+      return;
+    }
+    const parts: string[] = [];
+    if (parsed.title) {
+      setAddHomeworkTitle(parsed.title);
+      parts.push("тема");
+    }
+    const checklist = parsed.checklist || [];
+    const criteria = parsed.criteria || "";
+    const description = [checklist.length ? checklist.map((item, i) => `${i + 1}. ${item}`).join("\n") : "", criteria].filter(Boolean).join("\n\n");
+    if (description) {
+      setAddHomeworkDescription((current) => (current ? current + "\n\n" + description : description));
+      parts.push(checklist.length ? "задачи" : "");
+      parts.push(criteria ? "критерии" : "");
+    }
+    smartPasteAppliedRef.current = smartPasteText.trim().slice(0, 80);
+    setSmartPasteText("");
+    setSmartPasteNote("Распознано: " + parts.filter(Boolean).join(", ") + (parsed.dueDate ? ` · дедлайн ${parsed.dueDate} (проверьте привязку к занятию)` : ""));
+  }
+
   async function openLesson(item: ScheduleItem) {
     setSelected(item);
     setLesson(null);
     setAddHomeworkOpen(false);
+    setSmartPasteText("");
+    setSmartPasteNote(null);
+    smartPasteAppliedRef.current = null;
     setAddHomeworkTitle("");
     setAddHomeworkDescription("");
     setAddHomeworkFiles([]);
@@ -851,6 +895,14 @@ export default function SchedulePage() {
                 <div className="rounded-lg bg-black/5 px-3 py-2 text-xs font-semibold">Привязка к занятию: {selected.date} · {selected.subject_name} · {selected.start_time.slice(0,5)}–{selected.end_time.slice(0,5)}</div>
                 <input value={addHomeworkTitle} onChange={e=>setAddHomeworkTitle(e.target.value)} placeholder="Что задать" className="w-full rounded-lg border px-3 py-2 text-sm"/>
                 <textarea value={addHomeworkDescription} onChange={e=>setAddHomeworkDescription(e.target.value)} rows={2} placeholder="Страницы, номера, требования..." className="w-full rounded-lg border px-3 py-2 text-sm"/>
+                <div className="rounded-lg border border-dashed p-2">
+                  <button type="button" onClick={()=>setSmartPasteOpen(v=>!v)} aria-expanded={smartPasteOpen} className="text-xs font-semibold text-indigo-700">Умная вставка из чата</button>
+                  {smartPasteOpen && <div className="mt-2 space-y-2">
+                    <textarea value={smartPasteText} onChange={e=>setSmartPasteText(e.target.value)} rows={3} maxLength={10000} placeholder="Вставьте текст из чата группы: «Дз на 02.10. Тема: Эмбриология. 1. Лекцию учим. 2. Написать файлик…»" className="w-full rounded-lg border px-3 py-2 text-sm"/>
+                    <button type="button" disabled={smartPasteBusy || !smartPasteText.trim()} onClick={()=>void applySmartPaste()} className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50">{smartPasteBusy?"Разбор…":"Разобрать текст"}</button>
+                    {smartPasteNote && <p className="text-xs" style={{ color: smartPasteNote.startsWith("Распознано") ? "var(--status-ok-fg)" : "var(--status-critical-fg)" }}>{smartPasteNote}</p>}
+                  </div>}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold"><Upload className="mr-1 inline h-3.5 w-3.5"/>Добавить фото
                     <input type="file" accept="image/*" multiple className="hidden" onChange={e=>{const next=Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/"));setAddHomeworkFiles(prev=>[...prev,...next].slice(0,12));e.currentTarget.value="";}}/>

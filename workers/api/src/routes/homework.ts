@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { smartPasteParse } from "../lib/smart-paste";
 
 const homework = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -21,6 +22,29 @@ async function callerRoles(db: any, userId: string): Promise<string[]> {
   return [...new Set(codes)];
 }
 const STAFF_ROLES = new Set(["teacher", "moderator", "admin"]);
+
+/**
+ * §8 «Умный импорт» (Smart Paste): староста вставляет текст из чата,
+ * воркер разбирает его по правилам (тема, дедлайн, чек-лист, критерии) —
+ * без AI и без додумывания дат. Клиент показывает предпросмотр и сам
+ * решает, что подставить в форму.
+ */
+homework.post("/smart-parse", requireAuth, async (c) => {
+  const rid = requestId();
+  let payload: { text?: string } = {};
+  try { payload = await c.req.json(); } catch {}
+  const text = String(payload.text || "");
+  if (!text.trim()) {
+    const { body, status } = fail("VALIDATION_ERROR", "Вставьте текст задания", 422, rid);
+    return c.json(body, status as 422);
+  }
+  if (text.length > 10000) {
+    const { body, status } = fail("VALIDATION_ERROR", "Текст длиннее 10000 знаков", 422, rid);
+    return c.json(body, status as 422);
+  }
+  const parsed = smartPasteParse(text, new Date());
+  return c.json(ok(parsed, rid));
+});
 
 homework.get("/", requireAuth, async (c) => {
   const rid = requestId();
