@@ -1856,3 +1856,12 @@ x-forwarded-for/x-real-ip — login и register прокидывают их в G
 
 Проверки: node 251/251, vitest 209/209, worker 273/273, tsc 0, eslint 0
 errors, predeploy PASS WITH WARNINGS, next build ok.
+
+### Живая проверка (прод, коммит 1c614ab6)
+
+- **B2-загрузка**: под временным пользователем `POST /storage/upload` → 201
+  (ключ users/<uid>/…-probe.png, presigned URL на s3.eu-central-003) и
+  `POST /files/upload` → 201. Оба эндпоинта, падавшие 502, работают.
+- **UA сессии**: логин через прод-воркер с браузерным User-Agent →
+  auth.sessions.user_agent = настоящий Chrome (было: пусто/воркер).
+  Временные пользователи удалены.
