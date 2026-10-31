@@ -145,6 +145,8 @@ export async function adminListSchedule(groupId?: string, semester?: number): Pr
   if (semester != null) q.set("semester", String(semester));
   return api(endpoints.admin.schedule() + (q.toString() ? "?" + q : "")) as any;
 }
+/** Резолвер когорты: название файла/листа → стабильная группа (год поступления). */
+export async function adminResolveCohort(label: string): Promise<any> { return api(endpoints.admin.scheduleResolveGroup(label)) as any; }
 export async function adminSaveSchedule(payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.schedule(), { method: "PUT", body: JSON.stringify(payload) }) as any; }
 export async function adminImportScheduleXlsx(file: File, groupId: string, semester?: number) {
   const fd = new FormData();

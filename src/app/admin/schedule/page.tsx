@@ -10,6 +10,7 @@ import Link from "next/link";
 import {
   adminListSchedule,
   getScheduleMeta,
+  adminResolveCohort,
   adminSaveSchedule,
   adminImportScheduleXlsx,
   listGroups,
@@ -239,10 +240,40 @@ export default function AdminSchedulePage() {
   }
 
 
+  /**
+   * Резолвер когорты (Блок 5): файл «МБХ 201» в 2026-27 — это когорта
+   * поступления 2025. Если группа ещё не выбрана — распознаём из названия
+   * файла и подставляем стабильный id; ручной выбор всегда сильнее.
+   */
+  async function resolveFromFile(file: File): Promise<string | null> {
+    if (groupId) return groupId;
+    const label = file.name.replace(/\.(xlsx|xls)$/i, "");
+    const res = await adminResolveCohort(label);
+    if (!res.ok) return null;
+    const data = res.data as {
+      match?: { id: string; code?: string; name?: string } | null;
+      candidates?: Array<{ id: string; code?: string; name?: string }>;
+      computed?: { course?: number | null; base?: string; academic_year?: number };
+      reason?: string;
+    };
+    if (data?.match) {
+      setGroupId(data.match.id);
+      setNote(`Файл «${label}» распознан: группа ${data.match.code || data.match.name} (когорта ${data.computed?.academic_year ? data.computed.academic_year - (data.computed.course || 1) + 1 : "—"}). Проверьте и сохраняйте.`);
+      return data.match.id;
+    }
+    if (data?.candidates?.length) {
+      setNote(`Файл «${label}» подходит нескольким группам — выберите вручную: ${data.candidates.map((x) => x.code || x.name).join(", ")}.`);
+      return null;
+    }
+    setNote(`Не удалось распознать группу из «${label}» — выберите вручную.`);
+    return null;
+  }
+
   async function importXlsx(file: File) {
-    if (!groupId) { setNote("Сначала выберите группу."); return; }
+    const resolved = await resolveFromFile(file);
+    if (!resolved) { if (!groupId) setNote("Сначала выберите группу."); return; }
     setImporting(true); setNote(null);
-    const res = await adminImportScheduleXlsx(file, groupId, 3);
+    const res = await adminImportScheduleXlsx(file, resolved, 3);
     setImporting(false);
     if (!res.ok) { setNote(describeApiError(res.error)); return; }
     setNote("Расписание из XLSX импортировано. Обновляем сетку…");

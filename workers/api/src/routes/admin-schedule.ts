@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { resolveGroupByCohort } from "../lib/cohort-resolver";
 
 const adminSchedule = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -25,9 +26,9 @@ async function getCallerRoles(db: any, userId: string): Promise<string[]> {
     .select("roles(code)")
     .eq("user_id", userId)
     .limit(25);
-  
+
   if (error) throw error;
-  
+
   const codes: string[] = [];
   for (const row of data || []) {
     const roleRows = Array.isArray(row?.roles) ? row.roles : row?.roles ? [row.roles] : [];
@@ -38,6 +39,61 @@ async function getCallerRoles(db: any, userId: string): Promise<string[]> {
   }
   return [...new Set(codes)];
 }
+
+/** Резолвер когорты нужен тем, кто загружает расписание: staff или староста. */
+async function canResolveCohort(c: any): Promise<boolean> {
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const roles = await getCallerRoles(db, user.id);
+  if (["teacher", "moderator", "admin"].some((r) => roles.includes(r))) return true;
+  const { data, error } = await db
+    .from("group_memberships")
+    .select("group_id")
+    .eq("user_id", user.id)
+    .eq("role_in_group", "starosta")
+    .eq("is_active", true)
+    .limit(1);
+  if (error) return false;
+  return (data || []).length > 0;
+}
+
+/**
+ * GET /admin/schedule/resolve-group?label=МБХ+201
+ * Резолвер когорты (Блок 5 бэклога): «МБХ 201» в 2026-27 — когорта поступления
+ * 2025 (2 курс). Привязка идёт к стабильному id группы, а не к меняющемуся
+ * имени: в 2027-28 тот же файл «МБХ 301» найдёт ту же группу.
+ */
+adminSchedule.get("/schedule/resolve-group", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase");
+  if (!(await canResolveCohort(c))) {
+    return c.json(fail("FORBIDDEN", "Резолвер доступен staff и старостам", 403, rid), 403);
+  }
+  const label = String(c.req.query("label") || "").trim();
+  if (!label || label.length > 120) {
+    return c.json(fail("VALIDATION_ERROR", "Нужен label — название файла или группы (до 120 символов)", 422, rid), 422);
+  }
+  try {
+    const { data: groups, error } = await db
+      .from("groups")
+      .select("id,code,name,admission_year,stream,course_number,is_active")
+      .limit(500);
+    if (error) {
+      console.error("[admin:schedule:resolve-group]", error);
+      return c.json(fail("DB_UNAVAILABLE", "Список групп недоступен", 503, rid), 503);
+    }
+    const resolution = resolveGroupByCohort(label, groups || []);
+    // Ничего не выдумываем: пустой результат — это reason, UI покажет честно.
+    return c.json(ok({
+      computed: resolution.computed,
+      match: resolution.match,
+      candidates: resolution.candidates,
+      reason: resolution.reason,
+    }, rid));
+  } catch (err) {
+    console.error("[admin:schedule:resolve-group]", err);
+    return c.json(fail("RESOLVE_FAILED", "Не удалось распознать группу", 503, rid), 503);
+  }
+});
 
 /**
  * GET /admin/schedule/versions/:scheduleId

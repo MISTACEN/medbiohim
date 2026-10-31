@@ -256,6 +256,8 @@ export const endpoints = {
     material: (id: string): string => `/admin/materials/${enc(id)}`,
     schedule: (): string => "/admin/schedule",
     scheduleImport: (): string => "/admin/schedule/import",
+    // Резолвер когорты (Блок 5): «МБХ 201» → стабильная группа по году поступления.
+    scheduleResolveGroup: (label: string): string => withQuery("/admin/schedule/resolve-group", "label=" + encodeURIComponent(label)),
     importCurriculum: (): string => "/admin/import/curriculum",
     filesAudit: (query?: string): string => withQuery("/admin/files/audit", query),
     filesCapabilities: (): string => "/admin/files/capabilities",
