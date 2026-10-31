@@ -1951,3 +1951,15 @@ kind=lecture открыт в схеме; RichLectureEditor у студента �
 валидацией), новый PATCH /groups/:id/members/:userId (role_in_group
 student|starosta, subgroup, course_override) для admin/moderator/teacher.
 Тесты: 318/318, tsc 0, прод-билд OK.
+
+## Фикс «Не удалось подтвердить привязку» (Telegram, прод)
+
+Роут /telegram/account-link/confirm на API-воркере требовал
+TELEGRAM_WEBHOOK_SECRET, которого на API-воркере нет (секрет только у
+бота) → всегда 503, бот отвечал «Не удалось подтвердить привязку».
+То же — приём ДЗ из групп (ingest).
+
+Фикс без копирования секретов: обе стороны принимают общий
+TELEGRAM_INTERNAL_SECRET (одинаковый на API и боте после ротации)
+как альтернативу webhook-секрету; бот шлёт оба заголовка. Telegram-webhook
+и его secret_token не затронуты.

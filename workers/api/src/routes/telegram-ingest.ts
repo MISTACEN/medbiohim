@@ -35,7 +35,9 @@ function constantTimeEqual(actual: string, expected: string): boolean {
 }
 
 function ingestSecret(env: Env): string {
-  return String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  // Приоритет: выделенный ingest-секрет, затем webhook-секрет, затем общий
+  // внутренний (тот же на API и боте) — без него приём из групп всегда 503.
+  return String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || env.TELEGRAM_INTERNAL_SECRET || "").trim();
 }
 
 // Per-isolate guard for the delegated verifier. The secret is high entropy, but
@@ -59,7 +61,7 @@ function verifyRateLimited(c: any): boolean {
 type IngestVerification = "ok" | "unauthorized" | "unavailable" | "unconfigured" | "rate_limited";
 
 async function verifyIngestRequest(c: any): Promise<IngestVerification> {
-  const provided = String(c.req.header("x-telegram-bot-api-secret-token") || "");
+  const provided = String(c.req.header("x-telegram-bot-api-secret-token") || c.req.header("x-medbiohim-internal") || "");
   const expected = ingestSecret(c.env);
   if (expected) {
     return constantTimeEqual(provided, expected) ? "ok" : "unauthorized";

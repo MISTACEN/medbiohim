@@ -402,6 +402,9 @@ async function confirmAccountLink(env, message, token) {
     headers: {
       "content-type": "application/json",
       "x-telegram-bot-api-secret-token": env.TELEGRAM_WEBHOOK_SECRET,
+      // Общий внутренний секрет: API принимает его как альтернативу
+      // webhook-секрету, которого у него может не быть.
+      "x-medbiohim-internal": internalSecret(env),
     },
     body: JSON.stringify({
       token,
@@ -438,7 +441,12 @@ async function relayGroupUpdate(env, update) {
   if (target.protocol !== "https:") throw new Error("Relay URL must use HTTPS");
   const result = await apiFetch(env, target.toString(), {
     method: "POST",
-    headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": secret },
+    headers: {
+      "content-type": "application/json",
+      "x-telegram-bot-api-secret-token": secret,
+      // Альтернативная аутентификация общим внутренним секретом (см. ingest).
+      "x-medbiohim-internal": internalSecret(env),
+    },
     body: JSON.stringify(update),
   });
   let body = null;

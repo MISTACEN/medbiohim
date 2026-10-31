@@ -21,13 +21,22 @@ async function sha256Hex(value: string): Promise<string> {
 
 telegram.post("/account-link/confirm", async (c) => {
   const rid = requestId();
-  const expectedSecret = c.env.TELEGRAM_WEBHOOK_SECRET || "";
-  if (!expectedSecret) {
+  // Бот аутентифицируется одним из двух общих секретов: классическим
+  // TELEGRAM_WEBHOOK_SECRET (заголовок Telegram) или общим внутренним
+  // TELEGRAM_INTERNAL_SECRET (тот же, что verify-initdata/notify). Раньше
+  // здесь требовался только webhook-секрет, которого на API-воркере нет —
+  // подтверждение привязки всегда отвечало 503.
+  const webhookSecret = c.env.TELEGRAM_WEBHOOK_SECRET || "";
+  const internalSecret = c.env.TELEGRAM_INTERNAL_SECRET || "";
+  if (!webhookSecret && !internalSecret) {
     const { body, status } = fail("BOT_NOT_CONFIGURED", "Подтверждение Telegram временно недоступно", 503, rid);
     return c.json(body, status as 503);
   }
-  const providedSecret = c.req.header("x-telegram-bot-api-secret-token") || "";
-  if (!constantTimeEqual(providedSecret, expectedSecret)) {
+  const providedTelegram = c.req.header("x-telegram-bot-api-secret-token") || "";
+  const providedInternal = c.req.header("x-medbiohim-internal") || "";
+  const authorized = (webhookSecret && constantTimeEqual(providedTelegram, webhookSecret))
+    || (internalSecret && constantTimeEqual(providedInternal, internalSecret));
+  if (!authorized) {
     const { body, status } = fail("UNAUTHORIZED", "Недействительный секрет Telegram webhook", 401, rid);
     return c.json(body, status as 401);
   }
