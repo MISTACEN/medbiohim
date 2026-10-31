@@ -29,3 +29,10 @@ tools/chem/png/
 tools/chem/ocr/
 tools/chem/transcripts/
 
+
+# Playwright e2e
+.test-results/
+test-results/
+playwright-report/
+.playwright/
+blob-report/
