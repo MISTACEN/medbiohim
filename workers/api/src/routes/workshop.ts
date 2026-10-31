@@ -79,7 +79,7 @@ function mapItem(row: any, files: any[] = [], questions: any[] = []) {
       size: Number(file.size_bytes || 0),
       position: Number(file.position || 0),
     })),
-    questions: questions.map((question) => ({ id: question.id, text: question.text, topic: question.topic ?? null, position: question.position })),
+    questions: questions.map((question) => ({ id: question.id, text: question.text, topic: question.topic ?? null, options: question.options ?? null, answer: question.answer ?? null, position: question.position })),
   };
 }
 
@@ -316,9 +316,26 @@ workshop.post("/items", requireAuth, async (c) => {
     }
   }
 
+  // ROLES-AND-MODULES «свои тесты»: вопрос может приходить структурно
+  // (текст + варианты + эталон) — модератор потом сверяет при конвертации.
+  // Строки (старый контракт) по-прежнему принимаются.
   const providedQuestions = (Array.isArray(input.questions)
-    ? input.questions.map((question: any) => String(question?.text ?? question ?? "")).filter(Boolean)
+    ? input.questions.map((question: any) =>
+        typeof question === "string" || typeof question?.text !== "string"
+          ? String(typeof question === "string" ? question : question?.text ?? "").trim()
+          : String(question.text).trim()
+      ).filter(Boolean)
     : splitQuestions(String(input.question_text || ""))).slice(0, MAX_QUESTIONS);
+  const structuredQuestions: Array<{ text: string; options: unknown; answer: unknown }> = Array.isArray(input.questions)
+    ? input.questions
+        .filter((question: any) => question && typeof question === "object" && String(question?.text ?? "").trim())
+        .map((question: any) => ({
+          text: String(question.text).trim(),
+          options: Array.isArray(question.options) ? question.options.slice(0, 8) : null,
+          answer: question.answer != null ? String(question.answer).trim().slice(0, 500) : null,
+        }))
+        .slice(0, MAX_QUESTIONS)
+    : [];
   let extractedQuestions = 0;
   let extractionError: string | null = null;
   // PDF с вопросами разбираем на отдельные вопросы. Текст без нумерации
@@ -413,12 +430,17 @@ workshop.post("/items", requireAuth, async (c) => {
     if (fileWriteError) console.error("[workshop:files]", fileWriteError);
     fileRows = fileWrite || attached;
   }
-  const questionRows = providedQuestions.slice(0, MAX_QUESTIONS).map((text: string, index: number) => ({
-    item_id: item.id,
-    position: index,
-    topic: input.topic ? String(input.topic).slice(0, 200) : null,
-    text: text.slice(0, 20000),
-  }));
+  const questionRows = providedQuestions.slice(0, MAX_QUESTIONS).map((text: string, index: number) => {
+    const structured = structuredQuestions.find((question) => question.text === text);
+    return {
+      item_id: item.id,
+      position: index,
+      topic: input.topic ? String(input.topic).slice(0, 200) : null,
+      text: text.slice(0, 20000),
+      options: structured?.options ?? null,
+      answer: structured?.answer ?? null,
+    };
+  });
   if (questionRows.length) {
     const { error: questionError } = await db.from("workshop_item_questions").insert(questionRows);
     if (questionError) console.error("[workshop:questions]", questionError);
@@ -593,7 +615,14 @@ workshop.post("/items/:id/versions/:versionNo/restore", requireAuth, async (c) =
   const files = Array.isArray(snapshot.files) ? snapshot.files : [];
   const questions = Array.isArray(snapshot.questions) ? snapshot.questions : [];
   if (files.length) await db.from("workshop_item_files").insert(files.map((file: any, index: number) => ({ ...file, item_id: id, position: index })));
-  if (questions.length) await db.from("workshop_item_questions").insert(questions.map((question: any, index: number) => ({ item_id: id, text: String(question.text || ""), topic: question.topic ?? null, position: index })));
+  if (questions.length) await db.from("workshop_item_questions").insert(questions.map((question: any, index: number) => ({
+    item_id: id,
+    text: String(question.text || ""),
+    topic: question.topic ?? null,
+    options: Array.isArray(question.options) ? question.options.slice(0, 8) : question.options ?? null,
+    answer: question.answer != null ? String(question.answer).slice(0, 500) : null,
+    position: index,
+  })));
   const { data: updated, error: updateError } = await db.from("workshop_items").update({
     title: snapshot.title ?? item.title,
     summary: snapshot.summary ?? null,

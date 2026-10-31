@@ -26,13 +26,32 @@ export type ConvertValidationResult =
 
 /** Сид черновика: вопросы элемента + абзацы OCR-текста, заканчивающиеся «?»/«:». */
 export function draftQuestionsFromItem(input: {
-  questions?: Array<{ text?: unknown; topic?: unknown }>;
+  questions?: Array<{ text?: unknown; topic?: unknown; options?: unknown; answer?: unknown }>;
   ocrText?: unknown;
 }): ConvertQuestionDraft[] {
   const drafts: ConvertQuestionDraft[] = [];
   for (const question of input.questions || []) {
     const text = String(question?.text ?? "").trim();
-    if (text) drafts.push({ text: text.slice(0, MAX_QUESTION_TEXT), topic: question?.topic ? String(question.topic).slice(0, 200) : null, options: [] });
+    if (!text) continue;
+    // Структурный черновик автора (варианты/эталон) экономит модератору ввод,
+    // но всё равно проходит валидацию и ручную сверку перед публикацией.
+    const options = Array.isArray(question?.options)
+      ? (question.options as unknown[]).map((option) => {
+          if (typeof option === "string") return { label: option.trim(), correct: false };
+          const record = (option ?? {}) as Record<string, unknown>;
+          return {
+            label: String(record.label ?? record.text ?? "").trim(),
+            correct: Boolean(record.correct),
+            image_file_id: record.image_file_id ? String(record.image_file_id) : null,
+          };
+        }).filter((option) => option.label)
+      : [];
+    drafts.push({
+      text: text.slice(0, MAX_QUESTION_TEXT),
+      topic: question?.topic ? String(question.topic).slice(0, 200) : null,
+      options,
+      answer: question?.answer != null ? String(question.answer).slice(0, MAX_OPTION_LABEL) : null,
+    });
   }
   const ocr = String(input.ocrText ?? "");
   if (ocr) {

@@ -27,6 +27,22 @@ test("draftQuestionsFromItem: дедуп и пустой вход", () => {
   assert.deepEqual(convert.draftQuestionsFromItem({}), []);
 });
 
+test("draftQuestionsFromItem: структурный черновик автора несёт варианты и эталон", () => {
+  const drafts = convert.draftQuestionsFromItem({
+    questions: [{
+      text: "Какой тут структурный изомер?",
+      options: [
+        { label: "бутанол-1", correct: true },
+        { label: "бутанол-2", correct: false },
+      ],
+      answer: null,
+    }],
+  });
+  assert.equal(drafts.length, 1);
+  assert.equal(drafts[0].options.length, 2);
+  assert.equal(drafts[0].options[0].correct, true);
+});
+
 test("validateConvertedQuestions: закрытый вопрос с верным вариантом проходит", () => {
   const result = convert.validateConvertedQuestions([{
     text: "Какой тут структурный изомер?",
