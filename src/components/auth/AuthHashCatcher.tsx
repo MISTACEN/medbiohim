@@ -18,14 +18,25 @@ function AuthHashCatcherInner() {
 
     const parsed = parseOAuthTokensFromUrl(href);
     if (parsed.access_token) {
-      setTokens(parsed.access_token, parsed.refresh_token);
-      // The tokens live in the URL hash (unavailable to useSearchParams);
-      // the clean URL keeps pathname and the regular query string.
-      const qs = searchParams.toString();
-      const clean = window.location.pathname + (qs ? `?${qs}` : "");
-      window.history.replaceState({}, "", clean || "/");
-      window.location.href = "/";
-      return;
+      let cancelled = false;
+      // Токены из hash сразу обмениваются на HttpOnly куки (RFC §3.3) — до
+      // перехода на "/", иначе next-страница загрузится ещё гостем. В
+      // localStorage токены не пишутся.
+      void (async () => {
+        try {
+          await setTokens(parsed.access_token!, parsed.refresh_token);
+        } catch {}
+        if (cancelled) return;
+        // The tokens live in the URL hash (unavailable to useSearchParams);
+        // the clean URL keeps pathname and the regular query string.
+        const qs = searchParams.toString();
+        const clean = window.location.pathname + (qs ? `?${qs}` : "");
+        window.history.replaceState({}, "", clean || "/");
+        window.location.href = "/";
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
     if (parsed.error) {
       window.history.replaceState({}, "", "/login");

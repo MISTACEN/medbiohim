@@ -32,20 +32,26 @@ export default function AuthCallbackPage() {
       return;
     }
     if (parsed.access_token) {
-      setTokens(parsed.access_token, parsed.refresh_token);
-      setStatus("ok");
-      setMessage(
-        isRecovery
-          ? "Сессия восстановления активна. Открываем смену пароля…"
-          : linkReturn.kind === "linked"
-            ? linkReturn.message
-            : "Вход выполнен. Перенаправление…",
-      );
-      window.history.replaceState({}, "", "/auth/callback");
-      const target = isRecovery ? "/settings?recovery=1" : linkReturn.kind === "linked" ? linkReturn.target : "/";
-      setTimeout(() => {
-        window.location.href = target;
-      }, 600);
+      // Токены из hash обмениваются на HttpOnly куки (RFC §3.3) до перехода на
+      // целевую страницу: localStorage не используется, JavaScript куки не видит.
+      void (async () => {
+        try {
+          await setTokens(parsed.access_token!, parsed.refresh_token);
+        } catch {}
+        setStatus("ok");
+        setMessage(
+          isRecovery
+            ? "Сессия восстановления активна. Открываем смену пароля…"
+            : linkReturn.kind === "linked"
+              ? linkReturn.message
+              : "Вход выполнен. Перенаправление…",
+        );
+        window.history.replaceState({}, "", "/auth/callback");
+        const target = isRecovery ? "/settings?recovery=1" : linkReturn.kind === "linked" ? linkReturn.target : "/";
+        setTimeout(() => {
+          window.location.href = target;
+        }, 600);
+      })();
       return;
     }
     if (linkReturn.kind === "linked") {

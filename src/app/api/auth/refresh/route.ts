@@ -14,9 +14,14 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// RFC docs/COOKIES-RFC-E1.md §3.3 (этап 3): ответ 200 содержит {access_token} в
+// теле — клиент обновляет in-memory Bearer для кросс-доменных вызовов (HttpOnly
+// куку JavaScript не видит). transient=true значит «сервис Auth мог быть
+// недоступен» — сессию нельзя разлогинивать (502, куки сохраняются); иначе
+// refresh-токен отвергнут — куки очищаются, клиент завершает сессию.
 type RefreshOutcome =
   | { ok: true; accessToken: string; refreshToken: string; accessTtl: number }
-  | { ok: false };
+  | { ok: false; transient: boolean };
 
 // Single-flight per instance (RFC §6): Supabase rotates the refresh token on
 // every use, so concurrent refreshes with the same token would invalidate each
@@ -34,10 +39,10 @@ function refreshWithSingleFlight(refreshToken: string): Promise<RefreshOutcome> 
 }
 
 async function performSupabaseRefresh(refreshToken: string): Promise<RefreshOutcome> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false };
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, transient: true };
   try {
     const base = new URL(SUPABASE_URL);
-    if (base.protocol !== "https:") return { ok: false };
+    if (base.protocol !== "https:") return { ok: false, transient: true };
     const url = new URL("/auth/v1/token", base);
     url.searchParams.set("grant_type", "refresh_token");
     const res = await fetch(url, {
@@ -52,9 +57,9 @@ async function performSupabaseRefresh(refreshToken: string): Promise<RefreshOutc
       redirect: "error",
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { ok: false };
+    if (!res.ok) return { ok: false, transient: res.status >= 500 };
     const data = (await res.json()) as { access_token?: unknown; refresh_token?: unknown; expires_in?: unknown };
-    if (!isNonEmptyToken(data.access_token) || !isNonEmptyToken(data.refresh_token)) return { ok: false };
+    if (!isNonEmptyToken(data.access_token) || !isNonEmptyToken(data.refresh_token)) return { ok: false, transient: false };
     return {
       ok: true,
       accessToken: data.access_token,
@@ -62,11 +67,13 @@ async function performSupabaseRefresh(refreshToken: string): Promise<RefreshOutc
       accessTtl: normalizeAccessTtl(data.expires_in),
     };
   } catch {
-    return { ok: false };
+    // Таймаут/сбой сети до Supabase — временный, а не отказ в доступе.
+    return { ok: false, transient: true };
   }
 }
 
-// POST /api/auth/refresh — reads mb_rt, rotates both cookies atomically in one response.
+// POST /api/auth/refresh — reads mb_rt, rotates both cookies atomically in one
+// response and returns the fresh access token in the JSON body (этап 3).
 export async function POST(req: NextRequest) {
   if (csrfRejected(req)) {
     return jsonError(403, "CSRF_REJECTED", "Запрос отклонён CSRF-проверкой");
@@ -79,9 +86,15 @@ export async function POST(req: NextRequest) {
 
   const outcome = await refreshWithSingleFlight(refreshToken);
   if (!outcome.ok) {
-    return clearAuthCookies(new NextResponse(null, { status: 401, headers: { "Cache-Control": "no-store" } }));
+    if (outcome.transient) {
+      return jsonError(502, "UPSTREAM", "Сервис авторизации временно недоступен");
+    }
+    return clearAuthCookies(jsonError(401, "INVALID_REFRESH", "Сессия истекла"));
   }
 
-  const res = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  const res = NextResponse.json(
+    { ok: true, access_token: outcome.accessToken },
+    { status: 200, headers: { "Cache-Control": "no-store" } },
+  );
   return setAuthCookies(res, outcome.accessToken, outcome.refreshToken, outcome.accessTtl);
 }

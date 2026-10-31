@@ -78,6 +78,13 @@ function requestInit(req: NextRequest, bodyBuffer: ArrayBuffer | null, timeoutMs
     const v = req.headers.get(h);
     if (v) headers.set(h, v);
   }
+  // Cookie-транспорт (RFC docs/COOKIES-RFC-E1.md §3.2/§5): токен мог прийти
+  // только кукой mb_at. Воркер понимает исключительно Bearer — без подстановки
+  // cookie-сессии получали бы 401 уже на upstream.
+  if (!headers.has("authorization")) {
+    const token = bearer(req);
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
   if (!headers.has("accept")) headers.set("accept", "application/json");
   return {
     method: req.method,

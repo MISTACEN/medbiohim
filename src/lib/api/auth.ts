@@ -2,10 +2,9 @@
  * Аутентификация и сессия через same-origin API (TECH-AUDIT-PLAN-2026-10-27 §6, D5).
  * Псевдонимы токенов сохранены, чтобы поверхность `@/lib/api` не изменилась.
  */
-import { api, API_URL } from "./client";
+import { api } from "./client";
 import {
   clearSessionTokens,
-  getAccessToken,
   hasAccessToken,
   hasRefreshToken,
   refreshSessionResult,
@@ -19,14 +18,19 @@ export const hasToken = hasAccessToken;
 export { hasRefreshToken };
 export const refreshSession = refreshSessionResult;
 
+/**
+ * Выход (RFC docs/COOKIES-RFC-E1.md §3.3): серверный logout ревокает
+ * refresh-токен у Supabase и очищает HttpOnly куки; клиент дополнительно
+ * чистит in-memory токен и legacy-ключи localStorage (clearTokens).
+ */
 export function logoutSession(): void {
-  const t = getAccessToken();
-  if (!t || typeof window === "undefined") return;
+  if (typeof window === "undefined") return;
   try {
-    void fetch(`${API_URL}${endpoints.auth.logout()}`, {
+    void fetch(endpoints.auth.logoutCookie(), {
       method: "POST",
-      headers: { "Accept": "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${t}` },
+      headers: { "Accept": "application/json", "Content-Type": "application/json" },
       body: "{}",
+      credentials: "same-origin",
       cache: "no-store",
       keepalive: true,
     }).catch(() => {});

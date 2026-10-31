@@ -84,7 +84,9 @@ function LoginPageInner() {
       const accessToken = session?.access_token ?? session?.accessToken ?? payload?.access_token ?? payload?.accessToken;
       const refreshToken = session?.refresh_token ?? session?.refreshToken ?? payload?.refresh_token ?? payload?.refreshToken;
       if (typeof accessToken === "string" && accessToken.length > 0) {
-        setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
+        // Обмен токенов на HttpOnly куки (RFC §3.3): ждём ответ сервера, чтобы
+        // последующие same-origin запросы уже несли сессию.
+        await setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
         // Client-side navigation: the shell and the profile state update without a reload.
         await refresh();
         router.replace(nextPath);

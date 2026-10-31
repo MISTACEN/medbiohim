@@ -1758,3 +1758,48 @@ fixtures-first: нужно снять страницы кафедр (тем же
   по всем модулям + путь реализации «свои тесты и лекции для всех»
   (Workshop-контур: конструктор у студента → модерация → банк/материалы;
   RLS как защита, скрытие кнопок — не защита).
+
+## Сессия 40 (2026-10-31): E2/E3 ЭТАП 3 — клиент на HttpOnly-куках + G3 Playwright
+
+### E2/E3 этап 3 (по RFC E1) — токены покинули localStorage
+
+- **Сессия**: src/lib/auth/session.ts — единственный владелец: access-токен
+  только в памяти модуля; setSessionTokens() стал async — обменивает токены
+  на HttpOnly-куки через POST /api/auth/session; refreshAccessToken() ходит в
+  POST /api/auth/refresh (куки ротирует сервер, single-flight сохранён);
+  401 → очистка + событие mbh:session-expired; 502/сеть → сессия живёт
+  («временный сбой не разлогинивает»). Legacy-ключи mb_access_token/
+  mb_refresh_token удаляются при bootstrap; при логине пишется единственный
+  флаг mb_auth_transport=cookie.
+- **Критическая находка live-верификации**: прокси /api/v1/* подставлял
+  Bearer только из входного заголовка — cookie-сессии доходили до воркера
+  без токена и получали 401. Исправлено: если заголовка нет, в upstream
+  подставляется Authorization: Bearer <mb_at из куки>. Live-прогон через
+  cookie jar (next dev + реальный Supabase, временный пользователь):
+  session → me (только кука) → refresh (ротация + access в теле) → me →
+  logout (куки очищены) → 422 без кук — все 8 шагов OK.
+- **Refresh-маршрут**: ответ 200 + {access_token} (вместо 204) — клиент
+  обновляет in-memory Bearer для same-origin вызовов; разделение исходов:
+  401 INVALID_REFRESH (разлогин) vs 502 UPSTREAM (сессия живёт).
+- **Кросс-доменных Bearer-вызовов нет**: grep подтвердил, весь клиент
+  идёт через same-origin прокси.
+- Контракт: test/auth-localstorage-free.test.mjs — «токенов в localStorage
+  нет» закреплено; session.test.ts и session-refresh.test.mjs переписаны
+  под cookie-транспорт.
+
+### G3 — Playwright в CI
+
+- playwright.config.ts (port 3100, chromium, retry 1, webServer next start),
+  e2e/smoke.spec.ts — 15 гостевых тестов: заголовки, 8 разделов без error
+  boundary, гостевые гейты, форма входа, Ctrl+K, FOUC-тема, ноль pageerror;
+- CI: джоба playwright в smoke.yml (npm ci → playwright install
+  --with-deps chromium → build → test, отчёт артефактом при падении);
+- локально 15/15 за 6.7 с.
+
+### Мелочи пакетом
+
+- raw rose/emerald в register и Field переведены на токены (тест-страж
+  снова зелёный).
+
+Проверки: node 251/251, vitest 209/209, worker 273/273, Playwright 15/15,
+tsc 0, eslint 0 errors, next build ok.

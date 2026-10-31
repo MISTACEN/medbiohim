@@ -45,7 +45,12 @@ test("auth responses never cached (Cache-Control: no-store)", () => {
   for (const [name, src] of [["session", sessionRoute], ["refresh", refreshRoute], ["logout", logoutRoute]]) {
     assert.match(src, /"Cache-Control": "no-store"/, `${name}: no-store`);
   }
-  for (const src of [sessionRoute, refreshRoute, logoutRoute]) {
+  // Этап 3 (RFC §3.3): refresh отвечает 200 c {access_token} в теле — клиент
+  // обновляет in-memory Bearer для кросс-доменных вызовов; session/logout
+  // остаются 204 без тела.
+  assert.match(refreshRoute, /status: 200/);
+  assert.match(refreshRoute, /access_token: outcome\.accessToken/);
+  for (const src of [sessionRoute, logoutRoute]) {
     assert.match(src, /status: 204/);
   }
 });
@@ -64,8 +69,9 @@ test("refresh endpoint reads mb_rt cookie and rotates both cookies atomically", 
   assert.match(refreshRoute, /\/auth\/v1\/token/);
   assert.match(refreshRoute, /SUPABASE_ANON_KEY/);
   assert.match(refreshRoute, /setAuthCookies\(res, outcome\.accessToken, outcome\.refreshToken/);
-  assert.match(refreshRoute, /clearAuthCookies/);
-  assert.match(refreshRoute, /status: 401/);
+  // Отвергнутый refresh-токен: 401 + очистка кук; недоступный Supabase: 502.
+  assert.match(refreshRoute, /clearAuthCookies\(jsonError\(401/);
+  assert.match(refreshRoute, /jsonError\(502, "UPSTREAM"/);
   assert.match(refreshRoute, /422/);
 });
 

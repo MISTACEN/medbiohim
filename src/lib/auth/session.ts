@@ -1,16 +1,30 @@
 /**
- * Единственный владелец сессии клиента: хранение токенов, разбор области кэша
- * пользователя и ровно один refresh на все параллельные 401.
+ * Единственный владелец сессии клиента: cookie-транспорт (RFC
+ * docs/COOKIES-RFC-E1.md §3.3, этап 3) и ровно один refresh на все
+ * параллельные 401.
  *
- * До этого модуля существовало четыре независимых пути обновления токена
- * (`api()`/`getTrainerImageUrl`/`fetchMaterialFile`/`refreshSession`), из-за чего
- * пачка протухших запросов могла вызвать шторм refresh-запросов.
+ * Токены живут в HttpOnly куках (mb_at/mb_rt), которые ставит и ротирует
+ * сервер (`POST /api/auth/session`, `POST /api/auth/refresh`) — JavaScript их
+ * не читает и никуда не пишет. Поверх этого модуль держит:
+ *
+ * 1. in-memory access-токен — единственный источник `Authorization: Bearer`
+ *    для вызовов, идущих мимо same-origin прокси (кросс-доменные прямые
+ *    запросы к воркеру, куда куки не идут). Он не персистится: перезагрузка
+ *    страницы его теряет, восстановление — через `/api/auth/refresh`.
+ * 2. Флаг `mb_auth_transport=cookie` в localStorage — метка версии транспорта,
+ *    чтобы старые вкладки на localStorage не смешивали режимы.
+ *
+ * Legacy-ключи токенов (`mb_access_token`/`mb_refresh_token`) только
+ * удаляются — никогда не читаются и не пишутся.
  */
 import type { ApiResult } from "@/lib/api";
 
-const API_URL = "/api/v1";
-const ACCESS_KEY = "mb_access_token";
-const REFRESH_KEY = "mb_refresh_token";
+const AUTH_SESSION_URL = "/api/auth/session";
+const AUTH_REFRESH_URL = "/api/auth/refresh";
+const LEGACY_ACCESS_KEY = "mb_access_token";
+const LEGACY_REFRESH_KEY = "mb_refresh_token";
+const TRANSPORT_FLAG_KEY = "mb_auth_transport";
+const TRANSPORT_FLAG_VALUE = "cookie";
 
 /** Событие «сессия окончательно истекла»: refresh-токен отвергнут сервером. */
 export const SESSION_EXPIRED_EVENT = "mbh:session-expired";
@@ -36,37 +50,50 @@ function storage(): Storage | null {
   }
 }
 
-function readToken(key: string): string | null {
-  const store = storage();
-  if (!store) return null;
-  const value = store.getItem(key);
-  return value && value.trim() ? value.trim() : null;
+// --- in-memory состояние сессии (никогда не персистится) -------------------
+
+let inMemoryAccessToken: string | null = null;
+/**
+ * «Сессия подтверждена сервером» без доступного access-токена: куки валидны,
+ * но JavaScript их не видит. Ставится после успешного `/auth/me` по кукам.
+ * Смерть сессии (logout/истечение) сбрасывает её вместе с токеном.
+ */
+let sessionAlive = false;
+
+/** Считать сессию подтверждённой по кукам (после успешного /auth/me). */
+export function markSessionAlive(): void {
+  sessionAlive = true;
 }
 
+/** In-memory Bearer для кросс-доменных вызовов; null после перезагрузки страницы. */
 export function getAccessToken(): string | null {
-  return readToken(ACCESS_KEY);
-}
-
-export function getRefreshToken(): string | null {
-  return readToken(REFRESH_KEY);
-}
-
-export function hasAccessToken(): boolean {
-  return !!getAccessToken();
-}
-
-export function hasRefreshToken(): boolean {
-  return !!getRefreshToken();
+  return inMemoryAccessToken;
 }
 
 /**
- * Область кэша — `sub` из access-токена. Непрозрачный или битый токен даёт
- * `null`: кэш в этом случае не используется, чтобы данные одного пользователя
- * не попали в кэш другого.
+ * Refresh-токен с этапа 3 недоступен клиенту (HttpOnly кука mb_rt, Path=/api/auth).
+ * Оставлено для совместимости поверхности @/lib/api; всегда null.
+ */
+export function getRefreshToken(): string | null {
+  return null;
+}
+
+export function hasAccessToken(): boolean {
+  return !!inMemoryAccessToken || sessionAlive;
+}
+
+/** С этапа 3 факт наличия refresh-куки клиенту неизвестен; всегда false. */
+export function hasRefreshToken(): boolean {
+  return false;
+}
+
+/**
+ * Область кэша — `sub` из access-токена. Без in-memory токена (свежая загрузка
+ * страницы на куках) даёт "anon": кэш в этом случае общий с гостевым, но живёт
+ * только до перезагрузки вкладки, а авторизацию проверяет сам API.
  */
 export function currentUserScope(): string | null {
-  if (typeof window === "undefined") return null;
-  const token = getAccessToken();
+  const token = inMemoryAccessToken;
   if (!token) return "anon";
   try {
     const part = token.split(".")[1];
@@ -80,23 +107,51 @@ export function currentUserScope(): string | null {
   }
 }
 
-export function setSessionTokens(access: string, refresh?: string): void {
+/** Удалить legacy-ключи токенов из localStorage (mb_theme/mb_app_theme не трогаем). */
+export function clearLegacyTokenStorage(): void {
   const store = storage();
   if (!store) return;
+  store.removeItem(LEGACY_ACCESS_KEY);
+  store.removeItem(LEGACY_REFRESH_KEY);
+}
+
+/**
+ * Сохранить сессию после входа/регистрации/Google-callback: in-memory токен +
+ * обмен токенов на HttpOnly куки через POST /api/auth/session (same-origin).
+ * В localStorage пишется только флаг транспорта; legacy-ключи удаляются.
+ */
+export async function setSessionTokens(access: string, refresh?: string): Promise<void> {
   const previousScope = currentUserScope();
-  store.setItem(ACCESS_KEY, access);
+  inMemoryAccessToken = access;
+  sessionAlive = true;
   const nextScope = currentUserScope();
-  if (refresh) store.setItem(REFRESH_KEY, refresh);
-  // An access token for a different user without a matching refresh token must
-  // not keep the previous account's refresh token alive.
-  else if (previousScope !== nextScope) store.removeItem(REFRESH_KEY);
+  const store = storage();
+  if (store) {
+    store.setItem(TRANSPORT_FLAG_KEY, TRANSPORT_FLAG_VALUE);
+    clearLegacyTokenStorage();
+  }
+  // An access token for a different user must not keep the previous account's
+  // caches alive.
   if (previousScope !== nextScope && resetUserScopedCaches) resetUserScopedCaches();
+  try {
+    await fetch(AUTH_SESSION_URL, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: access, ...(refresh ? { refresh_token: refresh } : {}) }),
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    // Куки не поставились (например, офлайн) — последующие запросы получат 401
+    // и пройдут обычный путь 401 → refresh, как любой протухший access.
+  }
 }
 
 export function clearSessionTokens(): void {
-  const store = storage();
-  store?.removeItem(ACCESS_KEY);
-  store?.removeItem(REFRESH_KEY);
+  inMemoryAccessToken = null;
+  sessionAlive = false;
+  clearLegacyTokenStorage();
   if (resetUserScopedCaches) resetUserScopedCaches();
 }
 
@@ -115,14 +170,18 @@ type RefreshAttempt = {
 
 let refreshPromise: Promise<RefreshAttempt> | null = null;
 
+/**
+ * POST /api/auth/refresh — сервер ротирует куки сам (single-flight на сервере),
+ * в теле 200 отдаёт свежий access для in-memory Bearer. 401 = refresh-токен
+ * отвергнут (куки сервер уже очистил) → сессия завершена; 502/сеть — временный
+ * сбой, состояние сессии сохраняется.
+ */
 async function performRefresh(): Promise<RefreshAttempt> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return { accessToken: null, errorCode: "NO_REFRESH_TOKEN" };
   try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
+    const res = await fetch(AUTH_REFRESH_URL, {
       method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
     });
@@ -133,25 +192,24 @@ async function performRefresh(): Promise<RefreshAttempt> {
         code = String((JSON.parse(text) as { error?: { code?: string } })?.error?.code || "");
       } catch {}
       if (res.status === 401) {
-        // Supabase refresh tokens may remain valid while Auth is unavailable, so
-        // the session is cleared only when the endpoint explicitly rejects it.
-        if (code === "INVALID_REFRESH") {
-          clearSessionTokens();
-          announceSessionExpired();
-        }
-        return { accessToken: null, errorCode: code || "UNAUTHORIZED" };
+        // Сервер уже очистил куки — на клиенте завершаем сессию целиком.
+        clearSessionTokens();
+        announceSessionExpired();
+        return { accessToken: null, errorCode: code || "INVALID_REFRESH" };
       }
+      // Временный сбой (502 UPSTREAM, сеть): сессию не разлогиниваем.
       return { accessToken: null, errorCode: code || (res.status >= 500 ? "UPSTREAM" : "AUTH_ERROR") };
     }
-    let parsed: { data?: RefreshTokens } | null = null;
+    let parsed: { access_token?: unknown } | null = null;
     try {
-      parsed = JSON.parse(text) as { data?: RefreshTokens };
+      parsed = JSON.parse(text) as { access_token?: unknown };
     } catch {
       return { accessToken: null, errorCode: "BAD_RESPONSE" };
     }
-    const access = parsed?.data?.access_token;
+    const access = typeof parsed?.access_token === "string" ? parsed.access_token : "";
     if (!access) return { accessToken: null, errorCode: "BAD_RESPONSE" };
-    setSessionTokens(access, parsed?.data?.refresh_token);
+    inMemoryAccessToken = access;
+    sessionAlive = true;
     return { accessToken: access, errorCode: "" };
   } catch {
     return { accessToken: null, errorCode: "NETWORK" };
@@ -163,7 +221,6 @@ async function performRefresh(): Promise<RefreshAttempt> {
  * тренажёров, файлы материалов, `refreshSession`) обязаны ходить сюда.
  */
 function refreshOnce(): Promise<RefreshAttempt> {
-  if (!getRefreshToken()) return Promise.resolve({ accessToken: null, errorCode: "NO_REFRESH_TOKEN" });
   if (!refreshPromise) {
     refreshPromise = performRefresh().finally(() => {
       refreshPromise = null;
@@ -173,7 +230,6 @@ function refreshOnce(): Promise<RefreshAttempt> {
 }
 
 export function refreshAccessToken(): Promise<string | null> {
-  if (!getRefreshToken()) return Promise.resolve(null);
   return refreshOnce().then((attempt) => attempt.accessToken);
 }
 
@@ -183,7 +239,7 @@ export async function refreshSessionResult(): Promise<ApiResult<RefreshTokens>> 
   if (attempt.accessToken) {
     return {
       ok: true,
-      data: { access_token: attempt.accessToken, refresh_token: getRefreshToken() ?? undefined },
+      data: { access_token: attempt.accessToken },
       requestId: "client",
     };
   }

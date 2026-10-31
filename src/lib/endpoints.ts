@@ -31,6 +31,10 @@ export const endpoints = {
     logout: (): string => "/auth/logout",
     refresh: (): string => "/auth/refresh",
     telegramWebApp: (): string => "/auth/telegram/webapp",
+    // Cookie-транспорт (RFC docs/COOKIES-RFC-E1.md §3.2): это не пути прокси
+    // /api/v1, а route handlers Next, ставящие/чистящие HttpOnly-куки.
+    sessionCookie: (): string => "/api/auth/session",
+    logoutCookie: (): string => "/api/auth/logout",
   },
 
   /** Предметы, группы, темы, учебный план. */

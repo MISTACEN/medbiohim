@@ -20,6 +20,11 @@ async function request<T>(path: string, options: RequestInit = {}, tokenOverride
   const headers: Record<string, string> = { Accept: "application/json", ...(options.headers as Record<string, string> | undefined) };
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (options.body && !isForm && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+  // Cookie-транспорт (RFC docs/COOKIES-RFC-E1.md §3.3, этап 3): same-origin
+  // запросы аутентифицируются HttpOnly кукой mb_at (credentials: "same-origin").
+  // localStorage больше не читается. Bearer из памяти прикрепляется, только
+  // когда он есть (после входа/refresh) — он же обслуживает вызовы, идущие
+  // мимо прокси, куда куки кросс-домен не доставляет.
   const token = tokenOverride ?? getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   // Ask for transport tracing only while in the admin area. The server independently
@@ -42,7 +47,7 @@ async function request<T>(path: string, options: RequestInit = {}, tokenOverride
   const startedAt = Date.now();
   const method = (options.method || "GET").toUpperCase();
   try {
-    const res = await fetch(`${API_URL}${path.startsWith("/") ? path : `/${path}`}`, { ...options, headers, cache: "no-store", signal: controller.signal });
+    const res = await fetch(`${API_URL}${path.startsWith("/") ? path : `/${path}`}`, { ...options, headers, credentials: "same-origin", cache: "no-store", signal: controller.signal });
     if (typeof window !== "undefined") {
       const source = res.headers.get("x-mbh-api-source");
       if (source) {

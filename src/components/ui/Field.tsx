@@ -27,7 +27,7 @@ export function Field({
     <div className="space-y-1">
       <label htmlFor={htmlFor} className="block text-sm font-medium" style={{ color: "var(--text)" }}>
         {label}
-        {required && <span className="ml-1 text-rose-500" aria-hidden="true">*</span>}
+        {required && <span className="ml-1" style={{ color: "var(--status-critical-fg)" }} aria-hidden="true">*</span>}
         {required && <span className="sr-only">обязательное поле</span>}
       </label>
       {children}

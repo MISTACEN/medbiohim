@@ -11,9 +11,9 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SESSION_EXPIRED_EVENT } from "@/lib/auth/session";
+import { SESSION_EXPIRED_EVENT, clearLegacyTokenStorage, markSessionAlive } from "@/lib/auth/session";
 import { isTemporaryAuthFailure } from "@/lib/retry";
-import { clearTokens, hasRefreshToken, hasToken, logoutSession, me, refreshSession, setTokens, telegramWebAppLogin } from "@/lib/api";
+import { clearTokens, hasToken, logoutSession, me, refreshSession, setTokens, telegramWebAppLogin } from "@/lib/api";
 import { getTelegramInitData } from "@/lib/telegram-webapp";
 
 /**
@@ -78,32 +78,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const refresh = useCallback(async () => {
-    if (!hasToken()) {
-      let refreshed = await refreshSession();
-      if (!refreshed.ok && isTemporaryAuthFailure(refreshed.error.code)) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        refreshed = await refreshSession();
-      }
-      if (!refreshed.ok) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-    }
     try {
+      // Cookie-транспорт (RFC docs/COOKIES-RFC-E1.md §3.3, этап 3): сессию
+      // подтверждает лёгкий same-origin /auth/me — HttpOnly куки уходят сами,
+      // localStorage не читается. 401 → один серверный refresh (ротация
+      // mb_rt + свежий access в теле) → повтор; оба мимо → гость.
       let res = await me();
+      if (!res.ok && res.error.code === "UNAUTHORIZED") {
+        let refreshed = await refreshSession();
+        if (!refreshed.ok && isTemporaryAuthFailure(refreshed.error.code)) {
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          refreshed = await refreshSession();
+        }
+        if (refreshed.ok) {
+          // Свежий access уже в памяти (refreshSessionResult); повторяем профиль.
+          res = await me();
+        }
+      }
       if (!res.ok && isTemporaryAuthFailure(res.error.code)) {
         await new Promise((resolve) => setTimeout(resolve, 600));
         res = await me();
       }
       if (!res.ok) {
         // A service/database outage must not turn into an accidental logout.
-        // Invalid refresh tokens are cleared by the API client; an access-only
-        // invalid session cannot be recovered and should be removed here.
-        if (res.error.code === "UNAUTHORIZED" && !hasRefreshToken()) clearTokens();
+        // A rejected refresh (401) already cleared the session inside the
+        // session module; an access-only invalid session cannot be recovered.
         setUser(null);
         return;
       }
+      markSessionAlive();
       const data = res.data as {
         user?: { id?: string; full_name?: string; email?: string; name?: string };
         roles?: string[];
@@ -152,6 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Any failure is swallowed: a browser user must never be blocked or alarmed.
    */
   const bootstrap = useCallback(async () => {
+    // Этап 3 (RFC §3.3): одноразовая чистка legacy-ключей токенов в
+    // localStorage (mb_theme/mb_app_theme не трогаем) при первом заходе
+    // новой версии.
+    clearLegacyTokenStorage();
     const initData = getTelegramInitData();
     if (initData && !hasToken() && !telegramLoginAttempted) {
       telegramLoginAttempted = true;
@@ -159,7 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await telegramWebAppLogin(initData);
         if (result.ok) {
           const data = result.data as { access_token?: string; refresh_token?: string } | null;
-          if (data?.access_token) setTokens(data.access_token, data.refresh_token);
+          // setTokens обменивает токены на HttpOnly куки (POST /api/auth/session)
+          // и держит access только в памяти; localStorage не используется.
+          if (data?.access_token) await setTokens(data.access_token, data.refresh_token);
         } else if (result.error.code === "TELEGRAM_NOT_LINKED" || result.error.code === "TELEGRAM_NO_EMAIL") {
           // Soft notice only: the user can still browse and log in normally.
           setTelegramNotice(true);
@@ -176,6 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [bootstrap]);
 
   const logout = useCallback(() => {
+    // Сервер ревокает refresh-токен и очищает куки; клиент чистит in-memory
+    // токен и legacy localStorage-ключи.
     logoutSession();
     clearTokens();
     setUser(null);
