@@ -65,6 +65,13 @@ CLOUDFLARE_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8"
 binding = "MEDBIOHIM_UPSTREAM"
 service = "medbiohim-api-shadow"
 
+# Worker → bot Worker calls (initData/widget verify, /api/notify) go through the
+# service binding: public workers.dev fetches are cut at the edge by account bot
+# protection (non-browser agents), so they must never rely on the public URL.
+[[services]]
+binding = "TELEGRAM_BOT"
+service = "medbiohim-telegram"
+
 [env.production]
 name = "medbiohim-api"
 workers_dev = false
@@ -76,3 +83,7 @@ binding = "AI"
 [[env.production.services]]
 binding = "MEDBIOHIM_UPSTREAM"
 service = "medbiohim-api-shadow"
+
+[[env.production.services]]
+binding = "TELEGRAM_BOT"
+service = "medbiohim-telegram"

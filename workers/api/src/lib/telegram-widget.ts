@@ -176,6 +176,7 @@ export async function validateTelegramLoginWidget(
 
 export type TelegramWidgetVerifierEnv = {
   TELEGRAM_BOT_VERIFY_WIDGET_URL?: string;
+  TELEGRAM_BOT?: { fetch: (request: Request | string, init?: RequestInit) => Promise<Response> };
   TELEGRAM_INTERNAL_SECRET?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
 };
@@ -221,12 +222,16 @@ export async function verifyTelegramLoginWidgetRemote(
   if (!secret || !url) return { ok: false, error: "internal_not_configured" };
 
   try {
-    const response = await fetch(url, {
+    // Same edge-blocking rationale as telegram-initdata.ts: the binding goes
+    // around the public workers.dev URL; plain fetch is the local fallback.
+    const init: RequestInit = {
       method: "POST",
       headers: { "content-type": "application/json", "x-medbiohim-internal": secret },
       body: JSON.stringify({ widget: payload }),
       signal: AbortSignal.timeout(timeoutMs),
-    });
+    };
+    const binding = env?.TELEGRAM_BOT;
+    const response = binding ? await binding.fetch(url, init) : await fetch(url, init);
     const result = (await response.json().catch(() => null)) as
       | { ok?: boolean; error?: string; auth_date?: number; user?: { id?: unknown; username?: unknown; first_name?: unknown } }
       | null;

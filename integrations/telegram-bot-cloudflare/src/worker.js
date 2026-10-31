@@ -321,6 +321,20 @@ async function fetchWithTimeout(url, init) {
   }
 }
 
+/**
+ * Bot → API Worker calls (ingest relay, account-link confirm, daily digest).
+ * The service binding (MEDBIOHIM_API, see wrangler.toml) is the primary path:
+ * public workers.dev fetches are cut at the edge by account bot protection —
+ * any non-browser agent (including the "Cloudflare-Workers" UA of a Worker
+ * fetch) gets a 403 before reaching the API. The plain fetch fallback keeps
+ * local/dev runs without the binding working.
+ */
+async function apiFetch(env, url, init) {
+  const binding = env && env.MEDBIOHIM_API;
+  if (binding && typeof binding.fetch === "function") return binding.fetch(url, init);
+  return fetchWithTimeout(url, init);
+}
+
 // Optional idempotency: only active when a KV namespace is bound to
 // TELEGRAM_UPDATES. Without the binding the worker behaves exactly as before.
 async function isDuplicateUpdate(env, updateId) {
@@ -383,7 +397,7 @@ async function confirmAccountLink(env, message, token) {
   if (target.protocol !== "https:") throw new Error("Account-link URL must use HTTPS");
   const user = message.from;
   if (!user || !Number.isSafeInteger(user.id) || user.id <= 0) throw new Error("Invalid Telegram user");
-  const result = await fetchWithTimeout(target.toString(), {
+  const result = await apiFetch(env, target.toString(), {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -422,7 +436,7 @@ async function relayGroupUpdate(env, update) {
   let target;
   try { target = new URL(endpoint); } catch { throw new Error("Invalid relay URL"); }
   if (target.protocol !== "https:") throw new Error("Relay URL must use HTTPS");
-  const result = await fetchWithTimeout(target.toString(), {
+  const result = await apiFetch(env, target.toString(), {
     method: "POST",
     headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": secret },
     body: JSON.stringify(update),
@@ -640,7 +654,7 @@ async function handleDigest(env) {
   const date = digestDate(new Date());
   const endpoint = new URL("/api/v1/telegram/internal/digest", origin);
   endpoint.searchParams.set("date", date);
-  const response = await fetchWithTimeout(endpoint.toString(), {
+  const response = await apiFetch(env, endpoint.toString(), {
     method: "GET",
     headers: { "x-medbiohim-internal": secret },
   });

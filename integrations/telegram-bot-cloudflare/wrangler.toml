@@ -3,6 +3,14 @@ main = "src/worker.js"
 compatibility_date = "2026-10-26"
 workers_dev = true
 
+# Bot → API Worker calls (ingest relay, account-link confirm, daily digest) go
+# through the service binding: public workers.dev fetches are cut at the edge by
+# account bot protection (non-browser agents), so they must never rely on the
+# public URL even though TELEGRAM_INGEST_URL / TELEGRAM_API_ORIGIN stay configured.
+[[services]]
+binding = "MEDBIOHIM_API"
+service = "medbiohim-api"
+
 [triggers]
 # Утренний дайджест: 22:00 UTC = 08:00 Владивосток (UTC+10).
 crons = ["0 22 * * *"]

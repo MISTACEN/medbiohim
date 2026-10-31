@@ -223,6 +223,7 @@ export async function validateTelegramInitData(
 
 export type TelegramVerifierEnv = {
   TELEGRAM_BOT_VERIFY_URL?: string;
+  TELEGRAM_BOT?: { fetch: (request: Request | string, init?: RequestInit) => Promise<Response> };
   TELEGRAM_INTERNAL_SECRET?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
 };
@@ -268,12 +269,18 @@ export async function verifyTelegramInitDataRemote(
   if (!secret || !url) return { ok: false, error: "internal_not_configured" };
 
   try {
-    const response = await fetch(url, {
+    // The service binding (TELEGRAM_BOT, see wrangler.toml) bypasses the public
+    // workers.dev URL: plain fetches from a Worker are cut at the edge by
+    // account bot protection (non-browser agents get 403). This module must
+    // stay dependency-free, so the binding check is inlined here.
+    const init: RequestInit = {
       method: "POST",
       headers: { "content-type": "application/json", "x-medbiohim-internal": secret },
       body: JSON.stringify({ init_data: initData }),
       signal: AbortSignal.timeout(timeoutMs),
-    });
+    };
+    const binding = env?.TELEGRAM_BOT;
+    const response = binding ? await binding.fetch(url, init) : await fetch(url, init);
     const payload = (await response.json().catch(() => null)) as
       | { ok?: boolean; error?: string; auth_date?: number; user?: { id?: unknown; username?: unknown; first_name?: unknown } }
       | null;

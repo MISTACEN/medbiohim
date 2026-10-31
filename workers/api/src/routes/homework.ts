@@ -176,7 +176,9 @@ async function notifyGroupNewHomework(env: Env, executionCtx: { waitUntil(promis
 }, db: any): Promise<void> {
   try {
     const notifyUrl = String(env.TELEGRAM_NOTIFY_URL || "").trim();
-    const secret = String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+    // Бот проверяет x-medbiohim-internal по internalSecret(): приоритет у
+    // TELEGRAM_INTERNAL_SECRET, WEBHOOK_SECRET — только фолбэк у бота.
+    const secret = String(env.TELEGRAM_INTERNAL_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "").trim();
     if (!notifyUrl || !secret || !homework.group_id) return;
     const { data: chats } = await db
       .from("telegram_bot_chats")
@@ -196,8 +198,14 @@ async function notifyGroupNewHomework(env: Env, executionCtx: { waitUntil(promis
       due ? `⏰ Срок: <b>${due}</b>` : "",
     ].filter(Boolean).join("\n");
     for (const chat of chats) {
+      // Service binding first: a Worker fetch to the public workers.dev URL is
+      // cut at the edge by account bot protection (non-browser agents, 403).
+      const botBinding = env.TELEGRAM_BOT;
+      const doFetch: (u: string, i?: RequestInit) => Promise<Response> = botBinding
+        ? (u, i) => botBinding.fetch(u, i)
+        : (u, i) => fetch(u, i);
       executionCtx.waitUntil(
-        fetch(notifyUrl, {
+        doFetch(notifyUrl, {
           method: "POST",
           headers: { "content-type": "application/json", "x-medbiohim-internal": secret },
           body: JSON.stringify({ chat_id: chat.chat_id, html }),

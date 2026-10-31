@@ -7,6 +7,10 @@ export type Env = {
   AI_SORT_PROVIDER?: string;
   // Compatibility service binding for legacy routes not yet ported to Hono.
   MEDBIOHIM_UPSTREAM?: { fetch: (request: Request | string, init?: RequestInit) => Promise<Response> };
+  // Bot Worker service binding: initData/widget verification and notify calls.
+  // Public workers.dev fetches are cut at the edge by bot protection, so
+  // worker → bot traffic must go through the binding, never the public URL.
+  TELEGRAM_BOT?: { fetch: (request: Request | string, init?: RequestInit) => Promise<Response> };
   // Supabase
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
