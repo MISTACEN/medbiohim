@@ -118,6 +118,21 @@ groups.patch("/:id", requireAuth, async (c) => {
   if (input.is_active != null) patch.is_active = Boolean(input.is_active);
   const course = input.course_number != null ? Number(input.course_number) : input.course != null ? Number(input.course) : undefined;
   if (course !== undefined && Number.isFinite(course)) patch.course_number = course;
+  // Полное управление когортой: год поступления — основа вычисляемого курса
+  // (cohort-resolver), поток и семестр — точечные ручные перекрытия.
+  if (input.admission_year !== undefined) {
+    const year = Number(input.admission_year);
+    if (input.admission_year === null || input.admission_year === "") patch.admission_year = null;
+    else if (!Number.isInteger(year) || year < 1990 || year > 2100) { const { body, status } = fail("VALIDATION_ERROR", "Год поступления — целое 1990–2100", 422, rid); return c.json(body, status as 422); }
+    else patch.admission_year = year;
+  }
+  if (input.stream !== undefined) patch.stream = input.stream ? String(input.stream).trim().slice(0, 20) : null;
+  if (input.semester !== undefined) {
+    const semester = Number(input.semester);
+    if (input.semester === null || input.semester === "") patch.semester = null;
+    else if (!Number.isInteger(semester) || semester < 1 || semester > 12) { const { body, status } = fail("VALIDATION_ERROR", "Семестр — целое 1–12", 422, rid); return c.json(body, status as 422); }
+    else patch.semester = semester;
+  }
   if (!Object.keys(patch).length) { const { body, status } = fail("VALIDATION_ERROR", "No fields", 422, rid); return c.json(body, status as 422); }
   const { data, error } = await db.from("groups").update(patch).eq("id", id).select("*").maybeSingle();
   if (error) { const { body, status } = fail("DB_ERROR", error.message || "update failed", 503, rid); return c.json(body, status as 503); }
@@ -227,6 +242,44 @@ groups.post("/:id/members", requireAuth, async (c) => {
   const { data: membership, error: writeError } = await write;
   if (writeError) { const { body, status } = fail("DB_ERROR", writeError.message || "add failed", 503, rid); return c.json(body, status as 503); }
   return c.json(ok({ membership_id: membership?.id ?? null, user_id: target.id, group_id: id, moved: true }, rid), 201);
+});
+
+/**
+ * PATCH /groups/:id/members/:userId — управление участником для admin/
+ * moderator/teacher: роль в группе (староста/студент), подгруппа, персональная
+ * заморозка курса. Староста меняет состав через /staff/groups (свои права
+ * там), роль назначает только staff — это права, а не состав.
+ */
+groups.patch("/:id/members/:userId", requireAuth, async (c) => {
+  const rid = requestId(); const db = c.get("supabase");
+  const id = String(c.req.param("id") ?? ""); const userId = String(c.req.param("userId") ?? "");
+  if (!UUID.test(id) || !UUID.test(userId)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
+  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  let input: any = {}; try { input = await c.req.json(); } catch {}
+  const patch: Record<string, unknown> = {};
+  if (input.role_in_group !== undefined) {
+    const role = String(input.role_in_group || "").trim();
+    if (role !== "student" && role !== "starosta" && role !== "") {
+      const { body, status } = fail("VALIDATION_ERROR", "Роль в группе: student или starosta", 422, rid); return c.json(body, status as 422);
+    }
+    patch.role_in_group = role || null;
+  }
+  if (input.subgroup !== undefined) patch.subgroup = input.subgroup ? String(input.subgroup).trim().slice(0, 50) : null;
+  if (input.course_override !== undefined) {
+    if (input.course_override === null || input.course_override === "") patch.course_override = null;
+    else {
+      const frozen = Number(input.course_override);
+      if (!Number.isInteger(frozen) || frozen < 1 || frozen > 8) { const { body, status } = fail("VALIDATION_ERROR", "Курс для заморозки — целое 1…8", 422, rid); return c.json(body, status as 422); }
+      patch.course_override = frozen;
+    }
+  }
+  if (!Object.keys(patch).length) { const { body, status } = fail("VALIDATION_ERROR", "Нечего менять", 422, rid); return c.json(body, status as 422); }
+  const { data, error } = await db.from("group_memberships")
+    .update(patch).eq("group_id", id).eq("user_id", userId).eq("is_active", true)
+    .select("id,user_id,role_in_group,course_override,subgroup").maybeSingle();
+  if (error) { const { body, status } = fail("DB_ERROR", error.message || "update failed", 503, rid); return c.json(body, status as 503); }
+  if (!data) { const { body, status } = fail("NOT_FOUND", "Студента нет в этой группе", 404, rid); return c.json(body, status as 404); }
+  return c.json(ok({ membership: data }, rid));
 });
 
 groups.delete("/:id/members/:userId", requireAuth, async (c) => {

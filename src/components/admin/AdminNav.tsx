@@ -55,6 +55,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin/schedule", label: "Расписание", icon: CalendarDays, desc: "Сетка занятий по группам и семестрам." },
       { href: "/admin/academic", label: "Предметы и группы", icon: GraduationCap, desc: "Дисциплины, курсы, семестры и учебные группы." },
+      { href: "/admin/groups", label: "Управление группой", icon: Users, short: "Группы", desc: "Состав, добавление по email, староста, название, год поступления, поток и семестр." },
       { href: "/admin/tests", label: "Тесты", icon: FileSpreadsheet, short: "Тесты", desc: "Тесты, варианты и привязка к темам." },
       { href: "/admin/test-questions", label: "Вопросы тестов", icon: ListChecks, short: "Вопросы тестов", desc: "Редактирование и архивирование вопросов." },
       { href: "/tests", label: "Банк вопросов", icon: Library, short: "Банк", desc: "Публичный банк вопросов с ответами." },

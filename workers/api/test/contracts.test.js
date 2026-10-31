@@ -509,3 +509,20 @@ test("Leaked password protection: HIBP-проверка на регистрац�
   assert.match(guard, /hash\.slice\(0, 5\)/);
   assert.match(guard, /return null;/);
 });
+
+test("group management: full cohort control (members, roles, admission year, stream)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
+  // Состав: список / добавление по email / удаление — только admin/moderator/teacher.
+  assert.ok(source.includes('groups.get("/:id/members"'));
+  assert.ok(source.includes('groups.post("/:id/members"'));
+  assert.ok(source.includes('groups.delete("/:id/members/:userId"'));
+  // Роль участника назначает staff (права, а не состав).
+  assert.ok(source.includes('groups.patch("/:id/members/:userId"'));
+  assert.ok(/role_in_group[^}]{0,80}starosta/.test(source));
+  // Полное управление когортой в PATCH группы.
+  assert.ok(source.includes("admission_year") && source.includes("stream") && source.includes("semester"));
+  // В одной группе — один активный член: остальные снимаются.
+  assert.ok(source.includes('.neq("group_id", id)'));
+});
+

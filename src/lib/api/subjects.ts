@@ -21,6 +21,10 @@ export async function listSubjectsAdmin() { return api<any>(endpoints.subjects.l
 export async function groupMembers(id: string) { return api<any>(endpoints.subjects.groupMembers(id)) as any; }
 export async function addGroupMember(id: string, payload: { email?: string; user_id?: string }) { return api<any>(endpoints.subjects.groupMembers(id), { method: "POST", body: JSON.stringify(payload) }) as any; }
 export async function removeGroupMember(id: string, userId: string) { return api<any>(endpoints.subjects.groupMember(id, userId), { method: "DELETE" }) as any; }
+/** Полное управление группой: название, код, курс, год поступления, поток, семестр, активность. */
+export async function patchGroup(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.subjects.groupDetail(id), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
+/** Участник группы: роль (student/starosta), подгруппа, персональная заморозка курса. */
+export async function patchGroupMember(id: string, userId: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.subjects.groupMember(id, userId), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
 export async function getSubject(id: string, options: RequestInit = {}) { return apiCached<any>(endpoints.subjects.detail(id), options); }
 /** План предмета с личным прогрессом по темам: статус, счётчики тестов/вопросов, даты занятий. */
 export async function getSubjectPlanProgress(id: string, options: RequestInit = {}) {
