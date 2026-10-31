@@ -1124,11 +1124,15 @@ test("§4 no university I/O module touches credentials, cookies or ЕИОС auth
  * ------------------------------------------------------------------ */
 
 test("§3 the front-end calls the documented integration endpoints only", () => {
-  const api = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
-  assert.match(api, /integrationImports\(\)\{return api<IntegrationImportsData>\("\/integrations\/imports"\)\}/);
-  assert.match(api, /integrationImport\(items[\s\S]{0,80}\/integrations\/imports",\{method:"POST"/);
-  assert.match(api, /integrationImportDelete\(id[\s\S]{0,120}method:"DELETE"/);
-  assert.match(api, /export type IntegrationImportSource="eios"\|"neofamily"\|"sechenov"\|"fesmu"\|"other"/);
+  // D5: клиент API разложен по src/lib/api/*, путь живёт в реестре endpoints.
+  const misc = readFileSync(new URL("../src/lib/api/misc.ts", import.meta.url), "utf8");
+  assert.match(misc, /integrationImports\(\)\s*\{\s*return api<IntegrationImportsData>\(endpoints\.misc\.integrationImports\(\)\)/);
+  assert.match(misc, /integrationImport\(items[\s\S]{0,120}endpoints\.misc\.integrationImports\(\),\s*\{\s*method:\s*"POST"/);
+  assert.match(misc, /integrationImportDelete\(id[\s\S]{0,160}endpoints\.misc\.integrationImport\(id\),\s*\{\s*method:\s*"DELETE"/);
+  const types = readFileSync(new URL("../src/lib/api/types.ts", import.meta.url), "utf8");
+  assert.match(types, /export type IntegrationImportSource\s*=\s*"eios"\s*\|\s*"neofamily"\s*\|\s*"sechenov"\s*\|\s*"fesmu"\s*\|\s*"other"/);
+  const endpoints = readFileSync(new URL("../src/lib/endpoints.ts", import.meta.url), "utf8");
+  assert.match(endpoints, /integrationImports:\s*\(\):\s*string\s*=>\s*"\/integrations\/imports"/);
 });
 
 test("§3 every feed item and schedule row gets a Save action gated on hasToken()", () => {

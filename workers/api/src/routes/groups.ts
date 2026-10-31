@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { effectiveCourse, groupDisplayName } from "../lib/groupIdentity";
 
 const groups = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -23,8 +24,29 @@ async function isManager(c: any) {
 function rel(v: any) { return Array.isArray(v) ? v[0] : v; }
 function mapGroup(row: any) {
   if (!row) return null;
-  const course = row.course_number ?? row.course ?? null;
-  return { id: row.id, name: row.name, code: row.code ?? null, specialty_slug: row.specialty_slug ?? null, course, course_number: course, semester: row.semester ?? null, is_active: row.is_active !== false, member_count: Number(row.member_count ?? 0), membership_role: row.membership_role ?? null };
+  // Курс — вычисляемый: 1 сентября он меняется сам, а id группы остаётся тем
+  // же, поэтому старое расписание и прогресс не рвутся. Персональная
+  // заморозка (course_override) приходит только из членства.
+  const { course } = effectiveCourse({
+    admissionYear: row.admission_year,
+    storedCourse: row.course_number ?? row.course,
+    override: row.course_override,
+  });
+  return {
+    id: row.id,
+    name: row.name,
+    display_name: groupDisplayName({ code: row.code, name: row.name, course, stream: row.stream }),
+    code: row.code ?? null,
+    specialty_slug: row.specialty_slug ?? null,
+    course,
+    course_number: course,
+    semester: row.semester ?? null,
+    stream: row.stream ?? null,
+    course_locked: Number.isInteger(Number(row.course_override)),
+    is_active: row.is_active !== false,
+    member_count: Number(row.member_count ?? 0),
+    membership_role: row.membership_role ?? null,
+  };
 }
 
 groups.get("/", requireAuth, async (c) => {
@@ -40,7 +62,7 @@ groups.get("/", requireAuth, async (c) => {
     const codes = await roleCodes(c);
     const isAdminLike = codes.some((code) => MANAGERS.includes(code));
     if (isAdminLike && !membershipOnly) {
-      let listQuery = db.from("groups").select("id,name,code,specialty_slug,course_number,is_active").order("name", { ascending: true }).limit(500);
+      let listQuery = db.from("groups").select("id,name,code,specialty_slug,course_number,admission_year,stream,semester,is_active").order("name", { ascending: true }).limit(500);
       if (!includeInactive) listQuery = listQuery.eq("is_active", true);
       const { data, error } = await listQuery;
       if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
@@ -55,9 +77,9 @@ groups.get("/", requireAuth, async (c) => {
       }
       return c.json(ok({ items, source: "all" }, rid));
     }
-    const { data, error } = await db.from("group_memberships").select("group_id,role_in_group,groups(id,name,code,specialty_slug,course_number,is_active)").eq("user_id", user.id).eq("is_active", true).limit(50);
+    const { data, error } = await db.from("group_memberships").select("group_id,role_in_group,course_override,groups(id,name,code,specialty_slug,course_number,admission_year,stream,semester,is_active)").eq("user_id", user.id).eq("is_active", true).limit(50);
     if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
-    const items = (data || []).map((row: any) => { const g = rel(row.groups); if (!g || g.is_active === false) return null; return mapGroup({ ...g, membership_role: row.role_in_group }); }).filter(Boolean);
+    const items = (data || []).map((row: any) => { const g = rel(row.groups); if (!g || g.is_active === false) return null; return mapGroup({ ...g, course_override: row.course_override, membership_role: row.role_in_group }); }).filter(Boolean);
     return c.json(ok({ items, source: "memberships" }, rid));
   } catch { const { body, status } = fail("DB_UNAVAILABLE", "Groups unavailable", 503, rid); return c.json(body, status as 503); }
 });
@@ -65,7 +87,7 @@ groups.get("/", requireAuth, async (c) => {
 groups.get("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  const { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course_number,is_active").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("groups").select("id,name,code,specialty_slug,course_number,admission_year,stream,semester,is_active").eq("id", id).maybeSingle();
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Group unavailable", 503, rid); return c.json(body, status as 503); }
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
   return c.json(ok(mapGroup(data), rid));
@@ -139,12 +161,21 @@ groups.delete("/:id", requireAuth, async (c) => {
 
 function mapMember(row: any) {
   const u = rel(row.users) || {};
+  const g = rel(row.groups) || {};
+  const { course, source } = effectiveCourse({
+    admissionYear: g.admission_year,
+    storedCourse: g.course_number ?? u.course_number,
+    override: row.course_override,
+  });
   return {
     membership_id: row.id,
     user_id: u.id ?? row.user_id ?? null,
     name: u.display_name || u.full_name || u.email || "Студент",
     email: u.email ?? null,
-    course_number: u.course_number ?? null,
+    course_number: course,
+    course_source: source,
+    course_locked: source === "override",
+    course_override: row.course_override ?? null,
     semester: u.semester ?? null,
     role: row.role_in_group ?? null,
   };
@@ -157,7 +188,7 @@ groups.get("/:id/members", requireAuth, async (c) => {
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
   if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
   const { data, error } = await db.from("group_memberships")
-    .select("id,user_id,role_in_group,users(id,email,full_name,display_name,course_number,semester)")
+    .select("id,user_id,role_in_group,course_override,groups(course_number,admission_year,stream),users(id,email,full_name,display_name,course_number,semester)")
     .eq("group_id", id).eq("is_active", true).limit(500);
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Members unavailable", 503, rid); return c.json(body, status as 503); }
   const items = (data || []).map(mapMember).filter((m: any) => m.user_id);

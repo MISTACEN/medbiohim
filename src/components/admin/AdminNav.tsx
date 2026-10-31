@@ -22,10 +22,12 @@ import {
   History,
   LayoutDashboard,
   Library,
+  Layers,
   ListChecks,
   Megaphone,
   Settings2,
   Ticket,
+  Wrench,
   UploadCloud,
   Users,
 } from "lucide-react";
@@ -66,6 +68,8 @@ export const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin/users", label: "Пользователи и роли", icon: Users, short: "Пользователи", strictAdmin: true, desc: "Роли, группа, курс и семестр для каждого студента." },
       { href: "/admin/announcements", label: "Объявления и сайт", icon: Megaphone, short: "Объявления", desc: "Новости и тексты главной страницы." },
+      { href: "/admin/workshop", label: "Мастерская", icon: Layers, desc: "Очередь публикаций, жалобы и режим публикации." },
+      { href: "/admin/moderation", label: "Роли и быстрые фиксы", icon: Wrench, short: "Фиксы", desc: "Запросы старост, предпросмотр и откат правок." },
       { href: "/admin/tools", label: "ДЗ, файлы, диагностика", icon: Settings2, short: "ДЗ / файлы", desc: "Проверка ДЗ, материалы, сообщество, Storage, health." },
     ],
   },

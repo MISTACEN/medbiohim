@@ -8,7 +8,8 @@ test("plan-progress: темы + приватный прогресс одним �
   const routes = await source("../src/routes/subjects.ts");
   assert.ok(routes.includes('subjects.get("/:id/plan-progress"'), "plan-progress route missing");
   const start = routes.indexOf('subjects.get("/:id/plan-progress"');
-  const body = routes.slice(start, start + 6000);
+  const next = routes.indexOf('subjects.post("/"', start);
+  const body = routes.slice(start, next > start ? next : undefined);
   // Темы и модули предмета.
   assert.match(body, /\.from\("modules"\)/);
   assert.match(body, /\.from\("topics"\)/);

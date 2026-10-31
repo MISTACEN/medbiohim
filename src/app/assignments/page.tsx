@@ -372,7 +372,12 @@ export default function AssignmentsPage() {
       </section>
 
       <section className="card p-4">
-        <h2 className="text-sm font-semibold">Импорт из журнала (CSV)</h2>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h2 className="text-sm font-semibold">Импорт из журнала (CSV)</h2>
+          <Link href="/journal" className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">
+            Фото журнала → только моя строка
+          </Link>
+        </div>
         <p className="mt-1 text-xs text-[var(--muted)]">
           Выгрузите строку с собой из журнала или сделайте CSV вручную: <code>предмет; тема; дд.мм.гггг; статус; оценка</code>.
           Вырежьте чужие строки до загрузки — сервер принимает только ваши.

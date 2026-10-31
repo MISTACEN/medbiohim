@@ -68,6 +68,8 @@ import adminAccount from "./routes/admin-account";
 import integrations from "./routes/integrations";
 import externalPlatforms from "./routes/external-platforms";
 import questionComments from "./routes/question-comments";
+import workshop from "./routes/workshop";
+import staff from "./routes/staff";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -168,6 +170,8 @@ v1.route("/telegram", telegramIngest);
 v1.route("/telegram", telegram);
 v1.route("/presence", presence);
 v1.route("/community", community);
+v1.route("/workshop", workshop);
+v1.route("/staff", staff);
 v1.route("/calculators", calculators);
 v1.route("/ai", ai);
 v1.route("/chemistry", chemistry);
@@ -231,6 +235,14 @@ const appWithCron = Object.assign(app, {
         const { runAccountDeletionSweep } = await import("./jobs/account-deletion");
         const result = await runAccountDeletionSweep(env);
         console.log("[account-deletion-sweep] результат", JSON.stringify(result));
+      })()
+    );
+    ctx.waitUntil(
+      (async () => {
+        // Курс группы: 1 сентября пересчитывается сам, id и история не меняются.
+        const { runCourseRollover } = await import("./jobs/course-rollover");
+        const result = await runCourseRollover(env);
+        console.log("[course-rollover] результат", JSON.stringify(result));
       })()
     );
   },

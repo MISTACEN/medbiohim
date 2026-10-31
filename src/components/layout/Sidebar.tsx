@@ -24,6 +24,7 @@ import {
   Landmark,
   ListChecks,
   Microscope,
+  Layers,
   Sparkles,
   Bookmark,
   MoreHorizontal,
@@ -47,6 +48,7 @@ const moreItems = [
   { href: "/search", label: "Поиск", icon: Search },
   { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
   { href: "/atlas", label: "Атлас", icon: Microscope },
+  { href: "/workshop", label: "Мастерская", icon: Layers },
   { href: "/academic", label: "Учебный план", icon: ClipboardList },
   { href: "/assignments", label: "Отработки", icon: ListChecks },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator },
@@ -59,7 +61,9 @@ const bottomItems: Array<{
   label: string;
   icon: typeof Settings;
   adminOnly?: boolean;
+  starostaOnly?: boolean;
 }> = [
+  { href: "/group", label: "Кабинет старосты", icon: Users, starostaOnly: true },
   { href: "/settings", label: "Настройки", icon: Settings },
   { href: "/changelog", label: "Что нового", icon: Sparkles },
   { href: "/bookmarks", label: "Закладки", icon: Bookmark },
@@ -78,9 +82,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ? "Админ"
         : user?.role === "moderator"
           ? "Модератор"
-          : user
-            ? "Студент"
-            : "Не авторизован";
+          : user?.groupRole === "starosta"
+            ? "Староста"
+            : user
+              ? "Студент"
+              : "Не авторизован";
 
   const showAdmin =
     user?.role === "admin" || user?.role === "moderator" || user?.role === "teacher";
@@ -189,6 +195,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <ul className="space-y-1">
           {bottomItems
             .filter((item) => !item.adminOnly || showAdmin)
+            .filter((item) => !item.starostaOnly || user?.groupRole === "starosta")
             .map((item) => {
               const active = pathname.startsWith(item.href);
               const Icon = item.icon;

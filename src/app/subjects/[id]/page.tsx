@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
-import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, getSubjectPlanProgress, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, setTopicProgress, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, getSubjectPlanProgress, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, markMaterialOpened, setTopicProgress, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
@@ -378,7 +378,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     ((planProgress?.items || []) as any[]).map((item) => [String(item.topic_id), item])
   );
   const planSummary = planProgress?.summary as
-    | { total: number; passed: number; in_progress: number; failed_or_retake: number }
+    | { total: number; passed: number; in_progress: number; failed_or_retake: number; unopened_materials?: number }
     | undefined;
 
   async function cycleTopicStatus(topicId: string, current: string) {
@@ -417,6 +417,30 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       });
     }
     setTopicBusy(null);
+  }
+
+  async function openTopicMaterial(topicId: string, material: any) {
+    if (material.external_url) window.open(String(material.external_url), "_blank", "noreferrer");
+    else selectTab("materials");
+    // Оптимистично: чип сразу становится «открыт», сервер хранит отметку
+    // только для этого пользователя.
+    setPlanProgress((currentData: any) =>
+      currentData
+        ? {
+            ...currentData,
+            items: (currentData.items || []).map((item: any) =>
+              item.topic_id === topicId
+                ? {
+                    ...item,
+                    materials: (item.materials || []).map((m: any) => m.id === material.id ? { ...m, opened: true } : m),
+                    unopened_materials_count: Math.max(0, Number(item.unopened_materials_count || 0) - 1),
+                  }
+                : item
+            ),
+          }
+        : currentData
+    );
+    await markMaterialOpened(String(material.id));
   }
 
   const course = subject?.course_number ?? 2;
@@ -740,6 +764,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                     {planSummary.failed_or_retake > 0 && (
                       <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-800">отработка {planSummary.failed_or_retake}</span>
                     )}
+                    {Number(planSummary.unopened_materials || 0) > 0 && (
+                      <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs text-[var(--status-warn-fg)]">не открыто материалов: {planSummary.unopened_materials}</span>
+                    )}
                     <span className="text-xs text-slate-500">отметка видна только вам</span>
                   </div>
                 )}
@@ -776,6 +803,22 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                                 <button type="button" onClick={() => selectTab("exam")} className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100">
                                   ❓ вопросов: {item.exam_questions_count}
                                 </button>
+                              )}
+                              {(item?.materials || []).map((material: any) => (
+                                <button
+                                  key={material.id}
+                                  type="button"
+                                  onClick={() => void openTopicMaterial(String(tp.id), material)}
+                                  title={material.opened ? "Материал уже открыт" : "Ещё не открыт — откроется и отметится"}
+                                  className={"max-w-[220px] truncate rounded-full px-2 py-0.5 text-xs " + (material.opened ? "bg-slate-100 text-slate-500" : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)] hover:opacity-80")}
+                                >
+                                  {material.opened ? "✓ " : "• "}{material.title}
+                                </button>
+                              ))}
+                              {(item?.unopened_materials_count || 0) > 0 && (
+                                <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-warn-fg)]">
+                                  не открыто: {item.unopened_materials_count}
+                                </span>
                               )}
                               {nextDate?.date && (
                                 <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700" title="Занятие по расписанию, привязанное к теме">

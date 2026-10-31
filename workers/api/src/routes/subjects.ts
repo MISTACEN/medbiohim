@@ -157,7 +157,7 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
   }
   const topicIds = topicRows.map((t) => String(t.id));
 
-  const [progressRes, testsRes, examRes, scheduleRes] = await Promise.all([
+  const [progressRes, testsRes, examRes, scheduleRes, materialsRes] = await Promise.all([
     topicIds.length
       ? db.from("topic_progress").select("topic_id,status,grade,note,attempts").eq("user_id", user.id).in("topic_id", topicIds)
       : Promise.resolve({ data: [] as any[], error: null as any }),
@@ -171,11 +171,46 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
       .gte("date", new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))
       .order("date", { ascending: true })
       .limit(400),
+    // Материалы, привязанные к темам: из них считается «что ещё не открыто».
+    db.from("materials")
+      .select("id,topic_id,title,type,external_url,order_index")
+      .eq("subject_id", subjectId)
+      .eq("is_published", true)
+      .not("topic_id", "is", null)
+      .order("order_index", { ascending: true })
+      .limit(2000),
   ]);
-  if (progressRes.error || testsRes.error || examRes.error || scheduleRes.error) {
-    console.error("[plan-progress] reads failed", { progress: progressRes.error, tests: testsRes.error, exam: examRes.error, schedule: scheduleRes.error });
+  if (progressRes.error || testsRes.error || examRes.error || scheduleRes.error || materialsRes.error) {
+    console.error("[plan-progress] reads failed", { progress: progressRes.error, tests: testsRes.error, exam: examRes.error, schedule: scheduleRes.error, materials: materialsRes.error });
     const { body, status } = fail("DB_UNAVAILABLE", "Прогресс плана недоступен", 503, rid);
     return c.json(body, status as 503);
+  }
+
+  const materialRows = materialsRes.data || [];
+  let openedIds = new Set<string>();
+  if (materialRows.length) {
+    const { data: views, error: viewsError } = await db
+      .from("material_views")
+      .select("material_id")
+      .eq("user_id", user.id)
+      .in("material_id", materialRows.map((m: any) => String(m.id)))
+      .limit(5000);
+    // Старая база без material_views не должна ломать весь план: тогда
+    // считаем, что ничего не открыто, и честно показываем это.
+    if (!viewsError) openedIds = new Set((views || []).map((v: any) => String(v.material_id)));
+  }
+  const materialsByTopic = new Map<string, any[]>();
+  for (const row of materialRows) {
+    const key = String(row.topic_id || "");
+    if (!key) continue;
+    if (!materialsByTopic.has(key)) materialsByTopic.set(key, []);
+    materialsByTopic.get(key)!.push({
+      id: String(row.id),
+      title: row.title || "Материал",
+      type: row.type || null,
+      external_url: row.external_url || null,
+      opened: openedIds.has(String(row.id)),
+    });
   }
 
   const progressByTopic = new Map<string, any>();
@@ -202,6 +237,7 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
 
   const items = topicRows.map((t) => {
     const progress = progressByTopic.get(String(t.id));
+    const materials = materialsByTopic.get(String(t.id)) || [];
     return {
       topic_id: String(t.id),
       module_id: String(t.module_id),
@@ -215,6 +251,10 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
       tests_count: testsCount.get(String(t.id)) || 0,
       exam_questions_count: examCount.get(String(t.id)) || 0,
       schedule_dates: scheduleByTopic.get(String(t.id)) || [],
+      materials,
+      materials_count: materials.length,
+      unopened_materials_count: materials.filter((m: any) => !m.opened).length,
+      unopened_materials: materials.filter((m: any) => !m.opened).map((m: any) => m.title),
     };
   });
 
@@ -224,6 +264,7 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
     in_progress: items.filter((i) => i.status === "in_progress").length,
     failed_or_retake: items.filter((i) => i.status === "failed" || i.status === "retake_needed").length,
     pending: items.filter((i) => i.status === "pending").length,
+    unopened_materials: items.reduce((sum, i) => sum + i.unopened_materials_count, 0),
   };
 
   return c.json(ok({

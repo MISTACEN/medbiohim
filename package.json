@@ -14,7 +14,9 @@
     "test:unit:watch": "vitest",
     "test:api-failover": "node --test test/api-failover.test.mjs",
     "test:physiology": "node --test test/physiology-content.test.mjs",
-    "test:contrast": "node scripts/check-contrast.mjs"
+    "test:contrast": "node scripts/check-contrast.mjs",
+    "test:e2e:supabase": "node scripts/e2e-live-supabase.mjs",
+    "test:e2e:api": "node scripts/e2e-live-api.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
