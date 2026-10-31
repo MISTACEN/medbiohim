@@ -43,7 +43,10 @@ export default function AdminGroupsPage() {
 
   const [addEmail, setAddEmail] = useState("");
   const [newGroup, setNewGroup] = useState("");
-  const [form, setForm] = useState({ name: "", code: "", admission_year: "", stream: "", semester: "", course_number: "", is_active: true });
+  // Активность группы — НЕ часть формы сохранения: снятый галочкой чекбокс
+  // молча архивировал группу «при редактировании» и она исчезала из списков.
+  // Архивация — отдельная кнопка с подтверждением.
+  const [form, setForm] = useState({ name: "", code: "", admission_year: "", stream: "", semester: "", course_number: "" });
 
   const selected = groups.find((g) => g.id === selectedId) || null;
 
@@ -79,7 +82,6 @@ export default function AdminGroupsPage() {
       admission_year: g?.admission_year != null ? String(g.admission_year) : "",
       stream: g?.stream || "", semester: g?.semester != null ? String(g.semester) : "",
       course_number: g?.course_number != null ? String(g.course_number) : "",
-      is_active: g?.is_active !== false,
     });
   }, [selectedId, groups, loadMembers]);
 
@@ -102,16 +104,22 @@ export default function AdminGroupsPage() {
   }
 
   async function saveGroup() {
+    // is_active намеренно не отправляется: сохранение настроек не должно
+    // уметь архивировать группу (см. заметку над form).
     const payload: Record<string, unknown> = {
       name: form.name.trim(),
       code: form.code.trim() || null,
-      is_active: form.is_active,
     };
     if (form.admission_year.trim()) payload.admission_year = Number(form.admission_year); else payload.admission_year = null;
     if (form.stream.trim()) payload.stream = form.stream.trim(); else payload.stream = null;
     if (form.semester.trim()) payload.semester = Number(form.semester); else payload.semester = null;
     if (form.course_number.trim()) payload.course_number = Number(form.course_number); else payload.course_number = null;
     await run("save", () => patchGroup(selectedId, payload), "Группа обновлена.", false);
+  }
+
+  async function toggleArchive(active: boolean) {
+    await run("archive", () => patchGroup(selectedId, { is_active: active }),
+      active ? "Группа возвращена из архива." : "Группа архивирована — участники сохранены.", false);
   }
 
   async function createNewGroup() {
@@ -176,13 +184,20 @@ export default function AdminGroupsPage() {
                 <input value={form.semester} onChange={(e) => setForm((f) => ({ ...f, semester: e.target.value }))} inputMode="numeric" placeholder="авто" className="mt-1 w-full rounded-xl border px-3 py-2 text-sm" />
               </label>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
-              Группа активна
-            </label>
-            <button type="button" onClick={() => void saveGroup()} disabled={busy === "save"} className="btn-primary inline-flex items-center gap-2 text-sm">
-              {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />} Сохранить
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => void saveGroup()} disabled={busy === "save"} className="btn-primary inline-flex items-center gap-2 text-sm">
+                {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />} Сохранить
+              </button>
+              {selected.is_active === false ? (
+                <button type="button" onClick={() => { if (window.confirm(`Вернуть группу «${selected.code || selected.name}» из архива?`)) void toggleArchive(true); }} disabled={busy === "archive"} className="rounded-xl border px-3 py-2 text-sm">
+                  Вернуть из архива
+                </button>
+              ) : (
+                <button type="button" onClick={() => { if (!window.confirm(`Архивировать группу «${selected.code || selected.name}»? Она исчезнет из списков, участники сохранятся.`)) return; void toggleArchive(false); }} disabled={busy === "archive"} className="rounded-xl border px-3 py-2 text-sm text-[var(--status-warn-fg)]">
+                  Архивировать
+                </button>
+              )}
+            </div>
             <p className="text-xs text-slate-500">
               Курс считается автоматически от года поступления (сентябрь — граница); «Курс (ручной)» и «Семестр» — точечные перекрытия.
             </p>
