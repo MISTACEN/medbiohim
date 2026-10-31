@@ -152,6 +152,10 @@ homework.post("/", requireAuth, async (c) => {
       const { body, status } = fail("HOMEWORK_CREATE_FAILED", "Не удалось создать задание", 503, rid);
       return c.json(body, status as 503);
     }
+    if (data && data.group_id) {
+      // FA1: уведомление группы — вне основного ответа.
+      try { notifyGroupNewHomework(c.env, c.executionCtx, data as any, db); } catch { /* не влияет на ответ */ }
+    }
     return c.json(ok({ item: data }, rid), 201);
   } catch (error) {
     console.error("[homework:create]", error);
@@ -159,6 +163,59 @@ homework.post("/", requireAuth, async (c) => {
     return c.json(body, status as 503);
   }
 });
+
+/**
+ * FA1: событие «новое ДЗ» → Telegram-чат группы через бот-воркер.
+ * Fire-and-forget (waitUntil): сбой доставки не влияет на создание задания;
+ * без TELEGRAM_NOTIFY_URL — тихий no-op (функциональность не деградировала).
+ */
+async function notifyGroupNewHomework(env: Env, executionCtx: { waitUntil(promise: Promise<unknown>): void }, homework: {
+  id: string; title: string; due_date: string | null; group_id: string | null;
+  subjects?: { name?: string | null } | Array<{ name?: string | null }> | null;
+  schedule_entries?: { date?: string | null; subject_name?: string | null } | Array<{ date?: string | null; subject_name?: string | null }> | null;
+}, db: any): Promise<void> {
+  try {
+    const notifyUrl = String(env.TELEGRAM_NOTIFY_URL || "").trim();
+    const secret = String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+    if (!notifyUrl || !secret || !homework.group_id) return;
+    const { data: chats } = await db
+      .from("telegram_bot_chats")
+      .select("chat_id")
+      .eq("group_id", homework.group_id)
+      .eq("is_active", true)
+      .limit(20);
+    if (!chats?.length) return;
+    const subject = (Array.isArray(homework.subjects) ? homework.subjects[0]?.name : homework.subjects?.name)
+      || (Array.isArray(homework.schedule_entries) ? homework.schedule_entries[0]?.subject_name : homework.schedule_entries?.subject_name)
+      || null;
+    const due = homework.due_date ? homework.due_date.split("-").reverse().join(".") : null;
+    const html = [
+      "<b>📝 Новое задание</b>",
+      escapeHwHtml(homework.title),
+      subject ? `📚 ${escapeHwHtml(subject)}` : "",
+      due ? `⏰ Срок: <b>${due}</b>` : "",
+    ].filter(Boolean).join("\n");
+    for (const chat of chats) {
+      executionCtx.waitUntil(
+        fetch(notifyUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-medbiohim-internal": secret },
+          body: JSON.stringify({ chat_id: chat.chat_id, html }),
+        }).then((response) => {
+          if (!response.ok) console.error("[homework:notify]", response.status);
+        }).catch((error) => {
+          console.error("[homework:notify]", String(error));
+        })
+      );
+    }
+  } catch (error) {
+    console.error("[homework:notify]", String(error));
+  }
+}
+
+function escapeHwHtml(value: string): string {
+  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 homework.post("/:id/submit", requireAuth, async (c) => {
   const rid = requestId();

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { handleRequest } from "../src/worker.js";
+import { handleRequest, handleDigest } from "../src/worker.js";
 
 const SITE = "https://medbiohim.vercel.app";
 const baseEnv = { TELEGRAM_BOT_TOKEN: "test-token", TELEGRAM_WEBHOOK_SECRET: "test-secret" };
@@ -566,4 +566,68 @@ test("verify-ingest is unavailable without any ingest secret", async (t) => {
   const response = await handleRequest(verifyIngestRequest(), { TELEGRAM_BOT_TOKEN: "test-token" });
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "INGEST_NOT_CONFIGURED");
+});
+
+// ── FA1 + §9: /api/notify и cron-дайджест ─────────────────────────────────
+
+test("notify: доставляет HTML в чат только по internal secret", async (t) => {
+  const calls = stubFetch(t);
+  const env = { ...baseEnv, TELEGRAM_INTERNAL_SECRET: "internal-secret" };
+  const request = new Request("https://worker.example/api/notify", {
+    method: "POST",
+    headers: { "x-medbiohim-internal": "internal-secret", "content-type": "application/json" },
+    body: JSON.stringify({ chat_id: 555, html: "<b>📝 Новое задание</b> Сдать конспект" }),
+  });
+  const response = await handleRequest(request, env);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  const sent = sendMessageCalls(calls);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].payload.chat_id, 555);
+  assert.equal(sent[0].payload.parse_mode, "HTML");
+  assert.match(sent[0].payload.text, /Новое задание/);
+});
+
+test("notify: без секрета — 401, с кривым телом — 400", async () => {
+  const env = { ...baseEnv, TELEGRAM_INTERNAL_SECRET: "internal-secret" };
+  const noAuth = await handleRequest(new Request("https://worker.example/api/notify", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chat_id: 1, html: "x" }),
+  }), env);
+  assert.equal(noAuth.status, 401);
+  const badBody = await handleRequest(new Request("https://worker.example/api/notify", {
+    method: "POST",
+    headers: { "x-medbiohim-internal": "internal-secret", "content-type": "application/json" },
+    body: JSON.stringify({ html: "нет chat_id" }),
+  }), env);
+  assert.equal(badBody.status, 400);
+});
+
+test("digest: cron берёт данные из API по секрету и шлёт html по чатам", async (t) => {
+  const calls = stubFetch(t, (record) => {
+    // дайджест-фетч к API подделываем данными двух чатов
+    if (/internal\/digest/.test(record.url)) {
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { date: "2026-10-31", chats: [
+          { chat_id: 100, html: "<b>📅 МБХ 201</b> Занятий нет." },
+          { chat_id: 200, html: "<b>📅 МБХ 202</b> • 09:00 Гистология" },
+        ] },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return null;
+  });
+  const env = {
+    ...baseEnv,
+    TELEGRAM_INTERNAL_SECRET: "internal-secret",
+    TELEGRAM_API_ORIGIN: "https://medbiohim-api.example/api/v1",
+  };
+  // дайджест вызывается напрямую (тело cron-обработчика)
+  await handleDigest(env);
+  const sent = sendMessageCalls(calls);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].payload.chat_id, 100);
+  const digestFetch = calls.find((call) => /internal\/digest/.test(call.url));
+  assert.equal(digestFetch.headers["x-medbiohim-internal"], "internal-secret");
 });

@@ -532,6 +532,98 @@ async function handleVerifyInitData(request, env) {
   return json({ ok: true, user: result.user, auth_date: result.auth_date });
 }
 
+/**
+ * FA1 + §9: доставuka уведомлений. Бот — «тупой почтальон»: текст приходит
+ * готовым из API-воркера (форматирование живёт в репо API), бот только
+ * отправляет через Telegram API. Доступ — по общему internal secret.
+ */
+async function handleNotify(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN) return json({ ok: false, error: "BOT_NOT_CONFIGURED" }, 503);
+  const secret = internalSecret(env);
+  if (!secret) return json({ ok: false, error: "INTERNAL_NOT_CONFIGURED" }, 503);
+  if (!constantTimeEqual(request.headers.get("x-medbiohim-internal") || "", secret)) {
+    return json({ ok: false, error: "UNAUTHORIZED" }, 401);
+  }
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_BODY_BYTES) return json({ ok: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+  const text = await request.text();
+  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
+    return json({ ok: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+  }
+  let body;
+  try { body = JSON.parse(text); } catch { return json({ ok: false, error: "INVALID_BODY" }, 400); }
+
+  const chatId = Number(body && body.chat_id);
+  const html = body && typeof body.html === "string" ? body.html : "";
+  if (!Number.isFinite(chatId) || !html.trim()) return json({ ok: false, error: "INVALID_BODY" }, 400);
+
+  const payload = { chat_id: chatId, text: html, parse_mode: "HTML", disable_web_page_preview: true };
+  if (body.button && typeof body.button.label === "string" && typeof body.button.url === "string") {
+    payload.reply_markup = { inline_keyboard: [[{ text: body.button.label, url: body.button.url }]] };
+  }
+  const result = await fetchWithTimeout(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  let response;
+  try { response = await result.json(); } catch { response = null; }
+  if (!result.ok || !response || response.ok !== true) throw new Error("Telegram delivery failed");
+  return json({ ok: true, delivered: true });
+}
+
+/**
+ * FA1: утренний дайджест по cron. Данные берёт с API-воркера
+ * (GET /telegram/internal/digest?date=…) по общему секрету; форматирование —
+ * на стороне API (поле html). Чат без данных — «пустой день» не отправляется.
+ */
+function digestApiOrigin(env) {
+  return String((env && env.TELEGRAM_API_ORIGIN) || "").trim().replace(/\/$/, "");
+}
+
+function digestDate(dateUtc) {
+  return dateUtc.toISOString().slice(0, 10);
+}
+
+async function handleDigest(env) {
+  const origin = digestApiOrigin(env);
+  const secret = internalSecret(env);
+  if (!env.TELEGRAM_BOT_TOKEN || !origin || !secret) {
+    return { ok: false, error: "DIGEST_NOT_CONFIGURED", sent: 0, skipped: 0 };
+  }
+  const date = digestDate(new Date());
+  const endpoint = new URL("/api/v1/telegram/internal/digest", origin);
+  endpoint.searchParams.set("date", date);
+  const response = await fetchWithTimeout(endpoint.toString(), {
+    method: "GET",
+    headers: { "x-medbiohim-internal": secret },
+  });
+  let payload;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (!response.ok || !payload || payload.ok !== true) {
+    return { ok: false, error: "DIGEST_DATA_UNAVAILABLE", sent: 0, skipped: 0 };
+  }
+  const chats = (payload.data && Array.isArray(payload.data.chats)) ? payload.data.chats : [];
+  let sent = 0;
+  let skipped = 0;
+  for (const chat of chats) {
+    const html = typeof chat.html === "string" ? chat.html : "";
+    if (!html.trim()) { skipped += 1; continue; }
+    try {
+      await fetchWithTimeout(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chat.chat_id, text: html, parse_mode: "HTML", disable_web_page_preview: true }),
+      });
+      sent += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
+  return { ok: true, date, sent, skipped, chats: chats.length };
+}
+
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
   if (url.pathname === "/health") {
@@ -545,6 +637,13 @@ export async function handleRequest(request, env) {
   }
   if (url.pathname === "/api/verify-initdata") return handleVerifyInitData(request, env);
   if (url.pathname === "/api/verify-ingest") return handleVerifyIngest(request, env);
+  if (url.pathname === "/api/notify" && request.method === "POST") {
+    try {
+      return await handleNotify(request, env);
+    } catch {
+      return json({ ok: false, error: "TELEGRAM_DELIVERY_FAILED" }, 502);
+    }
+  }
   if (url.pathname !== "/api/webhook") return json({ ok: false, error: "NOT_FOUND" }, 404);
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {
@@ -607,8 +706,25 @@ export async function handleRequest(request, env) {
   return json({ ok: true });
 }
 
+/** Именованный экспорт для тестов и cron-покрытия: тело scheduled как функция. */
+export async function runScheduledDigest(env) {
+  const result = await handleDigest(env);
+  // Лог без чатов/пейлоадов — только счётчики доставки.
+  console.log("[telegram:digest]", JSON.stringify(result));
+  return result;
+}
+
+export { handleNotify, handleDigest };
+
 export default {
   fetch(request, env) {
     return handleRequest(request, env);
+  },
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(
+      runScheduledDigest(env).catch((error) => {
+        console.error("[telegram:digest]", String(error));
+      })
+    );
   },
 };

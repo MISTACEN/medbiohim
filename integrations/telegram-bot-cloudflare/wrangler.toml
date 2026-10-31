@@ -3,6 +3,10 @@ main = "src/worker.js"
 compatibility_date = "2026-10-26"
 workers_dev = true
 
+[triggers]
+# Утренний дайджест: 22:00 UTC = 08:00 Владивосток (UTC+10).
+crons = ["0 22 * * *"]
+
 [vars]
 # Single canonical site. Preview/branch URLs are never used.
 MEDBIOHIM_APP_URL = "https://medbiohim.vercel.app"
@@ -12,6 +16,8 @@ TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL = "https://medbiohim-api.ryazansevegor.workers
 # Group messages are sorted by GigaChat in the API Worker. The bot only forwards
 # updates and sends the short confirmation back to the group.
 TELEGRAM_INGEST_URL = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/ingest"
+# FA1: базовый URL API-воркера для утреннего дайджеста (bot → API, internal secret).
+TELEGRAM_API_ORIGIN = "https://medbiohim-api.ryazansevegor.workers.dev/api/v1"
 # Set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET as Worker secrets, not here.
 # The API Worker must have the SAME TELEGRAM_WEBHOOK_SECRET (or a dedicated
 # TELEGRAM_INGEST_SECRET), otherwise it answers 503 and no homework is created.

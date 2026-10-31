@@ -479,3 +479,19 @@ test("FA3: сводка прогресса v2 — свои данные, нез�
   assert.match(body, /activity30/);
   assert.match(body, /DB_UNAVAILABLE/);
 });
+
+test("FA1: внутренний дайджест для бота — secret-gate и полные данные", async () => {
+  const route = await source("../src/routes/telegram-digest.ts");
+  assert.match(route, /telegramDigest\.get\("\/internal\/digest"/);
+  // Доступ только по internal secret, студенческие токены не подходят.
+  assert.match(route, /constantTimeEqual\(c\.req\.header\("x-medbiohim-internal"\)/);
+  assert.match(route, /createServiceClient/);
+  // Данные: чаты с группами, занятия на дату, ДЗ (просрочено/сегодня/завтра).
+  assert.match(route, /telegram_bot_chats/);
+  assert.match(route, /schedule_entries/);
+  assert.match(route, /homeworks/);
+  assert.match(route, /overdue/);
+  assert.match(route, /tomorrow/);
+  // date строго YYYY-MM-DD.
+  assert.match(route, /ISO_DATE/);
+});
