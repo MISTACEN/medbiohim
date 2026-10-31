@@ -19,6 +19,12 @@ export type Env = {
   UPSTASH_REDIS_REST_TOKEN?: string;
 
   // Upstash Blob (private object storage)
+  B2_APPLICATION_KEY?: string;
+  B2_BUCKET?: string;
+  B2_ENDPOINT?: string;
+  B2_KEY_ID?: string;
+  B2_REGION?: string;
+  TELEGRAM_NOTIFY_URL?: string;
   UPSTASH_BLOB_TOKEN?: string;
   // Public Upstash Blob endpoint used for authenticated Worker-side media proxying.
   UPSTASH_BLOB_PUBLIC_BASE_URL?: string;
@@ -64,7 +70,6 @@ export type Env = {
   // Telegram group ingestion. The bot Worker forwards group updates here with
   // TELEGRAM_WEBHOOK_SECRET; no user session exists in that flow.
   TELEGRAM_INGEST_SECRET?: string;
-  TELEGRAM_NOTIFY_URL?: string;
   /** Bot Worker route that confirms the forwarded ingest secret without storing it here. */
   TELEGRAM_BOT_VERIFY_INGEST_URL?: string;
   LLM_PRIMARY_API_KEY?: string;

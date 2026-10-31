@@ -1,4 +1,5 @@
-import { BlobError, Bucket } from "@upstash/blob";
+import { BlobError } from "@upstash/blob";
+import { getStorageBackend } from "../lib/b2";
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
@@ -12,9 +13,9 @@ const ALLOWED_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain",
 ]);
 
-function getBucket(env: Env): Bucket | null {
-  const token = env.UPSTASH_BLOB_TOKEN?.trim();
-  return token ? new Bucket({ token }) : null;
+// B2 (если настроен) → Upstash → null.
+function getBucket(env: Env) {
+  return getStorageBackend(env);
 }
 
 function cleanName(name: string): string {
@@ -92,7 +93,7 @@ files.post("/upload", requireAuth, async (c) => {
   const rid = requestId();
   const bucket = getBucket(c.env);
   if (!bucket) {
-    const { body, status } = fail("STORAGE_NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    const { body, status } = fail("STORAGE_NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid);
     return c.json(body, status as 503);
   }
   let form: FormData;
@@ -171,7 +172,7 @@ files.post("/upload", requireAuth, async (c) => {
       visibility,
       specialty_slug: specialtySlug || null,
       sha256: digest,
-      // The live files_storage_provider_check still allows only b2/spaceweb/external/unknown.\n      // Keep the accepted value until the additive provider migration is applied.\n      storage_provider: "unknown",
+      // The live files_storage_provider_check still allows only b2/spaceweb/external/unknown.\n      // Keep the accepted value until the additive provider migration is applied.\n      storage_provider: "b2",
       processing_status: "ready",
       status: "active",
     }).select("*").single();
@@ -206,7 +207,7 @@ files.get("/:id/download", requireAuth, async (c) => {
   }
   const bucket = getBucket(c.env);
   if (!bucket) {
-    const { body, status } = fail("STORAGE_NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    const { body, status } = fail("STORAGE_NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid);
     return c.json(body, status as 503);
   }
   try {

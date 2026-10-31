@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createAnonClient, createServiceClient, createUserClient, verifyBearerUser } from "../lib/supabase";
+import { isHttpsUrl, requireEnv } from "../env";
 import { rateLimit } from "../lib/redis";
 import { ok, fail, requestId } from "../lib/response";
 import { hasRemoteVerifier, validateTelegramInitData, verifyTelegramInitDataRemote } from "../lib/telegram-initdata";
@@ -18,6 +20,29 @@ async function readJson<T>(c: { req: { raw: Request } }): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Клиент с заголовками реального пользователя: GoTrue записывает User-Agent
+ * и IP из запроса в сессию. Без пересылки все устройства выглядят как
+ * Cloudflare-эгресс и «Неизвестное устройство».
+ */
+function clientWithRealIdentity(c: { req: { header: (n: string) => string | undefined } }, env: Env): SupabaseClient {
+  const url = requireEnv(env, "SUPABASE_URL");
+  const anon = requireEnv(env, "SUPABASE_ANON_KEY");
+  if (!isHttpsUrl(url)) throw new Error("SUPABASE_URL must be HTTPS");
+  const userAgent = c.req.header("user-agent") || "unknown";
+  const ip = clientIp(c);
+  return createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: {
+      headers: {
+        "user-agent": userAgent,
+        "x-forwarded-for": ip,
+        "x-real-ip": ip,
+      },
+    },
+  });
 }
 
 function clientIp(c: { req: { header: (n: string) => string | undefined } }): string {
@@ -69,7 +94,7 @@ auth.post("/login", async (c) => {
   }
 
   try {
-    const client = createAnonClient(c.env);
+    const client = clientWithRealIdentity(c, c.env);
     const { data, error } = await client.auth.signInWithPassword({
       email: String(body.email).trim().toLowerCase(),
       password: String(body.password),
@@ -113,7 +138,7 @@ auth.post("/register", async (c) => {
   }
 
   try {
-    const client = createAnonClient(c.env);
+    const client = clientWithRealIdentity(c, c.env);
     const { data, error } = await client.auth.signUp({
       email: String(body.email).trim().toLowerCase(),
       password: String(body.password),

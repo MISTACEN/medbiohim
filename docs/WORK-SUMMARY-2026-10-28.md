@@ -1824,3 +1824,35 @@ node --test) падал на пушах с D5: frontend-contract.test.js чит�
 один файл. Переведён на бочонок + src/lib/api/* + endpoints.ts; маркеры
 обновлены на актуальные (API_URL с типом, конверт D1-формата, пробелы в
 method-литералах). 403/403 интеграционных тестов зелёные.
+
+## Сессия 41 (2026-10-31): файловое хранилище → Backblaze B2; фикс «Неизвестных устройств»
+
+### Хранилище: Upstash Blob (suspended) → B2 S3 + SigV4
+
+- `workers/api/src/lib/b2.ts` — B2-бэкенд через S3-совместимый API с
+  SigV4-подписью на WebCrypto (без SDK): put/get/del/signedReadUrl — та же
+  поверхность, что Upstash Bucket, включая настоящие BlobError (not_found и
+  request_failed), чтобы обработка ошибок в вызовах не менялась.
+- getStorageBackend(env): **B2 приоритетно** (B2_ENDPOINT/REGION/BUCKET/
+  KEY_ID/APPLICATION_KEY уже были секретами воркера), Upstash — фолбэк.
+- storage.ts и files.ts переведены на getStorageBackend; files/upload пишет
+  storage_provider="b2" (check-констрейнт уже допускает); BlobError из
+  адаптера сохраняет ветки not_found.
+- unpdf и B2 закрывают паузу Upstash: загрузка аватаров/фото ДЗ/файлов
+  Workshop снова работает (проверено ниже).
+
+### Сессии: «Неизвестное устройство» — UA больше не теряется
+
+Клиентские логины шли через воркер, и GoTrue записывал в сессию UA воркера
+и Cloudflare-эгресс — отсюда «Неизвестное устройство» и одинаковый IP
+2a06:98c0:3600: у всех. `clientWithRealIdentity(c, env)` в auth.ts создаёт
+per-request anon-клиент с заголовками браузера (user-agent) и
+x-forwarded-for/x-real-ip — login и register прокидывают их в GoTrue.
+Распознавание устройства (device.ts) теперь увидит Chrome/Firefox/Safari.
+Дубликаты сессий — следы частых перелогинов; после фикса каждая сессия
+именуется и различима (по UA), «Завершить» продолжает работать.
+
+### Live-проверка будет после деплоя (CI: API deploy по пушу)
+
+Проверки: node 251/251, vitest 209/209, worker 273/273, tsc 0, eslint 0
+errors, predeploy PASS WITH WARNINGS, next build ok.

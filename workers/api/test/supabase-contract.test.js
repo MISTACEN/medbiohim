@@ -200,7 +200,8 @@ test("files API persists metadata under the caller and enforces existing RLS acc
   assert.ok(filesSource.includes('files.get("/:id", requireAuth'));
   assert.ok(filesSource.includes('files.get("/:id/download", requireAuth'));
   assert.ok(filesSource.includes('uploaded_by: user.id'));
-  assert.ok(filesSource.includes('storage_provider: "unknown"'));
+  // B2-переход: новые загрузки помечаются провайдером b2 (миграция провайдера аддитивна).
+  assert.ok(filesSource.includes('storage_provider: "b2"'));
   assert.ok(filesSource.includes("files_storage_provider_check"));
   assert.ok(filesSource.includes('await bucket.del(key)'));
   assert.ok(filesSource.includes('hasSpecialtyAccess'));

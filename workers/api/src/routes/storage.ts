@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { BlobError, Bucket } from "@upstash/blob";
+import { BlobError } from "@upstash/blob";
+import { getStorageBackend } from "../lib/b2";
 import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
@@ -22,9 +23,9 @@ const ALLOWED_TYPES = new Set([
   "text/plain",
 ]);
 
-function getBucket(env: Env): Bucket | null {
-  const token = env.UPSTASH_BLOB_TOKEN?.trim();
-  return token ? new Bucket({ token }) : null;
+// B2 (если настроен) → Upstash → null. Единая поверхность put/get/del/signedReadUrl.
+function getBucket(env: Env) {
+  return getStorageBackend(env);
 }
 
 function safeKey(value: string | null): string | null {
@@ -46,7 +47,7 @@ storage.post("/upload", requireAuth, async (c) => {
   const rid = requestId();
   const bucket = getBucket(c.env);
   if (!bucket) {
-    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    const { body, status } = fail("NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid);
     return c.json(body, status as 503);
   }
 
@@ -98,7 +99,7 @@ storage.post("/histology-import", requireAuth, async (c) => {
   const user = c.get("user");
   const db = c.get("supabase");
   const bucket = getBucket(c.env);
-  if (!bucket) return c.json(fail("NOT_CONFIGURED", "Upstash Blob не настроен", 503, rid).body, 503);
+  if (!bucket) return c.json(fail("NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid).body, 503);
 
   // Import is deliberately restricted to administrators; never trust a client-supplied path alone.
   const { data: roleRows, error: roleError } = await db.from("user_roles")
@@ -150,7 +151,7 @@ storage.get("/signed-url", requireAuth, async (c) => {
   const bucket = getBucket(c.env);
   const key = safeKey(c.req.query("key") ?? null);
   if (!bucket) {
-    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    const { body, status } = fail("NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid);
     return c.json(body, status as 503);
   }
   if (!key || !canReadKey(key, c.get("user").id)) {
@@ -173,7 +174,7 @@ storage.get("/object", requireAuth, async (c) => {
   const bucket = getBucket(c.env);
   const key = safeKey(c.req.query("key") ?? null);
   if (!bucket) {
-    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    const { body, status } = fail("NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid);
     return c.json(body, status as 503);
   }
   if (!key || !canReadKey(key, c.get("user").id)) {
@@ -205,7 +206,7 @@ storage.delete("/object", requireAuth, async (c) => {
   const bucket = getBucket(c.env);
   const key = safeKey(c.req.query("key") ?? null);
   if (!bucket) {
-    const { body, status } = fail("NOT_CONFIGURED", "Хранилище Upstash Blob не настроено", 503, rid);
+    const { body, status } = fail("NOT_CONFIGURED", "Файловое хранилище не настроено", 503, rid);
     return c.json(body, status as 503);
   }
   if (!key || !canDeleteKey(key, c.get("user").id)) {
