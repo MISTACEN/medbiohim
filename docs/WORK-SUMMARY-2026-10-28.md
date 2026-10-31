@@ -1886,3 +1886,24 @@ Live-проверка на проде (после деплоя): POST /auth/regi
 Нюанс, пойманный при проверке: GoTrue отказывает secret-ключу с браузерным
 User-Agent («Forbidden use of secret API key in browser»). В админ-скриптах
 User-Agent передавать нельзя — только в запросах к воркеру.
+
+## Сессия 43 (2026-10-31): вход через Telegram с сайта + чин на worker↔bot
+
+**Telegram Login Widget** («войти через тг» с сайта, не из бота):
+- виджет на /login (вкладка Telegram), подписанный колбэк → POST
+  /auth/telegram/widget → сессия сервером → HttpOnly-куки;
+- верификация по spec виджета: secret = SHA256(bot_token) (отличается от
+  initData!), parity-тест 24 кейса api↔bot;
+- GET /auth/telegram/config отдаёт публичный юзернейм бота виджету;
+- бот-воркер: /api/verify-widget (токен бота не покидает бот-воркер).
+
+**Корневой баг, найденный live-проверкой**: аккаунтная bot-защита Cloudflare
+режет не-браузерные запросы к workers.dev → worker↔bot fetch падал 403 →
+verify всегда 503 (initData-вход не работал вообще), homework-notify ходил
+с не тем секретом. Фикс: service binding'и TELEGRAM_BOT (api→bot) и
+MEDBIOHIM_API (bot→api: ingest, account-link, дайджест); секрет
+TELEGRAM_INTERNAL_SECRET выставлен одинаковым на обоих воркерах.
+Live: мусорный initData теперь честный 401 (подпись), не 503. Google-вход
+подтверждён рабочим на проде (authorize → 302 accounts.google.com).
+
+Тесты: worker 298/298, bot 38/38, frontend-contract 405/405, tsc 0.
