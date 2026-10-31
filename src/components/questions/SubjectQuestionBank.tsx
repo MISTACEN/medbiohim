@@ -490,7 +490,19 @@ export default function SubjectQuestionBank({
                                 <span className={"mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " + (correct ? "bg-[var(--status-ok-fg)] text-white" : "bg-slate-100 text-slate-500")}>
                                   {option?.key != null && String(option.key).trim() ? String(option.key) : String.fromCharCode(65 + optionIndex)}
                                 </span>
-                                <span className="min-w-0 flex-1">{optionText(option)}</span>
+                                <span className="min-w-0 flex-1">
+                                  {optionText(option)}
+                                  {/* Блок 1: картинка-вариант — файл исходного Workshop-элемента. */}
+                                  {option?.image_file_id && item.source_item_id && (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                      src={`/api/v1/workshop/items/${item.source_item_id}/files/${option.image_file_id}`}
+                                      alt={`Вариант ${String.fromCharCode(65 + optionIndex)}`}
+                                      className="mt-1.5 max-h-48 rounded-lg border border-slate-200"
+                                      loading="lazy"
+                                    />
+                                  )}
+                                </span>
                               </li>
                             );
                           })}

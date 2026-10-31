@@ -65,7 +65,7 @@ questions.get("/", requireAuth, async (c) => {
       subjectId = subjectIds.length === 1 ? subjectIds[0] : "";
       if (subjectIds.length > 1) {
         const includeAnswer = c.req.query("include_answer") === "1";
-        let q = supabase.from("questions").select("id,text,answer,options,subject_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).in("subject_id", subjectIds).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+        let q = supabase.from("questions").select("id,text,answer,options,subject_id,type,difficulty,is_published,source_item_id", { count: "exact" }).eq("is_published", true).is("archived_at", null).in("subject_id", subjectIds).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
         if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
         if (kind) q = q.eq("type", kind);
         const { data, error, count } = await q;
@@ -73,7 +73,7 @@ questions.get("/", requireAuth, async (c) => {
         return c.json(ok({ items: (data || []).map((row: any) => publicQuestionRow(row, includeAnswer)), total: count || 0, limit, offset }, rid));
       }
     }
-    let q = supabase.from("questions").select("id,text,answer,options,subject_id,module_id,topic_id,type,difficulty,is_published", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+    let q = supabase.from("questions").select("id,text,answer,options,subject_id,module_id,topic_id,type,difficulty,is_published,source_item_id", { count: "exact" }).eq("is_published", true).is("archived_at", null).order("created_at", { ascending: false }).range(offset, offset + limit - 1);
     if (subjectId) q = q.eq("subject_id", subjectId);
     if (searchTerm) q = q.ilike("text", `%${searchTerm}%`);
     if (kind) q = q.eq("type", kind);
@@ -201,7 +201,7 @@ questions.get("/mini-quiz", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
-    const { data, error } = await supabase.from("questions").select("id,text,options,type,subject_id,is_published").in("id", ids).eq("subject_id", subjectId).eq("is_published", true).is("archived_at", null).limit(20);
+    const { data, error } = await supabase.from("questions").select("id,text,options,type,subject_id,is_published,source_item_id").in("id", ids).eq("subject_id", subjectId).eq("is_published", true).is("archived_at", null).limit(20);
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Mini-quiz unavailable", 503, rid);
       return c.json(body, status as 503);

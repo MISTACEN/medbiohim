@@ -455,6 +455,9 @@ export function publicOptions(question, reveal = true) {
   const options = Array.isArray(question?.options) ? question.options : [];
   return options.map((option) => {
     const out = { key: option.key, label: option.label };
+    // Блок 1: картинка варианта (workshop_item_files.id) едет к клиенту —
+    // рендерится через /workshop/items/:source_item_id/files/:image_file_id.
+    if (option.image_file_id) out.image_file_id = option.image_file_id;
     if (reveal) out.correct = option.correct === true;
     return out;
   });

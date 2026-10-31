@@ -258,6 +258,10 @@ export const endpoints = {
     scheduleImport: (): string => "/admin/schedule/import",
     // Резолвер когорты (Блок 5): «МБХ 201» → стабильная группа по году поступления.
     scheduleResolveGroup: (label: string): string => withQuery("/admin/schedule/resolve-group", "label=" + encodeURIComponent(label)),
+    // Блок 1 бэклога: Workshop → банк вопросов (draft/convert/reject).
+    workshopQuestionDraft: (id: string): string => `/admin/workshop-questions/${enc(id)}/draft`,
+    workshopQuestionConvert: (id: string): string => `/admin/workshop-questions/${enc(id)}/convert`,
+    workshopQuestionReject: (id: string): string => `/admin/workshop-questions/${enc(id)}/reject`,
     importCurriculum: (): string => "/admin/import/curriculum",
     filesAudit: (query?: string): string => withQuery("/admin/files/audit", query),
     filesCapabilities: (): string => "/admin/files/capabilities",

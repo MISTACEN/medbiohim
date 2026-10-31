@@ -70,6 +70,7 @@ import integrations from "./routes/integrations";
 import externalPlatforms from "./routes/external-platforms";
 import questionComments from "./routes/question-comments";
 import workshop from "./routes/workshop";
+import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import staff from "./routes/staff";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -183,6 +184,8 @@ v1.route("/admin", adminRoutes);
 // admin-schedule declares its own "/schedule/..." paths, so it mounts on /admin.
 v1.route("/admin", adminSchedule);
 v1.route("/admin", adminAttestations);
+// Блок 1 бэклога: Workshop → банк вопросов (draft/convert/reject).
+v1.route("/admin", adminWorkshopConvert);
 // SA6: ручной запуск исполнения запросов на удаление аккаунта (только админ).
 v1.route("/admin", adminAccount);
 v1.route("/histology", histology);

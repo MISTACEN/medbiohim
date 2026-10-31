@@ -146,6 +146,10 @@ export async function adminListSchedule(groupId?: string, semester?: number): Pr
   return api(endpoints.admin.schedule() + (q.toString() ? "?" + q : "")) as any;
 }
 /** Резолвер когорты: название файла/листа → стабильная группа (год поступления). */
+/** Блок 1: черновик конвертации Workshop-элемента в банк вопросов. */
+export async function adminWorkshopQuestionDraft(id: string): Promise<any> { return api(endpoints.admin.workshopQuestionDraft(id)) as any; }
+export async function adminWorkshopQuestionConvert(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.workshopQuestionConvert(id), { method: "POST", body: JSON.stringify(payload) }) as any; }
+export async function adminWorkshopQuestionReject(id: string, note: string): Promise<any> { return api(endpoints.admin.workshopQuestionReject(id), { method: "POST", body: JSON.stringify({ note }) }) as any; }
 export async function adminResolveCohort(label: string): Promise<any> { return api(endpoints.admin.scheduleResolveGroup(label)) as any; }
 export async function adminSaveSchedule(payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.schedule(), { method: "PUT", body: JSON.stringify(payload) }) as any; }
 export async function adminImportScheduleXlsx(file: File, groupId: string, semester?: number) {

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Bucket } from "@upstash/blob";
+import { getStorageBackend } from "../lib/b2";
 import { extractText, getDocumentProxy } from "unpdf";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
@@ -323,13 +323,16 @@ workshop.post("/items", requireAuth, async (c) => {
   let extractionError: string | null = null;
   // PDF с вопросами разбираем на отдельные вопросы. Текст без нумерации
   // остаётся одним материалом: лучше ничего не выдумать, чем нарезать абзацы.
-  if (!providedQuestions.length && input.split_pdf_questions !== false && c.env.UPSTASH_BLOB_TOKEN) {
+  if (!providedQuestions.length && input.split_pdf_questions !== false) {
     const pdf = fileRows.find((file) => String(file.mime_type || "").includes("pdf") && Number(file.size_bytes || 0) <= 8 * 1024 * 1024);
     if (pdf) {
       try {
-        const bucket = new Bucket({ token: c.env.UPSTASH_BLOB_TOKEN.trim() });
-        const object = await bucket.get(String(pdf.object_key));
-        const bytes = new Uint8Array(await new Response(object.body as ReadableStream).arrayBuffer());
+        // B2 (прод) → Upstash (fallback). Чтение напрямую через Upstash ломалось,
+        // когда платформа переехала на B2.
+        const backend = getStorageBackend(c.env);
+        if (!backend) throw new Error("storage_not_configured");
+        const object = await backend.get(String(pdf.object_key));
+        const bytes = new Uint8Array(object.body);
         const document = await getDocumentProxy(bytes);
         const { text } = await extractText(document, { mergePages: true });
         const parsed = splitQuestions(String(text || "")).slice(0, MAX_QUESTIONS);
@@ -637,7 +640,8 @@ workshop.get("/items/:id/files/:fileId", requireAuth, async (c) => {
   const id = c.req.param("id") || "";
   const fileId = c.req.param("fileId") || "";
   if (!UUID.test(id) || !UUID.test(fileId)) return error(c, rid, 404, "NOT_FOUND", "Файл не найден");
-  if (!c.env.UPSTASH_BLOB_TOKEN) return error(c, rid, 503, "STORAGE_NOT_CONFIGURED", "Хранилище не настроено");
+  const backend = getStorageBackend(c.env);
+  if (!backend) return error(c, rid, 503, "STORAGE_NOT_CONFIGURED", "Хранилище не настроено");
   const db = dbFor(c);
   const { item } = await loadItem(c, id);
   if (!item || item.status === "deleted") return error(c, rid, 404, "NOT_FOUND", "Материал не найден");
@@ -649,8 +653,7 @@ workshop.get("/items/:id/files/:fileId", requireAuth, async (c) => {
   const key = String(file.object_key || "");
   if (!key.startsWith("users/")) return error(c, rid, 404, "NOT_FOUND", "Файл недоступен");
   try {
-    const bucket = new Bucket({ token: c.env.UPSTASH_BLOB_TOKEN.trim() });
-    const object = await bucket.get(key);
+    const object = await backend.get(key);
     const headers = new Headers({
       "content-type": String(file.mime_type || object.contentType || "application/octet-stream"),
       "cache-control": "private, max-age=60",

@@ -153,6 +153,10 @@ export default function AdminWorkshopPage() {
                         <button type="button" onClick={() => void moderate(item.id, "approve")} disabled={busy.startsWith(item.id)} className="inline-flex items-center gap-1 rounded-lg bg-[var(--status-ok-fg)] px-2.5 py-1.5 text-xs font-semibold text-white"><Check className="h-3.5 w-3.5" />Одобрить</button>
                         <button type="button" onClick={() => void moderate(item.id, "reject")} disabled={busy.startsWith(item.id)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)]"><X className="h-3.5 w-3.5" />Отклонить</button>
                         {item.status !== "hidden" && <button type="button" onClick={() => void moderate(item.id, "hide")} disabled={busy.startsWith(item.id)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold"><EyeOff className="h-3.5 w-3.5" />Скрыть</button>}
+                        {/* Блок 1: хим-тесты из Workshop становятся полноценными вопросами банка. */}
+                        {item.kind === "test_questions" && canModerate && (
+                          <Link href={`/admin/workshop-convert?item=${item.id}`} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700">Сделать тестом</Link>
+                        )}
                       </div>
                     </div>
                     {!!item.personal_data_flags?.length && (
