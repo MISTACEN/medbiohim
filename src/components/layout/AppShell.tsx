@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { MobileNav } from "./MobileNav";
 import { hasToken, presenceHeartbeat } from "@/lib/api";
 import { GlobalLoadingBar } from "@/components/ui/GlobalLoadingBar";
@@ -64,6 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="lg:pl-64">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
         <main id="main" className="min-h-[calc(100vh-4rem)] px-3 pb-24 pt-3 sm:p-6 lg:p-8">
+          <Breadcrumbs />
           {children}
         </main>
         {!mobileOpen && <MobileNav />}

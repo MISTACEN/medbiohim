@@ -339,6 +339,19 @@ export default function SchedulePage() {
   const [weekStart, setWeekStart] = useState(() => startOfWeekYmd(nowParts().date));
   const [view, setView] = useState<"day"|"week"|"month"|"semester">("week");
   const [selectedDay, setSelectedDay] = useState(() => nowParts().date);
+  // C10: панель дней помнит скролл между переключениями (sessionStorage).
+  const dayScrollRef = useRef<HTMLDivElement | null>(null);
+  const dayScrollKey = "mb_schedule_days_scroll";
+  useEffect(() => {
+    const saved = Number(sessionStorage.getItem(dayScrollKey) || 0);
+    const element = dayScrollRef.current;
+    if (saved > 0 && element) element.scrollTop = saved;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function rememberDayScroll() {
+    const top = dayScrollRef.current?.scrollTop || 0;
+    if (top > 0) sessionStorage.setItem(dayScrollKey, String(top));
+  }
   const [monthStart, setMonthStart] = useState(() => monthStartYmd(nowParts().date));
   const [allItems, setAllItems] = useState<ScheduleItem[]>([]);
   const [homeworks, setHomeworks] = useState<any[]>([]);
@@ -758,7 +771,7 @@ export default function SchedulePage() {
 
           {view === "day" && (
             <div className="space-y-3">
-              <div className="schedule-day-picker">
+              <div className="schedule-day-picker" ref={dayScrollRef} onScroll={rememberDayScroll}>
                 {days.map(({ key }) => (
                   <button key={key} type="button" className={key===today?"schedule-day-pill schedule-day-pill-active":"schedule-day-pill"} onClick={()=>{setSelectedDay(key);setWeekStart(startOfWeekYmd(key));setView("day")}}>
                     <span>{weekdayShortRu(key)}</span><b>{dayDateRu(key)}</b>

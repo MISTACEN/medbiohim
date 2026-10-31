@@ -60,13 +60,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" data-theme="classic-light" suppressHydrationWarning className={inter.variable}>
+    <html lang="ru" data-theme="classic-light" data-density="comfortable" suppressHydrationWarning className={inter.variable}>
       <head>
         {/* F11: применить сохранённую тему до первой отрисовки — без вспышки светлой.
             Логика повторяет ThemeProvider: mb_app_theme → mb_theme=dark → classic-light. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("mb_app_theme");var allowed=["classic-light","classic-dark","midnight","aurora-glass","medical-glass","crystal-glass"];var theme=t&&allowed.indexOf(t)>=0?t:(localStorage.getItem("mb_theme")==="dark"?"classic-dark":"classic-light");document.documentElement.setAttribute("data-theme",theme);var dark=["classic-dark","midnight"];document.documentElement.classList.toggle("dark",dark.indexOf(theme)>=0);}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("mb_app_theme");var allowed=["classic-light","classic-dark","midnight","aurora-glass","medical-glass","crystal-glass"];var theme=t&&allowed.indexOf(t)>=0?t:(localStorage.getItem("mb_theme")==="dark"?"classic-dark":"classic-light");document.documentElement.setAttribute("data-theme",theme);var dark=["classic-dark","midnight"];document.documentElement.classList.toggle("dark",dark.indexOf(theme)>=0);var d=localStorage.getItem("mb_density");if(d==="compact"){document.documentElement.setAttribute("data-density","compact");}}catch(e){}})();`,
           }}
         />
       </head>

@@ -7,8 +7,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import {
   Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
-  MonitorSmartphone, LogOut, Database, ArrowRight,
-} from "lucide-react";
+  MonitorSmartphone, LogOut, Database, ArrowRight, Rows3 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
 import { describeApiError } from "@/lib/errors";
 import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/api";
@@ -49,6 +48,16 @@ function SettingsPageInner() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [density, setDensityState] = useState<"comfortable" | "compact">("comfortable");
+  useEffect(() => {
+    const saved = localStorage.getItem("mb_density");
+    if (saved === "compact" || saved === "comfortable") setDensityState(saved);
+  }, []);
+  function applyDensity(value: "comfortable" | "compact") {
+    setDensityState(value);
+    localStorage.setItem("mb_density", value);
+    document.documentElement.setAttribute("data-density", value);
+  }
   const [busy, setBusy] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -535,6 +544,26 @@ function SettingsPageInner() {
           </div>
           <button type="submit" disabled={busy === "profile"} className="btn-primary disabled:opacity-60">{busy === "profile" ? "…" : "Сохранить профиль"}</button>
         </form>
+      </section>
+
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Rows3 className="h-5 w-5" /> Плотность таблиц</h2>
+        <div className="flex gap-2" role="radiogroup" aria-label="Плотность таблиц">
+          {(["comfortable", "compact"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={density === value}
+              onClick={() => applyDensity(value)}
+              className={"rounded-xl px-4 py-2 text-sm font-semibold " + (density === value ? "bg-[var(--primary)] text-white" : "border")}
+              style={density === value ? undefined : { borderColor: "var(--border)" }}
+            >
+              {value === "comfortable" ? "Обычная" : "Компактная"}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">Влияет на отступы в таблицах расписания, журналов и админки. Настройка хранится в этом браузере.</p>
       </section>
 
       <section className="card space-y-4 p-5">

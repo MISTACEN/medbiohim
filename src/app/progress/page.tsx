@@ -203,19 +203,48 @@ export default function ProgressPage() {
             <div className="card p-5">
               <h2 className="text-lg font-bold text-slate-900">Активность за 30 дней</h2>
               <p className="mt-1 text-xs text-slate-500">Попытки тестов и ответы в тренажёре по дням.</p>
-              <div className="mt-3 flex h-16 items-end gap-1" role="img" aria-label="Активность за 30 дней">
-                {summary.activity30.map((day) => {
-                  const max = Math.max(...summary.activity30.map((d) => d.count), 1);
-                  const height = day.count ? Math.max(8, Math.round((day.count / max) * 100)) : 4;
-                  return (
-                    <div
-                      key={day.date}
-                      className={"flex-1 rounded-t " + (day.count ? "bg-indigo-500" : "bg-slate-100")}
-                      style={{ height: `${height}%` }}
-                      title={`${day.date}: ${day.count}`}
-                    />
-                  );
-                })}
+              {/* F12: SVG-график с осью Y (макс) и подписями первой/последней даты. */}
+              <div className="mt-3">
+                <svg
+                  viewBox="0 0 320 96"
+                  className="h-24 w-full"
+                  role="img"
+                  aria-label={`Активность за 30 дней: максимум ${Math.max(...summary.activity30.map((d) => d.count), 0)} событий в день`}
+                  preserveAspectRatio="none"
+                >
+                  {(() => {
+                    const max = Math.max(...summary.activity30.map((d) => d.count), 1);
+                    const width = 320 / summary.activity30.length;
+                    return (
+                      <>
+                        {/* сетка: середина и верх шкалы */}
+                        <line x1="0" y1="48" x2="320" y2="48" stroke="var(--border)" strokeWidth="1" />
+                        <line x1="0" y1="4" x2="320" y2="4" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+                        {summary.activity30.map((day, index) => {
+                          const height = day.count ? Math.max(2, Math.round((day.count / max) * 88)) : 1;
+                          return (
+                            <rect
+                              key={day.date}
+                              x={index * width + 0.5}
+                              y={92 - height}
+                              width={Math.max(1, width - 1)}
+                              height={height}
+                              rx="1.5"
+                              fill={day.count ? "var(--primary)" : "var(--border)"}
+                            >
+                              <title>{`${day.date}: ${day.count}`}</title>
+                            </rect>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </svg>
+                <div className="flex justify-between text-[10px] tabular-nums text-slate-400">
+                  <span>{summary.activity30[0]?.date.slice(8)}</span>
+                  <span>пик: {Math.max(...summary.activity30.map((d) => d.count))}</span>
+                  <span>{summary.activity30[summary.activity30.length - 1]?.date.slice(8)}</span>
+                </div>
               </div>
             </div>
           )}

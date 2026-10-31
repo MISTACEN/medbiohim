@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
+import { Field, FieldInput } from "@/components/ui/Field";
 import { register, setTokens } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { startGoogleOAuth } from "@/lib/supabase";
@@ -55,7 +56,8 @@ export default function RegisterPage() {
       const accessToken = session?.access_token ?? session?.accessToken ?? payload?.access_token ?? payload?.accessToken;
       const refreshToken = session?.refresh_token ?? session?.refreshToken ?? payload?.refresh_token ?? payload?.refreshToken;
       if (typeof accessToken === "string" && accessToken.length > 0) {
-        setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
+        // Обмен токенов на HttpOnly куки (RFC §3.3) — до последующих запросов.
+        await setTokens(accessToken, typeof refreshToken === "string" ? refreshToken : undefined);
         await refresh();
         router.replace("/");
         return;
@@ -88,36 +90,20 @@ export default function RegisterPage() {
         </button>
 
         <form onSubmit={onSubmit} className="space-y-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              ФИО / Имя <span className="text-[var(--status-critical-fg)]">*</span>
-            </label>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              minLength={2}
-              placeholder="Иванов Иван Иванович"
-              autoComplete="name"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            />
-            <p className="mt-1 text-xs text-slate-500">Как в зачётке — видно в профиле, заданиях и рейтинге</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email <span className="text-[var(--status-critical-fg)]">*</span></label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="email" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Пароль <span className="text-[var(--status-critical-fg)]">*</span></label>
-            <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="new-password" />
-            <p className="mt-1 text-xs text-slate-500">Не короче 8 символов</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Повтор пароля <span className="text-[var(--status-critical-fg)]">*</span></label>
-            <input type="password" required minLength={8} value={password2} onChange={(e) => setPassword2(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" autoComplete="new-password" />
-          </div>
-          {error && <div className="rounded-xl bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
-          {info && <div className="rounded-xl bg-[var(--status-ok-bg)] px-3 py-2 text-sm text-[var(--status-ok-fg)]">{info}</div>}
+          <Field label="ФИО / Имя" required hint="Как в зачётке — видно в профиле, заданиях и рейтинге" htmlFor="reg-name">
+            <FieldInput id="reg-name" value={fullName} onChange={(e) => setFullName(e.target.value)} required minLength={2} placeholder="Иванов Иван Иванович" autoComplete="name" />
+          </Field>
+          <Field label="Email" required htmlFor="reg-email">
+            <FieldInput id="reg-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+          </Field>
+          <Field label="Пароль" required hint="Не короче 8 символов" htmlFor="reg-password">
+            <FieldInput id="reg-password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+          </Field>
+          <Field label="Повтор пароля" required htmlFor="reg-password2">
+            <FieldInput id="reg-password2" type="password" required minLength={8} value={password2} onChange={(e) => setPassword2(e.target.value)} autoComplete="new-password" />
+          </Field>
+          {error && <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
+          {info && <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div>}
           <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {loading ? "Создание…" : "Создать аккаунт"}
           </button>
