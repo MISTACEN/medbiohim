@@ -495,3 +495,17 @@ test("FA1: внутренний дайджест для бота — secret-gate
   // date строго YYYY-MM-DD.
   assert.match(route, /ISO_DATE/);
 });
+
+test("Leaked password protection: HIBP-проверка на регистрации и смене пароля", async () => {
+  const register = await source("../src/routes/auth.ts");
+  assert.match(register, /isPwnedPassword\(String\(body\.password\)\)/);
+  assert.match(register, /PASSWORD_PWNED/);
+  const settings = await source("../src/routes/settings.ts");
+  assert.match(settings, /isPwnedPassword\(password\)/);
+  assert.match(settings, /PASSWORD_PWNED/);
+  // guard: k-анонимность (только префикс SHA-1 уходит наружу) и fail-open
+  const guard = await source("../src/lib/password-guard.ts");
+  assert.match(guard, /pwnedpasswords\.com\/range\//);
+  assert.match(guard, /hash\.slice\(0, 5\)/);
+  assert.match(guard, /return null;/);
+});

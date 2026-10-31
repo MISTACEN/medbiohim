@@ -1865,3 +1865,15 @@ errors, predeploy PASS WITH WARNINGS, next build ok.
 - **UA сессии**: логин через прод-воркер с браузерным User-Agent →
   auth.sessions.user_agent = настоящий Chrome (было: пусто/воркер).
   Временные пользователи удалены.
+
+## Сессия 42 (2026-10-31): Leaked password protection своими руками (замена Pro-фичи)
+
+Тумблер Supabase доступен только на Pro-плане. Реализовали ту же проверку
+сами — она и лучше: русское сообщение, работает на любом тарифе.
+
+- `workers/api/src/lib/password-guard.ts` — k-анонимная проверка по
+  HaveIBeenPwned: SHA-1 пароля, наружу уходит только префикс из 5 символов
+  (сам пароль и полный хеш не покидают воркер); HIBP недоступен — fail-open.
+- `/auth/register` и `POST /settings/password` отклоняют пароли из утечек:
+  422 PASSWORD_PWNED «Этот пароль найден в базах утечек — выберите другой».
+- Контрактный тест в contracts.test.js (274/274).

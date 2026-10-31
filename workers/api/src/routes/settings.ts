@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { isPwnedPassword } from "../lib/password-guard";
 import { defaultLinkRedirect, identityAuthorizeUrl, resolveLinkRedirect } from "../lib/link-redirect";
 
 const settings = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -262,6 +263,12 @@ async function changePassword(c: any) {
   if (!currentPassword) {
     const { body, status } = fail("VALIDATION_ERROR", "Укажите текущий пароль", 400, rid);
     return c.json(body, status as 400);
+  }
+  // Leaked password protection: пароль из утечек отклоняется до смены.
+  const pwned = await isPwnedPassword(password);
+  if (pwned === true) {
+    const { body, status } = fail("PASSWORD_PWNED", "Этот пароль найден в базах утечек — выберите другой", 422, rid);
+    return c.json(body, status as 422);
   }
   const user = c.get("user");
   const email = String(user?.email || "").trim();

@@ -6,6 +6,7 @@ import { isHttpsUrl, requireEnv } from "../env";
 import { rateLimit } from "../lib/redis";
 import { ok, fail, requestId } from "../lib/response";
 import { hasRemoteVerifier, validateTelegramInitData, verifyTelegramInitDataRemote } from "../lib/telegram-initdata";
+import { isPwnedPassword } from "../lib/password-guard";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const auth = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -135,6 +136,13 @@ auth.post("/register", async (c) => {
   if (String(body.password).length < 8) {
     const { body: b, status } = fail("VALIDATION", "Пароль не короче 8 символов", 400, rid);
     return c.json(b, status as 400);
+  }
+  // Leaked password protection (замена Pro-фичи Supabase): пароль из утечек
+  // отклоняется до создания аккаунта. HIBP недоступен — регистрация идёт дальше.
+  const pwned = await isPwnedPassword(String(body.password));
+  if (pwned === true) {
+    const { body: b, status } = fail("PASSWORD_PWNED", "Этот пароль найден в базах утечек — выберите другой", 422, rid);
+    return c.json(b, status as 422);
   }
 
   try {
