@@ -37,6 +37,8 @@ export type Env = {
   // Public endpoint on the bot Worker that verifies Mini App initData; that Worker
   // is the only place that holds the bot token.
   TELEGRAM_BOT_VERIFY_URL?: string;
+  // Same trust model for the website Login Widget ("Sign in with Telegram").
+  TELEGRAM_BOT_VERIFY_WIDGET_URL?: string;
   TELEGRAM_WEBHOOK_ORIGIN?: string;
   TELEGRAM_WEBHOOK_URL?: string;
   TELEGRAM_BOT_USERNAME?: string;

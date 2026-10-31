@@ -1,4 +1,5 @@
 import { constantTimeEqual, validateTelegramInitData } from "./initdata.js";
+import { validateTelegramLoginWidget } from "./loginwidget.js";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -533,6 +534,50 @@ async function handleVerifyInitData(request, env) {
 }
 
 /**
+ * `POST /api/verify-widget` — Login Widget ("Sign in with Telegram" on the
+ * website) verification for the API Worker. Same trust model as
+ * `/api/verify-initdata`: the bot token never leaves this Worker, the caller
+ * gets the verified identity or one generic rejection.
+ */
+async function handleVerifyWidget(request, env) {
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ ok: false, error: "METHOD_NOT_ALLOWED" }), {
+      status: 405,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", allow: "POST" },
+    });
+  }
+
+  const secret = internalSecret(env);
+  if (!secret) return json({ ok: false, error: "INTERNAL_NOT_CONFIGURED" }, 503);
+  if (!constantTimeEqual(request.headers.get("x-medbiohim-internal") || "", secret)) {
+    return json({ ok: false, error: "UNAUTHORIZED" }, 401);
+  }
+  if (!env.TELEGRAM_BOT_TOKEN) return json({ ok: false, error: "BOT_NOT_CONFIGURED" }, 503);
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_BODY_BYTES) return json({ ok: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+  const text = await request.text();
+  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
+    return json({ ok: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+  }
+
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return json({ ok: false, error: "INVALID_BODY" }, 400);
+  }
+  const widget = body && typeof body === "object" && !Array.isArray(body) ? body.widget : null;
+
+  const result = await validateTelegramLoginWidget(widget, env.TELEGRAM_BOT_TOKEN);
+  if (!result.ok) {
+    // Deliberately generic: never tell the caller which check failed.
+    return json({ ok: false, error: "INVALID_WIDGET_PAYLOAD" }, 401);
+  }
+  return json({ ok: true, user: result.user, auth_date: result.auth_date });
+}
+
+/**
  * FA1 + §9: доставuka уведомлений. Бот — «тупой почтальон»: текст приходит
  * готовым из API-воркера (форматирование живёт в репо API), бот только
  * отправляет через Telegram API. Доступ — по общему internal secret.
@@ -636,6 +681,7 @@ export async function handleRequest(request, env) {
     });
   }
   if (url.pathname === "/api/verify-initdata") return handleVerifyInitData(request, env);
+  if (url.pathname === "/api/verify-widget") return handleVerifyWidget(request, env);
   if (url.pathname === "/api/verify-ingest") return handleVerifyIngest(request, env);
   if (url.pathname === "/api/notify" && request.method === "POST") {
     try {

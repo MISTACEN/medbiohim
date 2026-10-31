@@ -5,12 +5,19 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Send, Shield } from "lucide-react";
 import { clearTokens, login, recoverPassword, setTokens } from "@/lib/api";
+import { telegramWidgetConfig, telegramWidgetLogin } from "@/lib/api/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeNextPath } from "@/lib/navigation";
 import { startGoogleOAuth, startMagicLink } from "@/lib/supabase";
 import { describeApiError } from "@/lib/errors";
 
 type LoginMethod = "email" | "google" | "telegram";
+
+declare global {
+  interface Window {
+    onTelegramAuth?: (user: Record<string, unknown>) => void;
+  }
+}
 
 const METHODS: Array<{ id: LoginMethod; title: string; hint: string }> = [
   { id: "email", title: "Почта", hint: "Пароль или ссылка" },
@@ -48,6 +55,13 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
   const [recoverLoading, setRecoverLoading] = useState(false);
+  // Website "Sign in with Telegram" (Login Widget): bot username comes from the
+  // API; "unavailable" falls back to the bot instructions below.
+  const [telegramBot, setTelegramBot] = useState<{ state: "loading" | "ready" | "unavailable"; username: string | null }>({
+    state: "loading",
+    username: null,
+  });
+  const [telegramLoading, setTelegramLoading] = useState(false);
 
   const rawNext = searchParams.get("next");
   // Only same-site paths: an open redirect must never be possible here.
@@ -66,6 +80,80 @@ function LoginPageInner() {
     };
     setError(`Вход не завершён: ${known[oauthFailure] || oauthFailure}`);
   }, [oauthFailure]);
+
+  // Public bot username for the Login Widget; 503 keeps the bot instructions.
+  useEffect(() => {
+    if (method !== "telegram") return;
+    let cancelled = false;
+    setTelegramBot({ state: "loading", username: null });
+    void (async () => {
+      try {
+        const res = await telegramWidgetConfig();
+        if (cancelled) return;
+        if (res.ok && typeof res.data?.bot_username === "string" && res.data.bot_username) {
+          setTelegramBot({ state: "ready", username: res.data.bot_username });
+        } else {
+          setTelegramBot({ state: "unavailable", username: null });
+        }
+      } catch {
+        if (!cancelled) setTelegramBot({ state: "unavailable", username: null });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [method]);
+
+  // The widget executes data-onauth in the global scope: window.onTelegramAuth
+  // receives the signed payload and exchanges it for a server-issued session.
+  useEffect(() => {
+    if (method !== "telegram" || telegramBot.state !== "ready" || !telegramBot.username) return;
+    window.onTelegramAuth = (user: Record<string, unknown>) => {
+      void (async () => {
+        setTelegramLoading(true);
+        setError(null);
+        setInfo(null);
+        try {
+          clearTokens();
+          const res = await telegramWidgetLogin(user);
+          if (!res.ok) {
+            setError(
+              res.error.code === "TELEGRAM_NOT_LINKED" || res.error.code === "TELEGRAM_NO_EMAIL"
+                ? describeApiError(res.error)
+                : mapLoginError(res.error.code, describeApiError(res.error)),
+            );
+            return;
+          }
+          const payload = res.data as any;
+          if (typeof payload?.access_token === "string" && payload.access_token) {
+            await setTokens(payload.access_token, typeof payload.refresh_token === "string" ? payload.refresh_token : undefined);
+            await refresh();
+            router.replace(nextPath);
+            return;
+          }
+          setError(`Сервер не вернул токен входа. Код запроса: ${res.requestId || "не указан"}.`);
+        } catch {
+          setError("Не удалось связаться с API.");
+        } finally {
+          setTelegramLoading(false);
+        }
+      })();
+    };
+    const container = document.getElementById("telegram-login-container");
+    if (!container || container.childElementCount > 0) return;
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.async = true;
+    script.setAttribute("data-telegram-login", telegramBot.username);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-radius", "12");
+    script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    script.setAttribute("data-request-access", "write");
+    container.appendChild(script);
+    return () => {
+      delete window.onTelegramAuth;
+    };
+  }, [method, telegramBot, nextPath, refresh, router]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -303,10 +391,18 @@ function LoginPageInner() {
                   Telegram работает как самостоятельный способ входа, если аккаунт уже привязан к боту.
                 </p>
               </div>
+              {telegramBot.state === "ready" ? (
+                <div className="space-y-3">
+                  {/* Вставка Telegram Login Widget: скрипт Telegram рендерит кнопку сам. */}
+                  <div id="telegram-login-container" className="flex min-h-[46px] items-center justify-center" />
+                  {telegramLoading && <p className="text-center text-sm text-slate-500">Подтверждаем вход…</p>}
+                </div>
+              ) : telegramBot.state === "loading" ? (
+                <p className="text-center text-sm text-slate-500">Готовим вход через Telegram…</p>
+              ) : null}
               <ol className="space-y-2 text-sm text-slate-600">
-                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">1.</span> Откройте бота и нажмите «Войти на сайт».</li>
-                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">2.</span> Бот пришлёт защищённую ссылку на эту платформу.</li>
-                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">3.</span> Если аккаунт ещё не привязан — сначала войдите по почте или Google и привяжите Telegram в настройках.</li>
+                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">1.</span> Нажмите кнопку выше (или откройте бота) и подтвердите вход.</li>
+                <li className="flex gap-2"><span className="font-bold text-[var(--status-ok-fg)]">2.</span> Если аккаунт ещё не привязан — сначала войдите по почте или Google и привяжите Telegram в настройках.</li>
               </ol>
               <a
                 href="https://t.me/MEDBIOCHIM_bot"

@@ -31,6 +31,10 @@ export const endpoints = {
     logout: (): string => "/auth/logout",
     refresh: (): string => "/auth/refresh",
     telegramWebApp: (): string => "/auth/telegram/webapp",
+    // Website "Sign in with Telegram" (Login Widget): public config for the widget
+    // and the login endpoint that accepts its signed callback payload.
+    telegramWidgetConfig: (): string => "/auth/telegram/config",
+    telegramWidgetLogin: (): string => "/auth/telegram/widget",
     // Cookie-транспорт (RFC docs/COOKIES-RFC-E1.md §3.2): это не пути прокси
     // /api/v1, а route handlers Next, ставящие/чистящие HttpOnly-куки.
     sessionCookie: (): string => "/api/auth/session",

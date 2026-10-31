@@ -245,10 +245,18 @@ test("telegram webapp route uses the validator, the linked account and a server-
   assert.ok(authSource.includes("validateTelegramInitData("));
   assert.ok(authSource.includes("createServiceClient"));
   assert.ok(authSource.includes('from("telegram_accounts")'));
-  assert.ok(authSource.includes('.eq("telegram_user_id", String(verification.user.id))'));
+  // The mint tail is shared with the website Login Widget route (telegramUserId
+  // is the helper's parameter name).
+  assert.ok(authSource.includes('.eq("telegram_user_id", String(telegramUserId))'));
   assert.ok(authSource.includes('generateLink({ type: "magiclink", email })'));
   assert.ok(authSource.includes('verifyOtp({ type: "magiclink", token_hash: tokenHash })'));
   assert.ok(authSource.includes("normalizeSession(otp.session)"));
+  // Website "Sign in with Telegram" (Login Widget) rides the same mint helper.
+  assert.ok(authSource.includes('auth.post("/telegram/widget"'));
+  assert.ok(authSource.includes('auth.get("/telegram/config"'));
+  assert.ok(authSource.includes("validateTelegramLoginWidget("));
+  assert.ok(authSource.includes("verifyTelegramLoginWidgetRemote("));
+  assert.ok(authSource.includes("mintTelegramSession(service, c.env, verification.user.id, rid)"));
 
   // Error contract.
   assert.ok(/TELEGRAM_NOT_CONFIGURED"[^)]*503/.test(authSource.replace(/\n/g, " ")));
@@ -261,7 +269,7 @@ test("telegram webapp route uses the validator, the linked account and a server-
   assert.ok(authSource.includes("createAnonClient(c.env)"));
 
   // The Mini App login must reuse the /login envelope for the shared client.
-  const envelopes = authSource.match(/ok\(\{ \.\.\.session, session \}, rid\)/g) || [];
+  const envelopes = authSource.match(/ok\(\{ \.\.\.(?:minted\.session|session), session(?:: minted\.session)? \}, rid\)/g) || [];
   assert.ok(envelopes.length >= 2, "telegram webapp must mirror the /login envelope");
   assert.ok(authSource.includes("function normalizeSession("));
   assert.ok(authSource.includes('auth.post("/login"'));

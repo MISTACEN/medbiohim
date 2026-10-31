@@ -50,6 +50,10 @@ UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io"
 # Mini App initData verification is delegated to the bot Worker (it owns the bot token).
 # Needs a shared secret: TELEGRAM_INTERNAL_SECRET or TELEGRAM_WEBHOOK_SECRET.
 TELEGRAM_BOT_VERIFY_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-initdata"
+# Website Login Widget ("Sign in with Telegram") — same delegation to the bot Worker.
+TELEGRAM_BOT_VERIFY_WIDGET_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-widget"
+# Public bot username rendered into the widget on /login (GET /auth/telegram/config).
+TELEGRAM_BOT_USERNAME = "MEDBIOCHIM_bot"
 # Без копии TELEGRAM_INGEST_SECRET на API: бот подтверждает секрет входящего обновления.
 TELEGRAM_BOT_VERIFY_INGEST_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-ingest"
 # Cloudflare Workers AI — основной сортировщик. GigaChat не обязателен.
@@ -64,7 +68,7 @@ service = "medbiohim-api-shadow"
 [env.production]
 name = "medbiohim-api"
 workers_dev = false
-vars = { APP_ENV = "production", CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000", UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io", TELEGRAM_BOT_VERIFY_INGEST_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-ingest", AI_SORT_PROVIDER = "cloudflare", CLOUDFLARE_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8" }
+vars = { APP_ENV = "production", CORS_ORIGINS = "https://medbiohim.vercel.app,http://localhost:3000", UPSTASH_BLOB_PUBLIC_BASE_URL = "https://b8a4f9f853fa.blob.upstash.io", TELEGRAM_BOT_VERIFY_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-initdata", TELEGRAM_BOT_VERIFY_WIDGET_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-widget", TELEGRAM_BOT_USERNAME = "MEDBIOCHIM_bot", TELEGRAM_BOT_VERIFY_INGEST_URL = "https://medbiohim-telegram.ryazansevegor.workers.dev/api/verify-ingest", AI_SORT_PROVIDER = "cloudflare", CLOUDFLARE_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8" }
 
 [env.production.ai]
 binding = "AI"

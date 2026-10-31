@@ -6,6 +6,11 @@ import { isHttpsUrl, requireEnv } from "../env";
 import { rateLimit } from "../lib/redis";
 import { ok, fail, requestId } from "../lib/response";
 import { hasRemoteVerifier, validateTelegramInitData, verifyTelegramInitDataRemote } from "../lib/telegram-initdata";
+import {
+  hasWidgetVerifier,
+  validateTelegramLoginWidget,
+  verifyTelegramLoginWidgetRemote,
+} from "../lib/telegram-widget";
 import { isPwnedPassword } from "../lib/password-guard";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 
@@ -76,6 +81,76 @@ function normalizeSession(session: {
         }
       : null,
   };
+}
+
+type TelegramSession =
+  | { ok: true; session: ReturnType<typeof normalizeSession> }
+  | { ok: false; code: string; message: string; status: number };
+
+/**
+ * Shared tail of both Telegram login routes (Mini App initData and the website
+ * Login Widget): a verified Telegram identity is resolved to the linked account
+ * and a Supabase session is minted server-side — the magic-link token is
+ * consumed in-process and never emailed.
+ */
+async function mintTelegramSession(
+  service: SupabaseClient,
+  env: Env,
+  telegramUserId: number,
+  rid: string
+): Promise<TelegramSession> {
+  const { data: account, error: accountError } = await service
+    .from("telegram_accounts")
+    .select("user_id")
+    .eq("telegram_user_id", String(telegramUserId))
+    .maybeSingle();
+  if (accountError) {
+    console.error("[auth:telegram-mint]", { stage: "account_lookup", code: accountError.code, requestId: rid });
+    return { ok: false, code: "TELEGRAM_LOGIN_UNAVAILABLE", message: "Вход через Telegram временно недоступен", status: 503 };
+  }
+
+  const linkedUserId = account?.user_id ? String(account.user_id) : "";
+  if (!linkedUserId) {
+    return {
+      ok: false,
+      code: "TELEGRAM_NOT_LINKED",
+      message: "Telegram не привязан. Привяжите аккаунт в Настройках → Telegram.",
+      status: 409,
+    };
+  }
+
+  const { data: adminUser, error: adminUserError } = await service.auth.admin.getUserById(linkedUserId);
+  if (adminUserError || !adminUser?.user) {
+    console.error("[auth:telegram-mint]", { stage: "user_lookup", code: adminUserError?.code, requestId: rid });
+    return { ok: false, code: "AUTH_UPSTREAM", message: "Сервис авторизации временно недоступен", status: 503 };
+  }
+
+  const email = adminUser.user.email?.trim();
+  if (!email) {
+    // A profile without an email cannot receive a server-issued session.
+    return {
+      ok: false,
+      code: "TELEGRAM_NO_EMAIL",
+      message: "Для профиля не задан email. Обратитесь в поддержку.",
+      status: 409,
+    };
+  }
+
+  const { data: link, error: linkError } = await service.auth.admin.generateLink({ type: "magiclink", email });
+  const tokenHash = link?.properties?.hashed_token;
+  if (linkError || !tokenHash) {
+    console.error("[auth:telegram-mint]", { stage: "generate_link", code: linkError?.code, requestId: rid });
+    return { ok: false, code: "AUTH_UPSTREAM", message: "Сервис авторизации временно недоступен", status: 503 };
+  }
+
+  const anon = createAnonClient(env);
+  const { data: otp, error: otpError } = await anon.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+  if (otpError || !otp.session) {
+    console.error("[auth:telegram-mint]", { stage: "verify_otp", code: otpError?.code, requestId: rid });
+    return { ok: false, code: "AUTH_UPSTREAM", message: "Сервис авторизации временно недоступен", status: 503 };
+  }
+
+  return { ok: true, session: normalizeSession(otp.session) };
 }
 
 /** POST /api/v1/auth/login */
@@ -298,68 +373,97 @@ auth.post("/telegram/webapp", async (c) => {
   }
 
   try {
-    const { data: account, error: accountError } = await service
-      .from("telegram_accounts")
-      .select("user_id")
-      .eq("telegram_user_id", String(verification.user.id))
-      .maybeSingle();
-    if (accountError) {
-      console.error("[auth:telegram-webapp]", { stage: "account_lookup", code: accountError.code, requestId: rid });
+    const minted = await mintTelegramSession(service, c.env, verification.user.id, rid);
+    if (!minted.ok) {
+      const { body: b, status } = fail(minted.code, minted.message, minted.status, rid);
+      return c.json(b, status as 409);
+    }
+    // Same envelope as /login so the shared frontend client keeps working.
+    return c.json(ok({ ...minted.session, session: minted.session }, rid));
+  } catch (error) {
+    console.error("[auth:telegram-webapp]", {
+      stage: "unhandled",
+      error: error instanceof Error ? error.name : "unknown",
+      requestId: rid,
+    });
+    const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
+    return c.json(b, status as 503);
+  }
+});
+
+/**
+ * GET /api/v1/auth/telegram/config — the only public value the Login Widget
+ * needs: the bot username the widget is rendered for. No tokens, no ids.
+ */
+auth.get("/telegram/config", (c) => {
+  const rid = requestId();
+  const botUsername = c.env.TELEGRAM_BOT_USERNAME?.trim();
+  if (!botUsername) {
+    const { body, status } = fail("TELEGRAM_NOT_CONFIGURED", "Вход через Telegram временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+  return c.json(ok({ bot_username: botUsername }, rid));
+});
+
+/**
+ * POST /api/v1/auth/telegram/widget — "Sign in with Telegram" on the website.
+ * The widget posts its signed callback payload; the identity is trusted only
+ * after a spec-correct signature check — locally when this Worker holds the
+ * bot token, otherwise through the bot Worker (same trust model as initData).
+ */
+auth.post("/telegram/widget", async (c) => {
+  const rid = requestId();
+  const ip = clientIp(c);
+  const rl = await rateLimit(c.env, `auth:telegram-widget:${ip}`, 20, 60);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много попыток входа", 429, rid);
+    return c.json(body, status as 429);
+  }
+
+  const botToken = c.env.TELEGRAM_BOT_TOKEN?.trim();
+  const canVerifyRemotely = hasWidgetVerifier(c.env);
+  if (!botToken && !canVerifyRemotely) {
+    const { body, status } = fail("TELEGRAM_NOT_CONFIGURED", "Вход через Telegram временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+
+  const body = await readJson<Record<string, unknown>>(c);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    const { body: b, status } = fail("VALIDATION", "Нужен payload виджета", 400, rid);
+    return c.json(b, status as 400);
+  }
+
+  const verification = botToken
+    ? await validateTelegramLoginWidget(body, botToken)
+    : await verifyTelegramLoginWidgetRemote(body, c.env);
+  if (!verification.ok) {
+    if (!botToken && (verification.error === "internal_not_configured" || verification.error === "internal_unavailable")) {
+      // An infrastructure problem, not the caller's credentials — never report it
+      // as a signature failure.
       const { body: b, status } = fail("TELEGRAM_LOGIN_UNAVAILABLE", "Вход через Telegram временно недоступен", 503, rid);
       return c.json(b, status as 503);
     }
+    // Deliberately generic: never tell a forger which check failed.
+    const { body: b, status } = fail("INVALID_INIT_DATA", "Не удалось подтвердить данные Telegram", 401, rid);
+    return c.json(b, status as 401);
+  }
 
-    const linkedUserId = account?.user_id ? String(account.user_id) : "";
-    if (!linkedUserId) {
-      const { body: b, status } = fail(
-        "TELEGRAM_NOT_LINKED",
-        "Telegram не привязан. Привяжите аккаунт в Настройках → Telegram.",
-        409,
-        rid
-      );
+  const service = createServiceClient(c.env);
+  if (!service) {
+    const { body: b, status } = fail("TELEGRAM_LOGIN_UNAVAILABLE", "Вход через Telegram временно недоступен", 503, rid);
+    return c.json(b, status as 503);
+  }
+
+  try {
+    const minted = await mintTelegramSession(service, c.env, verification.user.id, rid);
+    if (!minted.ok) {
+      const { body: b, status } = fail(minted.code, minted.message, minted.status, rid);
       return c.json(b, status as 409);
     }
-
-    const { data: adminUser, error: adminUserError } = await service.auth.admin.getUserById(linkedUserId);
-    if (adminUserError || !adminUser?.user) {
-      console.error("[auth:telegram-webapp]", { stage: "user_lookup", code: adminUserError?.code, requestId: rid });
-      const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
-      return c.json(b, status as 503);
-    }
-
-    const email = adminUser.user.email?.trim();
-    if (!email) {
-      // A profile without an email cannot receive a server-issued session.
-      const { body: b, status } = fail(
-        "TELEGRAM_NO_EMAIL",
-        "Для профиля не задан email. Обратитесь в поддержку.",
-        409,
-        rid
-      );
-      return c.json(b, status as 409);
-    }
-
-    const { data: link, error: linkError } = await service.auth.admin.generateLink({ type: "magiclink", email });
-    const tokenHash = link?.properties?.hashed_token;
-    if (linkError || !tokenHash) {
-      console.error("[auth:telegram-webapp]", { stage: "generate_link", code: linkError?.code, requestId: rid });
-      const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
-      return c.json(b, status as 503);
-    }
-
-    const anon = createAnonClient(c.env);
-    const { data: otp, error: otpError } = await anon.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
-    if (otpError || !otp.session) {
-      console.error("[auth:telegram-webapp]", { stage: "verify_otp", code: otpError?.code, requestId: rid });
-      const { body: b, status } = fail("AUTH_UPSTREAM", "Сервис авторизации временно недоступен", 503, rid);
-      return c.json(b, status as 503);
-    }
-
-    const session = normalizeSession(otp.session);
     // Same envelope as /login so the shared frontend client keeps working.
-    return c.json(ok({ ...session, session }, rid));
+    return c.json(ok({ ...minted.session, session: minted.session }, rid));
   } catch (error) {
-    console.error("[auth:telegram-webapp]", {
+    console.error("[auth:telegram-widget]", {
       stage: "unhandled",
       error: error instanceof Error ? error.name : "unknown",
       requestId: rid,
