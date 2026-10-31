@@ -333,7 +333,18 @@ test("test variant builder is a single atomic server-side transaction (MA10)", a
   assert.doesNotMatch(page, /adminDbInsert\("tests"/);
   assert.doesNotMatch(page, /adminDbInsert\("test_questions"/);
   assert.doesNotMatch(page, /adminContentArchive\("tests", testId\)/);
-  const apiLib = await source("../../../src/lib/api.ts");
+  // D5: читаем бочонок и все модули src/lib/api/* разом.
+  const apiLib = [
+    await source("../../../src/lib/api.ts"),
+    ...(await (async () => {
+      const { readdir } = await import("node:fs/promises");
+      const dir = new URL("../../../src/lib/api/", import.meta.url);
+      const files = (await readdir(dir)).filter((name) => name.endsWith(".ts"));
+      const parts = [];
+      for (const name of files) parts.push(await source(`../../../src/lib/api/${name}`));
+      return parts;
+    })()),
+  ].join("\n");
   assert.match(apiLib, /export async function adminBuildTestVariants/);
 });
 

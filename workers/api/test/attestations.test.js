@@ -6,7 +6,18 @@ const modelSource = await readFile(new URL("../src/lib/attestation.ts", import.m
 const publicRoute = await readFile(new URL("../src/routes/attestations.ts", import.meta.url), "utf8");
 const adminRoute = await readFile(new URL("../src/routes/admin-attestations.ts", import.meta.url), "utf8");
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
-const apiClient = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
+// D5: клиент API разложен на модули — контрактные тесты читают всю поверхность.
+const apiClient = await (async () => {
+  const { readdir } = await import("node:fs/promises");
+  const dir = new URL("../../../src/lib/api/", import.meta.url);
+  const files = (await readdir(dir)).filter((name) => name.endsWith(".ts"));
+  const parts = [await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8")];
+  for (const name of files) {
+    parts.push(await readFile(new URL(`../../../src/lib/api/${name}`, import.meta.url), "utf8"));
+  }
+  return parts.join("\n");
+})();
+
 const subjectPage = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
 const runnerPage = await readFile(new URL("../../../src/app/subjects/[id]/attestations/[slug]/page.tsx", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../src/app/admin/attestations/page.tsx", import.meta.url), "utf8");

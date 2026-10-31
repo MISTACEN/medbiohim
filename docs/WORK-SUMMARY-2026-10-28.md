@@ -1581,3 +1581,20 @@ next build ok.
   Полноценный Playwright-smoke в браузере — следующий шаг (нужна установка
   браузеров в runner), зафиксировано честно.
 - Проверки: node 218/218 (+2), tsc 0.
+
+## Сессии 35-36 (2026-10-31): D4/D5 — реестр эндпоинтов и split api.ts
+
+- **D4**: src/lib/endpoints.ts — реестр путей API с билдерами по доменам
+  (auth/subjects/tests/schedule/homeworks/admin/chemistry/university/
+  community/workshop/staff/files), динамические сегменты через encodeURIComponent.
+- **D5**: src/lib/api.ts (~1200 строк) → 17 модулей src/lib/api/* (client,
+  cache, auth, subjects, tests, schedule, homeworks, content, community,
+  files, admin, misc, types + домены других сессий), сам файл остался
+  бочонком-реэкспортом — ни один импорт @/lib/api по кодовой базе не менялся.
+- Контрактные тесты, читавшие api.ts как один файл (attestations,
+  supabase-contract, contracts), переведены на чтение всей поверхности
+  (бочонок + модули); тест-страж test/endpoints-registry.test.mjs.
+- Починены ложные срабатывания контрактов после разбиения (bank-view,
+  tickets/banks → endpoints.tests.ticketBanks()).
+
+Проверки: node 237/237, vitest 210/210, tsc 0, next build ok.

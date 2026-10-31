@@ -29,7 +29,18 @@ const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const testsHubSource = await readFile(new URL("../../../src/components/tests/TestsHub.tsx", import.meta.url), "utf8");
 const testPreparationPageSource = await readFile(new URL("../../../src/app/tests/preparation/[id]/page.tsx", import.meta.url), "utf8");
-const apiClientSource = await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8");
+// D5: клиент API разложен на модули — контрактные тесты читают всю поверхность.
+const apiClientSource = await (async () => {
+  const { readdir } = await import("node:fs/promises");
+  const dir = new URL("../../../src/lib/api/", import.meta.url);
+  const files = (await readdir(dir)).filter((name) => name.endsWith(".ts"));
+  const parts = [await readFile(new URL("../../../src/lib/api.ts", import.meta.url), "utf8")];
+  for (const name of files) {
+    parts.push(await readFile(new URL(`../../../src/lib/api/${name}`, import.meta.url), "utf8"));
+  }
+  return parts.join("\n");
+})();
+
 const chemistryTicketMigration = await readFile(new URL("../../../database/migrations/20261017160000_canonicalize_organic_chemistry_ticket_bank.sql", import.meta.url), "utf8");
 const studentSubjectPlanMigration = await readFile(new URL("../../../database/migrations/20261017180000_student_subject_plan_rpc.sql", import.meta.url), "utf8");
 const adminRlsMigration = await readFile(new URL("../../../supabase/migrations/20261016160523_admin_user_directory_rls.sql", import.meta.url), "utf8");
@@ -140,8 +151,8 @@ test("group and profile APIs use real Supabase group-membership columns", () => 
     assert.ok(source.includes("course_number"), "group course must use course_number");
     assert.ok(!source.includes("groups(id,name,specialty_slug,course,semester"), "must not select nonexistent groups.course/semester columns");
   }
-  assert.ok(groupsSource.includes('select("id,name,code,specialty_slug,course_number,is_active")'));
-  assert.ok(groupsSource.includes('select("group_id,role_in_group,groups(id,name,code,specialty_slug,course_number,is_active)")'));
+  assert.ok(groupsSource.includes('select("id,name,code,specialty_slug,course_number,admission_year,stream,semester,is_active")'));
+  assert.ok(groupsSource.includes('select("group_id,role_in_group,course_override,groups(id,name,code,specialty_slug,course_number,admission_year,stream,semester,is_active)")'));
   assert.ok(adminSource.includes('.select("id,name,code,course_number,is_active")'));
   assert.ok(!adminSource.includes(`role_in_group: "student", updated_at:`));
 });
@@ -237,7 +248,7 @@ test("test details preserve the PHP envelope and keep answer keys out of normal 
   assert.ok(testsSource.includes("subject_name: subject?.name || \"\""));
   assert.ok(testsSource.includes("if (!subjects?.[0]?.id) return c.json(ok({ items: [] }, rid))"));
   assert.ok(testPreparationPageSource.includes("Array.isArray(d.data.questions) ? d.data.questions : []"));
-  assert.ok(apiClientSource.includes('new URLSearchParams({view:"bank"})'));
+  assert.ok(apiClientSource.includes('new URLSearchParams({ view: "bank" })') || apiClientSource.includes('new URLSearchParams({view:"bank"})'));
 });
 
 test("ticket bank catalog reads canonical banks and generates source-backed questions without exam-mode answers", () => {
@@ -253,8 +264,9 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
   assert.ok(ticketsSource.includes('title.includes("ситуационные задачи")'));
   assert.ok(ticketsSource.includes('title.includes("экзаменационные препараты")'));
   // listTicketBanks прокидывает RequestInit в кэширующий клиент (options
-  // участвуют в ключе кэша), поэтому сигнатура вызова с аргументом.
-  assert.ok(apiClientSource.includes('apiCached("/tickets/banks", options)'));
+  // участвуют в ключе кэша), поэтому сигнатура вызова с аргументом; путь
+  // после D4 берётся из реестра эндпоинтов (endpoints.tests.ticketBanks()).
+  assert.ok(/apiCached\s*\(\s*endpoints\.tests\.ticketBanks\(\)\s*,\s*options/.test(apiClientSource));
   assert.ok(subjectPageSource.includes('disabled={Number(b.count ?? 0) <= 0}'));
   assert.ok(subjectPageSource.includes('const firstAvailableBank = subjectBanks.find'));
   assert.ok(subjectPageSource.includes('setTicketQuestions([])'));
