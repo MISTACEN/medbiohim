@@ -7,6 +7,8 @@ import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
+import { ExamModePanel } from "@/components/lectures/ExamModePanel";
+import { OpenAnswerPractice } from "@/components/lectures/OpenAnswerPractice";
 import { describeApiError } from "@/lib/errors";
 import { markLectureQuizSolved, readLectureProgress } from "@/lib/lectureProgress";
 import { splitLectureBlocks } from "@/lib/lectureProgress";
@@ -59,15 +61,26 @@ function splitH2Sections(md: string): FoldSection[] {
   return out.filter((p) => p.title || p.md.trim());
 }
 
+/** id лекции из JSON-спеки фенса (```selfwork / ```exam) или undefined. */
+function fenceLectureId(raw: string): string | undefined {
+  try {
+    const spec = JSON.parse(raw) as { lectureId?: unknown };
+    const id = typeof spec?.lectureId === "string" ? spec.lectureId.trim() : "";
+    return id || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function parseBlocks(md: string) {
-  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte"; content: string }> = [];
-  const re = /```(chart|video|image|mermaid|chem|quiz|leukocyte)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
+  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte" | "selfwork" | "exam"; content: string }> = [];
+  const re = /```(chart|video|image|mermaid|chem|quiz|leukocyte|selfwork|exam)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
     if (m.index > last) parts.push({ kind: "md", content: md.slice(last, m.index) });
     parts.push({
-      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte",
+      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte" | "selfwork" | "exam",
       content: m[2].trim(),
     });
     last = m.index + m[0].length;
@@ -80,6 +93,12 @@ function mdToHtml(md: string): string {
   // Lecture bodies are stored as Markdown. Keep the renderer deterministic and
   // safe, while also tolerating older imports that contain literal HTML tags.
   let s = escapeHtml(String(md || "").replace(/\r\n?/g, "\n"));
+
+  // Служебные HTML-комментарии (например, маркер идемпотентности
+  // <!-- MBH:SELFWORK:hist-03-embriologiya --> из scripts/apply-embryology-selfwork.mjs)
+  // не должны выводиться в текст лекции: после escapeHtml они выглядели бы
+  // как обычный текст, ведь whitelist возвращает только известные теги.
+  s = s.replace(/&lt;!--[\s\S]*?--&gt;/g, "");
 
   // Older lecture imports may contain already-materialized heading/block tags.
   // Only re-enable the small, known-safe block/inline tag set.
@@ -428,7 +447,7 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
       .split("\\`").join("`")
       .split('\\\"').join('"');
   }, [markdown]);
-  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz|leukocyte)\\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
+  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz|leukocyte)\\b/i.test(normalizedMarkdown) || /```(?:selfwork|exam)\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
   const parts = useMemo(() => parseBlocks(normalizedMarkdown), [normalizedMarkdown]);
 
   useEffect(() => {
@@ -556,6 +575,10 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
     if (p.kind === "image") return <ImageBlock key={key} raw={p.content} />;
     if (p.kind === "quiz") return <MiniQuizBlock key={key} raw={p.content} lectureId={lectureId} />;
     if (p.kind === "leukocyte") return <LeukocyteDifferentialTrainer key={key} raw={p.content} />;
+    // Интерактив из репозитория: контент берётся по lectureId из JSON-спеки фенса,
+    // фолбэк — id лекции, переданный рендереру.
+    if (p.kind === "selfwork") return <OpenAnswerPractice key={key} lectureId={fenceLectureId(p.content) ?? lectureId} />;
+    if (p.kind === "exam") return <ExamModePanel key={key} lectureId={fenceLectureId(p.content) ?? lectureId} />;
     if (p.kind === "chem") {
       const spec = parseChemSpec(p.content);
       if (!spec) {
