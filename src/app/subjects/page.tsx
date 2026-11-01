@@ -71,21 +71,25 @@ type ExamWindow = { start: string; end: string; title: string };
 const EXAM_HIGHLIGHT_DAYS = 90;
 
 /** Ближняя аттестация: сегодня внутри окна «сессия − 90 дней … конец сессии» для курса/семестра предмета. */
-function examBadge(s: Item, windows: Record<string, ExamWindow>): { label: string; tone: "exam" | "credit" } | null {
+function examBadge(s: Item, windows: Record<string, ExamWindow[]>): { label: string; tone: "exam" | "credit" } | null {
   if (!s.control_type || !s.course_number || !s.semester) return null;
-  const w = windows[`${s.course_number}/${s.semester}`];
-  if (!w) return null;
+  const list = windows[`${s.course_number}/${s.semester}`] || [];
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const start = new Date(`${w.start}T00:00:00`);
-  const end = new Date(`${w.end}T23:59:59`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  const from = new Date(start);
-  from.setDate(from.getDate() - EXAM_HIGHLIGHT_DAYS);
-  if (today < from || today > end) return null;
-  const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-  const tone = s.control_type === "credit" ? "credit" : "exam";
-  return { label: `${controlLabel(s.control_type) || "Аттестация"} · сессия ${fmt(start)}–${fmt(end)}`, tone };
+  // ближайшая будущая сессия курса/семестра (среди нескольких берём первую, чей конец ещё не прошёл)
+  for (const w of list) {
+    const start = new Date(`${w.start}T00:00:00`);
+    const end = new Date(`${w.end}T23:59:59`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+    if (today > end) continue; // сессия уже прошла
+    const from = new Date(start);
+    from.setDate(from.getDate() - EXAM_HIGHLIGHT_DAYS);
+    if (today < from) continue; // до сессии ещё далеко
+    const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+    const tone = s.control_type === "credit" ? "credit" : "exam";
+    return { label: `${controlLabel(s.control_type) || "Аттестация"} · сессия ${fmt(start)}–${fmt(end)}`, tone };
+  }
+  return null;
 }
 
 export default function SubjectsPage() {
@@ -94,19 +98,20 @@ export default function SubjectsPage() {
   const [semester, setSemester] = useState<number | "">(user?.semester ?? "");
   const [q, setQ] = useState("");
   // Окна экзаменационных сессий по курсам/семестрам — для подсветки предметов с близкой аттестацией
-  const [examWindows, setExamWindows] = useState<Record<string, ExamWindow>>({});
+  const [examWindows, setExamWindows] = useState<Record<string, ExamWindow[]>>({});
 
   useEffect(() => {
     let alive = true;
     getScheduleMeta()
       .then((r: any) => {
         if (!alive || !r?.ok || !r.data?.periods) return;
-        const map: Record<string, ExamWindow> = {};
+        const map: Record<string, ExamWindow[]> = {};
         for (const p of r.data.periods) {
           if (p.type !== "exam_session" || !p.start_date) continue;
           const key = `${p.course_number ?? ""}/${p.semester ?? ""}`;
-          if (!map[key]) map[key] = { start: p.start_date, end: p.end_date || p.start_date, title: p.title || "Сессия" };
+          (map[key] ??= []).push({ start: p.start_date, end: p.end_date || p.start_date, title: p.title || "Сессия" });
         }
+        for (const k of Object.keys(map)) map[k].sort((a, b) => a.start.localeCompare(b.start));
         setExamWindows(map);
       })
       .catch(() => { /* подсветка не критична */ });
