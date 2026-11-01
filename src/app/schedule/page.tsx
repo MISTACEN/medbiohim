@@ -38,6 +38,25 @@ const TZ = "Asia/Vladivostok";
 const SEMESTER_FROM = "2026-09-01";
 const SEMESTER_TO = "2027-01-31";
 
+/** Длинное ДЗ показываем коротким превью: полный текст раскрывается по клику. */
+function HomeworkText({ text }: { text: string }) {
+  const clean = String(text || "").trim();
+  if (!clean) return null;
+  if (clean.length <= 170) {
+    return <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{clean}</p>;
+  }
+  const preview = clean.slice(0, 150).replace(/\s+\S*$/, "") + "…";
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer list-none">
+        <span className="whitespace-pre-wrap text-sm opacity-80">{preview}</span>
+        <span className="ml-1 whitespace-nowrap text-xs font-semibold text-indigo-600">показать полностью</span>
+      </summary>
+      <p className="mt-1 whitespace-pre-wrap text-sm opacity-80">{clean}</p>
+    </details>
+  );
+}
+
 const TYPE_LABELS: Record<string, string> = {
   lecture: "Лекция", practice: "Практика", laboratory: "Лабораторная",
   seminar: "Семинар", exam: "Экзамен", credit: "Зачёт",
@@ -928,7 +947,7 @@ export default function SchedulePage() {
                 <button type="button" disabled={homeworkBusy==="add"} onClick={()=>void addHomeworkForSelected()} className="btn-primary w-full">{homeworkBusy==="add"?"Сохранение…":"Добавить ДЗ к этому занятию"}</button>
               </div>}
               {selectedHomeworks.length===0 ? <div className="rounded-xl border border-dashed p-4 text-center text-sm opacity-60">На это занятие ДЗ пока нет.</div> : <div className="space-y-2">
-                {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-[var(--status-ok-fg)]":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{h.description}</p>}
+                {selectedHomeworks.map((h:any)=>{const hs=homeworkStatus(h);return <article key={h.id} className="rounded-xl border bg-[var(--card)] p-3"><div className="flex items-start gap-2"><button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} className={hs==="done"?"mt-0.5 text-[var(--status-ok-fg)]":"mt-0.5 text-slate-300"}><CheckCircle2 className="h-5 w-5"/></button><div className="min-w-0 flex-1"><b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b><div className="mt-1 text-xs opacity-60">{h.subject_name || selected.subject_name}{hs==="overdue"?" · просрочено":""}</div></div></div>{h.description && <HomeworkText text={h.description} />}
                 {<HomeworkGrade homework={h}/>}
                 {Array.isArray(h.attachments) && h.attachments.length>0 && <div className="mt-3 grid grid-cols-2 gap-2">
                   {h.attachments.map((att:any,index:number)=>{

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, ClipboardCheck, FlaskConical, Loader2, Presentation } from "lucide-react";
 
-type PlanLecture = { n: number; date: string; title: string };
+type PlanLecture = { n: number; date: string; title: string; lecture_id?: string };
 type PlanPractical = { n: number; date: string; title: string; hours?: number };
 type PlanLab = {
   n: number;
@@ -18,10 +18,12 @@ type PlanWeek = {
   num: number;
   date: string;
   date_label?: string;
-  lecture?: { num?: number; title: string; topics?: string[]; note?: string };
+  lecture?: { num?: number; title: string; topics?: string[]; note?: string; lecture_id?: string };
   lab?: { title: string; topics?: string[] };
   preparations?: { n: number | string | null; name: string }[];
   electronograms?: string[];
+  /** Домашнее задание к занятию: краткая строка в свёрнутом виде, полный текст — по клику. */
+  homework?: { summary?: string; items?: string[]; text?: string };
   control?: string | null;
 };
 type ChemPlanData = {
@@ -166,6 +168,14 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
                     <span className="font-bold text-indigo-600">Лекция {w.lecture.num}. </span>
                     {w.lecture.title}
                     {w.lecture.note ? <span className="ml-1 text-xs text-slate-400">({w.lecture.note})</span> : null}
+                    {w.lecture.lecture_id ? (
+                      <a
+                        href={`/lectures/${encodeURIComponent(w.lecture.lecture_id)}`}
+                        className="ml-2 text-xs font-bold text-indigo-600 hover:text-indigo-500"
+                      >
+                        Открыть лекцию →
+                      </a>
+                    ) : null}
                   </p>
                 )}
                 {w.lab && <p className="mt-1 text-sm text-slate-600"><span className="font-bold">Лабораторное:</span> {w.lab.title}</p>}
@@ -186,6 +196,23 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
                       ))}
                     </ul>
                   </div>
+                ) : null}
+                {w.homework ? (
+                  <details className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2.5">
+                    <summary className="cursor-pointer select-none text-xs font-bold uppercase tracking-wide text-indigo-700">
+                      Домашнее задание{w.homework.summary ? `: ${w.homework.summary}` : ""}
+                      <span className="ml-1 font-normal normal-case tracking-normal text-indigo-500">— развернуть</span>
+                    </summary>
+                    {w.homework.items?.length ? (
+                      <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-sm leading-relaxed text-slate-700">
+                        {w.homework.items.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ol>
+                    ) : w.homework.text ? (
+                      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-700">{w.homework.text}</p>
+                    ) : null}
+                  </details>
                 ) : null}
               </li>
             ))}
@@ -208,6 +235,16 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
                   </span>
                 </div>
                 <p className="mt-1 text-sm leading-relaxed text-slate-600">{l.title}</p>
+                {l.lecture_id ? (
+                  <p className="mt-1">
+                    <a
+                      href={`/lectures/${encodeURIComponent(l.lecture_id)}`}
+                      className="text-sm font-bold text-indigo-600 hover:text-indigo-500"
+                    >
+                      Открыть лекцию →
+                    </a>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ol>
