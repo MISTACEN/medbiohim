@@ -168,8 +168,9 @@ function ImageBlock({ raw }: { raw: string }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [card, setCard] = useState<any | null>(null);
-  let data: { url?: string; trainerId?: string; caption?: string } = {};
+  let data: { url?: string; trainerId?: string; caption?: string; align?: string; width?: number } = {};
   try { data = JSON.parse(raw); } catch { data = { url: raw }; }
+  const floatSide = data.align === "left" || data.align === "right" ? data.align : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -197,7 +198,10 @@ function ImageBlock({ raw }: { raw: string }) {
   const detail = [stain, prompt].filter(Boolean).join(" · ");
 
   return (
-    <figure className="my-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <figure
+      className="my-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      style={floatSide ? { float: floatSide, width: `min(${Math.min(Math.max(data.width || 46, 30), 60)}%, 460px)`, margin: "0.4rem 0 0.8rem", ...(floatSide === "right" ? { marginLeft: "1.2rem" } : { marginRight: "1.2rem" }) } : undefined}
+    >
       {resolvedUrl ? (
         <ImageLightbox src={resolvedUrl} alt={caption} caption={caption} className="bg-slate-50" imageClassName="mx-auto max-h-[440px] w-full object-contain p-2 sm:max-h-[520px]" />
       ) : (
@@ -403,7 +407,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
   }, [ready, parts, safeHtml]);
 
   return (
-    <div ref={ref} className="lecture-body space-y-1 text-sm leading-relaxed">
+    <div ref={ref} className="lecture-body space-y-2 text-[15px] leading-relaxed after:block after:clear-both after:content-['']">
       {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
         if (p.kind === "md") {
           return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
@@ -452,7 +456,20 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
         .lec-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .lec-table th, .lec-table td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; }
         .lec-table th { background: #f8fafc; font-weight: 600; }
-        .lec-math { margin: 0.75rem 0; overflow-x: auto; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
+        .lec-math { margin: 0.75rem 0; overflow-x: auto; }
+        .lecture-body .prose > div { margin-bottom: 0.95rem; }
+        .lecture-body .prose > div > div { margin-bottom: 0.9rem; }
+        .lecture-body h1 { font-size: 1.45rem; font-weight: 800; margin: 1.4rem 0 0.6rem; line-height: 1.3; }
+        .lecture-body h2 { font-size: 1.25rem; font-weight: 800; margin: 1.7rem 0 0.6rem; line-height: 1.3; }
+        .lecture-body h3 { font-size: 1.08rem; font-weight: 700; margin: 1.35rem 0 0.5rem; }
+        .lecture-body h1, .lecture-body h2, .lecture-body h3 { color: #0f172a; }
+        :root.dark .lecture-body h1, .dark .lecture-body h1, .lecture-body h1 { }
+        .lecture-body ul, .lecture-body ol { margin: 0.55rem 0; padding-left: 1.5rem; }
+        .lecture-body li { margin: 0.32rem 0; }
+        .lecture-body blockquote { border-left: 4px solid #6366f1; background: rgba(238,242,255,0.6); border-radius: 0.85rem; margin: 1rem 0; padding: 0.8rem 1.1rem; color: #1e293b; }
+        .dark .lecture-body blockquote { background: rgba(99,102,241,0.12); color: #e2e8f0; }
+        .lecture-body hr { margin: 2.2rem 0; border: 0; border-top: 2px dashed #cbd5e1; }
+        .dark .lecture-body hr { border-top-color: #475569; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
       `}</style>
     </div>
   );
