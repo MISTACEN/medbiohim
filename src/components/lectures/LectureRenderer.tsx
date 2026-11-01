@@ -42,7 +42,7 @@ function splitH2Sections(md: string): FoldSection[] {
   const out: FoldSection[] = [];
   let cur: FoldSection | null = null;
   for (const line of lines) {
-    const h2 = line.match(/^##\s+(.+)$/);
+    const h2 = line.match(/^#{2,3}\s+(.+)$/);
     if (h2) {
       if (cur) out.push(cur);
       cur = { title: h2[1].trim(), md: "" };
@@ -433,7 +433,12 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
   const [allOpen, setAllOpen] = useState(false);
   const foldGroups = useMemo(() => {
     if (safeHtml) return null; // html-лекции не режем
-    return parts.map((p) => (p.kind === "md" && (p.content.match(/^##\s+/gm) || []).length >= 2 ? splitH2Sections(p.content) : null));
+    return parts.map((p) => {
+      if (p.kind !== "md") return null;
+      if (/^##\s+Дальше по теме/m.test(p.content)) return null; // хвост с ДЗ/СИТ/тестом — всегда развёрнут
+      const count = (p.content.match(/^#{2,3}\s+/gm) || []).length;
+      return count >= 2 ? splitH2Sections(p.content) : null;
+    });
   }, [parts, safeHtml]);
 
   return (
