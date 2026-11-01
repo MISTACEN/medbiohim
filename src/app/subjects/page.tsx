@@ -68,9 +68,9 @@ function controlLabel(v?: string | null) {
 
 type ExamWindow = { start: string; end: string; title: string };
 
-const EXAM_HIGHLIGHT_DAYS = 45;
+const EXAM_HIGHLIGHT_DAYS = 90;
 
-/** Ближняя аттестация: сегодня внутри окна «сессия − 45 дней … конец сессии» для курса/семестра предмета. */
+/** Ближняя аттестация: сегодня внутри окна «сессия − 90 дней … конец сессии» для курса/семестра предмета. */
 function examBadge(s: Item, windows: Record<string, ExamWindow>): { label: string; tone: "exam" | "credit" } | null {
   if (!s.control_type || !s.course_number || !s.semester) return null;
   const w = windows[`${s.course_number}/${s.semester}`];
