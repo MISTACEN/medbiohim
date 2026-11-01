@@ -87,7 +87,8 @@ function examBadge(s: Item, windows: Record<string, ExamWindow[]>): { label: str
     if (today < from) continue; // до сессии ещё далеко
     const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
     const tone = s.control_type === "credit" ? "credit" : "exam";
-    return { label: `${controlLabel(s.control_type) || "Аттестация"} · сессия ${fmt(start)}–${fmt(end)}`, tone };
+    const kind = s.control_type === "credit" ? (controlLabel(s.control_type) || "Зачёт") : "ЭКЗАМЕН";
+    return { label: `${kind} · сессия ${fmt(start)}–${fmt(end)}`, tone };
   }
   return null;
 }
@@ -267,8 +268,8 @@ export default function SubjectsPage() {
                 const href = `/subjects/${encodeURIComponent(s.id)}`;
                 const ex = examBadge(s, examWindows);
                 const exRing = ex ? (ex.tone === "exam"
-                  ? "border-rose-400/80 bg-rose-50/60 hover:border-rose-500 dark:border-rose-500/50 dark:bg-rose-500/10"
-                  : "border-amber-400/80 bg-amber-50/60 hover:border-amber-500 dark:border-amber-500/50 dark:bg-amber-500/10")
+                  ? "border-2 border-rose-500 bg-rose-50 shadow-rose-200/60 hover:border-rose-600 dark:border-rose-400 dark:bg-rose-500/15"
+                  : "border border-amber-300 bg-amber-50/50 hover:border-amber-400 dark:border-amber-500/40 dark:bg-amber-500/10")
                   : "";
                 return (
                   <div key={s.id} className={`group flex flex-col rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${exRing || "border-[var(--border)] bg-[var(--card)] hover:border-[var(--primary)]/35"}`}>
@@ -278,7 +279,7 @@ export default function SubjectsPage() {
                         <div className="font-semibold leading-snug text-[var(--text)]">{s.name}</div>
                         {s.blurb && <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">{s.blurb}</p>}
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                          {ex && <span className={`rounded-full px-2 py-0.5 ${ex.tone === "exam" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/25 dark:text-amber-200"}`}>📅 {ex.label}</span>}
+                          {ex && <span className={`rounded-full px-2 py-0.5 ${ex.tone === "exam" ? "bg-rose-600 text-white dark:bg-rose-500" : "bg-amber-100 text-amber-800 dark:bg-amber-500/25 dark:text-amber-200"}`}>{ex.tone === "exam" ? "⚡" : "📅"} {ex.label}</span>}
                           {controlLabel(s.control_type) && <span className="rounded-full bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]">{controlLabel(s.control_type)}</span>}
                           {s.total_hours != null && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.total_hours} ч{s.credits != null ? ` / ${s.credits} з.е.` : ""}</span>}
                           {s.hours_note && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.hours_note}</span>}

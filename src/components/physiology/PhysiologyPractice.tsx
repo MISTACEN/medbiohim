@@ -300,31 +300,104 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
           </div>
         </header>
 
-        <nav className="flex gap-2 overflow-x-auto pb-1">
-          {tabs.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={
-                "shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold transition " +
-                (tab === item.id
-                  ? "border-indigo-500 bg-indigo-600 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
-              }
+        {/* Всё занятие в одном месте: лекция → тесты → СИТ → ДЗ. Чипы — быстрые переходы к разделу */}
+        <nav className="sticky top-2 z-10 flex gap-2 overflow-x-auto rounded-2xl border bg-white/95 p-2 shadow-sm backdrop-blur">
+          {[
+            { href: "#lesson-lec", label: "Лекция" },
+            { href: "#lesson-tests", label: "Тесты" },
+            { href: "#lesson-sit", label: "СИТ-задачи" },
+            { href: "#lesson-dz", label: "ДЗ" },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="shrink-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
             >
               {item.label}
-              {item.count ? <span className="ml-1.5 text-[11px] opacity-70">{item.count}</span> : null}
-            </button>
+            </a>
           ))}
         </nav>
 
-        {tab === "questions" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Вопросы для самоподготовки</h2>
+        {/* 1. Лекция (конспект) */}
+        <section id="lesson-lec" className="card scroll-mt-24 p-5">
+          <h2 className="text-lg font-bold">1 · Лекция</h2>
+          <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
+            {lesson.notes.length ? (
+              lesson.notes.slice(0, 80).map((paragraph, position) => <p key={position}>{paragraph}</p>)
+            ) : (
+              <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
+                Информационный блок в пособии для этого занятия отсутствует.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* 2. Тесты */}
+        <section id="lesson-tests" className="card scroll-mt-24 space-y-3 p-5">
+          <h2 className="text-lg font-bold">2 · Тесты занятия</h2>
+          {lesson.tests.length ? (
+            lesson.tests.map((item) => (
+              <article key={item.title} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-slate-50 p-4">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {plural(item.questions.length, "вопрос", "вопроса", "вопросов")} ·{" "}
+                    {item.questions.filter((question) => question.answer).length > 0 ? "с проверкой" : "разбор"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGroup(item)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+                >
+                  <Play className="h-4 w-4" /> Начать
+                </button>
+              </article>
+            ))
+          ) : (
+            <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
+              К занятию не привязан отдельный банк тестов.{" "}
+              {manual.banks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setView({ kind: "manual", slug: manual.slug });
+                  }}
+                  className="font-semibold underline"
+                >
+                  Открыть банки раздела
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* 3. Ситуационные задачи */}
+        <section id="lesson-sit" className="card scroll-mt-24 space-y-3 p-5">
+          <h2 className="text-lg font-bold">3 · Ситуационные задачи (СИТ)</h2>
+          {lesson.situational.length ? (
+            lesson.situational.map((task, position) => (
+              <article key={position} className="rounded-xl border bg-white p-4 text-sm leading-6 text-slate-800">
+                <span className="mb-1 block text-xs font-bold text-indigo-500">Задача {position + 1}</span>
+                {task}
+              </article>
+            ))
+          ) : (
+            <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
+              В этом занятии ситуационные задачи в пособии не приведены.
+            </p>
+          )}
+        </section>
+
+        {/* 4. Домашнее задание: контрольные вопросы + практические работы и задания в тетрадь */}
+        <section id="lesson-dz" className="card scroll-mt-24 space-y-4 p-5">
+          <h2 className="text-lg font-bold">4 · Домашнее задание</h2>
+
+          <div>
+            <h3 className="text-sm font-bold text-slate-700">Контрольные вопросы для самоподготовки</h3>
             {lesson.actuality && <p className="mt-2 rounded-xl bg-indigo-50/60 p-3 text-sm leading-6 text-slate-700">{lesson.actuality}</p>}
             {lesson.questions.length ? (
-              <ol className="mt-4 space-y-2.5">
+              <ol className="mt-3 space-y-2.5">
                 {lesson.questions.map((question, position) => (
                   <li key={position} className="flex gap-3 rounded-xl border bg-slate-50/60 p-3 text-sm leading-6 text-slate-800">
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-indigo-600 shadow-sm">
@@ -336,7 +409,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
               </ol>
             ) : (
               <p className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
-                В этом занятии вопросы для самоподготовки в пособии не выделены — смотрите конспект и задачи.
+                В этом занятии вопросы для самоподготовки в пособии не выделены — смотрите лекцию и задачи.
               </p>
             )}
             {lesson.essays.length > 0 && (
@@ -349,33 +422,33 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 </ul>
               </div>
             )}
-          </section>
-        )}
+          </div>
 
-        {tab === "practice" && (
-          <section className="card space-y-3 p-5">
-            <h2 className="text-lg font-bold">Практические работы</h2>
+          <div>
+            <h3 className="text-sm font-bold text-slate-700">Практические работы и задания в тетрадь</h3>
             {lesson.practical.length ? (
-              lesson.practical.map((work) => (
-                <article key={work.number} className="rounded-xl border bg-white p-4">
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Работа {work.number}. {work.title}
-                  </h3>
-                  <div className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
-                    {work.body.map((paragraph, position) => (
-                      <p key={position}>{paragraph}</p>
-                    ))}
-                  </div>
-                </article>
-              ))
+              <div className="mt-3 space-y-3">
+                {lesson.practical.map((work) => (
+                  <article key={work.number} className="rounded-xl border bg-white p-4">
+                    <h4 className="text-sm font-bold text-slate-900">
+                      Работа {work.number}. {work.title}
+                    </h4>
+                    <div className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
+                      {work.body.map((paragraph, position) => (
+                        <p key={position}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
             ) : (
-              <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
+              <p className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
                 Отдельных практических работ в этом занятии нет.
               </p>
             )}
             {lesson.tasks.length > 0 && (
-              <div className="rounded-xl border bg-slate-50 p-4">
-                <h3 className="text-sm font-bold text-slate-800">Задания в тетради</h3>
+              <div className="mt-3 rounded-xl border bg-slate-50 p-4">
+                <h4 className="text-sm font-bold text-slate-800">Задания в тетради</h4>
                 <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-700">
                   {lesson.tasks.map((task, position) => (
                     <li key={position}>{task}</li>
@@ -383,82 +456,8 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 </ol>
               </div>
             )}
-          </section>
-        )}
-
-        {tab === "situational" && (
-          <section className="card space-y-3 p-5">
-            <h2 className="text-lg font-bold">Ситуационные задачи</h2>
-            {lesson.situational.length ? (
-              lesson.situational.map((task, position) => (
-                <article key={position} className="rounded-xl border bg-white p-4 text-sm leading-6 text-slate-800">
-                  <span className="mb-1 block text-xs font-bold text-indigo-500">Задача {position + 1}</span>
-                  {task}
-                </article>
-              ))
-            ) : (
-              <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
-                В этом занятии ситуационные задачи в пособии не приведены.
-              </p>
-            )}
-          </section>
-        )}
-
-        {tab === "tests" && (
-          <section className="card space-y-3 p-5">
-            <h2 className="text-lg font-bold">Тесты занятия</h2>
-            {lesson.tests.length ? (
-              lesson.tests.map((item) => (
-                <article key={item.title} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-slate-50 p-4">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {plural(item.questions.length, "вопрос", "вопроса", "вопросов")} ·{" "}
-                      {item.questions.filter((question) => question.answer).length > 0 ? "с проверкой" : "разбор"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setGroup(item)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
-                  >
-                    <Play className="h-4 w-4" /> Начать
-                  </button>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
-                К занятию не привязан отдельный банк тестов.{" "}
-                {manual.banks.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setView({ kind: "manual", slug: manual.slug });
-                    }}
-                    className="font-semibold underline"
-                  >
-                    Открыть банки раздела
-                  </button>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        {tab === "notes" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Конспект занятия</h2>
-            <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
-              {lesson.notes.length ? (
-                lesson.notes.slice(0, 80).map((paragraph, position) => <p key={position}>{paragraph}</p>)
-              ) : (
-                <p className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
-                  Информационный блок в пособии для этого занятия отсутствует.
-                </p>
-              )}
-            </div>
-          </section>
-        )}
+          </div>
+        </section>
       </div>
     );
   }
@@ -519,7 +518,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                     type="button"
                     onClick={() => {
                       setView({ kind: "lesson", lessonId: item.id });
-                      setTab(item.questions.length ? "questions" : item.practical.length ? "practice" : "situational");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                     className="flex items-center gap-4 rounded-xl border bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm"
                   >
