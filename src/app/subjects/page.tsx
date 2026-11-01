@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { listSubjects, listSubjectsCatalog } from "@/lib/api";
+import { getScheduleMeta } from "@/lib/api/schedule";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
 
@@ -65,11 +66,52 @@ function controlLabel(v?: string | null) {
   return m[v] || v;
 }
 
+type ExamWindow = { start: string; end: string; title: string };
+
+const EXAM_HIGHLIGHT_DAYS = 45;
+
+/** Ближняя аттестация: сегодня внутри окна «сессия − 45 дней … конец сессии» для курса/семестра предмета. */
+function examBadge(s: Item, windows: Record<string, ExamWindow>): { label: string; tone: "exam" | "credit" } | null {
+  if (!s.control_type || !s.course_number || !s.semester) return null;
+  const w = windows[`${s.course_number}/${s.semester}`];
+  if (!w) return null;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = new Date(`${w.start}T00:00:00`);
+  const end = new Date(`${w.end}T23:59:59`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const from = new Date(start);
+  from.setDate(from.getDate() - EXAM_HIGHLIGHT_DAYS);
+  if (today < from || today > end) return null;
+  const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  const tone = s.control_type === "credit" ? "credit" : "exam";
+  return { label: `${controlLabel(s.control_type) || "Аттестация"} · сессия ${fmt(start)}–${fmt(end)}`, tone };
+}
+
 export default function SubjectsPage() {
   const { user } = useAuth();
   const [course, setCourse] = useState<number | "">(user?.course ?? "");
   const [semester, setSemester] = useState<number | "">(user?.semester ?? "");
   const [q, setQ] = useState("");
+  // Окна экзаменационных сессий по курсам/семестрам — для подсветки предметов с близкой аттестацией
+  const [examWindows, setExamWindows] = useState<Record<string, ExamWindow>>({});
+
+  useEffect(() => {
+    let alive = true;
+    getScheduleMeta()
+      .then((r: any) => {
+        if (!alive || !r?.ok || !r.data?.periods) return;
+        const map: Record<string, ExamWindow> = {};
+        for (const p of r.data.periods) {
+          if (p.type !== "exam_session" || !p.start_date) continue;
+          const key = `${p.course_number ?? ""}/${p.semester ?? ""}`;
+          if (!map[key]) map[key] = { start: p.start_date, end: p.end_date || p.start_date, title: p.title || "Сессия" };
+        }
+        setExamWindows(map);
+      })
+      .catch(() => { /* подсветка не критична */ });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (user?.course != null) setCourse(user.course);
@@ -218,14 +260,20 @@ export default function SubjectsPage() {
               {list.map((s) => {
                 const Icon = subjectIcon(s.icon);
                 const href = `/subjects/${encodeURIComponent(s.id)}`;
+                const ex = examBadge(s, examWindows);
+                const exRing = ex ? (ex.tone === "exam"
+                  ? "border-rose-400/80 bg-rose-50/60 hover:border-rose-500 dark:border-rose-500/50 dark:bg-rose-500/10"
+                  : "border-amber-400/80 bg-amber-50/60 hover:border-amber-500 dark:border-amber-500/50 dark:bg-amber-500/10")
+                  : "";
                 return (
-                  <div key={s.id} className="group flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--primary)]/35 hover:shadow-md">
+                  <div key={s.id} className={`group flex flex-col rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${exRing || "border-[var(--border)] bg-[var(--card)] hover:border-[var(--primary)]/35"}`}>
                     <Link href={href} className="flex flex-1 gap-3">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]"><Icon className="h-5 w-5" /></div>
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold leading-snug text-[var(--text)]">{s.name}</div>
                         {s.blurb && <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">{s.blurb}</p>}
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          {ex && <span className={`rounded-full px-2 py-0.5 ${ex.tone === "exam" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/25 dark:text-amber-200"}`}>📅 {ex.label}</span>}
                           {controlLabel(s.control_type) && <span className="rounded-full bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]">{controlLabel(s.control_type)}</span>}
                           {s.total_hours != null && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.total_hours} ч{s.credits != null ? ` / ${s.credits} з.е.` : ""}</span>}
                           {s.hours_note && <span className="rounded-full border border-[var(--border)] px-2 py-0.5">{s.hours_note}</span>}
