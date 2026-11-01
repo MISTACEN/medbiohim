@@ -86,8 +86,11 @@ function examBadge(s: Item, windows: Record<string, ExamWindow[]>): { label: str
     from.setDate(from.getDate() - EXAM_HIGHLIGHT_DAYS);
     if (today < from) continue; // до сессии ещё далеко
     const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-    const tone = s.control_type === "credit" ? "credit" : "exam";
-    const kind = s.control_type === "credit" ? (controlLabel(s.control_type) || "Зачёт") : "ЭКЗАМЕН";
+    // control_type в БД хранится русским текстом («Зачет»/«Экзамен») или ключом (credit/exam)
+    const raw = String(s.control_type);
+    const isCredit = /зач/i.test(raw) && !/диф/i.test(raw);
+    const tone = isCredit ? "credit" : "exam";
+    const kind = isCredit ? "Зачёт" : "ЭКЗАМЕН";
     return { label: `${kind} · сессия ${fmt(start)}–${fmt(end)}`, tone };
   }
   return null;
