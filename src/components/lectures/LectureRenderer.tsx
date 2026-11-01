@@ -8,6 +8,8 @@ import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeed
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import { describeApiError } from "@/lib/errors";
+import { markLectureQuizSolved, readLectureProgress } from "@/lib/lectureProgress";
+import { splitLectureBlocks } from "@/lib/lectureProgress";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
 type MermaidApi = { initialize: (opts: object) => void; run: (opts: object) => Promise<void> };
@@ -243,13 +245,21 @@ function ImageBlock({ raw }: { raw: string }) {
 }
 
 type MiniQuizSpec = { subjectId?: string; title?: string; questionIds?: string[] };
-type MiniQuizQuestion = { id: string; text: string; type?: string; options?: Array<{ index: number; label: string }> };
+type MiniQuizQuestion = {
+  id: string;
+  text: string;
+  type?: string;
+  allow_multiple?: boolean;
+  requires_order?: boolean;
+  is_closed?: boolean;
+  options?: Array<{ index: number; label: string }>;
+};
 
-function MiniQuizBlock({ raw }: { raw: string }) {
+function MiniQuizBlock({ raw, lectureId }: { raw: string; lectureId?: string }) {
   const [spec, setSpec] = useState<MiniQuizSpec>({});
   const [questions, setQuestions] = useState<MiniQuizQuestion[]>([]);
   const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
   const [checked, setChecked] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -268,24 +278,50 @@ function MiniQuizBlock({ raw }: { raw: string }) {
         if (cancelled) return;
         if (r.ok) {
           const byId = new Map((r.data?.items || []).map((item: MiniQuizQuestion) => [String(item.id), item]));
-          setQuestions(ids.map((id) => byId.get(id)).filter(Boolean) as MiniQuizQuestion[]);
+          const loaded = ids.map((id) => byId.get(id)).filter(Boolean) as MiniQuizQuestion[];
+          setQuestions(loaded);
+          if (lectureId) {
+            const solved = new Set(readLectureProgress()[lectureId] ?? []);
+            setScore(loaded.filter((item) => solved.has(String(item.id))).length);
+          }
           setError(null);
         } else setError(describeApiError(r.error));
         setLoading(false);
       });
     } catch { setError("Мини-тест настроен некорректно."); setLoading(false); }
     return () => { cancelled = true; };
-  }, [raw]);
+  }, [raw, lectureId]);
 
   const question = questions[index];
+  // Вопросы банка бывают с несколькими верными вариантами: API отдаёт это
+  // флагом allow_multiple, и одиночный выбор такие задания пройти не давал.
+  const multiple = question?.allow_multiple === true;
+  const ordering = question?.requires_order === true;
+
+  function pick(optionIndex: number) {
+    if (checked !== null || busy) return;
+    setSelected((current) =>
+      multiple
+        ? current.includes(optionIndex)
+          ? current.filter((value) => value !== optionIndex)
+          : [...current, optionIndex]
+        : [optionIndex]
+    );
+  }
 
   async function check() {
-    if (!question || selected === null || !spec.subjectId || busy) return;
+    if (!question || selected.length === 0 || !spec.subjectId || busy) return;
     setBusy(true);
-    const r = await checkLectureMiniQuizAnswer(question.id, [selected], spec.subjectId);
+    const r = await checkLectureMiniQuizAnswer(question.id, selected, spec.subjectId);
     if (r.ok) {
-      setChecked(Boolean(r.data?.correct));
-      if (r.data?.correct) setScore((value) => value + 1);
+      const isCorrect = r.data?.is_correct ?? r.data?.correct;
+      if (typeof isCorrect === "boolean") {
+        setChecked(isCorrect);
+        if (isCorrect) {
+          setScore((value) => value + 1);
+          if (lectureId) markLectureQuizSolved(lectureId, question.id);
+        }
+      } else setError("Для этого вопроса в банке нет эталонного ответа.");
     } else setError(describeApiError(r.error));
     setBusy(false);
   }
@@ -293,7 +329,7 @@ function MiniQuizBlock({ raw }: { raw: string }) {
   function next() {
     if (index + 1 >= questions.length) { setIndex(questions.length); return; }
     setIndex((value) => value + 1);
-    setSelected(null);
+    setSelected([]);
     setChecked(null);
   }
 
@@ -306,7 +342,7 @@ function MiniQuizBlock({ raw }: { raw: string }) {
       <p className="mt-1 text-sm text-[var(--status-ok-fg)]">Вопросы взяты из опубликованного банка MEDBIOHIM; эталонный ответ не передаётся в браузер.</p>
       <button
         type="button"
-        onClick={() => { setIndex(0); setSelected(null); setChecked(null); setScore(0); }}
+        onClick={() => { setIndex(0); setSelected([]); setChecked(null); setScore(0); }}
         className="mt-3 rounded-xl border border-[var(--status-ok-border)] bg-white px-4 py-2 text-sm font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
       >
         ↺ Пройти заново
@@ -321,14 +357,20 @@ function MiniQuizBlock({ raw }: { raw: string }) {
         <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">{index + 1}/{questions.length}</div>
       </div>
       <p className="mt-4 text-sm font-semibold leading-6 text-slate-900">{question.text}</p>
+      <p className="mt-1 text-xs font-semibold text-slate-500">{multiple ? "Выберите все верные варианты" : "Выберите один вариант"}</p>
+      {ordering ? (
+        <div className="mt-3 rounded-xl bg-[var(--status-warn-bg)] px-3 py-2 text-xs font-semibold text-[var(--status-warn-fg)]">
+          Задание на последовательность проверяется в разделе тренажёров — здесь оно идёт без оценки.
+        </div>
+      ) : null}
       <div className="mt-3 grid gap-2">
         {(question.options || []).map((option) => (
-          <button key={option.index} type="button" disabled={checked !== null || busy} onClick={() => setSelected(option.index)} className={"rounded-xl border px-3 py-2.5 text-left text-sm transition " + (selected === option.index ? "border-indigo-500 bg-indigo-100 text-indigo-900" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50")}>{option.label}</button>
+          <button key={option.index} type="button" disabled={checked !== null || busy || ordering} onClick={() => pick(option.index)} className={"rounded-xl border px-3 py-2.5 text-left text-sm transition " + (selected.includes(option.index) ? "border-indigo-500 bg-indigo-100 text-indigo-900" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50")}>{option.label}</button>
         ))}
       </div>
       {checked !== null ? <div className={"mt-4 rounded-xl px-3 py-2.5 text-sm font-semibold " + (checked ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")}>{checked ? "✓ Правильно" : "✕ Пока неверно — перечитай блок и попробуй ещё раз."}</div> : null}
       <div className="mt-4 flex justify-end gap-2">
-        {checked === false ? <button type="button" onClick={() => { setSelected(null); setChecked(null); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Повторить</button> : checked === true ? <button type="button" onClick={next} className="btn-primary px-4 py-2 text-sm">Следующий вопрос</button> : <button type="button" disabled={selected === null || busy} onClick={() => void check()} className="btn-primary px-4 py-2 text-sm disabled:opacity-40">Проверить</button>}
+        {ordering ? <button type="button" onClick={next} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Следующий вопрос</button> : checked === false ? <button type="button" onClick={() => { setSelected([]); setChecked(null); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Повторить</button> : checked === true ? <button type="button" onClick={next} className="btn-primary px-4 py-2 text-sm">Следующий вопрос</button> : <button type="button" disabled={selected.length === 0 || busy} onClick={() => void check()} className="btn-primary px-4 py-2 text-sm disabled:opacity-40">Проверить</button>}
       </div>
       {error ? <div className="mt-3 text-xs text-[var(--status-critical-fg)]">{error}</div> : null}
     </section>
@@ -367,7 +409,13 @@ function sanitizeLectureHtml(raw: string): string {
   };
   walk(doc.body); return doc.body.innerHTML;
 }
-export function LectureRenderer({ markdown, html }: { markdown: string; html?: string }) {
+export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
+  markdown: string;
+  html?: string;
+  lectureId?: string;
+  /** Индекс блока, который нужно показать вместо всей лекции. */
+  activeBlock?: number | null;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const safeHtml = useMemo(() => html ? sanitizeLectureHtml(html) : "", [html]);
@@ -444,12 +492,33 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
     const groups: Array<{ title: string; md: string; blocks: typeof parts; isTail: boolean }> = [];
     if (safeHtml) return groups;
     let cur: (typeof groups)[number] | null = null;
-    const flush = () => { if (cur) { groups.push(cur); cur = null; } };
+    // Группа без заголовка — продолжение предыдущей подтемы (текст после
+    // картинки/видео), а не отдельный блок: иначе оглавление и содержимое
+    // расходятся и выбор блока попадает на обрывок без лекционного текста.
+    const flush = () => {
+      if (!cur) return;
+      const prev = groups[groups.length - 1];
+      if (!cur.title && prev) {
+        prev.md += cur.md;
+        prev.blocks.push(...cur.blocks);
+        cur = null;
+        return;
+      }
+      groups.push(cur);
+      cur = null;
+    };
     for (const p of parts) {
       if (p.kind === "md") {
         const secs = splitH2Sections(p.content);
         if (!secs.length) continue;
         for (const sec of secs) {
+          // Текст, продолжающийся после картинки/видео, не заводит отдельный
+          // безымянный блок: иначе подтем становится больше, чем в оглавлении,
+          // и выбор блока попадает на пустую группу с одним тестом.
+          if (!sec.title && cur) {
+            cur.md += sec.md;
+            continue;
+          }
           flush();
           cur = { title: sec.title, md: sec.md, blocks: [], isTail: /Дальше по теме/i.test(sec.title) };
         }
@@ -462,6 +531,12 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
     return groups;
   }, [parts, safeHtml]);
   const foldable = !safeHtml && stream.filter((g) => g.title && !g.isTail).length >= 3;
+  const showSingle = typeof activeBlock === "number" && activeBlock >= 0 && activeBlock < stream.length;
+
+  // Одиночный режим режется тем же разбором по H2/H3, что и оглавление:
+  // заголовок блока сохраняется, теория не теряется за картинкой или тестом.
+  const pageBlocks = useMemo(() => (safeHtml ? [] : splitLectureBlocks(markdown)), [markdown, safeHtml]);
+  const singleGroup = showSingle ? pageBlocks[activeBlock as number] : null;
   function renderPart(p: (typeof parts)[number], key: string) {
     if (p.kind === "md") {
       return <div key={key} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
@@ -479,7 +554,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
     }
     if (p.kind === "video") return <VideoBlock key={key} raw={p.content} />;
     if (p.kind === "image") return <ImageBlock key={key} raw={p.content} />;
-    if (p.kind === "quiz") return <MiniQuizBlock key={key} raw={p.content} />;
+    if (p.kind === "quiz") return <MiniQuizBlock key={key} raw={p.content} lectureId={lectureId} />;
     if (p.kind === "leukocyte") return <LeukocyteDifferentialTrainer key={key} raw={p.content} />;
     if (p.kind === "chem") {
       const spec = parseChemSpec(p.content);
@@ -510,7 +585,7 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
     <div ref={ref} className="lecture-body space-y-2 text-[15px] leading-relaxed after:block after:clear-both after:content-['']">
       {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : (
         <div className="space-y-3">
-          {foldable && (
+          {foldable && !showSingle && (
             <button
               type="button"
               onClick={() => setAllOpen((v) => !v)}
@@ -519,7 +594,12 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
               {allOpen ? "Свернуть все блоки" : "Развернуть все блоки"}
             </button>
           )}
-          {stream.map((g, gi) => {
+          {singleGroup ? (
+            <div className="space-y-3">
+              <h2 className="text-lg font-extrabold leading-snug text-slate-900 sm:text-xl">{singleGroup.title}</h2>
+              {parseBlocks(singleGroup.markdown).map((part, pi) => renderPart(part, "single-" + pi))}
+            </div>
+          ) : stream.map((g, gi) => {
             const inner = (
               <>
                 {g.md.trim() ? (

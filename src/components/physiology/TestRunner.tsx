@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
-import { answersAsSet, groupHasAnswers, isCorrect, type PhysiologyTestGroup } from "@/lib/physiologyContent";
+import { answersAsSet, isCorrect, type PhysiologyTestGroup } from "@/lib/physiologyContent";
 
 export default function TestRunner({
   group,
@@ -11,8 +11,13 @@ export default function TestRunner({
   group: PhysiologyTestGroup;
   onExit: () => void;
 }) {
-  const graded = groupHasAnswers(group);
   const total = group.questions.length;
+  // Ключ есть не у каждого вопроса: в части банков размечена только половина.
+  // Оцениваем лишь вопросы с ключом, остальные идут режимом разбора.
+  const gradedCount = useMemo(
+    () => group.questions.filter((item) => answersAsSet(item.answer || "").length > 0).length,
+    [group]
+  );
   const [index, setIndex] = useState(0);
   const [picks, setPicks] = useState<number[]>([]);
   const [checked, setChecked] = useState(false);
@@ -21,6 +26,7 @@ export default function TestRunner({
 
   const question = group.questions[index];
   const correctAnswer = useMemo(() => answersAsSet(question?.answer || ""), [question]);
+  const questionGraded = correctAnswer.length > 0;
   const multiple = correctAnswer.length > 1;
 
   function toggle(option: number) {
@@ -35,9 +41,8 @@ export default function TestRunner({
   }
 
   function check() {
-    if (!picks.length || !graded) return;
-    const ok = isCorrect(picks, question.answer);
-    if (ok) setScore((value) => value + 1);
+    if (!picks.length || !questionGraded) return;
+    if (isCorrect(picks, question.answer)) setScore((value) => value + 1);
     setChecked(true);
   }
 
@@ -60,14 +65,19 @@ export default function TestRunner({
   }
 
   if (finished) {
-    const percent = total ? Math.round((score / total) * 100) : 0;
+    const percent = gradedCount ? Math.round((score / gradedCount) * 100) : 0;
     return (
       <div className="card p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Результат</p>
         <p className="mt-2 text-3xl font-extrabold text-slate-900">
-          {score} / {total}
+          {score} / {gradedCount}
         </p>
         <p className="mt-1 text-sm text-slate-600">{percent}% верных ответов</p>
+        {total > gradedCount && (
+          <p className="mt-1 text-xs text-slate-500">
+            Без оценки: {total - gradedCount} вопросов без ключа в источнике — они шли режимом разбора.
+          </p>
+        )}
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full bg-indigo-500" style={{ width: `${percent}%` }} />
         </div>
@@ -90,7 +100,7 @@ export default function TestRunner({
           <ArrowLeft className="h-4 w-4" /> К списку тестов
         </button>
         <span className="text-xs font-semibold text-slate-500">
-          {graded ? `Верно: ${score} · ` : ""}
+          {gradedCount > 0 ? `Верно: ${score} · ` : ""}
           Вопрос {index + 1} из {total}
         </span>
       </div>
@@ -100,7 +110,9 @@ export default function TestRunner({
       </div>
 
       <p className="mt-4 text-base font-semibold leading-7 text-slate-900">{question.text}</p>
-      <p className="mt-1 text-xs text-slate-400">Выберите один или несколько вариантов</p>
+      <p className="mt-1 text-xs text-slate-400">
+        {questionGraded ? "Выберите один или несколько вариантов" : "Ключа в источнике нет — режим разбора без оценки"}
+      </p>
 
       <div className="mt-3 grid gap-2">
         {question.options.map((option, optionIndex) => {
@@ -150,7 +162,7 @@ export default function TestRunner({
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {graded ? (
+        {questionGraded ? (
           <button
             type="button"
             onClick={checked ? next : check}
@@ -162,10 +174,10 @@ export default function TestRunner({
           </button>
         ) : (
           <button type="button" onClick={next} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">
-            Далее <ArrowRight className="h-4 w-4" />
+            {index + 1 >= total ? "Завершить" : "Далее"} <ArrowRight className="h-4 w-4" />
           </button>
         )}
-        {!graded && (
+        {gradedCount === 0 && (
           <span className="self-center text-xs text-slate-500">
             В источнике нет машиночитаемого ключа к этому блоку — режим разбора без оценки.
           </span>

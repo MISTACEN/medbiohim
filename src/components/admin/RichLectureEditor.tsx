@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getTrainerFeed, uploadFile, fileDownloadUrl } from "@/lib/api";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
+import { LectureBlocksOutline } from "@/components/admin/LectureBlocksOutline";
 
 type Subject = { slug: string; name: string };
 type Attachment = {
@@ -691,6 +692,12 @@ export function RichLectureEditor({
 
   return (
     <div className="lecture-editor-shell">
+      <LectureBlocksOutline
+        value={value}
+        onChange={(markdown) => onChange({ html: markdownToHtml(markdown), markdown })}
+        subjectSlug={subject?.slug}
+        topic={topic}
+      />
       <div className="lecture-editor-toolbar flex flex-wrap items-center gap-1">
         {toolbarButton("Ж","Жирный",()=>command("bold"),<Bold className="h-4 w-4"/>)}
         {toolbarButton("К","Курсив",()=>command("italic"),<Italic className="h-4 w-4"/>)}

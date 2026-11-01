@@ -566,7 +566,10 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
                 <div className="text-sm font-semibold text-slate-900">{bank.title}</div>
                 <div className="mt-1 text-xs text-slate-500">
                   {plural(bank.questions.length, "вопрос", "вопроса", "вопросов")} ·{" "}
-                  {bank.questions.some((question) => question.answer) ? "с проверкой" : "разбор"}
+                  {(() => {
+                    const graded = bank.questions.filter((question) => String(question.answer || "").trim()).length;
+                    return graded ? `с проверкой: ${graded} из ${bank.questions.length}` : "разбор без оценки";
+                  })()}
                 </div>
               </div>
               <button
