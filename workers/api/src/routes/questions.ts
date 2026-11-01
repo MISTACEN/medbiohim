@@ -212,7 +212,7 @@ questions.get("/mini-quiz", requireAuth, async (c) => {
         text: row.text,
         answer: row.answer,
         options: row.options,
-      });
+      }, { extractTextOptions: true });
       return {
         id: row.id,
         stem: normalized.text,
