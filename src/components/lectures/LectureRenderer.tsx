@@ -33,6 +33,30 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&" + "quot;");
 }
 
+
+type FoldSection = { title: string; md: string };
+
+/** Режет markdown на порции по H2-заголовкам (каждая — сворачиваемый блок). */
+function splitH2Sections(md: string): FoldSection[] {
+  const lines = String(md || "").replace(/\r\n?/g, "\n").split("\n");
+  const out: FoldSection[] = [];
+  let cur: FoldSection | null = null;
+  for (const line of lines) {
+    const h2 = line.match(/^##\s+(.+)$/);
+    if (h2) {
+      if (cur) out.push(cur);
+      cur = { title: h2[1].trim(), md: "" };
+    } else if (cur) {
+      cur.md += line + "\n";
+    } else {
+      // текст до первого H2 — вводная порция без заголовка
+      cur = { title: "", md: line + "\n" };
+    }
+  }
+  if (cur) out.push(cur);
+  return out.filter((p) => p.title || p.md.trim());
+}
+
 function parseBlocks(md: string) {
   const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte"; content: string }> = [];
   const re = /```(chart|video|image|mermaid|chem|quiz|leukocyte)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
@@ -406,10 +430,44 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
     void libs.mermaid?.run({ nodes: ref.current.querySelectorAll(".mermaid") });
   }, [ready, parts, safeHtml]);
 
+  const [allOpen, setAllOpen] = useState(false);
+  const foldGroups = useMemo(() => {
+    if (safeHtml) return null; // html-лекции не режем
+    return parts.map((p) => (p.kind === "md" && (p.content.match(/^##\s+/gm) || []).length >= 2 ? splitH2Sections(p.content) : null));
+  }, [parts, safeHtml]);
+
   return (
     <div ref={ref} className="lecture-body space-y-2 text-[15px] leading-relaxed after:block after:clear-both after:content-['']">
       {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
         if (p.kind === "md") {
+          const folds = foldGroups?.[i];
+          if (folds) {
+            return (
+              <div key={i} className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setAllOpen((v) => !v)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+                >
+                  {allOpen ? "Свернуть все блоки" : "Развернуть все блоки"}
+                </button>
+                {folds.map((sec, k) => {
+                  const isIntro = !sec.title;
+                  const isTail = /Дальше по теме/i.test(sec.title);
+                  const openByDefault = allOpen || isTail || (k === 0 && folds.length > 1);
+                  return (
+                    <details key={k} className="lec-fold rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm" open={openByDefault}>
+                      <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                        <span className="mr-2 inline-block text-indigo-500 transition-transform group-open:rotate-90">▸</span>
+                        {sec.title || "Введение"}
+                      </summary>
+                      <div className="prose prose-slate max-w-none border-t border-[var(--border)] px-4 py-3 dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(sec.md) }} />
+                    </details>
+                  );
+                })}
+              </div>
+            );
+          }
           return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
         }
         if (p.kind === "chart") {
@@ -469,7 +527,10 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
         .lecture-body blockquote { border-left: 4px solid #6366f1; background: rgba(238,242,255,0.6); border-radius: 0.85rem; margin: 1rem 0; padding: 0.8rem 1.1rem; color: #1e293b; }
         .dark .lecture-body blockquote { background: rgba(99,102,241,0.12); color: #e2e8f0; }
         .lecture-body hr { margin: 2.2rem 0; border: 0; border-top: 2px dashed #cbd5e1; }
-        .dark .lecture-body hr { border-top-color: #475569; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
+        .dark .lecture-body hr { border-top-color: #475569; }
+        .lec-fold summary:hover { background: rgba(99,102,241,0.06); }
+        .lec-fold[open] > summary .chev { transform: rotate(90deg); }
+        .lec-fold .prose > div:last-child { margin-bottom: 0.2rem; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
       `}</style>
     </div>
   );
