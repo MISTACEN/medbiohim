@@ -304,6 +304,13 @@ function MiniQuizBlock({ raw }: { raw: string }) {
       <div className="text-xs font-bold uppercase tracking-wide text-[var(--status-ok-fg)]">Блок проверен</div>
       <div className="mt-1 text-lg font-extrabold text-[var(--status-ok-fg)]">{spec.title || "Мини-тест"} · {score}/{questions.length}</div>
       <p className="mt-1 text-sm text-[var(--status-ok-fg)]">Вопросы взяты из опубликованного банка MEDBIOHIM; эталонный ответ не передаётся в браузер.</p>
+      <button
+        type="button"
+        onClick={() => { setIndex(0); setSelected(null); setChecked(null); setScore(0); }}
+        className="mt-3 rounded-xl border border-[var(--status-ok-border)] bg-white px-4 py-2 text-sm font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
+      >
+        ↺ Пройти заново
+      </button>
     </section>
   );
 
@@ -431,89 +438,112 @@ export function LectureRenderer({ markdown, html }: { markdown: string; html?: s
   }, [ready, parts, safeHtml]);
 
   const [allOpen, setAllOpen] = useState(false);
-  const foldGroups = useMemo(() => {
-    if (safeHtml) return null; // html-лекции не режем
-    return parts.map((p) => {
-      if (p.kind !== "md") return null;
-      if (/^##\s+Дальше по теме/m.test(p.content)) return null; // хвост с ДЗ/СИТ/тестом — всегда развёрнут
-      const count = (p.content.match(/^#{2,3}\s+/gm) || []).length;
-      return count >= 2 ? splitH2Sections(p.content) : null;
-    });
+  // Поток групп: подряд идущие md-секции + спец-блоки (квиз/картинка/видео) прикрепляются к текущей секции,
+  // поэтому пер-блочный тест рендерится ВНУТРИ своего аккордеона.
+  const stream = useMemo(() => {
+    const groups: Array<{ title: string; md: string; blocks: typeof parts; isTail: boolean }> = [];
+    if (safeHtml) return groups;
+    let cur: (typeof groups)[number] | null = null;
+    const flush = () => { if (cur) { groups.push(cur); cur = null; } };
+    for (const p of parts) {
+      if (p.kind === "md") {
+        const secs = splitH2Sections(p.content);
+        if (!secs.length) continue;
+        for (const sec of secs) {
+          flush();
+          cur = { title: sec.title, md: sec.md, blocks: [], isTail: /Дальше по теме/i.test(sec.title) };
+        }
+      } else {
+        if (!cur) cur = { title: "", md: "", blocks: [], isTail: false };
+        cur.blocks.push(p);
+      }
+    }
+    flush();
+    return groups;
   }, [parts, safeHtml]);
+  const foldable = !safeHtml && stream.filter((g) => g.title && !g.isTail).length >= 3;
+  function renderPart(p: (typeof parts)[number], key: string) {
+    if (p.kind === "md") {
+      return <div key={key} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
+    }
+    if (p.kind === "chart") {
+      try {
+        return <ChartBlock key={key} spec={JSON.parse(p.content)} />;
+      } catch {
+        return (
+          <pre key={key} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">
+            {p.content}
+          </pre>
+        );
+      }
+    }
+    if (p.kind === "video") return <VideoBlock key={key} raw={p.content} />;
+    if (p.kind === "image") return <ImageBlock key={key} raw={p.content} />;
+    if (p.kind === "quiz") return <MiniQuizBlock key={key} raw={p.content} />;
+    if (p.kind === "leukocyte") return <LeukocyteDifferentialTrainer key={key} raw={p.content} />;
+    if (p.kind === "chem") {
+      const spec = parseChemSpec(p.content);
+      if (!spec) {
+        return (
+          <pre key={key} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">
+            {p.content}
+          </pre>
+        );
+      }
+      return (
+        <div key={key} className="my-4">
+          <ChemicalFigure spec={{ ...spec, size: spec.size || "default" }} />
+        </div>
+      );
+    }
+    if (p.kind === "mermaid") {
+      return (
+        <div key={key} className="my-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-white p-4">
+          <pre className="mermaid">{p.content}</pre>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div ref={ref} className="lecture-body space-y-2 text-[15px] leading-relaxed after:block after:clear-both after:content-['']">
-      {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : parts.map((p, i) => {
-        if (p.kind === "md") {
-          const folds = foldGroups?.[i];
-          if (folds) {
-            return (
-              <div key={i} className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setAllOpen((v) => !v)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
-                >
-                  {allOpen ? "Свернуть все блоки" : "Развернуть все блоки"}
-                </button>
-                {folds.map((sec, k) => {
-                  const isIntro = !sec.title;
-                  const isTail = /Дальше по теме/i.test(sec.title);
-                  const openByDefault = allOpen || isTail || (k === 0 && folds.length > 1);
-                  return (
-                    <details key={k} className="lec-fold rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm" open={openByDefault}>
-                      <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                        <span className="mr-2 inline-block text-indigo-500 transition-transform group-open:rotate-90">▸</span>
-                        {sec.title || "Введение"}
-                      </summary>
-                      <div className="prose prose-slate max-w-none border-t border-[var(--border)] px-4 py-3 dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(sec.md) }} />
-                    </details>
-                  );
-                })}
-              </div>
+      {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : (
+        <div className="space-y-3">
+          {foldable && (
+            <button
+              type="button"
+              onClick={() => setAllOpen((v) => !v)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+            >
+              {allOpen ? "Свернуть все блоки" : "Развернуть все блоки"}
+            </button>
+          )}
+          {stream.map((g, gi) => {
+            const inner = (
+              <>
+                {g.md.trim() ? (
+                  <div className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(g.md) }} />
+                ) : null}
+                {g.blocks.map((p, pi) => renderPart(p, gi + "-" + pi))}
+              </>
             );
-          }
-          return <div key={i} className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: mdToHtml(p.content) }} />;
-        }
-        if (p.kind === "chart") {
-          try {
-            return <ChartBlock key={i} spec={JSON.parse(p.content)} />;
-          } catch {
+            if (!foldable || !g.title || g.isTail) {
+              return <div key={gi} className="space-y-2">{inner}</div>;
+            }
+            const open = allOpen || gi === 0;
             return (
-              <pre key={i} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">
-                {p.content}
-              </pre>
+              <details key={gi} className="lec-fold rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm" open={open}>
+                <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                  <span className="mr-2 inline-block text-indigo-500">▸</span>
+                  {g.title}
+                </summary>
+                <div className="space-y-2 border-t border-[var(--border)] px-4 py-3">{inner}</div>
+              </details>
             );
-          }
-        }
-        if (p.kind === "video") return <VideoBlock key={i} raw={p.content} />;
-        if (p.kind === "image") return <ImageBlock key={i} raw={p.content} />;
-        if (p.kind === "quiz") return <MiniQuizBlock key={i} raw={p.content} />;
-        if (p.kind === "leukocyte") return <LeukocyteDifferentialTrainer key={i} raw={p.content} />;
-        if (p.kind === "chem") {
-          const spec = parseChemSpec(p.content);
-          if (!spec) {
-            return (
-              <pre key={i} className="overflow-auto rounded-xl bg-slate-100 p-3 text-xs">
-                {p.content}
-              </pre>
-            );
-          }
-          return (
-            <div key={i} className="my-4">
-              <ChemicalFigure spec={{ ...spec, size: spec.size || "default" }} />
-            </div>
-          );
-        }
-        if (p.kind === "mermaid") {
-          return (
-            <div key={i} className="my-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-white p-4">
-              <pre className="mermaid">{p.content}</pre>
-            </div>
-          );
-        }
-        return null;
-      })}
+          })}
+        </div>
+      )}
       <style>{`
         .lec-table-wrap { overflow-x: auto; margin: 1rem 0; }
         .lec-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
