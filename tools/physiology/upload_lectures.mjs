@@ -112,4 +112,27 @@ function toLecture(meta, body) {
   });
   if (!patch.ok) throw new Error(`patch ${patch.status}: ${await patch.text()}`);
   console.log("записано в site_content");
+
+  // Студентам лекции отдаёт публичный API из histology_lectures,
+  // поэтому дублируем запись туда — иначе новые занятия не видны в /lectures.
+  const mirrorRows = fresh.map((l) => ({
+    id: l.id,
+    subject_slug: "physiology",
+    specialty_scope: ["mbh"],
+    title: l.title,
+    kind: "written_lecture",
+    prep_names: [],
+    linked_prep_ids: [],
+    body_markdown: l.body_md,
+    description_algorithm_ref: null,
+    is_published: l.status === "published",
+    updated_at: new Date().toISOString(),
+  }));
+  const mirrorRes = await fetch(`${url}/rest/v1/histology_lectures?on_conflict=id`, {
+    method: "POST",
+    headers: { ...headers, Prefer: "return=minimal,resolution=merge-duplicates" },
+    body: JSON.stringify(mirrorRows),
+  });
+  if (!mirrorRes.ok) throw new Error(`histology_lectures ${mirrorRes.status}: ${await mirrorRes.text()}`);
+  console.log(`продублировано в histology_lectures: ${mirrorRows.length}`);
 })();
