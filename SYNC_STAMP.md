@@ -1,4 +1,33 @@
 
+## Выкладка 2026-11-02: лекция в предмете, свежий zip расширения, SQL-консоль (2026-11-02)
+
+**Задеплоено** (`main` @ `8d7f444a`, прод отвечает `X-Medbiohim-Build: 8d7f444a…`).
+API Worker — деплой 02.11 10:46 UTC, коммитов в `workers/api` после него нет; Telegram Worker — 31.10 13:17 UTC.
+
+- **Лекция внутри предмета** (`4b9d388f`): оформление вынесено в общий
+  `src/components/lectures/LectureView.tsx`. И `/lectures/:id`, и чтение лекции из вкладки «Лекции»
+  показывают один блок: оглавление по подтемам, шапку с «Скачать Word/PDF», прогресс задач,
+  переходы «предыдущий/следующий блок», привязанные материалы.
+- **Дистрибутив расширения** (`8d7f444a`): `public/downloads/medbiohim-importer.zip` пересобран
+  из актуальных исходников (было 13 214 Б от 26.10 — стало 18 520 Б, в сборке interceptor и трекер
+  отработок). Прод отдаёт файл с тем же SHA-256.
+- **SQL-консоль админки**: на Supabase не было RPC `public.admin_exec_sql`, поэтому консоль
+  отвечала 503 `SQL_RPC_MISSING`. Добавлена миграция
+  [database/migrations/20261102_admin_exec_sql.sql](database/migrations/20261102_admin_exec_sql.sql)
+  и применена: SELECT возвращает строки JSON-массивом, DDL/DML — `{command, rowCount}`.
+  `EXECUTE` только у `service_role`, у `anon`/`authenticated`/`PUBLIC` отозван (проверено
+  `has_function_privilege`). Консоль на проде проверена запросом `select id, name from subjects limit 3` — 200, 3 строки.
+
+**Проверка БД (2026-11-02).** Ledger Supabase: 149 записей, максимум `20261031000000:workshop_and_governance`.
+Миграции 1–2 ноября применены, но в ledger не записаны (исторический drift, см.
+[docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md));
+проверено по объектам: `workshop_item_questions.options/answer`, `workshop_items.question_conversion_*`,
+`questions.source/source_item_id`, `material_views`, `group_memberships.course_override/subgroup`,
+`groups.stream/semester`, `materials.topic_id`, selfwork-маркер `hist-03-embriologiya`, RPC сессий и удаления аккаунта.
+
+**Ещё открыто:** публикация расширения в Chrome Web Store (в пайплайне только сборка и zip для ручной
+установки); блоки референса Foxford (карточка преподавателя, «Успеваемость»/«Опыт XP», видео) в коде отсутствуют.
+
 ## Аудит 2026-10-27: Волна 2 — выкладка, админка, поиск, аккаунт (2026-10-27)
 
 Продолжение [PRODUCT-AUDIT-PLAN-2026-10-27.md](docs/PRODUCT-AUDIT-PLAN-2026-10-27.md) после Волны 1.
