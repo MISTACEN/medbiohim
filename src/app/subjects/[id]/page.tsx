@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
 import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, getSubjectPlanProgress, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, markMaterialOpened, setTopicProgress, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
-import { LectureRenderer } from "@/components/lectures/LectureRenderer";
+import { LectureView } from "@/components/lectures/LectureView";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
 import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
@@ -1010,25 +1010,14 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         )}
 
         {tab === "lectures" && activeLecture && (
-          <section className="card p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveLecture(null)}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-700"
-              >
-                <ChevronLeft className="h-4 w-4" /> К списку лекций
-              </button>
-              <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{activeLecture.subject || subject?.name}</span>
-            </div>
-            <h2 className="mt-3 text-xl font-extrabold">{activeLecture.title}</h2>
-            {activeLecture.published_at && (
-              <p className="mt-1 text-xs text-slate-500">Опубликовано: {new Date(activeLecture.published_at).toLocaleString("ru-RU")}</p>
-            )}
-            <article className="mt-4">
-              <LectureRenderer markdown={activeLecture.body_markdown || activeLecture.body_md || ""} html={activeLecture.body_html || ""} />
-            </article>
-          </section>
+          // Читаем лекцию тем же блоком, что и отдельная страница /lectures/:id:
+          // оглавление по блокам, шапка со скачиванием и прогрессом, навигация.
+          <LectureView
+            lecture={activeLecture}
+            lectureId={String((activeLecture as any).id || "")}
+            onBack={() => setActiveLecture(null)}
+            backLabel="К списку лекций"
+          />
         )}
 
         {tab === "lectures" && !activeLecture && (
