@@ -265,6 +265,37 @@ describe("контент: образцовые ответы закрывают �
       expectComplete(checkSelfWorkAnswer(sample.text, points), `exam/memo/${sample.id}`);
     }
   });
+
+  it("задание 4 — вопросы открытого типа: id существуют и их эталоны закрываются моделями", () => {
+    const t = requireTopic();
+    const openType = t.exam.openType;
+    expect(openType, "у темы нет задания 4 (openType)").toBeTruthy();
+    if (!openType) return;
+
+    expect(openType.title.trim().length, "у задания 4 пустой title").toBeGreaterThan(0);
+    expect(openType.questionIds.length, "в задании 4 нет вопросов").toBeGreaterThanOrEqual(3);
+
+    const byId = new Map(t.openQuestions.map((question) => [question.id, question]));
+    for (const id of openType.questionIds) {
+      const question = byId.get(id);
+      expect(question, `задание 4 ссылается на несуществующий вопрос ${id}`).toBeTruthy();
+      if (!question) continue;
+      // Эталон вопроса должен засчитываться так же, как его проверит ExamModePanel.
+      expectComplete(checkSelfWorkAnswer(question.model, question.keyPoints), `exam/openType/${id}`);
+    }
+  });
+
+  it("шкала: «4» — про вопросы открытого типа, «5» — про подробный теоретический ответ", () => {
+    const t = requireTopic();
+    const four = t.exam.scale.find((entry) => entry.grade === 4);
+    const five = t.exam.scale.find((entry) => entry.grade === 5);
+    expect(four?.when ?? "", "в шкале «4» не упомянуты вопросы открытого типа").toMatch(/открыт/i);
+    expect(five?.when ?? "", "в шкале «5» нет подробного теоретического ответа").toMatch(/подробно|теоретическ/i);
+    expect(
+      `${four?.when ?? ""} ${four?.detail ?? ""}`.toLowerCase().includes("памятк"),
+      "шкала «4» всё ещё ссылается на памятку",
+    ).toBe(false);
+  });
 });
 
 /* ── защита от «мёртвых» anyOf ───────────────────────────────────────────── */

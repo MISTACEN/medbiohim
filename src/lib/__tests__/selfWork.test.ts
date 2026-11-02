@@ -375,6 +375,49 @@ describe("computeExamGrade", () => {
     expect(grade.notes.some((note) => note.includes("по памятке"))).toBe(true);
   });
 
+  /* Задание 4 — вопросы открытого типа (в реальной самостоятельной памятки нет). */
+
+  it("openType complete → «4» (памятка не нужна)", () => {
+    const grade = computeExamGrade({
+      task1: complete(),
+      task2: complete(),
+      task3: complete(),
+      openType: complete(5),
+    });
+    expect(grade.grade).toBe(4);
+    expect(grade.notes.some((note) => note.includes("вопросы открытого типа") && note.includes("«4»"))).toBe(true);
+  });
+
+  it("openType неполный → «3» и подсказка про четвёртое задание", () => {
+    const grade = computeExamGrade({
+      task1: complete(),
+      task2: complete(),
+      task3: complete(),
+      openType: result({ total: 5, score: 3, max: 5, percent: 60 }),
+    });
+    expect(grade.grade).toBe(3);
+    expect(grade.notes.some((note) => note.includes("До «4»") && note.includes("неполное"))).toBe(true);
+  });
+
+  it("openType не передан → подсказка выполнить четвёртое задание", () => {
+    const grade = computeExamGrade({ task1: complete(), task2: complete(), task3: complete(), openType: null });
+    expect(grade.grade).toBe(3);
+    expect(grade.notes.some((note) => note.includes("До «4»") && note.includes("вопросы открытого типа"))).toBe(true);
+  });
+
+  it("openType имеет приоритет над memo", () => {
+    const grade = computeExamGrade({
+      task1: complete(),
+      task2: complete(),
+      task3: complete(),
+      openType: complete(5),
+      memo: result({ total: 4, score: 0, max: 4, percent: 0 }),
+      theoryDetail: complete(4),
+    });
+    expect(grade.grade).toBe(5);
+    expect(grade.notes.some((note) => note.includes("вопросы открытого типа"))).toBe(true);
+  });
+
   it("examGradeLabel: 0 → «Не зачтено», иначе число", () => {
     expect(examGradeLabel({ grade: 0, label: "", notes: [], baseComplete: false })).toBe("Не зачтено");
     expect(examGradeLabel({ grade: 3, label: "", notes: [], baseComplete: true })).toBe("3");

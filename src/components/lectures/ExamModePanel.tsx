@@ -22,7 +22,7 @@ import type {
   SelfWorkKeyPoint,
   SelfWorkTopic,
 } from "@/lib/histology/selfWorkTypes";
-import { checkSelfWorkAnswer, checkSelfWorkLabels, selfWorkResultLabel } from "@/lib/histology/openAnswerCheck";
+import { checkSelfWorkAnswer, checkSelfWorkLabels, selfWorkResultLabel, SELF_WORK_PASS_RATIO } from "@/lib/histology/openAnswerCheck";
 import { computeExamGrade, examGradeLabel, type ExamGradeResult } from "@/lib/histology/examGrade";
 import { selfWorkTopicForLecture } from "@/lib/histology/selfWorkTopics";
 
@@ -116,6 +116,23 @@ function memoStepKeyPoints(memo: SelfWorkCellMemo | null | undefined): SelfWorkK
       anyOf: words.length ? words : [step.title || `Шаг ${index + 1}`],
     };
   });
+}
+
+/** Свод результата по нескольким открытым вопросам (задание 4). */
+function combineResults(list: SelfWorkCheckResult[]): SelfWorkCheckResult {
+  const score = list.reduce((sum, r) => sum + r.score, 0);
+  const max = list.reduce((sum, r) => sum + r.max, 0);
+  return {
+    total: list.reduce((sum, r) => sum + r.total, 0),
+    score,
+    max,
+    percent: max > 0 ? Math.round((score / max) * 100) : 0,
+    hits: list.flatMap((r) => r.hits),
+    misses: list.flatMap((r) => r.misses),
+    feedback: list.flatMap((r) => r.feedback),
+    passed: max > 0 && score / max >= SELF_WORK_PASS_RATIO,
+    complete: max > 0 && score === max,
+  };
 }
 
 /** Пункт «определить половую клетку»: название берём из подписи электронограммы.
@@ -312,6 +329,7 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
   const variants = Array.isArray(exam?.variants) ? exam.variants : [];
   const electronograms = Array.isArray(exam?.electronograms) ? exam.electronograms : [];
   const memo = exam?.memo ?? null;
+  const openType = exam?.openType ?? null;
   const scale = Array.isArray(exam?.scale) ? exam.scale : [];
 
   const [variantIndex, setVariantIndex] = useState(0);
@@ -330,6 +348,18 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
   const task2Key = electronogram ? `ecogram:${electronogram.id}` : "";
   const memoKey = "memo";
 
+  /** Задание 4: вопросы открытого типа из банка темы (в реальной самостоятельной
+   *  именно они идут после трёх заданий — описания клетки по памятке там нет). */
+  const openTypeQuestions = openType
+    ? (resolved?.openQuestions ?? []).filter((question) => openType.questionIds.includes(question.id))
+    : [];
+  const openTypeKeys = openTypeQuestions.map((question) => `open:${question.id}`);
+  const openTypeResults = openTypeKeys.map((key) => results[key]).filter(Boolean) as SelfWorkCheckResult[];
+  const openTypeResult =
+    openTypeQuestions.length > 0 && openTypeResults.length === openTypeQuestions.length
+      ? combineResults(openTypeResults)
+      : null;
+
   /** Углублённый уровень задания 3 «на 5»; без detailKeyPoints шаг не показываем. */
   const detailPoints = Array.isArray(variant?.task3.detailKeyPoints)
     ? variant.task3.detailKeyPoints.filter(Boolean)
@@ -343,7 +373,15 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
   const memoResult = results[memoKey] ?? null;
   const grade =
     task1 && task2 && task3
-      ? computeExamGrade({ task1, task2, task3, memo: memoResult, theoryDetail: detail })
+      ? computeExamGrade({
+          task1,
+          task2,
+          task3,
+          // Ключ openType в вызове означает «четвёртое задание — открытые вопросы»,
+          // поэтому для тем со старой памяткой передаём memo, а не openType: null.
+          ...(openType ? { openType: openTypeResult } : { memo: memoResult }),
+          theoryDetail: detail,
+        })
       : null;
 
   const missing: string[] = [];
@@ -394,7 +432,7 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
 
   /** «Пройти заново» — сброс ответов и результатов текущего варианта и оценки. */
   function resetRun() {
-    for (const key of [task1Key, task3Key, detailKey, task2Key, memoKey]) repeat(key);
+    for (const key of [task1Key, task3Key, detailKey, task2Key, memoKey, ...openTypeKeys]) repeat(key);
   }
 
   if (!exam || variants.length === 0) {
@@ -590,7 +628,80 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
         </div>
       ) : null}
 
-      {memo ? (
+      {openType ? (
+        <section data-testid="exam-open" className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">
+            {openType.title} · открывает «4»
+          </div>
+          {openType.intro ? <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{openType.intro}</p> : null}
+
+          {openTypeQuestions.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--status-warn-fg)]">Вопросы открытого типа для этой темы не заполнены.</p>
+          ) : (
+            <ol className="mt-3 space-y-3">
+              {openTypeQuestions.map((question) => {
+                const key = `open:${question.id}`;
+                const result = results[key];
+                return (
+                  <li key={question.id} data-testid={key} className="rounded-xl border border-[var(--border)] p-3">
+                    <p className="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">{question.prompt}</p>
+                    <label
+                      htmlFor={`exam-${key}`}
+                      className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]"
+                    >
+                      Письменный ответ
+                    </label>
+                    <textarea
+                      id={`exam-${key}`}
+                      value={String(answers[key] ?? "")}
+                      rows={3}
+                      disabled={Boolean(result)}
+                      onChange={(event) => setAnswer(key, event.target.value)}
+                      className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none transition focus:border-[var(--primary)] disabled:opacity-70 dark:bg-slate-900"
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      {result ? (
+                        <>
+                          <span className="mr-auto self-center text-xs font-semibold text-[var(--muted)]">
+                            {result.complete ? "✓ зачтено" : `разобрано ${result.score}/${result.max}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => repeat(key)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/50 dark:bg-slate-900 dark:text-slate-200"
+                          >
+                            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                            Повторить
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!String(answers[key] ?? "").trim()}
+                          onClick={() => checkOpen(key, answers[key] ?? "", question.keyPoints ?? [])}
+                          className="btn-primary px-4 py-2 text-sm disabled:opacity-40"
+                        >
+                          Проверить
+                        </button>
+                      )}
+                    </div>
+                    {result ? <CheckResultPanel result={result} model={question.model} /> : null}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
+          {openTypeResult ? (
+            <div className="mt-3">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Итог по заданию 4</div>
+              <CheckResultPanel result={openTypeResult} />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {!openType && memo ? (
         <section data-testid="exam-memo" className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">
             Описать клетку по памятке · открывает «4»

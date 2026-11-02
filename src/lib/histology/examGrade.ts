@@ -15,7 +15,9 @@ export type ExamGradeInput = {
   task1: SelfWorkCheckResult;
   task2: SelfWorkCheckResult;
   task3: SelfWorkCheckResult;
-  /** Описание клетки по памятке — открывает «4». */
+  /** Задание 4 — вопросы открытого типа: открывает «4». */
+  openType?: SelfWorkCheckResult | null;
+  /** Устаревший путь (описание клетки по памятке); учитывается, если openType не задан. */
   memo?: SelfWorkCheckResult | null;
   /** Углублённая проверка теоретического вопроса (detailKeyPoints) — открывает «5». */
   theoryDetail?: SelfWorkCheckResult | null;
@@ -63,14 +65,19 @@ export function computeExamGrade(input: ExamGradeInput): ExamGradeResult {
   notes.push("Все три задания выполнены правильно — базовая оценка «3».");
   let grade: 3 | 4 | 5 = 3;
 
-  const memo = input.memo ?? null;
-  if (memo?.complete) {
+  // «4» открывает четвёртое задание — вопросы открытого типа (в старых темах —
+  // описание клетки по памятке). Ключ openType в вызове означает режим открытых
+  // вопросов, даже если результат ещё не получен (openType: null).
+  const usesOpenType = Object.prototype.hasOwnProperty.call(input, "openType");
+  const fourth = usesOpenType ? input.openType ?? null : input.memo ?? null;
+  const fourthName = usesOpenType ? "вопросы открытого типа" : "описание клетки по памятке";
+  if (fourth?.complete) {
     grade = 4;
-    notes.push("Клетка описана по памятке полностью — «4».");
-  } else if (memo) {
-    notes.push(`До «4»: описание по памятке неполное (${memo.score}/${memo.max}) — добавь потерянные пункты.`);
+    notes.push(`Четвёртое задание (${fourthName}) выполнено — «4».`);
+  } else if (fourth) {
+    notes.push(`До «4»: четвёртое задание (${fourthName}) неполное (${fourth.score}/${fourth.max}) — добавь потерянные пункты.`);
   } else {
-    notes.push("До «4»: опиши попавшуюся клетку по памятке (название и окраска → строение → источник развития → функции).");
+    notes.push(`До «4»: выполни четвёртое задание — ${fourthName}.`);
   }
 
   const detail = input.theoryDetail ?? null;

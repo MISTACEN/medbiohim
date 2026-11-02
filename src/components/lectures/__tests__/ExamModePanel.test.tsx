@@ -249,7 +249,7 @@ describe("ExamModePanel: задание 6 (режим экзамена)", () => 
     checkMemo("окраска");
 
     expect(gradeBadge()).toBe("3");
-    expect(screen.getByText(/До «4»: описание по памятке неполное/)).toBeTruthy();
+    expect(screen.getByText(/До «4»: четвёртое задание \(описание клетки по памятке\) неполное/)).toBeTruthy();
   });
 
   it("полная база + памятка без углублённого ответа — «4» (совпадает с computeExamGrade)", () => {
@@ -266,7 +266,7 @@ describe("ExamModePanel: задание 6 (режим экзамена)", () => 
     });
     expect(expected.grade).toBe(4);
     expect(gradeBadge()).toBe(examGradeLabel(expected));
-    expect(screen.getByText(/Клетка описана по памятке полностью/)).toBeTruthy();
+    expect(screen.getByText(/Четвёртое задание \(описание клетки по памятке\) выполнено/)).toBeTruthy();
 
     // Углублённый шаг «на 5» появился после проверки задания 3 и ещё не пройден.
     expect(screen.getByTestId("exam-task3-detail")).toBeTruthy();
@@ -318,5 +318,94 @@ describe("ExamModePanel: задание 6 (режим экзамена)", () => 
   it("без контента (нет темы для лекции) рендерится заглушка", () => {
     render(<ExamModePanel lectureId="нет-такой-лекции" />);
     expect(screen.getByText(/Режим экзамена для этой лекции ещё не заполнен/)).toBeTruthy();
+  });
+});
+
+/**
+ * Задание 4 — вопросы открытого типа (в реальной самостоятельной именно они
+ * идут после трёх заданий; описания клетки по памятке там нет).
+ */
+const topicWithOpen: SelfWorkTopic = {
+  ...topic,
+  openQuestions: [
+    {
+      id: "q1",
+      topic: "Тест",
+      prompt: "Вопрос 1: назовите осевой орган.",
+      keyPoints: [{ id: "k1", label: "Хорда", anyOf: ["хорда"] }],
+      model: "Хорда.",
+    },
+    {
+      id: "q2",
+      topic: "Тест",
+      prompt: "Вопрос 2: где расположена нервная трубка?",
+      keyPoints: [{ id: "k2", label: "Над хордой", anyOf: ["над хордой"] }],
+      model: "Нервная трубка — над хордой.",
+    },
+  ],
+  exam: {
+    ...topic.exam,
+    openType: {
+      title: "Задание 4 · Вопросы открытого типа",
+      intro: "Ответьте письменно по памяти.",
+      questionIds: ["q1", "q2"],
+    },
+  },
+};
+
+function checkOpenQuestion(id: string, value: string) {
+  const scope = panel(`open:${id}`);
+  fireEvent.change(scope.getByLabelText("Письменный ответ"), { target: { value } });
+  fireEvent.click(scope.getByRole("button", { name: "Проверить" }));
+}
+
+describe("ExamModePanel: задание 4 (вопросы открытого типа)", () => {
+  it("показывает вопросы открытого типа вместо памятки", () => {
+    render(<ExamModePanel topic={topicWithOpen} />);
+
+    expect(screen.getByTestId("exam-open")).toBeTruthy();
+    expect(screen.queryByTestId("exam-memo")).toBeNull();
+    expect(panel("exam-open").getByText("Вопрос 1: назовите осевой орган.")).toBeTruthy();
+    expect(panel("exam-open").getByText("Вопрос 2: где расположена нервная трубка?")).toBeTruthy();
+  });
+
+  it("база + вопросы открытого типа — «4», затем «5» с углублённым ответом", () => {
+    render(<ExamModePanel topic={topicWithOpen} />);
+    completeBase();
+
+    expect(gradeBadge()).toBe("3");
+    expect(screen.getByText(/До «4»: выполни четвёртое задание — вопросы открытого типа/)).toBeTruthy();
+
+    checkOpenQuestion("q1", "хорда");
+    checkOpenQuestion("q2", "нервная трубка над хордой");
+    expect(gradeBadge()).toBe("4");
+    expect(screen.getByText(/Четвёртое задание \(вопросы открытого типа\) выполнено/)).toBeTruthy();
+
+    writeAndCheck("exam-task3-detail", "три листка");
+    expect(gradeBadge()).toBe("5");
+  });
+
+  it("неполный ответ на вопрос открытого типа не открывает «4»", () => {
+    render(<ExamModePanel topic={topicWithOpen} />);
+    completeBase();
+    checkOpenQuestion("q1", "хорда");
+    checkOpenQuestion("q2", "мимо");
+
+    expect(gradeBadge()).toBe("3");
+    expect(screen.getByText(/четвёртое задание \(вопросы открытого типа\) неполное/)).toBeTruthy();
+  });
+
+  it("«Пройти заново» очищает ответы задания 4", () => {
+    render(<ExamModePanel topic={topicWithOpen} />);
+    completeBase();
+    checkOpenQuestion("q1", "хорда");
+    checkOpenQuestion("q2", "над хордой");
+    expect(gradeBadge()).toBe("4");
+
+    fireEvent.click(screen.getByRole("button", { name: "Пройти заново" }));
+    expect((panel("open:q1").getByLabelText("Письменный ответ") as HTMLTextAreaElement).value).toBe("");
+    // Сброс очищает всю попытку: база и четвёртое задание снова не выполнены.
+    expect(screen.queryByTestId("exam-grade-badge")).toBeNull();
+    expect(panel("exam-grade").getByText(/До итоговой оценки не хватает/)).toBeTruthy();
   });
 });

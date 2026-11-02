@@ -121,7 +121,19 @@ export type SelfWorkExam = {
   variants: SelfWorkExamVariant[];
   electronograms: SelfWorkElectronogramTask[];
   scale: SelfWorkExamScale[];
+  /** Памятка описания клетки — исторический блок; используется только если нет openType. */
   memo: SelfWorkCellMemo;
+  /**
+   * Задание 4 — вопросы открытого типа. В реальной самостоятельной после трёх
+   * заданий идут именно они (описания клетки по памятке там нет), поэтому этот
+   * блок открывает оценку «4».
+   */
+  openType?: {
+    title: string;
+    intro?: string;
+    /** id вопросов из openQuestions этой же темы. */
+    questionIds: string[];
+  };
 };
 
 /** Полный контент темы «Подготовка к самостоятельной + режим экзамена». */
