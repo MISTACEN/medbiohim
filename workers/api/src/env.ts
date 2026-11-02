@@ -33,6 +33,11 @@ export type Env = {
   // Public Upstash Blob endpoint used for authenticated Worker-side media proxying.
   UPSTASH_BLOB_PUBLIC_BASE_URL?: string;
 
+  // Внешний OCR-шлюз (vLLM/Ollama с Xiaomi-OCR-0, OpenAI-совместимый /v1/chat/completions).
+  OCR_API_URL?: string;
+  OCR_API_KEY?: string;
+  OCR_MODEL?: string;
+
   // Telegram bot administration (secrets must be configured in Cloudflare, never committed)
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;

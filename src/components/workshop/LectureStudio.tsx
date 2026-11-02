@@ -8,9 +8,10 @@
  * публикует его в общий каталог.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, Eye, Loader2, Plus, Save, Search } from "lucide-react";
+import { BookOpen, Eye, Loader2, Plus, Save, Search, Upload } from "lucide-react";
 import { RichLectureEditor } from "@/components/editor/RichLectureEditor";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
+import { importDocument } from "@/lib/lectures/importDocument";
 import {
   adminGenerateLecture,
   adminListLectures,
@@ -65,6 +66,7 @@ export default function LectureStudio({ staff = false }: { staff?: boolean }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   // Предпросмотр открывается прямо в студии, без перехода на страницу лекции.
   const [showPreview, setShowPreview] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -183,6 +185,41 @@ export default function LectureStudio({ staff = false }: { staff?: boolean }) {
     if (result.data?.lecture?.id) openEditor(result.data.lecture);
   }
 
+  /** Импорт своего документа: текст размечается и открывается в редакторе. */
+  async function importFile(file: File) {
+    if (!slug) {
+      setError("Выберите предмет");
+      return;
+    }
+    setImporting(true);
+    setError("");
+    setMessage("");
+    try {
+      const document = await importDocument(file);
+      const created: any = await createMyLecture({
+        title: document.title,
+        subject_slug: slug,
+        subject: subject?.name || slug,
+        lesson_type: "lecture",
+        body_md: document.markdown,
+        body_html: "",
+      });
+      if (!created?.ok) {
+        setError(describeApiError(created?.error));
+        return;
+      }
+      setMessage(
+        "Импортировано " + String(document.source).toUpperCase() + " · " + document.chars + " символов. Проверьте текст и опубликуйте занятие."
+      );
+      await reload(slug);
+      if (created.data?.lecture) openEditor(created.data.lecture);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Не удалось импортировать документ");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function save() {
     if (!editorId) return;
     setBusy(true);
@@ -263,6 +300,23 @@ export default function LectureStudio({ staff = false }: { staff?: boolean }) {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {staff ? "Создать черновик" : "Создать занятие"}
           </button>
+          <label
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold"
+            title="Импорт .md, .txt, .docx, .pdf или фото страницы"
+          >
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {importing ? "Импортирую…" : "Импорт документа"}
+            <input
+              type="file"
+              accept=".md,.markdown,.txt,.docx,.pdf,image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void importFile(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
           <label className="inline-flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2">
             <Search className="h-4 w-4 text-slate-400" />
             <input

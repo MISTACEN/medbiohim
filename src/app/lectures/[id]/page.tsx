@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, FileDown, Printer } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { LectureLearningLinks } from "@/components/lectures/LectureLearningLinks";
 import { LectureBlocksNav } from "@/components/lectures/LectureBlocksNav";
+import { downloadLectureWord, printLecturePdf } from "@/lib/lectures/exportLecture";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useLectureProgress } from "@/hooks/useLectureProgress";
@@ -91,6 +92,22 @@ export default function LectureViewPage() {
                 {lec.published_at && (
                   <p className="page-subtitle">Опубликовано: {new Date(lec.published_at).toLocaleString("ru-RU")}</p>
                 )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadLectureWord(lec as any)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                  >
+                    <FileDown className="h-3.5 w-3.5" /> Скачать Word
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => printLecturePdf(lec as any)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Скачать PDF
+                  </button>
+                </div>
               </div>
               {total > 0 && (
                 <div className="w-full sm:max-w-[200px]">

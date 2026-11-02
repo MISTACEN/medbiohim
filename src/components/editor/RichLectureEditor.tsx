@@ -12,6 +12,7 @@ import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { LectureBlocksOutline } from "@/components/editor/LectureBlocksOutline";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { structureLectureMarkdown } from "@/lib/lectures/structureMarkdown";
+import { chemicalFormulaHtml } from "@/lib/chemistry/formula";
 
 type Subject = { slug: string; name: string };
 type Attachment = {
@@ -439,6 +440,14 @@ export function RichLectureEditor({
     onChange({ markdown: result.markdown, html: markdownToHtml(result.markdown) });
   }
 
+  /** Химическая формула из выделения: H2SO4 → H₂SO₄. */
+  function insertChemicalFormula() {
+    const selection = window.getSelection();
+    const selected = selection && ref.current?.contains(selection.anchorNode) ? selection.toString().trim() : "";
+    rememberSelection();
+    insertAtCursor("<p>" + chemicalFormulaHtml(selected || "H2O") + "</p>");
+  }
+
   function rememberSelection() {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || !ref.current?.contains(selection.anchorNode)) return;
@@ -763,6 +772,7 @@ export function RichLectureEditor({
         {toolbarButton("Диаграмма","Создать диаграмму",()=>openBlock("chart"),<BarChart3 className="h-4 w-4"/>)}
         {toolbarButton("Формула","Создать формулу",()=>openBlock("formula"),<span className="font-bold">∑</span>)}
         {toolbarButton("Химия","Создать химическую фигуру",()=>openBlock("chem"),<span className="font-bold">⚗</span>)}
+        {toolbarButton("H₂O","Формула с индексами: H2SO4 → H₂SO₄",insertChemicalFormula,<span className="font-bold">H₂O</span>)}
         {toolbarButton("Видео","Вставить видео",()=>openBlock("video"),<Video className="h-4 w-4"/>)}
         {toolbarButton("Препарат","Вставить препарат из атласа",openTrainerPicker,<ImagePlus className="h-4 w-4"/>)}
 

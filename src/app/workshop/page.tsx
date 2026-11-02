@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import LectureStudio from "@/components/workshop/LectureStudio";
 import MyLibrary from "@/components/workshop/MyLibrary";
+import QuestionBank from "@/components/workshop/QuestionBank";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { describeApiError } from "@/lib/errors";
@@ -151,7 +152,7 @@ export default function WorkshopPage() {
   const [composer, setComposer] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   // Сотрудникам доступен второй раздел — занятия на том же редакторе, что в админке.
-  const [section, setSection] = useState<"materials" | "lectures" | "library">("materials");
+  const [section, setSection] = useState<"materials" | "lectures" | "library" | "questions">("materials");
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ title: "", topic: "", tags: "", summary: "", kind: "", subject_id: "", questionText: "", confirmed: false });
   const [suggestion, setSuggestion] = useState<any>(null);
@@ -388,6 +389,7 @@ export default function WorkshopPage() {
             { id: "materials", label: "Материалы студентов" },
             { id: "lectures", label: staff ? "Занятия: все лекции" : "Мои занятия" },
             { id: "library", label: "Моя библиотека" },
+            { id: "questions", label: "Мои вопросы" },
           ] as const).map((row) => (
             <button
               key={row.id}
@@ -413,6 +415,8 @@ export default function WorkshopPage() {
         <LectureStudio staff={staff} />
       ) : section === "library" ? (
         <MyLibrary />
+      ) : section === "questions" ? (
+        <QuestionBank />
       ) : (
         <>
       {composer && (
