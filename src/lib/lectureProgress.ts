@@ -105,3 +105,70 @@ export function lectureSolvedCount(lectureId: string, total: number, progress?: 
   const ids = (progress ?? readLectureProgress())[lectureId] ?? [];
   return Math.max(0, Math.min(total, ids.length));
 }
+/* ── Пирамида знаний: прогресс по блокам уровня ──
+ *  База (зубрёжка) — «выучено»; Основной (лекция) — «прочитано» по секциям;
+ *  шаги алгоритмов (химия) — отмеченные шаги. Всё локально, per lecture. */
+
+const BLOCKS_KEY = "mb_lecture_blocks_v1";
+
+export type LectureBlockProgress = {
+  baseDone?: boolean;
+  read?: string[];          // id прочитанных секций (заголовки H2/H3)
+  steps?: Record<string, number[]>; // id алгоритма → отмеченные шаги
+};
+
+function blocksStore(): Record<string, LectureBlockProgress> {
+  const store = storage();
+  if (!store) return {};
+  try {
+    const raw = store.getItem(BLOCKS_KEY);
+    const parsed = raw ? JSON.parse(raw) as unknown : {};
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, LectureBlockProgress>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBlocks(next: Record<string, LectureBlockProgress>) {
+  const store = storage();
+  if (!store) return;
+  try {
+    store.setItem(BLOCKS_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event(LECTURE_PROGRESS_EVENT));
+  } catch {
+    /* недоступно — состояние держит компонент */
+  }
+}
+
+export function readBlockProgress(lectureId: string): LectureBlockProgress {
+  return blocksStore()[lectureId] ?? {};
+}
+
+export function setBaseDone(lectureId: string, done: boolean): void {
+  if (!lectureId) return;
+  const next = blocksStore();
+  next[lectureId] = { ...next[lectureId], baseDone: done };
+  saveBlocks(next);
+}
+
+export function toggleSectionRead(lectureId: string, sectionId: string): void {
+  if (!lectureId || !sectionId) return;
+  const next = blocksStore();
+  const read = new Set(next[lectureId]?.read ?? []);
+  if (read.has(sectionId)) read.delete(sectionId);
+  else read.add(sectionId);
+  next[lectureId] = { ...next[lectureId], read: [...read] };
+  saveBlocks(next);
+}
+
+export function toggleAlgoStep(lectureId: string, algoId: string, stepIndex: number): void {
+  if (!lectureId || !algoId) return;
+  const next = blocksStore();
+  const steps = new Set(next[lectureId]?.steps?.[algoId] ?? []);
+  if (steps.has(stepIndex)) steps.delete(stepIndex);
+  else steps.add(stepIndex);
+  next[lectureId] = { ...next[lectureId], steps: { ...(next[lectureId]?.steps ?? {}), [algoId]: [...steps] } };
+  saveBlocks(next);
+}

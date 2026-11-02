@@ -10,7 +10,7 @@ import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDif
 import { ExamModePanel } from "@/components/lectures/ExamModePanel";
 import { OpenAnswerPractice } from "@/components/lectures/OpenAnswerPractice";
 import { describeApiError } from "@/lib/errors";
-import { markLectureQuizSolved, readLectureProgress } from "@/lib/lectureProgress";
+import { markLectureQuizSolved, readLectureProgress, readBlockProgress, setBaseDone, toggleSectionRead, toggleAlgoStep, LECTURE_PROGRESS_EVENT } from "@/lib/lectureProgress";
 import { splitLectureBlocks } from "@/lib/lectureProgress";
 
 type KatexApi = { render: (tex: string, el: HTMLElement, opts: object) => void };
@@ -73,14 +73,14 @@ function fenceLectureId(raw: string): string | undefined {
 }
 
 function parseBlocks(md: string) {
-  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte" | "selfwork" | "exam"; content: string }> = [];
-  const re = /```(chart|video|image|mermaid|chem|quiz|leukocyte|selfwork|exam)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
+  const parts: Array<{ kind: "md" | "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte" | "selfwork" | "exam" | "base" | "algo" | "deep"; content: string }> = [];
+  const re = /```(chart|video|image|mermaid|chem|quiz|leukocyte|selfwork|exam|base|algo|deep)\s*\r?\n([\s\S]*?)\r?\n?```/gi;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) {
     if (m.index > last) parts.push({ kind: "md", content: md.slice(last, m.index) });
     parts.push({
-      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte" | "selfwork" | "exam",
+      kind: m[1] as "chart" | "video" | "image" | "mermaid" | "chem" | "quiz" | "leukocyte" | "selfwork" | "exam" | "base" | "algo" | "deep",
       content: m[2].trim(),
     });
     last = m.index + m[0].length;
@@ -293,6 +293,130 @@ type MiniQuizQuestion = {
   options?: Array<{ index: number; label: string }>;
 };
 
+/** Строки «**термин** — определение» → флеш-карты. */
+function parseBaseCards(raw: string): Array<{ front: string; back: string }> {
+  const cards: Array<{ front: string; back: string }> = [];
+  let cur: { front: string; back: string } | null = null;
+  for (const rawLine of String(raw || "").split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const li = line.replace(/^-\s+/, "");
+    const m = li.match(/^\*\*(.+?)\*\*[\s—–-]+(.*)$/);
+    if (m) {
+      if (cur) cards.push(cur);
+      cur = { front: m[1].trim(), back: m[2].trim() };
+    } else if (cur) {
+      cur.back += " " + li;
+    } else {
+      cards.push({ front: li, back: "" });
+    }
+  }
+  if (cur) cards.push(cur);
+  return cards.length ? cards : [{ front: raw, back: "" }];
+}
+
+function BaseCard({ raw, lectureId }: { raw: string; lectureId?: string }) {
+  const cards = parseBaseCards(raw);
+  const [flipped, setFlipped] = useState<Record<number, boolean>>({});
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    setDone(Boolean(readBlockProgress(lectureId || "").baseDone));
+  }, [lectureId]);
+  if (!cards.length) return null;
+  return (
+    <section className="my-6 overflow-hidden rounded-2xl border-2 border-rose-300 bg-rose-50/70 shadow-sm dark:border-rose-500/40 dark:bg-rose-500/10">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-200 bg-white/60 px-4 py-3 dark:border-rose-500/30 dark:bg-transparent">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-300">Блок 1 · База (must know)</div>
+          <h3 className="mt-0.5 text-base font-extrabold text-slate-900 dark:text-slate-100">Зубрёжка: выучи до лекции</h3>
+        </div>
+        <button
+          type="button"
+          onClick={() => { const next = !done; setDone(next); setBaseDone(lectureId || "", next); }}
+          className={"rounded-xl px-4 py-2 text-sm font-bold transition " + (done ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-white text-rose-700 shadow-sm hover:bg-rose-100 dark:bg-rose-500/20 dark:text-rose-200")}
+        >
+          {done ? "✓ База выучена" : "Я выучил базу"}
+        </button>
+      </div>
+      <div className="grid gap-2 p-3 sm:grid-cols-2">
+        {cards.map((card, i) => {
+          const open = Boolean(flipped[i]);
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setFlipped((v) => ({ ...v, [i]: !v[i] }))}
+              className={"rounded-xl border p-3 text-left text-sm transition " + (open ? "border-rose-300 bg-white dark:border-rose-500/40 dark:bg-slate-900" : "border-rose-200 bg-rose-100/50 hover:bg-rose-50 dark:border-rose-500/30 dark:bg-rose-500/10")}
+            >
+              <div className="font-bold text-slate-900 dark:text-slate-100">{card.front}</div>
+              {card.back && (open
+                ? <div className="mt-1.5 leading-6 text-slate-700 dark:text-slate-300">{card.back}</div>
+                : <div className="mt-1 text-xs text-rose-500 dark:text-rose-300">Нажми — показать ответ</div>)}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AlgoCard({ raw, lectureId }: { raw: string; lectureId?: string }) {
+  let spec: { title?: string; id?: string; steps?: string[] } = {};
+  try { spec = JSON.parse(raw); } catch {
+    spec = { steps: String(raw || "").split("\n").map((x) => x.trim()).filter(Boolean) };
+  }
+  const steps = spec.steps || [];
+  const algoId = spec.id || "algo";
+  const [checked, setChecked] = useState<number[]>([]);
+  useEffect(() => {
+    setChecked(readBlockProgress(lectureId || "").steps?.[algoId] ?? []);
+  }, [lectureId, algoId]);
+  if (!steps.length) return null;
+  const doneCount = checked.filter((i) => i < steps.length).length;
+  return (
+    <section className="my-6 rounded-2xl border-2 border-sky-300 bg-sky-50/70 p-4 shadow-sm dark:border-sky-500/40 dark:bg-sky-500/10">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-300">Алгоритм решения — иди по шагам</div>
+          <h3 className="mt-0.5 text-base font-extrabold text-slate-900 dark:text-slate-100">{spec.title || "Пошаговый разбор"}</h3>
+        </div>
+        <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">{doneCount}/{steps.length}</div>
+      </div>
+      <ol className="mt-3 space-y-2">
+        {steps.map((step, i) => {
+          const done = checked.includes(i);
+          return (
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => { toggleAlgoStep(lectureId || "", algoId, i); setChecked((v) => (v.includes(i) ? v.filter((x) => x !== i) : [...v, i])); }}
+                className={"flex w-full items-start gap-3 rounded-xl border p-3 text-left text-sm transition " + (done ? "border-sky-300 bg-sky-100/70 text-sky-900 line-through decoration-sky-400 dark:border-sky-500/40 dark:bg-sky-500/15 dark:text-sky-200" : "border-slate-200 bg-white hover:border-sky-300 dark:border-slate-700 dark:bg-slate-900")}
+              >
+                <span className={"mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold " + (done ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800")}>{done ? "✓" : i + 1}</span>
+                <span className="leading-6">{step}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+function DeepCard({ raw }: { raw: string }) {
+  const [html, setHtml] = useState("");
+  useEffect(() => { setHtml(mdToHtml(raw)); }, [raw]);
+  return (
+    <section className="my-6 overflow-hidden rounded-2xl border-2 border-violet-300 bg-violet-50/70 shadow-sm dark:border-violet-500/40 dark:bg-violet-500/10">
+      <div className="border-b border-violet-200 bg-white/60 px-4 py-3 dark:border-violet-500/30 dark:bg-transparent">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">Блок 3 · Углубление (на «отлично»)</div>
+        <h3 className="mt-0.5 text-base font-extrabold text-slate-900 dark:text-slate-100">Клиника, патофизиология, применение</h3>
+      </div>
+      <div className="prose prose-slate max-w-none px-4 py-3 dark:prose-invert" dangerouslySetInnerHTML={{ __html: html }} />
+    </section>
+  );
+}
+
 function MiniQuizBlock({ raw, lectureId }: { raw: string; lectureId?: string }) {
   const [spec, setSpec] = useState<MiniQuizSpec>({});
   const [questions, setQuestions] = useState<MiniQuizQuestion[]>([]);
@@ -473,7 +597,7 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
       .split("\\`").join("`")
       .split('\\\"').join('"');
   }, [markdown]);
-  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz|leukocyte)\\b/i.test(normalizedMarkdown) || /```(?:selfwork|exam)\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
+  const hasSpecialMarkdownBlocks = useMemo(() => /```(?:chart|video|image|mermaid|chem|quiz|leukocyte|base|algo|deep)\\b/i.test(normalizedMarkdown) || /```(?:selfwork|exam)\b/i.test(normalizedMarkdown) || /\\$\\$[\\s\\S]+?\\$\\$/m.test(normalizedMarkdown), [normalizedMarkdown]);
   const parts = useMemo(() => parseBlocks(normalizedMarkdown), [normalizedMarkdown]);
 
   useEffect(() => {
@@ -576,6 +700,22 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
     return groups;
   }, [parts, safeHtml]);
   const foldable = !safeHtml && stream.filter((g) => g.title && !g.isTail).length >= 3;
+  const hasBase = !safeHtml && parts.some((p) => p.kind === "base");
+  const [baseDoneState, setBaseDoneState] = useState(false);
+  const [readSections, setReadSections] = useState<string[]>([]);
+  useEffect(() => {
+    const sync = () => {
+      const p = readBlockProgress(lectureId || "");
+      setBaseDoneState(Boolean(p.baseDone));
+      setReadSections(p.read ?? []);
+    };
+    sync();
+    window.addEventListener(LECTURE_PROGRESS_EVENT, sync);
+    return () => window.removeEventListener(LECTURE_PROGRESS_EVENT, sync);
+  }, [lectureId]);
+  const readCount = foldable ? stream.filter((g) => g.title && !g.isTail && readSections.includes(g.title)).length : 0;
+  const theoryCount = foldable ? stream.filter((g) => g.title && !g.isTail).length : 0;
+  const readiness = Math.round(((baseDoneState ? 1 : 0) * 0.4 + (theoryCount ? readCount / theoryCount : 0) * 0.6) * 100);
   const showSingle = typeof activeBlock === "number" && activeBlock >= 0 && activeBlock < stream.length;
 
   // Одиночный режим режется тем же разбором по H2/H3, что и оглавление:
@@ -600,6 +740,9 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
     if (p.kind === "video") return <VideoBlock key={key} raw={p.content} />;
     if (p.kind === "image") return <ImageBlock key={key} raw={p.content} />;
     if (p.kind === "quiz") return <MiniQuizBlock key={key} raw={p.content} lectureId={lectureId} />;
+    if (p.kind === "base") return <BaseCard key={key} raw={p.content} lectureId={lectureId} />;
+    if (p.kind === "algo") return <AlgoCard key={key} raw={p.content} lectureId={lectureId} />;
+    if (p.kind === "deep") return <DeepCard key={key} raw={p.content} />;
     if (p.kind === "leukocyte") return <LeukocyteDifferentialTrainer key={key} raw={p.content} />;
     // Интерактив из репозитория: контент берётся по lectureId из JSON-спеки фенса,
     // фолбэк — id лекции, переданный рендереру.
@@ -634,6 +777,26 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
     <div ref={ref} className="lecture-body space-y-2 text-[15px] leading-relaxed after:block after:clear-both after:content-['']">
       {safeHtml && !hasSpecialMarkdownBlocks ? <div className="prose prose-slate max-w-none dark:prose-invert lecture-rich-html" dangerouslySetInnerHTML={{__html:safeHtml}} /> : (
         <div className="space-y-3">
+          {hasBase && (
+            baseDoneState ? (
+              <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50/80 px-4 py-3 text-sm font-bold text-emerald-800 dark:border-emerald-500/50 dark:bg-emerald-500/10 dark:text-emerald-200">
+                ✓ База выучена — можно идти в лекцию. Всё сложится по полочкам.
+              </div>
+            ) : (
+              <div className="rounded-2xl border-2 border-rose-400 bg-rose-50/80 px-4 py-3 text-sm font-bold text-rose-800 dark:border-rose-500/50 dark:bg-rose-500/10 dark:text-rose-200">
+                ⚠ Сначала выучи Базу (блок «База» ниже) — без неё лекция не разложится в голове. Индикатор станет зелёным после отметки.
+              </div>
+            )
+          )}
+          {foldable && theoryCount > 0 && (
+            <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs font-semibold text-[var(--muted)]">
+              <span>Готовность к занятию:</span>
+              <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                <span className="block h-full rounded-full bg-indigo-500 transition-all" style={{ width: readiness + "%" }} />
+              </span>
+              <span>{readiness}%</span>
+            </div>
+          )}
           {foldable && !showSingle && (
             <button
               type="button"
@@ -661,13 +824,24 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
               return <div key={gi} className="space-y-2">{inner}</div>;
             }
             const open = allOpen || gi === 0;
+            const readDone = readSections.includes(g.title);
             return (
-              <details key={gi} className="lec-fold rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm" open={open}>
+              <details key={gi} className={"lec-fold rounded-2xl border bg-[var(--card)] shadow-sm " + (readDone ? "border-emerald-300 dark:border-emerald-500/40" : "border-[var(--border)]")} open={open}>
                 <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-extrabold text-slate-900 dark:text-slate-100">
                   <span className="mr-2 inline-block text-indigo-500">▸</span>
                   {g.title}
+                  {readDone && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200">прочитано</span>}
                 </summary>
-                <div className="space-y-2 border-t border-[var(--border)] px-4 py-3">{inner}</div>
+                <div className="space-y-2 border-t border-[var(--border)] px-4 py-3">
+                  {inner}
+                  <button
+                    type="button"
+                    onClick={() => { toggleSectionRead(lectureId || "", g.title); setReadSections((v) => (v.includes(g.title) ? v.filter((x) => x !== g.title) : [...v, g.title])); }}
+                    className={"mt-2 rounded-xl px-3 py-1.5 text-xs font-bold transition " + (readDone ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-200" : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}
+                  >
+                    {readDone ? "✓ Блок прочитан" : "Отметить блок прочитанным"}
+                  </button>
+                </div>
               </details>
             );
           })}
