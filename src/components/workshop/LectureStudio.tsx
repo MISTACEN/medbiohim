@@ -8,9 +8,9 @@
  * публикует его в общий каталог.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, ExternalLink, Loader2, Plus, Save, Search } from "lucide-react";
-import Link from "next/link";
+import { BookOpen, Eye, Loader2, Plus, Save, Search } from "lucide-react";
 import { RichLectureEditor } from "@/components/editor/RichLectureEditor";
+import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import {
   adminGenerateLecture,
   adminListLectures,
@@ -63,6 +63,8 @@ export default function LectureStudio({ staff = false }: { staff?: boolean }) {
   const [body, setBody] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  // Предпросмотр открывается прямо в студии, без перехода на страницу лекции.
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -342,6 +344,17 @@ export default function LectureStudio({ staff = false }: { staff?: boolean }) {
                   className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
                 />
               </div>
+              {showPreview && (
+                <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    <span>Предпросмотр — как на странице студента</span>
+                    <button type="button" onClick={() => setShowPreview(false)} className="text-[var(--primary)]">
+                      Скрыть
+                    </button>
+                  </div>
+                  <LectureRenderer markdown={body} />
+                </div>
+              )}
               <RichLectureEditor
                 value={body}
                 onChange={(next) => {
@@ -372,14 +385,20 @@ export default function LectureStudio({ staff = false }: { staff?: boolean }) {
                 >
                   Опубликовать
                 </button>
-                <Link
-                  href={`/lectures/${encodeURIComponent(editorId)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                <button
+                  type="button"
+                  onClick={() => setShowPreview((value) => !value)}
+                  aria-pressed={showPreview}
+                  className={
+                    "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm " +
+                    (showPreview
+                      ? "border-[var(--primary)] bg-[var(--primary-soft)] font-semibold text-[var(--primary)]"
+                      : "border-[var(--border)] bg-white font-semibold")
+                  }
                 >
-                  Как видит студент <ExternalLink className="h-3.5 w-3.5" />
-                </Link>
+                  <Eye className="h-4 w-4" />
+                  {showPreview ? "Скрыть предпросмотр" : "Как видит студент"}
+                </button>
               </div>
             </>
           )}
