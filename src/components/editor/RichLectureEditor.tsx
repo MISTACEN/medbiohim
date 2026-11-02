@@ -11,6 +11,7 @@ import { getTrainerFeed, uploadFile, fileDownloadUrl } from "@/lib/api";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { LectureBlocksOutline } from "@/components/editor/LectureBlocksOutline";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
+import { structureLectureMarkdown } from "@/lib/lectures/structureMarkdown";
 
 type Subject = { slug: string; name: string };
 type Attachment = {
@@ -349,8 +350,10 @@ export function RichLectureEditor({
   // Где именно в тексте окажется фото: важно, чтобы картинка шла рядом со
   // своим абзацем, а не собиралась в конце лекции.
   const [imageAlign, setImageAlign] = useState<"center" | "left" | "right" | "wide">("center");
-  // Предпросмотр рендерится тем же компонентом, что и страница студента.
-  const [preview, setPreview] = useState(false);
+  // Результат правки виден сразу: редактор, «рядом» или чистый просмотр.
+  const [mode, setMode] = useState<"edit" | "split" | "preview">("split");
+  // Исходный текст до авторазметки — автор всегда может вернуть как было.
+  const [structureUndo, setStructureUndo] = useState<string | null>(null);
   const [page, setPage] = useState("1");
   const [link, setLink] = useState("");
   const [busyUpload, setBusyUpload] = useState(false);
@@ -423,6 +426,17 @@ export function RichLectureEditor({
     loadedValue.current = markdown;
     setDirty(markdown !== cleanValue.current);
     onChange({ html, markdown });
+  }
+
+  /** Разметить «стену» текста: абзацы и заголовки разделов, слова не меняются. */
+  function structureText() {
+    const result = structureLectureMarkdown(value);
+    if (!result.changed) {
+      setStructureUndo(null);
+      return;
+    }
+    setStructureUndo(value);
+    onChange({ markdown: result.markdown, html: markdownToHtml(result.markdown) });
   }
 
   function rememberSelection() {
@@ -782,33 +796,57 @@ export function RichLectureEditor({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-slate-500">
-          {preview ? "Предпросмотр — как на странице студента" : "Редактор: правки сохраняются в markdown лекции"}
-        </span>
-        <button
-          type="button"
-          onClick={() => setPreview((value) => !value)}
-          className={
-            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold " +
-            (preview
-              ? "border-indigo-600 bg-indigo-600 text-white"
-              : "border-[var(--border)] bg-white text-slate-700 hover:bg-slate-50")
-          }
-        >
-          <Eye className="h-3.5 w-3.5" />
-          {preview ? "Вернуться в редактор" : "Как видит студент"}
-        </button>
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-[var(--border)] bg-white p-1">
+          {([
+            { id: "edit", label: "Редактор" },
+            { id: "split", label: "Рядом" },
+            { id: "preview", label: "Просмотр" },
+          ] as const).map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => setMode(row.id)}
+              aria-pressed={mode === row.id}
+              className={
+                "rounded-lg px-3 py-1 text-xs font-semibold transition " +
+                (mode === row.id ? "bg-[var(--primary)] text-white" : "text-slate-600 hover:bg-slate-50")
+              }
+            >
+              {row.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={structureText}
+            title="Разбить сплошной текст на абзацы и разделы. Формулировки не меняются."
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            <Wand2 className="h-3.5 w-3.5" /> Разметить текст
+          </button>
+          {structureUndo !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                const before = structureUndo;
+                setStructureUndo(null);
+                onChange({ markdown: before, html: markdownToHtml(before) });
+              }}
+              className="text-xs font-semibold text-[var(--primary)] underline"
+            >
+              вернуть как было
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] text-indigo-800">
         <b>Эталон Лекции 5:</b> обычное форматирование + таблицы + Mermaid-схемы + мини-тесты + лейкоцитарный тренажёр + формулы + препараты/ЭМ + диаграммы + химические фигуры + видео + PDF/Word. Спецблоки можно повторно открыть кнопкой «Изменить».
       </div>
 
-      {preview ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
-          <LectureRenderer markdown={value} />
-        </div>
-      ) : (
+      <div className={mode === "split" ? "grid items-start gap-3 xl:grid-cols-2" : "space-y-3"}>
+      {mode !== "preview" && (
       <div
         ref={ref}
         contentEditable
@@ -833,6 +871,15 @@ export function RichLectureEditor({
         }}
       />
       )}
+      {mode !== "edit" && (
+        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-white p-4 xl:sticky xl:top-4">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <Eye className="h-3.5 w-3.5" /> Как видит студент
+          </div>
+          <LectureRenderer markdown={value} />
+        </div>
+      )}
+      </div>
 
       <div className="lecture-editor-media space-y-3">
         <div className="lecture-media-head">
