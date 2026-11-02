@@ -1,8 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { RichLectureEditor } from "@/components/admin/RichLectureEditor";
-import { LectureLearningEditor } from "@/components/admin/LectureLearningEditor";
+import { RichLectureEditor } from "@/components/editor/RichLectureEditor";
+import { LectureLearningEditor } from "@/components/editor/LectureLearningEditor";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { splitLectureBlocks } from "@/lib/lectureProgress";
 import Link from "next/link";

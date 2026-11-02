@@ -15,6 +15,7 @@ import {
   Trash2, Upload, X,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import LectureStudio from "@/components/workshop/LectureStudio";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { describeApiError } from "@/lib/errors";
@@ -90,6 +91,48 @@ function ItemFile({ itemId, file }: { itemId: string; file: { id: string; name: 
   );
 }
 
+/** Миниатюра файла мастерской: фото из загрузки показываем рядом с вопросом. */
+function ItemThumb({ itemId, file }: { itemId: string; file: { id: string; name: string } }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void getWorkshopFileUrl(itemId, file.id).then((next) => {
+      if (!active) return;
+      setUrl(next);
+      setFailed(!next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [itemId, file.id]);
+  if (failed) {
+    return (
+      <span className="flex h-20 w-full items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-[11px] text-slate-400 sm:w-28">
+        фото недоступно
+      </span>
+    );
+  }
+  if (!url) {
+    return (
+      <span className="flex h-20 w-full items-center justify-center rounded-xl bg-slate-100 sm:w-28">
+        <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+      </span>
+    );
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="block shrink-0 overflow-hidden rounded-xl border border-[var(--border)] sm:w-28"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt={file.name} className="h-20 w-full object-cover transition hover:scale-[1.03] sm:h-24" />
+    </a>
+  );
+}
+
 export default function WorkshopPage() {
   const { user } = useAuth();
   const loggedIn = Boolean(user);
@@ -106,6 +149,8 @@ export default function WorkshopPage() {
   const [kindFilter, setKindFilter] = useState("");
   const [composer, setComposer] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  // Сотрудникам доступен второй раздел — занятия на том же редакторе, что в админке.
+  const [section, setSection] = useState<"materials" | "lectures">("materials");
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ title: "", topic: "", tags: "", summary: "", kind: "", subject_id: "", questionText: "", confirmed: false });
   const [suggestion, setSuggestion] = useState<any>(null);
@@ -294,6 +339,19 @@ export default function WorkshopPage() {
 
   const subjectName = useMemo(() => new Map(subjects.map((subject) => [subject.id, subject.name])), [subjects]);
 
+  // Фото из загрузки, которые показываем рядом с их вопросом (i-й вопрос → i-е фото).
+  const questionPhotos = useMemo(() => {
+    const files = ((detail?.item?.files || []) as any[])
+      .filter((file) => /^image\//.test(String(file.mime || "")))
+      .slice()
+      .sort((left, right) => Number(left.position || 0) - Number(right.position || 0));
+    return files;
+  }, [detail]);
+  const pairedPhotoIds = useMemo(() => {
+    const count = Number(detail?.item?.questions?.length || 0);
+    return new Set(questionPhotos.slice(0, count).map((file: any) => String(file.id)));
+  }, [detail, questionPhotos]);
+
   if (!loggedIn) {
     return (
       <div className="card mx-auto max-w-md p-8 text-center">
@@ -324,9 +382,37 @@ export default function WorkshopPage() {
         </div>
       </header>
 
+      {staff && (
+        <div className="flex flex-wrap gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1">
+          {([
+            { id: "materials", label: "Материалы студентов" },
+            { id: "lectures", label: "Занятия" },
+          ] as const).map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => setSection(row.id)}
+              aria-pressed={section === row.id}
+              className={
+                "rounded-xl px-3 py-1.5 text-sm font-semibold transition " +
+                (section === row.id
+                  ? "bg-[var(--primary)] text-white"
+                  : "text-slate-600 hover:bg-slate-50")
+              }
+            >
+              {row.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {note && <div className="rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm text-[var(--status-ok-fg)]">{note}</div>}
       {error && <div className="rounded-xl bg-[var(--status-critical-bg)] p-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
 
+      {staff && section === "lectures" ? (
+        <LectureStudio />
+      ) : (
+        <>
       {composer && (
         <section className="card space-y-4 p-4">
           <div className="flex items-center justify-between gap-2">
@@ -513,16 +599,41 @@ export default function WorkshopPage() {
 
           {!!detail.item.files?.length && (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {detail.item.files.map((file: any) => <ItemFile key={file.id} itemId={detail.item.id} file={file} />)}
+              {detail.item.files
+                .filter((file: any) => !pairedPhotoIds.has(String(file.id)))
+                .map((file: any) => <ItemFile key={file.id} itemId={detail.item.id} file={file} />)}
             </div>
           )}
 
           {!!detail.item.questions?.length && (
-            <details className="rounded-xl border border-[var(--border)] p-3">
+            <details className="rounded-xl border border-[var(--border)] p-3" open>
               <summary className="cursor-pointer text-sm font-semibold">Вопросы ({detail.item.questions.length})</summary>
-              <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-slate-700">
-                {detail.item.questions.map((question: any) => <li key={question.id}>{question.text}</li>)}
+              <ol className="mt-2 space-y-2 text-sm text-slate-700">
+                {detail.item.questions.map((question: any, index: number) => {
+                  // Фото идут в порядке загрузки: i-й вопрос получает i-е фото,
+                  // а не висит отдельной галереей внизу материала.
+                  const photo = questionPhotos[index];
+                  return (
+                    <li
+                      key={question.id}
+                      className="flex flex-col gap-2 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-start"
+                    >
+                      {photo ? <ItemThumb itemId={detail.item.id} file={photo} /> : null}
+                      <span className="min-w-0 flex-1 leading-relaxed">
+                        <span className="mr-1 font-semibold text-slate-400">{index + 1}.</span>
+                        {question.text}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
+              {questionPhotos.length > (detail.item.questions?.length || 0) && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {questionPhotos.slice(detail.item.questions.length).map((file: any) => (
+                    <ItemFile key={file.id} itemId={detail.item.id} file={file} />
+                  ))}
+                </div>
+              )}
             </details>
           )}
 
@@ -571,6 +682,8 @@ export default function WorkshopPage() {
             </div>
           )}
         </section>
+      )}
+        </>
       )}
     </div>
   );

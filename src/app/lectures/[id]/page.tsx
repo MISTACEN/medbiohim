@@ -67,7 +67,8 @@ export default function LectureViewPage() {
         <ArrowLeft className="h-4 w-4" /> Все модули
       </Link>
 
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <section className="card overflow-hidden p-0">
+        <div className="grid lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
         {blocks.length > 0 && (
           <LectureBlocksNav
             blocks={blocks}
@@ -79,8 +80,8 @@ export default function LectureViewPage() {
           />
         )}
 
-        <div ref={contentRef} className="min-w-0 scroll-mt-24 space-y-4 sm:space-y-6">
-          <header className="card p-4 sm:p-6">
+        <div ref={contentRef} className="min-w-0 scroll-mt-24">
+          <header className="border-b border-[var(--border)] px-4 py-5 sm:px-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">
@@ -106,7 +107,7 @@ export default function LectureViewPage() {
             </div>
           </header>
 
-          <article className="card p-4 sm:p-6">
+          <article className="px-4 py-4 sm:px-6 sm:py-5">
             <LectureRenderer
               markdown={lec.body_markdown || lec.body_md || ""}
               html={lec.body_html || ""}
@@ -114,6 +115,8 @@ export default function LectureViewPage() {
               activeBlock={single}
             />
           </article>
+
+          <div className="space-y-4 px-4 pb-5 sm:px-6">
 
           {blocks.length > 1 && (
             <nav className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
@@ -140,7 +143,7 @@ export default function LectureViewPage() {
           <LectureLearningLinks relatedLearning={lec.related_learning} />
 
           {media.length > 0 && (
-            <section className="card space-y-3 p-4 sm:p-5">
+            <section className="space-y-3 rounded-xl border border-[var(--border)] p-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--muted)]">Поиск видео и схем</h2>
               <p className="text-xs text-[var(--muted)]">RuTube, VK, Яндекс — без VPN; YouTube — при доступе.</p>
               <ul className="space-y-2">
@@ -168,8 +171,10 @@ export default function LectureViewPage() {
               </ul>
             </section>
           )}
+          </div>
         </div>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

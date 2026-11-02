@@ -32,6 +32,15 @@ type ChemPlanData = {
   semester: number;
   year: string;
   faculty?: string;
+  /** Планы кафедр приходят в двух форматах: плоские поля сверху или блок meta. */
+  meta?: {
+    title?: string;
+    subject_name?: string;
+    semester?: number | string;
+    academic_year?: string;
+    course?: number | string;
+    faculty?: string;
+  };
   lectures?: PlanLecture[];
   labs?: PlanLab[];
   practicals?: PlanPractical[];
@@ -46,6 +55,19 @@ type ChemPlanData = {
     prep_note?: string;
   }[];
 };
+
+/** Приводит оба формата плана кафедры к плоским полям, которые ждёт рендер. */
+function normalizePlan(raw: ChemPlanData): ChemPlanData {
+  const meta = raw.meta ?? {};
+  return {
+    ...raw,
+    subject: raw.subject || meta.subject_name || meta.title || "",
+    year: raw.year || meta.academic_year || "",
+    semester: raw.semester || Number(meta.semester) || 0,
+    course: raw.course || Number(meta.course) || 0,
+    faculty: raw.faculty || meta.faculty,
+  };
+}
 
 function formatDate(iso: string) {
   try {
@@ -65,7 +87,7 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
     let alive = true;
     fetch(`/content/${planFile}`, { cache: "force-cache" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => alive && setPlan(d))
+      .then((d) => alive && setPlan(normalizePlan(d)))
       .catch((e) => alive && setError(String(e?.message || e)));
     return () => {
       alive = false;

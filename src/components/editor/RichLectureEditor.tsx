@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { getTrainerFeed, uploadFile, fileDownloadUrl } from "@/lib/api";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
-import { LectureBlocksOutline } from "@/components/admin/LectureBlocksOutline";
+import { LectureBlocksOutline } from "@/components/editor/LectureBlocksOutline";
 
 type Subject = { slug: string; name: string };
 type Attachment = {
@@ -345,6 +345,9 @@ export function RichLectureEditor({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [query, setQuery] = useState("");
   const [mediaTab, setMediaTab] = useState<"image" | "video">("image");
+  // Где именно в тексте окажется фото: важно, чтобы картинка шла рядом со
+  // своим абзацем, а не собиралась в конце лекции.
+  const [imageAlign, setImageAlign] = useState<"center" | "left" | "right" | "wide">("center");
   const [page, setPage] = useState("1");
   const [link, setLink] = useState("");
   const [busyUpload, setBusyUpload] = useState(false);
@@ -574,6 +577,19 @@ export function RichLectureEditor({
     void loadTrainer();
   }
 
+  /** Разметка фото под выбранное положение в тексте. */
+  function imageHtml(url: string, alt: string) {
+    const style =
+      imageAlign === "left"
+        ? "float:left;width:45%;margin:0 1rem 1rem 0"
+        : imageAlign === "right"
+          ? "float:right;width:45%;margin:0 0 1rem 1rem"
+          : imageAlign === "wide"
+            ? "display:block;width:100%;margin:1rem 0"
+            : "display:block;margin:1rem auto";
+    return '<p><img src="' + url + '" alt="' + esc(alt) + '" title="' + esc(alt) + '" style="' + style + '" /></p>';
+  }
+
   async function uploadAndInsert(file: File) {
     setBusyUpload(true);
     setUploadError("");
@@ -596,7 +612,7 @@ export function RichLectureEditor({
       }]);
 
       if (type === "image") {
-        insertAtCursor('<p><img src="' + url + '" alt="' + esc(file.name) + '" title="' + esc(file.name) + '" /></p>');
+        insertAtCursor(imageHtml(url, file.name));
       } else if (type === "video") {
         insertAtCursor('<p><video controls src="' + url + '" title="' + esc(file.name) + '"></video></p>');
       } else if (type === "pdf") {
@@ -645,7 +661,7 @@ export function RichLectureEditor({
   function handleSearchResult(item: SearchResult) {
     rememberSelection();
     if (mediaTab === "image") {
-      insertAtCursor('<p><img src="' + item.url + '" alt="' + esc(item.title) + '" title="' + esc(item.title) + '" /></p>');
+      insertAtCursor(imageHtml(item.url, item.title));
       setAttachments([...attachments, { type: "image", name: item.title, url: item.url, caption: item.title }]);
     } else {
       insertBlock("video", JSON.stringify({ url: item.url, caption: item.title }, null, 2), item.title);
@@ -741,6 +757,21 @@ export function RichLectureEditor({
         </label>
         <label title="Загрузить PDF / Word" className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] bg-white px-2 cursor-pointer hover:bg-slate-50">
           <FileText className="h-4 w-4"/><input type="file" accept="application/pdf,.pdf,.doc,.docx" className="hidden" onChange={(event)=>{const file=event.target.files?.[0];if(file)void uploadAndInsert(file);event.currentTarget.value=""}}/>
+        </label>
+
+        <label title="Где стоит фото в тексте" className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--border)] bg-white px-2 text-xs text-slate-600">
+          <span className="hidden sm:inline">Фото:</span>
+          <select
+            value={imageAlign}
+            onChange={(event) => setImageAlign(event.target.value as typeof imageAlign)}
+            className="bg-transparent text-xs font-semibold outline-none"
+            aria-label="Положение фото в тексте"
+          >
+            <option value="center">по центру</option>
+            <option value="left">слева от текста</option>
+            <option value="right">справа от текста</option>
+            <option value="wide">во всю ширину</option>
+          </select>
         </label>
 
         {toolbarButton("↶","Отменить",()=>command("undo"),<Undo2 className="h-4 w-4"/>)}

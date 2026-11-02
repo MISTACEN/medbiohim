@@ -475,6 +475,34 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     if (!ls || !subjName) return false;
     return ls === subjName || ls.includes(subjName) || subjName.includes(ls);
   });
+  // Недели плана хранят lecture_id, поэтому список лекций строится в порядке
+  // плана: актуальные лекции оказываются первыми, а внеплановые — после них.
+  const planLectureWeeks = new Map<string, number>();
+  (plan?.weeks || []).forEach((w: any, i: number) => {
+    const id = w?.lecture_id ? String(w.lecture_id) : "";
+    if (id && !planLectureWeeks.has(id)) planLectureWeeks.set(id, Number(w.week) || i + 1);
+  });
+  const orderedLectures = [...subjectLectures].sort((a: any, b: any) => {
+    const aw = planLectureWeeks.get(String(a.id));
+    const bw = planLectureWeeks.get(String(b.id));
+    if (aw != null && bw == null) return -1;
+    if (aw == null && bw != null) return 1;
+    if (aw != null && bw != null && aw !== bw) return aw - bw;
+    return String(a.title || "").localeCompare(String(b.title || ""), "ru");
+  });
+
+  function openLectureById(id: string) {
+    setTab("lectures");
+    setLectureError("");
+    setLectureLoading(true);
+    void getLecture(id).then((result) => {
+      // API отдаёт лекцию и вложенно (data.lecture), и плоско.
+      const payload = result.ok ? (result.data?.lecture || result.data) : null;
+      if (result.ok && payload) setActiveLecture(payload);
+      else setLectureError(describeApiError(result.error) || "Не удалось открыть лекцию.");
+      setLectureLoading(false);
+    });
+  }
 
   // Архивный билетный банк кафедры (статические questions_by_subject).
   const { data: archiveBank } = useApiRequest<PortalTicketBank | null>(async () => {
@@ -719,6 +747,15 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                     {w.lecture && (
                       <div className="mt-2 text-sm">
                         <b className="text-indigo-700">Лекция:</b> {w.lecture}
+                        {w.lecture_id && subjectLectures.some((l: any) => String(l.id) === String(w.lecture_id)) && (
+                          <button
+                            type="button"
+                            onClick={() => openLectureById(String(w.lecture_id))}
+                            className="ml-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                          >
+                            Открыть лекцию
+                          </button>
+                        )}
                       </div>
                     )}
                     {w.practice && (
@@ -1002,28 +1039,25 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             {lectureError && <p className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">{lectureError}</p>}
             {subjectLectures.length > 0 ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {subjectLectures.map((lec: any) => (
+                {orderedLectures.map((lec: any) => (
                   <button
                     key={lec.id}
                     type="button"
-                    onClick={() => {
-                      setLectureError("");
-                      setLectureLoading(true);
-                      void getLecture(String(lec.id)).then((result) => {
-                        // API отдаёт лекцию и вложенно (data.lecture), и плоско.
-                        const payload = result.ok ? (result.data?.lecture || result.data) : null;
-                        if (result.ok && payload) setActiveLecture(payload);
-                        else setLectureError(describeApiError(result.error) || "Не удалось открыть лекцию.");
-                        setLectureLoading(false);
-                      });
-                    }}
+                    onClick={() => openLectureById(String(lec.id))}
                     className="flex gap-3 rounded-xl border bg-slate-50 p-4 text-left transition hover:border-indigo-300 hover:bg-white"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
                       <BookOpen className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold leading-snug">{lec.title}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold leading-snug">{lec.title}</span>
+                        {planLectureWeeks.has(String(lec.id)) && (
+                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                            неделя {planLectureWeeks.get(String(lec.id))}
+                          </span>
+                        )}
+                      </div>
                       {lec.summary && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{lec.summary}</p>}
                     </div>
                   </button>

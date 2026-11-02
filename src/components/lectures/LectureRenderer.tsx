@@ -112,6 +112,7 @@ function mdToHtml(md: string): string {
   s = s.replace(/^## (.+)$/gm, "<h2>$1</h2>");
   s = s.replace(/^# (.+)$/gm, "<h1>$1</h1>");
   s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_a, label, href) => {
     const target = String(href || "");
     const safe = target.startsWith("/") || /^https?:\/\//i.test(target);
@@ -119,7 +120,17 @@ function mdToHtml(md: string): string {
       ? "<a href=\"" + target + "\" target=\"" + (target.startsWith("/") ? "_self" : "_blank") + "\" rel=\"noreferrer\">" + label + "</a>"
       : label;
   });
-  s = s.replace(/^>\s+(.+)$/gm, "<blockquote>$1</blockquote>");
+  // Многострочная цитата: строки, начинающиеся с «>», — один блок, а не
+  // отдельные blockquote на каждую строку.
+  // После escapeHtml символ «>» уже превращён в «&gt;», поэтому ловим оба вида.
+  s = s.replace(/(?:^(?:>|&gt;)[^\n]*(?:\n|$))+/gm, (block) => {
+    const lines = block
+      .replace(/\n$/, "")
+      .split("\n")
+      .map((line) => line.replace(/^(?:>|&gt;)\s?/, "").trim())
+      .filter(Boolean);
+    return lines.length ? `<blockquote>${lines.join("<br>")}</blockquote>` : "";
+  });
   s = s.replace(/^-\s+(.+)$/gm, "<li>$1</li>");
   s = s.replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`);
   s = s.replace(/^\d+\.\s+(.+)$/gm, "<li>$1</li>");
@@ -134,12 +145,20 @@ function mdToHtml(md: string): string {
     const tbody = `<tbody>${bodyRows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
     return `<div class="lec-table-wrap"><table class="lec-table">${thead}${tbody}</table></div>`;
   });
+  // Горизонтальная линия-разделитель.
+  s = s.replace(/^(?:-{3,}|\*{3,}|_{3,})\s*$/gm, "<hr>");
 
-  // Do not wrap the entire result in <p>: headings, tables, lists and blockquotes
-  // are block-level elements and become malformed when nested inside <p>.
-  s = s.replace(/\n{3,}/g, "\n\n");
-  s = s.replace(/\n\n/g, "</div><div>");
-  return `<div>${s}</div>`;
+  // Разбиваем на блоки и заворачиваем обычный текст в <p>: без этого
+  // Tailwind-prose не применяет абзацный отступ и межстрочные интервалы.
+  // Заголовки, списки, таблицы, цитаты и линии уже блочные — их не трогаем.
+  const blocks = s.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+  const html = blocks
+    .map((block) => {
+      if (/^<(?:h[1-6]|p|div|ul|ol|li|blockquote|table|hr|figure|pre)\b/i.test(block)) return block;
+      return `<p>${block.replace(/\n/g, " ")}</p>`;
+    })
+    .join("\n");
+  return `<div>${html}</div>`;
 }
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
@@ -409,7 +428,9 @@ function sanitizeLectureHtml(raw: string): string {
         const keep=["href","src","alt","title","target","rel","width","height","size","style"].includes(a.name);
         if(!keep) el.removeAttribute(a.name);
         if(a.name==="style"){
-          const safe=a.value.split(";").map(x=>x.trim()).filter(x=>/^(font-size|font-weight|font-style|text-decoration|text-align|color|background-color)\s*:\s*[^;]+$/i.test(x)&&!/url\s*\(|expression\s*\(|javascript:/i.test(x)).join(";");
+          // Разрешаем ещё и положение фото в тексте (обтекание, ширина, отступы),
+          // иначе картинку можно было вставить только «во всю ширину».
+          const safe=a.value.split(";").map(x=>x.trim()).filter(x=>/^(font-size|font-weight|font-style|text-decoration|text-align|color|background-color|float|display|width|max-width|margin)\s*:\s*[^;]+$/i.test(x)&&!/url\s*\(|expression\s*\(|javascript:/i.test(x)).join(";");
           if(safe)el.setAttribute("style",safe);else el.removeAttribute("style");
         }
       });
@@ -665,6 +686,8 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
         .lecture-body blockquote { border-left: 4px solid #6366f1; background: rgba(238,242,255,0.6); border-radius: 0.85rem; margin: 1rem 0; padding: 0.8rem 1.1rem; color: #1e293b; }
         .dark .lecture-body blockquote { background: rgba(99,102,241,0.12); color: #e2e8f0; }
         .lecture-body hr { margin: 2.2rem 0; border: 0; border-top: 2px dashed #cbd5e1; }
+        .lecture-body img { max-width: 100%; height: auto; border-radius: 12px; }
+        .lecture-body p::after { content: ""; display: block; clear: both; }
         .dark .lecture-body hr { border-top-color: #475569; }
         .lec-fold summary:hover { background: rgba(99,102,241,0.06); }
         .lec-fold[open] > summary .chev { transform: rotate(90deg); }
