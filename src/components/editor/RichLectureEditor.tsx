@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   AlignCenter, AlignLeft, AlignRight, BarChart3, Bold, Braces, FileText,
-  ImagePlus, Italic, Link2, List, ListOrdered, Loader2, Quote, Redo2,
+  Eye, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, Quote, Redo2,
   Search, Strikethrough, Subscript, Superscript, Table2, Trash2,
   Underline, Undo2, Video, Wand2, X,
 } from "lucide-react";
 import { getTrainerFeed, uploadFile, fileDownloadUrl } from "@/lib/api";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { LectureBlocksOutline } from "@/components/editor/LectureBlocksOutline";
+import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 
 type Subject = { slug: string; name: string };
 type Attachment = {
@@ -348,6 +349,8 @@ export function RichLectureEditor({
   // Где именно в тексте окажется фото: важно, чтобы картинка шла рядом со
   // своим абзацем, а не собиралась в конце лекции.
   const [imageAlign, setImageAlign] = useState<"center" | "left" | "right" | "wide">("center");
+  // Предпросмотр рендерится тем же компонентом, что и страница студента.
+  const [preview, setPreview] = useState(false);
   const [page, setPage] = useState("1");
   const [link, setLink] = useState("");
   const [busyUpload, setBusyUpload] = useState(false);
@@ -778,10 +781,34 @@ export function RichLectureEditor({
         {toolbarButton("↷","Повторить",()=>command("redo"),<Redo2 className="h-4 w-4"/>)}
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-slate-500">
+          {preview ? "Предпросмотр — как на странице студента" : "Редактор: правки сохраняются в markdown лекции"}
+        </span>
+        <button
+          type="button"
+          onClick={() => setPreview((value) => !value)}
+          className={
+            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold " +
+            (preview
+              ? "border-indigo-600 bg-indigo-600 text-white"
+              : "border-[var(--border)] bg-white text-slate-700 hover:bg-slate-50")
+          }
+        >
+          <Eye className="h-3.5 w-3.5" />
+          {preview ? "Вернуться в редактор" : "Как видит студент"}
+        </button>
+      </div>
+
       <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] text-indigo-800">
         <b>Эталон Лекции 5:</b> обычное форматирование + таблицы + Mermaid-схемы + мини-тесты + лейкоцитарный тренажёр + формулы + препараты/ЭМ + диаграммы + химические фигуры + видео + PDF/Word. Спецблоки можно повторно открыть кнопкой «Изменить».
       </div>
 
+      {preview ? (
+        <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
+          <LectureRenderer markdown={value} />
+        </div>
+      ) : (
       <div
         ref={ref}
         contentEditable
@@ -805,6 +832,7 @@ export function RichLectureEditor({
           insertAtCursor(html || "<p>" + esc(text).replace(/\n/g,"<br>") + "</p>");
         }}
       />
+      )}
 
       <div className="lecture-editor-media space-y-3">
         <div className="lecture-media-head">

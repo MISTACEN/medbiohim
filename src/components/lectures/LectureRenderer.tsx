@@ -458,7 +458,12 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
-  const safeHtml = useMemo(() => html ? sanitizeLectureHtml(html) : "", [html]);
+  // Markdown — единый источник рендера: и редактор, и страница студента
+  // показывают один и тот же разбор. HTML остаётся фолбэком для старых импортов.
+  const safeHtml = useMemo(
+    () => (!markdown || !markdown.trim()) && html ? sanitizeLectureHtml(html) : "",
+    [markdown, html]
+  );
   // Some content-import paths stored Markdown with one extra escaping layer
   // (for example, escaped Mermaid fences/quotes). Normalize only the syntax
   // characters needed for block parsing; ordinary backslashes remain intact.

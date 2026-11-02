@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import LectureStudio from "@/components/workshop/LectureStudio";
+import MyLibrary from "@/components/workshop/MyLibrary";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { describeApiError } from "@/lib/errors";
@@ -150,7 +151,7 @@ export default function WorkshopPage() {
   const [composer, setComposer] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   // Сотрудникам доступен второй раздел — занятия на том же редакторе, что в админке.
-  const [section, setSection] = useState<"materials" | "lectures">("materials");
+  const [section, setSection] = useState<"materials" | "lectures" | "library">("materials");
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ title: "", topic: "", tags: "", summary: "", kind: "", subject_id: "", questionText: "", confirmed: false });
   const [suggestion, setSuggestion] = useState<any>(null);
@@ -382,11 +383,11 @@ export default function WorkshopPage() {
         </div>
       </header>
 
-      {staff && (
-        <div className="flex flex-wrap gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1">
           {([
             { id: "materials", label: "Материалы студентов" },
-            { id: "lectures", label: "Занятия" },
+            { id: "lectures", label: staff ? "Занятия: все лекции" : "Мои занятия" },
+            { id: "library", label: "Моя библиотека" },
           ] as const).map((row) => (
             <button
               key={row.id}
@@ -403,14 +404,15 @@ export default function WorkshopPage() {
               {row.label}
             </button>
           ))}
-        </div>
-      )}
+      </div>
 
       {note && <div className="rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm text-[var(--status-ok-fg)]">{note}</div>}
       {error && <div className="rounded-xl bg-[var(--status-critical-bg)] p-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
 
-      {staff && section === "lectures" ? (
-        <LectureStudio />
+      {section === "lectures" ? (
+        <LectureStudio staff={staff} />
+      ) : section === "library" ? (
+        <MyLibrary />
       ) : (
         <>
       {composer && (

@@ -30,6 +30,7 @@ export * from "./api/workshop";
 export * from "./api/staff";
 export * from "./api/files";
 export * from "./api/admin";
+export * from "./api/myLectures";
 export * from "./api/misc";
 
 // Заготовки доменов, клиентские функции которых живут в features-api.ts.

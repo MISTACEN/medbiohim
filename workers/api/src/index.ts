@@ -31,6 +31,7 @@ import planner from "./routes/planner";
 import academic from "./routes/academic";
 import attendance from "./routes/attendance";
 import lectures from "./routes/lectures";
+import myLectures from "./routes/my-lectures";
 import materials from "./routes/materials";
 import tests from "./routes/tests";
 import preparation from "./routes/preparation";
@@ -150,6 +151,8 @@ v1.route("/planner", planner);
 v1.route("/academic", academic);
 v1.route("/attendance", attendance);
 v1.route("/lectures", lectures);
+// Авторские занятия: пользователь видит и публикует только свои лекции.
+v1.route("/my-lectures", myLectures);
 v1.route("/materials", materials);
 v1.route("/tests", preparation);
 v1.route("/tests", tests);

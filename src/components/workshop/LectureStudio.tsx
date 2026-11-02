@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Занятия в Мастерской: тот же редактор лекций, что в /admin/lectures.
+ * Занятия в Мастерской на общем редакторе лекций.
  *
- * Раздел доступен сотрудникам (админ/модератор): в Мастерской можно завести
- * черновик занятия по теме учебного плана, отредактировать его общим
- * редактором и опубликовать — без перехода в админку.
+ * Права: админ/модератор видят и правят все занятия (как в /admin/lectures).
+ * Обычный пользователь видит только свои, создаёт черновик, правит текст и
+ * публикует его в общий каталог.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, ExternalLink, Loader2, Plus, Save, Search } from "lucide-react";
@@ -16,7 +16,11 @@ import {
   adminListLectures,
   adminPublishLecture,
   adminUpdateLecture,
+  createMyLecture,
+  listMyLectures,
   listSubjectsCatalog,
+  publishMyLecture,
+  updateMyLecture,
   type Lecture,
 } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
@@ -38,9 +42,10 @@ const STATUS_LABEL: Record<string, string> = {
   published: "Опубликовано",
   rejected: "Отклонено",
   draft: "Черновик",
+  archived: "В архиве",
 };
 
-export default function LectureStudio() {
+export default function LectureStudio({ staff = false }: { staff?: boolean }) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [slug, setSlug] = useState("");
   const [query, setQuery] = useState("");
@@ -50,7 +55,7 @@ export default function LectureStudio() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [newTopic, setNewTopic] = useState("");
+  const [newTitle, setNewTitle] = useState("");
   const [editorId, setEditorId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
@@ -75,18 +80,28 @@ export default function LectureStudio() {
     };
   }, []);
 
-  const reload = useCallback(async (subjectSlug: string) => {
-    if (!subjectSlug) {
-      setItems([]);
+  const reload = useCallback(
+    async (subjectSlug: string) => {
+      setLoading(true);
+      setError("");
+      // Сотрудник работает со всем каталогом занятий, автор — только со своими.
+      const result: any = staff
+        ? await adminListLectures(undefined, subjectSlug || undefined)
+        : await listMyLectures();
+      if (!result?.ok) {
+        setItems([]);
+        setError(describeApiError(result?.error));
+        setLoading(false);
+        return;
+      }
+      const list = ((result.data.items || []) as Lecture[]).filter((item) =>
+        staff ? true : !subjectSlug || String((item as any).subject_slug || "") === subjectSlug
+      );
+      setItems(list);
       setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const result: any = await adminListLectures(undefined, subjectSlug);
-    if (result?.ok) setItems((result.data.items || []) as Lecture[]);
-    else setError(describeApiError(result?.error));
-    setLoading(false);
-  }, []);
+    },
+    [staff]
+  );
 
   useEffect(() => {
     void reload(slug);
@@ -113,28 +128,57 @@ export default function LectureStudio() {
   }
 
   async function createDraft() {
-    if (!slug || !newTopic.trim()) {
-      setError("Выберите предмет и укажите тему занятия");
+    if (!slug) {
+      setError("Выберите предмет");
       return;
     }
     setBusy(true);
     setError("");
     setMessage("");
-    const result: any = await adminGenerateLecture({
+    if (staff) {
+      // У сотрудника черновик по теме плана генерирует тот же сервис, что в админке.
+      if (!newTitle.trim()) {
+        setBusy(false);
+        setError("Укажите тему занятия");
+        return;
+      }
+      const result: any = await adminGenerateLecture({
+        subject_slug: slug,
+        topic: newTitle.trim(),
+        lesson_type: "lecture",
+      });
+      setBusy(false);
+      if (!result?.ok) {
+        setError(describeApiError(result?.error));
+        return;
+      }
+      setMessage("Черновик создан — откройте его в списке и доработайте.");
+      setNewTitle("");
+      await reload(slug);
+      const created = result.data?.lecture || result.data?.item;
+      if (created?.id) openEditor(created);
+      return;
+    }
+
+    // Автор создаёт своё занятие с пустым текстом и сразу пишет в редакторе.
+    const result: any = await createMyLecture({
+      title: newTitle.trim() || "Новое занятие",
       subject_slug: slug,
-      topic: newTopic.trim(),
+      subject: subject?.name || slug,
+      topic: newTitle.trim() || null,
       lesson_type: "lecture",
+      body_md: "",
+      body_html: "",
     });
     setBusy(false);
     if (!result?.ok) {
       setError(describeApiError(result?.error));
       return;
     }
-    setMessage("Черновик создан — откройте его в списке и доработайте.");
-    setNewTopic("");
+    setNewTitle("");
+    setMessage("Занятие создано. Напишите текст и опубликуйте его в общий доступ.");
     await reload(slug);
-    const created = result.data?.lecture || result.data?.item;
-    if (created?.id) openEditor(created);
+    if (result.data?.lecture?.id) openEditor(result.data.lecture);
   }
 
   async function save() {
@@ -142,14 +186,8 @@ export default function LectureStudio() {
     setBusy(true);
     setError("");
     setMessage("");
-    const result: any = await adminUpdateLecture(editorId, {
-      title,
-      topic,
-      summary,
-      body_md: body,
-      body_html: bodyHtml,
-      attachments,
-    });
+    const payload = { title, topic, summary, body_md: body, body_html: bodyHtml, attachments };
+    const result: any = staff ? await adminUpdateLecture(editorId, payload) : await updateMyLecture(editorId, payload);
     setBusy(false);
     if (!result?.ok) {
       setError(describeApiError(result?.error));
@@ -161,13 +199,14 @@ export default function LectureStudio() {
 
   async function publish(id: string) {
     setBusy(true);
-    const result: any = await adminPublishLecture(id);
+    setError("");
+    const result: any = staff ? await adminPublishLecture(id) : await publishMyLecture(id);
     setBusy(false);
     if (!result?.ok) {
       setError(describeApiError(result?.error));
       return;
     }
-    setMessage("Занятие опубликовано.");
+    setMessage("Занятие опубликовано в общем каталоге.");
     await reload(slug);
   }
 
@@ -176,10 +215,14 @@ export default function LectureStudio() {
       <div className="card space-y-3 p-4 sm:p-5">
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-[var(--primary)]" />
-          <h2 className="text-base font-bold">Занятия: создать и отредактировать</h2>
+          <h2 className="text-base font-bold">
+            {staff ? "Занятия: все лекции" : "Мои занятия"}
+          </h2>
         </div>
         <p className="text-xs text-[var(--muted)]">
-          Тот же редактор, что в админке: форматирование, фото в любом месте текста, видео, PDF, схемы, тесты.
+          {staff
+            ? "Тот же редактор, что в админке: можно править любое занятие и публиковать его."
+            : "Пишите свои занятия в общем редакторе и публикуйте их в общий доступ. Чужие лекции не редактируются."}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
@@ -197,11 +240,13 @@ export default function LectureStudio() {
             </select>
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-xs text-[var(--muted)]">Новая тема</span>
+            <span className="mb-1 block text-xs text-[var(--muted)]">
+              {staff ? "Новая тема по учебному плану" : "Название занятия"}
+            </span>
             <input
-              value={newTopic}
-              onChange={(event) => setNewTopic(event.target.value)}
-              placeholder="Например: Эндокринная система"
+              value={newTitle}
+              onChange={(event) => setNewTitle(event.target.value)}
+              placeholder={staff ? "Например: Эндокринная система" : "Например: Конспект по эндокринологии"}
               className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
             />
           </label>
@@ -214,7 +259,7 @@ export default function LectureStudio() {
             className="btn-primary inline-flex items-center gap-2 text-sm"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Создать черновик
+            {staff ? "Создать черновик" : "Создать занятие"}
           </button>
           <label className="inline-flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2">
             <Search className="h-4 w-4 text-slate-400" />
@@ -237,7 +282,9 @@ export default function LectureStudio() {
               <Loader2 className="h-4 w-4 animate-spin" /> Загружаем занятия…
             </p>
           ) : filtered.length === 0 ? (
-            <p className="p-3 text-sm text-[var(--muted)]">Занятий нет — создайте черновик выше.</p>
+            <p className="p-3 text-sm text-[var(--muted)]">
+              {staff ? "Занятий нет — создайте черновик выше." : "У вас пока нет занятий — создайте первое выше."}
+            </p>
           ) : (
             <ul className="max-h-[70vh] space-y-1 overflow-y-auto">
               {filtered.map((lecture: any) => {
@@ -257,8 +304,8 @@ export default function LectureStudio() {
                     >
                       <span className="block leading-snug">{lecture.title || "Без названия"}</span>
                       <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
-                        {STATUS_LABEL[String((lecture as any).status)] || String((lecture as any).status || "")}
-                        {(lecture as any).topic ? ` · ${(lecture as any).topic}` : ""}
+                        {STATUS_LABEL[String(lecture.status)] || String(lecture.status || "черновик")}
+                        {lecture.topic ? ` · ${lecture.topic}` : ""}
                       </span>
                     </button>
                   </li>
@@ -270,7 +317,9 @@ export default function LectureStudio() {
 
         <div className="card min-w-0 space-y-3 p-3 sm:p-4">
           {!editorId ? (
-            <p className="p-4 text-sm text-[var(--muted)]">Выберите занятие слева, чтобы открыть редактор.</p>
+            <p className="p-4 text-sm text-[var(--muted)]">
+              Выберите занятие слева, чтобы открыть редактор.
+            </p>
           ) : (
             <>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -319,6 +368,7 @@ export default function LectureStudio() {
                   onClick={() => void publish(editorId)}
                   disabled={busy}
                   className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold"
+                  title={staff ? "Опубликовать занятие" : "Опубликовать своё занятие в общий каталог"}
                 >
                   Опубликовать
                 </button>
