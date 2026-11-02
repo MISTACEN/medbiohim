@@ -9,6 +9,7 @@ import dbAdmin from "./admin-database";
 import adminParity from "./admin-parity";
 import trainerAtlas from "./trainer-atlas";
 import { publishTelegramHomework, updateMessageClassification } from "../lib/telegram-homework";
+import { checkLectureForPublish, syncPublishedLecture } from "../lib/lecture-quality";
 import { gigachatConfigured, gigachatTransport } from "../lib/gigachat";
 import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
 
@@ -448,10 +449,17 @@ async function setLectureStatus(c: any, status: string, roles: string[]) {
   try {
     const store = await readLectures(db), index = store.items.findIndex((x: any) => String(x.id) === id);
     if (index < 0) return error(c, rid, 404, "NOT_FOUND", "Лекция не найдена");
+    // Публикация проходит проверку на заглушку и дубль: каталог не засоряется.
+    if (status === "published") {
+      const issue = checkLectureForPublish(store.items[index], store.items.filter((x: any) => x.status === "published"));
+      if (issue) return error(c, rid, 422, issue.code, issue.message);
+    }
     const now = new Date().toISOString();
     store.items[index] = { ...store.items[index], status, reviewed_by: user.id, published_at: status === "published" ? now : null, updated_at: now };
     await writeLectures(db, store, store.items);
-    return c.json(ok({ lecture: store.items[index] }, rid));
+    // Публикация должна доходить до каталога студентов, снятие — убирать из него.
+    const catalogSynced = await syncPublishedLecture(db, store.items[index], status === "published");
+    return c.json(ok({ lecture: store.items[index], catalog_synced: catalogSynced }, rid));
   } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось изменить статус лекции"); }
 }
 admin.delete("/lectures/:id", requireAuth, async (c) => {

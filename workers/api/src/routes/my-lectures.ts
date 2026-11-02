@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { checkLectureForPublish, syncPublishedLecture } from "../lib/lecture-quality";
 
 /**
  * Авторские занятия: обычный пользователь видит, правит и публикует только
@@ -182,6 +183,9 @@ myLectures.post("/:id/publish", requireAuth, async (c) => {
     if (ownerOf(store.items[index]) !== String(user.id)) {
       return error(c, rid, 403, "FORBIDDEN", "Публиковать можно только свои занятия");
     }
+    // Та же проверка, что в админке: без заглушек и дублей в общем каталоге.
+    const issue = checkLectureForPublish(store.items[index], store.items.filter((item: any) => item.status === "published"));
+    if (issue) return error(c, rid, 422, issue.code, issue.message);
     const now = new Date().toISOString();
     store.items[index] = {
       ...store.items[index],
@@ -190,7 +194,8 @@ myLectures.post("/:id/publish", requireAuth, async (c) => {
       updated_at: now,
     };
     await writeStore(db, store, store.items);
-    return c.json(ok({ lecture: store.items[index] }, rid));
+    const catalogSynced = await syncPublishedLecture(db, store.items[index], true);
+    return c.json(ok({ lecture: store.items[index], catalog_synced: catalogSynced }, rid));
   } catch (dbError: any) {
     console.error("[my-lectures:publish]", dbError?.message);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось опубликовать занятие");
