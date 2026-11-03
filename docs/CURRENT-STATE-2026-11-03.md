@@ -1,6 +1,6 @@
 # MEDBIOHIM — единое текущее состояние
 
-**HEAD при сверке документации:** `ffd2f5e6` (3 ноября 2026).
+**HEAD при сверке документации:** `7fbab4a7` (3 ноября 2026).
 
 > Наличие реализации в main не означает, что она задеплоена или прошла runtime acceptance. В документе отдельно указаны факты кода и области, требующие production-проверки.
 
@@ -49,6 +49,16 @@ Browser / PWA
 - В проверенной странице предмета компонент `PhysiologyColloquium` не обнаружен.
 - SQL console/RPC появились в `workers/api/src/routes/admin-database.ts` и `database/migrations/20261102_admin_exec_sql.sql`; их наличие не заменяет security review и проверку факта применения миграции.
 
+## Сделано 2026-11-03
+
+- Приём ДЗ из Telegram-групп: классификация → предмет (текст + название чата) → срок → 
+  уровни «База / Основной / Углубление» → `homeworks` (`telegram-classify.ts`, `telegram-homework.ts`).
+- Тренажёр бота: `/drill`, `/challenge`, `/formula`, `/daily`; API — `telegram-trainer.ts`, 
+  миграция `20261103120000_telegram_trainer.sql` **не применена**.
+- Исправлен `redirect: "error"` в fetch API-воркера (`ffd2f5e6`): health связки API→бот.
+- Аудит документации: 9 битых ссылок, устаревший Telegram-relay, `DOCS-AUDIT-2026-11-03.md`.
+- Проверки: worker `tsc` — 0, `npm test` — 330/330; Vercel собрал `7fbab4a7`.
+
 ## Не считать подтверждённым без новой проверки
 
 | Область | Статус |
@@ -58,7 +68,7 @@ Browser / PWA
 | Доступность всех 206 изображений гистологии | Нужен массовый HTTP smoke |
 | Перенос trainer images на B2 | Не реализован в текущем resolver |
 | Live Supabase migration ledger | Снимки 148 и 149 относятся к разным датам; нужна новая сверка |
-| Production frontend = последний main | Проверено 2026-11-03: `X-Medbiohim-Build` = `61d1f0dc…`; для `ffd2f5e6` проверка после деплоя не выполнялась |
+| Production frontend = последний main | Проверено 2026-11-03: `X-Medbiohim-Build` = `7fbab4a7…` |
 | Полный CI для последнего main | Не подтверждён одним Vercel status |
 | Безопасность SQL console | Нужен отдельный review прав, audit trail и destructive-query safeguards |
 
@@ -72,6 +82,10 @@ Browser / PWA
 ## Приоритеты
 
 **P0 — production:** сверить deployed frontend commit; проверить API health и authenticated student/admin сценарии; Telegram webhook, Mini App и service binding.
+
+Первым делом: применить миграцию тренажёра и проверить `/api/v1/telegram/ingest/health` → `reachable:true` 
+после деплоя `ffd2f5e6`. Остальное — `TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md` и 
+`PYRAMID-AND-CHEMISTRY-ROADMAP.md`.
 
 **P1 — данные и медиа:** сверить live Supabase ledger с SQL и объектами схемы (без destructive reset); проверить все 178 preparation + 28 electronogram изображений с HTTP status/MIME/размером/resolver; определить постоянное хранилище атласа.
 

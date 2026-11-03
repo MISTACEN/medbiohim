@@ -1,5 +1,18 @@
 > **Сверка реестра — 2026-11-03.** Это накопленный список, последний раз полноценно обновлявшийся в октябре. Старые пункты могут быть уже реализованы последующими коммитами. Перед выполнением каждого пункта сверить main и пометить его как DONE IN CODE, DEPLOYED, VERIFIED IN PRODUCTION, NOT VERIFIED, SUPERSEDED или HISTORICAL. Единый текущий срез и приоритеты: [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md). Записи ниже сохранены, массово не закрывались.
 
+> **Актуальные приоритеты на 2026-11-03 (после сверки кода и прода).**
+> 1. Применить `database/migrations/20261103120000_telegram_trainer.sql` — без неё `/challenge`,
+>    `/formula` и `/daily` падают: таблиц `bot_chem_challenges`, `bot_formulas`, `bot_daily_prefs`,
+>    `bot_challenge_attempts` ещё нет.
+> 2. Проверить после деплоя `ffd2f5e6`, что `GET /api/v1/telegram/ingest/health` отдаёт `reachable:true`.
+> 3. Медиа из групп (OCR/vision для фото и PDF) — P1, см. `TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md`.
+> 4. «Лестница» плана, флеш-карты из базы, блоки Workshop — `PYRAMID-AND-CHEMISTRY-ROADMAP.md`.
+> 5. Документация: 125 датированных снимков — кандидаты в `docs/archive/` (`DOCS-AUDIT-2026-11-03.md`).
+>
+> **Закрыто 2026-11-03:** приём ДЗ из Telegram (предмет, срок, уровни), тренажёр бота,
+> `redirect: "manual"`, сверка документации и битые ссылки.
+
+
 ---
 
 # MEDBIOHIM — реестр незавершённого, скрытых недоделок и legacy
