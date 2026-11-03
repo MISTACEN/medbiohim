@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, Eye, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
-import { generateTicket, getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, getSubjectPlanProgress, listLectures, listMaterials, listSubjectsCatalog, listTests, listTicketBanks, markMaterialOpened, setTopicProgress, type ApiTest, type Lecture, type SubjectPlan, type SubjectPlanWeek } from "@/lib/api";
+import { BookOpen, ChevronLeft, ClipboardList, ExternalLink, FileQuestion, FlaskConical, FolderOpen, Globe, GraduationCap, ListChecks, TrendingUp, X } from "lucide-react";
+import { getLecture, getProgress, getSubject, getSubjectGradebook, getSubjectPlan, getSubjectPlanProgress, listLectures, listMaterials, listSubjectsCatalog, listTests, markMaterialOpened, setTopicProgress, type ApiTest, type Lecture, type SubjectPlan } from "@/lib/api";
 import { LectureView } from "@/components/lectures/LectureView";
 import { listSubjectMaterials, type SubjectMaterial } from "@/lib/content-api";
-import { resolveSubjectSlug, ticketBankAvailable } from "@/lib/subjectSlug";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { resolveSubjectSlug } from "@/lib/subjectSlug";
 import { platformsForSubject } from "@/data/external-platforms";
 import { LIBRARY_FILES } from "@/lib/library";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
@@ -18,6 +17,9 @@ import TestsHub from "@/components/tests/TestsHub";
 import Labs from "@/components/Labs";
 import AttestationList from "@/components/attestations/AttestationList";
 import ExamQuestionsPanel from "@/components/subjects/ExamQuestionsPanel";
+import TicketGenerator from "@/components/subjects/TicketGenerator";
+import { PlanTimeline } from "@/components/subjects/PlanTimeline";
+import TabFallback from "@/components/subjects/TabFallback";
 import PhysiologyPractice from "@/components/physiology/PhysiologyPractice";
 import Colloquium from "@/components/physiology/Colloquium";
 import SubjectQuestionBank from "@/components/questions/SubjectQuestionBank";
@@ -29,12 +31,13 @@ import ArchiveLectures from "@/components/portals/ArchiveLectures";
 import ChemPlan from "@/components/chem/ChemPlan";
 import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
 import LatinRecipes from "@/components/portals/LatinRecipes";
-import { legacyPortalConfig, loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { legacyPortalConfig } from "@/lib/portalContent";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
+import { sessionsFromApiPlanWeeks } from "@/lib/subject-plan-next";
+import { SUBJECT_STATIC_PLANS } from "@/lib/subject-plan-static";
 
 type Subject = {
   id: string;
@@ -66,17 +69,19 @@ type SubjectCoreLoad =
       resourceErrors: Record<string, string>;
     };
 
-type TabId = "plan" | "lessons" | "tickets" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin";
+type TabId = "plan" | "lessons" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin";
 type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
 
-const TAB_IDS: TabId[] = ["plan", "lessons", "tickets", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "exam", "progress", "colloquium", "portal", "chem", "latin"];
+const TAB_IDS: TabId[] = ["plan", "lessons", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "exam", "progress", "colloquium", "portal", "chem", "latin"];
 
 // Вкладки сгруппированы: верхний ряд — крупные разделы, внутри — точные режимы.
-// Старые id сохранены, поэтому ссылки вида ?tab=tickets продолжают работать.
+// «Билеты» и «Вопросы к экзамену» объединены во вкладку exam («Экзамен / Билеты»):
+// билеты и есть вопросы к экзамену. Старые адреса ?tab=tickets продолжают
+// работать через алиас в normalizeTab — внешние ссылки из планов кафедр и
+// sitemap не должны попасть в 404.
 const GROUP_OF: Record<TabId, GroupId> = {
   plan: "plan",
   lessons: "lessons",
-  tickets: "tests",
   tests: "tests",
   practice: "tests",
   lectures: "materials",
@@ -99,14 +104,15 @@ const GROUP_DEFAULT: Record<GroupId, TabId> = {
   tests: "tests",
   materials: "lectures",
   practice: "trainers",
-  attestations: "attestations",
+  attestations: "exam",
   portal: "portal",
   progress: "progress",
 };
 
 function normalizeTab(v: string) {
+  // Алиасы старых адресов: билеты теперь живут во вкладке «Экзамен / Билеты».
+  if (v === "tickets") return "exam" as TabId;
   if (v === "cards") return "trainers" as TabId;
-  if (v === "trainer") return "trainer" as TabId;
   return v as TabId;
 }
 
@@ -117,16 +123,6 @@ const slugNames: Record<string, string> = {
   "органическая и физическая химия": "chemistry_organic_physical",
 };
 const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
-
-
-const STATIC_PLANS: Record<string, string> = {
-  organic_chemistry: "chem/plan-organic-2025-2026.json",
-  optics: "chem/plan-optics-2025-2026.json",
-  probability: "chem/plan-probability-2025-2026.json",
-  informatics: "chem/plan-informatics-2025-2026.json",
-  histology: "histology/plan-semester3-2026-2027.json",
-  physiology: "physiology/plan-semester3-2026-2027.json",
-};
 
 function isTabId(v: string): v is TabId {
   return (TAB_IDS as string[]).includes(v);
@@ -153,7 +149,6 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const [materials, setMaterials] = useState<SubjectMaterial[]>([]);
   const [materialsRich, setMaterialsRich] = useState<any[]>([]);
   const [lectures, setLectures] = useState<any[]>([]);
-  const [banks, setBanks] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
   // Прогресс по темам плана: «сдано / не сдано / отработка» на вкладке «План».
   const [planProgress, setPlanProgress] = useState<any | null>(null);
@@ -163,19 +158,10 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const [tab, setTab] = useState<TabId>("plan");
   // Материалы: модальное чтение без перехода со страницы предмета.
   const [activeMaterial, setActiveMaterial] = useState<any | null>(null);
-  // Билеты: встроенный генератор.
-  const [ticketBankId, setTicketBankId] = useState("");
-  const [ticketCount, setTicketCount] = useState(3);
-  const [ticketMode, setTicketMode] = useState<"practice" | "exam">("exam");
   // Лекция читается прямо в предмете: переход на /lectures/:id уводил со страницы.
   const [activeLecture, setActiveLecture] = useState<Lecture | null>(null);
   const [lectureLoading, setLectureLoading] = useState(false);
   const [lectureError, setLectureError] = useState("");
-  const [ticketBusy, setTicketBusy] = useState(false);
-  const [ticketQuestions, setTicketQuestions] = useState<any[]>([]);
-  const [ticketTitle, setTicketTitle] = useState("");
-  const [ticketNote, setTicketNote] = useState<string | null>(null);
-  const [reveal, setReveal] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -302,7 +288,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
 
   const auxSubjectId = coreLoad?.ready ? coreLoad.subjectId : "";
   const auxSlug = coreLoad?.ready ? coreLoad.slug : "";
-  // Этап 2 — медленные вспомогательные панели (зачётка, материалы, банки,
+  // Этап 2 — медленные вспомогательные панели (зачётка, материалы,
   // прогресс): не блокируют ядро страницы, отменяются тем же хуком.
   const { data: auxLoad } = useApiRequest(
     async (signal) => {
@@ -310,7 +296,6 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       return Promise.all([
         getSubjectGradebook(auxSubjectId, { signal }),
         listSubjectMaterials({ subjectId: auxSubjectId }, { signal }),
-        listTicketBanks({ signal }),
         getProgress(auxSubjectId, user?.groupId, { signal }),
         listMaterials(auxSlug ? { subjectSlug: auxSlug } : {}, { signal }),
         listLectures(auxSlug, { signal }),
@@ -323,14 +308,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   // Этап 2: применяем вспомогательные данные к состояниям страницы.
   useEffect(() => {
     if (!auxLoad) return;
-    const [gb, mm, bb, pg, mr, ll, pp] = auxLoad;
-    setResourceErrors((current) => ({
-      ...current,
-      ...(!bb.ok ? { tickets: bb.error?.message || "Не удалось загрузить банки билетов." } : {}),
-    }));
+    const [gb, mm, pg, mr, ll, pp] = auxLoad;
     if (gb.ok) setGradebook(gb.data.items || []);
     if (mm.ok) setMaterials(mm.data.items || []);
-    if (bb.ok) setBanks(bb.data.items || []);
     if (pg.ok) setProgress(pg.data);
     if (mr.ok) setMaterialsRich(mr.data.items || []);
     if (ll.ok) setLectures(ll.data.items || []);
@@ -380,6 +360,19 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const planSummary = planProgress?.summary as
     | { total: number; passed: number; in_progress: number; failed_or_retake: number; unopened_materials?: number }
     | undefined;
+
+  // Занятия плана API в едином виде для ленты «План»: ближайшее занятие сверху,
+  // прошедшие — свёрнуты. Счётчики тестов и экзаменационных вопросов темы
+  // подтягиваются из topic_progress (server проставляет их по привязке тем).
+  const planSessions = sessionsFromApiPlanWeeks(plan?.weeks).map((session) => {
+    const topic = session.topicId ? topicProgressById.get(session.topicId) : null;
+    if (!topic) return session;
+    return {
+      ...session,
+      testsCount: Number(topic.tests_count ?? 0) || null,
+      examQuestionsCount: Number(topic.exam_questions_count ?? 0) || null,
+    };
+  });
 
   async function cycleTopicStatus(topicId: string, current: string) {
     const next = TOPIC_STATUS_CYCLE[current] || "in_progress";
@@ -457,12 +450,6 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   // показываем только категории, размеченные под этот slug.
   const externalPlatforms = platformsForSubject(slug);
   const subjName = (subject?.name || "").toLowerCase().trim();
-  const subjectBanks = banks.filter((b) => {
-    const bankSlug = String(b.subject_slug || "").trim();
-    if (bankSlug) return bankSlug === slug;
-    const bankName = String(b.subject || b.subject_name || "").toLowerCase().trim();
-    return !!subjName && (bankName === subjName || bankName.includes(subjName) || subjName.includes(bankName));
-  });
   // Пособия кафедры физиологии лежат файлами в public/library, а не в таблице
   // materials, поэтому берутся из общего индекса — того же, что у поиска.
   const subjectLibrary = LIBRARY_FILES.filter((file) => file.subject_slug === slug);
@@ -504,54 +491,6 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     });
   }
 
-  // Архивный билетный банк кафедры (статические questions_by_subject).
-  const { data: archiveBank } = useApiRequest<PortalTicketBank | null>(async () => {
-    const bank = await loadTicketBank(slug);
-    return bank?.items?.length ? bank : null;
-  }, [slug]);
-
-  // Банк билетов предмета подставляем сразу — ничего выбирать не нужно.
-  useEffect(() => {
-    const firstAvailableBank = subjectBanks.find((bank: any) => Number(bank.count ?? 0) > 0);
-    setTicketBankId(firstAvailableBank ? String(firstAvailableBank.id) : archiveBank ? "archive" : "");
-    setTicketQuestions([]);
-    setTicketTitle("");
-    setTicketNote(null);
-    setReveal({});
-    // Reset the generated ticket when navigating between subjects.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [banks, slug, archiveBank]);
-
-  async function genTicket() {
-    if (!ticketBankId || ticketBusy) return;
-    if (ticketBankId === "archive" && archiveBank) {
-      // Локальная генерация из архивного банка кафедры.
-      const pool = [...archiveBank.items];
-      const picked: any[] = [];
-      const n = Math.min(ticketCount, pool.length);
-      for (let i = 0; i < n; i += 1) {
-        const idx = Math.floor(Math.random() * pool.length);
-        picked.push(pool.splice(idx, 1)[0]);
-      }
-      setReveal({});
-      setTicketNote(null);
-      setTicketQuestions(picked);
-      setTicketTitle(`Билет · ${archiveBank.subject} · архив кафедры`);
-      return;
-    }
-    setTicketBusy(true);
-    setReveal({});
-    setTicketNote(null);
-    const res = await generateTicket(ticketBankId, ticketCount, ticketMode);
-    setTicketBusy(false);
-    if (!res.ok) {
-      setTicketNote(describeApiError(res.error));
-      return;
-    }
-    setTicketQuestions(res.data.questions || []);
-    setTicketTitle(res.data.bank?.title || "");
-  }
-
   const nav: { id: GroupId; label: string; Icon: ComponentType<{ className?: string }> }[] = [
     { id: "plan", label: "План", Icon: GraduationCap },
     ...(slug === "physiology" ? [{ id: "lessons" as GroupId, label: "Занятия", Icon: ListChecks }] : []),
@@ -561,7 +500,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     ...(portal || externalPlatforms.length
       ? [{ id: "portal" as GroupId, label: portal?.tabLabel || "Платформы", Icon: Globe }]
       : []),
-    { id: "attestations", label: "Аттестации", Icon: ClipboardList },
+    // Билеты и вопросы к экзамену объединены: это один и тот же банк.
+    { id: "attestations", label: "Экзамен · Аттестации", Icon: ClipboardList },
     { id: "progress", label: "Прогресс", Icon: TrendingUp },
   ];
   const group = GROUP_OF[tab];
@@ -570,7 +510,6 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       ? [
           { id: "tests", label: "Тесты" },
           { id: "practice", label: "База вопросов" },
-          { id: "tickets", label: "Билеты" },
         ]
       : group === "materials"
         ? [
@@ -587,8 +526,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             ]
           : group === "attestations"
             ? [
+                { id: "exam", label: "Экзамен / Билеты" },
                 { id: "attestations", label: "Аттестации" },
-                { id: "exam" as TabId, label: "Вопросы к экзамену" },
                 ...(slug === "physiology" ? [{ id: "colloquium" as TabId, label: "Коллоквиум" }] : []),
               ]
             : [];
@@ -672,7 +611,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       </nav>
 
       {subnav.length > 1 && (
-        <nav className="flex flex-wrap gap-1.5" aria-label="Режимы раздела">
+        // Чипсы режимов на мобильных прокручиваются горизонтально, а не ломают строку.
+        <nav className="mobile-scroll-x flex flex-nowrap gap-1.5 overflow-x-auto pb-1 md:flex-wrap" aria-label="Режимы раздела">
           {subnav.map(({ id, label }) => {
             const active = tab === id;
             return (
@@ -682,7 +622,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
                 aria-current={active ? "page" : undefined}
                 onClick={() => selectTab(id)}
                 className={
-                  "rounded-full px-3 py-1.5 text-xs font-bold transition " +
+                  "min-h-8 shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition " +
                   (active ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700")
                 }
               >
@@ -729,63 +669,22 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         {tab === "lessons" && slug === "physiology" && (
           <PhysiologyPractice backHref={`/subjects/${encodeURIComponent(subjectId)}?tab=plan`} backLabel="К учебному плану" />
         )}
-        {tab === "plan" && STATIC_PLANS[slug] && <ChemPlan planFile={STATIC_PLANS[slug]} />}
-        {tab === "plan" && !STATIC_PLANS[slug] && (
+        {tab === "plan" && SUBJECT_STATIC_PLANS[slug] && <ChemPlan planFile={SUBJECT_STATIC_PLANS[slug]} subjectSlug={slug} />}
+        {tab === "plan" && !SUBJECT_STATIC_PLANS[slug] && (
           <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
             <p className="mt-1 text-sm text-slate-500">
               {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : resourceErrors.plan || "План ещё не загружен."}
             </p>
             {plan?.weeks?.length ? (
-              <div className="mt-4 grid gap-3">
-                {(plan.weeks as SubjectPlanWeek[]).map((w: any, i: number) => (
-                  <article key={i} className="rounded-xl border bg-slate-50 p-4">
-                    <div className="text-xs text-slate-400">
-                      {w.date || ""}
-                      {w.week != null ? " · неделя " + w.week : ""}
-                    </div>
-                    {w.lecture && (
-                      <div className="mt-2 text-sm">
-                        <b className="text-indigo-700">Лекция:</b> {w.lecture}
-                        {w.lecture_id && subjectLectures.some((l: any) => String(l.id) === String(w.lecture_id)) && (
-                          <button
-                            type="button"
-                            onClick={() => openLectureById(String(w.lecture_id))}
-                            className="ml-2 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
-                          >
-                            Открыть лекцию
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {w.practice && (
-                      <div className="text-sm whitespace-pre-line">
-                        <b className="text-[var(--status-ok-fg)]">Практика:</b> {w.practice}
-                      </div>
-                    )}
-                    {Array.isArray(w.preparations) && w.preparations.length > 0 && (
-                      <div className="mt-2 text-xs leading-relaxed text-slate-600">
-                        <b className="text-slate-700">Микропрепараты:</b>
-                        <ol className="mt-1 list-decimal space-y-1 pl-5">
-                          {w.preparations.map((prep: any, j: number) => (
-                            <li key={prep?.id || (prep?.number != null ? String(prep.number) : "prep-" + j)}>
-                              {prep?.number != null ? String(prep.number) + ". " : ""}
-                              {typeof prep === "string" ? prep : (prep?.title || prep?.name || "Препарат")}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-                    {w.electronograms === true && (
-                      <div className="mt-2 text-xs font-medium text-violet-700">К занятию есть электронограммы</div>
-                    )}
-                    {w.description && (
-                      <div className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600">
-                        {w.description}
-                      </div>
-                    )}
-                  </article>
-                ))}
+              // Единая лента плана: ближайшее занятие крупно сверху, предстоящие
+              // списком, прошедшие — свёрнуты. Связки переключают вкладки предмета.
+              <div className="mt-4">
+                <PlanTimeline
+                  sessions={planSessions}
+                  links={{ onOpenTab: (t) => selectTab(t as TabId), onOpenLecture: openLectureById }}
+                  emptyLabel="В плане пока нет занятий."
+                />
               </div>
             ) : modules.length ? (
               <div className="mt-4 space-y-2">
@@ -877,104 +776,15 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           </section>
         )}
 
-        {tab === "tickets" && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Билеты</h2>
-            <p className="mt-1 text-sm text-slate-500">Генератор билетов прямо здесь — никуда переходить не нужно. Билеты отдельный банк, с SRS не смешиваются.</p>
-            {(ticketBankAvailable(slug) && subjectBanks.length) || archiveBank ? (
-              <>
-                <div className="mt-4 grid gap-3 md:grid-cols-4">
-                  <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm md:col-span-2"
-                    value={ticketBankId}
-                    onChange={(e) => setTicketBankId(e.target.value)}
-                  >
-                    {subjectBanks.map((b: any) => (
-                      <option key={b.id} value={b.id} disabled={Number(b.count ?? 0) <= 0}>
-                        {b.title} ({Number(b.count ?? 0) > 0 ? b.count : "нет опубликованных вопросов"})
-                      </option>
-                    ))}
-                    {archiveBank && (
-                      <option value="archive">
-                        Архив билетов кафедры ({archiveBank.count})
-                      </option>
-                    )}
-                  </select>
-                  <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                    value={ticketCount}
-                    onChange={(e) => setTicketCount(Number(e.target.value))}
-                  >
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>{n} вопрос(а)</option>
-                    ))}
-                  </select>
-                  <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                    value={ticketMode}
-                    onChange={(e) => setTicketMode(e.target.value as "practice" | "exam")}
-                  >
-                    <option value="practice">Практика (с эталоном)</option>
-                    <option value="exam">Экзамен</option>
-                  </select>
-                  <button
-                    type="button"
-                    className="btn-primary inline-flex items-center justify-center gap-2 text-sm md:col-span-4"
-                    onClick={() => void genTicket()}
-                    disabled={ticketBusy || !ticketBankId}
-                  >
-                    {ticketBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    Сгенерировать билет
-                  </button>
-                </div>
-                {ticketNote && <div className="mt-3 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-4 py-3 text-sm text-[var(--status-warn-fg)]">{ticketNote}</div>}
-                {ticketQuestions.length > 0 && (
-                  <>
-                    {ticketTitle && <h3 className="mt-5 text-base font-semibold">{ticketTitle}</h3>}
-                    <ol className="mt-3 space-y-4">
-                      {ticketQuestions.map((qq: any, idx: number) => (
-                        <li key={qq.id || idx} className="rounded-xl border bg-slate-50 p-4">
-                          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Вопрос {idx + 1}{qq.subject ? ` · ${qq.subject}` : ""}</div>
-                          <div className="mt-2 font-medium leading-snug">
-                            <ChemRichText text={String(qq.text || "")} />
-                          </div>
-                          {ticketMode === "practice" && (qq.answer || qq.has_answer) && (
-                            <div className="mt-3">
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1 text-sm text-indigo-600"
-                                onClick={() => setReveal((r) => ({ ...r, [qq.id]: !r[qq.id] }))}
-                              >
-                                <Eye className="h-4 w-4" />
-                                {reveal[qq.id] ? "Скрыть эталон" : "Показать эталон"}
-                              </button>
-                              {reveal[qq.id] && (
-                                <div className="mt-2 rounded-xl bg-white p-3 text-sm text-slate-700">
-                                  <ChemRichText text={String(qq.answer || "")} asHtml />
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ol>
-                  </>
-                )}
-              </>
-            ) : resourceErrors.tickets ? (
-              <p className="mt-4 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-sm text-[var(--status-warn-fg)]">
-                {resourceErrors.tickets}
-              </p>
-            ) : (
-              <div className="mt-4">
-                <EmptyState
-                  icon={GraduationCap}
-                  title="Банк билетов для этого предмета пока не подключён"
-                  description="Преподаватель ещё не привязал экзаменационные билеты к предмету — как только они появятся, генератор станет доступен здесь."
-                />
-              </div>
-            )}
-          </section>
+        {/* Объединённая вкладка «Экзамен / Билеты»: всё содержимое билетного
+            банка (генератор, банки вопросов, ситуационные задачи, препараты,
+            архив) и список вопросов к экзамену — в одном месте. Старые адреса
+            ?tab=tickets и ?tab=exam ведут сюда. */}
+        {tab === "exam" && (
+          <div className="space-y-4">
+            <TicketGenerator slug={slug} subjectName={subject?.name} />
+            <ExamQuestionsPanel subjectSlug={slug} />
+          </div>
         )}
 
         {tab === "tests" && (
@@ -1058,7 +868,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
               </p>
             )}
           </section>
-        )}                {tab === "materials" && (
+        )}
+
+        {tab === "materials" && (
           histology ? (
             <HistologyMaterials />
           ) : (
@@ -1114,7 +926,12 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
               {!materialsRich.length && !subjectLibrary.length && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
-                  <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+                  <button
+                    type="button"
+                    onClick={() => selectTab("tests")}
+                    className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300"
+                    style={{ background: "var(--card)", borderColor: "var(--border)" }}
+                  >
                     Перейти к тестам
                   </button>
                 </div>
@@ -1127,18 +944,11 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           histology ? (
             <HistologyTrainer embedded />
           ) : (
-            <section className="card p-5">
-              <h2 className="text-lg font-bold">Микропрепараты</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Для этого предмета микропрепараты пока не подключены. Потренируйтесь на вопросах с эталонами или запустите тест.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
-                <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
-                  Перейти к тестам
-                </button>
-              </div>
-            </section>
+            <TabFallback
+              title="Микропрепараты"
+              description="Для этого предмета микропрепараты пока не подключены. Потренируйтесь на вопросах с эталонами или запустите тест."
+              onOpenTab={selectTab}
+            />
           )
         )}
 
@@ -1146,18 +956,11 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           histology ? (
             <SubjectTrainersHub lectureHref={`/subjects/${encodeURIComponent(subjectId)}?tab=lectures`} />
           ) : (
-            <section className="card p-5">
-              <h2 className="text-lg font-bold">Тренажёры</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Интерактивные тренажёры по этому предмету пока не подключены. Можно отработать материал в базе вопросов или в тестах.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={() => selectTab("practice")} className="btn-primary inline-flex">Открыть базу вопросов</button>
-                <button type="button" onClick={() => selectTab("tests")} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
-                  Перейти к тестам
-                </button>
-              </div>
-            </section>
+            <TabFallback
+              title="Тренажёры"
+              description="Интерактивные тренажёры по этому предмету пока не подключены. Можно отработать материал в базе вопросов или в тестах."
+              onOpenTab={selectTab}
+            />
           )
         )}
 

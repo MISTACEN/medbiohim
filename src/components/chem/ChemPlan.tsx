@@ -1,118 +1,64 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, ClipboardCheck, FlaskConical, Loader2, Presentation } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, ClipboardCheck, FlaskConical, Loader2 } from "lucide-react";
+import {
+  NextSessionCard,
+  PastSessionsList,
+  UpcomingSessionCard,
+  type PlanTimelineLinks,
+} from "@/components/subjects/PlanTimeline";
+import {
+  formatPlanDateShort,
+  normalizeStaticPlan,
+  splitPlanSessions,
+  type NormalizedSubjectPlan,
+} from "@/lib/subject-plan-next";
+import { fetchStaticPlan } from "@/lib/subject-plan-static";
 
-type PlanLecture = { n: number; date: string; title: string; lecture_id?: string };
-type PlanPractical = { n: number; date: string; title: string; hours?: number };
-type PlanLab = {
-  n: number;
-  date: string;
-  title: string;
-  topics?: string[];
-  labTitle?: string;
-  lab?: string[];
-  control?: boolean;
-};
-type PlanWeek = {
-  num: number;
-  date: string;
-  date_label?: string;
-  lecture?: { num?: number; title: string; topics?: string[]; note?: string; lecture_id?: string };
-  lab?: { title: string; topics?: string[] };
-  preparations?: { n: number | string | null; name: string }[];
-  electronograms?: string[];
-  /** Домашнее задание к занятию: краткая строка в свёрнутом виде, полный текст — по клику. */
-  homework?: { summary?: string; items?: string[]; text?: string };
-  control?: string | null;
-};
-type ChemPlanData = {
-  subject: string;
-  course: number;
-  semester: number;
-  year: string;
-  faculty?: string;
-  /** Планы кафедр приходят в двух форматах: плоские поля сверху или блок meta. */
-  meta?: {
-    title?: string;
-    subject_name?: string;
-    semester?: number | string;
-    academic_year?: string;
-    course?: number | string;
-    faculty?: string;
-  };
-  lectures?: PlanLecture[];
-  labs?: PlanLab[];
-  practicals?: PlanPractical[];
-  weeks?: PlanWeek[];
-  total?: string;
-  controls?: {
-    n: number;
-    date: string | null;
-    title: string;
-    covers: string[];
-    prep_href?: string;
-    prep_note?: string;
-  }[];
-};
-
-/** Приводит оба формата плана кафедры к плоским полям, которые ждёт рендер. */
-function normalizePlan(raw: ChemPlanData): ChemPlanData {
-  const meta = raw.meta ?? {};
-  return {
-    ...raw,
-    subject: raw.subject || meta.subject_name || meta.title || "",
-    year: raw.year || meta.academic_year || "",
-    semester: raw.semester || Number(meta.semester) || 0,
-    course: raw.course || Number(meta.course) || 0,
-    faculty: raw.faculty || meta.faculty,
-  };
-}
-
-function formatDate(iso: string) {
-  try {
-    return new Date(iso + "T00:00:00").toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" });
-  } catch {
-    return iso;
-  }
-}
-
-/** Календарно-тематические планы кафедр со стендов: лекции, практические
- *  и лабораторные занятия с датами, синхронизированными с расписанием. */
-export default function ChemPlan({ planFile }: { planFile: string }) {
-  const [plan, setPlan] = useState<ChemPlanData | null>(null);
+/**
+ * Календарно-тематические планы кафедр со стендов (файлы в public/content):
+ * лекции, практические и лабораторные занятия с датами, синхронизированными
+ * с расписанием. Сверху — крупное ближайшее занятие, прошедшие свёрнуты.
+ * Связки: тема → материалы, препараты → тренажёр/практика, ДЗ → /homework,
+ * тесты → вкладка тестов, контрольные → аттестации предмета.
+ */
+export default function ChemPlan({ planFile, subjectSlug }: { planFile: string; subjectSlug?: string }) {
+  const [plan, setPlan] = useState<NormalizedSubjectPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    fetch(`/content/${planFile}`, { cache: "force-cache" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => alive && setPlan(normalizePlan(d)))
+    fetchStaticPlan(planFile)
+      .then((raw) => alive && setPlan(normalizeStaticPlan(raw)))
       .catch((e) => alive && setError(String(e?.message || e)));
     return () => {
       alive = false;
     };
   }, [planFile]);
 
-  if (error) return null;
+  if (error) {
+    return (
+      <div className="card p-5 text-sm" style={{ color: "var(--muted)" }}>
+        Не удалось загрузить план кафедры: {error}
+      </div>
+    );
+  }
   if (!plan) {
     return (
-      <div className="card flex items-center gap-2 p-5 text-sm text-slate-500">
+      <div className="card flex items-center gap-2 p-5 text-sm" style={{ color: "var(--muted)" }}>
         <Loader2 className="size-4 animate-spin" /> Загружаем план кафедры…
       </div>
     );
   }
 
-  const practicals = plan.practicals ?? [];
-  const weeks = plan.weeks ?? [];
-  const controls = plan.controls ?? [];
-
-  const renderDate = (d: string | null | undefined) =>
-    d ? (
-      <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-        <CalendarDays className="size-3.5" /> {formatDate(d)}
-      </span>
-    ) : null;
+  // Связки ведут на вкладки предмета через slug из плана (планы кафедры уже
+  // ссылаются на /subjects/<slug>?tab=…,-route поддерживает slug).
+  const slug = subjectSlug || plan.slug || "";
+  const links: PlanTimelineLinks = slug ? { subjectHref: `/subjects/${encodeURIComponent(slug)}` } : {};
+  const split = splitPlanSessions(plan.sessions);
+  const prepCount = plan.sessions.reduce((n, w) => n + (w.preparations?.length ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -122,228 +68,87 @@ export default function ChemPlan({ planFile }: { planFile: string }) {
           {plan.year}
           {plan.semester ? ` · ${plan.semester} семестр` : ""}
           {plan.course ? ` · ${plan.course} курс` : ""}
-          {plan.lectures?.length ? ` · ${plan.lectures.length} лекций` : ""}
-          {plan.labs?.length ? ` · ${plan.labs.length} лабораторных занятий` : ""}
-          {weeks.length ? ` · ${weeks.length} занятий (${weeks.reduce((n, w) => n + (w.preparations?.length ?? 0), 0)} препаратов)` : ""}
-          {practicals.length ? ` · ${practicals.length} практических занятий` : ""}.
-          {plan.faculty ? ` ${plan.faculty}.` : ""}
+          {plan.sessions.length ? ` · ${plan.sessions.length} занятий` : ""}
+          {prepCount ? ` (${prepCount} препаратов)` : ""}
+          {plan.controls.length ? ` · ${plan.controls.length} контрольных точек` : ""}
+          {plan.faculty ? `. ${plan.faculty}` : ""}
         </p>
         <p className="mt-1 text-xs text-slate-400">Даты синхронизированы с расписанием занятий на сайте.</p>
+        {plan.note && <p className="mt-1 text-xs text-slate-400">{plan.note}</p>}
       </section>
 
-      {controls.length ? (
+      {/* Крупное ближайшее занятие + предстоящие + свёрнутые прошедшие. */}
+      {split.next.length > 0 && split.nextDate ? (
+        <NextSessionCard sessions={split.next} date={split.nextDate} links={links} />
+      ) : (
+        <div className="card p-4 text-sm" style={{ color: "var(--muted)" }}>
+          Будущих занятий по плану нет — семестр завершён или даты ещё не выставлены.
+        </div>
+      )}
+
+      {plan.controls.length ? (
         <section className="card p-5">
           <h2 className="flex items-center gap-2 text-base font-bold">
             <ClipboardCheck className="size-5 text-[var(--status-warn-fg)]" /> Контрольные и подготовка к ним
           </h2>
           <ol className="mt-3 grid gap-2">
-            {controls.map((c) => (
-              <li key={c.n} className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/50 p-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-bold text-slate-800">{c.title}</span>
-                  {renderDate(c.date)}
-                </div>
-                <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-sm text-slate-600">
-                  {c.covers.map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
-                </ul>
-                {c.prep_href && (
-                  <p className="mt-2 text-sm">
-                    <a href={c.prep_href} className="font-bold text-indigo-600 hover:text-indigo-500">
-                      Подготовка на сайте →
-                    </a>
-                    {c.prep_note ? <span className="ml-1 text-slate-500">{c.prep_note}</span> : null}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      {weeks.length ? (
-        <section className="card p-5">
-          <h2 className="flex items-center gap-2 text-base font-bold">
-            <FlaskConical className="size-5 text-[var(--status-ok-fg)]" /> Лекции и лабораторные занятия
-          </h2>
-          <ol className="mt-3 grid gap-2">
-            {weeks.map((w) => (
+            {plan.controls.map((c) => (
               <li
-                key={w.num}
+                key={c.n}
                 className={
                   "rounded-xl border p-3 " +
-                  (w.control ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/60" : "border-slate-100")
+                  (c.date && split.nextDate && c.date >= split.nextDate
+                    ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/50"
+                    : "border-slate-100")
                 }
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-semibold text-slate-800">
-                    Занятие {w.num}
-                    {w.control ? ` · ${w.control}` : ""}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                    <CalendarDays className="size-3.5" /> {w.date_label || w.date}
-                  </span>
+                  <span className="text-sm font-bold" style={{ color: "var(--text)" }}>{c.title}</span>
+                  {c.date ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
+                      <CalendarDays className="size-3.5" /> {formatPlanDateShort(c.date)}
+                    </span>
+                  ) : null}
                 </div>
-                {w.lecture && (
-                  <p className="mt-1 text-sm leading-relaxed text-slate-700">
-                    <span className="font-bold text-indigo-600">Лекция {w.lecture.num}. </span>
-                    {w.lecture.title}
-                    {w.lecture.note ? <span className="ml-1 text-xs text-slate-400">({w.lecture.note})</span> : null}
-                    {w.lecture.lecture_id ? (
-                      <a
-                        href={`/lectures/${encodeURIComponent(w.lecture.lecture_id)}`}
-                        className="ml-2 text-xs font-bold text-indigo-600 hover:text-indigo-500"
-                      >
-                        Открыть лекцию →
-                      </a>
-                    ) : null}
-                  </p>
-                )}
-                {w.lab && <p className="mt-1 text-sm text-slate-600"><span className="font-bold">Лабораторное:</span> {w.lab.title}</p>}
-                {w.lab?.topics?.length ? (
-                  <p className="mt-0.5 text-xs text-slate-400">{w.lab.topics.join(" · ")}</p>
-                ) : null}
-                {w.preparations?.length ? (
-                  <div className="mt-2 rounded-xl bg-slate-50 p-2.5">
-                    <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                      Гистопрепараты{w.electronograms?.length ? ` · электронограммы: ${w.electronograms.join(", ")}` : ""}
-                    </div>
-                    <ul className="mt-1 space-y-0.5 text-sm text-slate-600">
-                      {w.preparations.map((p, i) => (
-                        <li key={i}>
-                          {p.n ? <span className="font-bold text-slate-500">№{p.n}. </span> : null}
-                          {p.name}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {w.homework ? (
-                  <details className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2.5">
-                    <summary className="cursor-pointer select-none text-xs font-bold uppercase tracking-wide text-indigo-700">
-                      Домашнее задание{w.homework.summary ? `: ${w.homework.summary}` : ""}
-                      <span className="ml-1 font-normal normal-case tracking-normal text-indigo-500">— развернуть</span>
-                    </summary>
-                    {w.homework.items?.length ? (
-                      <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-sm leading-relaxed text-slate-700">
-                        {w.homework.items.map((item, i) => (
-                          <li key={i}>{item}</li>
-                        ))}
-                      </ol>
-                    ) : w.homework.text ? (
-                      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-700">{w.homework.text}</p>
-                    ) : null}
-                  </details>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      {plan.lectures?.length ? (
-        <section className="card p-5">
-          <h2 className="flex items-center gap-2 text-base font-bold">
-            <Presentation className="size-5 text-indigo-500" /> Лекции
-          </h2>
-          <ol className="mt-3 grid gap-2">
-            {plan.lectures.map((l) => (
-              <li key={l.n} className="rounded-xl border border-slate-100 p-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-semibold text-slate-800">Лекция {l.n}</span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                    <CalendarDays className="size-3.5" /> {formatDate(l.date)}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm leading-relaxed text-slate-600">{l.title}</p>
-                {l.lecture_id ? (
-                  <p className="mt-1">
-                    <a
-                      href={`/lectures/${encodeURIComponent(l.lecture_id)}`}
-                      className="text-sm font-bold text-indigo-600 hover:text-indigo-500"
-                    >
-                      Открыть лекцию →
-                    </a>
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      {plan.labs?.length ? (
-        <section className="card p-5">
-          <h2 className="flex items-center gap-2 text-base font-bold">
-            <FlaskConical className="size-5 text-[var(--status-ok-fg)]" /> Лабораторные занятия
-          </h2>
-          <ol className="mt-3 grid gap-2">
-            {plan.labs.map((l) => (
-              <li
-                key={l.n}
-                className={
-                  "rounded-xl border p-3 " +
-                  (l.control ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/60" : "border-slate-100")
-                }
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-semibold text-slate-800">
-                    {l.n}. {l.title}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                    {l.control && <ClipboardCheck className="size-3.5 text-[var(--status-warn-fg)]" />}
-                    <CalendarDays className="size-3.5" /> {formatDate(l.date)}
-                  </span>
-                </div>
-                {l.topics?.length ? (
+                {c.covers.length ? (
                   <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-sm text-slate-600">
-                    {l.topics.map((t, i) => (
+                    {c.covers.map((t, i) => (
                       <li key={i}>{t}</li>
                     ))}
                   </ul>
                 ) : null}
-                {l.lab?.length ? (
-                  <div className="mt-2 rounded-xl bg-slate-50 p-2.5">
-                    <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                      Лабораторная работа{l.labTitle ? `: «${l.labTitle}»` : ""}
-                    </div>
-                    <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-slate-600">
-                      {l.lab.map((t, i) => (
-                        <li key={i}>{t}</li>
-                      ))}
-                    </ol>
-                  </div>
-                ) : null}
+                <p className="mt-2 text-sm">
+                  {/* «Подготовка на сайте» — ссылка из плана кафедры; если её нет,
+                      ведём на аттестации предмета, чтобы ссылка не была пустой. */}
+                  <Link
+                    href={c.prepHref || (slug ? `/subjects/${encodeURIComponent(slug)}?tab=exam` : "/subjects")}
+                    className="font-bold text-indigo-600 hover:text-indigo-500"
+                  >
+                    Подготовка на сайте →
+                  </Link>
+                  {c.prepNote ? <span className="ml-1 text-slate-500">{c.prepNote}</span> : null}
+                </p>
               </li>
             ))}
           </ol>
         </section>
       ) : null}
 
-      {practicals.length ? (
-        <section className="card p-5">
-          <h2 className="flex items-center gap-2 text-base font-bold">
-            <FlaskConical className="size-5 text-[var(--status-ok-fg)]" /> Практические занятия
-          </h2>
-          <ol className="mt-3 grid gap-2">
-            {practicals.map((p) => (
-              <li key={p.n} className="rounded-xl border border-slate-100 p-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-semibold text-slate-800">
-                    {p.n}. {p.title}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                    <CalendarDays className="size-3.5" /> {formatDate(p.date)}
-                    {p.hours ? ` · ${p.hours} ч` : ""}
-                  </span>
-                </div>
-              </li>
+      {split.upcoming.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="flex items-center gap-2 px-1 text-sm font-bold uppercase tracking-wide text-slate-400">
+            <FlaskConical className="size-4" /> Предстоящие занятия
+          </h3>
+          <div className="grid gap-3">
+            {split.upcoming.map((session) => (
+              <UpcomingSessionCard key={session.key} session={session} links={links} />
             ))}
-          </ol>
-          {plan.total ? <p className="mt-3 text-xs text-slate-400">{plan.total}</p> : null}
+          </div>
         </section>
-      ) : null}
+      )}
+
+      <PastSessionsList sessions={split.past} links={links} />
+      {split.undated.length > 0 && <PastSessionsList sessions={split.undated} links={links} label="Темы без даты в плане" />}
     </div>
   );
 }
