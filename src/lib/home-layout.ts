@@ -10,9 +10,8 @@
  */
 
 export const HOME_WIDGET_IDS = [
+  "today",
   "academic",
-  "schedule",
-  "homework",
   "tests",
   "subjects",
   "homeworkList",
@@ -40,9 +39,8 @@ export type HomePreferences = {
 export type HomeSyncState = "idle" | "saving" | "saved" | "local" | "error";
 
 export const HOME_WIDGET_LABELS: Record<HomeWidgetId, string> = {
+  today: "Сегодня / Завтра",
   academic: "Учебный прогресс",
-  schedule: "Ближайшее занятие",
-  homework: "Домашние задания",
   tests: "Тесты",
   subjects: "Мои предметы",
   homeworkList: "Список заданий",
@@ -52,9 +50,8 @@ export const HOME_WIDGET_LABELS: Record<HomeWidgetId, string> = {
 };
 
 export const HOME_WIDGET_HINTS: Record<HomeWidgetId, string> = {
-  academic: "Метрики, план подготовки и рекомендации",
-  schedule: "Что сегодня и когда следующая пара",
-  homework: "Сколько заданий ждёт сдачи",
+  today: "Пары, темы, задания и аттестации ближайшего учебного дня",
+  academic: "Метрики и план подготовки",
   tests: "Доступные тесты и быстрый переход",
   subjects: "Предметы курса и быстрые ссылки",
   homeworkList: "Последние задания со сроками",
@@ -63,10 +60,13 @@ export const HOME_WIDGET_HINTS: Record<HomeWidgetId, string> = {
   note: "Свободный текст: что не забыть сегодня",
 };
 
+// Адаптивная сетка: одна колонка на телефоне, две на планшете (sm),
+// шесть на десктопе (lg+). Половина на планшете — во всю ширину,
+// чтобы карточки не сжимались в нечитаемую полосу.
 export const HOME_SPAN_CLASS: Record<HomeSpan, string> = {
-  third: "lg:col-span-2",
-  half: "lg:col-span-3",
-  full: "lg:col-span-6",
+  third: "sm:col-span-1 lg:col-span-2",
+  half: "sm:col-span-2 lg:col-span-3",
+  full: "sm:col-span-2 lg:col-span-6",
 };
 
 export const HOME_SPAN_LABELS: Record<HomeSpan, string> = {
@@ -75,15 +75,14 @@ export const HOME_SPAN_LABELS: Record<HomeSpan, string> = {
   full: "Весь",
 };
 
-/** Стандартный вид: тот же порядок и состав, что был на главной до настройки. */
+/** Стандартный вид: сводка дня во всю ширину, дальше — прогресс, тесты/задания в строку. */
 export const DEFAULT_LAYOUT: HomeLayout = [
+  { id: "today", span: "full" },
   { id: "academic", span: "full" },
-  { id: "schedule", span: "third" },
-  { id: "homework", span: "third" },
-  { id: "tests", span: "third" },
-  { id: "subjects", span: "full" },
+  { id: "tests", span: "half" },
   { id: "homeworkList", span: "half" },
-  { id: "announcements", span: "half" },
+  { id: "subjects", span: "full" },
+  { id: "announcements", span: "full" },
   { id: "debts", span: "full" },
 ];
 
@@ -128,6 +127,39 @@ export function sanitizeLayout(value: unknown): HomeLayout {
   return parseLayout(value) ?? defaultHomeLayout();
 }
 
+/**
+ * Миграция старой раскладки (до совмещённого блока «Сегодня / Завтра»):
+ * «Ближайшее занятие» (schedule) заменяется на сводку дня во всю ширину,
+ * «Домашние задания» (homework) поглощаются сводкой. Раскладки, где старых
+ * блоков уже нет, не трогаем — пользователь сам решил, что показывать.
+ *
+ * Разбор сырого значения здесь свой, а не через parseLayout: тот отбрасывает
+ * неизвестные id до миграции, и устаревшие блоки дошли бы уже отфильтрованные.
+ */
+export function migrateLayout(value: unknown): HomeLayout | null {
+  if (!Array.isArray(value)) return null;
+  const seen = new Set<HomeWidgetId>();
+  const layout: HomeLayout = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const raw = item as Record<string, unknown>;
+    const id = raw.id;
+    if (typeof id !== "string") continue;
+    // Устаревшие блоки v1: «schedule» становится сводкой дня, «homework» — её частью.
+    if (id === "schedule" || id === "homework") {
+      if (!seen.has("today")) {
+        seen.add("today");
+        layout.push({ id: "today", span: "full" });
+      }
+      continue;
+    }
+    if (!isWidgetId(id) || seen.has(id)) continue;
+    seen.add(id);
+    layout.push({ id, span: isSpan(raw.span) ? raw.span : defaultSpanFor(id) });
+  }
+  return layout.length ? layout : null;
+}
+
 export function moveWidget(layout: HomeLayout, from: number, to: number): HomeLayout {
   if (from === to || from < 0 || to < 0 || from >= layout.length || to >= layout.length) {
     return layout;
@@ -170,7 +202,7 @@ export function loadLocalHome(userId?: string): HomePreferences | null {
     const raw = window.localStorage.getItem(storageKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const layout = parseLayout(parsed.layout);
+    const layout = migrateLayout(parsed.layout);
     if (!layout) return null;
     return { layout, note: typeof parsed.note === "string" ? parsed.note.slice(0, 4000) : "" };
   } catch {
@@ -197,7 +229,7 @@ export async function loadRemoteHome(): Promise<HomePreferences | null> {
   if (!result.ok) return null;
   const preferences = (result.data.preferences || {}) as Record<string, unknown>;
   cachedPreferences = preferences;
-  const layout = parseLayout(preferences.home_layout);
+  const layout = migrateLayout(preferences.home_layout);
   if (!layout) return null;
   const note = typeof preferences.home_note === "string" ? preferences.home_note.slice(0, 4000) : "";
   return { layout, note };

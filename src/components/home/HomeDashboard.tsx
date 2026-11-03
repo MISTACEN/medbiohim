@@ -85,8 +85,8 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
     <section aria-label="Мои блоки главной" className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">Моя главная</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Моя главная</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {editing
               ? "Перетащите блок за ручку, выберите ширину или уберите лишнее. Изменения сохраняются автоматически."
               : "Блоки можно менять местами, скрывать и добавлять — или вернуть исходный вид."}
@@ -94,7 +94,7 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {SYNC_TEXT[sync] ? (
-            <span role="status" aria-live="polite" className="text-xs text-slate-500">
+            <span role="status" aria-live="polite" className="text-xs text-slate-500 dark:text-slate-400">
               {SYNC_TEXT[sync]}
             </span>
           ) : null}
@@ -104,8 +104,8 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
             aria-pressed={editing}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${
               editing
-                ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? "bg-indigo-600 text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             }`}
           >
             {editing ? <Check className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
@@ -116,7 +116,7 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
             onClick={onReset}
             disabled={atDefault}
             title={atDefault ? "Это уже исходный вид" : "Вернуть стандартный набор и порядок блоков"}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             <RotateCcw className="h-4 w-4" />
             Вернуть как было
@@ -125,9 +125,9 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
       </div>
 
       {editing && missing.length ? (
-        <div className="rounded-2xl border border-dashed border-indigo-300 bg-indigo-50/40 p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <Plus className="h-4 w-4 text-indigo-600" /> Добавить блок
+        <div className="rounded-2xl border border-dashed border-indigo-300 bg-indigo-50/40 p-4 dark:border-indigo-500/40 dark:bg-indigo-500/10">
+          <p className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <Plus className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Добавить блок
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {missing.map((id) => (
@@ -135,11 +135,11 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
                 key={id}
                 type="button"
                 onClick={() => add(id)}
-                className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 dark:border-indigo-500/40 dark:bg-slate-800 dark:text-indigo-400 dark:hover:bg-slate-700"
               >
                 <Plus className="h-3.5 w-3.5" />
                 {HOME_WIDGET_LABELS[id]}
-                <span className="hidden text-xs font-normal text-slate-400 sm:inline">
+                <span className="hidden text-xs font-normal text-slate-400 dark:text-slate-500 sm:inline">
                   — {HOME_WIDGET_HINTS[id]}
                 </span>
               </button>
@@ -149,18 +149,21 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
       ) : null}
 
       {layout.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-          <p className="text-sm text-slate-600">Все блоки скрыты.</p>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-slate-600 dark:text-slate-300">Все блоки скрыты.</p>
           <button
             type="button"
             onClick={onReset}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
           >
             <RotateCcw className="h-4 w-4" /> Вернуть исходный вид
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-6">
+        // Сетка главной: 1 колонка на телефоне, 2 на планшете, 6 на десктопе.
+        // Ширины блоков задаёт HOME_SPAN_CLASS (sm:*/lg:*) — пустых дыр нет,
+        // потому что полные блоки занимают обе планшетные колонки.
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
           {layout.map((widget) => {
             const node = widgets[widget.id];
             if (!node) return null;
@@ -185,7 +188,7 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
                 }}
               >
                 {editing ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-t-2xl border-b border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs text-slate-600">
+                  <div className="flex flex-wrap items-center gap-2 rounded-t-2xl border-b border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     <button
                       type="button"
                       draggable
@@ -198,18 +201,18 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
                         setDragId(null);
                         setOverId(null);
                       }}
-                      className="cursor-grab rounded p-1 text-slate-500 hover:bg-white hover:text-slate-700 active:cursor-grabbing"
+                      className="cursor-grab rounded p-2 text-slate-500 hover:bg-white hover:text-slate-700 active:cursor-grabbing dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                       aria-label={`Перетащить блок «${HOME_WIDGET_LABELS[widget.id]}»`}
                       title="Перетащить"
                     >
                       <GripVertical className="h-4 w-4" />
                     </button>
-                    <span className="font-semibold text-slate-700">{HOME_WIDGET_LABELS[widget.id]}</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{HOME_WIDGET_LABELS[widget.id]}</span>
                     <span className="ml-auto flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => move(widget.id, -1)}
-                        className="rounded p-1 hover:bg-white"
+                        className="rounded p-2 hover:bg-white dark:hover:bg-slate-700"
                         aria-label="Выше"
                         title="Выше"
                       >
@@ -218,7 +221,7 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
                       <button
                         type="button"
                         onClick={() => move(widget.id, 1)}
-                        className="rounded p-1 hover:bg-white"
+                        className="rounded p-2 hover:bg-white dark:hover:bg-slate-700"
                         aria-label="Ниже"
                         title="Ниже"
                       >
@@ -228,7 +231,7 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
                         value={widget.span}
                         onChange={(event) => patch(widget.id, { span: event.target.value as HomeSpan })}
                         aria-label={`Ширина блока «${HOME_WIDGET_LABELS[widget.id]}»`}
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                        className="min-h-[32px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                       >
                         {SPAN_OPTIONS.map((span) => (
                           <option key={span} value={span}>
@@ -239,7 +242,7 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
                       <button
                         type="button"
                         onClick={() => remove(widget.id)}
-                        className="rounded p-1 text-slate-500 hover:bg-white hover:text-[var(--status-critical-fg)]"
+                        className="rounded p-2 text-slate-500 hover:bg-white hover:text-[var(--status-critical-fg)] dark:text-slate-400 dark:hover:bg-slate-700"
                         aria-label={`Убрать блок «${HOME_WIDGET_LABELS[widget.id]}»`}
                         title="Убрать"
                       >
