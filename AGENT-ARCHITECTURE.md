@@ -27,6 +27,8 @@ Legacy/reference: PHP SpaceWeb, integrations/cloudflare-api
 
 Frontend, Backend, Database and Storage work may be parallel only after their interfaces and file ownership are explicit. For example, a new API feature can be split into UI contract, Worker implementation, SQL migration and QA, but only one owner integrates each shared boundary.
 
+**Непересечение обязательно во всех режимах.** У каждого ведущего и субагента своя часть плана, свой deliverable и явный ownership. Нельзя назначать двум исполнителям одинаковую задачу или пересекающиеся writable files/resources. Общие интерфейсы сначала согласуются отдельно; затем команды работают по своим границам и обмениваются результатами через контракты/координатора. Это одинаково для S0, S1, M1, M2 и H — меняется только число исполнителей, а не принцип разделения.
+
 ## Agent roster
 | Role | Responsibility | Instruction |
 |---|---|---|
