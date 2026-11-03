@@ -12,8 +12,10 @@ Coordinator issues a self-contained brief:
 - Workspace identifier and patch destination.
 
 ## 2. Parallelization
-Safe to parallelize: independent read-only audits; UI and Worker work after API contract is frozen; subject content work on disjoint source files; independent QA review.
-Not safe to parallelize: same file; shared types/route registry/package lock; overlapping migrations; edits to shared content index; changes that require coordinated schema+API rollout without an agreed contract.
+Safe to parallelize: independent read-only audits; UI and Worker work after API contract is frozen; subject content work on disjoint source files; independent QA review. This applies to every team mode, including S0/S1/M1/M2/H: each participant must own a distinct task and deliverable, not merely a different copy of the same task.
+Not safe to parallelize: same task or overlapping deliverables; same file/resource; shared types/route registry/package lock; overlapping migrations; edits to shared content index; changes that require coordinated schema+API rollout without an agreed contract.
+
+Before launch, coordinator creates a workstream ownership map. Every writable path/resource has exactly one owner for that task. Shared contracts are agreed first and then treated as read-only dependencies by other workstreams. If boundaries cannot be made disjoint, assign one owner and sequence the work; do not force parallel execution.
 
 ## 3. Workspace rules
 - Each implementer uses a separate worktree/container/patch workspace based on the same recorded SHA.
