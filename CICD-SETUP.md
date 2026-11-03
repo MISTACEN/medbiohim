@@ -1,3 +1,9 @@
+> **Синхронизация документации — 2026-11-03.** Актуальная карта проекта: [docs/CURRENT-STATE-2026-11-03.md](docs/CURRENT-STATE-2026-11-03.md). Сверяйте команды с текущим каталогом `.github/workflows`. Старое имя `deploy-worker.yml` и прежние блокеры ниже не считать действующей инструкцией без проверки.
+>
+> Текущие workflow, обнаруженные в main: `deploy-medbiohim-api.yml`, `deploy-cloudflare-shadow.yml`, `deploy-vercel-frontend.yml`, `deploy-telegram-worker.yml`, `code-check.yml`. Фактический статус каждого запуска проверяется отдельно.
+>
+> ---
+>
 # MEDBIOHIM — CI/CD Setup Guide
 
 ## 🔴 Critical Blocker: GitHub Actions Secrets Missing
