@@ -7,7 +7,7 @@
 > 2. Проверить после деплоя `ffd2f5e6`, что `GET /api/v1/telegram/ingest/health` отдаёт `reachable:true`.
 > 3. Медиа из групп (OCR/vision для фото и PDF) — P1, см. `TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md`.
 > 4. «Лестница» плана, флеш-карты из базы, блоки Workshop — `PYRAMID-AND-CHEMISTRY-ROADMAP.md`.
-> 5. Документация: 125 датированных снимков — кандидаты в `docs/archive/` (`DOCS-AUDIT-2026-11-03.md`).
+> 5. Документация: датированные снимки перенесены в `docs/archive/` (`DOCS-AUDIT-2026-11-03.md`).
 >
 > **Закрыто 2026-11-03:** приём ДЗ из Telegram (предмет, срок, уровни), тренажёр бота,
 > `redirect: "manual"`, сверка документации и битые ссылки.
@@ -23,7 +23,7 @@
 
 ## Latest handoff — Pass 65–73 (2026-10-10)
 
-- Current continuation report: [CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
+- Current continuation report: [CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](archive/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
 - All six workflows now declare `permissions: contents: read`; this reduces token scope but did not restore Actions execution.
 - Pass 69 fixed malformed indentation in `.github/workflows/package-archives.yml`; GitHub now recognizes the workflow and creates a `package` job. The job still fails before steps.
 - Latest runs [code checks 38025017750](https://github.com/MISTACEN/medbiohim/actions/runs/38025017750), [smoke 38025017788](https://github.com/MISTACEN/medbiohim/actions/runs/38025017788), [SpaceWeb archive 38025017818](https://github.com/MISTACEN/medbiohim/actions/runs/38025017818), and [source package 38025017740](https://github.com/MISTACEN/medbiohim/actions/runs/38025017740) fail before visible steps. Raw package job confirms `runner_id: 0`, empty runner name and no steps. Raw jobs show `runner_id: 0`, empty runner name, no steps and no logs.
@@ -463,7 +463,7 @@ Latest read-only Supabase evidence:
 - 719 published blank answer fields group under open-ticket/preparation-style types. Treat as intentional until source/curriculum review says otherwise; do not bulk fill, unpublish, or delete.
 - Five legacy Anatomy/Biochemistry question rows have valid subject IDs and links, but their subjects have NULL slugs. Canonical subject mapping remains a separate cleanup task.
 
-Report: [DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md](DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+Report: [DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md](archive/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
 
 No database writes were made. CI runner and production/runtime checks remain blocked/unverified.
 
@@ -482,7 +482,7 @@ Required before closure:
 3. Recheck effective privileges for both client roles.
 4. Smoke-test all required browser-facing read/write flows under anon/authenticated JWTs.
 
-No production DB writes were made. Report: [DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md](DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md).
+No production DB writes were made. Report: [DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md](archive/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md).
 
 
 ## U-2026-10-10-CI-MEDIA-TRACEABILITY — runner and Histology media delivery
@@ -517,11 +517,11 @@ Latest retry of smoke run [38012180433](https://github.com/MISTACEN/medbiohim/ac
 
 Read-only Supabase checks confirm default public-table ACLs exist for both `postgres` and `supabase_admin`; the committed migration covers both. PostgREST `authenticator` role membership is configured for explicit SET ROLE with inheritance disabled. No privilege migration has been applied; no production writes. Next: confirm staging + migration runner role, apply only in approved staging, run the verification audit and browser-role flow tests.
 
-Report: [Pass 57 CI + DB preflight](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+Report: [Pass 57 CI + DB preflight](archive/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
 
 ### Latest Pass 57 evidence update
 
-After the docs-only commits, current-head Actions runs also failed before steps/logs: code-check `38012550501`, smoke `38012550519`, archive `38012550490`; code-check `38012554325` also has both jobs with `steps: null`. See [Pass 57 report](CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md). This reproduces across workflows and commits; no PHP/frontend test results exist yet.
+After the docs-only commits, current-head Actions runs also failed before steps/logs: code-check `38012550501`, smoke `38012550519`, archive `38012550490`; code-check `38012554325` also has both jobs with `steps: null`. See [Pass 57 report](archive/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md). This reproduces across workflows and commits; no PHP/frontend test results exist yet.
 
 ## U-2026-10-10-58 — release-gate configuration and transport hardening
 
@@ -534,7 +534,7 @@ Severity: P1/P2. Source-only findings, not yet runtime verified:
 - `.github/workflows/deploy-backend.yml` disables FTPS certificate verification (`curl -k`, `ssl:verify-certificate no`). Validate SpaceWeb certificate/hostname on a trusted network, then enable verification and test read-only listing before deploying.
 - Deployment backs up files but has no demonstrated tested rollback after partial upload.
 
-No source runtime behavior, deployment, secret, or production database was changed in Pass 58. Report: [RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md](RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+No source runtime behavior, deployment, secret, or production database was changed in Pass 58. Report: [RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md](archive/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
 
 
 ## U-2026-10-10-59 — GitHub Actions jobs fail before exposing steps
@@ -545,7 +545,7 @@ Latest inspected head `8bb7f04320b0e497a7035a85545073dc26a69df7` produced failur
 
 Required: owner checks Actions service/usage/permissions and runner initialization; escalate to GitHub Support with run IDs if steps/logs remain absent. Then run frontend typecheck/build/predeploy audit, PHP lint/regression/route tests, and target smoke. Lockfile and ESLint improvements remain pending a registry-enabled environment and executable checks.
 
-No production deployment, secret change, or database write was performed. Report: [Pass 59](CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md).
+No production deployment, secret change, or database write was performed. Report: [Pass 59](archive/CI-RUNNER-RECONCILIATION-2026-10-10-PASS59.md).
 
 
 ## U-2026-10-10-60 — CI queue churn from documentation-only commits
@@ -554,7 +554,7 @@ Severity: P2 / CI efficiency
 
 Added Markdown-only path filters to `.github/workflows/code-check.yml` (push and pull_request), `smoke.yml` (push only), `package-archives.yml`, and `build-spaceweb-archive.yml`. Manual dispatch and scheduled smoke remain enabled. This avoids starting repeated jobs for docs-only commits; changes that include source/workflow files still trigger relevant checks.
 
-Execution of the filters has not yet been confirmed. The separate Actions initialization issue remains open; latest prior jobs had `steps: null`. Report: [Pass 60](CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md). No production changes were made.
+Execution of the filters has not yet been confirmed. The separate Actions initialization issue remains open; latest prior jobs had `steps: null`. Report: [Pass 60](archive/CI-DOCS-ONLY-FILTERS-2026-10-10-PASS60.md). No production changes were made.
 
 
 ### Pass 60 follow-up evidence
@@ -567,7 +567,7 @@ Severity: P1 / release verification
 
 For code-check run [38013521893](https://github.com/MISTACEN/medbiohim/actions/runs/38013521893), backend job `114098661992` and frontend job `114098662106` have `steps: null` and `logs_url: null`; explicit step endpoint returns an empty list and log download returns HTTP 404 `BlobNotFound`. Repository metadata shows the repository is private, active, and integration permissions include admin/maintain/push. Root cause remains unknown; no test command is confirmed to have executed.
 
-Owner action: inspect the run/job in GitHub UI, Settings → Actions → General, account usage/limits and service incidents; escalate to GitHub Support with runs `38013521893`, `38013522004`, `38013521967`, `38013522082` if no logs are available. Report: [Pass 61](CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md).
+Owner action: inspect the run/job in GitHub UI, Settings → Actions → General, account usage/limits and service incidents; escalate to GitHub Support with runs `38013521893`, `38013522004`, `38013521967`, `38013522082` if no logs are available. Report: [Pass 61](archive/CI-JOB-LOG-DIAGNOSTICS-2026-10-10-PASS61.md).
 
 
 ## U-2026-10-10-62 — Vercel runtime/build log visibility
@@ -576,7 +576,7 @@ Severity: P1 / release verification
 
 The production alias `medbiohim.vercel.app` was rechecked and resolves to a READY deployment for commit `f5a5bb2efe7f5297e7c888a13b284dfd88b53160`. Vercel runtime-log query returned HTTP 403 `forbidden`; deployment event logs returned 404 `Deployment not found`. These are access/endpoint failures, not evidence that production has no errors.
 
-Required: inspect build logs in Vercel dashboard, restore runtime-log API access or use authorized CLI/dashboard, then run public and authenticated runtime smoke. Report: [Pass 62](VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md).
+Required: inspect build logs in Vercel dashboard, restore runtime-log API access or use authorized CLI/dashboard, then run public and authenticated runtime smoke. Report: [Pass 62](archive/VERCEL-RUNTIME-OBSERVABILITY-2026-10-10-PASS62.md).
 
 
 ## U-2026-10-10-63 — ESLint config presence is not lint coverage
@@ -585,11 +585,11 @@ Severity: P2 / quality gate
 
 The pre-deploy audit now warns when the discovered ESLint flat config contains neither a `rules:` block nor recognizable Next.js/TypeScript/recommended preset markers. This is a heuristic signal, not proof of complete lint coverage. The current config was observed to contain only ignore patterns, so `npm run lint` should not be treated as a meaningful gate until a baseline config is added and findings are remediated.
 
-Validation remains blocked by GitHub Actions jobs failing before steps/logs. No local lint run or successful CI result is claimed. Report: [Pre-deploy audit/status reconciliation](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
+Validation remains blocked by GitHub Actions jobs failing before steps/logs. No local lint run or successful CI result is claimed. Report: [Pre-deploy audit/status reconciliation](archive/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
 
 
 ### CI retry after Pass 63 source change
-Latest runs for commit `09ca10a746c508e0b3ad2643fff3fbba5d2fba87`: code checks [38019157502](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), smoke [38019157491](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), backend archive [38019157478](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), package [38019157470](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). Every job still has `steps: null` and `logs_url: null`; root cause remains external/unknown and no test result is confirmed. See [Pass 63 reconciliation](PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
+Latest runs for commit `09ca10a746c508e0b3ad2643fff3fbba5d2fba87`: code checks [38019157502](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), smoke [38019157491](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), backend archive [38019157478](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), package [38019157470](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). Every job still has `steps: null` and `logs_url: null`; root cause remains external/unknown and no test result is confirmed. See [Pass 63 reconciliation](archive/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
 
 
 ## U-2026-10-10-64 — archive secret exclusion is source-only until CI runs
@@ -598,7 +598,7 @@ Severity: P1 / security hygiene
 
 Source and backend archive workflows now exclude root/nested `.env*` paths and inspect the ZIP listing before artifact upload. However, latest GitHub Actions runs still fail before steps/logs, so the guard and ZIP contents have not been executed/verified. Keep this item open until a successful artifact build confirms no environment files are included.
 
-See [Pass 64 report](ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+See [Pass 64 report](archive/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
 
 
 Latest retry confirmation: code-check run [38019548725 attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/38019548725) again failed with no job steps/logs for both backend and frontend. CI root cause remains open.
@@ -632,10 +632,10 @@ Do not mark these complete from documentation or source presence alone. GitHub A
 
 ## Pause hand-off snapshot — 2026-10-11
 
-Read [the full MEDBIOHIM project checkpoint](STATUS-2026-10-11.md) before resuming. It contains the last pass, CI blocker, architecture, known issues, and ordered continuation plan.
+Read [the full MEDBIOHIM project checkpoint](archive/STATUS-2026-10-11.md) before resuming. It contains the last pass, CI blocker, architecture, known issues, and ordered continuation plan.
 
 ## Перед паузой: полный снимок состояния — 2026-10-11
-См. [PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](PROJECT-CONTROL-SNAPSHOT-2026-10-11.md) для полной карты продукта, изменений, незавершённых задач, CI-блокера и безопасной очередности работ.
+См. [PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](archive/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md) для полной карты продукта, изменений, незавершённых задач, CI-блокера и безопасной очередности работ.
 
 ### Telegram group relay — source added 2026-10-11
 - [x] Node webhook can relay group/supergroup updates over HTTPS to the existing PHP `/api/v1/telegram/webhook` endpoint when `TELEGRAM_HOMEWORK_WEBHOOK_URL` is configured.
@@ -712,7 +712,7 @@ Telegram's bot token has one active webhook destination: register it only agains
 
 
 ### Whole-project snapshot and hosting resilience — 2026-10-11
-- [x] Added [full state snapshot](STATE-SNAPSHOT-2026-10-11.md) with product intent, current architecture, source changes, open work, CI blocker, historic defects to re-audit, and exact resume order.
+- [x] Added [full state snapshot](archive/STATE-SNAPSHOT-2026-10-11.md) with product intent, current architecture, source changes, open work, CI blocker, historic defects to re-audit, and exact resume order.
 - [x] Added [hosting resilience/free-tier plan](HOSTING-RESILIENCE-AND-FREE-TIERS.md): primary Vercel + Supabase + SpaceWeb + B2 remains unchanged; independent foreign secondary; Russian read-only emergency fallback; Cloudflare Workers as bot-webhook PoC candidate.
 - [ ] Measure the reported slow Vercel-to-SpaceWeb/API/media path before selecting a performance fix.
 - [ ] Confirm current provider free-tier terms from official documentation; the provider limits copied from the user's proposal are not yet verified.

@@ -19,25 +19,25 @@
 #### Новые файлы добавлены сегодня:
 
 **1. Обновление homework CRUD:**
-- Файл: [`workers/api/src/routes/homework.ts`](../workers/api/src/routes/homework.ts)
+- Файл: [`workers/api/src/routes/homework.ts`](../../workers/api/src/routes/homework.ts)
 - Добавлено: `PATCH /homeworks/:id` (update handler)
 - Добавлено: `DELETE /homeworks/:id` (soft-delete handler)
 - Линии кода: ~150 строк с валидацией и проверками прав
 
 **2. Документация по CI/CD:**
-- Файл: [`CICD-SETUP.md`](../CICD-SETUP.md) (378 строк)
+- Файл: [`CICD-SETUP.md`](../../CICD-SETUP.md) (378 строк)
 - Полное руководство по настройке GitHub Actions secrets
 - Шаблоны workflow YAML файлов
 - Проверка работоспособности после деплоя
 
 **3. Phase 1 статус-отчеты:**
-- Файл: [`docs/PHASE-1-ACTUAL-STATUS.md`](./PHASE-1-ACTUAL-STATUS.md) (412 строк)
+- Файл: [`docs/PHASE-1-ACTUAL-STATUS.md`](../PHASE-1-ACTUAL-STATUS.md) (412 строк)
   - Детальный анализ всех endpoints
   - Список миграрованных vs unmigrated функций
   - Smoke test сценарии
   - Приоритеты Week 1-4
 
-- Файл: [`docs/PHASE-1-CHECKLIST.md`](./PHASE-1-CHECKLIST.md) (186 строк)
+- Файл: [`docs/PHASE-1-CHECKLIST.md`](../PHASE-1-CHECKLIST.md) (186 строк)
   - Quick reference guide
   - Curl команды для тестирования
   - Timeline estimates
@@ -225,10 +225,10 @@ No intermediate server proxy required
 ## 📞 Контакты для вопросов
 
 При проблемах обращайтесь:
-- **CI/CD issues**: См. [`CICD-SETUP.md`](../CICD-SETUP.md)
-- **Integration plan**: См. [`integration-plan.md`](INTEGRATION-PLAN.md)  
-- **Phase 1 details**: См. [`docs/PHASE-1-ACTUAL-STATUS.md`](./PHASE-1-ACTUAL-STATUS.md)
-- **Browser extension**: См. [`browser-extension/README.md`](../browser-extension/README.md)
+- **CI/CD issues**: См. [`CICD-SETUP.md`](../../CICD-SETUP.md)
+- **Integration plan**: См. [`integration-plan.md`](../INTEGRATION-PLAN.md)  
+- **Phase 1 details**: См. [`docs/PHASE-1-ACTUAL-STATUS.md`](../PHASE-1-ACTUAL-STATUS.md)
+- **Browser extension**: См. [`browser-extension/README.md`](../../browser-extension/README.md)
 
 ---
 

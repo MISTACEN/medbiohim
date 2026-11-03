@@ -24,7 +24,7 @@ API Worker — деплой 02.11 10:46 UTC, коммитов в `workers/api` �
 
 **Проверка БД (2026-11-02).** Ledger Supabase: 149 записей, максимум `20261031000000:workshop_and_governance`.
 Миграции 1–2 ноября применены, но в ledger не записаны (исторический drift, см.
-[docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md));
+[docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](docs/archive/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md));
 проверено по объектам: `workshop_item_questions.options/answer`, `workshop_items.question_conversion_*`,
 `questions.source/source_item_id`, `material_views`, `group_memberships.course_override/subgroup`,
 `groups.stream/semester`, `materials.topic_id`, selfwork-маркер `hist-03-embriologiya`, RPC сессий и удаления аккаунта.
@@ -34,7 +34,7 @@ API Worker — деплой 02.11 10:46 UTC, коммитов в `workers/api` �
 
 ## Аудит 2026-10-27: Волна 2 — выкладка, админка, поиск, аккаунт (2026-10-27)
 
-Продолжение [PRODUCT-AUDIT-PLAN-2026-10-27.md](docs/PRODUCT-AUDIT-PLAN-2026-10-27.md) после Волны 1.
+Продолжение [PRODUCT-AUDIT-PLAN-2026-10-27.md](docs/archive/PRODUCT-AUDIT-PLAN-2026-10-27.md) после Волны 1.
 
 **Задеплоено** (`main` @ `98ed7def`, прод отвечает `X-Medbiohim-Build: 98ed7def…`, API Worker задеплоен тем же workflow).
 
@@ -93,8 +93,8 @@ MA8, MA10–MA11, MA13; SA2–SA10; FD5–FD8; FA1–FA12; из части 1 —
 
 ## Аудит 2026-10-27: Волна 0 целиком + часть Волны 1 (2026-10-27)
 
-Выполнялось по [TECH-AUDIT-PLAN-2026-10-27.md](docs/TECH-AUDIT-PLAN-2026-10-27.md) и
-[PRODUCT-AUDIT-PLAN-2026-10-27.md](docs/PRODUCT-AUDIT-PLAN-2026-10-27.md).
+Выполнялось по [TECH-AUDIT-PLAN-2026-10-27.md](docs/archive/TECH-AUDIT-PLAN-2026-10-27.md) и
+[PRODUCT-AUDIT-PLAN-2026-10-27.md](docs/archive/PRODUCT-AUDIT-PLAN-2026-10-27.md).
 
 **Волна 0 — закрыта полностью.**
 
@@ -193,7 +193,7 @@ C6–C7 (`useSearchParams` в 9 файлах), G1–G2 (Vitest). Также не
 
 ## Project state and hosting failover snapshot — 2026-10-11
 
-Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
+Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/archive/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
 
 ## Latest continuation stamp — Pass 65–73, 2026-10-10
 
@@ -254,7 +254,7 @@ Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11
 ## Current open checks — updated 2026-10-10
 - GitHub Actions runner dispatch: current retries fail before first step (`runner_id=0`, `steps=[]`, no logs); execution of tests is unconfirmed. This is a runner allocation/dispatch failure, not evidence that the test commands themselves failed. The PHP namespace autoloader in code-check was corrected; a 15-assertion sanitizer regression test was added and passed in an isolated PHP 8.4 run using the repository class/test content, but has not yet run on GitHub Actions.
 - Latest observed READY Vercel deployment is `6687e057`; it includes frontend Pass 45 recursive sanitization, Pass 46 malformed-token cache isolation and Pass 47 private media cache isolation. Pass 48–50 are PHP route/repository/context changes and are not confirmed deployed to SpaceWeb. Browser/API runtime smoke remains open. Live browser behavior remains unverified. SpaceWeb PHP deployment remains unverified because GitHub Actions jobs fail before checkout (`runner_id=0`, no steps/logs).
-- P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Pass 44 (`99ed1bc`) also hardens PHP route membership checks for feed/detail/answer/image and recursively sanitizes nested question payloads. Full authenticated runtime acceptance and SpaceWeb PHP deployment remain open; details: [Pass 44 report](docs/SECURITY-FIX-2026-10-10-PASS44.md) and [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
+- P1 mitigation applied: base table access revoked for public client roles; safe view and server-side scoring RPC live; PHP/Next source sanitizers committed. Pass 44 (`99ed1bc`) also hardens PHP route membership checks for feed/detail/answer/image and recursively sanitizes nested question payloads. Full authenticated runtime acceptance and SpaceWeb PHP deployment remain open; details: [Pass 44 report](docs/archive/SECURITY-FIX-2026-10-10-PASS44.md) and [Pass 45 report](docs/archive/SECURITY-FIX-2026-10-10-PASS45.md).
 - SpaceWeb/B2 physical media verification for trainer/material paths and 404/502.
 - SpaceWeb deployment workflow now stops if its pre-deploy backup is missing/empty and verifies Pass 44 source markers after upload; actual deployment is still unconfirmed.
 - AI provider runtime/fallback verification.
@@ -551,7 +551,7 @@ Vercel read-only inspection found a READY deployment for a recent docs commit an
 - Recursive repo inventory: 38 documentation files named PASS<number>.md, highest numbered report Pass 64; this is not 62 sequentially completed passes because numbering has historical gaps.
 - Unfinished registry currently has 22 closed legacy blockers (C-01…C-22) and 7 broad open workstreams (R1–R7), plus release blockers for CI execution, dependency lockfile/lint, FTPS validation, and DB migration staging.
 - Validation caveat: four latest workflow attempts still failed before exposing executable steps/logs; archive guard has not yet run in CI.
-- Report: [Pass 64 archive security and inventory](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+- Report: [Pass 64 archive security and inventory](docs/archive/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
 
 
 Pass 77 (2026-10-10): `.github/workflows/build-spaceweb-archive.yml` now enables `set -euo pipefail` before archive preparation (commit `4d37b00438ebfe4a73291e1176e942f0da8f00f1`). CI remains blocked before job steps; no test pass is claimed. Current handoff: `docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md`.
@@ -580,10 +580,10 @@ Pass 78 (2026-10-10): Added `backend/tests/AccountSettingsPreferencesTest.php`, 
 
 ## Project checkpoint — 2026-10-11
 
-Complete hand-off and project inventory: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). The snapshot records implemented source changes separately from unverified runtime behavior and historical issues that require re-audit.
+Complete hand-off and project inventory: [docs/STATUS-2026-10-11.md](docs/archive/STATUS-2026-10-11.md). The snapshot records implemented source changes separately from unverified runtime behavior and historical issues that require re-audit.
 
 ## 2026-10-11 — Полный контрольный снимок перед паузой
-Создан [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md): продукт, архитектура, последний код, подтверждённые и неподтверждённые состояния, известные дефекты, расходы/лимиты и точная последовательность возобновления. Главный блокер — GitHub Actions завершается до выполнения шагов; тесты не объявлять пройденными.
+Создан [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/archive/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md): продукт, архитектура, последний код, подтверждённые и неподтверждённые состояния, известные дефекты, расходы/лимиты и точная последовательность возобновления. Главный блокер — GitHub Actions завершается до выполнения шагов; тесты не объявлять пройденными.
 
 ## 2026-10-11 — Pause checkpoint / next-session handoff
 

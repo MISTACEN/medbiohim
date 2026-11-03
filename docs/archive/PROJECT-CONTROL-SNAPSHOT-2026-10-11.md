@@ -20,13 +20,13 @@ MEDBIOHIM — самостоятельная образовательная пл
 - Платные AI-вызовы не обязательны для базовой работы; использовать AI только там, где он действительно нужен и разрешён конфигурацией.
 
 Канонические документы требований:
-- [Продуктовый контракт](MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md)
-- [Карта student-first](STUDENT-FIRST-MAP.md)
-- [Карта будущих интеграций](FUTURE-INTEGRATIONS-IDEAS-MAP.md)
-- [Дорожная карта](../ROADMAP.md)
-- [Статус фаз](../PHASES_STATUS.md)
-- [Реестр незавершённого](UNFINISHED-REGISTRY.md)
-- [Метка синхронизации](../SYNC_STAMP.md)
+- [Продуктовый контракт](../MEDBIOHIM-PRODUCT-INTENT-AND-INTEGRATION-CONTRACT.md)
+- [Карта student-first](../STUDENT-FIRST-MAP.md)
+- [Карта будущих интеграций](../FUTURE-INTEGRATIONS-IDEAS-MAP.md)
+- [Дорожная карта](../../ROADMAP.md)
+- [Статус фаз](../../PHASES_STATUS.md)
+- [Реестр незавершённого](../UNFINISHED-REGISTRY.md)
+- [Метка синхронизации](../../SYNC_STAMP.md)
 
 ## 2. Технологии и размещение
 

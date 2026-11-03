@@ -99,7 +99,7 @@ Bitrix, классификатор PDF) + `/api/university` (обзор, `?facul
 `npm.cmd run build` → 0, живой прогон к www.fesmu.ru (новости 15 / объявления 10 /
 анонсы 2 / расписание 6 / лечебный 47). Контракт и отчёт:
 [UNIVERSITY-INTEGRATION-CONTRACT.md](UNIVERSITY-INTEGRATION-CONTRACT.md),
-[UNIVERSITY-VERIFICATION-2026-10-25.md](UNIVERSITY-VERIFICATION-2026-10-25.md).
+[UNIVERSITY-VERIFICATION-2026-10-25.md](archive/UNIVERSITY-VERIFICATION-2026-10-25.md).
 
 Осталось: `wrangler deploy` воркера (добавлено значение `fesmu` в allowlist
 источников; без деплоя источник молча станет «Другое» — фронт не ломается) и

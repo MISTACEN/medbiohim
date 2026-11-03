@@ -7,7 +7,7 @@
 - [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md) — единый статус проекта.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — актуальная схема приложения и API.
 - [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md) — роли Cloudflare Workers.
-- [STATUS.md](STATUS.md) — исторический снимок октября, не текущий статус.
+- [STATUS.md](archive/STATUS.md) — исторический снимок октября, не текущий статус.
 - [UNFINISHED-REGISTRY.md](UNFINISHED-REGISTRY.md) — накопленный список задач; каждую старую запись проверять по main.
 - [TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md](TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md) — что бот умеет и что осталось.
 - [PYRAMID-AND-CHEMISTRY-ROADMAP.md](PYRAMID-AND-CHEMISTRY-ROADMAP.md) — «пирамида знаний» и химия.
@@ -20,6 +20,11 @@
 - [SYNC_STAMP.md](../SYNC_STAMP.md) — датированные выкладки/проверки.
 - [CICD-SETUP.md](../CICD-SETUP.md) — CI/CD; исторические инструкции требуют сверки с текущими workflow.
 - [MOGRATION-STATUS.md](../MOGRATION-STATUS.md) — исторический migration snapshot, не показатель текущего процента готовности.
+
+## Архив
+
+Датированные аудиты, pass-отчёты и handoff (2026-10 и ранее) перенесены в `docs/archive/`.
+Они остаются историческим доказательством, но не описывают текущий `main`.
 
 ## Как читать аудиты
 

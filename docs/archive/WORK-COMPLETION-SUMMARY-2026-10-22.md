@@ -36,9 +36,9 @@
 
 | Файл | Размер (строк) | Содержание |
 |------|----------------|------------|
-| [`CICD-SETUP.md`](../CICD-SETUP.md) | 378 | Полное руководство по настройке GitHub Actions secrets, CI/CD workflow YAML templates, troubleshooting guide |
-| [`docs/PHASE-1-ACTUAL-STATUS.md`](./PHASE-1-ACTUAL-STATUS.md) | 412 | Детальный аудит всех endpoints Cloudflare Worker v83, статус миграции, smoke test сценарии, timeline estimates |
-| [`docs/PHASE-1-CHECKLIST.md`](./PHASE-1-CHECKLIST.md) | 186 | Quick reference guide с curl командами для тестирования, acceptance criteria, success metrics |
+| [`CICD-SETUP.md`](../../CICD-SETUP.md) | 378 | Полное руководство по настройке GitHub Actions secrets, CI/CD workflow YAML templates, troubleshooting guide |
+| [`docs/PHASE-1-ACTUAL-STATUS.md`](../PHASE-1-ACTUAL-STATUS.md) | 412 | Детальный аудит всех endpoints Cloudflare Worker v83, статус миграции, smoke test сценарии, timeline estimates |
+| [`docs/PHASE-1-CHECKLIST.md`](../PHASE-1-CHECKLIST.md) | 186 | Quick reference guide с curl командами для тестирования, acceptance criteria, success metrics |
 | [`docs/WORK-SUMMARY-2026-10-22.md`](./WORK-SUMMARY-2026-10-22.md) | 312 | Итоговая сводка всех изменений за день работы |
 
 ---
@@ -344,7 +344,7 @@ Student starts lab → LabSession created
    - Name: `SUPABASE_SERVICE_KEY`
    - Value: service-role key из Supabase
 
-**Инструкция:** См. файл [`CICD-SETUP.md`](../CICD-SETUP.md)
+**Инструкция:** См. файл [`CICD-SETUP.md`](../../CICD-SETUP.md)
 
 ---
 

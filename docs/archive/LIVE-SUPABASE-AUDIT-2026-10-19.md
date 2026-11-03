@@ -38,5 +38,5 @@ See [MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md](MIGRATION-LEDGER-RECONCILIAT
 
 
 Machine-readable mapping files are also committed:
-- [MIGRATION-LEDGER-MAP-2026-10-19.csv](MIGRATION-LEDGER-MAP-2026-10-19.csv) — all 148 live records with exact name/version match status and source candidates.
-- [SQL-SOURCE-INVENTORY-2026-10-19.csv](SQL-SOURCE-INVENTORY-2026-10-19.csv) — all 139 SQL files and their exact ledger-name/version matches.
+- [MIGRATION-LEDGER-MAP-2026-10-19.csv](../MIGRATION-LEDGER-MAP-2026-10-19.csv) — all 148 live records with exact name/version match status and source candidates.
+- [SQL-SOURCE-INVENTORY-2026-10-19.csv](../SQL-SOURCE-INVENTORY-2026-10-19.csv) — all 139 SQL files and their exact ledger-name/version matches.

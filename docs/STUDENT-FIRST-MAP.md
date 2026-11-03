@@ -333,7 +333,7 @@ Detailed findings: `docs/SEMANTIC-CODE-AUDIT-2026-10-06-PASS4-5.md`.
 
 ## Last implementation checkpoint — 2026-10-11
 
-Full current status: [STATUS-2026-10-11.md](STATUS-2026-10-11.md). Note that the old findings below describe the pre-fix state; compare with the checkpoint before treating them as still open. Source changes for student homework creation and fail-closed PHP webhook secret have been made, but runtime/CI proof is still pending.
+Full current status: [STATUS-2026-10-11.md](archive/STATUS-2026-10-11.md). Note that the old findings below describe the pre-fix state; compare with the checkpoint before treating them as still open. Source changes for student homework creation and fail-closed PHP webhook secret have been made, but runtime/CI proof is still pending.
 
 ## Pause checkpoint — 2026-10-11
 

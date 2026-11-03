@@ -39,7 +39,7 @@ Browser → Vercel /api/v1 → medbiohim-api (Cloudflare)
                               └─ только HTTP 501 → MEDBIOHIM_UPSTREAM → medbiohim-api-shadow
 ```
 
-Vercel proxy (`src/app/api/v1/[...path]/route.ts`) не переключает запросы на PHP: при недоступности Cloudflare он возвращает 502. Canonical Worker (`workers/api/`) отправляет ответы 501 в shadow Worker через service binding. Поэтому shadow пока остаётся зависимостью до завершения route parity и проверки реального production bundle. Актуальная матрица: [API route parity audit](docs/API-ROUTE-PARITY-AUDIT-2026-10-19.md).
+Vercel proxy (`src/app/api/v1/[...path]/route.ts`) не переключает запросы на PHP: при недоступности Cloudflare он возвращает 502. Canonical Worker (`workers/api/`) отправляет ответы 501 в shadow Worker через service binding. Поэтому shadow пока остаётся зависимостью до завершения route parity и проверки реального production bundle. Актуальная матрица: [API route parity audit](docs/archive/API-ROUTE-PARITY-AUDIT-2026-10-19.md).
 
 ## Рабочий процесс
 
@@ -52,7 +52,7 @@ Vercel proxy (`src/app/api/v1/[...path]/route.ts`) не переключает �
 | [docs/README.md](docs/README.md) | Карта всей документации |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура |
 | [docs/SPACEWEB-API-INVENTORY.md](docs/SPACEWEB-API-INVENTORY.md) | **Полный список API SpaceWeb** (для сверки с Cloudflare) |
-| [docs/STATUS.md](docs/STATUS.md) | Исторический статус-снимок от 2026-10-15 и блокеры |
+| [docs/STATUS.md](docs/archive/STATUS.md) | Исторический статус-снимок от 2026-10-15 и блокеры |
 | [backend/MODULE-INTEGRATION.md](backend/MODULE-INTEGRATION.md) | Как добавлять новые модули в PHP |
 
 ## Frontend (repo root) → Vercel
@@ -87,8 +87,8 @@ Next.js App Router.
 
 ## Актуальные аудиты (2026-10-19)
 
-- [Production API и медиа гистологии](docs/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md)
-- [Сверка migration ledger](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md)
+- [Production API и медиа гистологии](docs/archive/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md)
+- [Сверка migration ledger](docs/archive/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md)
 - [CSV: 148 записей migration ledger](docs/MIGRATION-LEDGER-MAP-2026-10-19.csv)
 - [CSV: инвентарь SQL-файлов](docs/SQL-SOURCE-INVENTORY-2026-10-19.csv)
-- [Решения по очистке KEEP / ARCHIVE / REMOVE](docs/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md)
+- [Решения по очистке KEEP / ARCHIVE / REMOVE](docs/archive/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md)

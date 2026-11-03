@@ -747,7 +747,7 @@ Bridge использует те же normalized contracts, что и серве
 
 ## Current implementation checkpoint — 2026-10-11
 
-See [STATUS-2026-10-11.md](STATUS-2026-10-11.md) for the latest Telegram single-webhook relay, actual remaining account-linking work, CI runner blocker, and verification order. Do not treat the relay as a complete homework-ingestion workflow until the PHP endpoint and database path are tested.
+See [STATUS-2026-10-11.md](archive/STATUS-2026-10-11.md) for the latest Telegram single-webhook relay, actual remaining account-linking work, CI runner blocker, and verification order. Do not treat the relay as a complete homework-ingestion workflow until the PHP endpoint and database path are tested.
 
 ## Pause checkpoint — 2026-10-11
 

@@ -221,6 +221,6 @@ Server-authoritative: snapshot вопросов, score на сервере, free
 ## Связанные документы
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
-- [STATUS.md](STATUS.md)
+- [STATUS.md](archive/STATUS.md)
 - [../backend/MODULE-INTEGRATION.md](../backend/MODULE-INTEGRATION.md)
 - Исторические Cloudflare pass-notes в `docs/` (будут в `docs/history/`)

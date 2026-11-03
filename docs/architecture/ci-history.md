@@ -1,6 +1,6 @@
 # Исторические source-mutating workflows (retired 2026-10-27)
 
-Волна 0, задача A4 из [TECH-AUDIT-PLAN-2026-10-27.md](../TECH-AUDIT-PLAN-2026-10-27.md):
+Волна 0, задача A4 из [TECH-AUDIT-PLAN-2026-10-27.md](../archive/TECH-AUDIT-PLAN-2026-10-27.md):
 15 workflow-файлов имели `permissions: contents: write` и выполняли `git push origin HEAD:main`
 по `workflow_dispatch`. Они писали исходники в `main` мимо pull request и мимо `code-check`,
 то есть любые изменения могли попасть в прод-ветку без ревью и без проверок.

@@ -119,7 +119,7 @@ Telegram — не только канал для домашних заданий
 
 ## Текущий снимок реализации — 2026-10-11
 
-Подробная сверка кода, документации, открытых рисков и точки продолжения: [STATUS-2026-10-11.md](STATUS-2026-10-11.md). Последние source changes: создание общего ДЗ участником группы, fail-closed PHP webhook secret, Telegram Mini App entry button, optional Node→PHP group relay. Ни одна из этих функций не считается полностью проверенной без успешных CI/runtime/E2E тестов.
+Подробная сверка кода, документации, открытых рисков и точки продолжения: [STATUS-2026-10-11.md](archive/STATUS-2026-10-11.md). Последние source changes: создание общего ДЗ участником группы, fail-closed PHP webhook secret, Telegram Mini App entry button, optional Node→PHP group relay. Ни одна из этих функций не считается полностью проверенной без успешных CI/runtime/E2E тестов.
 
 ## Implementation checkpoint — 2026-10-22
 

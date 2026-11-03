@@ -4,7 +4,7 @@
 [PRODUCT-AUDIT-PLAN-2026-10-27.md](PRODUCT-AUDIT-PLAN-2026-10-27.md) и
 [SITE-AUDIT-FULL-2026-10-27.md](SITE-AUDIT-FULL-2026-10-27.md).
 Часть волны 0 и MA1–MA7/SA1/FD1–FD2 были закрыты ранее (см. коммиты `091f9b17…` и
-[architecture/ci-history.md](architecture/ci-history.md)). В этот день закрыто следующее.
+[architecture/ci-history.md](../architecture/ci-history.md)). В этот день закрыто следующее.
 
 ## 🔴 P0
 
@@ -22,7 +22,7 @@
 - Контрактные тесты в `workers/api/test/contracts.test.js` фиксируют оба правила
   (реальная таблица + честная ошибка); все 139 тестов воркера зелёные.
 - Данные: `tools/chem/export_master_catalog.py` собрал из OCR-транскрипций
-  сборника ДВГМУ 2016 (части I–III) сид **[20261028_chemistry_master_v2_seed.sql](20261028_chemistry_master_v2_seed.sql)** —
+  сборника ДВГМУ 2016 (части I–III) сид **[20261028_chemistry_master_v2_seed.sql](../20261028_chemistry_master_v2_seed.sql)** —
   **556 позиций** (288 тестов / 74 соответствия / 194 открытых задания), 112 с ответом.
   Аддитивный upsert версии `2026-10-28-v2-tests`, прод-банки tests/questions не трогает.
   **Требуется применить SQL к Supabase** — после этого вкладка «Химия» наполняется.

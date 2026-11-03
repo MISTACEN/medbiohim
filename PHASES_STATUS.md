@@ -148,7 +148,7 @@ A temporary Upstash Box test environment was created, but its repository clone f
 - 🔴 Trainer media incident remains open: 206 published MBH cards have no `source_file_id`; `files` has only one deleted stub. Preparations use `histology-photo-…` hash keys but `preparation.imagePath` original JPEG names; electronograms use `electronograms/images/*.png`. Verify/upload real objects and finish key mapping before calling the 236 historical image 503s fixed.
 - 🟡 Five server-side AI provider secret bindings exist, but no signed-in real generation has been verified. `UPSTASH_REDIS_REST_TOKEN` and `UPSTASH_BLOB_TOKEN` remain missing from Shadow and must be added through the Cloudflare Dashboard. Redis remains metadata cache only.
 - 🟡 Supabase security advisor flags the sanitized trainer view as SECURITY DEFINER, four authenticated SECURITY DEFINER RPCs, and disabled leaked-password protection. Review grants/RLS before semantics-changing remediation.
-- 🔒 No extra branch created. No Vercel env, DNS, or custom-domain setting was changed by this pass; live Vercel health confirms the existing public API proxy is already forwarding to Shadow. Audit: [UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+- 🔒 No extra branch created. No Vercel env, DNS, or custom-domain setting was changed by this pass; live Vercel health confirms the existing public API proxy is already forwarding to Shadow. Audit: [UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/archive/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
 
 ---
 
@@ -160,11 +160,11 @@ A temporary Upstash Box test environment was created, but its repository clone f
 - 🔴 **Current shadow Worker secret inventory:** the Cloudflare API lists only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. No `B2_KEY_ID`, `B2_APPLICATION_KEY`, `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, or AI provider secret is configured.
 - 🔴 **Required secrets remain uninstalled**: `UPSTASH_BLOB_TOKEN`, `UPSTASH_REDIS_REST_TOKEN`, B2 keys and AI provider keys. The secret-transfer attempt was blocked by connected security controls; no secret values were changed.
 - 🔴 Upstash Blob `medbiohim-files` is private and empty; 206 published cards still have `source_file_id IS NULL`. The latest known Worker deployment predates these commits; Vercel status remains `build-rate-limit`. No production route/DNS cutover.
-- Details: [audit report](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+- Details: [audit report](docs/archive/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
 
 ## Verified state — 2026-10-14: legacy secrets and storage split
 
-Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/archive/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
 
 - 🟢 Shadow Worker secret bindings saved for Supabase URL/anon key, Backblaze B2, and AI providers Groq/Gemini/GigaChat/Mistral/OpenRouter. Secret values remain out of GitHub. Supabase service-role/secret DB keys were deliberately excluded.
 - 🟡 Live AI generation and real object download remain unverified. Cloudflare's latest observed 100% shadow deployment predates the secret update; check runtime consumption before treating providers as working.
@@ -175,7 +175,7 @@ Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/U
 
 ## Verified state — 2026-10-14: uploaded archive and production console log
 
-Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
+Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/archive/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md).
 
 - 🟢 **Archive test run:** 58 tests passed, 0 failed. The ZIP contains no populated runtime `.env` or usable test provider credentials; test Supabase URLs are fixtures. Do not replace the current Worker code with the older archive wholesale.
 - 🟡 **Secret bindings:** `SUPABASE_URL` and `SUPABASE_ANON_KEY` exist on `medbiohim-api-shadow`, but secret values were not read and no credential synchronization was applied.
@@ -397,7 +397,7 @@ Evidence report: [docs/UPLOAD-ARCHIVE-AND-VERCEL-LOG-AUDIT-2026-10-14.md](docs/U
 - 🟡 The corrected ZIP is a reviewed candidate artifact, not yet the deployed Worker bundle and not fully merged into the checked-in `integrations/cloudflare-api` source. The active Cloudflare Worker still contains only two modules, while GitHub's entry imports additional modules.
 - 🔴 R2 is not enabled (Cloudflare error 10042), so its bucket/binding cannot be validated. Auth rate-limit bindings, live RLS tests, media delivery and the optional academic RPC migration remain unresolved.
 - 🔴 Latest Actions runs still fail before steps: run IDs `38260355983`, `38260355958`, `38260355910`, `38260355848` on commit `31cbdf6`; inspected job has `runner_id=0`, no runner name, and no steps. CI now includes the Worker router/helper suite but no green execution is claimed.
-- 🟢 New file: [Cloudflare ZIP review and failover](docs/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). The corrected candidate should not be cut over until R2/configuration prerequisites, complete bundle deployment and live contract/RLS tests pass.
+- 🟢 New file: [Cloudflare ZIP review and failover](docs/archive/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). The corrected candidate should not be cut over until R2/configuration prerequisites, complete bundle deployment and live contract/RLS tests pass.
 - 🔒 No production route, DNS, Vercel variable, Supabase schema/policy, SQL migration, R2 setting, or Telegram webhook changed.
 
 Next: correct/integrate the ZIP modules into the GitHub Worker source; configure safe R2 and rate limiting only after account prerequisites; reconcile and deploy the complete module bundle to shadow; restore actual Actions runner execution; run live public/authenticated smoke tests; then enable Preview-only failover. Keep Production on the current route until acceptance.
@@ -414,7 +414,7 @@ Next: correct/integrate the ZIP modules into the GitHub Worker source; configure
 - 🟡 Histogram/source-media binary routes are deliberately tagged SpaceWeb-only; auth rate-limit bindings are still required; the optional academic RPC SQL has not been applied or approved.
 - 🔴 The active deployed Worker bundle is behind GitHub source (only `src/index.js` and `src/supabase-auth.js` were returned by Cloudflare). Public HTTP smoke-test access failed from the current environment, and Actions remains historically blocked before steps; live behavior is unverified.
 - 🔒 No Vercel variables were changed, Preview did not get switched to Cloudflare-first mode, and no Production URL/DNS/API route/Supabase policy/SQL/Telegram webhook changed.
-- Report: [Cloudflare ZIP review and failover test mode](docs/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). Deployment drift report: [Cloudflare shadow deployment reconciliation](docs/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
+- Report: [Cloudflare ZIP review and failover test mode](docs/archive/CLOUDFLARE-ZIP-REVIEW-AND-FAILOVER-2026-10-12.md). Deployment drift report: [Cloudflare shadow deployment reconciliation](docs/archive/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
 
 Next: fix ZIP role queries, add Worker router-level tests, reconcile the Worker upload bundle, verify Wrangler dry-run/build and external HTTP smoke, then activate Preview-only failover. Keep Production unchanged until auth, reads/writes, media, RLS, and rollback tests pass.
 
@@ -425,7 +425,7 @@ Next: fix ZIP role queries, add Worker router-level tests, reconcile the Worker 
 - 🟢 Enabled the isolated API Worker's `workers.dev` subdomain; previews stay disabled. No production routing, custom domain, frontend API base, database policy, or Telegram webhook changed.
 - 🔴 Deployment drift found: current GitHub API Worker source imports/implements modules that are absent from Cloudflare's returned active script content. Latest repo routes are not proven deployed.
 - 🟡 No external HTTP smoke test or successful Actions run is claimed. Next: reconcile the complete module bundle, run Node tests and Wrangler build, deploy exact tested source to shadow, then verify public and authenticated RLS behavior.
-- Details: [Cloudflare shadow deployment reconciliation](docs/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
+- Details: [Cloudflare shadow deployment reconciliation](docs/archive/CLOUDFLARE-SHADOW-DEPLOYMENT-RECONCILIATION-2026-10-12.md).
 
 
 
@@ -478,7 +478,7 @@ Next: fix ZIP role queries, add Worker router-level tests, reconcile the Worker 
 
 ## Project state and hosting failover snapshot — 2026-10-11
 
-Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
+Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md](docs/archive/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11.md). This records the last known main SHA, implemented vs unverified work, CI/Vercel/Supabase/PHP/LLM/Telegram status, outstanding security items, and a proposal (not yet implemented) to preserve Vercel → SpaceWeb → Supabase while evaluating Cloudflare edge, a second international frontend, Russian emergency mirror (Layero/ONREZA), and a persistent no-card Telegram webhook host. No production/database/deployment changes were made as part of the snapshot. Always verify current main HEAD before resuming.
 
 ## Latest status — 2026-10-10, Pass 65–73
 
@@ -487,7 +487,7 @@ Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11
 - 🔴 GitHub Actions execution remains blocked before steps: code-check `38025017750`, smoke `38025017788`, SpaceWeb archive `38025017818`, source package `38025017740`; raw jobs report `runner_id: 0`, no runner name and empty steps.
 - 🟡 ZIP `.env` exclusion guards are committed but not execution-verified.
 - 🟡 Next: inspect owner-side Actions settings/runner availability or contact GitHub support; after execution returns, run PHP/frontend checks, archive validation and smoke tests.
-- Handoff: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
+- Handoff: [docs/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md](docs/archive/CONTINUATION-HANDOFF-2026-10-10-PASS65-66.md).
 
 ## Consolidated workstream — Data + DB privileges (2026-10-10)
 
@@ -496,7 +496,7 @@ Comprehensive restart point: [docs/PROJECT-STATE-AND-HOSTING-FAILOVER-2026-10-11
 - 🟡 Prepared migration `database/migrations/20261010_revoke_non_rls_table_privileges.sql`; **not applied** to live Supabase. Staging and migration-owner verification are required before applying.
 - 🔴 GitHub Actions is still not executing steps; CI/runtime not green.
 
-Combined report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). Previous Pass 54 report retained.
+Combined report: [Data + DB privilege integrity workstream](docs/archive/DATA-SECURITY-INTEGRITY-WORKSTREAM-2026-10-10.md). Previous Pass 54 report retained.
 
 ## Data integrity reconciliation — Pass 54 (2026-10-10)
 
@@ -506,7 +506,7 @@ Combined report: [Data + DB privilege integrity workstream](docs/DATA-SECURITY-I
 - 🟡 Five linked Anatomy/Biochemistry questions have a valid `subject_id` but their legacy subject has NULL `slug`; normalization is deferred until canonical mapping is confirmed.
 - 🔴 CI and production runtime are still unverified; Actions jobs terminate before steps.
 
-Report: [Pass 54](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
+Report: [Pass 54](docs/archive/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
 
 ## API proxy hardening — Pass 53 (2026-10-10)
 
@@ -530,7 +530,7 @@ Report: [Pass 54](docs/DATA-INTEGRITY-RECONCILIATION-2026-10-10-PASS54.md).
 - 🔴 GitHub Actions runner allocation is **blocked**: fresh run [37993824049, attempt 2](https://github.com/MISTACEN/medbiohim/actions/runs/37993824049) on `ubuntu-24.04` still returned `runner_id=0`, zero steps and no logs. Pinning did not resolve it; check account Actions billing/permissions or contact GitHub Support.
 - 🟡 Full repository PHP lint, route registration, SQL/RLS/fallback tests, and SpaceWeb post-deploy smoke are still open.
 
-Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
+Report: [CI/PHP audit Pass 51](docs/archive/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 
 ## CI runner retry — attempt 4 (2026-10-10)
 
@@ -541,7 +541,7 @@ Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 
 ## Histology media reconciliation — 2026-10-10
 
-- 🟡 Read-only comparison of 28 published electronograms found 5 `source_key` / `preparation.imagePath` mismatches; no database writes were made. Exact mismatches and the SpaceWeb HTTP verification checklist are recorded in [the reconciliation report](docs/HISTOLOGY-MEDIA-RECONCILIATION-2026-10-10.md).
+- 🟡 Read-only comparison of 28 published electronograms found 5 `source_key` / `preparation.imagePath` mismatches; no database writes were made. Exact mismatches and the SpaceWeb HTTP verification checklist are recorded in [the reconciliation report](docs/archive/HISTOLOGY-MEDIA-RECONCILIATION-2026-10-10.md).
 - 🟡 Histology materials: 80 rows, all have inline `content_html` and a resolvable `source_key`; none has `file_id` or `external_url`. This is not automatically an error, but source download/viewer behavior must be checked in the target runtime.
 
 ## CI/PHP audit — Pass 52 (2026-10-10)
@@ -549,11 +549,11 @@ Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 - 🟢 Fixed repeated named PDO placeholders in homework listing/attachment SQL.
 - 🟢 Added `backend/tests/HomeworkSqlContractTest.php` and wired it into code-check and SpaceWeb pre-deploy checks.
 - 🔴 GitHub Actions still fails before steps (`runner_id=0`, no logs); no CI success claimed. Full PHP lint and integration/deploy checks remain unverified.
-- Report: [CI/PHP audit Pass 52](docs/CI-PHP-AUDIT-2026-10-10-PASS52.md).
+- Report: [CI/PHP audit Pass 52](docs/archive/CI-PHP-AUDIT-2026-10-10-PASS52.md).
 
 ## Статусы
 
-> Последняя сверка: Vercel deployment metadata + [security fix Pass 49 (2026-10-10)](docs/SECURITY-FIX-2026-10-10-PASS49.md) + [Pass 48 viewer access](docs/SECURITY-FIX-2026-10-10-PASS48.md) + [Pass 47 media cache isolation](docs/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/RELIABILITY-FIX-2026-10-10-PASS46.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
+> Последняя сверка: Vercel deployment metadata + [security fix Pass 49 (2026-10-10)](docs/archive/SECURITY-FIX-2026-10-10-PASS49.md) + [Pass 48 viewer access](docs/archive/SECURITY-FIX-2026-10-10-PASS48.md) + [Pass 47 media cache isolation](docs/archive/SECURITY-FIX-2026-10-10-PASS47.md) + [Pass 46 cache fix](docs/archive/RELIABILITY-FIX-2026-10-10-PASS46.md). Исторические pass-записи ниже сохранены; при расхождении чисел/статусов использовать последнюю датированную проверку. Код-коммит не равен успешному production/runtime-тесту.
 
 - ✅ DONE
 - 🟡 IN PROGRESS
@@ -606,8 +606,8 @@ Report: [CI/PHP audit Pass 51](docs/CI-PHP-AUDIT-2026-10-10-PASS51.md).
 - 🟡 **Unified acceptance:** follow [the GitHub/production verification checklist](docs/GITHUB-PRODUCTION-VERIFICATION-CHECKLIST.md) and record PASS/FAIL/BLOCKED with evidence.
 
 ### 🟡 Trainer route access — source fix awaiting deployment/test
-Pass 45 further hardens recursive answer-key stripping in PHP and Next source. [Pass 45 report](docs/SECURITY-FIX-2026-10-10-PASS45.md).
-Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested. [Details](docs/SECURITY-FIX-2026-10-10-PASS44.md).
+Pass 45 further hardens recursive answer-key stripping in PHP and Next source. [Pass 45 report](docs/archive/SECURITY-FIX-2026-10-10-PASS45.md).
+Pass 44 (`99ed1bc`) aligns PHP access checks across feed, detail, answer submission, and image routes. CI runner allocation prevents PHP lint/integration execution; do not mark runtime verification complete until the PHP source is deployed and both MBH and non-MBH accounts are tested. [Details](docs/archive/SECURITY-FIX-2026-10-10-PASS44.md).
 
 ### 🔴 AI
 Provider availability/runtime ещё не подтверждён end-to-end.
@@ -1661,7 +1661,7 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟡 Вопросы/лекции: duplicate/blank-answer candidates и два источника лекций требуют сверки с методичками; массовое удаление/публикация запрещены без content comparison.
 - 🔴 AI Tutor остаётся заблокированным до проверки работоспособного провайдера в целевой среде.
 
-Подробности, ссылки на code/CI и последовательность работ: [FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
+Подробности, ссылки на code/CI и последовательность работ: [FUNCTIONAL-AUDIT-2026-10-09-PASS41.md](docs/archive/FUNCTIONAL-AUDIT-2026-10-09-PASS41.md).
 
 
 ## Pass 42 — trainer answer-key mitigation (2026-10-09)
@@ -1673,7 +1673,7 @@ Lecture 05 теперь содержит **8 database-backed mini-test blocks** 
 - 🟡 End-to-end flow is not yet accepted: GitHub Actions runner has not run steps; verify latest Vercel frontend and SpaceWeb PHP deployments, then test feed → training → answer → review → complete.
 - 🟡 Media, duplicate question review, lecture source reconciliation and AI provider runtime checks remain open.
 
-Details: [SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42.md).
+Details: [SECURITY-FIX-2026-10-09-PASS42.md](docs/archive/SECURITY-FIX-2026-10-09-PASS42.md).
 
 
 ## Pass 43 — API reliability (2026-10-09)
@@ -1682,7 +1682,7 @@ Details: [SECURITY-FIX-2026-10-09-PASS42.md](docs/SECURITY-FIX-2026-10-09-PASS42
 - 🟡 Production: latest observed Vercel READY deployment predates commit 77b0f4a1, so this fix is not yet confirmed live.
 - 🔴 CI runner: latest code-check jobs still terminate before checkout (runner_id=0, steps=[]).
 
-Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-PASS43.md).
+Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/archive/RELIABILITY-FIX-2026-10-09-PASS43.md).
 
 
 ## Pass 55 — CI + Histology media traceability (2026-10-10)
@@ -1707,7 +1707,7 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - 🟡 Reviewed workflow triggers/runner config; evidence still points to runner/platform initialization, with root cause unknown.
 - 🟡 Read-only Supabase audit reviewed default ACLs for both observed table owners and role switching for PostgREST. Migration remains prepared, unapplied; no production DDL/DML.
 - Next: owner-side Actions usage/permissions/support escalation; identify staging and migration role; run post-migration privilege checks and browser-flow regression only after approved staging validation.
-- Report: [Pass 57 CI + DB preflight](docs/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
+- Report: [Pass 57 CI + DB preflight](docs/archive/CI-DB-PREFLIGHT-WORKSTREAM-2026-10-10-PASS57.md).
 
 ## Pass 58 — source-level release gate audit (2026-10-10)
 
@@ -1716,7 +1716,7 @@ Details: [RELIABILITY-FIX-2026-10-09-PASS43.md](docs/RELIABILITY-FIX-2026-10-09-
 - 🟡 ESLint flat config has no rules; TypeScript errors are ignored by Next's own build, although the predeploy audit separately invokes typecheck. These checks need a working execution environment and remediation before release confidence improves.
 - 🔴 FTPS certificate verification is disabled in the deploy workflow. Confirm the hosting certificate/hostname and test before enabling verification.
 - 🟡 Existing remote backup is verified before upload, but no tested rollback after partial deploy is present.
-- Report: [Pass 58 release-gate source audit](docs/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
+- Report: [Pass 58 release-gate source audit](docs/archive/RELEASE-GATE-SOURCE-AUDIT-2026-10-10-PASS58.md).
 
 
 ## Pass 59 — 2026-10-10
@@ -1758,7 +1758,7 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 ## Pass 63 follow-up — Actions retry (2026-10-10)
 - The pre-deploy audit now warns when ESLint config has no recognizable rules/presets; this is a heuristic and does not replace a proper lint baseline.
 - The four workflows triggered by the source commit all failed before exposing steps or logs: [code checks](https://github.com/MISTACEN/medbiohim/actions/runs/38019157502), [smoke](https://github.com/MISTACEN/medbiohim/actions/runs/38019157491), [backend archive](https://github.com/MISTACEN/medbiohim/actions/runs/38019157478), [package](https://github.com/MISTACEN/medbiohim/actions/runs/38019157470). No tests are confirmed to have executed.
-- Details: [Pass 63 report](docs/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
+- Details: [Pass 63 report](docs/archive/PREDEPLOY-AUDIT-STATUS-RECONCILIATION-2026-10-10.md).
 
 
 ## Pass 64 — archive security + pass inventory (2026-10-10)
@@ -1766,7 +1766,7 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 - Recursive repo inventory: 38 documentation files named PASS<number>.md, highest numbered report Pass 64; this is not 62 sequentially completed passes because numbering has historical gaps.
 - Unfinished registry currently has 22 closed legacy blockers (C-01…C-22) and 7 broad open workstreams (R1–R7), plus release blockers for CI execution, dependency lockfile/lint, FTPS validation, and DB migration staging.
 - Validation caveat: four latest workflow attempts still failed before exposing executable steps/logs; archive guard has not yet run in CI.
-- Report: [Pass 64 archive security and inventory](docs/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
+- Report: [Pass 64 archive security and inventory](docs/archive/ARCHIVE-SECURITY-AND-PASS-INVENTORY-2026-10-10-PASS64.md).
 
 
 ### Pass 77
@@ -1800,13 +1800,13 @@ The four workflow-definition commits triggered Actions, as expected; all four la
 
 ## Project checkpoint — 2026-10-11
 
-Full hand-off snapshot: [docs/STATUS-2026-10-11.md](docs/STATUS-2026-10-11.md). Read this before resuming; CI is not green and the Telegram flow is not end-to-end verified.
+Full hand-off snapshot: [docs/STATUS-2026-10-11.md](docs/archive/STATUS-2026-10-11.md). Read this before resuming; CI is not green and the Telegram flow is not end-to-end verified.
 
 ## Контрольный снимок перед паузой — 2026-10-11
-Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
+Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/archive/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
 
 ## Контрольный снимок перед паузой — 2026-10-11
-Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
+Сводка того, что реализовано в исходниках, что не проверено, что отсутствует и как продолжить без потери контекста: [docs/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md](docs/archive/PROJECT-CONTROL-SNAPSHOT-2026-10-11.md).
 
 ### Pause checkpoint — 2026-10-11
 
@@ -1849,7 +1849,7 @@ The complete status and handoff is in [`docs/UNFINISHED-REGISTRY.md`](docs/UNFIN
 
 ## Browser extension requirements agreed — 2026-10-11
 
-- 🟢 Recorded complete functional specification: [trusted sources, answer lookup, first-test learning pipeline and admin journal](docs/BROWSER-EXTENSION-TRUSTED-SOURCES-ANSWER-LEARNING-SPEC-2026-10-11.md).
+- 🟢 Recorded complete functional specification: [trusted sources, answer lookup, first-test learning pipeline and admin journal](docs/archive/BROWSER-EXTENSION-TRUSTED-SOURCES-ANSWER-LEARNING-SPEC-2026-10-11.md).
 - 🟢 Product decisions: infer subject; compact side panel; lookup on supported tests; capture first-seen questions as candidates; acquire answer only from post-test/source evidence; trusted sources are automatically usable within configured capabilities; unknown sources remain in beta/review.
 - 🟢 Admin requirements: approve/disable sources, sort/filter the dated journal, edit all imported fields, preserve provenance/history and review/merge duplicates.
 - 🟡 Existing browser-extension MVP has not yet been modified for these requirements. No implementation, browser integration, API wiring or test pass is claimed.
@@ -2373,7 +2373,7 @@ This checkpoint verifies the stated Worker build only; full API parity and full 
 - 🟡 **Acceptance not proven:** mocked tests and deployment status do not replace signed-in student/admin checks against real Supabase RLS, schedule/homework/test/SRS flows, AI, and private media delivery.
 - 🔒 **Traffic:** do not mark production traffic enabled. Shadow's 100% version assignment is scoped to the Shadow Worker only; it is not a production cutover.
 - Next: test exact GitHub `main`, verify required secrets and storage objects, complete signed-in acceptance, then deploy `medbiohim-api` and switch frontend routing with rollback ready.
-- Evidence: [live Cloudflare account state](docs/LIVE-CLOUDFLARE-ACCOUNT-STATE-2026-10-15.md).
+- Evidence: [live Cloudflare account state](docs/archive/LIVE-CLOUDFLARE-ACCOUNT-STATE-2026-10-15.md).
 
 
 ## 2026-10-15 — production API gateway live
@@ -2674,7 +2674,7 @@ This pass treats the existing frontend as the behavioral specification instead o
 
 ## 2026-10-16 — Supabase source-of-truth audit (Stage 1)
 
-- Read-only live audit completed for Supabase project `gnobvyjywtqbdfeejxmf`; detailed evidence: [docs/SUPABASE-SOURCE-OF-TRUTH-AUDIT-2026-10-16.md](docs/SUPABASE-SOURCE-OF-TRUTH-AUDIT-2026-10-16.md).
+- Read-only live audit completed for Supabase project `gnobvyjywtqbdfeejxmf`; detailed evidence: [docs/SUPABASE-SOURCE-OF-TRUTH-AUDIT-2026-10-16.md](docs/archive/SUPABASE-SOURCE-OF-TRUTH-AUDIT-2026-10-16.md).
 - Observed 84 public tables, RLS enabled on all 84, 169 policies; latest registered migration `20261016075941`.
 - Confirmed settings API schema mismatch: Worker uses nonexistent `user_settings`; live schema has `user_preferences`.
 - Confirmed Telegram chat storage exists, but account/link-token tables do not; Telegram linkage needs an explicit schema/auth design before implementation.
@@ -2720,7 +2720,7 @@ This pass treats the existing frontend as the behavioral specification instead o
 - Fixed two PHP syntax defects found by CI: homework SQL now uses PHP nowdoc; SQL scanner correctly escapes backslash. CI then exposed another malformed SQL string in `AcademicContextResolver.php`, converted that filter to nowdoc. Continue following the latest CI PHP lint until all files pass.
 - Current Cloudflare API live health is 200, but latest repository source has not deployed: GitHub Actions deploy failed because repository secret `CLOUDFLARE_API_TOKEN` is unavailable. Live unauthenticated probes on the old deployed Worker still show 501 for settings account, settings preferences GET, Telegram status and files. Do not describe source code as live until deploy verification succeeds.
 - Private Upstash Blob `medbiohim-files`: 358 `histology/` objects / 432,658,572 bytes. SpaceWeb archive: 416 files / 146,911,169 bytes under `spaceweb_upload/content/histology/`. Counts differ and trees are not proven identical; exact missing count is unknown until path + SHA-256 manifest reconciliation. No objects deleted or overwritten.
-- Added [SpaceWeb → Cloudflare synchronization audit](docs/SPACEWEB-CLOUDFLARE-SYNC-STATUS-2026-10-17.md). Cloudflare R2 remains disabled; keep private Upstash Blob as active media storage, Supabase as relational/auth source of truth, and Redis for cache only.
+- Added [SpaceWeb → Cloudflare synchronization audit](docs/archive/SPACEWEB-CLOUDFLARE-SYNC-STATUS-2026-10-17.md). Cloudflare R2 remains disabled; keep private Upstash Blob as active media storage, Supabase as relational/auth source of truth, and Redis for cache only.
 - **Gate before declaring synchronized:** configure the least-privilege GitHub Actions secret `CLOUDFLARE_API_TOKEN`; deploy exact tested source; run authenticated read/write smoke tests; compare histology manifests and upload only verified missing/changed objects. No production traffic switch or Telegram webhook change was made.
 
 
@@ -2912,7 +2912,7 @@ Next: get an authorized Vercel deployment path, verify typecheck and tests again
 
 ## Supabase → site parity audit (2026-10-17)
 
-- 🟢 **Audit saved:** [docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md](docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md). This pass inspected live schema/counts and source only; it did not change Supabase data/RLS or production routing.
+- 🟢 **Audit saved:** [docs/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md](docs/archive/SUPABASE-TO-SITE-PARITY-AUDIT-2026-10-17.md). This pass inspected live schema/counts and source only; it did not change Supabase data/RLS or production routing.
 - 🔴 **P0 materials API schema mismatch:** `materials.ts` selects `slug`, `summary`, `published_at`, which are absent from the live `materials` schema. 80 published inline-content records exist, none linked to file_id/external_url. Fix the query and confirm with signed-in smoke tests.
 - 🔴 **P0 histology media:** 206 published trainer cards, 206 missing `source_file_id`; `histology_assets` 0 rows; `files` 1 row; 261 content_sources and none linked to files. Media object presence/key mapping remains an unresolved blocker.
 - 🟡 **P1 lecture visibility:** 17 histology lecture records, 0 published.
@@ -3129,7 +3129,7 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 
 ## 2026-10-19 — Контрольная точка аудита репозитория
 - [x] Инвентаризация main: 835 файлов, 26 workflow YAML, 46 frontend page routes, 41 canonical Worker route; 86 Supabase tables, RLS enabled на всех просмотренных таблицах.
-- [x] Создан отчёт [REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](docs/REPOSITORY-CLEANUP-AUDIT-2026-10-19.md).
+- [x] Создан отчёт [REPOSITORY-CLEANUP-AUDIT-2026-10-19.md](docs/archive/REPOSITORY-CLEANUP-AUDIT-2026-10-19.md).
 - [!] Документы README/STATUS/ARCHITECTURE и legacy Worker README противоречат актуальной топологии `medbiohim-api` production + shadow fallback.
 - [!] Несколько manual GitHub Actions имеют `contents: write` и могут восстанавливать старые файлы/пушить прямо в main; не запускать до ревизии.
 - [!] Supabase remote migration ledger и SQL source files не образуют очевидный единый поток; запрещена слепая миграционная очистка или `supabase db push` до сверки.
@@ -3144,7 +3144,7 @@ Continue on main with no branches. SpaceWeb remains frozen. Do not state authent
 - Live Supabase migration reconciliation: 148 applied records, 139 SQL files, 6 exact version+name matches, 101 ledger records without an exact basename. No migrations were applied or deleted.
 - Histology media remains a P1 blocker: 206/206 published card image endpoints return 404; Upstash Blob listing credential is rejected. No content rows were deleted.
 - P2 cleanup removes only two confirmed placeholders: `.github/workflows/apply-p0-embedded.yml` and `.github/workflows/_questions.b64`. All other backend trees, migrations, assets and referenced snippets remain preserved.
-- Detailed reports: [production smoke/media](docs/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md), [migration reconciliation](docs/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md), [cleanup decisions](docs/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md).
+- Detailed reports: [production smoke/media](docs/archive/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md), [migration reconciliation](docs/archive/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md), [cleanup decisions](docs/archive/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md).
 
 
 ## Follow-up schema-contract fix (2026-10-20)
