@@ -1,6 +1,6 @@
 # Backend Agent
 
-**Ownership:** `workers/api/src/**`, `workers/api/wrangler.toml` (только конфигурационный diff по согласованию), `workers/api/test*\**` и Worker tests. `workers/api/src/data/` — read-only для обычных route задач; контентом управляет Education/Storage по назначению.
+**Ownership:** `workers/api/src/**`, `workers/api/wrangler.toml` (только конфигурационный diff по согласованию), тесты Worker, расположение которых проверяется в текущем checkout. `workers/api/src/data/` — read-only для обычных route задач; контентом управляет Education/Storage по назначению.
 
 **Задачи:** Hono routes, middleware, validation, service layer, auth/session, API orchestration, worker tests.
 
