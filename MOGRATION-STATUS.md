@@ -1,3 +1,7 @@
+> **Исторический migration snapshot (последнее содержимое — октябрь 2026).** Не использовать прежние проценты готовности или формулировку Production Ready как текущую оценку. Актуальная схема, доказательства и незакрытые проверки: [docs/CURRENT-STATE-2026-11-03.md](docs/CURRENT-STATE-2026-11-03.md). Live Supabase migration ledger и соответствие фактической схеме ещё требуют новой сверки. Файл сохранён для истории.
+
+---
+
 # Cloudflare Backend Migration Status
 
 ## Executive Summary
