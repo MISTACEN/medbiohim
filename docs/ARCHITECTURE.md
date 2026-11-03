@@ -1,85 +1,33 @@
-# Архитектура MEDBIOHIM
+# Архитектура MEDBIOHIM — актуальная схема
 
-Обновлено: 2026-10-15.
+**Проверено по main:** 3 ноября 2026 года. Полный статус: [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md).
 
-## Наблюдаемая production-схема
+## Поток запросов
 
-```
-Browser
-  │
-  ▼
-Vercel (Next.js App Router)
-  │  same-origin /api/v1/*
-  │  same-origin API proxy (live health identifies the Cloudflare Worker)
-  ▼
-Cloudflare Worker `medbiohim-api-shadow` (partial route parity; health says `APP_ENV=shadow`)
-  ├── Supabase (PostgreSQL + Auth + RLS; canonical data and authorization)
-  └── Upstash Blob (private Histology object bytes)
-
-SpaceWeb PHP remains a compatibility backend for routes that have not yet been
-ported. The public `GET /api/v1/files` probe returned `501 ROUTE_NOT_MIGRATED`,
-so this is active Worker traffic, not a completed migration.
+```text
+Browser / PWA -> Vercel Next.js -> same-origin /api/v1/*
+ -> src/app/api/v1/[...path]/route.ts -> Cloudflare Worker medbiohim-api
+ -> Supabase / Upstash Redis / storage
 ```
 
 ## Компоненты
 
-| Слой | Роль | Тариф |
-|------|------|--------|
-| GitHub | Код, миграции, docs | free |
-| Vercel | Frontend + API proxy | Hobby |
-| SpaceWeb | PHP compatibility API and legacy media | Free |
-| Supabase | PostgreSQL, Auth, RLS, metadata | Free |
-| Upstash Blob | Private Histology object storage | Current configured file store |
-| Cloudflare Workers | API receiving production requests; route migration incomplete | Free |
+| Компонент | Роль |
+|---|---|
+| Vercel | Next.js frontend |
+| `medbiohim-api` | Канонический Cloudflare API Worker |
+| Supabase | Postgres и Auth |
+| Upstash Redis | Cache / ephemeral state |
+| Backblaze B2 | Общее файловое хранилище, если настроены secrets |
+| Upstash Blob | Fallback общего файлового хранилища |
+| `medbiohim-telegram` | Отдельный Telegram Worker |
+| `medbiohim-api-shadow` | Legacy/migration fallback, не primary |
+| PHP/SpaceWeb, `integrations/cloudflare-api` | Legacy |
 
-**Supabase** — единственный source of truth для данных.
-JSON в `backend/data/` не production SoT.
+API contract: success `{ok:true,data,requestId}`; error `{ok:false,error:{code,message},requestId}`. Shadow fallback вызывается для 501 и не меняет primary backend.
 
-## Миграция на Cloudflare
+## Важное исключение: trainer media
 
-- Проект API: `integrations/cloudflare-api/`
-- Telegram Worker: `integrations/telegram-bot-cloudflare/` (отдельный Worker)
-- Shadow Worker (`medbiohim-api-shadow`) уже деплоится, **production-трафик не переключён**
-- Frontend остаётся на legacy SpaceWeb origin до явного cutover
+Общие файлы используют `workers/api/src/lib/b2.ts` (B2 → Upstash). Изображения тренажёров/гистологии обрабатываются отдельно в `workers/api/src/routes/trainers.ts`: временный Google Drive index → публичный Upstash Blob → Upstash SDK. Этот путь не использует B2 adapter.
 
-Правила миграции:
-
-1. Один маршрут за раз (или узкая семья).
-2. Сверка контракта с PHP (метод, auth, response shape, RLS).
-3. Fail-closed при неготовности (auth rate-limit, test attempts).
-4. Не трогать DNS / Vercel production origin / Telegram production webhook без отдельного решения.
-
-Полный список PHP-маршрутов для сверки: [SPACEWEB-API-INVENTORY.md](SPACEWEB-API-INVENTORY.md).
-
-## Ветки и деплой
-
-| Ветка | Назначение |
-|-------|------------|
-| `main` | Прод-код, Vercel production, Cloudflare shadow builds |
-| `spaceweb-backend` | Фиксы текущего PHP без смешивания с Cloudflare-миграцией |
-| `beta` | Эксперименты |
-
-См. [BRANCHES.md](../BRANCHES.md).
-
-## Frontend API client
-
-- `src/lib/api.ts` — основной клиент (token, refresh)
-- `src/lib/content-api.ts` — content/trainer helpers
-- Не дублировать сырой `fetch('/api/v1/...')` по страницам
-
-## Медиа и приватные файлы
-
-1. Метаданные — Supabase `public.files`
-2. Объект — private Upstash Blob key. Existing B2 integration remains a legacy
-   fallback for old records while object-key coverage is checked.
-3. Cloudflare R2 is intentionally not used; there is no R2 binding or paid R2 dependency.
-3. Приватный доступ — только через PHP (или Worker) с Bearer; `<img src>` без Authorization не подходит
-4. Frontend: authenticated fetch → blob → `URL.createObjectURL()`
-
-## Безопасность (кратко)
-
-- JWT проверяется через Supabase Auth
-- Роли: student / teacher / moderator / admin
-- SpecialtyAccess (например МБХ → гистология)
-- Server-authoritative scoring тестов (snapshot + server grade)
-- Least-privilege миграции на public-схему — в репозитории, применение на live — осознанно
+Эта схема подтверждает код main, но не наличие production secrets, deployment последнего commit, доступность всех файлов или полный API route parity.
