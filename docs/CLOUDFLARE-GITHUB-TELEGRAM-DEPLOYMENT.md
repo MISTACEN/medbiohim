@@ -39,7 +39,9 @@
 
 - `MEDBIOHIM_APP_URL` — единственный канонический адрес сайта (по умолчанию `https://medbiohim.vercel.app`).
 - `TELEGRAM_ACCOUNT_LINK_WEBHOOK_URL` — `https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/account-link/confirm` (работает).
-- `TELEGRAM_HOMEWORK_WEBHOOK_URL` — опционально, relay групповых обновлений в PHP. **Не задан.**
+- `TELEGRAM_INGEST_URL` — `https://medbiohim-api.ryazansevegor.workers.dev/api/v1/telegram/ingest` (работает; группы → разбор ДЗ).
+- `TELEGRAM_API_ORIGIN` — база API для утреннего дайджеста.
+- `TELEGRAM_HOMEWORK_WEBHOOK_URL` — legacy PHP-relay, не используется.
 
 Секрет Telegram (`secret_token` вебхука) и `TELEGRAM_WEBHOOK_SECRET` Worker должны совпадать.
 
@@ -49,7 +51,7 @@
 2. Проверить `GET /health` → `configured:true`.
 3. Убедиться, что применена миграция `database/migrations/20261017120000_telegram_account_linking_rpc.sql` (RPC привязки аккаунта).
 4. Зарегистрировать вебхук скриптом `scripts/register-webhook.mjs` (интерактивно, ввод секретов скрыт).
-5. Проверить в Telegram: `/start`, `/help`, `/menu`, `/schedule`, `/link`.
+5. Проверить в Telegram: `/start`, `/help`, `/menu`, `/schedule`, `/link`, а также тренажёр `/drill`, `/challenge`, `/formula`, `/daily`.
 
 У бота может быть **только один активный webhook**. Не переключайте его на другие реализации —
 в репозитории лежат legacy-варианты (`integrations/telegram-bot/`), они не должны получать обновления.
@@ -58,6 +60,5 @@
 
 Чекпоинты от 2026-10-11 описывали состояние до включения автодеплоя: Cloudflare Builds,
 падение GitHub Actions до выполнения шагов (`runner_id=0`), HTTP-адрес SpaceWeb и отсутствие
-DNS-зон. Всё это устарело: деплой идёт через Actions и подтверждён, а `TELEGRAM_HOMEWORK_WEBHOOK_URL`
-по-прежнему не задан, потому что для relay нужен проверенный HTTPS-origin PHP — см.
-[HOSTING-HTTPS-DECISION-2026-10-11.md](HOSTING-HTTPS-DECISION-2026-10-11.md).
+DNS-зон. Всё это устарело: деплой идёт через Actions и подтверждён. Групповой конвейер
+домашних заданий работает через `TELEGRAM_INGEST_URL` → API-воркер (см. раздел выше).

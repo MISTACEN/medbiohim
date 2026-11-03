@@ -1,6 +1,6 @@
 # MEDBIOHIM — единое текущее состояние
 
-**Срез документации:** 3 ноября 2026 года. **Репозиторий:** `MISTACEN/medbiohim`. **Ветка:** `main` (новые ветки не создаются). **HEAD до синхронизации:** `e1bcaf969f8e1e9ae69dc8d7a0a25083ebf76867`.
+**HEAD при сверке документации:** `ffd2f5e6` (3 ноября 2026).
 
 > Наличие реализации в main не означает, что она задеплоена или прошла runtime acceptance. В документе отдельно указаны факты кода и области, требующие production-проверки.
 
@@ -40,6 +40,8 @@ Browser / PWA
 - `workers/api/wrangler.toml` задаёт Worker `medbiohim-api`.
 - Next.js proxy направляет `/api/v1/*` на основной Worker.
 - `workers/api/src/index.ts` содержит shadow fallback для 501.
+- `workers/api/src/routes/telegram-ingest.ts` принимает обновления из групп, классифицирует их и создаёт `homeworks`; уровни «База / Основной / Углубление» — `workers/api/src/lib/telegram-classify.ts`.
+- `integrations/telegram-bot-cloudflare/` релеит групповые сообщения через service binding `MEDBIOHIM_API`; бот задеплоен как `medbiohim-telegram` и отвечает `configured:true, ingest:true`.
 - `workers/api/src/lib/b2.ts` реализует B2 → Upstash для общих файлов.
 - `workers/api/src/routes/trainers.ts` реализует отдельный Drive/Upstash resolver для trainer images.
 - `workers/api/src/lib/telegram-initdata.ts` сортирует поля по ключу при формировании data-check-string.
@@ -56,7 +58,7 @@ Browser / PWA
 | Доступность всех 206 изображений гистологии | Нужен массовый HTTP smoke |
 | Перенос trainer images на B2 | Не реализован в текущем resolver |
 | Live Supabase migration ledger | Снимки 148 и 149 относятся к разным датам; нужна новая сверка |
-| Production frontend = последний main | Не подтверждено: записанный production marker `8d7f444a`, main HEAD `e1bcaf9` |
+| Production frontend = последний main | Проверено 2026-11-03: `X-Medbiohim-Build` = `61d1f0dc…`; для `ffd2f5e6` проверка после деплоя не выполнялась |
 | Полный CI для последнего main | Не подтверждён одним Vercel status |
 | Безопасность SQL console | Нужен отдельный review прав, audit trail и destructive-query safeguards |
 

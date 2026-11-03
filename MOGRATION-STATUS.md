@@ -239,7 +239,7 @@ workers/api/test/
 ## 📸 Screenshots Comparison
 
 ### Before (PHP - SpaceWeb)
-![Legacy Interface](docs/screenshots/legacy-admin.png)
+*Скриншот legacy-интерфейса в репозитории не сохранён.*
 *Old Laravel-style admin panel with Bootstrap styling*
 
 ### After (Cloudflare Workers)

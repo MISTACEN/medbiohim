@@ -9,6 +9,9 @@
 - [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md) — роли Cloudflare Workers.
 - [STATUS.md](STATUS.md) — исторический снимок октября, не текущий статус.
 - [UNFINISHED-REGISTRY.md](UNFINISHED-REGISTRY.md) — накопленный список задач; каждую старую запись проверять по main.
+- [TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md](TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md) — что бот умеет и что осталось.
+- [PYRAMID-AND-CHEMISTRY-ROADMAP.md](PYRAMID-AND-CHEMISTRY-ROADMAP.md) — «пирамида знаний» и химия.
+- [DOCS-AUDIT-2026-11-03.md](DOCS-AUDIT-2026-11-03.md) — проверка всей документации: ссылки, устаревшее, выводы.
 
 ## Корневые рабочие документы
 

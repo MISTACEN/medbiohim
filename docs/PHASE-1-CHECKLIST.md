@@ -31,7 +31,7 @@
 2. Add to GitHub: Settings > Secrets > CLOUDFLARE_API_TOKEN
 3. Trigger workflow: https://github.com/MISTACEN/medbiohim/actions
 
-**See Full Guide:** [`CICD-SETUP.md`](../../CICD-SETUP.md)
+**See Full Guide:** [`CICD-SETUP.md`](../CICD-SETUP.md)
 
 ---
 
