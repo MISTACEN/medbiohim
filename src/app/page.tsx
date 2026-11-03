@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { nowParts as sharedNowParts, pickNextLesson } from "@/lib/now-parts";
 import Link from "next/link";
 import {
@@ -32,6 +32,17 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 import { describeApiError } from "@/lib/errors";
+import { HomeDashboard } from "@/components/home/HomeDashboard";
+import {
+  defaultHomeLayout,
+  loadLocalHome,
+  loadRemoteHome,
+  saveLocalHome,
+  saveRemoteHome,
+  type HomePreferences,
+  type HomeSyncState,
+  type HomeWidgetId,
+} from "@/lib/home-layout";
 
 type DashRow = Record<string, unknown>;
 
@@ -164,6 +175,57 @@ export default function DashboardPage() {
   const [planNotice, setPlanNotice] = useState<string | null>(null);
   const [apiTransport, setApiTransport] = useState<{source:string;fallback:boolean;path:string;at:number}|null>(null);
 
+  // Раскладка главной: локальная копия отвечает сразу, затем подтягивается
+  // серверная (если пользователь менял блоки на другом устройстве).
+  const [homePrefs, setHomePrefs] = useState<HomePreferences>(() => ({
+    layout: defaultHomeLayout(),
+    note: "",
+  }));
+  const [homeSync, setHomeSync] = useState<HomeSyncState>("idle");
+  const homeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const local = loadLocalHome(user?.id);
+    if (local) setHomePrefs(local);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !hasToken()) return;
+    let cancelled = false;
+    void loadRemoteHome().then((remote) => {
+      if (cancelled || !remote) return;
+      setHomePrefs(remote);
+      saveLocalHome(remote, user.id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(
+    () => () => {
+      if (homeSaveTimer.current) clearTimeout(homeSaveTimer.current);
+    },
+    []
+  );
+
+  const applyHome = useCallback(
+    (next: HomePreferences) => {
+      setHomePrefs(next);
+      saveLocalHome(next, user?.id);
+      setHomeSync("saving");
+      if (homeSaveTimer.current) clearTimeout(homeSaveTimer.current);
+      homeSaveTimer.current = setTimeout(() => {
+        if (!hasToken()) {
+          setHomeSync("local");
+          return;
+        }
+        void saveRemoteHome(next).then((saved) => setHomeSync(saved ? "saved" : "error"));
+      }, 700);
+    },
+    [user?.id]
+  );
+
   // Сгенерированный план и его ошибка действуют только до следующей загрузки состояния.
   useEffect(() => {
     setGeneratedAcademic(null);
@@ -278,6 +340,301 @@ export default function DashboardPage() {
     );
   }
 
+  const widgetNodes: Partial<Record<HomeWidgetId, ReactNode>> = {
+    academic: (
+      <section className="h-full rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Академическое состояние</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">Текущий прогресс и подготовка</h2>
+            {academic?.session ? (
+              <p className="mt-1 text-sm text-slate-500">{String(academic.session.title || "Текущая сессия")}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/academic" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Открыть план
+            </Link>
+            <button
+              type="button"
+              onClick={generatePlan}
+              disabled={academicLoading}
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {academicLoading ? "Анализирую…" : "Сформировать план подготовки"}
+            </button>
+          </div>
+        </div>
+        {academicError ? (
+          <p className="mt-4 text-sm text-[var(--status-critical-fg)]">{academicError}</p>
+        ) : metrics ? (
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["Закрыто", metrics?.closed ?? 0],
+              ["В процессе", metrics?.in_progress ?? 0],
+              ["Не начато", metrics?.not_started ?? 0],
+              ["Долги", metrics?.debts ?? 0],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xl font-bold text-slate-900">{String(value)}</div>
+                <div className="text-xs text-slate-500">{String(label)}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-500">Метрики появятся после загрузки академического состояния. Нули не подставляются.</p>
+        )}
+        {academic && !academic.plan?.available ? (
+          <p className="mt-4 text-sm text-[var(--status-warn-fg)]">{academic.plan?.message || "Учебный план ещё не загружен."}</p>
+        ) : null}
+        {recs.length ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm font-semibold text-slate-800">Что сейчас важно</p>
+            {recs.map((r, i) => {
+              const href = r.subject_id ? `/subjects/${encodeURIComponent(String(r.subject_id))}` : "/academic";
+              return (
+                <Link
+                  key={String(r.schedule_entry_id || r.topic_id || i)}
+                  href={href}
+                  className="block rounded-xl border border-slate-100 p-3 text-sm hover:border-indigo-200 hover:bg-indigo-50/40"
+                >
+                  <span className="font-medium text-slate-900">{String(r.title || "Подготовка")}</span>
+                  <span className="ml-2 text-slate-500">{String(r.reason || "")}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+        {planNotice ? <p className="mt-3 text-sm text-[var(--status-ok-fg)]">{planNotice}</p> : null}
+      </section>
+    ),
+
+    schedule: (
+      <div className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
+          <Calendar className="h-4 w-4" /> Ближайшее занятие
+        </div>
+        {dashboardSchedule.length ? (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-500">
+              {scheduleIsToday ? "Сегодня" : `Ближайшие · ${nextScheduleDate}`}
+            </p>
+            {dashboardSchedule.slice(0, 8).map((row, index) => {
+              const title = str(row, "subject_name", "subject", "title") || "Занятие";
+              const startTime = str(row, "start_time", "startTime").slice(0, 5) || "—";
+              const endTime = str(row, "end_time", "endTime").slice(0, 5);
+              const room = str(row, "room");
+              const teacher = str(row, "teacher");
+              const href = subjectHref(row);
+              const isNext = nextAfterNow && str(nextAfterNow, "id") === str(row, "id");
+              const inner = (
+                <>
+                  <div className="font-semibold text-slate-900">{title}</div>
+                  <div className="mt-1 flex flex-wrap gap-x-2 text-sm text-slate-600">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {startTime}
+                      {endTime ? `–${endTime}` : ""}
+                    </span>
+                    {room ? <span>ауд. {room}</span> : null}
+                    {teacher ? <span>{teacher}</span> : null}
+                  </div>
+                </>
+              );
+              const className = `rounded-xl border p-3 ${isNext ? "border-indigo-200 bg-indigo-50/50" : "border-slate-100 bg-slate-50/50"}`;
+              return href ? (
+                <Link key={str(row, "id") || String(index)} href={href} className={`${className} block hover:border-indigo-300`}>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={str(row, "id") || String(index)} className={className}>
+                  {inner}
+                </div>
+              );
+            })}
+            {dashboardSchedule.length > 8 ? (
+              <p className="pt-1 text-xs text-slate-500">Ещё {dashboardSchedule.length - 8} занятия — в расписании.</p>
+            ) : null}
+            <Link href="/schedule" className="inline-flex items-center gap-1 pt-1 text-sm font-medium text-indigo-600">
+              Открыть расписание <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        ) : (
+          <p className="text-slate-500">Нет ближайших занятий</p>
+        )}
+      </div>
+    ),
+
+    homework: (
+      <div className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
+          <ClipboardList className="h-4 w-4" /> Домашние задания
+        </div>
+        <div className="text-3xl font-bold text-indigo-600">{pendingHw.length}</div>
+        <p className="text-sm text-slate-500">активных</p>
+        <ul className="mt-3 space-y-2">
+          {pendingHw.slice(0, 3).map((hw, i) => (
+            <li key={str(hw, "id") || String(i)} className="text-sm text-slate-700">
+              {str(hw, "title") || "Задание"}
+              {str(hw, "due_at") ? <span className="text-slate-400"> · до {str(hw, "due_at").slice(0, 10)}</span> : null}
+            </li>
+          ))}
+        </ul>
+        <Link href="/homework" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
+          Все задания <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+    ),
+
+    tests: (
+      <div className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
+          <BookOpen className="h-4 w-4" /> Тесты
+        </div>
+        <div className="text-3xl font-bold text-indigo-600">{(data?.tests || []).length}</div>
+        <p className="text-sm text-slate-500">доступно</p>
+        <ul className="mt-3 space-y-2">
+          {testsPreview.map((test, i) => (
+            <li key={str(test, "id") || String(i)}>
+              <Link
+                href={str(test, "id") ? `/tests?open=${encodeURIComponent(str(test, "id"))}` : "/tests"}
+                className="text-sm font-medium text-slate-800 hover:text-indigo-700"
+              >
+                {str(test, "title", "name") || "Тест"}
+                {str(test, "subject_name") ? <span className="font-normal text-slate-400"> · {str(test, "subject_name")}</span> : null}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <Link href="/tests" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
+          К тестам <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+    ),
+
+    subjects: (
+      <section className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-slate-800">Мои предметы</h3>
+          <Link href="/subjects" className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
+            Все предметы <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+        {subjectsError ? (
+          <p className="text-sm text-[var(--status-critical-fg)]">{subjectsError}</p>
+        ) : subjects.length === 0 ? (
+          <p className="text-sm text-slate-500">Предметы курса появятся после загрузки каталога. Демо-список не подставляется.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {subjects.slice(0, 6).map((subject) => (
+              <Link
+                key={subject.id}
+                href={`/subjects/${encodeURIComponent(subject.id)}`}
+                className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200 hover:bg-indigo-50/40"
+              >
+                <div className="font-medium text-slate-900">{subject.name}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {subject.course_number ? `${subject.course_number} курс` : ""}
+                  {subject.semester ? ` · ${subject.semester} семестр` : ""}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/subjects/physiology/lessons" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <BookOpen className="h-4 w-4 text-[var(--status-ok-fg)]" /> Практикум по физиологии
+          </Link>
+          <Link href="/trainers" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <Microscope className="h-4 w-4 text-indigo-500" /> Тренажёр
+          </Link>
+          <Link href="/chemistry" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <FlaskConical className="h-4 w-4 text-indigo-500" /> Химия
+          </Link>
+          <Link href="/tutor" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <Sparkles className="h-4 w-4 text-indigo-500" /> AI-тьютор
+          </Link>
+          <Link href="/progress" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <GraduationCap className="h-4 w-4 text-indigo-500" /> Прогресс
+          </Link>
+        </div>
+      </section>
+    ),
+
+    homeworkList: (
+      <section className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <h3 className="mb-4 font-semibold text-slate-800">Задания</h3>
+        {(data?.homeworks || []).length === 0 ? (
+          <p className="text-sm text-slate-500">Пока нет заданий</p>
+        ) : (
+          <ul className="space-y-3">
+            {(data?.homeworks || []).slice(0, 6).map((hw, i) => (
+              <li key={str(hw, "id") || String(i)}>
+                <Link href="/homework" className="block rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200">
+                  <div className="font-medium text-slate-900">{str(hw, "title") || "Задание"}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {str(hw, "due_at") ? `до ${str(hw, "due_at").slice(0, 10)}` : ""}
+                    {homeworkStatus(hw) ? ` · ${homeworkStatus(hw)}` : ""}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    ),
+
+    announcements: (
+      <section className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <h3 className="mb-4 font-semibold text-slate-800">Объявления</h3>
+        {(data?.announcements || []).length === 0 ? (
+          <p className="text-sm text-slate-500">Нет объявлений</p>
+        ) : (
+          <ul className="space-y-3">
+            {(data?.announcements || []).map((a) => (
+              <li key={a.id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                <div className="font-medium text-slate-900">{a.title}</div>
+                <p className="mt-1 text-sm text-slate-600">{a.body}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    ),
+
+    debts: academic?.debts?.length ? (
+      <section className="h-full rounded-2xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]/40 p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--status-critical-fg)]">
+          <AlertTriangle className="h-4 w-4" /> Академические долги
+        </div>
+        <ul className="space-y-2">
+          {academic.debts.slice(0, 5).map((debt, i) => (
+            <li key={String(debt.id || i)} className="text-sm text-slate-800">
+              <span className="font-medium">{String(debt.subject_name || "Предмет")}</span>
+              {debt.note ? <span className="text-slate-500"> · {String(debt.note)}</span> : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : undefined,
+
+    note: (
+      <section className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
+          <ClipboardList className="h-4 w-4" /> Заметка
+        </div>
+        <textarea
+          value={homePrefs.note}
+          onChange={(event) => applyHome({ ...homePrefs, note: event.target.value.slice(0, 4000) })}
+          placeholder="Что не забыть сегодня…"
+          rows={5}
+          className="min-h-[120px] w-full flex-1 resize-y rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-sm text-slate-800 outline-none focus:border-indigo-300 focus:bg-white"
+        />
+        <p className="mt-2 text-xs text-slate-400">Видна только вам и сохраняется в аккаунте.</p>
+      </section>
+    ),
+  };
+
   return (
     <div className="space-y-6">
       {error && (
@@ -379,275 +736,14 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Академическое состояние</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900">Текущий прогресс и подготовка</h2>
-            {academic?.session ? (
-              <p className="mt-1 text-sm text-slate-500">{String(academic.session.title || "Текущая сессия")}</p>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/academic" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              Открыть план
-            </Link>
-            <button
-              type="button"
-              onClick={generatePlan}
-              disabled={academicLoading}
-              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {academicLoading ? "Анализирую…" : "Сформировать план подготовки"}
-            </button>
-          </div>
-        </div>
-        {academicError ? (
-          <p className="mt-4 text-sm text-[var(--status-critical-fg)]">{academicError}</p>
-        ) : metrics ? (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              ["Закрыто", metrics?.closed ?? 0],
-              ["В процессе", metrics?.in_progress ?? 0],
-              ["Не начато", metrics?.not_started ?? 0],
-              ["Долги", metrics?.debts ?? 0],
-            ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xl font-bold text-slate-900">{String(value)}</div>
-                <div className="text-xs text-slate-500">{String(label)}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-slate-500">Метрики появятся после загрузки академического состояния. Нули не подставляются.</p>
-        )}
-        {academic && !academic.plan?.available ? (
-          <p className="mt-4 text-sm text-[var(--status-warn-fg)]">{academic.plan?.message || "Учебный план ещё не загружен."}</p>
-        ) : null}
-        {recs.length ? (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm font-semibold text-slate-800">Что сейчас важно</p>
-            {recs.map((r, i) => {
-              const href = r.subject_id ? `/subjects/${encodeURIComponent(String(r.subject_id))}` : "/academic";
-              return (
-                <Link
-                  key={String(r.schedule_entry_id || r.topic_id || i)}
-                  href={href}
-                  className="block rounded-xl border border-slate-100 p-3 text-sm hover:border-indigo-200 hover:bg-indigo-50/40"
-                >
-                  <span className="font-medium text-slate-900">{String(r.title || "Подготовка")}</span>
-                  <span className="ml-2 text-slate-500">{String(r.reason || "")}</span>
-                </Link>
-              );
-            })}
-          </div>
-        ) : null}
-        {planNotice ? <p className="mt-3 text-sm text-[var(--status-ok-fg)]">{planNotice}</p> : null}
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Сейчас важно</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
-              <Calendar className="h-4 w-4" /> Ближайшее занятие
-            </div>
-            {dashboardSchedule.length ? (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-500">
-                  {scheduleIsToday ? "Сегодня" : `Ближайшие · ${nextScheduleDate}`}
-                </p>
-                {dashboardSchedule.slice(0, 8).map((row, index) => {
-                  const title = str(row, "subject_name", "subject", "title") || "Занятие";
-                  const startTime = str(row, "start_time", "startTime").slice(0, 5) || "—";
-                  const endTime = str(row, "end_time", "endTime").slice(0, 5);
-                  const room = str(row, "room");
-                  const teacher = str(row, "teacher");
-                  const href = subjectHref(row);
-                  const isNext = nextAfterNow && str(nextAfterNow, "id") === str(row, "id");
-                  const inner = (
-                    <>
-                      <div className="font-semibold text-slate-900">{title}</div>
-                      <div className="mt-1 flex flex-wrap gap-x-2 text-sm text-slate-600">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {startTime}
-                          {endTime ? `–${endTime}` : ""}
-                        </span>
-                        {room ? <span>ауд. {room}</span> : null}
-                        {teacher ? <span>{teacher}</span> : null}
-                      </div>
-                    </>
-                  );
-                  const className = `rounded-xl border p-3 ${isNext ? "border-indigo-200 bg-indigo-50/50" : "border-slate-100 bg-slate-50/50"}`;
-                  return href ? (
-                    <Link key={str(row, "id") || String(index)} href={href} className={`${className} block hover:border-indigo-300`}>
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div key={str(row, "id") || String(index)} className={className}>
-                      {inner}
-                    </div>
-                  );
-                })}
-                {dashboardSchedule.length > 8 ? (
-                  <p className="pt-1 text-xs text-slate-500">Ещё {dashboardSchedule.length - 8} занятия — в расписании.</p>
-                ) : null}
-                <Link href="/schedule" className="inline-flex items-center gap-1 pt-1 text-sm font-medium text-indigo-600">
-                  Открыть расписание <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-            ) : (
-              <p className="text-slate-500">Нет ближайших занятий</p>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
-              <ClipboardList className="h-4 w-4" /> Домашние задания
-            </div>
-            <div className="text-3xl font-bold text-indigo-600">{pendingHw.length}</div>
-            <p className="text-sm text-slate-500">активных</p>
-            <ul className="mt-3 space-y-2">
-              {pendingHw.slice(0, 3).map((hw, i) => (
-                <li key={str(hw, "id") || String(i)} className="text-sm text-slate-700">
-                  {str(hw, "title") || "Задание"}
-                  {str(hw, "due_at") ? <span className="text-slate-400"> · до {str(hw, "due_at").slice(0, 10)}</span> : null}
-                </li>
-              ))}
-            </ul>
-            <Link href="/homework" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
-              Все задания <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-indigo-600">
-              <BookOpen className="h-4 w-4" /> Тесты
-            </div>
-            <div className="text-3xl font-bold text-indigo-600">{(data?.tests || []).length}</div>
-            <p className="text-sm text-slate-500">доступно</p>
-            <ul className="mt-3 space-y-2">
-              {testsPreview.map((test, i) => (
-                <li key={str(test, "id") || String(i)}>
-                  <Link
-                    href={str(test, "id") ? `/tests?open=${encodeURIComponent(str(test, "id"))}` : "/tests"}
-                    className="text-sm font-medium text-slate-800 hover:text-indigo-700"
-                  >
-                    {str(test, "title", "name") || "Тест"}
-                    {str(test, "subject_name") ? <span className="font-normal text-slate-400"> · {str(test, "subject_name")}</span> : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <Link href="/tests" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
-              К тестам <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="font-semibold text-slate-800">Мои предметы</h3>
-          <Link href="/subjects" className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
-            Все предметы <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
-        {subjectsError ? (
-          <p className="text-sm text-[var(--status-critical-fg)]">{subjectsError}</p>
-        ) : subjects.length === 0 ? (
-          <p className="text-sm text-slate-500">Предметы курса появятся после загрузки каталога. Демо-список не подставляется.</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {subjects.slice(0, 6).map((subject) => (
-              <Link
-                key={subject.id}
-                href={`/subjects/${encodeURIComponent(subject.id)}`}
-                className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200 hover:bg-indigo-50/40"
-              >
-                <div className="font-medium text-slate-900">{subject.name}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {subject.course_number ? `${subject.course_number} курс` : ""}
-                  {subject.semester ? ` · ${subject.semester} семестр` : ""}
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link href="/subjects/physiology/lessons" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <BookOpen className="h-4 w-4 text-[var(--status-ok-fg)]" /> Практикум по физиологии
-          </Link>
-          <Link href="/trainers" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <Microscope className="h-4 w-4 text-indigo-500" /> Тренажёр
-          </Link>
-          <Link href="/chemistry" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <FlaskConical className="h-4 w-4 text-indigo-500" /> Химия
-          </Link>
-          <Link href="/tutor" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <Sparkles className="h-4 w-4 text-indigo-500" /> AI-тьютор
-          </Link>
-          <Link href="/progress" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <GraduationCap className="h-4 w-4 text-indigo-500" /> Прогресс
-          </Link>
-        </div>
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold text-slate-800">Задания</h3>
-          {(data?.homeworks || []).length === 0 ? (
-            <p className="text-sm text-slate-500">Пока нет заданий</p>
-          ) : (
-            <ul className="space-y-3">
-              {(data?.homeworks || []).slice(0, 6).map((hw, i) => (
-                <li key={str(hw, "id") || String(i)}>
-                  <Link href="/homework" className="block rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200">
-                    <div className="font-medium text-slate-900">{str(hw, "title") || "Задание"}</div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {str(hw, "due_at") ? `до ${str(hw, "due_at").slice(0, 10)}` : ""}
-                      {homeworkStatus(hw) ? ` · ${homeworkStatus(hw)}` : ""}
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold text-slate-800">Объявления</h3>
-          {(data?.announcements || []).length === 0 ? (
-            <p className="text-sm text-slate-500">Нет объявлений</p>
-          ) : (
-            <ul className="space-y-3">
-              {(data?.announcements || []).map((a) => (
-                <li key={a.id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-                  <div className="font-medium text-slate-900">{a.title}</div>
-                  <p className="mt-1 text-sm text-slate-600">{a.body}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      {academic?.debts?.length ? (
-        <section className="rounded-2xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]/40 p-5 shadow-sm">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--status-critical-fg)]">
-            <AlertTriangle className="h-4 w-4" /> Академические долги
-          </div>
-          <ul className="space-y-2">
-            {academic.debts.slice(0, 5).map((debt, i) => (
-              <li key={String(debt.id || i)} className="text-sm text-slate-800">
-                <span className="font-medium">{String(debt.subject_name || "Предмет")}</span>
-                {debt.note ? <span className="text-slate-500"> · {String(debt.note)}</span> : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <HomeDashboard
+        layout={homePrefs.layout}
+        note={homePrefs.note}
+        sync={homeSync}
+        widgets={widgetNodes}
+        onChange={(layout) => applyHome({ ...homePrefs, layout })}
+        onReset={() => applyHome({ layout: defaultHomeLayout(), note: "" })}
+      />
     </div>
   );
 }
