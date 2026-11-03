@@ -15,6 +15,10 @@ import { WorkersAiError, workersAiComplete, workersAiConfigured } from "./worker
 
 export type TelegramCategory = "homework" | "material_candidate" | "schedule" | "other";
 
+/** Уровень «пирамиды знаний»: что зубрить, что понять, что применить. */
+export type HomeworkLevel = "base" | "main" | "deep";
+export type LevelBuckets = { base: string[]; main: string[]; deep: string[] };
+
 export type Classification = {
   category: TelegramCategory;
   confidence: number;
@@ -23,6 +27,8 @@ export type Classification = {
   subjectHint: string | null;
   dueHint: string | null;
   tasks: string[];
+  /** Разбивка пунктов по уровням; у старых записей может отсутствовать. */
+  levels?: LevelBuckets;
   reason: string;
   provider: "cloudflare" | "gigachat" | "rules";
   model: string | null;
@@ -52,6 +58,64 @@ export function looksAcademic(text: string, hasAttachment: boolean): boolean {
   if (hasAttachment) return true;
   if (!value) return false;
   return [...HOMEWORK_SIGNALS, ...SCHEDULE_SIGNALS].some((needle) => value.includes(needle));
+}
+
+const BASE_MARKERS = [
+  "вызубр", "наизуст", "заучить", "запомнить", "нормы", "норм ", "термин", "цифр",
+  "латин", "констант", "классификац", "определен", "таблиц", "формул", "валентн", "номенклатур",
+];
+const DEEP_MARKERS = [
+  "клинич", "патофизиолог", "патолог", "углуб", "дополнительн", "олимпиад",
+  "ситуационн", "на 5", "на «5»", "разбор", "закономерн",
+];
+
+/**
+ * Эвристика уровня. Слова-маркеры студенческих чатов: «вызубрить», «нормы» —
+ * база; «клиническая задача», «патофизиология» — углубление; остальное —
+ * основной блок.
+ */
+export function detectLevel(item: string): HomeworkLevel {
+  const value = normalized(item);
+  if (!value) return "main";
+  if (BASE_MARKERS.some((marker) => value.includes(marker))) return "base";
+  if (DEEP_MARKERS.some((marker) => value.includes(marker))) return "deep";
+  return "main";
+}
+
+/** Пункты задания: сначала задачи от модели, иначе строки/маркеры сообщения. */
+export function splitHomeworkItems(text: string, tasks: string[] = []): string[] {
+  const fromTasks = tasks.map((task) => cleanLine(task, 160)).filter(Boolean);
+  if (fromTasks.length) return fromTasks.slice(0, 10);
+  const lines = String(text || "")
+    .split(/\r?\n|;/)
+    .map((line) => cleanLine(String(line).replace(/^\s*(?:[-–—•*]|\d{1,2}[.)])\s*/, ""), 160))
+    .filter((line) => line.length >= 4);
+  return lines.slice(0, 10);
+}
+
+export function buildHomeworkLevels(tasks: string[], text: string): LevelBuckets {
+  const levels: LevelBuckets = { base: [], main: [], deep: [] };
+  for (const item of splitHomeworkItems(text, tasks)) levels[detectLevel(item)].push(item);
+  return levels;
+}
+
+export function levelsAreEmpty(levels: LevelBuckets | null | undefined): boolean {
+  if (!levels) return true;
+  return !levels.base.length && !levels.main.length && !levels.deep.length;
+}
+
+const LEVEL_TITLES: Array<{ key: HomeworkLevel; title: string }> = [
+  { key: "base", title: "🧱 База (вызубрить)" },
+  { key: "main", title: "📖 Основной блок" },
+  { key: "deep", title: "🔬 Углубление" },
+];
+
+/** Секции для страницы задания; рендерится как обычный текст с переносами. */
+export function formatHomeworkLevels(levels: LevelBuckets): string {
+  return LEVEL_TITLES
+    .filter(({ key }) => levels[key].length > 0)
+    .map(({ key, title }) => title + "\n" + levels[key].map((item) => "• " + item).join("\n"))
+    .join("\n\n");
 }
 
 function clampConfidence(value: unknown, fallback: number): number {
@@ -106,6 +170,7 @@ export function ruleClassification(text: string, hasAttachment: boolean): Classi
     subjectHint: null,
     dueHint: dueHintMatch ? dueHintMatch[1].trim() : null,
     tasks: [],
+    levels: buildHomeworkLevels([], text),
     reason: category === "homework" ? "rules_homework_signals" : "rules_" + category,
     provider: "rules",
     model: null,
@@ -136,6 +201,7 @@ export function parseAiClassification(raw: string, provider: "cloudflare" | "gig
     subjectHint: cleanLine(parsed.subject, 120) || null,
     dueHint: cleanLine(parsed.due_hint, 120) || null,
     tasks: cleanTasks(parsed.tasks),
+    levels: { base: [], main: [], deep: [] },
     reason: cleanLine(parsed.reason, 200) || "ai_semantic",
     provider,
     model: null,
@@ -178,6 +244,9 @@ export function parseDueAt(text: string, now = new Date()): string | null {
   if (/(^|\s)послезавтра(\s|$)/.test(lower)) return addDays(2);
   if (/(^|\s)завтра(\s|$)/.test(lower)) return addDays(1);
   if (/(^|\s)сегодня(\s|$)/.test(lower)) return addDays(0);
+  const inDays = lower.match(/через\s+(\d{1,2})\s+(?:день|дня|дней)/);
+  if (inDays) return addDays(Number(inDays[1]));
+  if (/следующ(ая|ей|ую|его)\s+недел/.test(lower)) return addDays(7);
 
   const iso = raw.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
   if (iso) {
@@ -247,7 +316,11 @@ export function buildHomeworkDescription(classification: Classification, text: s
   const parts: string[] = [];
   if (classification.summary && classification.summary !== text.trim()) parts.push(classification.summary);
   if (text.trim()) parts.push(text.trim());
-  if (classification.tasks.length) parts.push("Задачи:\n" + classification.tasks.map((task) => "• " + task).join("\n"));
+  if (classification.levels && !levelsAreEmpty(classification.levels)) {
+    parts.push(formatHomeworkLevels(classification.levels));
+  } else if (classification.tasks.length) {
+    parts.push("Задачи:\n" + classification.tasks.map((task) => "• " + task).join("\n"));
+  }
   parts.push("Источник: Telegram · сортировка " + classificationProviderLabel(classification.provider));
   return parts.join("\n\n").slice(0, 10_000);
 }
@@ -359,6 +432,7 @@ export async function classifyMessage(
     if (!parsed) return { ...fallback, reason: `rules_${result.provider}_invalid_json` };
     parsed.model = result.model;
     parsed.dueHint = verifiedDueHint(parsed.dueHint, text);
+    parsed.levels = buildHomeworkLevels(parsed.tasks, text);
     if (!parsed.title) parsed.title = fallback.title;
     if (!parsed.summary) parsed.summary = fallback.summary;
     return parsed;

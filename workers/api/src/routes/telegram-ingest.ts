@@ -13,7 +13,7 @@ import type { Env } from "../env";
 import { isHttpsUrl } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { createServiceClient } from "../lib/supabase";
-import { classificationProviderLabel, classifyMessage, type Classification } from "../lib/telegram-classify";
+import { classificationProviderLabel, classifyMessage, type Classification, type LevelBuckets } from "../lib/telegram-classify";
 import {
   publishTelegramHomework,
   updateMessageClassification,
@@ -107,13 +107,26 @@ function formatDue(iso: string | null): string {
   }
 }
 
-function replyForCreated(result: { title: string; subject_name: string | null; due_at: string | null }): { text: string; path: string } {
+function replyForCreated(result: {
+  title: string;
+  subject_name: string | null;
+  due_at: string | null;
+  levels?: LevelBuckets;
+}): { text: string; path: string } {
   const due = formatDue(result.due_at);
   const subject = result.subject_name ? result.subject_name + " · " : "";
-  return {
-    text: "✅ Задание добавлено в MEDBIOHIM\n" + subject + result.title + (due ? "\nСрок: " + due : ""),
-    path: "/homework",
-  };
+  const lines = ["✅ Задание добавлено в MEDBIOHIM", subject + result.title];
+  if (due) lines.push("Срок: " + due);
+  const levels = result.levels;
+  if (levels) {
+    const base = levels.base?.length || 0;
+    const main = levels.main?.length || 0;
+    const deep = levels.deep?.length || 0;
+    if (base + main + deep > 0) {
+      lines.push("База: " + base + " · Основной: " + main + " · Углубление: " + deep);
+    }
+  }
+  return { text: lines.join("\n"), path: "/homework" };
 }
 
 function replyForContinued(title: string): { text: string; path: string } {

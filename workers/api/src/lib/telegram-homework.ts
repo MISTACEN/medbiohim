@@ -3,9 +3,9 @@
  * API Worker does it with the service key after verifying the shared secret.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Classification } from "./telegram-classify";
-import { buildHomeworkDescription, buildHomeworkTitle, parseDueAt } from "./telegram-classify";
-import { normalizeSearchText } from "./search-query";
+import type { Classification, LevelBuckets } from "./telegram-classify.ts";
+import { buildHomeworkDescription, buildHomeworkTitle, parseDueAt } from "./telegram-classify.ts";
+import { normalizeSearchText } from "./search-query.ts";
 
 export type TelegramChatRow = {
   id?: string;
@@ -40,6 +40,7 @@ export type PublishResult = {
   subject_name: string | null;
   due_at: string | null;
   title: string;
+  levels?: LevelBuckets;
 };
 
 function messageText(message: TelegramMessageRow): string {
@@ -50,7 +51,8 @@ function messageText(message: TelegramMessageRow): string {
 export async function resolveSubject(
   db: SupabaseClient,
   text: string,
-  hint: string | null
+  hint: string | null,
+  chatTitle = ""
 ): Promise<{ id: string; name: string } | null> {
   const { data, error } = await db
     .from("subjects")
@@ -60,6 +62,9 @@ export async function resolveSubject(
   if (error || !Array.isArray(data) || !data.length) return null;
 
   const haystack = normalizeSearchText(`${text} ${hint || ""}`);
+  // Название группы («Гистология · 2 курс») — слабый, но полезный признак:
+  // предмет часто очевиден из чата и не повторяется в каждом сообщении.
+  const chatHaystack = normalizeSearchText(chatTitle);
   let best: { id: string; name: string } | null = null;
   let bestScore = 0;
   for (const row of data as Array<Record<string, any>>) {
@@ -76,6 +81,11 @@ export async function resolveSubject(
       score += (matched / tokens.length) * 0.45;
     }
     if (hint && normalizedName === normalizeSearchText(hint)) score = Math.max(score, 0.98);
+    if (normalizedName && chatHaystack.includes(normalizedName)) score = Math.max(score, 0.62);
+    if (tokens.length) {
+      const chatMatched = tokens.filter((token) => chatHaystack.includes(token)).length;
+      if (chatMatched) score = Math.max(score, 0.55 + (chatMatched / tokens.length) * 0.1);
+    }
     if (score > bestScore) {
       bestScore = score;
       best = { id: String(row.id), name };
@@ -178,10 +188,11 @@ export async function publishTelegramHomework(
       subject_name: classification.subjectHint,
       due_at: parseDueAt(`${classification.dueHint || ""} ${text}`),
       title: classification.title,
+      levels: classification.levels,
     };
   }
 
-  const subject = await resolveSubject(db, text, classification.subjectHint);
+  const subject = await resolveSubject(db, text, classification.subjectHint, String(chat.telegram_title || ""));
   const dueAt = parseDueAt(`${classification.dueHint || ""} ${text}`);
   const title = buildHomeworkTitle(classification, text);
   const description = buildHomeworkDescription(classification, text);
@@ -217,5 +228,6 @@ export async function publishTelegramHomework(
     subject_name: subject?.name || null,
     due_at: dueAt,
     title: String(data.title || title),
+    levels: classification.levels,
   };
 }

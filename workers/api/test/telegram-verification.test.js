@@ -1126,6 +1126,8 @@ const PUBLIC_COMMANDS = [
   "schedule", "homework", "subjects", "materials", "tests", "tickets", "university",
   "cards", "progress", "calculators", "latin", "extension", "privacy",
 ];
+// Тренажёрные команды тоже публикуются в меню бота (см. BOT_COMMANDS).
+const TRAINER_COMMANDS = ["drill", "challenge", "formula", "daily"];
 const HIDDEN_ALIASES = ["site", "oldsite", "main"];
 
 test("C1: the bot emits exactly one site version, and never a preview/private/plain-HTTP host", async () => {
@@ -1157,7 +1159,9 @@ test("C1: the bot emits exactly one site version, and never a preview/private/pl
   const setCommands = start.calls.filter((call) => call.url.endsWith("/setMyCommands"));
   assert.equal(setCommands.length, 1, "/start must register the command menu");
   const names = setCommands[0].payload.commands.map((entry) => entry.command);
-  assert.deepEqual(names, PUBLIC_COMMANDS, "setMyCommands must publish exactly the public command set");
+  const expected = [...PUBLIC_COMMANDS];
+  expected.splice(8, 0, ...TRAINER_COMMANDS);
+  assert.deepEqual(names, expected, "setMyCommands must publish exactly the public command set");
   for (const alias of HIDDEN_ALIASES) {
     assert.ok(!names.includes(alias), `/${alias} must stay a hidden alias`);
   }

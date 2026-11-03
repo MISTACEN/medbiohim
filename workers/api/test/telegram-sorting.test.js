@@ -2,13 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildHomeworkDescription,
+  buildHomeworkLevels,
   classificationProviderLabel,
   classifyMessage,
+  detectLevel,
+  formatHomeworkLevels,
   parseAiClassification,
   parseDueAt,
   ruleClassification,
   verifiedDueHint,
 } from "../src/lib/telegram-classify.ts";
+import { resolveSubject } from "../src/lib/telegram-homework.ts";
 import { workersAiComplete, workersAiConfigured } from "../src/lib/workers-ai.ts";
 
 const AI_JSON = JSON.stringify({
@@ -126,4 +131,65 @@ test("classification labels are user-facing, not provider codes", () => {
   assert.equal(classificationProviderLabel("rules"), "правилами");
   assert.equal(parseAiClassification(AI_JSON, "cloudflare")?.provider, "cloudflare");
   assert.equal(ruleClassification("привет", false).category, "other");
+});
+
+test("пункты задания раскладываются по уровням «пирамиды знаний»", () => {
+  const tasks = [
+    "Вызубрить нормы гемограммы",
+    "Прочитать лекцию про кровь и разобрать схему",
+    "Разобрать клиническую задачу по анемии",
+  ];
+  const levels = buildHomeworkLevels(tasks, "");
+  assert.deepEqual(levels.base, [tasks[0]]);
+  assert.deepEqual(levels.main, [tasks[1]]);
+  assert.deepEqual(levels.deep, [tasks[2]]);
+  assert.equal(detectLevel("выучить латинские названия"), "base");
+  assert.equal(detectLevel("сделать конспект"), "main");
+});
+
+test("описание задания содержит секции базы, основного блока и углубления", () => {
+  const tasks = ["Вызубрить нормы", "Прочитать лекцию", "Клиническая задача"];
+  const description = buildHomeworkDescription({
+    category: "homework",
+    confidence: 0.9,
+    title: "Кровь",
+    summary: "Кровь: нормы, лекция, задача.",
+    subjectHint: "Гистология",
+    dueHint: null,
+    tasks,
+    levels: buildHomeworkLevels(tasks, ""),
+    reason: "test",
+    provider: "rules",
+    model: null,
+  }, "1. Вызубрить нормы\n2. Прочитать лекцию\n3. Клиническая задача");
+  assert.match(description, /🧱 База \(вызубрить\)/);
+  assert.match(description, /📖 Основной блок/);
+  assert.match(description, /🔬 Углубление/);
+  assert.match(description, /• Вызубрить нормы/);
+});
+
+test("секции уровней не печатаются для пустого разбора", () => {
+  assert.equal(formatHomeworkLevels({ base: [], main: [], deep: [] }), "");
+});
+
+test("относительные сроки: через N дней и следующая неделя", () => {
+  const now = new Date("2026-11-03T02:00:00Z"); // 3 ноября, вторник, 12:00 Владивосток
+  assert.equal(parseDueAt("сдать через 3 дня", now), "2026-11-06T23:59:59+10:00");
+  assert.equal(parseDueAt("к следующей неделе", now), "2026-11-10T23:59:59+10:00");
+});
+
+test("предмет определяется по названию группы, если его нет в тексте", async () => {
+  const rows = [{ id: "s1", name: "Гистология", slug: "histology" }];
+  const db = {
+    from() {
+      const q = {
+        select: () => q,
+        eq: () => q,
+        limit: async () => ({ data: rows, error: null }),
+      };
+      return q;
+    },
+  };
+  const subject = await resolveSubject(db, "выучить строение клетки", null, "Гистология · 2 курс");
+  assert.deepEqual(subject, { id: "s1", name: "Гистология" });
 });
