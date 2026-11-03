@@ -15,6 +15,8 @@ test("Telegram ingest is mounted and protected by a shared secret", async () => 
   assert.match(route, /x-telegram-bot-api-secret-token/);
   assert.match(route, /constantTimeEqual/);
   assert.doesNotMatch(route, /console\.log\([^)]*secret/i);
+  // Workers не поддерживает redirect "error": health и фолбэк-проверка падали.
+  assert.doesNotMatch(route, /redirect: "error"/);
 });
 
 test("ingest classifies every text message and creates homework only above threshold", async () => {

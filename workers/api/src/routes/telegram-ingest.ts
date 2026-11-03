@@ -81,7 +81,7 @@ async function verifyIngestRequest(c: any): Promise<IngestVerification> {
         "x-telegram-bot-api-secret-token": provided,
       },
       body: "{}",
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(5000),
     });
     if (response.status === 401) return "unauthorized";
@@ -160,7 +160,7 @@ telegramIngest.get("/ingest/health", async (c) => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(5000),
     });
     return c.json(ok({
