@@ -1,3 +1,96 @@
+# MEDBIOHIM — актуальный статус фаз
+
+> Сверка выполнена 3 ноября 2026 года по `main`, исходникам, live read-only inventory Supabase/Cloudflare/Upstash, Vercel deployments и GitHub Actions. Базовый commit до документального обновления: `b75fddd4ed9bef5b7e67e101e42800de311db2e3`.
+>
+> Весь предыдущий журнал ниже оставлен без удаления. Датированные статусы ниже старой границы относятся к моменту записи, а не автоматически к текущему состоянию.
+
+## Сводная матрица фаз
+
+| Фаза | Что существует фактически | Текущий вывод |
+|---|---|---|
+| 1. Базовый сайт и UI | Next.js страницы, предметы, вкладки, PWA/API proxy, учебные компоненты | Есть в коде; production deployment `READY`, но пользовательская приёмка не завершена |
+| 2. Supabase и контентная модель | 107 public tables, 106 с RLS, 149 migration ledger entries, subject/question/test/curriculum records | База и данные есть; migration drift и дубли subject records требуют отдельной сверки |
+| 3. Cloudflare API | Canonical `medbiohim-api` задеплоен 100%; в коде зарегистрированы основные student/admin route modules | Реализовано и задеплоено частично; полный route parity и authenticated acceptance не доказаны |
+| 4. Shadow/migration | `medbiohim-api-shadow` задеплоен 100%, подключён через `MEDBIOHIM_UPSTREAM` для fallback на 501 | Существует как резервный путь; не считать основным API и не смешивать его с production status |
+| 5. Учебный центр и тесты | `TestsHub`, `/practice`, предметные тесты, четыре режима прохождения | UI/логика в коде; real student test lifecycle нужно принять end-to-end |
+| 6. Физиология | 7 пособий, 35 занятий, 1,930 вопросов (1,355 с непустым ответом); коллоквиум 289 MCQ в пяти блоках | Контент и компоненты существуют; browser/API acceptance и качество отдельных ключей требуют проверки |
+| 7. Гистология | 206 trainer cards/assets, 178 препаратов, 28 электронограмм, 12 опубликованных лекций с телом, 366 exam questions | Наполнение в БД есть; 206 storage keys совпали с Blob objects; HTTP/API доставка всё ещё нуждается в тесте |
+| 8. Органическая/физическая химия | 181 опубликованный вопрос, 22 теста, 280 exam questions, 1 ticket bank; 2 master documents | Базовое наполнение есть; structured chemistry engine пока пуст по molecules/reactions/properties/spectra/questions |
+| 9. Медиа и файлы | Публичный Blob bucket 358 объектов / 432.66 MB; B2 и Blob adapters; отдельный trainer resolver | Инвентарь существует, но 404 telemetry и отсутствие file_id связей требуют проверки; нельзя объявлять media полностью принятым |
+| 10. Redis/cache | `medbiohimcache` активен в EU | Инфраструктурный ресурс есть; live использование приложением не доказано статистикой этого аудита |
+| 11. Telegram | Worker `medbiohim-telegram` задеплоен 100%, service binding `MEDBIOHIM_API` есть | Код и deployment есть; webhook, Mini App и linking требуют end-to-end проверки |
+| 12. Администрирование и Workshop | В Worker есть admin/workshop routes; в Supabase присутствуют governance/workshop tables | Компоненты/схема существуют; CI lint и security review не пройдены полностью |
+
+## Факты по данным
+
+### Общая база
+
+- Supabase `public`: 107 таблиц, 106 с включённым RLS; `_probe_fn` — единственное исключение в выданном списке, назначение/права которого стоит отдельно подтвердить.
+- Live migration ledger: 149 записей; последняя `20261031000000 / workshop_and_governance`.
+- В БД: 10 `users`, 10 `auth.users`, 4 groups, 6 group memberships, 114 subject rows, 4,573 опубликованных `questions`, 88 опубликованных `tests`, 178 активных `curriculum_items`.
+- В разных предметах встречаются повторяющиеся subject rows с одинаковым slug; до аудита связей не удалять и не объединять их.
+
+### Физиология
+
+- Статические пособия: `vozbudimye-sistemy`, `cns`, `krov-endokrin`, `serdce-sosudistaya`, `dyhanie-vydelenie`, `pishchevarenie-obmen`, `sensornye-vnd`.
+- Прямой подсчёт JSON: 35 занятий, 1,930 вопросов, 1,355 непустых полей ответа. Часть встроенных `stats` в пособиях не совпадает с массивами — актуальным является фактическое содержимое JSON после повторного подсчёта.
+- Коллоквиум: 289 MCQ, 5 блоков (36, 68, 47, 54, 84); все 289 имеют заполненный `correct`. В `Colloquium.tsx` есть также открытые вопросы/ответы, ситуационные задачи и интерактивная проверка.
+- Supabase для наполненной записи physiology: 2,972 опубликованных вопросов, 41 опубликованный тест, 2,947 связей test-question, 9 опубликованных exam questions.
+
+### Гистология
+
+- Supabase `histology/mbh`: 206 опубликованных trainer cards, 178 published preparations, 206 published assets, из них 28 электронограмм.
+- Опубликовано 12 лекций со scope `mbh`, у всех есть непустое тело.
+- 366 опубликованных exam questions, у 237 заполнен `answer`; оставшиеся 129 требуют классификации, не автоматического заполнения.
+- Проверка storage inventory: 206/206 `storage_path` точно совпали с ключами в bucket `medbiohim-files` (178 preparation + 28 electronogram). Bucket содержит 358 объектов / 432,658,572 байта и имеет `public` visibility.
+- Все 206 `trainer_feed_cards.source_file_id` остаются NULL, `files` содержит 1 строку, но действующий resolver использует Drive index и Blob path candidates; `source_file_id` пока не является единственным путём доставки. Не объявлять картинки работающими без HTTP smoke.
+- Blob stats за 1–3 ноября показывают 1,189 failed GetObject + 4 failed HeadObject со статусом 404. Нужна проверка маршрутов изображений и точных object-key candidates.
+
+### Органическая/физическая химия
+
+- Наполненная запись subject `chemistry_organic_physical`: 181 опубликованный вопрос, 22 опубликованных теста, 181 test-question link, 280 опубликованных exam questions, 1 ticket bank.
+- Созданы 2 master documents, 2 source documents, 8 functional groups и 7 chemical topics.
+- Structured engine пуст: 0 molecules, aliases, properties, reactions, reaction steps, sources, spectra и chemical questions.
+- JSON `backend/data/questions_by_subject/organic_chemistry.json` помечает `count: 80`, но `items: []`; не включать 80 в подтверждённый банк.
+
+## Конкретные блокеры и незакрытые приёмки
+
+### P0 — code checks и безопасность
+
+- GitHub Actions `MEDBIOHIM code checks` на app commit `e1bcaf9` от 2 ноября завершился `failure`.
+- Lint job обнаружил 24 `@typescript-eslint/prefer-as-const` errors в `workers/api/src/routes/admin-workshop-convert.ts`.
+- Worker test suite: 324/325 passed; тест B3 Telegram initData ожидал 401 для payload с пустым `user=`, но получил 200. Это требует проверки валидатора и исправления теста/кода; не маркировать как подтверждённую production-уязвимость без проверки.
+- Smoke run 3 ноября на `e1bcaf9` завершился success, но это не перекрывает failed code checks. Для docs-only HEAD `b75fddd4` отдельного Actions run нет.
+
+### P0 — production acceptance
+
+- Vercel production deployment `medbiohim` с alias `medbiohim.vercel.app` имеет `READY` и source commit `b75fddd4...`.
+- Получить актуальную проверку API health и sign-in student/admin flows. Vercel deployment READY не равен успешной проверке страниц/запросов; в текущем аудите live fetch через подключённый Vercel connector был отклонён с 403.
+- Отдельно принять расписание, домашние задания, planner, attendance, materials, tests, trainers, admin, Telegram и file delivery с реальным токеном соответствующей роли.
+
+### P1 — Supabase migrations
+
+- Live ledger насчитывает 149 записей, последняя — `20261031000000`.
+- В `main` есть SQL-файлы в трёх деревьях: `database/migrations` — 140, `backend/database/migrations` — 8, `supabase/migrations` — 6. Эти числа включают разные/исторические наборы и не являются прямым сравнением версий; требуется exact name/version reconciliation.
+- Среди root migrations присутствуют файлы от 1–2 ноября; не объявлять их применёнными до проверки migration ledger и фактических объектов схемы. Не выполнять общий push/reset/drop без сверки.
+
+### P1 — storage и контент
+
+- Массовый HTTP smoke 206 image endpoints пока не выполнен в этой сверке; проверить все 178 препаратов и 28 электронограмм, MIME, размер, resolver и Drive/Blob fallback.
+- Проверить доступность исходных DOCX/PDF и полный учебный контент, а не только записи индекса.
+- Проверить источники, ответы и структуру химического каталога; не импортировать пустой placeholder JSON.
+
+### P2 — дальнейшее
+
+- Завершить security review SQL console/RPC, ролей, audit trail и destructive-query guard.
+- Проверить real-provider AI execution и Telegram end-to-end.
+- Продолжить route parity аудит по точному контракту каждого frontend caller: method, payload, response, auth, group/specialty scope и RLS.
+
+## Правило обновления фаз
+
+Каждая следующая запись должна указывать: дату, точный commit/Worker version, источник данных, измеренный результат и отдельный статус UI/API/production acceptance. Старые записи ниже сохраняются как исторический журнал; их чекбоксы не переключаются автоматически.
+
+---
 ## Гистология — продолжение наполнения (2026-10-18)
 
 - Добавлены 6 опубликованных учебных конспектов: цитология/органеллы, эпителии, соединительные ткани, кровь и кроветворение, мышечные ткани, нервная ткань. Конспекты содержат план ответа, признаки распознавания препаратов и вопросы для самопроверки.
