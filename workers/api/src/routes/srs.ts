@@ -322,6 +322,39 @@ srs.post("/cards", requireAuth, async (c) => {
   }
 });
 
+/**
+ * Алгоритм интервального повторения (оценки 1–4). Вынесен, чтобы Telegram-
+ * тренажёр (routes/telegram-trainer.ts) применял ровно ту же математику,
+ * что и карточки на сайте — иначе повторение в боте разойдётся с сайтом.
+ */
+export function nextReviewState(card: { ease?: number | string | null; interval?: number | string | null; reps?: number | string | null }, rating: number) {
+  let ease = Number(card.ease ?? 2.5);
+  let interval = Number(card.interval ?? 0);
+  let reps = Number(card.reps ?? 0);
+  if (rating === 1) {
+    reps = 0;
+    interval = 1;
+    ease = Math.max(1.3, ease - 0.2);
+  } else if (rating === 2) {
+    reps += 1;
+    interval = Math.max(1, Math.ceil(Math.max(1, interval) * 1.4));
+    ease = Math.max(1.3, ease - 0.05);
+  } else if (rating === 3) {
+    reps += 1;
+    interval = interval > 0 ? Math.max(1, Math.ceil(interval * ease)) : 1;
+  } else {
+    reps += 1;
+    interval = interval > 0 ? Math.max(1, Math.ceil(interval * ease * 1.3)) : 2;
+    ease = Math.min(3.2, ease + 0.15);
+  }
+  return {
+    ease: Number(ease.toFixed(2)),
+    interval,
+    reps,
+    due_at: new Date(new Date().getTime() + interval * 86400_000).toISOString(),
+  };
+}
+
 async function reviewCard(c: any, cardId: string, rating: number) {
   const rid = requestId();
   const user = c.get("user");
@@ -347,34 +380,16 @@ async function reviewCard(c: any, cardId: string, rating: number) {
       return c.json(body, status as 404);
     }
 
-    let ease = Number((current as SrsRow).ease ?? 2.5);
-    let interval = Number((current as SrsRow).interval ?? 0);
-    let reps = Number((current as SrsRow).reps ?? 0);
-    if (rating === 1) {
-      reps = 0;
-      interval = 1;
-      ease = Math.max(1.3, ease - 0.2);
-    } else if (rating === 2) {
-      reps += 1;
-      interval = Math.max(1, Math.ceil(Math.max(1, interval) * 1.4));
-      ease = Math.max(1.3, ease - 0.05);
-    } else if (rating === 3) {
-      reps += 1;
-      interval = interval > 0 ? Math.max(1, Math.ceil(interval * ease)) : 1;
-    } else {
-      reps += 1;
-      interval = interval > 0 ? Math.max(1, Math.ceil(interval * ease * 1.3)) : 2;
-      ease = Math.min(3.2, ease + 0.15);
-    }
+    const next = nextReviewState(current as SrsRow, rating);
 
     const now = new Date();
-    const dueAt = new Date(now.getTime() + interval * 86400_000).toISOString();
+    const dueAt = next.due_at;
     const { data: updated, error: writeError } = await supabase
       .from("srs_cards")
       .update({
-        ease: Number(ease.toFixed(2)),
-        interval,
-        reps,
+        ease: next.ease,
+        interval: next.interval,
+        reps: next.reps,
         due_at: dueAt,
         reviewed_at: now.toISOString(),
         updated_at: now.toISOString(),

@@ -1,5 +1,6 @@
 import { constantTimeEqual, validateTelegramInitData } from "./initdata.js";
 import { validateTelegramLoginWidget } from "./loginwidget.js";
+import { TRAINER_COMMANDS, handleTrainerCommand, handleTrainerCallback, runTrainerMorning } from "./trainer.js";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -160,6 +161,10 @@ const BOT_COMMANDS = [
   { command: "register", description: "Создать аккаунт" },
   { command: "link", description: "Привязать Telegram к аккаунту" },
   { command: "status", description: "Статус привязки и настройки" },
+  { command: "drill", description: "Тренажёр карточек SRS" },
+  { command: "challenge", description: "Хим-челлендж дня" },
+  { command: "formula", description: "Формула дня" },
+  { command: "daily", description: "Утренний тренажёр: вкл/выкл" },
   { command: "schedule", description: "Расписание занятий" },
   { command: "homework", description: "Задания и домашняя работа" },
   { command: "subjects", description: "Предметы и атлас" },
@@ -186,13 +191,28 @@ const PRIVACY_TEXT = [
 
 const HELP_TEXT = [
   "MEDBIOHIM — учебная платформа. Единый сайт, одна версия.",
+  "Тренажёр прямо в чате: /drill — карточки SRS («База»), /challenge — хим-челлендж (уравнять реакцию или назвать продукт), /formula — формула дня, /daily — утренняя подписка на карточки и челлендж.",
   "Разделы: /schedule, /homework, /subjects, /materials, /tests, /tickets, /university, /cards, /progress, /calculators, /latin, /extension.",
   "Аккаунт: /login, /register, /link — привязка Telegram, /status — где проверить привязку. Все разделы кнопками — /menu, платформа внутри Telegram — /app.",
   "Бот отвечает только на входящие команды, не пишет первым и не показывает личные данные без привязки. Подробнее — /privacy.",
 ].join("\n");
 
+/** Кнопки тренажёра для /menu — callback-команды, а не ссылки на сайт. */
+function trainerMenuRows() {
+  return [
+    [
+      { text: "🃏 Карточки SRS", callback_data: "cmd:drill" },
+      { text: "🧪 Хим-челлендж", callback_data: "cmd:challenge" },
+    ],
+    [
+      { text: "📌 Формула дня", callback_data: "cmd:formula" },
+      { text: "🌅 Утренний тренажёр", callback_data: "cmd:daily" },
+    ],
+  ];
+}
+
 function menuButtons(env) {
-  const rows = [];
+  const rows = [...trainerMenuRows()];
   for (let i = 0; i < SITE_SECTIONS.length; i += 2) {
     rows.push(
       SITE_SECTIONS.slice(i, i + 2).map((section) => ({
@@ -735,7 +755,19 @@ export async function handleRequest(request, env) {
   }
 
   const message = update.message || update.edited_message;
-  if (!message?.chat || typeof message.chat.id !== "number") return json({ ok: true, ignored: true });
+  if (!message?.chat || typeof message.chat.id !== "number") {
+    // Кнопки тренажёра (callback_query) — основной интерактив в личном чате.
+    const callback = update.callback_query;
+    if (callback && callback.message && callback.message.chat && callback.message.chat.type === "private") {
+      try {
+        const handled = await handleTrainerCallback(env, callback, appUrl(env, "/settings"));
+        return json({ ok: true, trainer: handled });
+      } catch {
+        return json({ ok: false, error: "TRAINER_CALLBACK_FAILED" }, 502);
+      }
+    }
+    return json({ ok: true, ignored: true });
+  }
 
   if (message.chat.type === "group" || message.chat.type === "supergroup") {
     try {
@@ -752,6 +784,21 @@ export async function handleRequest(request, env) {
     }
   }
   if (message.chat.type !== "private") return json({ ok: true, ignored: true });
+
+  // Тренажёр: команды /drill, /challenge, /formula, /daily — интерактив
+  // прямо в чате (данные — с API-воркера по внутреннему секрету).
+  const trainerCommand = (() => {
+    const parsed = parseCommand(message.text, env);
+    return parsed && TRAINER_COMMANDS.has(parsed) ? parsed : null;
+  })();
+  if (trainerCommand) {
+    try {
+      await handleTrainerCommand(env, trainerCommand, message, appUrl(env, "/settings"));
+      return json({ ok: true, trainer: true });
+    } catch {
+      return json({ ok: false, error: "TRAINER_COMMAND_FAILED" }, 502);
+    }
+  }
 
   const text = typeof message.text === "string" ? message.text.trim() : "";
   const linkStart = text.match(/^\/start(?:@([^\s]+))?\s+link_([a-f0-9]{48})$/i);
@@ -779,7 +826,14 @@ export async function runScheduledDigest(env) {
   const result = await handleDigest(env);
   // Лог без чатов/пейлоадов — только счётчики доставки.
   console.log("[telegram:digest]", JSON.stringify(result));
-  return result;
+
+  // Тренажёр: утренние карточки SRS и челлендж дня для подписавшихся.
+  const trainer = await runTrainerMorning(env).catch((error) => {
+    console.error("[telegram:trainer-morning]", String(error));
+    return { ok: false, error: "TRAINER_MORNING_FAILED", sent: 0, skipped: 0 };
+  });
+  console.log("[telegram:trainer-morning]", JSON.stringify({ ok: trainer.ok, sent: trainer.sent, skipped: trainer.skipped }));
+  return { ...result, trainer };
 }
 
 export { handleNotify, handleDigest };
