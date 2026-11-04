@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { FlaskConical, Info } from "lucide-react";
 import {
   kaFromPka,
+  isWaterLimited,
   phBuffer,
   phStrongAcid,
   phStrongBase,
@@ -149,10 +150,20 @@ export default function ChemTools() {
               <Result>
                 pH = {phAcid.ok ? phAcid.value.toFixed(2) : phAcid.error}
               </Result>
+              {isWaterLimited(Number(acidC)) ? (
+                <p className="text-[11px] leading-4 text-[var(--muted)]">
+                  Концентрация сравнима с вкладом воды — он учтён в расчёте.
+                </p>
+              ) : null}
               <Field label="C(NaOH)" unit="моль/л" value={baseC} onChange={setBaseC} />
               <Result>
                 pH = {phBase.ok ? phBase.value.toFixed(2) : phBase.error}
               </Result>
+              {isWaterLimited(Number(baseC)) ? (
+                <p className="text-[11px] leading-4 text-[var(--muted)]">
+                  Концентрация сравнима с вкладом воды — он учтён в расчёте.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-3 rounded-2xl border border-[var(--border)] p-4">
@@ -182,8 +193,9 @@ export default function ChemTools() {
 
           <p className="flex items-start gap-2 text-xs leading-5 text-[var(--muted)]">
             <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Модель не учитывает активности, ионную силу и температуру. Для точных измерений
-            нужен pH-метр и калибровка.
+            pH считается с автоионизацией воды (Kw = 10⁻¹⁴), поэтому разбавленные растворы не
+            дают невозможных значений. Модель не учитывает активности, ионную силу и температуру;
+            для точных измерений нужен pH-метр и калибровка.
           </p>
         </div>
       )}
