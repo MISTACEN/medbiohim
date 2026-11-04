@@ -8,7 +8,7 @@
  * а ссылка несёт предметный контекст, не создавая копию инструмента.
  */
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Compass } from "lucide-react";
 import {
   MODULE_KIND_LABELS,
@@ -19,7 +19,7 @@ import {
   subjectAreaName,
   type LearningModule,
 } from "@/lib/learning/modules";
-import { recordModuleVisit } from "@/lib/learning/moduleProgress";
+import { readVisits, recordModuleVisit } from "@/lib/learning/moduleProgress";
 
 export default function SubjectModules({
   slug,
@@ -33,6 +33,14 @@ export default function SubjectModules({
     () => modulesForSubject(areaKey, { excludeFunctions: ["simulation"] }),
     [areaKey],
   );
+  // Прогресс привязан к модулю, а не к предмету: переход между дисциплинами
+  // не обнуляет счётчик открытий.
+  const [visits, setVisits] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const map: Record<string, number> = {};
+    for (const visit of readVisits()) map[visit.moduleId] = visit.visits;
+    setVisits(map);
+  }, []);
 
   if (!areaKey || !modules.length) return null;
 
@@ -61,7 +69,14 @@ export default function SubjectModules({
           const href = moduleHref(module, { subjectKey: areaKey, topic: relation.topics[0] });
           return (
             <li key={module.id}>
-              <ModuleCard module={module} href={href} reason={relation.reason} topics={relation.topics} areaKey={areaKey} />
+              <ModuleCard
+                module={module}
+                href={href}
+                reason={relation.reason}
+                topics={relation.topics}
+                areaKey={areaKey}
+                visits={visits[module.id] ?? 0}
+              />
             </li>
           );
         })}
@@ -76,12 +91,14 @@ function ModuleCard({
   reason,
   topics,
   areaKey,
+  visits,
 }: {
   module: LearningModule;
   href: string;
   reason: string;
   topics: string[];
   areaKey: string;
+  visits: number;
 }) {
   return (
     <Link
@@ -97,6 +114,11 @@ function ModuleCard({
         {MODULE_KIND_LABELS[module.kind]}
       </span>
       <span className="mt-1.5 text-xs leading-5 text-[var(--muted)]">{reason}</span>
+      {visits > 0 ? (
+        <span className="mt-2 text-[10px] font-semibold text-[var(--muted)]">
+          Открывали {visits} раз — прогресс общий для всех предметов
+        </span>
+      ) : null}
       {topics.length ? (
         <span className="mt-2 flex flex-wrap gap-1">
           {topics.slice(0, 3).map((topic) => (
