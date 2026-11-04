@@ -12,6 +12,8 @@
 import type { SimDefinition, SimParams } from "./types";
 // Биология/цитология/молекулярная биология/эмбриология — расширения каталога.
 import { BIOLOGY_SIMS } from "./catalog_biology";
+// Биохимия: метаболические пути и энергетика — расширения каталога.
+import { BIOCHEM_SIMS } from "./catalog_biochem";
 
 import { SODIUM_PUMP_SIMULATION as sodiumPump } from "./sodium-pump";
 import { BIOCHEM_SIMULATIONS } from "./biochem";
@@ -517,6 +519,7 @@ export const SIMULATIONS: SimDefinition[] = [
   hardyWeinberg,
   // Расширения каталога: одна реализация — общий плеер симуляций.
   ...BIOLOGY_SIMS,
+  ...BIOCHEM_SIMS,
 ];
 
 export function getSimulation(slug: string): SimDefinition | undefined {

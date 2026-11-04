@@ -15,6 +15,7 @@ import { SIMULATIONS } from "@/lib/sim/catalog";
 // Связи симуляций расширений описаны рядом с их каталогом и мержатся сюда:
 // единый реестр остаётся единственным источником истины.
 import { BIOLOGY_RELATIONS } from "@/lib/sim/catalog_biology";
+import { BIOCHEM_RELATIONS } from "@/lib/sim/catalog_biochem";
 
 export type SubjectAreaKey =
   | "chemistry_organic_physical"
@@ -493,6 +494,8 @@ const SIM_RELATIONS: Record<string, Partial<Record<SubjectAreaKey, ModuleRelatio
   },
   // Симуляции из расширений каталога (биология, цитология, эмбриология, мол. биология).
   ...BIOLOGY_RELATIONS,
+  // Биохимия: метаболические пути.
+  ...BIOCHEM_RELATIONS,
 };
 
 const SIM_MODULES: LearningModule[] = SIMULATIONS.map((simulation) => ({

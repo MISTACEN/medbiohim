@@ -11,7 +11,7 @@ function simulation(slug: string): SimDefinition {
 }
 
 describe("каталог симуляций", () => {
-  it("содержит четырнадцать моделей из семи дисциплин", () => {
+  it("содержит шестнадцать моделей из семи дисциплин", () => {
     expect(SIMULATIONS.map((simulation) => simulation.slug)).toEqual([
       "enzyme-kinetics",
       "buffer-titration",
@@ -28,6 +28,9 @@ describe("каталог симуляций", () => {
       "meiosis-phases",
       "dna-biosynthesis",
       "embryogenesis",
+      // биохимия: пути, которых нет в базовом каталоге
+      "beta-oxidation",
+      "urea-cycle",
     ]);
     // biology, chemistry_organic_physical, physiology, histology, biochemistry
     // + расширения: molecular_biology, embryology = 7
