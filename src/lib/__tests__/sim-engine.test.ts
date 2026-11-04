@@ -11,13 +11,16 @@ function simulation(slug: string): SimDefinition {
 }
 
 describe("каталог симуляций", () => {
-  it("содержит три модели из разных дисциплин", () => {
+  it("содержит шесть моделей из четырёх дисциплин", () => {
     expect(SIMULATIONS.map((simulation) => simulation.slug)).toEqual([
       "enzyme-kinetics",
       "buffer-titration",
       "membrane-potential",
+      "osmosis",
+      "oxygen-hemoglobin",
+      "hardy-weinberg",
     ]);
-    expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(3);
+    expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(4);
   });
 
   it("у каждой модели есть источник, ограничения и проверка", () => {
@@ -187,5 +190,90 @@ describe("движок: кривые", () => {
   it("число точек ограничивается контрактом", () => {
     expect(computeCurve(SIMULATIONS[0], defaultParams(SIMULATIONS[0]), 1)).toHaveLength(2);
     expect(computeCurve(SIMULATIONS[0], defaultParams(SIMULATIONS[0]), 1000)).toHaveLength(400);
+  });
+});
+
+describe("осмос и тонус клетки", () => {
+  const definition = simulation("osmosis");
+
+  it("в изотонической среде объём не меняется", () => {
+    const result = evaluate(definition, { osmIn: 300, osmOut: 300, volume0: 1000 });
+    expect(result.outputs.ratio).toBeCloseTo(1, 6);
+    expect(result.outputs.volume).toBeCloseTo(1000, 6);
+    expect(result.outputs.change).toBeCloseTo(0, 6);
+  });
+
+  it("в гипертонической среде клетка уменьшается", () => {
+    const result = evaluate(definition, { osmIn: 300, osmOut: 400, volume0: 1000 });
+    expect(result.outputs.ratio).toBeCloseTo(0.75, 6);
+    expect(result.outputs.change).toBeCloseTo(-25, 6);
+  });
+
+  it("в гипотонической среде предупреждает о риске лизиса", () => {
+    const result = evaluate(definition, { osmIn: 300, osmOut: 200, volume0: 1000 });
+    expect(result.outputs.ratio).toBeCloseTo(1.5, 6);
+    expect(result.warning).toContain("лизис");
+  });
+
+  it("кривая объёма убывает с ростом осмолярности среды", () => {
+    const curve = computeCurve(definition, defaultParams(definition), 50);
+    for (let index = 1; index < curve.length; index += 1) {
+      expect(curve[index].y).toBeLessThanOrEqual(curve[index - 1].y + 1e-9);
+    }
+  });
+});
+
+describe("диссоциация оксигемоглобина", () => {
+  const definition = simulation("oxygen-hemoglobin");
+
+  it("при pO₂ = P50 сатурация 50%", () => {
+    const result = evaluate(definition, { ...defaultParams(definition), po2: 26.5, p50: 26.5 });
+    expect(result.outputs.saturation).toBeCloseTo(50, 6);
+  });
+
+  it("при высоком pO₂ сатурация близка к 100%", () => {
+    const result = evaluate(definition, { ...defaultParams(definition), po2: 100 });
+    expect(result.outputs.saturation).toBeGreaterThan(95);
+  });
+
+  it("сдвиг P50 вправо снижает сатурацию при том же pO₂", () => {
+    const left = evaluate(definition, { ...defaultParams(definition), po2: 40, p50: 20 });
+    const right = evaluate(definition, { ...defaultParams(definition), po2: 40, p50: 40 });
+    expect(right.outputs.saturation).toBeLessThan(left.outputs.saturation);
+  });
+
+  it("кислородная ёмкость считается по 1.34 мл/г гемоглобина", () => {
+    const result = evaluate(definition, {
+      po2: 100,
+      p50: 26.5,
+      hill: 2.8,
+      hb: 150,
+    });
+    expect(result.outputs.content).toBeCloseTo(1.34 * 15 * (result.outputs.saturation / 100), 6);
+  });
+});
+
+describe("равновесие Харди–Вайнберга", () => {
+  const definition = simulation("hardy-weinberg");
+
+  it("при p = 0.5 даёт 25 / 50 / 25", () => {
+    const result = evaluate(definition, { p: 0.5 });
+    expect(result.outputs.homoDom).toBeCloseTo(25, 6);
+    expect(result.outputs.hetero).toBeCloseTo(50, 6);
+    expect(result.outputs.homoRec).toBeCloseTo(25, 6);
+  });
+
+  it("при фиксации аллеля гетерозигот нет", () => {
+    const result = evaluate(definition, { p: 0 });
+    expect(result.outputs.hetero).toBeCloseTo(0, 6);
+    expect(result.outputs.homoRec).toBeCloseTo(100, 6);
+  });
+
+  it("гетерозиготность максимальна при p = 0.5", () => {
+    const curve = computeCurve(definition, defaultParams(definition), 101);
+    const max = Math.max(...curve.map((point) => point.y));
+    expect(max).toBeCloseTo(50, 6);
+    const peak = curve.find((point) => Math.abs(point.y - max) < 1e-9);
+    expect(peak?.x).toBeCloseTo(0.5, 2);
   });
 });

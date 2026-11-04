@@ -67,6 +67,25 @@ export default function ChemistryPage() {
           </span>
           <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
         </Link>
+        <Link
+          href="/chemistry/tools"
+          className="card flex items-center gap-4 p-4 hover:border-[var(--primary)] sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
+            style={{ background: "linear-gradient(135deg, #7c3aed, var(--primary))" }}
+          >
+            <FlaskConical className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">Растворы и pH</span>
+            <span className="mt-0.5 block text-sm" style={{ color: "var(--muted)" }}>
+              Разведение C₁V₁ = C₂V₂, pH сильных и слабых электролитов, буферные системы.
+            </span>
+          </span>
+          <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
+        </Link>
       </nav>
     </div>
   );

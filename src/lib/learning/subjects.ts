@@ -19,7 +19,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["fiziologiya", "physiology-normal"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "library"],
-    simulations: ["membrane-potential"],
+    simulations: ["membrane-potential", "oxygen-hemoglobin"],
     notes: "7 пособий и 35 занятий уже в базе; симуляции добавляются к ним, а не заменяют.",
   },
   {
@@ -28,7 +28,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["histology-cytology", "gistologiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "atlas", "library", "simulations"],
-    simulations: [],
+    simulations: ["osmosis"],
     notes: "178 микропрепаратов и 28 электронограмм; симуляции не дублируют атлас.",
   },
   {
@@ -66,7 +66,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["biologiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "library"],
-    simulations: ["enzyme-kinetics"],
+    simulations: ["enzyme-kinetics", "hardy-weinberg"],
     notes: "475 вопросов в базе; цитология и эмбриология связаны с гистологией, а не копируются.",
   },
 ];

@@ -9,7 +9,17 @@ export const metadata: Metadata = {
     "Интерактивные учебные модели: кинетика ферментов, титрование слабой кислоты, мембранный потенциал покоя.",
 };
 
-export default function SimulationsPage() {
+function pick(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+export default async function SimulationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -31,7 +41,7 @@ export default function SimulationsPage() {
         </Link>
       </header>
 
-      <SimulationRunner />
+      <SimulationRunner initialSlug={pick(params.slug)} subjectSlug={pick(params.subject)} />
     </div>
   );
 }

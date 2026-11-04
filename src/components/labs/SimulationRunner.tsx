@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
 import { gradeActivity } from "@/lib/learning/grading";
 import { KNOWLEDGE_LEVELS, SOURCE_KIND_LABELS } from "@/lib/learning/types";
 import { SIMULATIONS, getSimulation } from "@/lib/sim/catalog";
 import { computeCurve, defaultParams, evaluate, formatOutput } from "@/lib/sim/engine";
+import { recordRun } from "@/lib/learning/progress";
 import type { SimDefinition, SimOutput, SimParams } from "@/lib/sim/types";
 
 function Plot({ definition, values }: { definition: SimDefinition; values: SimParams }) {
@@ -80,6 +81,21 @@ function SimulationPanel({ definition }: { definition: SimDefinition }) {
           }),
     [answer, definition.check.correctIndex],
   );
+
+  // Один запуск = одно сохранение; повторные клики по верному ответу не плодят записи.
+  const recorded = useRef(false);
+  useEffect(() => {
+    if (!graded?.correct || recorded.current) return;
+    recorded.current = true;
+    recordRun({
+      slug: definition.slug,
+      subjectSlug: definition.subjectSlug,
+      percent: graded.percent,
+      correctCount: 1,
+      total: 1,
+      finishedAt: new Date().toISOString(),
+    });
+  }, [graded, definition.slug, definition.subjectSlug]);
 
   return (
     <div className="space-y-4">
@@ -268,14 +284,27 @@ function SimulationPanel({ definition }: { definition: SimDefinition }) {
   );
 }
 
-export default function SimulationRunner() {
-  const [slug, setSlug] = useState(SIMULATIONS[0].slug);
-  const definition = getSimulation(slug) ?? SIMULATIONS[0];
+export default function SimulationRunner({
+  initialSlug,
+  subjectSlug,
+}: {
+  initialSlug?: string;
+  subjectSlug?: string;
+}) {
+  const list = useMemo(() => {
+    const scoped = subjectSlug
+      ? SIMULATIONS.filter((simulation) => simulation.subjectSlug === subjectSlug)
+      : SIMULATIONS;
+    return scoped.length ? scoped : SIMULATIONS;
+  }, [subjectSlug]);
+  const first = getSimulation(initialSlug ?? "") ?? list[0];
+  const [slug, setSlug] = useState(first.slug);
+  const definition = getSimulation(slug) ?? first;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {SIMULATIONS.map((simulation) => (
+        {list.map((simulation) => (
           <button
             key={simulation.slug}
             type="button"

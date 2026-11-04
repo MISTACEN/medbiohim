@@ -10,6 +10,7 @@ import { SkeletonCard, SkeletonCards } from "@/components/ui/Skeleton";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import SimulationProgressCard from "@/components/labs/SimulationProgressCard";
 
 type SubjectSummary = {
   subject_id: string;
@@ -91,6 +92,8 @@ export default function ProgressPage() {
         <h1 className="page-title">Прогресс</h1>
         <p className="page-subtitle">Реальный расчёт по ДЗ и тестам</p>
       </div>
+
+      <SimulationProgressCard />
 
       {(payload?.degraded || payload?.service_notice || payload?.note === "degraded") && (
         <ServiceNoticeBanner

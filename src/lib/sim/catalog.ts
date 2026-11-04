@@ -277,7 +277,234 @@ const membranePotential: SimDefinition = {
   },
 };
 
-export const SIMULATIONS: SimDefinition[] = [enzymeKinetics, bufferTitration, membranePotential];
+/** Осмос и тонус клетки: идеальный осмометр (закон Вант-Гоффа). */
+const osmosis: SimDefinition = {
+  slug: "osmosis",
+  title: "Осмос и тонус клетки",
+  subjectSlug: "histology",
+  level: 2,
+  summary:
+    "Объём клетки в гипо-, изо- и гипертонической среде. Показывает, почему эритроцит лизируется в воде и сморщивается в концентрированном растворе.",
+  assumptions: [
+    "Клетка ведёт себя как идеальный осмометр: мембрана проницаема для воды и непроницаема для осмолитов.",
+    "Равновесие наступает мгновенно, объём считается стационарным.",
+    "Реальная клетка имеет коэффициент отражения меньше 1 и регуляторный объём — здесь это не моделируется.",
+  ],
+  source: {
+    title: "Осмотическое давление (закон Вант-Гоффа)",
+    author: "J. H. van 't Hoff",
+    year: 1887,
+    kind: "teaching_model",
+    limitations: [
+      "Не учитывает активный транспорт и регуляторный объём клетки.",
+      "При больших отклонениях объёма реальная мембрана теряет целостность.",
+      "Осмолярность задана извне, а не рассчитана из состава раствора.",
+    ],
+  },
+  parameters: [
+    { id: "osmIn", label: "Осмолярность внутри", unit: "мОсм/л", min: 200, max: 400, step: 1, default: 300 },
+    { id: "osmOut", label: "Осмолярность среды", unit: "мОсм/л", min: 150, max: 450, step: 1, default: 300 },
+    { id: "volume0", label: "Исходный объём", unit: "мкм³", min: 100, max: 5000, step: 10, default: 1000 },
+  ],
+  outputs: [
+    { id: "ratio", label: "V / V₀", precision: 2 },
+    { id: "volume", label: "Объём клетки", unit: "мкм³", precision: 0 },
+    { id: "change", label: "Изменение объёма", unit: "%", precision: 1 },
+  ],
+  steps: [
+    { id: "s1", title: "Изотоническая среда", explanation: "При равенстве осмолярностей вода не имеет суммарного градиента, объём сохраняется.", outputs: ["ratio", "volume"] },
+    { id: "s2", title: "Гипотоническая среда", explanation: "Снаружи осмолярность ниже: вода входит, клетка набухает вплоть до лизиса.", outputs: ["ratio", "change"] },
+    { id: "s3", title: "Гипертоническая среда", explanation: "Снаружи осмолярность выше: вода выходит, клетка сморщивается.", outputs: ["ratio", "change"] },
+  ],
+  compute: (params) => {
+    const ratio = params.osmIn / Math.max(1, params.osmOut);
+    const volume = params.volume0 * ratio;
+    return {
+      outputs: { ratio, volume, change: (ratio - 1) * 100 },
+      notes: [
+        `V/V₀ = C(внутри) / C(среда) = ${ratio.toFixed(2)}`,
+        ratio > 1 ? "Среда гипотоническая: вода входит в клетку." : ratio < 1 ? "Среда гипертоническая: вода выходит из клетки." : "Среда изотоническая.",
+      ],
+      warning: ratio > 1.25
+        ? "Объём вырос более чем на четверть: в реальной клетке высок риск лизиса мембраны."
+        : ratio < 0.75
+          ? "Клетка потеряла более четверти объёма: в реальности возможны необратимые изменения."
+          : undefined,
+    };
+  },
+  sweep: {
+    paramId: "osmOut",
+    from: 150,
+    to: 450,
+    points: 90,
+    xLabel: "Осмолярность среды, мОсм/л",
+    outputId: "volume",
+    yLabel: "Объём клетки, мкм³",
+  },
+  check: {
+    prompt: "Клетку поместили в гипертонический раствор. Что произойдёт?",
+    options: ["Набухнет и лизируется", "Уменьшится (сморщится)", "Объём не изменится", "Объём вырастет вдвое"],
+    correctIndex: 1,
+    explanation: "В гипертонической среде осмолярность снаружи выше, вода выходит по градиенту, объём клетки уменьшается.",
+  },
+};
+
+/** Кривая диссоциации оксигемоглобина (уравнение Хилла). */
+const oxygenHemoglobin: SimDefinition = {
+  slug: "oxygen-hemoglobin",
+  title: "Диссоциация оксигемоглобина",
+  subjectSlug: "physiology",
+  level: 3,
+  summary:
+    "Насыщение гемоглобина кислородом при разном pO₂ и сдвиге P50. Показывает эффект Бора и почему кривая S-образна.",
+  assumptions: [
+    "Кооперативность описана уравнением Хилла с постоянным n.",
+    "Растворимостью кислорода в плазме и эффектом температуры пренебрегаем.",
+    "P50 задаётся напрямую и не пересчитывается из pH, CO₂ и 2,3-ДФГ.",
+  ],
+  source: {
+    title: "Уравнение Хилла для насыщения гемоглобина",
+    author: "A. V. Hill (1910); стандартная физиология дыхания",
+    year: 1910,
+    kind: "teaching_model",
+    limitations: [
+      "Не описывает кинетику связывания во времени.",
+      "Кислородная ёмкость считается по 1.34 мл O₂ на грамм Hb.",
+      "Эффект Бора показан через P50, а не через pH и CO₂ напрямую.",
+    ],
+  },
+  parameters: [
+    { id: "po2", label: "pO₂", unit: "мм рт. ст.", min: 5, max: 100, step: 1, default: 40 },
+    { id: "p50", label: "P50", unit: "мм рт. ст.", min: 15, max: 45, step: 0.5, default: 26.5 },
+    { id: "hill", label: "Коэффициент Хилла n", min: 1.5, max: 3.5, step: 0.1, default: 2.8 },
+    { id: "hb", label: "Гемоглобин", unit: "г/л", min: 80, max: 180, step: 1, default: 150 },
+  ],
+  outputs: [
+    { id: "saturation", label: "Сатурация", unit: "%", precision: 1 },
+    { id: "content", label: "Кислородная ёмкость", unit: "мл/дл", precision: 1 },
+    { id: "p50", label: "Текущий P50", unit: "мм рт. ст.", precision: 1 },
+  ],
+  steps: [
+    { id: "s1", title: "Плато насыщения", explanation: "При высоком pO₂ почти все центры связывания заняты — сатурация близка к 100%.", outputs: ["saturation", "content"] },
+    { id: "s2", title: "Крутая часть кривой", explanation: "В диапазоне 20–40 мм рт. ст. небольшое изменение pO₂ сильно меняет насыщение.", outputs: ["saturation", "p50"] },
+    { id: "s3", title: "Сдвиг вправо", explanation: "Рост P50 (ацидоз, гиперкапния, тепло) снижает сродство: при том же pO₂ сатурация ниже.", outputs: ["saturation"] },
+  ],
+  compute: (params) => {
+    const power = Math.pow(params.p50, params.hill);
+    const saturation = Math.pow(params.po2, params.hill) / (power + Math.pow(params.po2, params.hill));
+    return {
+      outputs: {
+        saturation: saturation * 100,
+        content: 1.34 * (params.hb / 10) * saturation,
+        p50: params.p50,
+      },
+      notes: [
+        `S = pO₂ⁿ / (P50ⁿ + pO₂ⁿ), n = ${params.hill.toFixed(1)}`,
+        params.po2 < params.p50
+          ? "pO₂ ниже P50: работаем на крутой части кривой, где отдача кислорода наиболее чувствительна."
+          : "pO₂ выше P50: гемоглобин близок к насыщению.",
+      ],
+      warning: params.p50 > 32
+        ? "P50 заметно повышён: это учебная модель сдвига вправо (ацидоз, гиперкапния, гипертермия)."
+        : undefined,
+    };
+  },
+  sweep: {
+    paramId: "po2",
+    from: 5,
+    to: 100,
+    points: 90,
+    xLabel: "pO₂, мм рт. ст.",
+    outputId: "saturation",
+    yLabel: "Сатурация Hb, %",
+  },
+  check: {
+    prompt: "Кривая диссоциации сдвинулась вправо. При том же pO₂ сатурация гемоглобина…",
+    options: ["станет выше", "станет ниже", "не изменится", "всегда равна 100%"],
+    correctIndex: 1,
+    explanation: "Сдвиг вправо означает снижение сродства: при фиксированном pO₂ меньше центров занято кислородом.",
+  },
+};
+
+/** Равновесие Харди–Вайнберга для одной пары аллелей. */
+const hardyWeinberg: SimDefinition = {
+  slug: "hardy-weinberg",
+  title: "Равновесие Харди–Вайнберга",
+  subjectSlug: "biology",
+  level: 2,
+  summary:
+    "Частоты генотипов в идеальной популяции при заданной частоте аллеля. Показывает максимум гетерозигот при p = q = 0.5.",
+  assumptions: [
+    "Большая случайно скрещивающаяся популяция, отсутствие отбора, мутаций, миграции и дрейфа.",
+    "Один локус с двумя аллелями, равная жизнеспособность генотипов.",
+    "Частоты аллелей постоянны между поколениями.",
+  ],
+  source: {
+    title: "Закон Харди–Вайнберга",
+    author: "G. H. Hardy, W. Weinberg",
+    year: 1908,
+    kind: "scientific_fact",
+    limitations: [
+      "В реальных популяциях отбор, дрейф и миграция сдвигают частоты.",
+      "Для сцепленных локусов и полиплоидов формулы другие.",
+    ],
+  },
+  parameters: [
+    { id: "p", label: "Частота аллеля A", min: 0, max: 1, step: 0.01, default: 0.6 },
+  ],
+  outputs: [
+    { id: "homoDom", label: "AA", unit: "%", precision: 1 },
+    { id: "hetero", label: "Aa", unit: "%", precision: 1 },
+    { id: "homoRec", label: "aa", unit: "%", precision: 1 },
+  ],
+  steps: [
+    { id: "s1", title: "Частоты аллелей", explanation: "p + q = 1: доля аллеля A и аллеля a в генофонде.", outputs: ["hetero"] },
+    { id: "s2", title: "Генотипы", explanation: "p² + 2pq + q² = 1: частоты AA, Aa и aa в популяции.", outputs: ["homoDom", "hetero", "homoRec"] },
+    { id: "s3", title: "Максимум гетерозигот", explanation: "2pq максимально при p = q = 0.5 и равно 50%.", outputs: ["hetero"] },
+  ],
+  compute: (params) => {
+    const p = Math.max(0, Math.min(1, params.p));
+    const q = 1 - p;
+    return {
+      outputs: {
+        homoDom: p * p * 100,
+        hetero: 2 * p * q * 100,
+        homoRec: q * q * 100,
+      },
+      notes: [
+        `p = ${p.toFixed(2)}, q = ${q.toFixed(2)}`,
+        `AA = p² = ${(p * p * 100).toFixed(1)}%, Aa = 2pq = ${(2 * p * q * 100).toFixed(1)}%, aa = q² = ${(q * q * 100).toFixed(1)}%`,
+      ],
+      warning: p === 0 || p === 1
+        ? "Один аллель фиксирован: гетерозигот нет."
+        : undefined,
+    };
+  },
+  sweep: {
+    paramId: "p",
+    from: 0,
+    to: 1,
+    points: 100,
+    xLabel: "Частота аллеля A (p)",
+    outputId: "hetero",
+    yLabel: "Гетерозиготы Aa, %",
+  },
+  check: {
+    prompt: "При какой частоте аллеля доля гетерозигот максимальна?",
+    options: ["p = 0.1", "p = 0.5", "p = 0.9", "p = 1.0"],
+    correctIndex: 1,
+    explanation: "2pq максимально при p = q = 0.5 и составляет 50%.",
+  },
+};
+
+export const SIMULATIONS: SimDefinition[] = [
+  enzymeKinetics,
+  bufferTitration,
+  membranePotential,
+  osmosis,
+  oxygenHemoglobin,
+  hardyWeinberg,
+];
 
 export function getSimulation(slug: string): SimDefinition | undefined {
   return SIMULATIONS.find((simulation) => simulation.slug === slug);

@@ -30,6 +30,7 @@ import ChemSdf from "@/components/portals/ChemSdf";
 import ArchiveLectures from "@/components/portals/ArchiveLectures";
 import ChemPlan from "@/components/chem/ChemPlan";
 import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
+import SubjectSimulations from "@/components/labs/SubjectSimulations";
 import LatinRecipes from "@/components/portals/LatinRecipes";
 import { legacyPortalConfig } from "@/lib/portalContent";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
@@ -801,6 +802,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         {tab === "practice" && (
           <div className="space-y-3">
             <SubjectQuestionBank subjectId={subject?.id || ""} subjectSlug={slug} subjectName={subject?.name} />
+            <SubjectSimulations slug={slug} />
             {modules.length > 0 && (
               <section className="card p-5">
                 <h2 className="text-lg font-bold">Темы предмета</h2>

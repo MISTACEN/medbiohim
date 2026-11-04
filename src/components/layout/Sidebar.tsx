@@ -46,6 +46,7 @@ const navItems = [
 
 const moreItems = [
   { href: "/search", label: "Поиск", icon: Search },
+  { href: "/library", label: "Библиотека", icon: BookOpen },
   { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
   { href: "/atlas", label: "Атлас", icon: Microscope },
   { href: "/workshop", label: "Мастерская", icon: Layers },
