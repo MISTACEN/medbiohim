@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isWaterLimited,
   kaFromPka,
   phBuffer,
   phStrongAcid,
@@ -91,5 +92,46 @@ describe("буфер и pKa", () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value).toBeCloseTo(1.74e-5, 7);
     expect(kaFromPka(15).ok).toBe(false);
+  });
+});
+
+describe("автоионизация воды", () => {
+  it("10⁻⁸ M HCl даёт pH около 6.98, а не 8", () => {
+    const result = phStrongAcid(1e-8);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toBeGreaterThan(6.9);
+    expect(result.value).toBeLessThan(7.0);
+  });
+
+  it("10⁻⁸ M NaOH даёт pH около 7.02, а не 6", () => {
+    const result = phStrongBase(1e-8);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toBeGreaterThan(7.0);
+    expect(result.value).toBeLessThan(7.1);
+  });
+
+  it("10⁻⁸ M слабой кислоты не даёт кислее нейтральной воды", () => {
+    const result = phWeakAcid(1.8e-5, 1e-8);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toBeGreaterThan(6.9);
+    expect(result.value).toBeLessThan(7.0);
+  });
+
+  it("при обычных концентрациях поправка не меняет прежний ответ", () => {
+    const strong = phStrongAcid(0.01);
+    expect(strong.ok).toBe(true);
+    if (strong.ok) expect(strong.value).toBeCloseTo(2, 6);
+    const weak = phWeakAcid(1.8e-5, 0.1);
+    expect(weak.ok).toBe(true);
+    if (weak.ok) expect(weak.value).toBeCloseTo(2.87, 1);
+  });
+
+  it("isWaterLimited отмечает область, где вклад воды заметен", () => {
+    expect(isWaterLimited(1e-8)).toBe(true);
+    expect(isWaterLimited(1e-3)).toBe(false);
+    expect(isWaterLimited(0)).toBe(false);
   });
 });

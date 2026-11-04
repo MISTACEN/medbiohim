@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { BookOpen, ExternalLink, Search } from "lucide-react";
+import UserFiles from "@/components/library/UserFiles";
 import { LIBRARY_FILES, searchLibrary } from "@/lib/library";
 import {
   AVAILABILITY_LABELS,
@@ -20,7 +21,7 @@ const availabilityClass: Record<ResourceAvailability, string> = {
 
 export default function LibraryBrowser() {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"internal" | "external">("internal");
+  const [tab, setTab] = useState<"internal" | "external" | "mine">("internal");
 
   const internal = useMemo(() => {
     if (!query.trim()) return LIBRARY_FILES;
@@ -38,6 +39,7 @@ export default function LibraryBrowser() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
+        {tab === "mine" ? null : (
         <div className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2">
           <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" />
           <input
@@ -48,11 +50,13 @@ export default function LibraryBrowser() {
             className="w-full bg-transparent text-sm outline-none"
           />
         </div>
-        <div className="flex gap-1 rounded-xl border border-[var(--border)] p-1">
+        )}
+        <div className="flex flex-wrap gap-1 rounded-xl border border-[var(--border)] p-1">
           {(
             [
               ["internal", "Материалы MEDBIOHIM"],
               ["external", "Внешние каталоги"],
+              ["mine", "Мои файлы"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -71,7 +75,9 @@ export default function LibraryBrowser() {
         </div>
       </div>
 
-      {tab === "internal" ? (
+      {tab === "mine" ? (
+        <UserFiles />
+      ) : tab === "internal" ? (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2 text-xs">
             <Link href="/materials" className="rounded-full border border-[var(--border)] px-3 py-1.5 hover:border-[var(--primary)]">

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
 import { gradeActivity } from "@/lib/learning/grading";
 import { KNOWLEDGE_LEVELS, SOURCE_KIND_LABELS } from "@/lib/learning/types";
-import { SIMULATIONS, getSimulation } from "@/lib/sim/catalog";
+import { SIMULATIONS } from "@/lib/sim/catalog";
 import { computeCurve, defaultParams, evaluate, formatOutput } from "@/lib/sim/engine";
 import { recordRun } from "@/lib/learning/progress";
 import type { SimDefinition, SimOutput, SimParams } from "@/lib/sim/types";
@@ -297,9 +297,11 @@ export default function SimulationRunner({
       : SIMULATIONS;
     return scoped.length ? scoped : SIMULATIONS;
   }, [subjectSlug]);
-  const first = getSimulation(initialSlug ?? "") ?? list[0];
+  // Модель из URL принимается только если она входит в текущий предметный
+  // фильтр: иначе /labs/simulations?subject=physiology&slug=osmosis показал бы осмос.
+  const first = list.find((simulation) => simulation.slug === initialSlug) ?? list[0];
   const [slug, setSlug] = useState(first.slug);
-  const definition = getSimulation(slug) ?? first;
+  const definition = list.find((simulation) => simulation.slug === slug) ?? first;
 
   return (
     <div className="space-y-4">
