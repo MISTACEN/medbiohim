@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MEDBIOHIM — нет подключения</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100dvh; display: grid; place-items: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f6f7fb; color: #1e293b; padding: 24px;
+  }
+  .card {
+    max-width: 420px; width: 100%; text-align: center;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 20px;
+    padding: 32px 24px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  }
+  .icon { font-size: 40px; }
+  h1 { font-size: 18px; margin: 12px 0 6px; }
+  p { font-size: 14px; line-height: 1.5; color: #64748b; margin: 0 0 20px; }
+  button {
+    appearance: none; border: 0; cursor: pointer;
+    background: #4f46e5; color: #fff; font-weight: 600; font-size: 14px;
+    padding: 10px 22px; border-radius: 12px;
+  }
+  button:active { transform: translateY(1px); }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0f172a; color: #e2e8f0; }
+    .card { background: #1e293b; border-color: #334155; box-shadow: none; }
+    p { color: #94a3b8; }
+  }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="icon">📡</div>
+  <h1>Нет подключения к сети</h1>
+  <p>Страница MEDBIOHIM недоступна офлайн. Данные (расписание, ДЗ, тесты) загружаются с сервера и требуют интернета. Проверьте сеть и попробуйте снова.</p>
+  <button type="button" onclick="location.reload()">Повторить</button>
+</main>
+</body>
+</html>
