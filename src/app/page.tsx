@@ -586,8 +586,8 @@ export default function DashboardPage() {
                     <span
                       className={`mt-1.5 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                         control.isExam
-                          ? "bg-rose-600 text-white dark:bg-rose-500"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-500/25 dark:text-amber-200"
+                          ? "bg-[var(--status-critical-fg)] text-white"
+                          : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
                       }`}
                     >
                       {control.label}

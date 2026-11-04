@@ -49,13 +49,13 @@ async function loadConvertibleItem(c: any, itemId: string) {
 adminConvert.get("/workshop-questions/:itemId/draft", requireAuth, async (c) => {
   const rid = requestId();
   const itemId = String(c.req.param("itemId") || "");
-  if (!UUID.test(itemId)) return c.json(fail("VALIDATION_ERROR", "Некорректный ID элемента", 422, rid), 422 as 422);
-  if (!(await isModerator(c))) return c.json(fail("FORBIDDEN", "Конвертация доступна модераторам и админам", 403, rid), 403 as 403);
+  if (!UUID.test(itemId)) return c.json(fail("VALIDATION_ERROR", "Некорректный ID элемента", 422, rid), 422 as const);
+  if (!(await isModerator(c))) return c.json(fail("FORBIDDEN", "Конвертация доступна модераторам и админам", 403, rid), 403 as const);
 
   const { item, files, questions } = await loadConvertibleItem(c, itemId);
-  if (!item || item.status === "deleted") return c.json(fail("NOT_FOUND", "Материал не найден", 404, rid), 404 as 404);
+  if (!item || item.status === "deleted") return c.json(fail("NOT_FOUND", "Материал не найден", 404, rid), 404 as const);
   if (item.kind !== "test_questions") {
-    return c.json(fail("VALIDATION_ERROR", "Конвертировать можно только элементы с типом «Вопросы теста»", 422, rid), 422 as 422);
+    return c.json(fail("VALIDATION_ERROR", "Конвертировать можно только элементы с типом «Вопросы теста»", 422, rid), 422 as const);
   }
 
   // OCR-текст мог лежать в metadata (unpdf/parsed) — сеем черновик из него тоже.
@@ -73,7 +73,7 @@ adminConvert.get("/workshop-questions/:itemId/draft", requireAuth, async (c) => 
     // Картинки-кандидаты для вариантов: только файлы этого элемента.
     files: files.map((file: any) => ({ id: file.id, name: file.original_name, mime: file.mime_type })),
     drafts: draftQuestionsFromItem({ questions, ocrText }),
-  }, rid), 200 as 200);
+  }, rid), 200 as const);
 });
 
 adminConvert.post("/workshop-questions/:itemId/convert", requireAuth, async (c) => {
@@ -81,37 +81,37 @@ adminConvert.post("/workshop-questions/:itemId/convert", requireAuth, async (c) 
   const db = c.get("supabase");
   const user = c.get("user");
   const itemId = String(c.req.param("itemId") || "");
-  if (!UUID.test(itemId)) return c.json(fail("VALIDATION_ERROR", "Некорректный ID элемента", 422, rid), 422 as 422);
-  if (!(await isModerator(c))) return c.json(fail("FORBIDDEN", "Конвертация доступна модераторам и админам", 403, rid), 403 as 403);
+  if (!UUID.test(itemId)) return c.json(fail("VALIDATION_ERROR", "Некорректный ID элемента", 422, rid), 422 as const);
+  if (!(await isModerator(c))) return c.json(fail("FORBIDDEN", "Конвертация доступна модераторам и админам", 403, rid), 403 as const);
 
   let payload: any;
-  try { payload = await c.req.json(); } catch { return c.json(fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid), 400 as 400); }
+  try { payload = await c.req.json(); } catch { return c.json(fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid), 400 as const); }
 
   const subjectId = String(payload?.subject_id || "");
   const topicId = payload?.topic_id ? String(payload.topic_id) : null;
   const moduleId = payload?.module_id ? String(payload.module_id) : null;
-  if (!UUID.test(subjectId)) return c.json(fail("VALIDATION_ERROR", "Нужен корректный subject_id", 422, rid), 422 as 422);
-  if (topicId && !UUID.test(topicId)) return c.json(fail("VALIDATION_ERROR", "Некорректный topic_id", 422, rid), 422 as 422);
-  if (moduleId && !UUID.test(moduleId)) return c.json(fail("VALIDATION_ERROR", "Некорректный module_id", 422, rid), 422 as 422);
+  if (!UUID.test(subjectId)) return c.json(fail("VALIDATION_ERROR", "Нужен корректный subject_id", 422, rid), 422 as const);
+  if (topicId && !UUID.test(topicId)) return c.json(fail("VALIDATION_ERROR", "Некорректный topic_id", 422, rid), 422 as const);
+  if (moduleId && !UUID.test(moduleId)) return c.json(fail("VALIDATION_ERROR", "Некорректный module_id", 422, rid), 422 as const);
 
   const { item, files } = await loadConvertibleItem(c, itemId);
-  if (!item || item.status === "deleted") return c.json(fail("NOT_FOUND", "Материал не найден", 404, rid), 404 as 404);
+  if (!item || item.status === "deleted") return c.json(fail("NOT_FOUND", "Материал не найден", 404, rid), 404 as const);
   if (item.kind !== "test_questions") {
-    return c.json(fail("VALIDATION_ERROR", "Конвертировать можно только элементы с типом «Вопросы теста»", 422, rid), 422 as 422);
+    return c.json(fail("VALIDATION_ERROR", "Конвертировать можно только элементы с типом «Вопросы теста»", 422, rid), 422 as const);
   }
 
   const allowedImages = new Set<string>((files || []).map((file: any) => String(file.id)));
   const validated = validateConvertedQuestions(payload?.questions, allowedImages);
   if (!validated.ok) {
-    return c.json(fail("VALIDATION_ERROR", "Проверьте вопросы перед публикацией", 422, rid, { errors: validated.errors }), 422 as 422);
+    return c.json(fail("VALIDATION_ERROR", "Проверьте вопросы перед публикацией", 422, rid, { errors: validated.errors }), 422 as const);
   }
 
   // Целостность связей: предмет/тема существуют?
   const { data: subject } = await db.from("subjects").select("id").eq("id", subjectId).maybeSingle();
-  if (!subject) return c.json(fail("VALIDATION_ERROR", "Предмет не найден", 422, rid), 422 as 422);
+  if (!subject) return c.json(fail("VALIDATION_ERROR", "Предмет не найден", 422, rid), 422 as const);
   if (topicId) {
     const { data: topic } = await db.from("topics").select("id").eq("id", topicId).maybeSingle();
-    if (!topic) return c.json(fail("VALIDATION_ERROR", "Тема не найдена", 422, rid), 422 as 422);
+    if (!topic) return c.json(fail("VALIDATION_ERROR", "Тема не найдена", 422, rid), 422 as const);
   }
 
   const rows = validated.questions.map((question) => ({
@@ -133,7 +133,7 @@ adminConvert.post("/workshop-questions/:itemId/convert", requireAuth, async (c) 
   const { error: insertError } = await db.from("questions").insert(rows);
   if (insertError) {
     console.error("[admin:workshop-convert]", { stage: "insert", code: insertError.code, requestId: rid });
-    return c.json(fail("DB_ERROR", "Не удалось опубликовать вопросы", 503, rid), 503 as 503);
+    return c.json(fail("DB_ERROR", "Не удалось опубликовать вопросы", 503, rid), 503 as const);
   }
 
   const { error: itemUpdateError } = await db
@@ -147,23 +147,23 @@ adminConvert.post("/workshop-questions/:itemId/convert", requireAuth, async (c) 
     .eq("id", itemId);
   if (itemUpdateError) console.error("[admin:workshop-convert]", { stage: "status", code: itemUpdateError.code, requestId: rid });
 
-  return c.json(ok({ published: rows.length, item_id: itemId }, rid), 200 as 200);
+  return c.json(ok({ published: rows.length, item_id: itemId }, rid), 200 as const);
 });
 
 adminConvert.post("/workshop-questions/:itemId/reject", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");
   const itemId = String(c.req.param("itemId") || "");
-  if (!UUID.test(itemId)) return c.json(fail("VALIDATION_ERROR", "Некорректный ID элемента", 422, rid), 422 as 422);
-  if (!(await isModerator(c))) return c.json(fail("FORBIDDEN", "Конвертация доступна модераторам и админам", 403, rid), 403 as 403);
+  if (!UUID.test(itemId)) return c.json(fail("VALIDATION_ERROR", "Некорректный ID элемента", 422, rid), 422 as const);
+  if (!(await isModerator(c))) return c.json(fail("FORBIDDEN", "Конвертация доступна модераторам и админам", 403, rid), 403 as const);
 
   let payload: any;
   try { payload = await c.req.json(); } catch { payload = {}; }
   const note = String(payload?.note || "").trim().slice(0, 500);
-  if (!note) return c.json(fail("VALIDATION_ERROR", "Укажите причину отклонения", 422, rid), 422 as 422);
+  if (!note) return c.json(fail("VALIDATION_ERROR", "Укажите причину отклонения", 422, rid), 422 as const);
 
   const { data: item } = await db.from("workshop_items").select("id,kind,status").eq("id", itemId).maybeSingle();
-  if (!item || item.status === "deleted") return c.json(fail("NOT_FOUND", "Материал не найден", 404, rid), 404 as 404);
+  if (!item || item.status === "deleted") return c.json(fail("NOT_FOUND", "Материал не найден", 404, rid), 404 as const);
 
   const { error: updateError } = await db
     .from("workshop_items")
@@ -171,10 +171,10 @@ adminConvert.post("/workshop-questions/:itemId/reject", requireAuth, async (c) =
     .eq("id", itemId);
   if (updateError) {
     console.error("[admin:workshop-convert]", { stage: "reject", code: updateError.code, requestId: rid });
-    return c.json(fail("DB_ERROR", "Не удалось сохранить статус отклонения", 503, rid), 503 as 503);
+    return c.json(fail("DB_ERROR", "Не удалось сохранить статус отклонения", 503, rid), 503 as const);
   }
   // Элемент остаётся в Workshop: отклонили не материал, а его конвертацию.
-  return c.json(ok({ item_id: itemId, status: "rejected" }, rid), 200 as 200);
+  return c.json(ok({ item_id: itemId, status: "rejected" }, rid), 200 as const);
 });
 
 export default adminConvert;
