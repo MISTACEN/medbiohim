@@ -19,8 +19,8 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["fiziologiya", "physiology-normal"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "library"],
-    simulations: ["membrane-potential", "oxygen-hemoglobin"],
-    notes: "7 пособий и 35 занятий уже в базе; симуляции добавляются к ним, а не заменяют.",
+    simulations: ["membrane-potential", "oxygen-hemoglobin", "osmosis", "buffer-titration"],
+    notes: "7 пособий и 35 занятий уже в базе; симуляции добавляются к ним, а не заменяют. Осмос и буферы общие с гистологией и химией.",
   },
   {
     slug: "histology",
@@ -28,8 +28,8 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["histology-cytology", "gistologiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "atlas", "library", "simulations"],
-    simulations: ["osmosis"],
-    notes: "178 микропрепаратов и 28 электронограмм; симуляции не дублируют атлас.",
+    simulations: ["osmosis", "membrane-potential"],
+    notes: "178 микропрепаратов и 28 электронограмм; симуляции не дублируют атлас. Осмос — общая модель с физиологией и химией.",
   },
   {
     slug: "chemistry_organic_physical",
@@ -48,8 +48,8 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
       "reactions",
       "labs",
     ],
-    simulations: ["buffer-titration"],
-    notes: "Существующий химический модуль (118 элементов, лаборатория) сохраняется без переписывания.",
+    simulations: ["buffer-titration", "enzyme-kinetics", "osmosis"],
+    notes: "Существующий химический модуль (118 элементов, лаборатория) сохраняется без переписывания. Кинетика, буферы и осмос — общие модели для обеих химий.",
   },
   {
     slug: "inorganic_chemistry",
@@ -57,8 +57,8 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["inorganic-chemistry", "neorganicheskaya-himiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "chem_reference", "reactions"],
-    simulations: ["buffer-titration"],
-    notes: "Формат билета: 2 теоретических вопроса + 1 практический + 1 задача.",
+    simulations: ["buffer-titration", "osmosis"],
+    notes: "Формат билета: 2 теоретических вопроса + 1 практический + 1 задача. Буферы и осмос доступны так же, как в органической химии.",
   },
   {
     slug: "biology",
@@ -66,7 +66,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["biologiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "library"],
-    simulations: ["enzyme-kinetics", "hardy-weinberg"],
+    simulations: ["enzyme-kinetics", "hardy-weinberg", "osmosis", "oxygen-hemoglobin", "membrane-potential"],
     notes: "475 вопросов в базе; цитология и эмбриология связаны с гистологией, а не копируются.",
   },
 ];

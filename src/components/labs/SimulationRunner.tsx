@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
 import { gradeActivity } from "@/lib/learning/grading";
 import { KNOWLEDGE_LEVELS, SOURCE_KIND_LABELS } from "@/lib/learning/types";
 import { SIMULATIONS } from "@/lib/sim/catalog";
+import { resolveSubjectAdapter, simulationsForSubject } from "@/lib/learning/subjects";
 import { computeCurve, defaultParams, evaluate, formatOutput } from "@/lib/sim/engine";
 import { recordRun } from "@/lib/learning/progress";
 import type { SimDefinition, SimOutput, SimParams } from "@/lib/sim/types";
@@ -291,17 +293,37 @@ export default function SimulationRunner({
   initialSlug?: string;
   subjectSlug?: string;
 }) {
+  // Список берётся из предметного адаптера: одна модель доступна всем
+  // связанным дисциплинам (осмос — химии, биологии, гистологии, физиологии),
+  // а не только той, что записана в `subjectSlug` как основная.
   const list = useMemo(() => {
-    const scoped = subjectSlug
-      ? SIMULATIONS.filter((simulation) => simulation.subjectSlug === subjectSlug)
-      : SIMULATIONS;
-    return scoped.length ? scoped : SIMULATIONS;
+    if (!subjectSlug) return SIMULATIONS;
+    const allowed = new Set(simulationsForSubject(subjectSlug));
+    return SIMULATIONS.filter((simulation) => allowed.has(simulation.slug));
   }, [subjectSlug]);
   // Модель из URL принимается только если она входит в текущий предметный
   // фильтр: иначе /labs/simulations?subject=physiology&slug=osmosis показал бы осмос.
   const first = list.find((simulation) => simulation.slug === initialSlug) ?? list[0];
-  const [slug, setSlug] = useState(first.slug);
+  const [slug, setSlug] = useState(first?.slug ?? "");
   const definition = list.find((simulation) => simulation.slug === slug) ?? first;
+
+  if (!definition) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+        <p className="text-sm font-semibold">Для этого предмета моделей пока нет</p>
+        <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-[var(--muted)]">
+          Интерактивные модели привязаны к дисциплинам, где они действительно нужны.
+          Откройте полный каталог — там видны все доступные модели.
+        </p>
+        <Link
+          href="/labs/simulations"
+          className="mt-3 inline-block rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold hover:border-[var(--primary)]"
+        >
+          Все модели
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -320,7 +342,9 @@ export default function SimulationRunner({
             ].join(" ")}
           >
             <span className="block font-semibold">{simulation.title}</span>
-            <span className="mt-0.5 block text-[11px] text-[var(--muted)]">{simulation.subjectSlug}</span>
+            <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
+              {resolveSubjectAdapter(simulation.subjectSlug).name}
+            </span>
           </button>
         ))}
       </div>
