@@ -26,6 +26,7 @@ const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta
 const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
 const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
 const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
+const ticketGeneratorSource = await readFile(new URL("../../../src/components/subjects/TicketGenerator.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const testsHubSource = await readFile(new URL("../../../src/components/tests/TestsHub.tsx", import.meta.url), "utf8");
 const testPreparationPageSource = await readFile(new URL("../../../src/app/tests/preparation/[id]/page.tsx", import.meta.url), "utf8");
@@ -233,7 +234,7 @@ test("student subject plans use the narrow RPC without loosening site_content RL
   assert.ok(studentSubjectPlanMigration.includes("active MBH membership required"));
   assert.ok(!/DISABLE ROW LEVEL SECURITY|CREATE POLICY.*site_content/is.test(studentSubjectPlanMigration));
   assert.ok(subjectPageSource.includes("planSubjectFields"));
-  assert.ok(subjectPageSource.includes("Микропрепараты:"));
+  assert.ok(subjectPageSource.includes('title="Микропрепараты"'));
 });
 
 test("test details preserve the PHP envelope and keep answer keys out of normal attempts", () => {
@@ -268,9 +269,9 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
   // участвуют в ключе кэша), поэтому сигнатура вызова с аргументом; путь
   // после D4 берётся из реестра эндпоинтов (endpoints.tests.ticketBanks()).
   assert.ok(/apiCached\s*\(\s*endpoints\.tests\.ticketBanks\(\)\s*,\s*options/.test(apiClientSource));
-  assert.ok(subjectPageSource.includes('disabled={Number(b.count ?? 0) <= 0}'));
-  assert.ok(subjectPageSource.includes('const firstAvailableBank = subjectBanks.find'));
-  assert.ok(subjectPageSource.includes('setTicketQuestions([])'));
+  assert.ok(ticketGeneratorSource.includes('disabled={Number(b.count ?? 0) <= 0}'));
+  assert.ok(ticketGeneratorSource.includes("const firstAvailableBank = subjectBanks.find"));
+  assert.ok(ticketGeneratorSource.includes("setQuestions([])"));
   assert.ok(subjectPageSource.includes('(responseData?.id ? responseData : null)'));
   assert.ok(subjectPageSource.includes('const s: any = { ...(hit || {}), ...(subjectPayload || {}) };'));
   assert.ok(chemistryTicketMigration.includes("subject_slug='organic_chemistry'"));
@@ -293,7 +294,8 @@ test("subject detail accepts the Cloudflare response shape and preserves workloa
   assert.ok(subjectPageSource.includes("responseData?.subject || responseData?.item"));
   assert.ok(subjectTestsPageSource.includes("payload?.subject || payload?.item || (payload?.id ? payload : null)"));
   assert.ok(subjectsRouteSource.includes("total_hours,lecture_hours,practice_hours,self_study_hours"));
-  assert.ok(subjectPageSource.includes("w.description"));
+  assert.ok(subjectPageSource.includes("description: planSubject.description ?? planData.description"));
+  assert.ok(subjectPageSource.includes("total_hours: planSubject.total_hours ?? planData.total_hours"));
 });
 
 test("SpaceWeb histology media migration uses the shared private Upstash Blob bucket", () => {
