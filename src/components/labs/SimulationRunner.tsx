@@ -6,7 +6,12 @@ import { CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
 import { gradeActivity } from "@/lib/learning/grading";
 import { KNOWLEDGE_LEVELS, SOURCE_KIND_LABELS } from "@/lib/learning/types";
 import { SIMULATIONS } from "@/lib/sim/catalog";
-import { resolveSubjectAdapter, simulationsForSubject } from "@/lib/learning/subjects";
+import {
+  resolveSubjectAreaKey,
+  simulationSlugsForArea,
+  subjectAreaName,
+  type SubjectAreaKey,
+} from "@/lib/learning/modules";
 import { computeCurve, defaultParams, evaluate, formatOutput } from "@/lib/sim/engine";
 import { recordRun } from "@/lib/learning/progress";
 import type { SimDefinition, SimOutput, SimParams } from "@/lib/sim/types";
@@ -296,11 +301,15 @@ export default function SimulationRunner({
   // Список берётся из предметного адаптера: одна модель доступна всем
   // связанным дисциплинам (осмос — химии, биологии, гистологии, физиологии),
   // а не только той, что записана в `subjectSlug` как основная.
+  const areaKey = useMemo(
+    () => (subjectSlug ? resolveSubjectAreaKey({ slug: subjectSlug, name: subjectSlug }) : null),
+    [subjectSlug],
+  );
   const list = useMemo(() => {
     if (!subjectSlug) return SIMULATIONS;
-    const allowed = new Set(simulationsForSubject(subjectSlug));
+    const allowed = new Set(simulationSlugsForArea(areaKey));
     return SIMULATIONS.filter((simulation) => allowed.has(simulation.slug));
-  }, [subjectSlug]);
+  }, [subjectSlug, areaKey]);
   // Модель из URL принимается только если она входит в текущий предметный
   // фильтр: иначе /labs/simulations?subject=physiology&slug=osmosis показал бы осмос.
   const first = list.find((simulation) => simulation.slug === initialSlug) ?? list[0];
@@ -343,7 +352,7 @@ export default function SimulationRunner({
           >
             <span className="block font-semibold">{simulation.title}</span>
             <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
-              {resolveSubjectAdapter(simulation.subjectSlug).name}
+              {subjectAreaName(simulation.subjectSlug as SubjectAreaKey)}
             </span>
           </button>
         ))}

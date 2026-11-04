@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FlaskConical } from "lucide-react";
 import SimulationRunner from "@/components/labs/SimulationRunner";
+import { resolveSubjectAreaKey, subjectAreaName } from "@/lib/learning/modules";
 
 export const metadata: Metadata = {
   title: "Симуляции — MEDBIOHIM",
@@ -20,6 +21,10 @@ export default async function SimulationsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  const requestedSubject = pick(params.subject);
+  const areaKey = requestedSubject
+    ? resolveSubjectAreaKey({ slug: requestedSubject, name: requestedSubject })
+    : null;
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -32,6 +37,11 @@ export default async function SimulationsPage({
             Меняйте параметры и смотрите, как меняется результат. Это учебные модели с явными
             ограничениями — не замена учебнику и не клинический расчёт.
           </p>
+          {areaKey ? (
+            <p className="mt-2 inline-block rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-semibold text-[var(--primary)]">
+              Модели для предмета: {subjectAreaName(areaKey)}
+            </p>
+          ) : null}
         </div>
         <Link
           href="/labs"
@@ -41,7 +51,7 @@ export default async function SimulationsPage({
         </Link>
       </header>
 
-      <SimulationRunner initialSlug={pick(params.slug)} subjectSlug={pick(params.subject)} />
+      <SimulationRunner initialSlug={pick(params.slug)} subjectSlug={areaKey ?? requestedSubject} />
     </div>
   );
 }

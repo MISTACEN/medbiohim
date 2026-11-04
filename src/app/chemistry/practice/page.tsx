@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { PracticeRunner } from "@/components/chemistry/PracticeRunner";
+import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
 
 export const metadata: Metadata = {
   title: "Химия · генератор вариантов задач",
@@ -23,6 +24,7 @@ export default function ChemistryPracticePage() {
           допуском, решения раскрываются по шагам, а результаты выгружаются в CSV или печатаются в PDF.
         </p>
       </div>
+      <SubjectContextBanner />
       <PracticeRunner />
     </div>
   );

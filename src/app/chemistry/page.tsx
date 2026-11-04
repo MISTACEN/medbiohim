@@ -3,10 +3,19 @@
 import Link from "next/link";
 import { ArrowRight, Beaker, FlaskConical, ListChecks } from "lucide-react";
 import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
+import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
+import { moduleById, moduleHref, subjectAreaName, type SubjectAreaKey } from "@/lib/learning/modules";
+
+const workbench = moduleById("chemistry.workbench");
+const workbenchAreas = workbench
+  ? (Object.entries(workbench.relations) as Array<[SubjectAreaKey, NonNullable<(typeof workbench.relations)[SubjectAreaKey]>]>)
+      .filter(([key]) => key !== workbench.primary)
+  : [];
 
 export default function ChemistryPage() {
   return (
     <div className="space-y-6">
+      <SubjectContextBanner />
       <ChemistryWorkbench />
 
       <nav aria-label="Разделы химии" className="mx-auto grid max-w-6xl gap-3 sm:grid-cols-2">
@@ -87,6 +96,29 @@ export default function ChemistryPage() {
           <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
         </Link>
       </nav>
+
+      {workbench && workbenchAreas.length ? (
+        <section className="mx-auto w-full max-w-6xl rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--muted)]">
+            Химическое ядро в других дисциплинах
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Один и тот же модуль открывается из связанных предметов с их контекстом — без копий и
+            второго прогресса.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {workbenchAreas.map(([key, relation]) => (
+              <Link
+                key={key}
+                href={moduleHref(workbench, { subjectKey: key, topic: relation.topics[0] })}
+                className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs hover:border-[var(--primary)]"
+              >
+                {subjectAreaName(key)}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

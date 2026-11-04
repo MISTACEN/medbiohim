@@ -9,6 +9,7 @@
  */
 
 import type { SubjectAdapter, SubjectCapability, KnowledgeLevel } from "./types";
+import { simulationSlugsForArea } from "./modules";
 
 const ALL_LEVELS: KnowledgeLevel[] = [1, 2, 3];
 
@@ -19,7 +20,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["fiziologiya", "physiology-normal"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "library"],
-    simulations: ["membrane-potential", "oxygen-hemoglobin", "osmosis", "buffer-titration"],
+    simulations: simulationSlugsForArea("physiology"),
     notes: "7 пособий и 35 занятий уже в базе; симуляции добавляются к ним, а не заменяют. Осмос и буферы общие с гистологией и химией.",
   },
   {
@@ -28,7 +29,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["histology-cytology", "gistologiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "atlas", "library", "simulations"],
-    simulations: ["osmosis", "membrane-potential"],
+    simulations: simulationSlugsForArea("histology"),
     notes: "178 микропрепаратов и 28 электронограмм; симуляции не дублируют атлас. Осмос — общая модель с физиологией и химией.",
   },
   {
@@ -48,7 +49,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
       "reactions",
       "labs",
     ],
-    simulations: ["buffer-titration", "enzyme-kinetics", "osmosis"],
+    simulations: simulationSlugsForArea("chemistry_organic_physical"),
     notes: "Существующий химический модуль (118 элементов, лаборатория) сохраняется без переписывания. Кинетика, буферы и осмос — общие модели для обеих химий.",
   },
   {
@@ -57,7 +58,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["inorganic-chemistry", "neorganicheskaya-himiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "chem_reference", "reactions"],
-    simulations: ["buffer-titration", "osmosis"],
+    simulations: simulationSlugsForArea("inorganic_chemistry"),
     notes: "Формат билета: 2 теоретических вопроса + 1 практический + 1 задача. Буферы и осмос доступны так же, как в органической химии.",
   },
   {
@@ -66,7 +67,7 @@ export const SUBJECT_ADAPTERS: SubjectAdapter[] = [
     aliases: ["biologiya"],
     levels: ALL_LEVELS,
     capabilities: ["lectures", "tests", "tickets", "cards", "progress", "simulations", "library"],
-    simulations: ["enzyme-kinetics", "hardy-weinberg", "osmosis", "oxygen-hemoglobin", "membrane-potential"],
+    simulations: simulationSlugsForArea("biology"),
     notes: "475 вопросов в базе; цитология и эмбриология связаны с гистологией, а не копируются.",
   },
 ];

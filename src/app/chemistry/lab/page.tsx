@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { LabBench } from "@/components/chemistry/LabBench";
+import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
 
 export const metadata: Metadata = {
   title: "Химия · виртуальная лаборатория",
@@ -23,6 +24,7 @@ export default function ChemistryLabPage() {
           элемент Нернста и поглощение света. У каждого опыта есть протокол и выгрузка результатов.
         </p>
       </div>
+      <SubjectContextBanner />
       <LabBench />
     </div>
   );

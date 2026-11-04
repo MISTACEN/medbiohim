@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ChemTools from "@/components/chemistry/ChemTools";
+import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
 
 export const metadata: Metadata = {
   title: "Растворы и pH — MEDBIOHIM",
@@ -21,6 +22,7 @@ export default function ChemToolsPage() {
           буферные системы.
         </p>
       </header>
+      <SubjectContextBanner />
       <ChemTools />
     </div>
   );

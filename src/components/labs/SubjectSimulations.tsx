@@ -3,16 +3,22 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, FlaskConical } from "lucide-react";
-import { SIMULATIONS } from "@/lib/sim/catalog";
-import { resolveSubjectAdapter } from "@/lib/learning/subjects";
+import {
+  moduleHref,
+  modulesForSubject,
+  relationFor,
+  resolveSubjectAreaKey,
+  subjectAreaName,
+} from "@/lib/learning/modules";
 import { readRuns, summarizeRuns, type SimulationRun } from "@/lib/learning/progress";
 
-/** Компактный блок симуляций на странице предмета + локальный прогресс. */
-export default function SubjectSimulations({ slug }: { slug: string }) {
-  const simulations = useMemo(() => {
-    const allowed = new Set(resolveSubjectAdapter(slug).simulations);
-    return SIMULATIONS.filter((simulation) => allowed.has(simulation.slug));
-  }, [slug]);
+/** Модели, применимые к предмету: одна реализация, контекст из дисциплины. */
+export default function SubjectSimulations({ slug, name }: { slug?: string | null; name?: string | null }) {
+  const areaKey = useMemo(() => resolveSubjectAreaKey({ slug, name }), [slug, name]);
+  const simulations = useMemo(
+    () => modulesForSubject(areaKey, { functions: ["simulation"] }),
+    [areaKey],
+  );
 
   const [runs, setRuns] = useState<SimulationRun[]>([]);
   useEffect(() => {
@@ -21,7 +27,7 @@ export default function SubjectSimulations({ slug }: { slug: string }) {
 
   const summary = useMemo(() => summarizeRuns(runs), [runs]);
 
-  if (!simulations.length) return null;
+  if (!areaKey || !simulations.length) return null;
 
   return (
     <section className="card p-5">
@@ -32,11 +38,12 @@ export default function SubjectSimulations({ slug }: { slug: string }) {
             Интерактивные модели
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Меняйте параметры и проверяйте механизм. Результаты сохраняются на этом устройстве.
+            Подобраны для {subjectAreaName(areaKey).toLowerCase()}. Результаты сохраняются на этом
+            устройстве и не зависят от того, из какого предмета открыта модель.
           </p>
         </div>
         <Link
-          href={`/labs/simulations?subject=${encodeURIComponent(slug)}`}
+          href={`/labs/simulations?subject=${encodeURIComponent(areaKey)}`}
           className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold hover:border-[var(--primary)]"
         >
           Все симуляции
@@ -44,19 +51,25 @@ export default function SubjectSimulations({ slug }: { slug: string }) {
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {simulations.map((simulation) => {
-          const best = summary.bestBySlug[simulation.slug];
+        {simulations.map((module) => {
+          const slugValue = module.simulationSlug;
+          if (!slugValue) return null;
+          const best = summary.bestBySlug[slugValue];
+          const relation = relationFor(module, areaKey);
           return (
             <Link
-              key={simulation.slug}
-              href={`/labs/simulations?slug=${encodeURIComponent(simulation.slug)}&subject=${encodeURIComponent(slug)}`}
+              key={module.id}
+              href={moduleHref(module, { subjectKey: areaKey })}
               className="group flex items-start justify-between gap-2 rounded-xl border border-[var(--border)] p-3 hover:border-[var(--primary)]"
             >
               <span className="min-w-0">
-                <span className="block text-sm font-semibold">{simulation.title}</span>
+                <span className="block text-sm font-semibold">{module.title}</span>
                 <span className="mt-0.5 block text-xs text-[var(--muted)]">
                   {best === undefined ? "Ещё не проходили" : `Лучший результат: ${best}%`}
                 </span>
+                {relation?.reason ? (
+                  <span className="mt-1 block text-[11px] leading-4 text-[var(--muted)]">{relation.reason}</span>
+                ) : null}
               </span>
               <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 opacity-50 group-hover:opacity-100" />
             </Link>
