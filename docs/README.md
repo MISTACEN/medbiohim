@@ -1,17 +1,26 @@
 # Документация MEDBIOHIM
 
-**Обновлено: 3 ноября 2026 года.** Начинайте с [единого текущего состояния](CURRENT-STATE-2026-11-03.md) — это согласованный срез архитектуры, фактов, ограничений и приоритетов.
+**Обновлено: 4 ноября 2026 года.** Начинайте с [единого текущего состояния](CURRENT-STATE-2026-11-03.md) — это датированный срез архитектуры, фактов, ограничений и приоритетов. Перед изменениями обязательно сверяйте актуальный `main`.
+
+## Инструкции ИИ-агентов
+
+- [AGENTS.md](../AGENTS.md) — корневые правила.
+- [AGENT-ARCHITECTURE.md](../AGENT-ARCHITECTURE.md) — координатор, независимые агенты и subagents.
+- [AGENT-OWNERSHIP.md](../AGENT-OWNERSHIP.md) — матрица владения файлами.
+- [AGENT-TASK-PROTOCOL.md](../AGENT-TASK-PROTOCOL.md) — задания, изоляция, patch и интеграция.
+- [API-CONTRACTS.md](../API-CONTRACTS.md) — межслойные контракты.
+- [.agents/](../.agents/README.md) — инструкции координатора и специализированных ролей.
 
 ## Текущие источники
 
-- [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md) — единый статус проекта.
+- [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md) — единый статус проекта на указанную дату.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — актуальная схема приложения и API.
 - [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md) — роли Cloudflare Workers.
 - [STATUS.md](archive/STATUS.md) — исторический снимок октября, не текущий статус.
 - [UNFINISHED-REGISTRY.md](UNFINISHED-REGISTRY.md) — накопленный список задач; каждую старую запись проверять по main.
 - [TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md](TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md) — что бот умеет и что осталось.
 - [PYRAMID-AND-CHEMISTRY-ROADMAP.md](PYRAMID-AND-CHEMISTRY-ROADMAP.md) — «пирамида знаний» и химия.
-- [DOCS-AUDIT-2026-11-03.md](DOCS-AUDIT-2026-11-03.md) — проверка всей документации: ссылки, устаревшее, выводы.
+- [DOCS-AUDIT-2026-11-03.md](DOCS-AUDIT-2026-11-03.md) — проверка документации: ссылки, устаревшее, выводы.
 
 ## Корневые рабочие документы
 
