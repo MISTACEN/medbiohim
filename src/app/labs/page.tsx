@@ -17,9 +17,17 @@ export default function LabsPage() {
             Выберите лабораторную, отвечайте на задания внутри сессии и следите за прогрессом.
           </p>
         </div>
-        <Link href="/subjects" className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
-          К предметам
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/labs/simulations"
+            className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300"
+          >
+            Симуляции
+          </Link>
+          <Link href="/subjects" className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:border-indigo-300">
+            К предметам
+          </Link>
+        </div>
       </header>
 
       <Labs />
