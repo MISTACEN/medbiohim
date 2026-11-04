@@ -85,7 +85,6 @@ function lcm(a: number, b: number): number {
  * Рекурсивный спуск по позиции в строке — индексы группы умножаются на множитель.
  */
 function parseBody(source: string, original: string): Record<string, number> {
-  const elements: Record<string, number> = {};
   let position = 0;
 
   function add(target: Record<string, number>, element: string, count: number) {
