@@ -182,7 +182,7 @@ async function collect(c: any, options: CollectOptions) {
     // (preparation->>name, organ) не зависели от синтаксиса PostgREST.
     const { data: cardRows, error: cardError } = await db
       .from("trainer_feed_cards")
-      .select("id,subject_slug,preparation,mode_set,tags,question")
+      .select("id,subject_slug,preparation,mode_set,tags,is_published")
       .eq("subject_slug", "histology")
       .eq("is_published", true)
       .limit(1000);
@@ -195,8 +195,8 @@ async function collect(c: any, options: CollectOptions) {
       const organ = String(preparation.organ || "").trim();
       const stain = String(preparation.stain || "").trim();
       const tags = Array.isArray(raw.tags) ? raw.tags.map(histologyTagLabel) : [];
-      const prompt = String(raw.question?.prompt || "").trim();
-      const score = scoreFields([name, organ, stain, ...tags, prompt], query);
+      // Do not SELECT question JSON here: it contains correct-answer flags.
+      const score = scoreFields([name, organ, stain, ...tags], query);
       if (!score) continue;
 
       const isElectronogram = String(raw.mode_set || "") === "electronogram";
@@ -219,7 +219,7 @@ async function collect(c: any, options: CollectOptions) {
           subject: "Гистология",
           subject_slug: "histology",
           topic: section,
-          snippet: prompt || [kindLabel, stain, section].filter(Boolean).join(" · "),
+          snippet: [kindLabel, stain, section].filter(Boolean).join(" · "),
           hint: [kindLabel, stain, section].filter(Boolean).join(" · "),
           has_answer: false,
           href: `/atlas?card=${encodeURIComponent(String(raw.id))}`,
