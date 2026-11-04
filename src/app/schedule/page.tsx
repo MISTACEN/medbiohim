@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3, ClipboardList, Plus, Upload, Loader2,
+  CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3, ClipboardList, Plus, Upload, Loader2, Search, CalendarClock,
 } from "lucide-react";
 import Link from "next/link";
-import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, smartParseHomework, type ScheduleItem, type ScheduleMeta, type SubjectPlanWeek } from "@/lib/api";
+import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, updateHomework, smartParseHomework, type ScheduleItem, type ScheduleMeta, type SubjectPlanWeek } from "@/lib/api";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { nowParts as sharedNowParts } from "@/lib/now-parts";
@@ -35,8 +35,24 @@ function HomeworkGrade({ homework }: { homework: any }) {
 }
 
 const TZ = "Asia/Vladivostok";
-const SEMESTER_FROM = "2026-09-01";
-const SEMESTER_TO = "2027-01-31";
+
+/**
+ * Диапазон семестра берётся из календарных периодов (schedule meta, type=theoretical),
+ * а не зашит в код. Константа ниже — fallback, если в БД периодов ещё нет.
+ */
+type SemesterRange = { from: string; to: string };
+const FALLBACK_SEMESTER: SemesterRange = { from: "2026-09-01", to: "2027-01-31" };
+function deriveSemesterRange(meta: any): SemesterRange {
+  const periods = Array.isArray(meta?.periods) ? meta.periods : [];
+  const theoretical = periods.filter((p: any) =>
+    p?.type === "theoretical" && typeof p?.start_date === "string" && p.start_date.length >= 10
+  );
+  if (!theoretical.length) return FALLBACK_SEMESTER;
+  const from = theoretical.map((p: any) => String(p.start_date).slice(0, 10)).sort()[0];
+  const ends = theoretical.map((p: any) => String(p.end_date || p.start_date).slice(0, 10)).sort();
+  const to = ends[ends.length - 1];
+  return to > from ? { from, to } : FALLBACK_SEMESTER;
+}
 
 /** Длинное ДЗ показываем коротким превью: полный текст раскрывается по клику. */
 function HomeworkText({ text }: { text: string }) {
@@ -350,6 +366,7 @@ type ScheduleBundle = {
   homeworks: any[];
   recovery: any[];
   message: string | null;
+  range: SemesterRange;
 };
 
 export default function SchedulePage() {
@@ -395,6 +412,13 @@ export default function SchedulePage() {
   const [addHomeworkTitle, setAddHomeworkTitle] = useState("");
   const [addHomeworkDescription, setAddHomeworkDescription] = useState("");
   const [addHomeworkFiles, setAddHomeworkFiles] = useState<File[]>([]);
+  // Диапазон семестра выводится из меты (календарные периоды) при загрузке.
+  const [semesterRange, setSemesterRange] = useState<SemesterRange>(FALLBACK_SEMESTER);
+  const semesterRangeRef = useRef<SemesterRange>(FALLBACK_SEMESTER);
+  // Фильтры планировщика: поиск, предмет, статус.
+  const [hwSearch, setHwSearch] = useState("");
+  const [hwSubject, setHwSubject] = useState("");
+  const [hwStatus, setHwStatus] = useState<"all" | "active" | "overdue" | "done">("all");
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) setView("day");
@@ -409,13 +433,25 @@ export default function SchedulePage() {
 
   // D9: загрузка расписания, меты и planner'а через useApiRequest —
   // AbortSignal отменяет запросы при unmount и смене группы/курса.
+  // Мета грузится первой: из календарных периодов выводится диапазон семестра,
+  // которым ограничиваются запросы расписания и planner'а.
   const { data: scheduleBundle, loading, error: loadError } = useApiRequest<ScheduleBundle | null>(
     async (signal) => {
       if (!hasToken()) return null;
-      const [res, metaRes, plannerRes] = await Promise.all([
-        listSchedule(SEMESTER_FROM, SEMESTER_TO, user?.groupId, { signal }),
-        getScheduleMeta(user?.course, user?.semester, { signal }),
-        getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId, { signal }),
+      const metaRes = await getScheduleMeta(user?.course, user?.semester, { signal });
+      let meta: ScheduleMeta = { periods: [], duration_rules: [] };
+      if (metaRes.ok && metaRes.data) {
+        const raw = metaRes.data as Partial<{ periods: unknown; duration_rules: unknown }> & Record<string, unknown>;
+        meta = {
+          ...raw,
+          periods: Array.isArray(raw.periods) ? raw.periods : [],
+          duration_rules: Array.isArray(raw.duration_rules) ? raw.duration_rules : [],
+        } as ScheduleMeta;
+      }
+      const range = deriveSemesterRange(meta);
+      const [res, plannerRes] = await Promise.all([
+        listSchedule(range.from, range.to, user?.groupId, { signal }),
+        getStudentPlanner(range.from, range.to, user?.groupId, { signal }),
       ]);
       let items: ScheduleItem[] = [];
       let source = "db";
@@ -431,15 +467,6 @@ export default function SchedulePage() {
       } else {
         message = describeApiError(res.error) || "Не удалось загрузить расписание";
       }
-      let meta: ScheduleMeta = { periods: [], duration_rules: [] };
-      if (metaRes.ok && metaRes.data) {
-        const raw = metaRes.data as Partial<{ periods: unknown; duration_rules: unknown }> & Record<string, unknown>;
-        meta = {
-          ...raw,
-          periods: Array.isArray(raw.periods) ? raw.periods : [],
-          duration_rules: Array.isArray(raw.duration_rules) ? raw.duration_rules : [],
-        } as ScheduleMeta;
-      }
       let homeworks: any[] = [];
       let recovery: any[] = [];
       if (plannerRes.ok) {
@@ -449,7 +476,7 @@ export default function SchedulePage() {
         for (const a of (plannerRes.data.attendance || [])) byEntry.set(String(a.schedule_entry_id), String(a.status));
         items = items.map((it) => ({ ...it, attendance_status: byEntry.get(String(it.id)) || it.attendance_status }));
       }
-      return { items, source, meta, homeworks, recovery, message };
+      return { items, source, meta, homeworks, recovery, message, range };
     },
     [user?.groupId, user?.course, user?.semester]
   );
@@ -462,6 +489,8 @@ export default function SchedulePage() {
     setHomeworks(scheduleBundle.homeworks);
     setRecovery(scheduleBundle.recovery);
     setError(scheduleBundle.message);
+    setSemesterRange(scheduleBundle.range);
+    semesterRangeRef.current = scheduleBundle.range;
   }, [scheduleBundle]);
 
   // Как и раньше: при старте новой загрузки прошлая ошибка сбрасывается.
@@ -496,6 +525,53 @@ export default function SchedulePage() {
   }, [homeworks, selected]);
 
   const canCreateHomework = Boolean(user);
+
+  // Планировщик: единый список ДЗ с поиском, фильтрами и переносом сроков.
+  const hwSubjects = useMemo(
+    () => Array.from(new Set(homeworks.map((h: any) => String(h.subject_name || "")).filter(Boolean))).sort(),
+    [homeworks]
+  );
+  const filteredHomeworks = useMemo(() => {
+    const q = hwSearch.trim().toLowerCase();
+    return homeworks
+      .filter((h: any) => {
+        if (hwSubject && String(h.subject_name || "") !== hwSubject) return false;
+        if (q && !(`${h.title || ""} ${h.description || ""}`.toLowerCase().includes(q))) return false;
+        const st = homeworkStatus(h);
+        if (hwStatus === "active" && st === "done") return false;
+        if (hwStatus === "overdue" && st !== "overdue") return false;
+        if (hwStatus === "done" && st !== "done") return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const da = String(a.due_date || a.due_at?.slice(0, 10) || "9999-12-31");
+        const db = String(b.due_date || b.due_at?.slice(0, 10) || "9999-12-31");
+        if (da !== db) return da.localeCompare(db);
+        return String(a.title || "").localeCompare(String(b.title || ""), "ru");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- homeworkStatus стабилен (чистая функция от поля записи)
+  }, [homeworks, hwSearch, hwSubject, hwStatus, now.date]);
+
+  /** Перенос своего задания на N дней вперёд (PATCH /homeworks/:id). */
+  async function rescheduleHomework(h: any, days: number) {
+    const id = String(h.id);
+    setHomeworkBusy(id);
+    const base = String(h.due_date || h.due_at?.slice(0, 10) || now.date);
+    const nextDate = addDaysYmd(base, days);
+    const r = await updateHomework(id, {
+      title: String(h.title || "Задание"),
+      description: h.description ?? null,
+      due_at: nextDate,
+    });
+    if (r.ok) setHomeworks(prev => prev.map(x => String(x.id) === id ? { ...x, due_date: nextDate, due_at: nextDate } : x));
+    else setError(describeApiError(r.error));
+    setHomeworkBusy(null);
+  }
+
+  function homeworkEditable(h: any): boolean {
+    if (!user) return false;
+    return !h.group_id || String(h.created_by || "") === String(user.id);
+  }
 
   function homeworkStatus(h:any) {
     if (h.my_status === "done" || h.my_completed === true || ["submitted","graded","returned"].includes(String(h.submission_status || ""))) return "done";
@@ -576,7 +652,7 @@ export default function SchedulePage() {
       setAddHomeworkDescription("");
       setAddHomeworkFiles([]);
       setAddHomeworkOpen(false);
-      const refreshed = await getStudentPlanner(SEMESTER_FROM, SEMESTER_TO, user?.groupId);
+      const refreshed = await getStudentPlanner(semesterRangeRef.current.from, semesterRangeRef.current.to, user?.groupId);
       if (refreshed.ok) setHomeworks(Array.isArray(refreshed.data.homeworks) ? refreshed.data.homeworks : []);
     } else setError(describeApiError(r.error));
     setHomeworkBusy(null);
@@ -666,7 +742,13 @@ export default function SchedulePage() {
   const currentDayItems = grouped.get(selectedDay) || [];
   const monthDays = monthGridDays(monthStart);
   const monthItems = allItems.filter((it) => it.date?.startsWith(monthStart.slice(0,7)));
-  const semesterWeeks = Array.from({ length: 21 }, (_, i) => { const start = addDaysYmd(SEMESTER_FROM, i * 7); const end = addDaysYmd(start, 6); const weekItems = allItems.filter((it) => it.date >= start && it.date <= end); return { index:i+1, start, end, items:weekItems }; });
+  const semesterWeeks: Array<{ index: number; start: string; end: string; items: ScheduleItem[] }> = [];
+  for (let start = semesterRange.from, i = 1; start <= semesterRange.to && i <= 40; start = addDaysYmd(start, 7), i++) {
+    const end = addDaysYmd(start, 6);
+    const weekItems = allItems.filter((it) => it.date >= start && it.date <= end);
+    semesterWeeks.push({ index: i, start, end, items: weekItems });
+  }
+  const academicYearLabel = `${semesterRange.from.slice(0, 4)}/${Number(semesterRange.from.slice(0, 4)) + 1}`;
   const showNowLine = now.minutes >= GRID_START_MIN && now.minutes <= 18 * 60 + 30;
   const nowTop = (now.minutes - GRID_START_MIN) * PX_PER_MIN;
   const weekCount = items.length;
@@ -688,7 +770,7 @@ export default function SchedulePage() {
             <CalendarDays className="h-6 w-6" style={{ color: "var(--primary)" }} />
             <h1 className="page-title">Расписание</h1>
           </div>
-          <p className="page-subtitle">{groupName}{course != null ? ` · ${course} курс` : ""}{semester != null ? ` · семестр ${semester}` : ""} · 2026/2027</p>
+          <p className="page-subtitle">{groupName}{course != null ? ` · ${course} курс` : ""}{semester != null ? ` · семестр ${semester}` : ""} · {academicYearLabel}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
               <Database className="h-3.5 w-3.5" /> {source === "db" ? "база данных" : source === "local" ? "резервные данные" : source} · {totalCount} занятий за семестр
@@ -716,6 +798,83 @@ export default function SchedulePage() {
         <div className="schedule-period">{weekTitle(weekStart)} · на неделе {weekCount}</div>
         {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
       </div>
+
+      {/* Планировщик: все задания семестра одним списком — поиск, фильтры, перенос. */}
+      {!loading && homeworks.length > 0 && (
+        <section className="rounded-2xl border p-4" aria-label="Планировщик заданий">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <b>Планировщик заданий</b>
+              <p className="text-xs opacity-60">Все ДЗ семестра: поиск по тексту, фильтры по предмету и статусу, перенос сроков.</p>
+            </div>
+            <span className="rounded-full px-2 py-1 text-xs font-bold">{filteredHomeworks.length} / {homeworks.length}</span>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <label className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50" />
+              <input
+                value={hwSearch}
+                onChange={(e) => setHwSearch(e.target.value)}
+                placeholder="Поиск по заданиям…"
+                className="w-56 rounded-lg border border-[var(--border)] bg-[var(--card)] py-1.5 pl-8 pr-2 text-sm"
+              />
+            </label>
+            <select
+              value={hwSubject}
+              onChange={(e) => setHwSubject(e.target.value)}
+              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-sm"
+              aria-label="Фильтр по предмету"
+            >
+              <option value="">Все предметы</option>
+              {hwSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <div className="schedule-tabs">
+              {([["all","Все"],["active","Активные"],["overdue","Просрочено"],["done","Готово"]] as const).map(([id,label]) => (
+                <button key={id} type="button" onClick={() => setHwStatus(id)} className={hwStatus===id?"schedule-tab schedule-tab-active":"schedule-tab"}>{label}</button>
+              ))}
+            </div>
+          </div>
+          {filteredHomeworks.length === 0 ? (
+            <EmptyState compact icon={ClipboardList} title="Заданий по фильтру нет" description="Измените поиск или фильтры — либо все задания в этом статусе закрыты." />
+          ) : (
+            <ul className="space-y-2">
+              {filteredHomeworks.map((h: any) => {
+                const hs = homeworkStatus(h);
+                const due = String(h.due_date || h.due_at?.slice(0, 10) || "");
+                const editable = homeworkEditable(h);
+                return (
+                  <li key={String(h.id)} className="flex flex-wrap items-center gap-2 rounded-xl border bg-[var(--card)] p-3">
+                    <button type="button" disabled={homeworkBusy===String(h.id)} onClick={()=>void toggleHomework(h)} aria-label={hs==="done"?"Отметить как невыполненное":"Отметить выполненным"} className={hs==="done"?"text-[var(--status-ok-fg)]":"text-slate-300"}>
+                      <CheckCircle2 className="h-5 w-5" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <b className={hs==="done"?"line-through opacity-60":""}>{h.title}</b>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs opacity-70">
+                        {h.subject_name && <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{background:subjectColor(h)}}/>{h.subject_name}</span>}
+                        {due && <span>· срок {shortDateRu(due)}</span>}
+                        {hs==="overdue" && <span className="rounded-full bg-[var(--status-critical-bg)] px-1.5 py-0.5 font-semibold text-[var(--status-critical-fg)]">просрочено</span>}
+                        {hs==="done" && <span className="rounded-full bg-[var(--status-ok-bg)] px-1.5 py-0.5 font-semibold text-[var(--status-ok-fg)]">готово</span>}
+                      </div>
+                    </div>
+                    {editable && (
+                      <button
+                        type="button"
+                        disabled={homeworkBusy===String(h.id)}
+                        onClick={()=>void rescheduleHomework(h, 1)}
+                        title={`Перенести срок на ${shortDateRu(addDaysYmd(due || now.date, 1))}`}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-1 text-xs font-semibold hover:border-[var(--primary)]"
+                      >
+                        {homeworkBusy===String(h.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="h-3.5 w-3.5" />}
+                        На день позже
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       {recovery.length>0 && (
         <section className="rounded-2xl border p-4" style={{background:"color-mix(in srgb,var(--primary) 4%,var(--card))"}}>
@@ -874,8 +1033,8 @@ export default function SchedulePage() {
               <div className="schedule-view-toolbar">
                 <div>
                   <div className="schedule-view-kicker"><GraduationCap className="h-4 w-4" /> Учебный ритм</div>
-                  <h2 className="schedule-view-title">Семестр 2026/2027</h2>
-                  <p className="schedule-view-subtitle">Теоретическое обучение · 01.09.2026 — 21.01.2027 · {totalCount} занятий</p>
+                  <h2 className="schedule-view-title">Семестр {academicYearLabel}</h2>
+                  <p className="schedule-view-subtitle">Теоретическое обучение · {semesterRange.from} — {semesterRange.to} · {totalCount} занятий</p>
                 </div>
                 <div className="schedule-semester-status"><CheckCircle2 className="h-4 w-4"/> {activePeriod?.title||"Текущий учебный блок"}</div>
               </div>
@@ -886,8 +1045,8 @@ export default function SchedulePage() {
                 <div className="schedule-semester-metric"><span className="metric-icon metric-amber"><Clock/></span><div><b>{allItems.reduce((sum,it)=>sum+(Number(it.academic_hours)||0),0)}</b><small>акад. часов</small></div></div>
               </div>
               <div className="schedule-semester-progress">
-                <div className="schedule-semester-progress-top"><b>Прогресс семестра</b><span>Неделя {Math.min(21,Math.max(1,Math.floor(Math.max(0,(new Date(today+"T12:00:00").getTime()-new Date(SEMESTER_FROM+"T12:00:00").getTime())/86400000)/7)+1))} из 21</span></div>
-                <div className="schedule-semester-progress-track"><div className="schedule-semester-progress-fill" style={{width:`${Math.min(100,Math.max(0,((new Date(today+"T12:00:00").getTime()-new Date(SEMESTER_FROM+"T12:00:00").getTime())/(new Date(SEMESTER_TO+"T12:00:00").getTime()-new Date(SEMESTER_FROM+"T12:00:00").getTime()))*100))}%`}}/></div>
+                <div className="schedule-semester-progress-top"><b>Прогресс семестра</b><span>Неделя {Math.min(21,Math.max(1,Math.floor(Math.max(0,(new Date(today+"T12:00:00").getTime()-new Date(semesterRange.from+"T12:00:00").getTime())/86400000)/7)+1))} из {Math.max(1, semesterWeeks.length)}</span></div>
+                <div className="schedule-semester-progress-track"><div className="schedule-semester-progress-fill" style={{width:`${Math.min(100,Math.max(0,((new Date(today+"T12:00:00").getTime()-new Date(semesterRange.from+"T12:00:00").getTime())/(new Date(semesterRange.to+"T12:00:00").getTime()-new Date(semesterRange.from+"T12:00:00").getTime()))*100))}%`}}/></div>
                 <div className="schedule-semester-progress-scale"><span>1 сен</span><span>Экватор · 10 нед.</span><span>Зачётная · 19 нед.</span><span>21 янв</span></div>
               </div>
               <div className="schedule-semester-timeline">

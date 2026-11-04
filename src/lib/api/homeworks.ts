@@ -13,6 +13,8 @@ export async function listHomeworks(groupId?: string) {
 export async function smartParseHomework(text:string,options:RequestInit={}){return api<any>(endpoints.homeworks.smartParse(),{...options,method:"POST",body:JSON.stringify({text})})}
 
 export async function createHomework(payload: { title: string; description?: string; subject_id?: string; due_date?: string; due_at?: string; group_id?: string; scope?: "group" | "personal"; schedule_entry_id?: string; attachment_file_ids?: string[] }) { return api<any>(endpoints.homeworks.list(), { method: "POST", body: JSON.stringify(payload) }); }
+/** Перенос/правка своего задания: Worker требует title и due_at (см. homework.patch("/:id")). */
+export async function updateHomework(id: string, payload: { title: string; description?: string | null; due_at: string }) { return api<any>(endpoints.homeworks.homework(id), { method: "PATCH", body: JSON.stringify(payload) }); }
 export async function setHomeworkDone(id: string, done: boolean) { return api<any>(endpoints.homeworks.progress(id), { method: "POST", body: JSON.stringify({ done }) }); }
 export async function submitHomework(id: string, textAnswer?: string, fileId?: string) { return api<any>(endpoints.homeworks.submit(id), { method: "POST", body: JSON.stringify({ text_answer: textAnswer, file_id: fileId }) }); }
 export async function listHomeworkSubmissions(id: string) { return api<any>(endpoints.homeworks.submissions(id)); }

@@ -95,6 +95,7 @@ export const endpoints = {
   /** Домашние задания и личные задания. */
   homeworks: {
     list: (query?: string): string => withQuery("/homeworks", query),
+    homework: (id: string): string => `/homeworks/${enc(id)}`,
     smartParse: (): string => "/homeworks/smart-parse",
     progress: (id: string): string => `/homeworks/${enc(id)}/progress`,
     submit: (id: string): string => `/homeworks/${enc(id)}/submit`,
