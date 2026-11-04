@@ -797,6 +797,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             course={subject?.course_number ?? 2}
             semester={subject?.semester ?? 3}
             initialTopicId={searchParams.get("topic") || undefined}
+            autoStart={searchParams.get("start") === "1"}
             embedded
           />
         )}

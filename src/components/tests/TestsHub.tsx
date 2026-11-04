@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpenCheck,
   ClipboardCheck,
@@ -187,6 +188,7 @@ export function TestsHub({
   semester,
   embedded = false,
   initialTopicId = "",
+  autoStart = false,
 }: {
   subjectId?: string;
   subjectSlug?: string;
@@ -196,6 +198,8 @@ export function TestsHub({
   embedded?: boolean;
   /** Тема из ссылки карточки модуля: показывает только её банки. */
   initialTopicId?: string;
+  /** Сразу открыть тренировку первой темы (переход из карточки модуля). */
+  autoStart?: boolean;
 }) {
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
@@ -206,6 +210,8 @@ export function TestsHub({
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [focusTopic, setFocusTopic] = useState(initialTopicId.trim());
+  const router = useRouter();
+  const startedRef = useRef(false);
 
   useEffect(() => {
     setFocusTopic(initialTopicId.trim());
@@ -381,6 +387,24 @@ export function TestsHub({
     if (!focusTopic) return filtered;
     return filtered.filter((test) => test.topicId === focusTopic);
   }, [filtered, focusTopic]);
+
+  // Автозапуск тренировки: первая тема открывает свой банк сразу. `return`
+  // несёт текущий адрес предмета без `start`, чтобы после завершения
+  // вернуться именно туда, откуда пришли.
+  useEffect(() => {
+    if (!autoStart || startedRef.current || !focusTopic) return;
+    const first = topicFiltered[0];
+    if (!first) return;
+    startedRef.current = true;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("start");
+    const returnTo = `${url.pathname}${url.search}`;
+    const count = Math.max(1, Math.min(200, first.questionCount || 10));
+    const subject = encodeURIComponent(subjectName || resolvedSlug || "");
+    router.replace(
+      `/tests/preparation/${encodeURIComponent(first.id)}?mode=prepare&count=${count}&subject=${subject}&return=${encodeURIComponent(returnTo)}`,
+    );
+  }, [autoStart, focusTopic, topicFiltered, router, subjectName, resolvedSlug]);
 
   const modules = useMemo<ModuleGroup[]>(() => {
     const map = new Map<string, ModuleGroup>();

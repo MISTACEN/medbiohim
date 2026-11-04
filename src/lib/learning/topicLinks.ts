@@ -96,8 +96,12 @@ export function matchTopicForModule(
   return matchTopics(module, areaKey, topics)[0]?.topic ?? null;
 }
 
-/** Ссылка на вкладку тестов предмета с фильтром по конкретной теме. */
+/**
+ * Ссылка на вкладку тестов предмета с фильтром по теме и автозапуском:
+ * хаб тестов сразу открывает тренажёр первой темы, а `return` возвращает
+ * студента обратно в предмет после завершения.
+ */
 export function topicTestHref(subjectId: string, topicId: string): string {
   const id = encodeURIComponent(String(subjectId ?? "").trim());
-  return `/subjects/${id}?tab=tests&topic=${encodeURIComponent(String(topicId ?? "").trim())}`;
+  return `/subjects/${id}?tab=tests&topic=${encodeURIComponent(String(topicId ?? "").trim())}&start=1`;
 }

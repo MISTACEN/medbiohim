@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { QuestionReport } from "@/components/QuestionReport";
@@ -138,6 +138,12 @@ export default function PreparationPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const autoFinished = useRef(false);
   const subjectParam = search.get("subject") || "";
+  // Возврат в предмет после тренировки, начатой из карточки модуля.
+  // Принимаем только внутренний путь: `//host` и абсолютные URL отбрасываются.
+  const returnHref = useMemo(() => {
+    const raw = search.get("return") || "";
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "";
+  }, [search]);
   const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
     (search.get("mode") as any) === "exam"
       ? "exam"
@@ -351,7 +357,7 @@ export default function PreparationPage() {
     if (session && !stats) {
       void queueSave({ current_index: idx });
     }
-    router.push("/tests");
+    router.push(returnHref || "/tests");
   }
 
   function startExperience(next: "prepare" | "solve" | "exam", startMode: "full" | "count" | "sequential" = "count") {
@@ -363,8 +369,11 @@ export default function PreparationPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
         <LoadingBar active={loading} />
-        <Link href="/tests" className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline">
-          ← К тестам
+        <Link
+          href={returnHref || "/tests"}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline"
+        >
+          {returnHref ? "← Вернуться в предмет" : "← К тестам"}
         </Link>
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{meta?.subject || "Проверка знаний"}</p>
@@ -443,9 +452,19 @@ export default function PreparationPage() {
             Изменить ответы больше нельзя, ниже — разбор.
           </p>
         </div>
-        <button onClick={() => router.push("/tests")} className="btn-primary">
-          К списку тестов
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {returnHref ? (
+            <button onClick={() => router.push(returnHref)} className="btn-primary">
+              Вернуться в предмет
+            </button>
+          ) : null}
+          <button
+            onClick={() => router.push("/tests")}
+            className={returnHref ? "rounded-xl border px-4 py-2 font-semibold" : "btn-primary"}
+          >
+            К списку тестов
+          </button>
+        </div>
         {ai && (
           <div className="card space-y-2 p-5 text-sm">
             <b>AI-разбор</b>
