@@ -16,6 +16,7 @@ import { SIMULATIONS } from "@/lib/sim/catalog";
 // единый реестр остаётся единственным источником истины.
 import { BIOLOGY_RELATIONS } from "@/lib/sim/catalog_biology";
 import { BIOCHEM_RELATIONS } from "@/lib/sim/catalog_biochem";
+import { PHYSIOLOGY_RELATIONS } from "@/lib/sim/catalog_physiology";
 
 export type SubjectAreaKey =
   | "chemistry_organic_physical"
@@ -496,6 +497,8 @@ const SIM_RELATIONS: Record<string, Partial<Record<SubjectAreaKey, ModuleRelatio
   ...BIOLOGY_RELATIONS,
   // Биохимия: метаболические пути.
   ...BIOCHEM_RELATIONS,
+  // Физиология и биофизика: насосы, потенциалы, гемодинамика, дыхание, почки, диффузия.
+  ...PHYSIOLOGY_RELATIONS,
 };
 
 const SIM_MODULES: LearningModule[] = SIMULATIONS.map((simulation) => ({

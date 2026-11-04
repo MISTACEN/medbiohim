@@ -14,6 +14,8 @@ import type { SimDefinition, SimParams } from "./types";
 import { BIOLOGY_SIMS } from "./catalog_biology";
 // Биохимия: метаболические пути и энергетика — расширения каталога.
 import { BIOCHEM_SIMS } from "./catalog_biochem";
+// Физиология и биофизика: ионные насосы, гемодинамика, дыхание, почки, диффузия.
+import { PHYSIOLOGY_SIMS } from "./catalog_physiology";
 
 import { SODIUM_PUMP_SIMULATION as sodiumPump } from "./sodium-pump";
 import { BIOCHEM_SIMULATIONS } from "./biochem";
@@ -520,6 +522,7 @@ export const SIMULATIONS: SimDefinition[] = [
   // Расширения каталога: одна реализация — общий плеер симуляций.
   ...BIOLOGY_SIMS,
   ...BIOCHEM_SIMS,
+  ...PHYSIOLOGY_SIMS,
 ];
 
 export function getSimulation(slug: string): SimDefinition | undefined {
