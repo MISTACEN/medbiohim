@@ -12,6 +12,9 @@
  */
 
 import { SIMULATIONS } from "@/lib/sim/catalog";
+// Связи симуляций расширений описаны рядом с их каталогом и мержатся сюда:
+// единый реестр остаётся единственным источником истины.
+import { BIOLOGY_RELATIONS } from "@/lib/sim/catalog_biology";
 
 export type SubjectAreaKey =
   | "chemistry_organic_physical"
@@ -488,6 +491,8 @@ const SIM_RELATIONS: Record<string, Partial<Record<SubjectAreaKey, ModuleRelatio
     genetics: { level: 2, reason: "Частоты аллелей и генотипов в популяции.", topics: ["Частоты аллелей"] },
     molecular_biology: { level: 3, reason: "Полиморфизмы и распределение аллелей.", topics: ["Полиморфизмы"] },
   },
+  // Симуляции из расширений каталога (биология, цитология, эмбриология, мол. биология).
+  ...BIOLOGY_RELATIONS,
 };
 
 const SIM_MODULES: LearningModule[] = SIMULATIONS.map((simulation) => ({
@@ -644,9 +649,48 @@ const SHARED_MODULES: LearningModule[] = [
   },
 ];
 
+/** Новые инструменты-модули: одна реализация, межпредметные связи. */
+const TOOL_MODULES: LearningModule[] = [
+  {
+    id: "genetics.punnett",
+    title: "Решётка Пеннета",
+    subtitle: "Моно- и дигибридные скрещивания с расщеплением",
+    kind: "tool",
+    primary: "genetics",
+    categories: ["Генетика", "Тренажёр"],
+    functions: ["trainer"],
+    base: "/tools/punnett",
+    progressKey: "genetics.punnett",
+    relations: {
+      genetics: { level: 1, reason: "Профильный инструмент решения генетических задач.", topics: ["Скрещивание", "Расщепление"] },
+      biology: { level: 1, reason: "Законы Менделя — программная тема биологии.", topics: ["Наследование"] },
+      embryology: { level: 3, reason: "Гаметогенез как источник комбинаций.", topics: ["Гаметы"] },
+      molecular_biology: { level: 3, reason: "Фенотип как реализация генотипа.", topics: ["Генотип и фенотип"] },
+    },
+  },
+  {
+    id: "chemistry.balance",
+    title: "Балансировка реакций",
+    subtitle: "Коэффициенты методом матрицы, проверка атомов и заряда",
+    kind: "tool",
+    primary: "inorganic_chemistry",
+    categories: ["Реакции", "Расчёты"],
+    functions: ["calculator"],
+    base: "/chemistry/balance",
+    progressKey: "chemistry.balance",
+    relations: {
+      inorganic_chemistry: { level: 1, reason: "Стехиометрия неорганических реакций и ОВР.", topics: ["Уравнения реакций"] },
+      chemistry_organic_physical: { level: 2, reason: "Уравнения органических и физико-химических реакций.", topics: ["Стехиометрия"] },
+      biochemistry: { level: 2, reason: "Проверка уравнений метаболических путей.", topics: ["Метаболизм"] },
+      analytical_toxicology: { level: 3, reason: "Стехиометрия аналитических реакций.", topics: ["Количественный анализ"] },
+    },
+  },
+];
+
 export const LEARNING_MODULES: LearningModule[] = [
   ...CHEMISTRY_CORE,
   ...SIM_MODULES,
+  ...TOOL_MODULES,
   ...SHARED_MODULES,
 ];
 
