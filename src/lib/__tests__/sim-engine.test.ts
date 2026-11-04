@@ -11,7 +11,7 @@ function simulation(slug: string): SimDefinition {
 }
 
 describe("каталог симуляций", () => {
-  it("содержит десять моделей из пяти дисциплин", () => {
+  it("содержит четырнадцать моделей из семи дисциплин", () => {
     expect(SIMULATIONS.map((simulation) => simulation.slug)).toEqual([
       "enzyme-kinetics",
       "buffer-titration",
@@ -23,8 +23,15 @@ describe("каталог симуляций", () => {
       "osmosis",
       "oxygen-hemoglobin",
       "hardy-weinberg",
+      // расширения: биология, цитология, молекулярная биология, эмбриология
+      "cell-cycle-mitosis",
+      "meiosis-phases",
+      "dna-biosynthesis",
+      "embryogenesis",
     ]);
-    expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(5);
+    // biology, chemistry_organic_physical, physiology, histology, biochemistry
+    // + расширения: molecular_biology, embryology = 7
+    expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(7);
   });
 
   it("симуляция с визуализацией обязана объявить поддерживаемый visual", () => {
