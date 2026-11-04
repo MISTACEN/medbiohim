@@ -186,6 +186,7 @@ export function TestsHub({
   course,
   semester,
   embedded = false,
+  initialTopicId = "",
 }: {
   subjectId?: string;
   subjectSlug?: string;
@@ -193,6 +194,8 @@ export function TestsHub({
   course?: number | null;
   semester?: number | null;
   embedded?: boolean;
+  /** Тема из ссылки карточки модуля: показывает только её банки. */
+  initialTopicId?: string;
 }) {
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
@@ -202,6 +205,11 @@ export function TestsHub({
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [moduleFilter, setModuleFilter] = useState("all");
+  const [focusTopic, setFocusTopic] = useState(initialTopicId.trim());
+
+  useEffect(() => {
+    setFocusTopic(initialTopicId.trim());
+  }, [initialTopicId]);
 
   const scoped = Boolean(subjectId || subjectSlug || subjectName);
   const resolvedSlug = resolveSubjectSlug(subjectSlug, subjectName) || subjectSlug;
@@ -368,9 +376,15 @@ export function TestsHub({
     );
   }, [bySubject, search]);
 
+  // Переход из карточки модуля: показываем банки конкретной темы.
+  const topicFiltered = useMemo(() => {
+    if (!focusTopic) return filtered;
+    return filtered.filter((test) => test.topicId === focusTopic);
+  }, [filtered, focusTopic]);
+
   const modules = useMemo<ModuleGroup[]>(() => {
     const map = new Map<string, ModuleGroup>();
-    for (const test of filtered) {
+    for (const test of topicFiltered) {
       const key = test.moduleKey;
       const current = map.get(key);
       if (current) current.count += 1;
@@ -387,7 +401,7 @@ export function TestsHub({
       if (a.order !== b.order) return a.order - b.order;
       return a.title.localeCompare(b.title, "ru");
     });
-  }, [filtered]);
+  }, [topicFiltered]);
 
   useEffect(() => {
     if (moduleFilter === "all") return;
@@ -396,7 +410,7 @@ export function TestsHub({
 
   const groups = useMemo<TopicGroup[]>(() => {
     const map = new Map<string, TopicGroup>();
-    for (const test of filtered) {
+    for (const test of topicFiltered) {
       if (moduleFilter !== "all" && test.moduleKey !== moduleFilter) continue;
       const key = test.topicKey;
       const meta = topicMeta.get(test.topicId);
@@ -431,9 +445,9 @@ export function TestsHub({
         if (a.topicOrder !== b.topicOrder) return a.topicOrder - b.topicOrder;
         return a.title.localeCompare(b.title, "ru");
       });
-  }, [filtered, moduleFilter, topicMeta]);
+  }, [topicFiltered, moduleFilter, topicMeta]);
 
-  const totalQuestions = filtered.reduce((sum, test) => sum + test.questionCount, 0);
+  const totalQuestions = topicFiltered.reduce((sum, test) => sum + test.questionCount, 0);
   const selectedMode = MODES.find((item) => item.id === mode) || MODES[0];
   const showModuleFilter = modules.length > 1 && modules.some((module) => !module.fallback);
   const hasActiveFilters = Boolean(search.trim()) || moduleFilter !== "all" || (!scoped && subjectFilter !== "all");
@@ -484,7 +498,7 @@ export function TestsHub({
             </div>
             <div className="flex shrink-0 flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
-                {filtered.length} {plural(filtered.length, "банк", "банка", "банков")}
+                {topicFiltered.length} {plural(topicFiltered.length, "банк", "банка", "банков")}
               </span>
               <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
                 {totalQuestions} {plural(totalQuestions, "вопрос", "вопроса", "вопросов")}
@@ -535,6 +549,26 @@ export function TestsHub({
           ))}
         </div>
       )}
+
+      {focusTopic ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+          <span>Показаны банки выбранной темы.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setFocusTopic("");
+              if (typeof window !== "undefined") {
+                const url = new URL(window.location.href);
+                url.searchParams.delete("topic");
+                window.history.replaceState({}, "", url);
+              }
+            }}
+            className="ml-auto rounded-lg bg-white px-2.5 py-1 font-semibold text-indigo-700 hover:underline"
+          >
+            Показать все темы
+          </button>
+        </div>
+      ) : null}
 
       <div className="card space-y-4 p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

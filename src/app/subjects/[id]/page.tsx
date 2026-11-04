@@ -796,6 +796,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             subjectName={subject?.name}
             course={subject?.course_number ?? 2}
             semester={subject?.semester ?? 3}
+            initialTopicId={searchParams.get("topic") || undefined}
             embedded
           />
         )}
@@ -803,7 +804,14 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         {tab === "practice" && (
           <div className="space-y-3">
             <SubjectQuestionBank subjectId={subject?.id || ""} subjectSlug={slug} subjectName={subject?.name} />
-            <SubjectModules slug={slug} name={subject?.name} />
+            <SubjectModules
+              slug={slug}
+              name={subject?.name}
+              subjectId={subject?.id || subjectId}
+              topics={modules
+                .flatMap((m) => (m.topics || []).map((tp) => ({ id: String(tp.id || ""), title: String(tp.title || "") })))
+                .filter((tp) => tp.id && tp.title)}
+            />
             <SubjectSimulations slug={slug} name={subject?.name} />
             {modules.length > 0 && (
               <section className="card p-5">

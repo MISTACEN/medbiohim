@@ -6,10 +6,14 @@
  * Показывает только применимые модули и объясняет, почему они здесь: предмет
  * определяется по slug или названию (в базе есть дисциплины с `slug = NULL`),
  * а ссылка несёт предметный контекст, не создавая копию инструмента.
+ *
+ * Если у модуля есть реальная тема программы с тестами, карточка ведёт прямо
+ * на вкладку тестов с фильтром `?topic=` — связь строится по ключевым словам
+ * и только при совпадении с существующей темой.
  */
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Compass } from "lucide-react";
+import { ArrowUpRight, BookOpenCheck, Compass } from "lucide-react";
 import {
   MODULE_KIND_LABELS,
   moduleHref,
@@ -19,14 +23,19 @@ import {
   subjectAreaName,
   type LearningModule,
 } from "@/lib/learning/modules";
+import { matchTopicForModule, topicTestHref, type TopicRef } from "@/lib/learning/topicLinks";
 import { readVisits, recordModuleVisit } from "@/lib/learning/moduleProgress";
 
 export default function SubjectModules({
   slug,
   name,
+  subjectId = "",
+  topics = [],
 }: {
   slug?: string | null;
   name?: string | null;
+  subjectId?: string;
+  topics?: TopicRef[];
 }) {
   const areaKey = useMemo(() => resolveSubjectAreaKey({ slug, name }), [slug, name]);
   const modules = useMemo(
@@ -66,16 +75,18 @@ export default function SubjectModules({
         {modules.map((module) => {
           const relation = relationFor(module, areaKey);
           if (!relation) return null;
-          const href = moduleHref(module, { subjectKey: areaKey, topic: relation.topics[0] });
+          const topic = matchTopicForModule(module, areaKey, topics);
           return (
             <li key={module.id}>
               <ModuleCard
                 module={module}
-                href={href}
+                href={moduleHref(module, { subjectKey: areaKey, topic: relation.topics[0] })}
                 reason={relation.reason}
-                topics={relation.topics}
+                relationTopics={relation.topics}
                 areaKey={areaKey}
                 visits={visits[module.id] ?? 0}
+                testHref={topic && subjectId ? topicTestHref(subjectId, topic.id) : null}
+                testTitle={topic?.title ?? ""}
               />
             </li>
           );
@@ -89,27 +100,31 @@ function ModuleCard({
   module,
   href,
   reason,
-  topics,
+  relationTopics,
   areaKey,
   visits,
+  testHref,
+  testTitle,
 }: {
   module: LearningModule;
   href: string;
   reason: string;
-  topics: string[];
+  relationTopics: string[];
   areaKey: string;
   visits: number;
+  testHref: string | null;
+  testTitle: string;
 }) {
   return (
-    <Link
-      href={href}
-      onClick={() => recordModuleVisit(module.id, areaKey)}
-      className="group flex h-full flex-col rounded-xl border border-[var(--border)] p-3 transition hover:border-[var(--primary)]"
-    >
-      <span className="flex items-start justify-between gap-2">
+    <div className="flex h-full flex-col rounded-xl border border-[var(--border)] p-3 transition hover:border-[var(--primary)]">
+      <Link
+        href={href}
+        onClick={() => recordModuleVisit(module.id, areaKey)}
+        className="group flex items-start justify-between gap-2"
+      >
         <span className="text-sm font-semibold leading-snug">{module.title}</span>
         <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 opacity-50 group-hover:opacity-100" />
-      </span>
+      </Link>
       <span className="mt-0.5 text-[11px] uppercase tracking-wide text-[var(--muted)]">
         {MODULE_KIND_LABELS[module.kind]}
       </span>
@@ -119,15 +134,26 @@ function ModuleCard({
           Открывали {visits} раз — прогресс общий для всех предметов
         </span>
       ) : null}
-      {topics.length ? (
+      {relationTopics.length ? (
         <span className="mt-2 flex flex-wrap gap-1">
-          {topics.slice(0, 3).map((topic) => (
+          {relationTopics.slice(0, 3).map((topic) => (
             <span key={topic} className="rounded-full bg-[var(--primary-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)]">
               {topic}
             </span>
           ))}
         </span>
       ) : null}
-    </Link>
+      {testHref ? (
+        <Link
+          href={testHref}
+          onClick={() => recordModuleVisit(module.id, areaKey)}
+          title={testTitle}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline"
+        >
+          <BookOpenCheck className="h-3.5 w-3.5 shrink-0" />
+          Тест по теме: {testTitle.length > 64 ? `${testTitle.slice(0, 61)}…` : testTitle}
+        </Link>
+      ) : null}
+    </div>
   );
 }
