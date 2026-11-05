@@ -20,10 +20,14 @@
 - Teacher Workspace: нет авторского preview-режима теста и единого научного редактора (BACKLOG п.2–3).
 - Регрессия: автотесты зелёные, e2e-роли не прогонялись (нет тестовых аккаунтов).
 
-## Не сделано / не проверено
+## Не сделано / не проверено — всё готово к одному клику владельца
 
-- **Миграция Supabase `teacher_assignments`** — BLOCKED: нет доступных учётных данных (токен Management API или DATABASE_URL); секреты DB_* хранятся в воркере и нечитаемы. Worker до миграции работает fail-closed.
-- **Деплой Worker medbiohim-api** — BLOCKED: нужен `npx wrangler login` (клик в браузере) или CLOUDFLARE_API_TOKEN; бандл собран и проверен, bindings/secrets сохранятся.
+- **Деплой Worker + миграции — подготовлены полностью.** Сценарий после клика «Allow» в `wrangler login` (ссылка выдаётся в чате):
+  1. `cd workers/api && npx wrangler deploy --keep-vars` — бандл собран и проверен (351/351 теста), wrangler.toml содержит все dashboard-vars и service-биндинги, секреты сохраняются.
+  2. Секрет-бутстрап: `wrangler secret put MIGRATION_BOOTSTRAP_SECRET` → `POST /api/v1/bootstrap/migrate` применяет `teacher_assignments` и `module_access` через admin_exec_sql (чистый SQL-сплиттер покрыт тестами).
+  3. Верификация прода → удаление bootstrap-маршрута → `git commit` → redeploy → `wrangler secret delete MIGRATION_BOOTSTRAP_SECRET`.
+- **Альтернатива без воркера:** оба SQL-файла применяются вручную в Supabase Dashboard → SQL Editor (порядок: 20261105090000, затем 20261106100000); оба аддитивные, без разрушений.
+- До применения миграций Worker ведёт себя безопасно: teacher-scope fail-closed, module access fail-open.
 - **Фронтенд задеплоен** (production Vercel, подтверждено маршрутом /teacher/preview/*). Worker-эндпоинты /tests/preview/:id и /teacher/tests заработают после деплоя воркера; до этого фронт покажет аккуратную ошибку API.
 - Живые RLS/grants, e2e по ролям с аккаунтами, физическое выделение src/core — см. MODULAR_MIGRATION_BACKLOG.md.
 
