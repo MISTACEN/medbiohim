@@ -2,6 +2,16 @@
 
 Хронология модульной миграции MEDBIOHIM.
 
+## 2026-11-06 (вечер) — закрытие бэклога: preview, научный редактор, деплой
+
+- Реализован авторский предпросмотр теста: GET /tests/preview/:id (teacher/admin, эталоны, без записи попыток), GET /teacher/tests, страница /teacher/preview/[id] на общем грейдере. Тест контракта: workers/api/test/test-preview.test.js.
+- Кабинет дополнен: «Мои лекции» на едином RichLectureEditor (/my-lectures) и «Личный банк вопросов» (/my-questions). Реестр пополнен записями teaching.*.
+- Проверки: typecheck OK, lint 0 errors/60 warnings, vitest 519 pass, node --test 301 pass, worker check 343 pass, build success.
+- Коммиты: bd305430 (shared), 4bca0781 (permissions+teacher), cbf5573e (frontend permissions), 28572cc2 (docs), [teacher features] — запушены в origin/main (`8524a1f1..ce4c9eb3`).
+- **Фронтенд задеплоен:** push в main запустил production-сборку Vercel; маршрут /teacher/preview/* подтверждён на проде (HTTP 200).
+- **Worker (medbiohim-api):** бандл собран (esbuild, 3.1MB, minified, совместим с wrangler.toml: compatibility_date 2024-12-01, nodejs_compat, биндинг AI). Деплой заблокирован без учётных данных: Cloudflare MCP-песочница закрыта whitelist (только api.cloudflare.com), wrangler OAuth не подтверждён владельцем. Команда деплоя: `cd workers/api && npx wrangler deploy` после `npx wrangler login` (или CLOUDFLARE_API_TOKEN). Bindings/secrets воркера сохраняются (wrangler наследует их при deploy).
+- **Миграция teacher_assignments:** не применена — ни токена Supabase Management API, ни доступного DATABASE_URL в окружении нет (секреты DB_* лежат в воркере и нечитаемы). Команда: применить SQL из supabase/migrations/20261105090000_teacher_assignments.sql через Supabase SQL Editor / CLI.
+
 ## 2026-11-06 — независимая проверка и стабилизация (GLM-проход)
 
 - Base commit: `8524a1f1` (`docs: document target modular architecture`).

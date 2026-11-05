@@ -6,7 +6,7 @@
 
 - **Права и scope (план §10).** Worker: permissions/teacher-scope/content-access + правки admin.ts, groups.ts, subjects.ts, admin-schedule.ts, admin-attestations.ts, admin-parity.ts, submissions.ts. Teacher не имеет admin-поверхностей; группы/каталог/расписание/членство — admin-only; проверка работ идёт по цепочке объектов в области. Тесты: workers/api/test/{permissions,teacher-scope}.test.js.
 - **Frontend-навигация.** Admin-консоль видит только admin (Sidebar, AdminGate, AdminNav, lib/admin/access.ts согласованы).
-- **Teacher Workspace (этап H).** `/teacher` — обзор, работы, оценка/возврат через scope; admin — `/admin/teachers` (назначения групп/студентов, кандидаты). API: `/api/v1/teacher/*`, чтение назначений — teacher.content.manage, запись — admin.
+- **Teacher Workspace (этап H).** `/teacher` — обзор, работы, оценка/возврат через scope; admin — `/admin/teachers` (назначения групп/студентов, кандидаты); «Тесты и предпросмотр» (/teacher/preview/[id] — прогон без записи попыток), «Мои лекции» (единый RichLectureEditor через /my-lectures), «Личный банк вопросов» (/my-questions). API: `/api/v1/teacher/*`, GET /tests/preview/:id; чтение — teacher.content.manage, запись назначений — admin.
 - **Shared-слой (этапы A–D).** UI kit (Button/Badge/Modal/Tabs/DataTable/ConfirmDialog), AnswerOption + CheckResultPanel, question-types (registry/normalize/grade), реестр компонентов как данные; копии заменены на экранах прохождения и в админ-таблицах.
 - **File Engine (этап F).** Встроенный просмотр DOCX/XLSX/PPTX/CSV/TXT/MD/архивов + диспетчер FilePreview, подключён в materials и UserFiles; детекция по сигнатуре/MIME/allowlist, лимиты, XSS-очистка; оригинал — скачивание по правам.
 - **Миграция.** `20261105090000_teacher_assignments.sql` — аддитивная, RLS, security-definer хелперы; Worker работает fail-closed до применения.
@@ -18,7 +18,10 @@
 
 ## Не сделано / не проверено
 
-- Применение миграции к БД, деплой, живые RLS/grants, e2e по ролям, физическое выделение src/core — см. MODULAR_MIGRATION_BACKLOG.md.
+- **Миграция Supabase `teacher_assignments`** — BLOCKED: нет доступных учётных данных (токен Management API или DATABASE_URL); секреты DB_* хранятся в воркере и нечитаемы. Worker до миграции работает fail-closed.
+- **Деплой Worker medbiohim-api** — BLOCKED: нужен `npx wrangler login` (клик в браузере) или CLOUDFLARE_API_TOKEN; бандл собран и проверен, bindings/secrets сохранятся.
+- **Фронтенд задеплоен** (production Vercel, подтверждено маршрутом /teacher/preview/*). Worker-эндпоинты /tests/preview/:id и /teacher/tests заработают после деплоя воркера; до этого фронт покажет аккуратную ошибку API.
+- Живые RLS/grants, e2e по ролям с аккаунтами, физическое выделение src/core — см. MODULAR_MIGRATION_BACKLOG.md.
 
 ## Заблокировано (нужно решение владельца)
 
