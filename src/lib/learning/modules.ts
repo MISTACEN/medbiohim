@@ -569,7 +569,10 @@ const SHARED_MODULES: LearningModule[] = [
     primary: "biology",
     categories: ["Создание", "Инструменты"],
     functions: ["editor"],
-    base: "/constructor",
+    // Сегмент «constructor» конфликтует с Object.prototype.constructor в
+    // маппинге выходов Vercel ([BUILD_FAILED] Unsupported output type), поэтому
+    // маршрут называется /builder; id и progressKey не меняются — прогресс сохранён.
+    base: "/builder",
     progressKey: "constructor.materials",
     relations: allAreas(2, "Создавать конспекты и карточки можно по любой дисциплине."),
   },
