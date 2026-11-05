@@ -78,22 +78,22 @@ test("дубли дисциплин не создают дублей модул�
 });
 
 test("один инструмент — одна реализация: контекст передаётся параметрами маршрута", () => {
-  const module = moduleById("sim.sodium-potassium-pump");
-  assert.ok(module);
-  const fromPhysiology = moduleHref(module, { subjectKey: "physiology", topic: "Мембранный потенциал" });
-  const fromPharmacology = moduleHref(module, { subjectKey: "pharmacology", topic: "Сердечные гликозиды" });
+  const pumpModule = moduleById("sim.sodium-potassium-pump");
+  assert.ok(pumpModule);
+  const fromPhysiology = moduleHref(pumpModule, { subjectKey: "physiology", topic: "Мембранный потенциал" });
+  const fromPharmacology = moduleHref(pumpModule, { subjectKey: "pharmacology", topic: "Сердечные гликозиды" });
   // База маршрута одна, различается только контекст query — копий инструмента нет.
   assert.ok(fromPhysiology.startsWith("/labs/simulations?slug=sodium-potassium-pump"));
   assert.ok(fromPharmacology.startsWith("/labs/simulations?slug=sodium-potassium-pump"));
   assert.notEqual(fromPhysiology, fromPharmacology);
   // Без контекста — чистый base.
-  assert.equal(moduleHref(module, {}), module.base);
+  assert.equal(moduleHref(pumpModule, {}), pumpModule.base);
 });
 
 test("прогресс инструмента не зависит от предмета, из которого открыли", () => {
   for (const simulation of SIMULATIONS) {
-    const module = moduleById(`sim.${simulation.slug}`);
-    assert.equal(module?.progressKey, `sim.${simulation.slug}`);
+    const record = moduleById(`sim.${simulation.slug}`);
+    assert.equal(record?.progressKey, `sim.${simulation.slug}`);
   }
 });
 
