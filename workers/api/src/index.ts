@@ -77,6 +77,23 @@ import workshop from "./routes/workshop";
 import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import staff from "./routes/staff";
 import teacher from "./routes/teacher";
+import access from "./routes/access";
+import { moduleGate } from "./lib/module-access";
+import { requireAuth, type AuthVariables } from "./middleware/auth";
+
+/**
+ * Маршруты раздела под централизованным доступом (Access Control).
+ * requireAuth уже требует токен на каждом внутреннем маршруте, поэтому
+ * повторная аутентификация безопасна; moduleGate после неё проверяет,
+ * открыт ли раздел пользователю (admin/teacher проходят всегда).
+ */
+function gatedModule(moduleKey: string, router: Hono<{ Bindings: Env; Variables: AuthVariables }>) {
+  const gated = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+  gated.use("*", requireAuth);
+  gated.use("*", moduleGate(moduleKey));
+  gated.route("/", router);
+  return gated;
+}
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -137,44 +154,44 @@ v1.post("/files/upload", (c) =>
 v1.route("/auth", auth);
 v1.route("/me", me);
 v1.route("/dashboard", dashboard);
-v1.route("/subjects", subjects);
+v1.route("/subjects", gatedModule("subjects", subjects));
 v1.route("/groups", groups);
-v1.route("/schedule", schedule);
-v1.route("/schedule", scheduleIcal);
-v1.route("/schedule", scheduleFeed);
+v1.route("/schedule", gatedModule("schedule", schedule));
+v1.route("/schedule", gatedModule("schedule", scheduleIcal));
+v1.route("/schedule", gatedModule("schedule", scheduleFeed));
 v1.route("/lesson-plan", lessonPlan);
 v1.route("/curriculum", curriculum);
 // Alias: some clients call /plans — map to curriculum (avoid 501)
 v1.get("/plans", (c) => curriculum.fetch(rewriteRequest(c.req.raw, "/"), c.env));
 v1.route("/homeworks", homework);
-v1.route("/assignments", assignments);
+v1.route("/assignments", gatedModule("assignments", assignments));
 v1.route("/topics", topics);
 v1.route("/homework", homework);
 v1.route("/submissions", submissions);
 v1.route("/planner", planner);
-v1.route("/academic", academic);
+v1.route("/academic", gatedModule("academic", academic));
 v1.route("/attendance", attendance);
-v1.route("/lectures", lectures);
+v1.route("/lectures", gatedModule("subjects", lectures));
 // Авторские занятия: пользователь видит и публикует только свои лекции.
 v1.route("/my-lectures", myLectures);
 // Импорт документов (PDF) и OCR-шлюз для авторских лекций.
 v1.route("/my-tools", myTools);
 // Личный банк вопросов автора.
 v1.route("/my-questions", myQuestions);
-v1.route("/materials", materials);
-v1.route("/tests", preparation);
-v1.route("/tests", tests);
-v1.route("/tickets", tickets);
-v1.route("/exam-questions", examQuestions);
+v1.route("/materials", gatedModule("library", materials));
+v1.route("/tests", gatedModule("subjects", preparation));
+v1.route("/tests", gatedModule("subjects", tests));
+v1.route("/tickets", gatedModule("subjects", tickets));
+v1.route("/exam-questions", gatedModule("subjects", examQuestions));
 v1.route("/my", my);
-v1.route("/questions", questions);
+v1.route("/questions", gatedModule("subjects", questions));
 v1.route("/favorites", favorites);
 v1.route("/notes", notes);
-v1.route("/search", search);
-v1.route("/trainings", trainings);
-v1.route("/trainers", trainers);
-v1.route("/progress", progress);
-v1.route("/srs", srs);
+v1.route("/search", gatedModule("search", search));
+v1.route("/trainings", gatedModule("subjects", trainings));
+v1.route("/trainers", gatedModule("subjects", trainers));
+v1.route("/progress", gatedModule("progress", progress));
+v1.route("/srs", gatedModule("subjects", srs));
 v1.route("/sessions", sessions);
 v1.route("/settings", settings);
 // SA6: экспорт данных аккаунта и удаление с grace-периодом (/account/export, /account/deletion).
@@ -184,13 +201,14 @@ v1.route("/telegram", telegramDigest);
 v1.route("/telegram", telegramTrainer);
 v1.route("/telegram", telegram);
 v1.route("/presence", presence);
-v1.route("/community", community);
-v1.route("/workshop", workshop);
-v1.route("/staff", staff);
+v1.route("/community", gatedModule("community", community));
+v1.route("/workshop", gatedModule("workshop", workshop));
+v1.route("/staff", gatedModule("group", staff));
 // Кабинет преподавателя: область назначений, работы и проверка.
 v1.route("/teacher", teacher);
-v1.route("/calculators", calculators);
-v1.route("/ai", ai);
+v1.route("/access", access);
+v1.route("/calculators", gatedModule("calculators", calculators));
+v1.route("/ai", gatedModule("tutor", ai));
 v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
 v1.route("/files", files);
@@ -204,10 +222,10 @@ v1.route("/admin", adminWorkshopConvert);
 v1.route("/admin", adminAccount);
 v1.route("/histology", histology);
 v1.route("/labs", labs);
-v1.route("/attestations", attestations);
+v1.route("/attestations", gatedModule("attestations", attestations));
 v1.route("/integrations", integrations);
 v1.route("/external-platforms", externalPlatforms);
-v1.route("/questions", questionComments);
+v1.route("/questions", gatedModule("subjects", questionComments));
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)

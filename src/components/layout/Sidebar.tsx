@@ -33,29 +33,32 @@ import {
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { canEnterAdminConsole, canUseTeacherWorkspace } from "@/shared/permissions";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
 // C8 (TECH-AUDIT-PLAN §5.7, чеклист #52-54): 5 плоских пунктов + «Ещё».
 // Главная — ежедневный вход; расписание, предметы, прогресс, сообщество —
 // частые разделы; остальное собрано в раскрывающийся «Ещё».
+// moduleKey — раздел из реестра Access Control: без выданного доступа пункт
+// скрывается, а сервер не отдаёт данные раздела даже при прямом URL.
 const navItems = [
   { href: "/", label: "Главная", icon: Home },
-  { href: "/schedule", label: "Расписание", icon: Calendar },
-  { href: "/subjects", label: "Предметы", icon: BookOpen },
-  { href: "/progress", label: "Прогресс", icon: TrendingUp },
-  { href: "/community", label: "Сообщество", icon: Users },
+  { href: "/schedule", label: "Расписание", icon: Calendar, moduleKey: "schedule" },
+  { href: "/subjects", label: "Предметы", icon: BookOpen, moduleKey: "subjects" },
+  { href: "/progress", label: "Прогресс", icon: TrendingUp, moduleKey: "progress" },
+  { href: "/community", label: "Сообщество", icon: Users, moduleKey: "community" },
 ];
 
 const moreItems = [
-  { href: "/search", label: "Поиск", icon: Search },
-  { href: "/library", label: "Библиотека", icon: BookOpen },
-  { href: "/university", label: "Вуз и ЕИОС", icon: Landmark },
-  { href: "/atlas", label: "Атлас", icon: Microscope },
-  { href: "/workshop", label: "Мастерская", icon: Layers },
-  { href: "/academic", label: "Учебный план", icon: ClipboardList },
-  { href: "/assignments", label: "Отработки", icon: ListChecks },
-  { href: "/calculators", label: "Калькуляторы", icon: Calculator },
-  { href: "/attestations", label: "Аттестации", icon: ClipboardList },
-  { href: "/tutor", label: "AI-тьютор", icon: Bot },
+  { href: "/search", label: "Поиск", icon: Search, moduleKey: "search" },
+  { href: "/library", label: "Библиотека", icon: BookOpen, moduleKey: "library" },
+  { href: "/university", label: "Вуз и ЕИОС", icon: Landmark, moduleKey: "university" },
+  { href: "/atlas", label: "Атлас", icon: Microscope, moduleKey: "atlas" },
+  { href: "/workshop", label: "Мастерская", icon: Layers, moduleKey: "workshop" },
+  { href: "/academic", label: "Учебный план", icon: ClipboardList, moduleKey: "academic" },
+  { href: "/assignments", label: "Отработки", icon: ListChecks, moduleKey: "assignments" },
+  { href: "/calculators", label: "Калькуляторы", icon: Calculator, moduleKey: "calculators" },
+  { href: "/attestations", label: "Аттестации", icon: ClipboardList, moduleKey: "attestations" },
+  { href: "/tutor", label: "AI-тьютор", icon: Bot, moduleKey: "tutor" },
 ];
 
 const bottomItems: Array<{
@@ -65,9 +68,10 @@ const bottomItems: Array<{
   adminOnly?: boolean;
   starostaOnly?: boolean;
   teacherOnly?: boolean;
+  moduleKey?: string;
 }> = [
   { href: "/teacher", label: "Кабинет преподавателя", icon: ClipboardList, teacherOnly: true },
-  { href: "/group", label: "Кабинет старосты", icon: Users, starostaOnly: true },
+  { href: "/group", label: "Кабинет старосты", icon: Users, starostaOnly: true, moduleKey: "group" },
   { href: "/settings", label: "Настройки", icon: Settings },
   { href: "/changelog", label: "Что нового", icon: Sparkles },
   { href: "/bookmarks", label: "Закладки", icon: Bookmark },
@@ -78,6 +82,13 @@ const bottomItems: Array<{
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  // Разделы, выданные администратором (Access Control). keys = null — ответа
+  // ещё нет или доступ не вычислен: показываем всё, сервер проверит сам.
+  const { keys } = useModuleAccess(Boolean(user));
+  const byAccess = <T extends { moduleKey?: string }>(items: readonly T[]): T[] =>
+    keys ? items.filter((item) => !item.moduleKey || keys.has(item.moduleKey)) : [...items];
+  const visibleNavItems = byAccess(navItems);
+  const visibleMoreItems = byAccess(moreItems);
   const displayName = user?.name || "Гость";
   const roleLabel =
     user?.role === "teacher"
@@ -123,7 +134,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
         <ul className="space-y-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -148,6 +159,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           })}
         </ul>
 
+        {visibleMoreItems.length > 0 && (
         <div className="mt-1">
           <button
             type="button"
@@ -166,7 +178,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </button>
           {moreOpen && (
             <ul className="mt-1 space-y-1">
-              {moreItems.map((item) => {
+              {visibleMoreItems.map((item) => {
                 const active =
                   item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 const Icon = item.icon;
@@ -192,6 +204,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </ul>
           )}
         </div>
+        )}
 
         <p className="mt-4 px-3 text-[10px] leading-relaxed opacity-50">
           Лекции, билеты, практика, материалы и карточки — внутри выбранного предмета.
@@ -204,6 +217,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             .filter((item) => !item.adminOnly || showAdmin)
             .filter((item) => !item.starostaOnly || user?.groupRole === "starosta")
             .filter((item) => !item.teacherOnly || showTeacher)
+            .filter((item) => !item.moduleKey || !keys || keys.has(item.moduleKey))
             .map((item) => {
               const active = pathname.startsWith(item.href);
               const Icon = item.icon;

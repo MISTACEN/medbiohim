@@ -13,7 +13,7 @@ test("501 fallback replaces Hono's finalized response with the shadow response",
 test("canonical API mounts test-preparation handlers before test routes", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import preparation from "\.\/routes\/preparation"/);
-  assert.match(index, /v1\.route\("\/tests", preparation\);\s*v1\.route\("\/tests", tests\);/);
+  assert.match(index, /v1\.route\("\/tests", gatedModule\("subjects", preparation\)\);\s*v1\.route\("\/tests", gatedModule\("subjects", tests\)\);/);
 });
 
 test("test lifecycle uses server RPCs and does not fall back to direct attempt insertion", async () => {
@@ -184,7 +184,7 @@ test("schedule rollback reports honestly instead of pretending to succeed", asyn
 test("assignment tracker is mounted and scoped to the caller only", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import assignments from "\.\/routes\/assignments"/);
-  assert.match(index, /v1\.route\("\/assignments", assignments\)/);
+  assert.match(index, /v1\.route\("\/assignments", gatedModule\("assignments", assignments\)\)/);
 
   const route = await source("../src/routes/assignments.ts");
   // Личные записи: таблица my_assignments, owner-only RLS, user_id из JWT.
@@ -216,7 +216,7 @@ test("imported sources table is the storage and legacy keys stay user-scoped", a
 test("personal iCal import is user-scoped, SSRF-guarded and keeps manual topic links", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import scheduleIcal from "\.\/routes\/schedule-ical"/);
-  assert.match(index, /v1\.route\("\/schedule", schedule\);\s*v1\.route\("\/schedule", scheduleIcal\);/);
+  assert.match(index, /v1\.route\("\/schedule", gatedModule\("schedule", schedule\)\);\s*v1\.route\("\/schedule", gatedModule\("schedule", scheduleIcal\)\);/);
 
   const route = await source("../src/routes/schedule-ical.ts");
   // Личные события: своя таблица, owner-only, user_id только из JWT.
@@ -244,7 +244,7 @@ test("personal iCal import is user-scoped, SSRF-guarded and keeps manual topic l
 test("exam questions are read-only, subject-scoped and never mask DB failures", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import examQuestions from "\.\/routes\/exam-questions"/);
-  assert.match(index, /v1\.route\("\/exam-questions", examQuestions\)/);
+  assert.match(index, /v1\.route\("\/exam-questions", gatedModule\("subjects", examQuestions\)\)/);
 
   const route = await source("../src/routes/exam-questions.ts");
   // Только чтение: ни insert, ни update, ни delete.
@@ -270,7 +270,7 @@ test("exam questions are read-only, subject-scoped and never mask DB failures", 
 test("schedule .ics feed is token-gated, read-only and serves text/calendar", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /import scheduleFeed from "\.\/routes\/schedule-feed"/);
-  assert.match(index, /v1\.route\("\/schedule", scheduleFeed\)/);
+  assert.match(index, /v1\.route\("\/schedule", gatedModule\("schedule", scheduleFeed\)\)/);
 
   const route = await source("../src/routes/schedule-feed.ts");
   // Подписка открывается без заголовка Authorization, но только по HMAC-токену.

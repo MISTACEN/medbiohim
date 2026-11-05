@@ -69,7 +69,7 @@ test("admin attestation routes are role-gated and write through site_content", (
 test("worker mounts attestation routes on /api/v1/attestations and /api/v1/admin", () => {
   assert.ok(indexSource.includes('import attestations from "./routes/attestations"'));
   assert.ok(indexSource.includes('import adminAttestations from "./routes/admin-attestations"'));
-  assert.ok(indexSource.includes('v1.route("/attestations", attestations)'));
+  assert.ok(indexSource.includes('v1.route("/attestations", gatedModule("attestations", attestations))'));
   assert.ok(indexSource.includes('v1.route("/admin", adminAttestations)'));
 });
 

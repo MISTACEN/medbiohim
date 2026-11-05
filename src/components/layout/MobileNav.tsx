@@ -4,18 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, BookOpen, ClipboardList, Users, UserRound, Landmark } from "lucide-react";
 import clsx from "clsx";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
+// moduleKey — раздел из реестра Access Control: без выдачи пункт скрывается
+// (сервер дополнительно проверяет каждый маршрут).
 const items = [
   { href: "/", label: "Главная", icon: Home },
-  { href: "/subjects", label: "Учёба", icon: BookOpen },
-  { href: "/university", label: "Вуз", icon: Landmark },
+  { href: "/subjects", label: "Учёба", icon: BookOpen, moduleKey: "subjects" },
+  { href: "/university", label: "Вуз", icon: Landmark, moduleKey: "university" },
   { href: "/homework", label: "ДЗ", icon: ClipboardList },
-  { href: "/community", label: "Группа", icon: Users },
+  { href: "/community", label: "Группа", icon: Users, moduleKey: "community" },
   { href: "/settings", label: "Профиль", icon: UserRound },
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const { keys } = useModuleAccess(Boolean(user));
+  // keys = null — доступ ещё вычисляется: показываем всё, как раньше.
+  const visible = keys
+    ? items.filter((item) => !item.moduleKey || keys.has(item.moduleKey))
+    : items;
 
   return (
     <nav
@@ -23,8 +33,23 @@ export function MobileNav() {
       style={{ borderColor: "var(--border)", boxShadow: "0 -8px 30px rgba(15,23,42,.08)" }}
       aria-label="Основная навигация"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-6">
-        {items.map((item) => {
+      <div
+        className={
+          "mx-auto grid max-w-lg " +
+          (visible.length === 6
+            ? "grid-cols-6"
+            : visible.length === 5
+              ? "grid-cols-5"
+              : visible.length === 4
+                ? "grid-cols-4"
+                : visible.length === 3
+                  ? "grid-cols-3"
+                  : visible.length === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-1")
+        }
+      >
+        {visible.map((item) => {
           const active =
             item.href === "/"
               ? pathname === "/"

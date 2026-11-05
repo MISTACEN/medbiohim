@@ -219,6 +219,16 @@ export const endpoints = {
     returnForRevision: (id: string): string => `/submissions/${enc(id)}/return`,
   },
 
+  /** Доступ к разделам (Access Control): реестр, выдача, журнал. */
+  access: {
+    myModules: (): string => "/access/my-modules",
+    adminModules: (): string => "/access/admin/modules",
+    adminModule: (key: string): string => `/access/admin/modules/${enc(key)}`,
+    adminGrants: (query?: string): string => withQuery("/access/admin/grants", query),
+    adminGrant: (id: string, scope: string): string => withQuery(`/access/admin/grants/${enc(id)}`, "scope=" + scope),
+    adminAudit: (query?: string): string => withQuery("/access/admin/audit", query),
+  },
+
   /** Кабинет преподавателя: область, работы, назначения. */
   teacher: {
     overview: (): string => "/teacher/overview",

@@ -34,7 +34,7 @@ test("предпросмотр теста защищён capability и не со
   assert.doesNotMatch(body, /from\("test_attempts"\)/);
   // Маршрут смонтирован в приложении.
   const index = await read("src/index.ts");
-  assert.match(index, /v1\.route\("\/tests", tests\)/);
+  assert.match(index, /v1\.route\("\/tests", gatedModule\("subjects", tests\)\)/);
 });
 
 test("список тестов для предпросмотра — чтение только для teacher/admin", async () => {
