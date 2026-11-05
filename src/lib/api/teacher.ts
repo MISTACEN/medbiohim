@@ -74,6 +74,54 @@ export type TeacherAssignment = {
 
 export type TeacherCandidate = { id: string; name: string; email: string | null };
 
+export type TeacherTestItem = {
+  id: string;
+  title: string;
+  subject_name: string | null;
+  question_count: number;
+  created_at: string | null;
+};
+
+export type PreviewQuestion = {
+  id: string;
+  topic_title: string | null;
+  type: string;
+  text: string;
+  is_closed: boolean;
+  options: Array<string | { key?: unknown; label?: unknown; correct?: boolean }>;
+  option_count: number;
+  allow_multiple: boolean;
+  requires_order: boolean;
+  difficulty: number | null;
+  answer: string | null;
+  answer_display: string;
+  answer_resolution: string | null;
+  answer_indexes: number[];
+};
+
+export type TestPreview = {
+  test: {
+    id: string;
+    title: string;
+    subject_id: string | null;
+    subject_name: string | null;
+    time_limit_sec: number | null;
+    max_attempts: number | null;
+    is_published: boolean;
+  };
+  questions: PreviewQuestion[];
+  mode: "author_preview";
+};
+
+export function teacherTests(query?: string) {
+  return api<{ items: TeacherTestItem[]; total: number }>(endpoints.teacher.tests(query));
+}
+
+/** Предпросмотр теста: вопросы с эталонами. Попытка на сервере не создаётся. */
+export function testPreview(id: string) {
+  return api<TestPreview>(endpoints.tests.preview(id));
+}
+
 export function teacherOverview() {
   return api<TeacherOverview>(endpoints.teacher.overview());
 }

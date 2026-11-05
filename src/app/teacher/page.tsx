@@ -22,6 +22,9 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { canUseTeacherWorkspace } from "@/shared/permissions";
 import { hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { MyLectures } from "@/components/teacher/MyLectures";
+import { MyQuestionBank } from "@/components/teacher/MyQuestionBank";
+import { MyTests } from "@/components/teacher/MyTests";
 import {
   gradeSubmission,
   returnSubmission,
@@ -313,6 +316,13 @@ export default function TeacherPage() {
           </ul>
         </section>
       ) : null}
+
+      {/* Авторский контент: тесты (предпросмотр без записи попыток), лекции
+          в едином научном редакторе и личный банк вопросов. Всё хранится в
+          области автора и не смешивается со студенческой статистикой. */}
+      <MyTests />
+      <MyLectures />
+      <MyQuestionBank />
     </div>
   );
 }

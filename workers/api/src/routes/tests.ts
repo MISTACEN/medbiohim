@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { requireTeachingCapability } from "../lib/permissions";
 import { normalizeQuestion, publicOptions } from "../../../../integrations/cloudflare-api/src/question-format.js";
 
 const tests = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -375,6 +376,82 @@ tests.get("/:id/bank-progress", requireAuth, async (c) => {
   } catch (error) {
     console.error("[tests:bank-progress]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Прогресс банка временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+/**
+ * Авторский предпросмотр теста (план §9.1): преподаватель или администратор
+ * проходит тест в интерфейсе студента, но попытка не создаётся и статистика
+ * не меняется. Отдаём вопросы с эталонами (как view=bank) — автор проверяет
+ * ключи, объяснения и порядок вариантов до публикации. Доступно только
+ * teacher/admin через capability teacher.content.manage; студент получает 403.
+ */
+tests.get("/preview/:id", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
+  if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID теста");
+  if (!(await requireTeachingCapability(c, "teacher.content.manage"))) return c.res;
+  try {
+    const { data, error } = await db.from("tests")
+      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index,subjects(name,slug)")
+      .eq("id", id).eq("is_published", true).is("archived_at", null).maybeSingle();
+    if (error) {
+      const { body, status } = fail("DB_UNAVAILABLE", "Тест недоступен", 503, rid);
+      return c.json(body, status as 503);
+    }
+    if (!data) {
+      const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const { data: links, error: linkError } = await db.from("test_questions")
+      .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,archived_at,topic:topics(title))")
+      .eq("test_id", id)
+      .order("order_index", { ascending: true });
+    if (linkError) {
+      const { body, status } = fail("DB_UNAVAILABLE", "Состав теста временно недоступен", 503, rid);
+      return c.json(body, status as 503);
+    }
+    const subject = Array.isArray((data as any).subjects) ? (data as any).subjects[0] : (data as any).subjects;
+    const test = {
+      id: (data as any).id,
+      title: (data as any).title,
+      subject_id: (data as any).subject_id,
+      subject_name: subject?.name || null,
+      time_limit_sec: (data as any).time_limit_sec,
+      max_attempts: (data as any).max_attempts,
+      is_published: (data as any).is_published,
+    };
+    const questions = (links || []).flatMap((link: any) => {
+      const q = Array.isArray(link.question) ? link.question[0] : link.question;
+      if (!q || q.is_published !== true || q.archived_at != null) return [];
+      const topic = Array.isArray(q.topic) ? q.topic[0] : q.topic;
+      const normalized = normalizeQuestion({
+        type: q.type,
+        text: q.text,
+        answer: q.answer,
+        options: q.options,
+      }, { extractTextOptions: true });
+      // Эталон нужен автору всегда: это предпросмотр, а не попытка студента.
+      return [{
+        id: q.id,
+        topic_title: topic?.title || null,
+        type: normalized.type,
+        text: normalized.text,
+        is_closed: normalized.is_closed,
+        options: publicOptions(normalized, true),
+        option_count: normalized.options.length,
+        allow_multiple: normalized.allow_multiple,
+        requires_order: normalized.order_indexes.length > 0,
+        difficulty: q.difficulty ?? null,
+        answer: normalized.answer || null,
+        answer_display: normalized.answer_display || "",
+        answer_resolution: normalized.resolution,
+        answer_indexes: normalized.correct_indexes,
+      }];
+    });
+    return c.json(ok({ test, questions, mode: "author_preview" }, rid));
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Тест недоступен", 503, rid);
     return c.json(body, status as 503);
   }
 });

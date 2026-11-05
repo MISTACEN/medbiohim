@@ -8,7 +8,7 @@ import {
   requireAdmin,
   requireTeachingCapability,
 } from "../lib/permissions";
-import { describeScope, isWithinTeachingScope, loadTeacherScope } from "../lib/teacher-scope";
+import { describeScope, loadTeacherScope } from "../lib/teacher-scope";
 
 /**
  * Кабинет преподавателя (план §9–§10, этап H).
@@ -226,6 +226,51 @@ teacher.get("/submissions", requireAuth, async (c) => {
   } catch (readError) {
     console.error("[teacher:submissions]", readError);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Работы временно недоступны");
+  }
+});
+
+/**
+ * Опубликованные тесты для предпросмотра (план §9.1). Чтение — teacher/admin;
+ * сам прогон идёт через GET /tests/preview/:id без записи попыток.
+ */
+teacher.get("/tests", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.content.manage"))) return c.res;
+  const db = c.get("supabase") as any;
+  const q = String(c.req.query("q") || "").replace(/[^\p{L}\p{N} -]/gu, "").slice(0, 80).trim();
+  try {
+    let query = db.from("tests")
+      .select("id,title,subject_id,is_published,created_at,subjects(name)")
+      .eq("is_published", true).is("archived_at", null)
+      .order("created_at", { ascending: false }).limit(100);
+    if (q) query = query.ilike("title", `%${q}%`);
+    const { data, error: readError } = await query;
+    if (readError) throw readError;
+    const rows = (data || []) as any[];
+    const testIds = uniqueIds(rows.map((row) => row.id));
+    const counts = new Map<string, number>();
+    if (testIds.length) {
+      const { data: links, error: linksError } = await db.from("test_questions")
+        .select("test_id").in("test_id", testIds as string[]).limit(5000);
+      if (linksError) throw linksError;
+      for (const link of links || []) {
+        const key = String((link as any).test_id || "");
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    return c.json(ok({
+      items: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        subject_name: (Array.isArray(row.subjects) ? row.subjects[0] : row.subjects)?.name || null,
+        question_count: counts.get(String(row.id)) || 0,
+        created_at: row.created_at,
+      })),
+      total: rows.length,
+    }, rid));
+  } catch (readError) {
+    console.error("[teacher:tests]", readError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Список тестов временно недоступен");
   }
 });
 

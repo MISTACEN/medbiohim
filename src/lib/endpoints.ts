@@ -77,6 +77,7 @@ export const endpoints = {
     preparationRetryGrading: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}/retry-grading`,
     ticketsGenerate: (): string => "/tickets/generate",
     ticketBanks: (): string => "/tickets/banks",
+    preview: (id: string): string => `/tests/preview/${enc(id)}`,
     examQuestions: (): string => "/exam-questions",
     examQuestionsSummary: (): string => "/exam-questions/summary",
   },
@@ -222,6 +223,7 @@ export const endpoints = {
   teacher: {
     overview: (): string => "/teacher/overview",
     submissions: (query?: string): string => withQuery("/teacher/submissions", query),
+    tests: (query?: string): string => withQuery("/teacher/tests", query),
     assignments: (): string => "/teacher/assignments",
     assignment: (id: string): string => `/teacher/assignments/${enc(id)}`,
     candidates: (query?: string): string => withQuery("/teacher/candidates", query),
