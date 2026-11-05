@@ -14,6 +14,7 @@ import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/ap
 import { describeLastSeen, describeUserAgent } from "@/lib/device";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
   changeAccountPassword,
   getAccountSettings,
@@ -42,6 +43,7 @@ function SettingsPageInner() {
   const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const { user, refresh } = useAuth();
+  const { confirm, dialog } = useConfirm();
   const [recoveryMode, setRecoveryMode] = useState(false);
 
   const [account, setAccount] = useState<AccountSettings | null>(null);
@@ -352,7 +354,11 @@ function SettingsPageInner() {
   }
 
   async function onUnlinkTelegram() {
-    if (!confirm("Отвязать Telegram от этого аккаунта MEDBIOHIM?")) return;
+    if (!(await confirm({
+      title: "Отвязать Telegram от этого аккаунта MEDBIOHIM?",
+      confirmLabel: "Отвязать",
+      danger: true,
+    }))) return;
     setBusy("telegram-unlink"); setErr(null);
     const r = await unlinkTelegramAccount();
     setBusy(null);
@@ -365,7 +371,11 @@ function SettingsPageInner() {
 
   async function onUnlink(id: LinkedIdentity) {
     if (!id.can_unlink) return setErr("Нельзя отвязать единственный способ входа");
-    if (!confirm(`Отвязать ${id.provider_label}?`)) return;
+    if (!(await confirm({
+      title: `Отвязать ${id.provider_label}?`,
+      confirmLabel: "Отвязать",
+      danger: true,
+    }))) return;
     setBusy("unlink-" + id.id);
     const r = await unlinkIdentity(id.id);
     setBusy(null);
@@ -845,6 +855,7 @@ function SettingsPageInner() {
         <h2 className="text-lg font-semibold">Классические темы</h2>
         <div className="grid gap-3 md:grid-cols-3">{(otherThemes.length ? otherThemes : THEMES).map(renderTheme)}</div>
       </section>
+      {dialog}
     </div>
   );
 }

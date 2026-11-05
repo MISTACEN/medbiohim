@@ -299,6 +299,9 @@ body {
   .btn-primary { @apply rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]; background: linear-gradient(135deg, var(--primary), var(--accent)); }
   .btn-secondary { @apply rounded-xl border px-4 py-2.5 text-sm font-semibold transition; border-color: var(--border); color: var(--primary); background: var(--card); }
   .btn-pill { @apply rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm; background: linear-gradient(135deg, var(--primary), var(--accent)); }
+  /* Этап D: опасное действие. Геометрия и поведение — как у .btn-primary,
+     меняется только тон (критический статус темы). */
+  .btn-danger { @apply rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]; background: var(--status-critical-fg); }
   .hero-banner { @apply relative overflow-hidden rounded-2xl p-6 shadow-sm sm:p-8; background: linear-gradient(135deg, var(--hero-from), var(--hero-to)); box-shadow: var(--glass-shadow); backdrop-filter: blur(16px); }
   .page-title { @apply text-2xl font-bold tracking-tight sm:text-3xl; color: var(--text); }
   .page-subtitle { @apply mt-1 text-sm; color: var(--muted); }
@@ -307,6 +310,9 @@ body {
   .badge-danger { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-critical-bg); color: var(--status-critical-fg); border: 1px solid var(--status-critical-border); }
   .badge-warning { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-warn-bg); color: var(--status-warn-fg); border: 1px solid var(--status-warn-border); }
   .badge-primary { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--primary-soft); color: var(--primary); }
+  /* Этап D: тона, которых не хватало при ручной сборке плашек. */
+  .badge-neutral { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-neutral-bg); color: var(--status-neutral-fg); border: 1px solid var(--status-neutral-border); }
+  .badge-pending { @apply rounded-full px-2.5 py-0.5 text-xs font-medium; background: var(--status-pending-bg); color: var(--status-pending-fg); border: 1px solid var(--status-pending-border); }
   .app-sidebar { background: var(--sidebar); color: var(--sidebar-text); }
   .app-sidebar-active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
 }
@@ -879,6 +885,8 @@ button {
   .badge-success { background: rgba(16,185,129,.15); }
   .badge-danger { background: rgba(239,68,68,.15); }
   .badge-warning { background: rgba(245,158,11,.18); }
+  .badge-neutral { background: rgba(148,163,184,.20); }
+  .badge-pending { background: rgba(139,92,246,.18); }
 }
 @media (max-width: 767px) {
   body { background-attachment: scroll; }

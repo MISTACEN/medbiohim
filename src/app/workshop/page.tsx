@@ -20,6 +20,7 @@ import MyLibrary from "@/components/workshop/MyLibrary";
 import QuestionBank from "@/components/workshop/QuestionBank";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { describeApiError } from "@/lib/errors";
 import { listSubjects, uploadFile } from "@/lib/api";
 import {
@@ -137,6 +138,7 @@ function ItemThumb({ itemId, file }: { itemId: string; file: { id: string; name:
 
 export default function WorkshopPage() {
   const { user } = useAuth();
+  const { confirm, dialog } = useConfirm();
   const loggedIn = Boolean(user);
   const staff = Boolean(user?.roles?.some((role) => role === "admin" || role === "moderator"));
   const [settings, setSettings] = useState<{ moderation_mode: "open" | "manual"; personal_data_warning: boolean }>({ moderation_mode: "open", personal_data_warning: true });
@@ -313,7 +315,12 @@ export default function WorkshopPage() {
   }
 
   async function removeItem(item: WorkshopItem) {
-    if (!window.confirm(`Удалить «${item.title}»? История версий сохранится для разбора.`)) return;
+    if (!(await confirm({
+      title: `Удалить «${item.title}»?`,
+      description: "История версий сохранится для разбора.",
+      confirmLabel: "Удалить",
+      danger: true,
+    }))) return;
     const result = await deleteWorkshopItem(item.id);
     if (!result.ok) { setError(describeApiError(result.error)); return; }
     setDetail(null);
@@ -323,7 +330,11 @@ export default function WorkshopPage() {
 
   async function restore(versionNo: number) {
     if (!detail?.item?.id) return;
-    if (!window.confirm(`Восстановить версию ${versionNo}? Текущая версия останется в истории.`)) return;
+    if (!(await confirm({
+      title: `Восстановить версию ${versionNo}?`,
+      description: "Текущая версия останется в истории.",
+      confirmLabel: "Восстановить",
+    }))) return;
     const result = await restoreWorkshopVersion(detail.item.id, versionNo);
     if (!result.ok) { setError(describeApiError(result.error)); return; }
     setNote(`Восстановлена версия ${versionNo}.`);
@@ -691,6 +702,7 @@ export default function WorkshopPage() {
       )}
         </>
       )}
+      {dialog}
     </div>
   );
 }

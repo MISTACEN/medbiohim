@@ -23,7 +23,7 @@ import {
   AdminDbRow,
   hasToken,
 } from "@/lib/api";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { Badge, Button, Modal, useConfirm } from "@/components/ui";
 import { describeApiError } from "@/lib/errors";
 
 type BuildQuestion = AdminDbRow & {
@@ -386,7 +386,7 @@ export default function AdminTestsPage() {
                   <td className="p-3 font-medium">{String(t.title)}</td>
                   <td className="p-3">{String(subjects.find((s) => String(s.id) === String(t.subject_id))?.name ?? "—")}</td>
                   <td className="p-3">{String(topics.find((x) => String(x.id) === String(t.topic_id))?.name ?? topics.find((x) => String(x.id) === String(t.topic_id))?.title ?? "—")}</td>
-                  <td className="p-3">{t.is_published ? <span className="text-[var(--status-ok-fg)]">Опубликован</span> : <span className="text-slate-500">Черновик</span>}</td>
+                  <td className="p-3">{t.is_published ? <Badge tone="success">Опубликован</Badge> : <Badge tone="neutral">Черновик</Badge>}</td>
                   <td className="p-3">
                     <button className="mr-2 rounded-lg bg-indigo-50 p-2 text-indigo-700" onClick={() => setEditing({ ...t })} title="Редактировать"><Pencil className="h-4 w-4" /></button>
                     <button className="rounded-lg bg-[var(--status-critical-bg)] p-2 text-[var(--status-critical-fg)]" onClick={() => void remove(t)} title="Архивировать"><Trash2 className="h-4 w-4" /></button>
@@ -400,9 +400,15 @@ export default function AdminTestsPage() {
       )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
-          <div className="card max-h-[92vh] w-full max-w-2xl overflow-y-auto">
-            <h2 className="text-lg font-bold">Редактировать тест</h2>
+        <Modal
+          open
+          onClose={() => setEditing(null)}
+          closeOnBackdrop={false}
+          size="lg"
+          labelledBy="edit-test-title"
+          className="max-h-[92vh] overflow-y-auto"
+        >
+            <h2 id="edit-test-title" className="text-lg font-bold">Редактировать тест</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className="text-sm md:col-span-2">Название<input className="input mt-1 w-full" value={String(editing.title ?? "")} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></label>
               <label className="text-sm">Предмет<select className="input mt-1 w-full" value={String(editing.subject_id ?? "")} onChange={(e) => setEditing({ ...editing, subject_id: e.target.value, module_id: null, topic_id: null })}>{subjects.map((s) => <option key={String(s.id)} value={String(s.id)}>{String(s.name)}</option>)}</select></label>
@@ -412,9 +418,8 @@ export default function AdminTestsPage() {
               <label className="text-sm">Попытки<input className="input mt-1 w-full" type="number" value={String(editing.max_attempts ?? "")} onChange={(e) => setEditing({ ...editing, max_attempts: e.target.value === "" ? null : Number(e.target.value) })} /></label>
               <label className="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" checked={Boolean(editing.is_published)} onChange={(e) => setEditing({ ...editing, is_published: e.target.checked })} /> Опубликован</label>
             </div>
-            <div className="mt-5 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setEditing(null)}>Отмена</button><button className="btn-primary" onClick={() => void save()}><CheckCircle2 className="mr-2 inline h-4 w-4" />Сохранить</button></div>
-          </div>
-        </div>
+            <div className="mt-5 flex justify-end gap-2"><Button variant="secondary" onClick={() => setEditing(null)}>Отмена</Button><Button icon={CheckCircle2} onClick={() => void save()}>Сохранить</Button></div>
+        </Modal>
       )}
 
       {builderOpen && (

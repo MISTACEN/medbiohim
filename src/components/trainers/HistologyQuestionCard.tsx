@@ -3,6 +3,7 @@
 import type React from "react";
 
 import { Check, SkipForward, X } from "lucide-react";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 
 type Option = { id: string; label: string; correct?: boolean };
 type CapSlot = { kind?: string; key?: string | null; label?: string };
@@ -201,22 +202,20 @@ export function HistologyQuestionCard({
               const good = answeredNow && o.correct;
               const bad = answeredNow && a.user_answer === o.id && !o.correct;
               return (
-                <button
+                <AnswerOption
                   key={o.id}
+                  variant="button"
+                  align="center"
+                  state={good ? "correct" : bad ? "wrong" : "idle"}
                   disabled={answeredNow || working}
-                  onClick={() => void onAnswer(o.id)}
-                  className={
-                    "flex w-full items-center gap-3 rounded-xl border p-3 text-left " +
-                    (good
-                      ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
-                      : bad
-                        ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
-                        : "hover:bg-slate-50")
+                  onSelect={() => void onAnswer(o.id)}
+                  className={good || bad ? "" : "hover:bg-slate-50"}
+                  leading={
+                    good ? <Check className="h-4 w-4" /> : bad ? <X className="h-4 w-4" /> : <span className="h-4 w-4 rounded-full border" />
                   }
                 >
-                  {good ? <Check className="h-4 w-4" /> : bad ? <X className="h-4 w-4" /> : <span className="h-4 w-4 rounded-full border" />}
                   {o.label}
-                </button>
+                </AnswerOption>
               );
             })}
           </div>

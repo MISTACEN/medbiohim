@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 import { answersAsSet, isCorrect, type PhysiologyTestGroup } from "@/lib/physiologyContent";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 
 export default function TestRunner({
   group,
@@ -121,26 +122,14 @@ export default function TestRunner({
           const isRight = checked && correctAnswer.includes(number);
           const isWrong = checked && selected && !correctAnswer.includes(number);
           return (
-            <button
+            <AnswerOption
               key={number}
-              type="button"
-              onClick={() => toggle(number)}
-              className={
-                "flex items-start gap-3 rounded-xl border p-3 text-left text-sm transition " +
-                (isRight
-                  ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
-                  : isWrong
-                    ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
-                    : selected
-                      ? "border-indigo-400 bg-indigo-50 text-indigo-900"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300")
-              }
+              badge={number}
+              state={isRight ? "correct" : isWrong ? "wrong" : selected ? "selected" : "idle"}
+              onSelect={() => toggle(number)}
             >
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
-                {number}
-              </span>
-              <span className="leading-6">{option}</span>
-            </button>
+              {option}
+            </AnswerOption>
           );
         })}
       </div>

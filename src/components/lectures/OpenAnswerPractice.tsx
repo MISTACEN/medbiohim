@@ -13,9 +13,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, ListChecks, RotateCcw, Target, TriangleAlert } from "lucide-react";
+import { ArrowRight, ListChecks, RotateCcw, Target } from "lucide-react";
 import type { SelfWorkCheckResult, SelfWorkOpenQuestion, SelfWorkTopic } from "@/lib/histology/selfWorkTypes";
 import { checkSelfWorkAnswer, selfWorkResultLabel } from "@/lib/histology/openAnswerCheck";
+import { CheckResultPanel } from "@/components/questions/CheckResultPanel";
 import {
   SELF_WORK_PROGRESS_EVENT,
   mistakeQuestionIds,
@@ -33,28 +34,6 @@ export type OpenAnswerPracticeProps = {
   topic?: SelfWorkTopic | null;
 };
 
-/** Статусные токены — те же, что в LectureRenderer/MiniQuizBlock. */
-const RESULT_TONES = {
-  ok: {
-    box: "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]",
-    text: "text-[var(--status-ok-fg)]",
-  },
-  warn: {
-    box: "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]",
-    text: "text-[var(--status-warn-fg)]",
-  },
-  critical: {
-    box: "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]",
-    text: "text-[var(--status-critical-fg)]",
-  },
-} as const;
-
-function toneOf(result: SelfWorkCheckResult) {
-  if (result.complete) return RESULT_TONES.ok;
-  if (result.passed) return RESULT_TONES.warn;
-  return RESULT_TONES.critical;
-}
-
 function answerFieldId(questionId: string): string {
   return `selfwork-answer-${questionId}`;
 }
@@ -69,64 +48,6 @@ function groupByTopic(questions: SelfWorkOpenQuestion[]): Array<[string, SelfWor
     else groups.set(key, [question]);
   }
   return [...groups.entries()];
-}
-
-/** Результат проверки: процент, статус, найденные и потерянные пункты, эталон. */
-function CheckResultPanel({ result, model }: { result: SelfWorkCheckResult; model?: string }) {
-  const tone = toneOf(result);
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={"mt-3 rounded-xl border px-3 py-3 text-sm " + tone.box + " " + tone.text}
-    >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="text-xl font-extrabold tabular-nums">{result.percent}%</span>
-        <span className="font-semibold">{selfWorkResultLabel(result)}</span>
-        <span className="ml-auto text-xs font-semibold opacity-80">
-          {result.score}/{result.max} балла
-        </span>
-      </div>
-
-      {result.hits.length ? (
-        <div className="mt-2">
-          <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">Найденные пункты</div>
-          <ul className="mt-1 space-y-1">
-            {result.hits.map((point) => (
-              <li key={point.id} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>
-                  <span aria-hidden="true">✓ </span>
-                  {point.label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {result.misses.length ? (
-        <div className="mt-2">
-          <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">Разбор ошибок</div>
-          <ul className="mt-1 space-y-1">
-            {result.misses.map((point, index) => (
-              <li key={point.id} className="flex items-start gap-2">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{result.feedback[index] ?? `${point.label} — не найдено в ответе.`}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {model ? (
-        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[var(--muted)]">
-          <div className="text-[11px] font-bold uppercase tracking-wide">Образцовый ответ на «5»</div>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">{model}</p>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 export function OpenAnswerPractice({ lectureId, topic }: OpenAnswerPracticeProps) {
@@ -298,7 +219,14 @@ export function OpenAnswerPractice({ lectureId, topic }: OpenAnswerPracticeProps
 
                   {result ? (
                     <>
-                      <CheckResultPanel result={result} model={question.model} />
+                      <CheckResultPanel
+                        result={result}
+                        statusLabel={selfWorkResultLabel(result)}
+                        model={question.model}
+                        hitsTitle="Найденные пункты"
+                        scoreSuffix=" балла"
+                        modelTitle="Образцовый ответ на «5»"
+                      />
                       {question.explanation ? (
                         <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{question.explanation}</p>
                       ) : null}

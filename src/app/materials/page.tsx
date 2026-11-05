@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { describeApiError } from "@/lib/errors";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
+import { FilePreview } from "@/shared/file-engine/viewers";
 import { useApiRequest } from "@/hooks/useApiRequest";
 
 function FileIcon({ type }: { type?: string | null }) {
@@ -69,7 +70,9 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
         >
           <BookOpen className="h-4 w-4" /> Открыть в читалке — поиск по тексту, закладки, заметки, ночной режим
         </Link>
-        <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-xl border" />
+        <FilePreview
+          source={{ url, name: material.source?.name || `${material.title}.pdf`, mime: "application/pdf", downloadUrl: directUrl || url }}
+        />
       </div>
     );
   }
@@ -82,17 +85,28 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
     return <iframe src={material.external_url} title={material.title} className="h-full min-h-[60vh] w-full rounded-xl border" />;
   }
 
+  const rawSize = Number((material.source as Record<string, unknown> | undefined)?.size);
+  const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : null;
+
+  if (url) {
+    return (
+      <FilePreview
+        source={{
+          url,
+          name: material.source?.name || material.title,
+          mime: mime || material.source?.mime_type || null,
+          size,
+          downloadUrl: directUrl || url,
+        }}
+      />
+    );
+  }
+
   return (
     <div className="rounded-2xl bg-slate-50 p-8 text-sm text-slate-600">
       <div className="font-semibold text-slate-800">Файл доступен как оригинал</div>
-      <p className="mt-1">Для DOCX/PPTX и других форматов браузер может использовать внешнюю программу просмотра.</p>
-      {url ? (
-        <a href={url} target="_blank" rel="noreferrer" className="btn-primary mt-4 inline-flex">
-          Открыть файл
-        </a>
-      ) : (
-        <div className="mt-2 text-slate-500">{fileLoading ? "Загружаем файл…" : "Ссылка на файл пока недоступна."}</div>
-      )}
+      <p className="mt-1">Ссылка на оригинал пока не получена.</p>
+      <div className="mt-2 text-slate-500">{fileLoading ? "Загружаем файл…" : "Ссылка на файл пока недоступна."}</div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { QuestionReport } from "@/components/QuestionReport";
 import { LoadingBar } from "@/components/ui/LoadingBar";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 import {
   startPreparation,
   getPreparation,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 type QuestionOption = string | { key?: unknown; label?: unknown; correct?: boolean };
 
@@ -117,6 +119,7 @@ function etalonDisplay(q: any, grading?: any): string {
 
 export default function PreparationPage() {
   const { user, loading: authLoading } = useAuth();
+  const { confirm, dialog } = useConfirm();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const search = useSearchParams();
@@ -314,9 +317,11 @@ export default function PreparationPage() {
     if (!session) return;
     const answered = Object.keys(checked).length;
     if (early && answered < questions.length) {
-      const ok = window.confirm(
-        `Отвечено ${answered} из ${questions.length}. Завершить досрочно?\nНеотвеченные не войдут в оценку как верные.`
-      );
+      const ok = await confirm({
+        title: "Завершить досрочно?",
+        description: `Отвечено ${answered} из ${questions.length}. Неотвеченные не войдут в оценку как верные.`,
+        confirmLabel: "Завершить",
+      });
       if (!ok) return;
     }
     setLoading(true);
@@ -677,38 +682,43 @@ export default function PreparationPage() {
               const label = optionLabel(o);
               const selected = selectedOptionKeys.includes(key);
               const isCorrectOption = checked[q.id] && correctOptionKeys.has(key);
-              const stateClass = checked[q.id]
-                ? isCorrectOption
-                  ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
-                  : selected
-                    ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
-                    : "border-slate-200"
-                : selected
-                  ? "border-indigo-400 bg-indigo-50"
-                  : "border-slate-200 hover:bg-slate-50";
               const position = q.requires_order && selected ? selectedOptionKeys.indexOf(key) + 1 : null;
               return (
-                <label
+                <AnswerOption
                   key={key + "-" + i}
-                  className={"flex w-full cursor-pointer items-start gap-3 rounded-xl border p-3 text-left " + stateClass}
+                  as="label"
+                  variant="choice"
+                  state={
+                    checked[q.id]
+                      ? isCorrectOption
+                        ? "correct"
+                        : selected
+                          ? "wrong"
+                          : "idle"
+                      : selected
+                        ? "selected"
+                        : "idle"
+                  }
+                  badge={position ?? key}
+                  badgeVariant="square"
+                  leading={
+                    <input
+                      type={isMulti ? "checkbox" : "radio"}
+                      name={"q-" + q.id}
+                      checked={selected}
+                      disabled={!!checked[q.id]}
+                      onChange={() => toggleOption(key)}
+                      className="mt-1"
+                    />
+                  }
+                  trailing={
+                    isCorrectOption ? (
+                      <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--status-ok-fg)]">эталон</span>
+                    ) : null
+                  }
                 >
-                  <input
-                    type={isMulti ? "checkbox" : "radio"}
-                    name={"q-" + q.id}
-                    checked={selected}
-                    disabled={!!checked[q.id]}
-                    onChange={() => toggleOption(key)}
-                    className="mt-1"
-                  />
-                  <span className={
-                    "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " +
-                    (isCorrectOption ? "bg-[var(--status-ok-fg)] text-white" : selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600")
-                  }>
-                    {position ?? key}
-                  </span>
                   <ChemRichText text={label} className="flex-1 space-y-1" />
-                  {isCorrectOption && <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--status-ok-fg)]">эталон</span>}
-                </label>
+                </AnswerOption>
               );
             })}
             <div className="flex flex-wrap items-center gap-2">
@@ -790,6 +800,7 @@ export default function PreparationPage() {
           </div>
         </div>
       </div>
+      {dialog}
     </div>
   );
 }

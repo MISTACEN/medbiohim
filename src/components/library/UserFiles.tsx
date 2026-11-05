@@ -21,6 +21,7 @@ import {
   removeUserFile, summarizeUserFiles, updateUserFile,
   type FileBookmark, type UserFile,
 } from "@/lib/libraryFiles";
+import { FilePreview } from "@/shared/file-engine/viewers";
 
 const SUBJECT_OPTIONS: Array<{ slug: string; label: string }> = [
   { slug: "", label: "Без предмета" },
@@ -143,11 +144,13 @@ function Reader({
             Файл не открылся: ссылка недоступна или файл удалён из хранилища.
             {isImage(file.mime) ? " Попробуйте загрузить его заново." : ""}
           </div>
-        ) : isImage(file.mime) ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={file.name} className="max-h-[70vh] w-full object-contain" />
         ) : (
-          <iframe title={file.name} src={url} className="h-[70vh] w-full bg-white" />
+          // Единый просмотрщик: PDF, DOCX, XLSX, PPTX, CSV, Markdown, ZIP,
+          // изображения и медиа открываются внутри сайта, оригинал — отдельно.
+          <FilePreview
+            source={{ url, name: file.name, mime: file.mime, size: file.size }}
+            hideHeader
+          />
         )}
       </div>
 

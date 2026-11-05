@@ -23,7 +23,7 @@ const PUBLIC_PAGES = [
 ] as const;
 
 /** Гостевые гейты: гостю показывается честный гейт, а не ошибка. */
-const GATED_PAGES = ["/homework", "/bookmarks", "/tutor"] as const;
+const GATED_PAGES = ["/homework", "/bookmarks", "/tutor", "/teacher", "/admin"] as const;
 
 /**
  * Собирает неперехваченные исключения страницы (pageerror).

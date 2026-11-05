@@ -11,6 +11,7 @@ import { generateTicket, listTicketBanks, type BankQuestion } from "@/lib/api";
 import { Loader2, RefreshCw, Eye, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 import { describeApiError } from "@/lib/errors";
 
 type Bank = {
@@ -172,10 +173,15 @@ function TicketsPageInner() {
                     : String.fromCharCode(65 + optionIndex);
                   const isCorrect = mode === "practice" && reveal[qq.id] && option?.correct === true;
                   return (
-                    <div key={key + "-" + optionIndex} className={"flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " + (isCorrect ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-slate-100 bg-white")}>
-                      <span className={"inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " + (isCorrect ? "bg-[var(--status-ok-fg)] text-white" : "bg-slate-100 text-slate-600")}>{key}</span>
+                    <AnswerOption
+                      key={key + "-" + optionIndex}
+                      variant="row"
+                      badge={key}
+                      badgeVariant="square"
+                      state={isCorrect ? "correct" : "idle"}
+                    >
                       <ChemRichText text={String(option?.label ?? option ?? "")} className="inline flex-1" />
-                    </div>
+                    </AnswerOption>
                   );
                 })}
               </div>

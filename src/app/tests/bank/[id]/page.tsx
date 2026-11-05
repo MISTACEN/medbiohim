@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ArrowLeft, BookOpenCheck, Check, ListChecks, Pencil, Play, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { adminUpdateBankQuestion, getBankProgress, getTestBank, hasToken, me, type ApiTest } from "@/lib/api";
 import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
@@ -379,22 +380,16 @@ function TestBankPageInner({ params }: { params: Promise<{ id: string }> }) {
                     const label = labelOf(option);
                     const isCorrect = correctOf(option);
                     return (
-                      <div
+                      <AnswerOption
                         key={oi}
-                        className={
-                          "flex items-start gap-3 rounded-xl border px-3 py-2 text-sm " +
-                          (showAnswers && isCorrect
-                            ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
-                            : "border-slate-100 bg-white")
-                        }
+                        variant="row"
+                        badge={keyOf(option, oi)}
+                        badgeVariant="square"
+                        state={showAnswers && isCorrect ? "correct" : "idle"}
+                        trailing={showAnswers && isCorrect ? <span className="text-xs font-bold text-[var(--status-ok-fg)]">✓ эталон</span> : null}
                       >
-                        <span className={
-                          "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-extrabold " +
-                          (showAnswers && isCorrect ? "bg-[var(--status-ok-fg)] text-white" : "bg-slate-100 text-slate-600")
-                        }>{keyOf(option, oi)}</span>
                         <ChemRichText text={label} className="inline flex-1" />
-                        {showAnswers && isCorrect && <span className="text-xs font-bold text-[var(--status-ok-fg)]">✓ эталон</span>}
-                      </div>
+                      </AnswerOption>
                     );
                   })}
                 </div>

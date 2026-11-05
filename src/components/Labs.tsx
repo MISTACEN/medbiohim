@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { Checkpoint, LabSession, LabTemplate } from "@/types/labs";
 
 interface LabsProps {
@@ -23,6 +24,7 @@ function errorMessage(error: { code: string; message: string }) {
 }
 
 export default function Labs({ sessionId, subject }: LabsProps) {
+  const { confirm, dialog } = useConfirm();
   const [templates, setTemplates] = useState<LabTemplate[]>([]);
   const [active, setActive] = useState<LoadedSession | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -97,7 +99,10 @@ export default function Labs({ sessionId, subject }: LabsProps) {
 
   async function handleFinishSession() {
     if (!active) return;
-    if (!confirm("Завершить эту лабораторную работу?")) return;
+    if (!(await confirm({
+      title: "Завершить эту лабораторную работу?",
+      confirmLabel: "Завершить",
+    }))) return;
     setSubmitting(true);
     setError(null);
     const result = await api(`/labs/${encodeURIComponent(active.session.id)}/finish`, {
@@ -168,6 +173,7 @@ export default function Labs({ sessionId, subject }: LabsProps) {
             </button>
           </footer>
         </main>
+        {dialog}
       </div>
     );
   }

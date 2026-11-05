@@ -14,7 +14,7 @@
  */
 
 import { useState } from "react";
-import { ArrowRight, CheckCircle2, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import type {
   SelfWorkCellMemo,
   SelfWorkCheckResult,
@@ -25,33 +25,13 @@ import type {
 import { checkSelfWorkAnswer, checkSelfWorkLabels, selfWorkResultLabel, SELF_WORK_PASS_RATIO } from "@/lib/histology/openAnswerCheck";
 import { computeExamGrade, examGradeLabel, type ExamGradeResult } from "@/lib/histology/examGrade";
 import { selfWorkTopicForLecture } from "@/lib/histology/selfWorkTopics";
+import { CheckResultPanel, RESULT_TONES } from "@/components/questions/CheckResultPanel";
 
 export type ExamModePanelProps = {
   lectureId?: string;
   /** Готовый контент темы; без него берётся selfWorkTopicForLecture(lectureId). */
   topic?: SelfWorkTopic | null;
 };
-
-const RESULT_TONES = {
-  ok: {
-    box: "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]",
-    text: "text-[var(--status-ok-fg)]",
-  },
-  warn: {
-    box: "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]",
-    text: "text-[var(--status-warn-fg)]",
-  },
-  critical: {
-    box: "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]",
-    text: "text-[var(--status-critical-fg)]",
-  },
-} as const;
-
-function toneOf(result: SelfWorkCheckResult) {
-  if (result.complete) return RESULT_TONES.ok;
-  if (result.passed) return RESULT_TONES.warn;
-  return RESULT_TONES.critical;
-}
 
 /** Слова-инструкции из памятки не должны требоваться в ответе студента. */
 const MEMO_STOP_WORDS = new Set([
@@ -146,61 +126,6 @@ function electronogramIdentificationPoint(caption: string): SelfWorkKeyPoint {
   return { id: "identify", label: "Определена половая клетка", anyOf: variants };
 }
 
-/** Блок результата проверки: процент, статус, найденные/потерянные пункты, эталон. */
-function CheckResultPanel({ result, model }: { result: SelfWorkCheckResult; model?: string }) {
-  const tone = toneOf(result);
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={"mt-3 rounded-xl border px-3 py-3 text-sm " + tone.box + " " + tone.text}
-    >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="text-xl font-extrabold tabular-nums">{result.percent}%</span>
-        <span className="font-semibold">{selfWorkResultLabel(result)}</span>
-        <span className="ml-auto text-xs font-semibold opacity-80">
-          {result.score}/{result.max}
-        </span>
-      </div>
-
-      {result.hits.length ? (
-        <ul className="mt-2 space-y-1">
-          {result.hits.map((point) => (
-            <li key={point.id} className="flex items-start gap-2">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>
-                <span aria-hidden="true">✓ </span>
-                {point.label}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {result.misses.length ? (
-        <div className="mt-2">
-          <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">Разбор ошибок</div>
-          <ul className="mt-1 space-y-1">
-            {result.misses.map((point, index) => (
-              <li key={point.id} className="flex items-start gap-2">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{result.feedback[index] ?? `${point.label} — не найдено в ответе.`}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {model ? (
-        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[var(--muted)]">
-          <div className="text-[11px] font-bold uppercase tracking-wide">Образцовый ответ</div>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">{model}</p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 type WrittenTaskProps = {
   testId: string;
   heading: string;
@@ -260,7 +185,7 @@ function WrittenTask({
 
       {result ? (
         <>
-          <CheckResultPanel result={result} model={model} />
+          <CheckResultPanel result={result} statusLabel={selfWorkResultLabel(result)} model={model} />
           {explanation ? <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{explanation}</p> : null}
           <div className="mt-3 flex justify-end">
             <button
@@ -574,7 +499,7 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
 
                   {task2 ? (
                     <>
-                      <CheckResultPanel result={task2} model={electronogram.model} />
+                      <CheckResultPanel result={task2} statusLabel={selfWorkResultLabel(task2)} model={electronogram.model} />
                       {electronogram.explanation ? (
                         <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{electronogram.explanation}</p>
                       ) : null}
@@ -685,7 +610,7 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
                         </button>
                       )}
                     </div>
-                    {result ? <CheckResultPanel result={result} model={question.model} /> : null}
+                    {result ? <CheckResultPanel result={result} statusLabel={selfWorkResultLabel(result)} model={question.model} /> : null}
                   </li>
                 );
               })}
@@ -695,7 +620,7 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
           {openTypeResult ? (
             <div className="mt-3">
               <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Итог по заданию 4</div>
-              <CheckResultPanel result={openTypeResult} />
+              <CheckResultPanel result={openTypeResult} statusLabel={selfWorkResultLabel(openTypeResult)} />
             </div>
           ) : null}
         </section>
@@ -742,7 +667,7 @@ export function ExamModePanel({ lectureId, topic }: ExamModePanelProps) {
 
           {memoResult ? (
             <>
-              <CheckResultPanel result={memoResult} />
+              <CheckResultPanel result={memoResult} statusLabel={selfWorkResultLabel(memoResult)} />
               <div className="mt-3 flex justify-end">
                 <button
                   type="button"

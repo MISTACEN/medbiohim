@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2, Upload } from "lucide-react";
 import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
+import { Button, Modal } from "@/components/ui";
 import { describeApiError } from "@/lib/errors";
 
 const TZ = "Asia/Vladivostok";
@@ -410,9 +411,14 @@ export default function AdminSchedulePage() {
       )}
 
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="card max-w-md space-y-3 p-5">
-            <h2 className="font-bold">Редактировать</h2>
+        <Modal
+          open
+          onClose={() => setEdit(null)}
+          closeOnBackdrop={false}
+          labelledBy="edit-lesson-title"
+          className="space-y-3"
+        >
+            <h2 id="edit-lesson-title" className="font-bold">Редактировать</h2>
             <input
               className="w-full rounded-xl border px-3 py-2"
               value={edit.subject_name ?? ""}
@@ -485,21 +491,18 @@ export default function AdminSchedulePage() {
                 <Trash2 className="inline h-4 w-4" /> Удалить
               </button>
               <div className="flex gap-2">
-                <button type="button" className="btn-secondary" onClick={() => setEdit(null)}>Отмена</button>
-                <button
-                  type="button"
-                  className="btn-primary"
+                <Button variant="secondary" onClick={() => setEdit(null)}>Отмена</Button>
+                <Button
                   onClick={() => {
                     setItems((p) => dedupeItems(p.map((x) => (x.id === edit.id ? edit : x))));
                     setEdit(null);
                   }}
                 >
                   OK
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

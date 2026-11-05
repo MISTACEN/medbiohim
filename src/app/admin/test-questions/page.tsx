@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Archive, Check, CheckCircle2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { adminContentArchive, adminDbList, adminUpdateBankQuestion, type AdminDbRow, hasToken } from "@/lib/api";
-import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
+import { Button, DataTable, Modal, useConfirm, type DataTableColumn } from "@/components/ui";
 import { describeApiError } from "@/lib/errors";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 /** Вопросы тестов: каскадные фильтры + общая таблица с поиском и пагинацией. */
 
@@ -334,13 +333,17 @@ export default function TestQuestionsPage() {
       {dialog}
 
       {draft && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
-          <div className="card max-h-[92vh] w-full max-w-3xl overflow-y-auto" role="dialog" aria-modal="true" aria-label="Редактирование вопроса">
+        <Modal
+          open
+          onClose={() => setDraft(null)}
+          closeOnBackdrop={false}
+          size="xl"
+          labelledBy="edit-question-title"
+          className="max-h-[92vh] overflow-y-auto"
+        >
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-lg font-bold">Редактирование вопроса</h2>
-              <button type="button" className="rounded-xl border bg-white p-2" onClick={() => setDraft(null)} aria-label="Закрыть">
-                <X className="h-4 w-4" />
-              </button>
+              <h2 id="edit-question-title" className="text-lg font-bold">Редактирование вопроса</h2>
+              <Button variant="secondary" size="sm" icon={X} aria-label="Закрыть" className="px-2 py-2" onClick={() => setDraft(null)} />
             </div>
 
             {error && <div className="mt-3 rounded-xl bg-[var(--status-critical-bg)] p-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}
@@ -471,13 +474,10 @@ export default function TestQuestionsPage() {
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setDraft(null)}>Отмена</button>
-              <button type="button" className="btn-primary" disabled={busy === "save"} onClick={() => void save()}>
-                <CheckCircle2 className="mr-2 inline h-4 w-4" />Сохранить
-              </button>
+              <Button variant="secondary" onClick={() => setDraft(null)}>Отмена</Button>
+              <Button icon={CheckCircle2} loading={busy === "save"} onClick={() => void save()}>Сохранить</Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </main>
   );

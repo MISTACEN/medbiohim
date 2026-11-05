@@ -11,9 +11,8 @@ import {
   listTicketBanks,
   type BankQuestion,
 } from "@/lib/api";
-import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
+import { DataTable, useConfirm, type DataTableColumn } from "@/components/ui";
 import { describeApiError } from "@/lib/errors";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const SUBJECTS = [
   ["biology", "Биология"],

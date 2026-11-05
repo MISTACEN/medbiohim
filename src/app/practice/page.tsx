@@ -33,6 +33,8 @@ import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { resolveSubjectSlug, subjectDisplayName } from "@/lib/subjectSlug";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { questionTypeLabel } from "@/lib/question-types";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 
 type SubjectOption = {
   id: string;
@@ -64,21 +66,6 @@ function subjectRank(slug: string) {
   const canonical = resolveSubjectSlug(slug);
   const index = MAIN_SUBJECT_ORDER.indexOf(canonical);
   return index === -1 ? 99 : index;
-}
-
-function questionTypeLabel(type?: string | null) {
-  const value = String(type || "").trim().toLowerCase();
-  if (!value) return "";
-  if (["mc", "mcq", "single", "single_choice", "single-choice"].includes(value)) return "Тест";
-  if (["open", "text", "short_answer", "short-answer"].includes(value)) return "Открытый";
-  if (value === "task") return "Задача";
-  if (value === "theory") return "Теория";
-  if (value === "practical") return "Практика";
-  if (value === "main") return "Основной";
-  if (value === "ticket") return "Билетный";
-  if (["true_false", "truefalse", "true-false"].includes(value)) return "Верно/неверно";
-  if (["matching", "match"].includes(value)) return "Соответствие";
-  return value.toUpperCase();
 }
 
 function optionText(option: any) {
@@ -128,10 +115,6 @@ function correctOptionIndexes(question: any) {
     return [question.correct];
   }
   return [];
-}
-
-function correctOptionIndex(question: any) {
-  return correctOptionIndexes(question)[0] ?? -1;
 }
 
 function referenceText(question: any) {
@@ -773,29 +756,29 @@ function PracticePageInner() {
                   {selected.options.map((option: any, index: number) => {
                     const isSelected = draft === String(index);
                     const isCorrect = correctOptionIndexes(selected).includes(index);
-                    const stateClass = showAnswer && isCorrect
-                      ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
-                      : showAnswer && isSelected && !isCorrect
-                        ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
-                        : isSelected
-                          ? "border-indigo-400 bg-indigo-50"
-                          : "border-[var(--border)] bg-white";
                     return (
-                      <button
+                      <AnswerOption
                         key={index}
-                        type="button"
-                        onClick={() => setDraft(String(index))}
-                        className={"flex w-full items-start gap-2 rounded-xl border px-3 py-2 text-left text-sm transition " + stateClass}
+                        variant="button"
+                        state={
+                          showAnswer && isCorrect
+                            ? "correct"
+                            : showAnswer && isSelected && !isCorrect
+                              ? "wrong"
+                              : isSelected
+                                ? "selected"
+                                : "idle"
+                        }
+                        onSelect={() => setDraft(String(index))}
+                        badge={optionKey(option, index)}
+                        trailing={
+                          showAnswer && isCorrect ? (
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />
+                          ) : null
+                        }
                       >
-                        <span className={
-                          "mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold " +
-                          (showAnswer && isCorrect ? "bg-[var(--status-ok-fg)] text-white" : "bg-white text-slate-500")
-                        }>
-                          {optionKey(option, index)}
-                        </span>
                         <span className="min-w-0 flex-1">{optionText(option)}</span>
-                        {showAnswer && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />}
-                      </button>
+                      </AnswerOption>
                     );
                   })}
                 </div>

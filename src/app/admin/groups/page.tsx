@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, Trash2, UserMinus, UserCheck } from "lucide-react";
+import { Loader2, Plus, UserMinus, UserCheck } from "lucide-react";
 import {
   listGroups,
   groupMembers,
@@ -21,6 +21,7 @@ import {
   createGroup,
   hasToken,
 } from "@/lib/api";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { describeApiError } from "@/lib/errors";
 
 type GroupRow = {
@@ -33,6 +34,7 @@ type MemberRow = {
 };
 
 export default function AdminGroupsPage() {
+  const { confirm, dialog } = useConfirm();
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -118,6 +120,16 @@ export default function AdminGroupsPage() {
   }
 
   async function toggleArchive(active: boolean) {
+    const label = selected ? `«${selected.code || selected.name}»` : "группу";
+    const agreed = active
+      ? await confirm({ title: `Вернуть группу ${label} из архива?`, confirmLabel: "Вернуть" })
+      : await confirm({
+          title: `Архивировать группу ${label}?`,
+          description: "Она исчезнет из списков, участники сохранятся.",
+          confirmLabel: "Архивировать",
+          danger: true,
+        });
+    if (!agreed) return;
     await run("archive", () => patchGroup(selectedId, { is_active: active }),
       active ? "Группа возвращена из архива." : "Группа архивирована — участники сохранены.", false);
   }
@@ -189,11 +201,11 @@ export default function AdminGroupsPage() {
                 {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />} Сохранить
               </button>
               {selected.is_active === false ? (
-                <button type="button" onClick={() => { if (window.confirm(`Вернуть группу «${selected.code || selected.name}» из архива?`)) void toggleArchive(true); }} disabled={busy === "archive"} className="rounded-xl border px-3 py-2 text-sm">
+                <button type="button" onClick={() => void toggleArchive(true)} disabled={busy === "archive"} className="rounded-xl border px-3 py-2 text-sm">
                   Вернуть из архива
                 </button>
               ) : (
-                <button type="button" onClick={() => { if (!window.confirm(`Архивировать группу «${selected.code || selected.name}»? Она исчезнет из списков, участники сохранятся.`)) return; void toggleArchive(false); }} disabled={busy === "archive"} className="rounded-xl border px-3 py-2 text-sm text-[var(--status-warn-fg)]">
+                <button type="button" onClick={() => void toggleArchive(false)} disabled={busy === "archive"} className="rounded-xl border px-3 py-2 text-sm text-[var(--status-warn-fg)]">
                   Архивировать
                 </button>
               )}
@@ -233,6 +245,7 @@ export default function AdminGroupsPage() {
           </section>
         </div>
       )}
+      {dialog}
     </div>
   );
 }

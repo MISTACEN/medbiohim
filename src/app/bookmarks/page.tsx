@@ -7,6 +7,7 @@ import { useApiRequest } from "@/hooks/useApiRequest";
 import { deleteNote, listFavorites, listNotes, toggleFavorite } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { Tabs } from "@/components/ui/Tabs";
 
 type BookmarkItem = {
   target_type: string;
@@ -142,28 +143,16 @@ export default function BookmarksPage() {
         Всё, что вы отметили и куда оставили заметки, — в одном месте.
       </p>
 
-      <div className="mt-5 flex gap-2" role="tablist" aria-label="Типы закладок">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "favorites"}
-          onClick={() => setTab("favorites")}
-          className={"flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold " + (tab === "favorites" ? "bg-indigo-600 text-white" : "border text-slate-600")}
-          style={tab === "favorites" ? undefined : { borderColor: "var(--border)" }}
-        >
-          <Star className="h-4 w-4" /> Избранное{favorites.length ? ` (${favorites.length})` : ""}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "notes"}
-          onClick={() => setTab("notes")}
-          className={"flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold " + (tab === "notes" ? "bg-indigo-600 text-white" : "border text-slate-600")}
-          style={tab === "notes" ? undefined : { borderColor: "var(--border)" }}
-        >
-          <StickyNote className="h-4 w-4" /> Заметки{notes.length ? ` (${notes.length})` : ""}
-        </button>
-      </div>
+      <Tabs
+        className="mt-5"
+        label="Типы закладок"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "favorites", label: "Избранное", icon: Star, count: favorites.length },
+          { id: "notes", label: "Заметки", icon: StickyNote, count: notes.length },
+        ]}
+      />
 
       {loading ? (
         <div className="mt-6 space-y-2" aria-busy="true">

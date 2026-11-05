@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Button } from "./Button";
 
 export type DataTableColumn<T> = {
   /** Уникальный ключ колонки — он же ключ сортировки. */
@@ -38,9 +39,12 @@ type Props<T> = {
 const SKELETON_ROWS = 6;
 
 /**
- * Одна таблица для контент-разделов админки: поиск, сортировка, постраничность,
- * скелетоны, пустое и ошибочное состояние. Нужна потому, что разделы рисовали
- * по 1000 строк без <thead> и без возможности дойти до нужной записи.
+ * Таблица общего слоя: поиск, сортировка, постраничность, скелетоны, пустое и
+ * ошибочное состояние.
+ *
+ * До этапа D лежала в `src/components/admin/` и была доступна только админке,
+ * хотя домена в ней нет: ни `supabase`, ни таблиц предметов. Теперь файл здесь,
+ * а админские страницы импортируют его из общего слоя.
  */
 export function DataTable<T>({
   rows,
@@ -119,9 +123,9 @@ export function DataTable<T>({
           )}
           {filters}
           {searchText && query && (
-            <button type="button" className="btn-secondary text-xs" onClick={() => setQuery("")}>
+            <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
               Сбросить поиск
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -130,9 +134,9 @@ export function DataTable<T>({
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
           <span className="min-w-0 flex-1">{error}</span>
           {onRetry && (
-            <button type="button" className="btn-secondary text-xs" onClick={onRetry}>
+            <Button variant="secondary" size="sm" onClick={onRetry}>
               Повторить
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -206,23 +210,25 @@ export function DataTable<T>({
         </span>
         {pageCount > 1 && (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="btn-secondary inline-flex items-center gap-1 text-xs"
+            <Button
+              variant="secondary"
+              size="sm"
+              className="inline-flex items-center gap-1"
               disabled={page === 0}
               onClick={() => setPage((current) => Math.max(current - 1, 0))}
             >
               <ChevronLeft className="h-3.5 w-3.5" /> Назад
-            </button>
+            </Button>
             <span className="tabular-nums">{page + 1} / {pageCount}</span>
-            <button
-              type="button"
-              className="btn-secondary inline-flex items-center gap-1 text-xs"
+            <Button
+              variant="secondary"
+              size="sm"
+              className="inline-flex items-center gap-1"
               disabled={page >= pageCount - 1}
               onClick={() => setPage((current) => Math.min(current + 1, pageCount - 1))}
             >
               Вперёд <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
         )}
       </div>

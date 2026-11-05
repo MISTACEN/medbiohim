@@ -17,6 +17,7 @@ import {
   type TitrationResult,
 } from "@/lib/chemistry/lab";
 import { csvFilename, downloadCsv, printCurrentView, toCsv } from "@/lib/chemistry/export";
+import { Tabs } from "@/components/ui/Tabs";
 
 type Tab = "titration" | "electrochemistry" | "spectroscopy";
 
@@ -486,23 +487,14 @@ export function LabBench() {
   const [tab, setTab] = useState<Tab>("titration");
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap gap-2 print:hidden" role="tablist" aria-label="Опыты">
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm " +
-              (tab === id ? "border-indigo-600 bg-indigo-600 font-semibold text-white" : "border-[var(--border)] hover:border-indigo-300")
-            }
-          >
-            <Icon className="h-4 w-4" /> {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="print:hidden"
+        variant="outline"
+        label="Опыты"
+        value={tab}
+        onChange={setTab}
+        items={TABS.map(({ id, label, Icon }) => ({ id, label, icon: Icon }))}
+      />
 
       <div className="card p-4 sm:p-5">
         {tab === "titration" && <TitrationTab />}

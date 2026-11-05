@@ -9,6 +9,7 @@ import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import { ExamModePanel } from "@/components/lectures/ExamModePanel";
 import { OpenAnswerPractice } from "@/components/lectures/OpenAnswerPractice";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 import { describeApiError } from "@/lib/errors";
 import { markLectureQuizSolved, readLectureProgress, readBlockProgress, setBaseDone, toggleSectionRead, toggleAlgoStep, LECTURE_PROGRESS_EVENT } from "@/lib/lectureProgress";
 import { splitLectureBlocks } from "@/lib/lectureProgress";
@@ -527,7 +528,16 @@ function MiniQuizBlock({ raw, lectureId }: { raw: string; lectureId?: string }) 
       ) : null}
       <div className="mt-3 grid gap-2">
         {(question.options || []).map((option) => (
-          <button key={option.index} type="button" disabled={checked !== null || busy || ordering} onClick={() => pick(option.index)} className={"rounded-xl border px-3 py-2.5 text-left text-sm transition " + (selected.includes(option.index) ? "border-indigo-500 bg-indigo-100 text-indigo-900" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50")}>{option.label}</button>
+          <AnswerOption
+            key={option.index}
+            variant="button"
+            state={selected.includes(option.index) ? "selected" : "idle"}
+            disabled={checked !== null || busy || ordering}
+            onSelect={() => pick(option.index)}
+            className="hover:border-indigo-200"
+          >
+            {option.label}
+          </AnswerOption>
         ))}
       </div>
       {checked !== null ? <div className={"mt-4 rounded-xl px-3 py-2.5 text-sm font-semibold " + (checked ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")}>{checked ? "✓ Правильно" : "✕ Пока неверно — перечитай блок и попробуй ещё раз."}</div> : null}

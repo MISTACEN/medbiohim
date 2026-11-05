@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
+import { Button } from "./Button";
+import { Modal } from "./Modal";
 
 export type ConfirmOptions = {
   title: string;
@@ -23,6 +25,9 @@ type Pending = { options: ConfirmOptions; resolve: (value: boolean) => void };
  *   const { confirm, dialog } = useConfirm();
  *   if (!(await confirm({ title: "Удалить объявление?", danger: true }))) return;
  *   ... и в разметке {dialog}
+ *
+ * Этап D: затемнение, карточка, Escape и клик по фону — это `Modal`, кнопки —
+ * `Button`. Смысл остался прежним (`alertdialog` + фокус на подтверждении).
  */
 export function useConfirm() {
   const [pending, setPending] = useState<Pending | null>(null);
@@ -41,60 +46,42 @@ export function useConfirm() {
 
   useEffect(() => {
     if (!pending) return;
-    // Фокус на подтверждении: Enter не должен случайно нажать «Отмена», но и
-    // Escape обязан закрывать без побочных эффектов.
+    // Фокус на подтверждении: Enter не должен случайно нажать «Отмена».
+    // Escape обрабатывает Modal — здесь остаётся только начальный фокус.
     const timer = setTimeout(() => confirmButtonRef.current?.focus(), 0);
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close(false);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [pending, close]);
+    return () => clearTimeout(timer);
+  }, [pending]);
 
   const dialog = pending ? (
-    <div
-      className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4"
-      onClick={() => close(false)}
+    <Modal
+      open
+      onClose={() => close(false)}
+      role="alertdialog"
+      labelledBy="confirm-dialog-title"
+      className="space-y-4"
     >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        className="card w-full max-w-md space-y-4"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start gap-3">
-          {pending.options.danger && <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--status-critical-fg)]" />}
-          <div className="min-w-0">
-            <h2 id="confirm-dialog-title" className="font-bold leading-snug">{pending.options.title}</h2>
-            {pending.options.description && (
-              <div className="mt-1 text-sm text-[var(--muted)]">{pending.options.description}</div>
-            )}
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <button type="button" className="btn-secondary" onClick={() => close(false)}>
-            {pending.options.cancelLabel || "Отмена"}
-          </button>
-          <button
-            ref={confirmButtonRef}
-            type="button"
-            className={pending.options.danger
-              ? "rounded-xl bg-[var(--status-critical-fg)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--status-critical-fg)]"
-              : "btn-primary"}
-            onClick={() => close(true)}
-          >
-            {pending.options.confirmLabel || "Подтвердить"}
-          </button>
+      <div className="flex items-start gap-3">
+        {pending.options.danger && <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--status-critical-fg)]" />}
+        <div className="min-w-0">
+          <h2 id="confirm-dialog-title" className="font-bold leading-snug">{pending.options.title}</h2>
+          {pending.options.description && (
+            <div className="mt-1 text-sm text-[var(--muted)]">{pending.options.description}</div>
+          )}
         </div>
       </div>
-    </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={() => close(false)}>
+          {pending.options.cancelLabel || "Отмена"}
+        </Button>
+        <Button
+          ref={confirmButtonRef}
+          variant={pending.options.danger ? "danger" : "primary"}
+          onClick={() => close(true)}
+        >
+          {pending.options.confirmLabel || "Подтвердить"}
+        </Button>
+      </div>
+    </Modal>
   ) : null;
 
   return { confirm, dialog };

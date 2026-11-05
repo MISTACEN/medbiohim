@@ -1,0 +1,491 @@
+{
+  "schema_version": "1.0.0",
+  "updated_at": "2026-11-05",
+  "components": [
+    {
+      "id": "ui.skeleton",
+      "title": "Skeleton",
+      "description": "Скелетоны загрузки: карточки, список, таблица, текст.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/ui/Skeleton.tsx"],
+      "params": [
+        { "name": "variant", "type": "string", "required": false, "description": "cards | list | table | text | card" },
+        { "name": "count", "type": "number", "required": false, "description": "Сколько элементов показать" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Один из самых используемых примитивов (около 20 файлов).",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.empty-state",
+      "title": "EmptyState",
+      "description": "Пустое состояние: иконка, заголовок, описание, ссылка-действие.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/ui/EmptyState.tsx"],
+      "params": [
+        { "name": "title", "type": "string", "required": true, "description": "Заголовок" },
+        { "name": "description", "type": "string", "required": false, "description": "Пояснение" },
+        { "name": "icon", "type": "LucideIcon", "required": false, "description": "Иконка" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Часть экранов до сих пор рисует пустое состояние инлайном — это дубль, а не новый вариант.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.error-state",
+      "title": "ErrorState",
+      "description": "Состояние ошибки с повтором и requestId.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/ui/ErrorState.tsx"],
+      "params": [
+        { "name": "title", "type": "string", "required": false, "description": "Заголовок" },
+        { "name": "requestId", "type": "string", "required": false, "description": "Идентификатор запроса" },
+        { "name": "onRetry", "type": "() => void", "required": false, "description": "Повтор" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Связан с общим форматом ошибок src/lib/errors.ts.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.confirm-dialog",
+      "title": "useConfirm / ConfirmDialog",
+      "description": "Promise-подтверждение действия с alertdialog-разметкой.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/ui/ConfirmDialog.tsx"],
+      "params": [
+        { "name": "title", "type": "string", "required": true, "description": "Заголовок" },
+        { "name": "description", "type": "string", "required": false, "description": "Пояснение" },
+        { "name": "danger", "type": "boolean", "required": false, "description": "Опасное действие" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап D: на useConfirm переведены админка, мастерская, настройки, лабораторные и подготовка к тесту — нативных window.confirm в src/ не осталось.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.button",
+      "title": "Button / ButtonLink",
+      "description": "Кнопка общего слоя: варианты primary/secondary/pill/danger, размер, иконка, спиннер; ссылка с видом кнопки.",
+      "type": "ui-primitive",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/ui/Button.tsx"],
+      "params": [
+        { "name": "variant", "type": "primary | secondary | pill | danger", "required": false, "description": "Вид кнопки (готовый класс .btn-*)" },
+        { "name": "size", "type": "md | sm", "required": false, "description": "sm добавляет text-xs" },
+        { "name": "icon", "type": "LucideIcon", "required": false, "description": "Иконка слева" },
+        { "name": "loading", "type": "boolean", "required": false, "description": "Спиннер и блокировка" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап D: собирает существующие классы .btn-*, вид не меняет. Используется в общем слое (ConfirmDialog, DataTable), отчёте об ошибке и трёх админских формах; остальные экраны ещё пишут классы строками.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.modal",
+      "title": "Modal",
+      "description": "Оболочка диалога: затемнение, карточка, Escape, клик по фону, role/aria и уровни z-index.",
+      "type": "ui-primitive",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/ui/Modal.tsx"],
+      "params": [
+        { "name": "open", "type": "boolean", "required": true, "description": "Показывать окно" },
+        { "name": "onClose", "type": "() => void", "required": true, "description": "Закрытие по Escape или фону" },
+        { "name": "role", "type": "dialog | alertdialog", "required": false, "description": "Роль диалога" },
+        { "name": "size", "type": "sm | md | lg | xl | 2xl", "required": false, "description": "Максимальная ширина" },
+        { "name": "level", "type": "50 | 60 | 70", "required": false, "description": "Слой поверх страницы" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап D: переведены useConfirm, отчёт об ошибке и три админские формы. Ручные модалки редакторов (z-[10000]), сборщик тестов и мобильный bottom sheet остаются на своей разметке.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.badge",
+      "title": "Badge",
+      "description": "Плашка статуса с тонами success/danger/warning/primary/neutral/pending из общих токенов.",
+      "type": "ui-primitive",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/ui/Badge.tsx"],
+      "params": [
+        { "name": "tone", "type": "success | danger | warning | primary | neutral | pending", "required": false, "description": "Семантический тон" },
+        { "name": "children", "type": "ReactNode", "required": true, "description": "Текст плашки" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап D: добавлены недостающие тона badge-neutral и badge-pending; переведён статус публикации в admin/tests, остальные ручные плашки пока не тронуты.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.tabs",
+      "title": "Tabs",
+      "description": "Группа вкладок с вариантами pill/outline, aria-разметкой и управлением стрелками, Home/End.",
+      "type": "ui-primitive",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/ui/Tabs.tsx"],
+      "params": [
+        { "name": "items", "type": "TabItem[]", "required": true, "description": "Вкладки: id, label, icon, count" },
+        { "name": "value", "type": "string", "required": true, "description": "Активная вкладка" },
+        { "name": "onChange", "type": "(id) => void", "required": true, "description": "Смена вкладки" },
+        { "name": "label", "type": "string", "required": true, "description": "Доступное имя группы" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап D: переключены закладки и химическая лаборатория; вкладки разделов предмета остаются навигацией на ссылках, а не компонентом.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.field",
+      "title": "Field / FieldInput / FieldTextarea",
+      "description": "Обёртка поля формы с подписью, подсказкой и ошибкой.",
+      "type": "ui-primitive",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/ui/Field.tsx"],
+      "params": [
+        { "name": "label", "type": "string", "required": true, "description": "Подпись" },
+        { "name": "hint", "type": "string", "required": false, "description": "Подсказка" },
+        { "name": "error", "type": "string", "required": false, "description": "Ошибка" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Один потребитель (страница регистрации); классы поля вручную скопированы десятки раз.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.service-notice",
+      "title": "ServiceNoticeBanner",
+      "description": "Баннер деградации сервиса по service_notice из API.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/ui/ServiceNoticeBanner.tsx"],
+      "params": [
+        { "name": "notice", "type": "ServiceNotice", "required": true, "description": "Данные уведомления" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Доменный хелпер isDegradedSource внутри файла относится к API-слою, а не к UI.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.confetti",
+      "title": "Confetti",
+      "description": "Анимация конфетти для завершения активности.",
+      "type": "ui-primitive",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/ui/Confetti.tsx"],
+      "params": [],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Потребителей нет: компонент спекулятивен, расширять его API без спроса нельзя.",
+      "replaced_by": null
+    },
+    {
+      "id": "media.lightbox",
+      "title": "ImageLightbox",
+      "description": "Полноэкранный просмотр изображения: зум, пан, пинч, портал.",
+      "type": "media",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/media/ImageLightbox.tsx"],
+      "params": [
+        { "name": "src", "type": "string", "required": true, "description": "Ссылка на изображение" },
+        { "name": "alt", "type": "string", "required": false, "description": "Альтернативный текст" }
+      ],
+      "compatible_modules": ["lectures", "trainers", "materials", "tests", "atlas"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "8 потребителей; собственная тёмная палитра и z-index вне общей шкалы — осознанное исключение.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.data-table",
+      "title": "DataTable",
+      "description": "Таблица с поиском, сортировкой, пагинацией, скелетонами и состояниями пусто/ошибка.",
+      "type": "ui-primitive",
+      "version": "1.0.1",
+      "status": "active",
+      "code_paths": ["src/components/ui/DataTable.tsx"],
+      "params": [
+        { "name": "columns", "type": "Column[]", "required": true, "description": "Колонки" },
+        { "name": "rows", "type": "T[]", "required": true, "description": "Строки" }
+      ],
+      "compatible_modules": ["admin"],
+      "permissions": { "edit": ["frontend"], "use": ["admin"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап D: файл перенесён из admin/ без изменения props; админские страницы импортируют его из общего слоя. Совместимость по-прежнему явно только admin.",
+      "replaced_by": null
+    },
+    {
+      "id": "hook.api-request",
+      "title": "useApiRequest",
+      "description": "Отменяемая загрузка данных: data, error, loading, reload.",
+      "type": "utility",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/hooks/useApiRequest.ts", "src/hooks/__tests__/useApiRequest.test.tsx"],
+      "params": [
+        { "name": "loader", "type": "(signal: AbortSignal) => Promise<T>", "required": true, "description": "Загрузчик" },
+        { "name": "deps", "type": "unknown[]", "required": false, "description": "Зависимости" }
+      ],
+      "compatible_modules": ["*"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Покрыт тестом; стандартный способ загрузки данных в клиентских компонентах.",
+      "replaced_by": null
+    },
+    {
+      "id": "schema.activity-model",
+      "title": "Единая образовательная модель (ActivityType)",
+      "description": "Типы активности, уровни знаний, атрибуция источника, профиль предмета.",
+      "type": "schema",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/lib/learning/types.ts"],
+      "params": [],
+      "compatible_modules": ["tests", "trainers", "lectures", "labs", "subjects"],
+      "permissions": { "edit": ["frontend", "education"], "use": ["admin", "teacher"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "12 типов активности; в БД не персистится, тип вопроса хранится свободным текстом.",
+      "replaced_by": null
+    },
+    {
+      "id": "utility.answer-grading",
+      "title": "gradeActivity",
+      "description": "Детерминированная проверка ответов: single/multiple, true_false, numeric, short_text, formula, ordering, matching, open_text.",
+      "type": "utility",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/lib/learning/grading.ts"],
+      "params": [
+        { "name": "answer", "type": "ActivityAnswer", "required": true, "description": "Ответ с эталоном" }
+      ],
+      "compatible_modules": ["tests", "trainers", "labs"],
+      "permissions": { "edit": ["frontend", "education"], "use": ["admin", "teacher"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "9 видов проверки; продуктом почти не используется (только тренажёр симуляций). Подключение — этап B.",
+      "replaced_by": null
+    },
+    {
+      "id": "editor.lecture",
+      "title": "RichLectureEditor",
+      "description": "Редактор лекции: markdown, 9 видов fenced-блоков, вставка мини-теста.",
+      "type": "editor",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/editor/RichLectureEditor.tsx"],
+      "params": [],
+      "compatible_modules": ["lectures", "teaching"],
+      "permissions": { "edit": ["frontend"], "use": ["admin", "teacher"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Содержит локальный реестр BlockKind/BLOCK_LABELS — он должен быть заменён общим реестром учебных блоков (этап E).",
+      "replaced_by": null
+    },
+    {
+      "id": "content-block.mini-quiz",
+      "title": "Мини-тест в лекции",
+      "description": "Fenced-блок quiz: вопросы по id, выбор, проверка через API мини-квиза.",
+      "type": "content-block",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": ["src/components/lectures/LectureRenderer.tsx"],
+      "params": [
+        { "name": "subjectId", "type": "string", "required": true, "description": "Предмет" },
+        { "name": "questionIds", "type": "string[]", "required": true, "description": "Вопросы" }
+      ],
+      "compatible_modules": ["lectures"],
+      "permissions": { "edit": ["frontend"], "use": ["admin", "teacher"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Рендерер знает 12 fenced-видов, редактор — 9: единый реестр блоков появится на этапе E.",
+      "replaced_by": null
+    },
+    {
+      "id": "question-type.registry",
+      "title": "Типы вопросов и единая проверка",
+      "description": "Канонические типы вопросов, легаси-синонимы, приведение серверного payload к общей модели и единая проверка ответа.",
+      "type": "question-type",
+      "version": "0.1.0",
+      "status": "experimental",
+      "code_paths": [
+        "src/lib/question-types/registry.ts",
+        "src/lib/question-types/normalize.ts",
+        "src/lib/question-types/grade.ts"
+      ],
+      "params": [
+        { "name": "rawType", "type": "string", "required": false, "description": "Тип вопроса в любом легаси-написании" },
+        { "name": "given", "type": "string | string[]", "required": false, "description": "Ответ для проверки: ключи вариантов или текст" }
+      ],
+      "compatible_modules": ["tests", "trainers", "lectures", "labs"],
+      "permissions": { "edit": ["frontend", "education"], "use": ["admin", "teacher"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап B: рендер вариантов ещё не унифицирован; первый потребитель подписей — банк вопросов practice.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.check-result-panel",
+      "title": "CheckResultPanel",
+      "description": "Панель результата проверки открытого ответа: процент, статус, найденные и потерянные пункты, разбор ошибок и эталон.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": ["src/components/questions/CheckResultPanel.tsx"],
+      "params": [
+        { "name": "result", "type": "CheckResultLike", "required": true, "description": "Результат проверки" },
+        { "name": "statusLabel", "type": "string", "required": true, "description": "Готовая подпись статуса" },
+        { "name": "model", "type": "string", "required": false, "description": "Образцовый ответ" },
+        { "name": "hitsTitle", "type": "string | null", "required": false, "description": "Заголовок найденных пунктов" },
+        { "name": "scoreSuffix", "type": "string", "required": false, "description": "Суффикс баллов" },
+        { "name": "modelTitle", "type": "string", "required": false, "description": "Заголовок эталона" }
+      ],
+      "compatible_modules": ["lectures", "tests", "trainers"],
+      "permissions": { "edit": ["frontend"], "use": ["admin", "teacher", "student"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап C: заменил две дословные копии (OpenAnswerPractice, ExamModePanel); тон статуса — из общих токенов.",
+      "replaced_by": null
+    },
+    {
+      "id": "ui.answer-option",
+      "title": "AnswerOption",
+      "description": "Один вариант ответа: метка, текст и состояние (обычный, выбран, верный, ошибочный).",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": [
+        "src/components/questions/AnswerOption.tsx",
+        "src/components/questions/__tests__/AnswerOption.test.tsx"
+      ],
+      "params": [
+        { "name": "badge", "type": "ReactNode", "required": false, "description": "Метка слева (номер или буква)" },
+        { "name": "leading", "type": "ReactNode", "required": false, "description": "Иконка или input перед меткой" },
+        { "name": "trailing", "type": "ReactNode", "required": false, "description": "Плашка справа (например, «эталон»)" },
+        { "name": "state", "type": "idle | selected | correct | wrong", "required": false, "description": "Визуальное состояние" },
+        { "name": "variant", "type": "button | choice | row", "required": false, "description": "Форма: кнопка, строка с input, только чтение" },
+        { "name": "onSelect", "type": "() => void", "required": false, "description": "Обработчик выбора" }
+      ],
+      "compatible_modules": ["tests", "trainers", "lectures"],
+      "permissions": { "edit": ["frontend"], "use": ["admin", "teacher", "student"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап C: три формы (button/choice/row) и 7 экранов — подготовка, практика, билеты, банк, карточка тренажёра, мини-тест лекции, тест физиологии. Список SubjectQuestionBank, лента тренажёров, редакторы, порталы и labs сохраняют собственную раскладку.",
+      "replaced_by": null
+    },
+    {
+      "id": "file-engine.formats",
+      "title": "File Engine: реестр форматов",
+      "description": "Allowlist форматов, способов просмотра, пределов размера и требований к серверной конвертации.",
+      "type": "schema",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": [
+        "src/shared/file-engine/formats.ts",
+        "src/shared/file-engine/detection.ts",
+        "src/shared/file-engine/security.ts",
+        "src/shared/file-engine/limits.ts"
+      ],
+      "params": [
+        { "name": "name", "type": "string", "required": true, "description": "Имя файла: расширение определяет формат" },
+        { "name": "mime", "type": "string", "required": false, "description": "Заявленный MIME; проверяется на совпадение с расширением" },
+        { "name": "head", "type": "Uint8Array", "required": false, "description": "Первые байты для проверки сигнатуры" }
+      ],
+      "compatible_modules": ["materials", "lectures", "teaching"],
+      "permissions": { "edit": ["frontend"], "use": ["*"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Этап F: один реестр вместо ветвлений в каждом экране. Новый формат = одна запись и один просмотрщик. DOC/XLS/PPT помечены conversion=server и открываются как fallback.",
+      "replaced_by": null
+    },
+    {
+      "id": "file-engine.preview",
+      "title": "FilePreview",
+      "description": "Единый просмотр файла внутри сайта: DOCX, XLSX, PPTX, PDF, CSV, Markdown, ZIP, изображения, аудио и видео, безопасный fallback с оригиналом.",
+      "type": "ui-primitive",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": [
+        "src/shared/file-engine/viewers/FilePreview.tsx",
+        "src/shared/file-engine/viewers/index.ts",
+        "src/lib/__tests__/file-engine.test.ts"
+      ],
+      "params": [
+        { "name": "source", "type": "{ url, name, mime?, size?, downloadUrl?, canDownload? }", "required": true, "description": "Ссылка, имя и метаданные файла" },
+        { "name": "hideHeader", "type": "boolean", "required": false, "description": "Скрыть шапку, если экран рисует свою" },
+        { "name": "className", "type": "string", "required": false, "description": "Дополнительные классы обёртки" }
+      ],
+      "compatible_modules": ["materials", "lectures", "teaching"],
+      "permissions": { "edit": ["frontend"], "use": ["admin", "teacher", "student"] },
+      "since": "2026-11-05",
+      "notes": "Первый потребитель — /materials. Просмотр не редактирует оригинал, не исполняет макросы и не открывает внешний сайт; скачивание — отдельное действие по правам.",
+      "replaced_by": null
+    },
+    {
+      "id": "permissions.capabilities",
+      "title": "Capabilities и scope",
+      "description": "Роль → capability → область: teacher не получает Admin, группы и глобальный каталог остаются у admin.",
+      "type": "schema",
+      "version": "1.0.0",
+      "status": "active",
+      "code_paths": [
+        "src/shared/permissions/index.ts",
+        "src/components/layout/Sidebar.tsx"
+      ],
+      "params": [
+        { "name": "roles", "type": "readonly unknown[]", "required": true, "description": "Роли пользователя" },
+        { "name": "capability", "type": "Capability", "required": false, "description": "Конкретное разрешённое действие" },
+        { "name": "scope", "type": "TeachingScope", "required": false, "description": "Назначенные группы/студенты, срок действия" }
+      ],
+      "compatible_modules": ["admin", "teaching", "*"],
+      "permissions": { "edit": ["frontend", "backend"], "use": ["admin", "teacher", "student"] },
+      "owner": "frontend",
+      "since": "2026-11-05",
+      "notes": "Навигация использует canEnterAdminConsole: Admin скрыт у teacher/moderator. Серверные MANAGERS/RLS ещё требуют поэтапной замены — это следующий шаг этапа C.",
+      "replaced_by": null
+    }
+  ]
+}
