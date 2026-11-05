@@ -78,6 +78,7 @@ import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import staff from "./routes/staff";
 import teacher from "./routes/teacher";
 import access from "./routes/access";
+import bootstrapMigrate from "./routes/bootstrap-migrate";
 import { moduleGate } from "./lib/module-access";
 import { requireAuth, type AuthVariables } from "./middleware/auth";
 
@@ -207,6 +208,8 @@ v1.route("/staff", gatedModule("group", staff));
 // Кабинет преподавателя: область назначений, работы и проверка.
 v1.route("/teacher", teacher);
 v1.route("/access", access);
+// ОДНОРАЗОВЫЙ бутстрап миграций: инертен без секрета, удалить после применения.
+v1.route("/bootstrap", bootstrapMigrate);
 v1.route("/calculators", gatedModule("calculators", calculators));
 v1.route("/ai", gatedModule("tutor", ai));
 v1.route("/chemistry", chemistry);
