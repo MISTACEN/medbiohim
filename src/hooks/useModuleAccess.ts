@@ -23,7 +23,14 @@ export function useModuleAccess(enabled: boolean): {
       const result = await myModules();
       if (cancelled) return;
       if (result.ok && Array.isArray(result.data?.items)) {
-        setKeys(new Set(result.data.items.map((item) => item.key)));
+        // staff (admin/teacher) не фильтруем вовсе: их границы задают
+        // capability и роль, а не студенческие разделы. Пустой items при
+        // staff — признак старого воркера, навигацию скрывать нельзя.
+        if (result.data.staff === true) {
+          setKeys(null);
+        } else {
+          setKeys(new Set(result.data.items.map((item) => item.key)));
+        }
       }
       // Ошибка → keys остаётся null: навигация не исчезает из-за сбоя.
     })();
