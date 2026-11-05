@@ -11,6 +11,10 @@
 - **File Engine (этап F).** Встроенный просмотр DOCX/XLSX/PPTX/CSV/TXT/MD/архивов + диспетчер FilePreview, подключён в materials и UserFiles; детекция по сигнатуре/MIME/allowlist, лимиты, XSS-очистка; оригинал — скачивание по правам.
 - **Миграция.** `20261105090000_teacher_assignments.sql` — аддитивная, RLS, security-definer хелперы; Worker работает fail-closed до применения.
 
+## Добавлено после релиза фронтенда
+
+- **Access Control (концепция §5).** Разделы закрыты по умолчанию для новых «restricted»-модулей; администратор выдаёт доступ индивидуально и группам (allow/deny, срок), запрет сильнее разрешения; проверки: навигация (Sidebar/MobileNav), Worker (moduleGate на маршрутах), RLS. Управление — /admin/access, журнал — там же. Активация: перевести раздел в restricted. Миграция 20261106100000_module_access.sql подлежит применению вместе с teacher_assignments.
+
 ## Частично
 
 - Teacher Workspace: нет авторского preview-режима теста и единого научного редактора (BACKLOG п.2–3).

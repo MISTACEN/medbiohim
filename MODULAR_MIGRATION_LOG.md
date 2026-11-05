@@ -2,6 +2,14 @@
 
 Хронология модульной миграции MEDBIOHIM.
 
+## 2026-11-06 (ночь) — Access Control: централизованный доступ к разделам
+
+- Миграция 20261106100000_module_access.sql: реестр разделов (open/restricted), индивидуальные и групповые разрешения (allow/deny, срок действия), журнал доступа, RLS. Существующие разделы стартуют открытыми — поведение текущих пользователей не меняется.
+- Worker: module-access lib (приоритет deny > allow, индивидуальное > групповое, fail-open без миграции), moduleGate на маршрутах 15 разделов (schedule, subjects, tests/tickets/lectures/вопросы, progress, community, search, library, workshop, academic, assignments, calculators, attestations, ai-тьютор, staff-староста), /access/my-modules, /access/admin/* (реестр, выдача, отзыв, аудит) — всё под requireAdmin.
+- Фронтенд: Sidebar и MobileNav фильтруют пункты по выданным разделам (пустой «Ещё» скрыт); admin-страница /admin/access; AdminNav → «Доступы к разделам».
+- Проверки: worker 348/348, vitest 519, node --test 301, typecheck/lint/build — зелёные. Запушено: `8b84d8a0`; Vercel собирает прод.
+- Активация изоляции: администратор переводит раздел в restricted на /admin/access; до этого всё открыто (плавный rollout).
+
 ## 2026-11-06 (вечер) — закрытие бэклога: preview, научный редактор, деплой
 
 - Реализован авторский предпросмотр теста: GET /tests/preview/:id (teacher/admin, эталоны, без записи попыток), GET /teacher/tests, страница /teacher/preview/[id] на общем грейдере. Тест контракта: workers/api/test/test-preview.test.js.
