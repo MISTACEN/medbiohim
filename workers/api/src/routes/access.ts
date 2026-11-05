@@ -56,20 +56,29 @@ access.get("/my-modules", requireAuth, async (c) => {
     const roles = (data || []).map((row: any) =>
       String((Array.isArray(row.roles) ? row.roles[0] : row.roles)?.code || "").toLowerCase(),
     ).filter(Boolean);
-    const accessResult = await effectiveModuleAccess(c.env, userId, roles);
     const isAdmin = roles.includes("admin");
     const isTeacher = roles.includes("teacher");
     // admin/teacher видят весь активный реестр: их границы задают capability,
-    // а не студенческие разделы. При отсутствующей миграции — fail-open.
-    const source = isAdmin || isTeacher || accessResult.resolved === false
-      ? accessResult.modules
-      : accessResult.modules.filter((item) => accessResult.allowed.has(item.key));
+    // а не студенческие разделы. Шорткат effectiveModuleAccess для admin не
+    // возвращает список модулей, поэтому для staff читаем реестр напрямую.
+    let source;
+    if (isAdmin || isTeacher) {
+      const service = createServiceClient(c.env);
+      if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+      const registry = await loadModuleRegistry(service);
+      source = registry.modules;
+    } else {
+      const accessResult = await effectiveModuleAccess(c.env, userId, roles);
+      source = accessResult.resolved === false
+        ? accessResult.modules
+        : accessResult.modules.filter((item) => accessResult.allowed.has(item.key));
+    }
     return c.json(ok({
       items: source
         .filter((item) => item.is_active)
         .map((item) => ({ key: item.key, title: item.title })),
       staff: isAdmin || isTeacher,
-      resolved: accessResult.resolved,
+      resolved: true,
     }, rid));
   } catch (readError) {
     console.error("[access:my-modules]", readError);

@@ -133,6 +133,21 @@ test("gate подключён к маршрутам разделов и fail-ope
   }
 });
 
+test("staff получает полный реестр разделов, а не пустой список", async () => {
+  // Регрессия: шорткат effectiveModuleAccess для admin возвращает пустой
+  // список модулей — из-за этого Sidebar скрывал все разделы у админа.
+  const route = await read("src/routes/access.ts");
+  const myModules = route.slice(route.indexOf('"/my-modules"'), route.indexOf('"/admin/modules"'));
+  assert.match(myModules, /isAdmin \|\| isTeacher/);
+  assert.match(myModules, /loadModuleRegistry\(service\)/, "для staff реестр читается напрямую");
+  const staffBranch = myModules.slice(
+    myModules.indexOf("isAdmin || isTeacher) {"),
+    myModules.indexOf("} else {"),
+  );
+  assert.doesNotMatch(staffBranch, /accessResult/, "staff-ветка не зависит от effectiveModuleAccess");
+  assert.match(staffBranch, /registry\.modules/);
+});
+
 test("admin-поверхность доступа: выдача, отзыв, аудит — только admin", async () => {
   const route = await read("src/routes/access.ts");
   assert.match(route, /access\.get\("\/my-modules", requireAuth/);
