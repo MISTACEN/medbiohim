@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
+import { requireContentOwnership } from "../lib/content-access";
 
 const parity = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -242,6 +243,12 @@ parity.delete("/homeworks/:id", requireAuth, async (c) => {
   if (!UUID.test(id)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID домашнего задания");
   const db = dbFor(c);
   try {
+    const { data: homework, error: readError } = await db.from("homeworks")
+      .select("id,created_by").eq("id", id).maybeSingle();
+    if (readError) throw readError;
+    if (!homework) return responseError(c, rid, 404, "NOT_FOUND", "Домашнее задание не найдено");
+    // Преподаватель удаляет только своё задание; чужое — модератор или админ.
+    if (!await requireContentOwnership(c, (homework as { created_by?: unknown }).created_by)) return c.res;
     const [submissions, progress, attachments] = await Promise.all([
       countRows(db, "homework_submissions", "homework_id", id),
       countRows(db, "homework_progress", "homework_id", id),
@@ -281,9 +288,11 @@ parity.delete("/materials/:id", requireAuth, async (c) => {
   if (!UUID.test(id)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID файла");
   const db = dbFor(c);
   try {
-    const { data: file, error: readError } = await db.from("files").select("id,status").eq("id", id).maybeSingle();
+    const { data: file, error: readError } = await db.from("files").select("id,status,uploaded_by").eq("id", id).maybeSingle();
     if (readError) throw readError;
     if (!file || file.status !== "active") return responseError(c, rid, 404, "NOT_FOUND", "Файл не найден");
+    // Файл удаляет автор или менеджер контента: чужой материал недоступен.
+    if (!await requireContentOwnership(c, (file as { uploaded_by?: unknown }).uploaded_by)) return c.res;
     const [materials, attachments, submissions, progress] = await Promise.all([
       countRows(db, "materials", "file_id", id),
       countRows(db, "homework_attachments", "file_id", id),

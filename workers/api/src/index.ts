@@ -76,6 +76,7 @@ import questionComments from "./routes/question-comments";
 import workshop from "./routes/workshop";
 import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import staff from "./routes/staff";
+import teacher from "./routes/teacher";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -186,6 +187,8 @@ v1.route("/presence", presence);
 v1.route("/community", community);
 v1.route("/workshop", workshop);
 v1.route("/staff", staff);
+// Кабинет преподавателя: область назначений, работы и проверка.
+v1.route("/teacher", teacher);
 v1.route("/calculators", calculators);
 v1.route("/ai", ai);
 v1.route("/chemistry", chemistry);

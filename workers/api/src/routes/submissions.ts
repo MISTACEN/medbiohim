@@ -2,10 +2,45 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { isWithinTeachingScope, loadTeacherScope } from "../lib/teacher-scope";
 
 const submissions = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const STAFF_ROLES = new Set(["teacher", "moderator", "admin"]);
+
+/**
+ * Область проверки работы. Одной роли staff недостаточно (план §10):
+ * администратор проверяет всё, преподаватель — только работы по своим
+ * заданиям (`homeworks.created_by`), заданиям назначенной группы, работам
+ * назначенного студента или заданиям, где он явно указан проверяющим
+ * (`homeworks.assigned_teacher`). Чужая работа остаётся недоступной даже
+ * при прямом запросе с известным ID.
+ */
+async function canReviewSubmission(
+  db: any,
+  roles: readonly string[],
+  userId: string,
+  homeworkId: unknown,
+  studentId: unknown,
+): Promise<boolean> {
+  if (roles.includes("admin")) return true;
+  if (!roles.includes("teacher")) return false;
+  if (!homeworkId) return false;
+  const { data, error } = await db
+    .from("homeworks")
+    .select("id,created_by,group_id,assigned_teacher")
+    .eq("id", String(homeworkId))
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return false;
+  const scope = await loadTeacherScope(db, userId);
+  return isWithinTeachingScope(scope, {
+    createdBy: (data as { created_by?: unknown }).created_by,
+    assignedTeacher: (data as { assigned_teacher?: unknown }).assigned_teacher,
+    groupIds: [(data as { group_id?: unknown }).group_id as string | null | undefined],
+    studentIds: [studentId as string | null | undefined],
+  });
+}
 
 async function callerRoles(db: any, userId: string): Promise<string[]> {
   const { data, error } = await db.from("user_roles").select("roles(code)").eq("user_id", userId).limit(25);
@@ -60,6 +95,14 @@ submissions.post("/:id/grade", requireAuth, async (c) => {
       const { body, status } = fail("NOT_FOUND", "Сданная работа не найдена", 404, rid);
       return c.json(body, status as 404);
     }
+    if (!(await canReviewSubmission(
+      db, roles, user.id,
+      (existing as { homework_id?: unknown }).homework_id,
+      (existing as { user_id?: unknown }).user_id,
+    ))) {
+      const { body, status } = fail("FORBIDDEN", "Эта работа вне вашей области проверки", 403, rid);
+      return c.json(body, status as 403);
+    }
     const { data, error } = await db.from("homework_submissions").update({
       grade,
       teacher_comment: comment,
@@ -107,11 +150,19 @@ submissions.post("/:id/return", requireAuth, async (c) => {
       return c.json(body, status as 403);
     }
     const { data: existing, error: existingError } = await db.from("homework_submissions")
-      .select("id").eq("id", id).maybeSingle();
+      .select("id,homework_id,user_id").eq("id", id).maybeSingle();
     if (existingError) throw existingError;
     if (!existing) {
       const { body, status } = fail("NOT_FOUND", "Сданная работа не найдена", 404, rid);
       return c.json(body, status as 404);
+    }
+    if (!(await canReviewSubmission(
+      db, roles, user.id,
+      (existing as { homework_id?: unknown }).homework_id,
+      (existing as { user_id?: unknown }).user_id,
+    ))) {
+      const { body, status } = fail("FORBIDDEN", "Эта работа вне вашей области проверки", 403, rid);
+      return c.json(body, status as 403);
     }
     const { data, error } = await db.from("homework_submissions").update({
       teacher_comment: comment,

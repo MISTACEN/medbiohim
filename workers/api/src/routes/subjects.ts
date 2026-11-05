@@ -2,10 +2,10 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { callerRoles } from "../lib/permissions";
 
 const subjects = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MANAGERS = ["admin", "moderator", "teacher"];
 // Клиент канонизирует слаги (src/lib/subjectSlug.ts), а в БД могут лежать
 // исходные слаги методички. Без алиасов на сервере GET /subjects/organic_chemistry
 // отдавал 404, хотя предмет существовал под слагом chemistry_organic_physical.
@@ -33,14 +33,15 @@ function slugVariants(raw: string): string[] {
   return variants;
 }
 
-async function isManager(c: any) {
-  const user = c.get("user"); const db = c.get("supabase");
-  const { data, error } = await db.from("user_roles").select("roles(code)").eq("user_id", user.id).limit(20);
-  if (error) throw error;
-  return (data || []).some((row: any) => {
-    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
-    return MANAGERS.includes(String(role?.code || "").toLowerCase());
-  });
+/**
+ * Глобальный каталог предметов (создание, переименование, архив) меняет
+ * только администратор: преподаватель работает со своим контентом, а не с
+ * общей структурой (план §10). Чтение каталога доступно всем авторизованным.
+ */
+async function isCatalogAdmin(c: any) {
+  const userId = c.get("user").id;
+  const roles = await callerRoles(c.get("supabase"), userId);
+  return roles.includes("admin");
 }
 
 subjects.get("/", requireAuth, async (c) => {
@@ -278,7 +279,7 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
 
 subjects.post("/", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await isCatalogAdmin(c))) { const { body, status } = fail("FORBIDDEN", "Каталог предметов меняет только администратор", 403, rid); return c.json(body, status as 403); }
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const name = String(input.name || "").trim();
   if (!name) { const { body, status } = fail("VALIDATION_ERROR", "name required", 422, rid); return c.json(body, status as 422); }
@@ -296,7 +297,7 @@ subjects.post("/", requireAuth, async (c) => {
 subjects.patch("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await isCatalogAdmin(c))) { const { body, status } = fail("FORBIDDEN", "Каталог предметов меняет только администратор", 403, rid); return c.json(body, status as 403); }
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const patch: any = {};
   if (input.name != null) patch.name = String(input.name).trim();
@@ -314,7 +315,7 @@ subjects.patch("/:id", requireAuth, async (c) => {
 subjects.delete("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await isCatalogAdmin(c))) { const { body, status } = fail("FORBIDDEN", "Каталог предметов меняет только администратор", 403, rid); return c.json(body, status as 403); }
   // Удаляется ровно та строка, которую выбрали в списке. Раньше архивировалось
   // всё slug-семейство, а у предметов с кириллическим названием слаг получался
   // одинаковым («анатомия» → "-"): удаление одной строки сносило десятки

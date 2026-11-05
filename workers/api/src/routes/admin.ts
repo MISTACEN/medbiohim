@@ -12,11 +12,15 @@ import { publishTelegramHomework, updateMessageClassification } from "../lib/tel
 import { checkLectureForPublish, syncPublishedLecture } from "../lib/lecture-quality";
 import { gigachatConfigured, gigachatTransport } from "../lib/gigachat";
 import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
+import { requireContentOwnership } from "../lib/content-access";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MANAGERS = ["admin", "moderator", "teacher"];
 const STRICT_ADMINS = ["admin"];
+// Банк экзаменационных вопросов и банк вопросов — общий контент: преподаватель
+// ведёт личные вопросы через /my-questions, а не через админский редактор.
+const CONTENT_MODERATORS = ["admin", "moderator"];
 const LECTURE_FIELDS = ["title","subject","subject_id","subject_slug","topic","lesson_type","body_md","body_html","summary","media","sources","attachments","related_learning","curriculum","generation"];
 const QUESTION_FIELDS = ["subject","subject_name","subject_slug","topic","type","text","answer","is_published","kind","for_exam","for_ticket"];
 const IMPORT_TABLES = new Set(["questions","tests","test_questions","materials","content_sources","trainer_feed_cards"]);
@@ -92,7 +96,9 @@ admin.get("/", requireAuth, async (c) => {
 
 admin.get("/overview", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
-  if (!await gate(c)) return;
+  // Сводка Admin-консоли — только администратор: преподаватель и модератор
+  // работают в своих пространствах и не видят платформенные счётчики.
+  if (!await gate(c, STRICT_ADMINS)) return;
   try {
     const [groups, subjects, tests, questions, scheduleEntries, site, announcements] = await Promise.all([
       db.from("groups").select("id", { count: "exact", head: true }).eq("is_active", true),
@@ -171,7 +177,7 @@ admin.get("/questions", requireAuth, async (c) => {
 });
 admin.post("/questions", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), input = await bodyJson(c);
-  if (!await gate(c)) return;
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   if (!input || !validText(input.text, 30000) || !validText(input.subject_slug || "general", 100)) return error(c, rid, 422, "VALIDATION_ERROR", "Текст вопроса и предмет обязательны");
   const row = pick({ subject: "Общий", subject_slug: "general", type: "open", kind: "ticket", is_published: true, ...input }, QUESTION_FIELDS);
   try {
@@ -182,7 +188,7 @@ admin.post("/questions", requireAuth, async (c) => {
 });
 admin.put("/questions/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
-  if (!await gate(c)) return;
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   if (!UUID.test(id) && !/^[-a-zA-Z0-9_]{1,100}$/.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID вопроса");
   const patch = pick(input, QUESTION_FIELDS);
   if (!Object.keys(patch).length) return error(c, rid, 422, "VALIDATION_ERROR", "Нет полей для обновления");
@@ -196,7 +202,7 @@ admin.put("/questions/:id", requireAuth, async (c) => {
 });
 admin.delete("/questions/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
-  if (!await gate(c)) return;
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   try {
     const { data, error: dbError } = await db.from("exam_questions").delete().eq("id", id).select("id").maybeSingle();
     if (dbError) return error(c, rid, 503, "DB_ERROR", "Не удалось удалить вопрос");
@@ -207,6 +213,8 @@ admin.delete("/questions/:id", requireAuth, async (c) => {
 
 admin.put("/question-bank/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
+  // Банк вопросов — общий редактор staff (контракт MA8); личные вопросы автор
+  // ведёт через /my-questions, поэтому владение здесь не различается.
   if (!await gate(c)) return;
   if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID вопроса");
   const type = String(input?.type || "");
@@ -435,6 +443,11 @@ admin.patch("/lectures/:id", requireAuth, async (c) => {
   try {
     const store = await readLectures(db), index = store.items.findIndex((x: any) => String(x.id) === id);
     if (index < 0) return error(c, rid, 404, "NOT_FOUND", "Лекция не найдена");
+    // Преподаватель правит только свою лекцию и только до публикации:
+    // опубликованный материал меняет модератор или администратор.
+    if (!await requireContentOwnership(c, store.items[index].created_by, {
+      published: store.items[index].status === "published",
+    })) return c.res;
     const updated = { ...store.items[index], ...patch, updated_at: new Date().toISOString() };
     store.items[index] = updated;
     await writeLectures(db, store, store.items);
@@ -464,10 +477,15 @@ async function setLectureStatus(c: any, status: string, roles: string[]) {
 }
 admin.delete("/lectures/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
-  if (!await gate(c, ["admin", "moderator"])) return;
+  if (!await gate(c, MANAGERS)) return;
   try {
-    const store = await readLectures(db), items = store.items.filter((x: any) => String(x.id) !== id);
-    if (items.length === store.items.length) return error(c, rid, 404, "NOT_FOUND", "Лекция не найдена");
+    const store = await readLectures(db);
+    const existing = store.items.find((x: any) => String(x.id) === id);
+    if (!existing) return error(c, rid, 404, "NOT_FOUND", "Лекция не найдена");
+    if (!await requireContentOwnership(c, existing.created_by, {
+      published: existing.status === "published",
+    })) return c.res;
+    const items = store.items.filter((x: any) => String(x.id) !== id);
     await writeLectures(db, store, items);
     return c.json(ok({ deleted: true }, rid));
   } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось удалить лекцию"); }

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { canEnterAdminConsole, canUseTeacherWorkspace } from "@/shared/permissions";
 
 // C8 (TECH-AUDIT-PLAN §5.7, чеклист #52-54): 5 плоских пунктов + «Ещё».
 // Главная — ежедневный вход; расписание, предметы, прогресс, сообщество —
@@ -63,7 +64,9 @@ const bottomItems: Array<{
   icon: typeof Settings;
   adminOnly?: boolean;
   starostaOnly?: boolean;
+  teacherOnly?: boolean;
 }> = [
+  { href: "/teacher", label: "Кабинет преподавателя", icon: ClipboardList, teacherOnly: true },
   { href: "/group", label: "Кабинет старосты", icon: Users, starostaOnly: true },
   { href: "/settings", label: "Настройки", icon: Settings },
   { href: "/changelog", label: "Что нового", icon: Sparkles },
@@ -89,8 +92,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               ? "Студент"
               : "Не авторизован";
 
-  const showAdmin =
-    user?.role === "admin" || user?.role === "moderator" || user?.role === "teacher";
+  // Admin-консоль — только admin. Teacher и moderator работают в своих
+  // пространствах: скрытие пункта не заменяет серверную проверку.
+  const showAdmin = canEnterAdminConsole([user?.role]);
+  // Кабинет преподавателя — teacher и admin; модератор работает в Мастерской.
+  const showTeacher = canUseTeacherWorkspace([user?.role]);
 
   // C8: «Ещё» раскрыто по умолчанию, если активен один из его разделов.
   const moreActive = moreItems.some((item) =>
@@ -197,6 +203,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {bottomItems
             .filter((item) => !item.adminOnly || showAdmin)
             .filter((item) => !item.starostaOnly || user?.groupRole === "starosta")
+            .filter((item) => !item.teacherOnly || showTeacher)
             .map((item) => {
               const active = pathname.startsWith(item.href);
               const Icon = item.icon;

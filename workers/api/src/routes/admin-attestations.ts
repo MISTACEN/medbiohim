@@ -13,7 +13,7 @@ function error(c: any, rid: string, status: number, code: string, message: strin
   return c.json(body, responseStatus as any);
 }
 
-async function gate(c: any) {
+async function gate(c: any, allowed: string[] = MANAGERS) {
   try {
     const user = c.get("user");
     const { data, error: queryError } = await c
@@ -27,7 +27,7 @@ async function gate(c: any) {
       const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
       return String(role?.code || "");
     });
-    if (codes.some((code: string) => MANAGERS.includes(code))) return true;
+    if (codes.some((code: string) => allowed.includes(code))) return true;
     c.res = error(c, requestId(), 403, "FORBIDDEN", "Недостаточно прав для управления аттестациями");
     return false;
   } catch {
@@ -135,7 +135,8 @@ adminAttestations.put("/attestations/:subject/:slug", requireAuth, async (c) => 
 /** DELETE /admin/attestations/:subject/:slug */
 adminAttestations.delete("/attestations/:subject/:slug", requireAuth, async (c) => {
   const rid = requestId();
-  if (!(await gate(c))) return;
+  // Аттестации — общий учебный контент: удаление только администратором.
+  if (!(await gate(c, ["admin"]))) return;
   const subject = c.req.param("subject") ?? "";
   const slug = c.req.param("slug") ?? "";
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(subject) || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {

@@ -11,13 +11,17 @@ import { resolveGroupByCohort } from "../lib/cohort-resolver";
 
 const adminSchedule = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-// Helper function to check if user is staff
+/**
+ * Управление расписанием — операция администратора платформы (план §10).
+ * Роль teacher сама по себе не даёт доступа: у преподавателя нет назначенной
+ * области расписания, и запись задела бы чужие группы. Староста по-прежнему
+ * пользуется резолвером когорты через `canResolveCohort`.
+ */
 async function isAdmin(c: any): Promise<boolean> {
   const db = c.get("supabase");
   const user = c.get("user");
-  
   const roles = await getCallerRoles(db, user.id);
-  return ["teacher", "moderator", "admin"].some(r => roles.includes(r));
+  return roles.includes("admin");
 }
 
 async function getCallerRoles(db: any, userId: string): Promise<string[]> {
@@ -141,8 +145,8 @@ adminSchedule.post("/schedule/save", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user");
   
   // Check permissions
-  const isAdminOrStaff = await isAdmin(c);
-  if (!isAdminOrStaff) {
+  const allowed = await isAdmin(c);
+  if (!allowed) {
     return c.json(fail("FORBIDDEN", "Только преподаватели и админы могут сохранять расписание", 403, rid), 403);
   }
   
@@ -212,8 +216,8 @@ adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion", requireAuth,
   
   try {
     // Verify user has permission
-    const isAdminOrStaff = await isAdmin(c);
-    if (!isAdminOrStaff) {
+    const allowed = await isAdmin(c);
+    if (!allowed) {
       return c.json(fail("FORBIDDEN", "Нет прав доступа", 403, rid), 403);
     }
     
@@ -240,9 +244,10 @@ adminSchedule.patch("/schedule/entries/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   const entryId = String(c.req.param("id") || "");
 
-  // Проверка прав: правка записей расписания — не студенческая операция.
+  // Правка записей расписания — только администратор (план §10):
+  // преподаватель без назначенной области не должен менять чужие занятия.
   if (!(await isAdmin(c))) {
-    return c.json(fail("FORBIDDEN", "Только преподаватели и админы могут править записи расписания", 403, rid), 403);
+    return c.json(fail("FORBIDDEN", "Записи расписания правит только администратор", 403, rid), 403);
   }
 
   if (!UUID.test(entryId)) {
@@ -303,9 +308,9 @@ adminSchedule.delete("/schedule/entries/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   const entryId = String(c.req.param("id") || "");
 
-  // Проверка прав: архивация записи расписания — не студенческая операция.
+  // Отмена записи расписания — только администратор (план §10).
   if (!(await isAdmin(c))) {
-    return c.json(fail("FORBIDDEN", "Только преподаватели и админы могут изменять записи расписания", 403, rid), 403);
+    return c.json(fail("FORBIDDEN", "Записи расписания отменяет только администратор", 403, rid), 403);
   }
 
   if (!UUID.test(entryId)) {
@@ -346,9 +351,9 @@ adminSchedule.get("/schedule/analytics/:scheduleId", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
   const scheduleId = String(c.req.param("scheduleId") || "");
 
-  // Проверка прав: аналитика расписания — служебная информация редактора.
+  // Аналитика расписания — служебная информация администратора.
   if (!(await isAdmin(c))) {
-    return c.json(fail("FORBIDDEN", "Только преподаватели и админы могут смотреть аналитику расписания", 403, rid), 403);
+    return c.json(fail("FORBIDDEN", "Аналитику расписания видит только администратор", 403, rid), 403);
   }
 
   if (!UUID.test(scheduleId)) {

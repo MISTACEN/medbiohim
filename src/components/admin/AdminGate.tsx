@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ShieldAlert, LogIn } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { isStaff } from "@/lib/admin/access";
+import { canEnterAdminConsole } from "@/shared/permissions";
 
 /**
  * Единственное место, где клиент проверяет доступ к `/admin`.
@@ -38,8 +38,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
           Сначала войдите
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-          Панель управления доступна только сотрудникам: администраторам, модераторам и
-          преподавателям.
+          Панель управления доступна только администраторам.
         </p>
         <Link href="/login" className="btn-primary mt-5 inline-flex">
           Войти
@@ -48,7 +47,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isStaff(user.roles)) {
+  // Admin-консоль — только admin (план §10). Преподаватель и модератор работают
+  // в своих пространствах; сервер проверяет права независимо от этого гейта.
+  if (!canEnterAdminConsole(user.roles)) {
     return (
       <div className="card mx-auto max-w-lg p-8 text-center" role="alert">
         <div
@@ -58,11 +59,12 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
           <ShieldAlert className="h-6 w-6" />
         </div>
         <h1 className="mt-4 text-lg font-bold" style={{ color: "var(--text)" }}>
-          Доступ только для персонала
+          Доступ только для администратора
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-          Ваш аккаунт — студенческий. Если вам нужны права преподавателя или администратора,
-          попросите администратора выдать роль в разделе «Пользователи и роли».
+          Ваш аккаунт не имеет прав администратора. Преподавателю доступен кабинет
+          «Преподаватель», модератору — «Мастерская»; роли выдаёт администратор
+          в разделе «Пользователи и роли».
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link href="/" className="btn-primary inline-flex">

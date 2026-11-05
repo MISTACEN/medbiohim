@@ -28,6 +28,7 @@ export * from "./api/content";
 export * from "./api/community";
 export * from "./api/workshop";
 export * from "./api/staff";
+export * from "./api/teacher";
 export * from "./api/files";
 export * from "./api/admin";
 export * from "./api/myLectures";

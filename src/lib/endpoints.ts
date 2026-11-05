@@ -212,6 +212,21 @@ export const endpoints = {
     avatarDetail: (userId: string): string => `/storage/avatar/${enc(userId)}`,
   },
 
+  /** Проверка сданных работ (кабинет преподавателя и старосты). */
+  grading: {
+    grade: (id: string): string => `/submissions/${enc(id)}/grade`,
+    returnForRevision: (id: string): string => `/submissions/${enc(id)}/return`,
+  },
+
+  /** Кабинет преподавателя: область, работы, назначения. */
+  teacher: {
+    overview: (): string => "/teacher/overview",
+    submissions: (query?: string): string => withQuery("/teacher/submissions", query),
+    assignments: (): string => "/teacher/assignments",
+    assignment: (id: string): string => `/teacher/assignments/${enc(id)}`,
+    candidates: (query?: string): string => withQuery("/teacher/candidates", query),
+  },
+
   /** Админ-панель. */
   admin: {
     presence: (within: string | number): string => `/admin/presence?within=${enc(String(within))}`,

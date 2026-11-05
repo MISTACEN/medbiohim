@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { effectiveCourse, groupDisplayName } from "../lib/groupIdentity";
+import { requireAdmin } from "../lib/permissions";
 
 const groups = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -18,9 +19,11 @@ async function roleCodes(c: any): Promise<string[]> {
     return String(role?.code || "").toLowerCase();
   }).filter(Boolean);
 }
-async function isManager(c: any) {
-  return (await roleCodes(c)).some((r) => MANAGERS.includes(r));
-}
+/**
+ * Запись групп и членства — только администратор (план §10): преподаватель не
+ * создаёт группы и не назначает себе студентов. Чтение списка групп остаётся
+ * доступным, потому что от него зависят селекторы и кабинет старосты.
+ */
 function rel(v: any) { return Array.isArray(v) ? v[0] : v; }
 function mapGroup(row: any) {
   if (!row) return null;
@@ -95,7 +98,7 @@ groups.get("/:id", requireAuth, async (c) => {
 
 groups.post("/", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const name = String(input.name || "").trim();
   if (!name) { const { body, status } = fail("VALIDATION_ERROR", "name required", 422, rid); return c.json(body, status as 422); }
@@ -110,7 +113,7 @@ groups.post("/", requireAuth, async (c) => {
 groups.patch("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const patch: any = {};
   if (input.name != null) patch.name = String(input.name).trim();
@@ -143,7 +146,7 @@ groups.patch("/:id", requireAuth, async (c) => {
 groups.delete("/:id", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   const { data: group, error: readError } = await db.from("groups").select("id,name").eq("id", id).maybeSingle();
   if (readError) { const { body, status } = fail("DB_UNAVAILABLE", "Group unavailable", 503, rid); return c.json(body, status as 503); }
   if (!group) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
@@ -201,7 +204,7 @@ function mapMember(row: any) {
 groups.get("/:id/members", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   const { data, error } = await db.from("group_memberships")
     .select("id,user_id,role_in_group,course_override,groups(course_number,admission_year,stream),users(id,email,full_name,display_name,course_number,semester)")
     .eq("group_id", id).eq("is_active", true).limit(500);
@@ -214,7 +217,7 @@ groups.get("/:id/members", requireAuth, async (c) => {
 groups.post("/:id/members", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase"); const id = String(c.req.param("id") ?? "");
   if (!UUID.test(id)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const userId = input.user_id != null ? String(input.user_id).trim() : "";
   const rawEmail = input.email != null ? String(input.email).trim().toLowerCase() : "";
@@ -254,7 +257,7 @@ groups.patch("/:id/members/:userId", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
   const id = String(c.req.param("id") ?? ""); const userId = String(c.req.param("userId") ?? "");
   if (!UUID.test(id) || !UUID.test(userId)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   let input: any = {}; try { input = await c.req.json(); } catch {}
   const patch: Record<string, unknown> = {};
   if (input.role_in_group !== undefined) {
@@ -286,7 +289,7 @@ groups.delete("/:id/members/:userId", requireAuth, async (c) => {
   const rid = requestId(); const db = c.get("supabase");
   const id = String(c.req.param("id") ?? ""); const userId = String(c.req.param("userId") ?? "");
   if (!UUID.test(id) || !UUID.test(userId)) { const { body, status } = fail("VALIDATION_ERROR", "Bad id", 422, rid); return c.json(body, status as 422); }
-  if (!(await isManager(c))) { const { body, status } = fail("FORBIDDEN", "Forbidden", 403, rid); return c.json(body, status as 403); }
+  if (!(await requireAdmin(c))) return;
   const { data, error } = await db.from("group_memberships")
     .update({ is_active: false }).eq("group_id", id).eq("user_id", userId).eq("is_active", true).select("id");
   if (error) { const { body, status } = fail("DB_ERROR", error.message || "remove failed", 503, rid); return c.json(body, status as 503); }
