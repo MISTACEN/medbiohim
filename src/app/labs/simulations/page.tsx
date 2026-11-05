@@ -7,7 +7,7 @@ import { resolveSubjectAreaKey, subjectAreaName } from "@/lib/learning/modules";
 export const metadata: Metadata = {
   title: "Симуляции — MEDBIOHIM",
   description:
-    "Интерактивные учебные модели: кинетика ферментов, титрование слабой кислоты, мембранный потенциал покоя.",
+    "Интерактивные учебные модели: Na⁺/K⁺-АТФаза, кинетика ферментов, титрование слабой кислоты, мембранный потенциал покоя, осмос, оксигемоглобин, Харди–Вайнберг.",
 };
 
 function pick(value: string | string[] | undefined): string | undefined {
