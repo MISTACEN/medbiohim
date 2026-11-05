@@ -26,6 +26,7 @@
 6. `src/lib/histology/**`, `src/lib/chemistry/**`, `src/lib/physiologyContent.ts`, `src/lib/histologyAtlas.ts`, `src/lib/lectureBlocks.ts` — кодовые модули, не content files. Default writer — Frontend; Education выполняет научный/content review.
 7. SQL seeds и migrations остаются Database-owned даже если содержат учебные вопросы. Education предоставляет проверенные данные и provenance, Database отвечает за безопасный импорт.
 8. `workers/api/src/routes/storage.ts`, `files.ts`, `trainer-atlas.ts`, `lib/b2.ts`, `lib/redis.ts` — Storage-owned; другие backend routes остаются Backend-owned.
+9. `docs/architecture/registry/**`, `test/component-registry.test.mjs` и `test/ui-barrel.test.mjs` — контракт реестра общих компонентов (этапы A и D). Данные реестра — shared surface с одним writer (архитектура/Frontend); `test/**` остаётся QA-owned. Изменение реестра принимается только вместе с прохождением теста-стража; записи в обход контракта не принимаются.
 
 ## Legacy и замороженные зоны
 

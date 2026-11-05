@@ -1,6 +1,6 @@
 # Документация MEDBIOHIM
 
-**Обновлено: 4 ноября 2026 года.** Начинайте с [единого текущего состояния](CURRENT-STATE-2026-11-03.md) — это датированный срез архитектуры, фактов, ограничений и приоритетов. Перед изменениями обязательно сверяйте актуальный `main`.
+**Обновлено: 5 ноября 2026 года.** Начинайте с [единого текущего состояния](CURRENT-STATE-2026-11-03.md) — это датированный срез архитектуры, фактов, ограничений и приоритетов. Перед изменениями обязательно сверяйте актуальный `main`.
 
 ## Инструкции ИИ-агентов
 
@@ -15,6 +15,9 @@
 
 - [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md) — единый статус проекта на указанную дату.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — актуальная схема приложения и API.
+- [architecture/MODULE_ARCHITECTURE.md](architecture/MODULE_ARCHITECTURE.md) — целевая модульная архитектура, общая библиотека (shared-слой) и реестр компонентов.
+- [architecture/SHARED-COMPONENT-REGISTRY.md](architecture/SHARED-COMPONENT-REGISTRY.md) — контракт реестра общих компонентов: схема, версии, совместимость, права, процедура.
+- [architecture/SHARED-LAYER-AUDIT-2026-11-05.md](architecture/SHARED-LAYER-AUDIT-2026-11-05.md) — аудит общего слоя: что переиспользовать, что выделить, что оставить в модулях.
 - [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md) — роли Cloudflare Workers.
 - [STATUS.md](archive/STATUS.md) — исторический снимок октября, не текущий статус.
 - [UNFINISHED-REGISTRY.md](UNFINISHED-REGISTRY.md) — накопленный список задач; каждую старую запись проверять по main.
