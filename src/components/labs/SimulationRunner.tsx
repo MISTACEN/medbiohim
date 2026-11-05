@@ -13,6 +13,7 @@ import {
   type SubjectAreaKey,
 } from "@/lib/learning/modules";
 import { computeCurve, defaultParams, evaluate, formatOutput } from "@/lib/sim/engine";
+import { NaKPumpVisual } from "@/components/labs/NaKPumpVisual";
 import { recordRun } from "@/lib/learning/progress";
 import type { SimDefinition, SimOutput, SimParams } from "@/lib/sim/types";
 
@@ -199,6 +200,8 @@ function SimulationPanel({ definition }: { definition: SimDefinition }) {
 
         <div className="space-y-4">
           <Plot definition={definition} values={values} />
+
+          {definition.visual === "na-k-pump" ? <NaKPumpVisual steps={definition.steps} /> : null}
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
             <div className="mb-2 text-sm font-semibold">Пошаговое объяснение</div>

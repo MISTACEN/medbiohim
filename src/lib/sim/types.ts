@@ -80,6 +80,11 @@ export type SimDefinition = {
   compute: (params: SimParams) => SimComputation;
   sweep?: SimSweep;
   check: SimCheck;
+  /**
+   * Специальная визуализация в общем плеере (анимация механизма).
+   * Плеер рисует её вместо плоского списка этапов; без флага — обычный вид.
+   */
+  visual?: "na-k-pump";
 };
 
 export type SimEvaluation = {

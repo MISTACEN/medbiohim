@@ -11,16 +11,25 @@ function simulation(slug: string): SimDefinition {
 }
 
 describe("каталог симуляций", () => {
-  it("содержит шесть моделей из четырёх дисциплин", () => {
+  it("содержит семь моделей из четырёх дисциплин", () => {
     expect(SIMULATIONS.map((simulation) => simulation.slug)).toEqual([
       "enzyme-kinetics",
       "buffer-titration",
       "membrane-potential",
+      "sodium-potassium-pump",
       "osmosis",
       "oxygen-hemoglobin",
       "hardy-weinberg",
     ]);
     expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(4);
+  });
+
+  it("симуляция с визуализацией обязана объявить поддерживаемый visual", () => {
+    for (const simulation of SIMULATIONS) {
+      if (simulation.visual) expect(simulation.visual).toBe("na-k-pump");
+    }
+    // Флагманская анимация задания §9.1 — насос.
+    expect(getSimulation("sodium-potassium-pump")?.visual).toBe("na-k-pump");
   });
 
   it("у каждой модели есть источник, ограничения и проверка", () => {
