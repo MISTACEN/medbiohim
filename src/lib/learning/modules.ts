@@ -312,6 +312,8 @@ export type LearningModule = {
   base: string;
   /** Для симуляций — slug из общего каталога (он же ключ прогресса). */
   simulationSlug?: string;
+  /** Для симуляций — связанные инструменты (§10), прокидываются из каталога. */
+  related?: Array<{ id: string; label: string }>;
   /** Ключ прогресса пользователя: не зависит от предмета, из которого открыли. */
   progressKey: string;
   relations: Partial<Record<SubjectAreaKey, ModuleRelation>>;
@@ -417,6 +419,25 @@ const CHEMISTRY_CORE: LearningModule[] = [
 
 /** Симуляции: одна реализация, разные предметные связи. */
 const SIM_RELATIONS: Record<string, Partial<Record<SubjectAreaKey, ModuleRelation>>> = {
+  glycolysis: {
+    biochemistry: { level: 1, reason: "Профильная модель центрального пути углеводного обмена.", topics: ["Гликолиз", "Углеводный обмен", "Регуляция ФФК-1"] },
+    physiology: { level: 2, reason: "Лактат, кислородный долг и субстрат мышечной работы.", topics: ["Лактат", "Энергообеспечение мышц"] },
+    pathophysiology: { level: 3, reason: "Лактат-ацидоз при гипоксии и шоке; дефицит пируваткиназы — гемолитическая анемия.", topics: ["Лактат-ацидоз", "Пируваткиназная анемия"] },
+    biology: { level: 3, reason: "Метаболизм клетки в курсе биологии.", topics: ["Метаболизм"] },
+  },
+  "krebs-cycle": {
+    biochemistry: { level: 1, reason: "Центральный метаболический узел окисления углеводов, жиров и аминокислот.", topics: ["Цикл Кребса", "Катаболизм", "Регуляция дегидрогеназ"] },
+    physiology: { level: 3, reason: "Аэробное энергообеспечение тканей.", topics: ["Аэробный метаболизм"] },
+    biology: { level: 3, reason: "Энергетика клетки.", topics: ["Энергетика клетки"] },
+    pathophysiology: { level: 3, reason: "Онкометаболиты при дефектах сукцинат- и фумаратгидратазы.", topics: ["Онкометаболиты"] },
+  },
+  "respiratory-chain": {
+    biochemistry: { level: 1, reason: "Профильная модель окислительного фосфорилирования и хемиосмотической гипотезы.", topics: ["Дыхательная цепь", "Окислительное фосфорилирование", "P/O"] },
+    biophysics: { level: 2, reason: "Электрохимический градиент протонов как форма запасания энергии.", topics: ["Электрохимический градиент", "Хемиосмос"] },
+    physiology: { level: 2, reason: "Аэробная продукция АТФ и потребление кислорода тканями.", topics: ["Потребление O₂", "АТФ"] },
+    pathophysiology: { level: 3, reason: "Гипоксия, митохондриальные цитопатии (MELAS, LHON).", topics: ["Гипоксия", "Митохондриальные болезни"] },
+    analytical_toxicology: { level: 2, reason: "Цианид, СО и азид блокируют цитохром-с-оксидазу.", topics: ["Отравления ингибиторами цепи"] },
+  },
   "sodium-potassium-pump": {
     physiology: { level: 1, reason: "Профильная модель механизма ионного транспорта и потенциала покоя.", topics: ["Мембранный потенциал", "Ионные градиенты", "Na⁺/K⁺-АТФаза"] },
     biochemistry: { level: 3, reason: "АТФ-зависимый транспорт: расход АТФ и энергетика клетки.", topics: ["Активный транспорт", "Энергетика клетки"] },
@@ -481,9 +502,29 @@ const SIM_MODULES: LearningModule[] = SIMULATIONS.map((simulation) => ({
   simulationSlug: simulation.slug,
   progressKey: `sim.${simulation.slug}`,
   relations: SIM_RELATIONS[simulation.slug] ?? {},
+  related: simulation.related,
 }));
 
 const SHARED_MODULES: LearningModule[] = [
+  {
+    id: "embryology.timeline",
+    title: "Этапы эмбриогенеза",
+    subtitle: "Гаметогенез → оплодотворение → дробление → гаструляция → плацентация",
+    kind: "core",
+    primary: "embryology",
+    categories: ["Морфология", "Последовательности"],
+    functions: ["trainer"],
+    base: "/embryology",
+    progressKey: "embryology.timeline",
+    relations: {
+      embryology: { level: 1, reason: "Профильный пошаговый разбор эмбрионального развития.", topics: ["Оплодотворение", "Гаструляция", "Нейруляция", "Плацентация"] },
+      histology: { level: 2, reason: "Зародышевые листки и ранние органы изучаются по тем же препаратам.", topics: ["Зародышевые листки"] },
+      cytology: { level: 2, reason: "Мейоз и ранние деления зародыша — клеточные процессы.", topics: ["Мейоз", "Дробление"] },
+      biology: { level: 2, reason: "Индивидуальное развитие в курсе биологии.", topics: ["Онтогенез"] },
+      genetics: { level: 3, reason: "Кроссинговер и наследование при гаметогенезе.", topics: ["Мейоз и наследование"] },
+      anatomy: { level: 3, reason: "Закладка органов объясняет строение взрослых структур.", topics: ["Закладка органов"] },
+    },
+  },
   {
     id: "atlas.histology",
     title: "Атлас микропрепаратов",
@@ -519,6 +560,18 @@ const SHARED_MODULES: LearningModule[] = [
       pathological_anatomy: { level: 3, reason: "Дифференциация нормы и патологии.", topics: ["Патологическая морфология"] },
       biology: { level: 3, reason: "Практика по клеточному строению.", topics: ["Клетка"] },
     },
+  },
+  {
+    id: "constructor.materials",
+    title: "Конструктор материалов",
+    subtitle: "Свои конспекты: блоки по пирамиде знаний, карточки в SRS, публикация в Workshop",
+    kind: "tool",
+    primary: "biology",
+    categories: ["Создание", "Инструменты"],
+    functions: ["editor"],
+    base: "/constructor",
+    progressKey: "constructor.materials",
+    relations: allAreas(2, "Создавать конспекты и карточки можно по любой дисциплине."),
   },
   {
     id: "library.materials",

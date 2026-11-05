@@ -61,7 +61,17 @@ function MaterialBody({ material }: { material: ApiMaterial }) {
   }
 
   if (url && mime.includes("pdf")) {
-    return <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-xl border" />;
+    return (
+      <div className="space-y-2">
+        <Link
+          href={`/reader?material=${encodeURIComponent(String(material.id))}`}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)]"
+        >
+          <BookOpen className="h-4 w-4" /> Открыть в читалке — поиск по тексту, закладки, заметки, ночной режим
+        </Link>
+        <iframe src={url} title={material.title} className="h-[70vh] w-full rounded-xl border" />
+      </div>
+    );
   }
 
   if (material.content_html) {

@@ -11,17 +11,20 @@ function simulation(slug: string): SimDefinition {
 }
 
 describe("каталог симуляций", () => {
-  it("содержит семь моделей из четырёх дисциплин", () => {
+  it("содержит десять моделей из пяти дисциплин", () => {
     expect(SIMULATIONS.map((simulation) => simulation.slug)).toEqual([
       "enzyme-kinetics",
       "buffer-titration",
       "membrane-potential",
       "sodium-potassium-pump",
+      "glycolysis",
+      "krebs-cycle",
+      "respiratory-chain",
       "osmosis",
       "oxygen-hemoglobin",
       "hardy-weinberg",
     ]);
-    expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(4);
+    expect(new Set(SIMULATIONS.map((simulation) => simulation.subjectSlug)).size).toBe(5);
   });
 
   it("симуляция с визуализацией обязана объявить поддерживаемый visual", () => {

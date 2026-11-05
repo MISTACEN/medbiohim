@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
 import { gradeActivity } from "@/lib/learning/grading";
 import { KNOWLEDGE_LEVELS, SOURCE_KIND_LABELS } from "@/lib/learning/types";
 import { SIMULATIONS } from "@/lib/sim/catalog";
 import {
+  moduleById,
+  moduleHref,
   resolveSubjectAreaKey,
   simulationSlugsForArea,
   subjectAreaName,
@@ -73,7 +75,7 @@ function Plot({ definition, values }: { definition: SimDefinition; values: SimPa
   );
 }
 
-function SimulationPanel({ definition }: { definition: SimDefinition }) {
+function SimulationPanel({ definition, areaKey }: { definition: SimDefinition; areaKey: SubjectAreaKey | null }) {
   const [values, setValues] = useState<SimParams>(() => defaultParams(definition));
   const [answer, setAnswer] = useState<number | null>(null);
 
@@ -274,6 +276,29 @@ function SimulationPanel({ definition }: { definition: SimDefinition }) {
         ) : null}
       </div>
 
+      {definition.related?.length ? (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-sm font-semibold">Связанные инструменты</div>
+          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+            {definition.related.map((link) => {
+              const target = moduleById(link.id);
+              if (!target) return null;
+              return (
+                <li key={link.id}>
+                  <Link
+                    href={moduleHref(target, { subjectKey: areaKey })}
+                    className="flex items-start gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-xs hover:border-[var(--primary)]"
+                  >
+                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--primary)]" />
+                    <span className="min-w-0 break-words">{link.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-dashed border-[var(--border)] p-4 text-xs leading-5 text-[var(--muted)]">
         <p className="font-semibold">Что модель не учитывает</p>
         <ul className="mt-1 space-y-1">
@@ -361,7 +386,7 @@ export default function SimulationRunner({
         ))}
       </div>
 
-      <SimulationPanel key={definition.slug} definition={definition} />
+      <SimulationPanel key={definition.slug} definition={definition} areaKey={areaKey} />
     </div>
   );
 }

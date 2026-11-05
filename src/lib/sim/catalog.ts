@@ -12,6 +12,9 @@
 import type { SimDefinition, SimParams } from "./types";
 
 import { SODIUM_PUMP_SIMULATION as sodiumPump } from "./sodium-pump";
+import { BIOCHEM_SIMULATIONS } from "./biochem";
+
+const [glycolysis, krebsCycle, respiratoryChain] = BIOCHEM_SIMULATIONS;
 
 /** Уравнение Михаэлиса–Ментен с конкурентным ингибированием. */
 const enzymeKinetics: SimDefinition = {
@@ -504,6 +507,9 @@ export const SIMULATIONS: SimDefinition[] = [
   bufferTitration,
   membranePotential,
   sodiumPump,
+  glycolysis,
+  krebsCycle,
+  respiratoryChain,
   osmosis,
   oxygenHemoglobin,
   hardyWeinberg,
