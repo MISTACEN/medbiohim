@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCards, SkeletonText } from "@/components/ui/Skeleton";
 import IcalImportCard from "@/components/schedule/IcalImportCard";
 import { describeApiError } from "@/lib/errors";
+import { homeworkPrepStatus } from "@/lib/learning/statuses";
 
 /**
  * Оценка и отзыв преподавателя по этой работе. Бэкенд их возвращал, но в интерфейсе
@@ -573,10 +574,21 @@ export default function SchedulePage() {
     return !h.group_id || String(h.created_by || "") === String(user.id);
   }
 
+  /** Трёхзначный контракт UI: done / overdue / pending — выводится из канонической модели статусов. */
   function homeworkStatus(h:any) {
-    if (h.my_status === "done" || h.my_completed === true || ["submitted","graded","returned"].includes(String(h.submission_status || ""))) return "done";
-    if (h.due_date && h.due_date < now.date) return "overdue";
+    const canonical = homeworkPrepStatus(h, now.date);
+    if (canonical === "done" || canonical === "submitted" || canonical === "graded") return "done";
+    if (canonical === "overdue" || canonical === "failed") return "overdue";
     return "pending";
+  }
+
+  /** Каноническая подпись, если она не покрыта трёхзначным контрактом (сдача/отработка). */
+  function homeworkStatusLabel(h:any): string | null {
+    const canonical = homeworkPrepStatus(h, now.date);
+    if (canonical === "rework") return "отработка";
+    if (canonical === "submitted") return "сдано";
+    if (canonical === "graded") return "оценено";
+    return null;
   }
 
   async function toggleHomework(h:any) {
@@ -854,6 +866,7 @@ export default function SchedulePage() {
                         {due && <span>· срок {shortDateRu(due)}</span>}
                         {hs==="overdue" && <span className="rounded-full bg-[var(--status-critical-bg)] px-1.5 py-0.5 font-semibold text-[var(--status-critical-fg)]">просрочено</span>}
                         {hs==="done" && <span className="rounded-full bg-[var(--status-ok-bg)] px-1.5 py-0.5 font-semibold text-[var(--status-ok-fg)]">готово</span>}
+                        {hs!=="done" && hs!=="overdue" && homeworkStatusLabel(h) && <span className="rounded-full bg-[var(--status-warn-bg)] px-1.5 py-0.5 font-semibold text-[var(--status-warn-fg)]">{homeworkStatusLabel(h)}</span>}
                       </div>
                     </div>
                     {editable && (

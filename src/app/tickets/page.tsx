@@ -86,10 +86,10 @@ function TicketsPageInner() {
     <div className="space-y-6">
       {fromSubject && (
         <Link
-          href={`/subjects/${encodeURIComponent(fromSubject)}`}
+          href={`/subjects/${encodeURIComponent(fromSubject)}?tab=exam`}
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
-          <ChevronLeft className="h-4 w-4" />К предмету
+          <ChevronLeft className="h-4 w-4" />К вопросам экзамена предмета
         </Link>
       )}
 

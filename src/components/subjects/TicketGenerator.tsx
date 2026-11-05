@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Eye, GraduationCap, Loader2, RefreshCw } from "lucide-react";
 import { generateTicket, listTicketBanks } from "@/lib/api";
 import { ticketBankAvailable } from "@/lib/subjectSlug";
@@ -101,6 +102,17 @@ export default function TicketGenerator({ slug, subjectName }: { slug: string; s
       <h2 className="text-lg font-bold">Экзаменационные билеты</h2>
       <p className="mt-1 text-sm text-slate-500">
         Генератор билетов прямо здесь — никуда переходить не нужно. Билеты — отдельный банк, с SRS не смешиваются.
+        {slug && (
+          <>
+            {" "}
+            <Link
+              href={`/tickets?subject_slug=${encodeURIComponent(slug)}`}
+              className="font-medium text-primary hover:underline"
+            >
+              Полноэкранный режим
+            </Link>
+          </>
+        )}
       </p>
       {hasBanks ? (
         <>

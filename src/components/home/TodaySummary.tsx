@@ -20,6 +20,8 @@ import { CalendarDays, ChevronRight, ClipboardList, Clock, MapPin } from "lucide
 import { getSubjectPlan, type AcademicEvent, type DashboardHomework, type ScheduleEntry } from "@/lib/api";
 import type { SubjectCard } from "@/lib/guards";
 import { lessonStartMinutes, nowParts } from "@/lib/now-parts";
+import { homeworkPrepStatus, PREP_STATUS_LABELS } from "@/lib/learning/statuses";
+import { NextLessonPrep } from "@/components/home/NextLessonPrep";
 
 type Props = {
   /** Целевая дата YYYY-MM-DD (сегодня, завтра или следующий учебный день). */
@@ -370,24 +372,38 @@ export function TodaySummary({ date, isToday, isTomorrow, lessons, homeworks, ev
                     </p>
                   )
                 ) : null}
+                {isNext && subject ? (
+                  <NextLessonPrep
+                    subject={{ id: subject.id, name: subject.name, slug: subject.slug }}
+                    theme={theme}
+                  />
+                ) : null}
                 {hwList.length ? (
                   <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2 dark:border-slate-800">
-                    {hwList.slice(0, 3).map((hw, i) => (
-                      <li key={str(hw, "id") || String(i)}>
-                        <Link
-                          href="/homework"
-                          className="flex items-start gap-1.5 rounded-lg px-1 py-1 text-xs text-slate-700 hover:text-indigo-700 dark:text-slate-300 dark:hover:text-indigo-400 motion-reduce:transition-none"
-                        >
-                          <ClipboardList className="mt-0.5 h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500" />
-                          <span className="min-w-0 break-words">
-                            {str(hw, "title") || "Задание"}
-                            {str(hw, "due_at") ? (
-                              <span className="text-slate-400 dark:text-slate-500"> · до {str(hw, "due_at").slice(0, 10)}</span>
-                            ) : null}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
+                    {hwList.slice(0, 3).map((hw, i) => {
+                      const hwStatus = homeworkPrepStatus(hw, now.date);
+                      return (
+                        <li key={str(hw, "id") || String(i)}>
+                          <Link
+                            href="/homework"
+                            className="flex items-start gap-1.5 rounded-lg px-1 py-1 text-xs text-slate-700 hover:text-indigo-700 dark:text-slate-300 dark:hover:text-indigo-400 motion-reduce:transition-none"
+                          >
+                            <ClipboardList className="mt-0.5 h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500" />
+                            <span className="min-w-0 break-words">
+                              {str(hw, "title") || "Задание"}
+                              {str(hw, "due_at") ? (
+                                <span className="text-slate-400 dark:text-slate-500"> · до {str(hw, "due_at").slice(0, 10)}</span>
+                              ) : null}
+                              {hwStatus !== "not_started" ? (
+                                <span className="ml-1 whitespace-nowrap text-slate-400 dark:text-slate-500">
+                                  · {PREP_STATUS_LABELS[hwStatus].toLowerCase()}
+                                </span>
+                              ) : null}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
                     {hwList.length > 3 ? (
                       <li className="px-1 text-xs text-slate-400 dark:text-slate-500">
                         и ещё {hwList.length - 3} — <Link href="/homework" className="text-indigo-600 dark:text-indigo-400">в заданиях</Link>
