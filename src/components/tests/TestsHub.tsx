@@ -110,10 +110,11 @@ const MAIN_SUBJECT_LABELS: Record<string, string> = {
   histology: "Гистология",
   physiology: "Физиология",
   organic_chemistry: "Органическая химия",
+  probability: "Вероятность и статистика",
   chemistry_organic_physical: "Органическая химия",
 };
 
-const MAIN_SUBJECT_ORDER = ["histology", "physiology", "organic_chemistry"];
+const MAIN_SUBJECT_ORDER = ["histology", "physiology", "organic_chemistry", "probability"];
 
 const MODES: Array<{ id: Mode; label: string; short: string; hint: string }> = [
   { id: "prepare", label: "Подготовка", short: "Проверка сразу", hint: "Можно отвечать и сразу видеть результат." },
@@ -516,7 +517,7 @@ export function TestsHub({
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
                   {scoped
                     ? "Выберите раздел и тему, затем режим. Один режим применяется ко всем банкам — не нужно настраивать каждую карточку отдельно."
-                    : "Гистология, физиология и органическая химия в одном меню: предмет → раздел → тема → банк. Режим выбирается один раз."}
+                    : "Гистология, физиология, химия и вероятность со статистикой в одном меню: предмет → раздел → тема → банк. Режим выбирается один раз."}
                 </p>
               </div>
             </div>
