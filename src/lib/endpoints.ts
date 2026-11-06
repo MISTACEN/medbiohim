@@ -239,6 +239,7 @@ export const endpoints = {
     candidates: (query?: string): string => withQuery("/teacher/candidates", query),
     subjects: (query?: string): string => withQuery("/teacher/subjects", query),
     testVisibility: (id: string): string => `/teacher/tests/${enc(id)}/visibility`,
+    testOwner: (id: string): string => `/teacher/tests/${enc(id)}/owner`,
   },
 
   /** Админ-панель. */

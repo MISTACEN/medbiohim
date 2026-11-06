@@ -310,6 +310,7 @@ teacher.get("/tests", requireAuth, async (c) => {
         is_published: row.is_published === true,
         teacher_visible: row.teacher_visible !== false,
         is_mine: String(row.created_by || "") === user.id,
+        created_by: row.created_by ?? null,
         created_at: row.created_at,
       })),
       total: rows.length,
@@ -553,6 +554,43 @@ teacher.put("/subjects", requireAuth, async (c) => {
   } catch (writeError) {
     console.error("[teacher:subjects:put]", writeError);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось сохранить предметы");
+  }
+});
+
+/**
+ * Назначить автора теста (только администратор). Автор видит тест всегда,
+ * включая черновик, — так администратор решает, какой тест «его», а какой нет.
+ */
+teacher.patch("/tests/:id/owner", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireAdmin(c))) return c.res;
+  const id = c.req.param("id") || "";
+  if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор теста");
+  const db = c.get("supabase") as any;
+  let input: any = {};
+  try { input = await c.req.json(); } catch {
+    return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
+  }
+  const teacherId = input?.teacher_id ? String(input.teacher_id) : "";
+  if (teacherId && !UUID.test(teacherId)) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный teacher_id");
+  }
+  try {
+    if (teacherId) {
+      const { data: person, error: personError } = await db.from("users")
+        .select("id").eq("id", teacherId).maybeSingle();
+      if (personError) throw personError;
+      if (!person) return error(c, rid, 404, "NOT_FOUND", "Преподаватель не найден");
+    }
+    const { data, error: updateError } = await db.from("tests")
+      .update({ created_by: teacherId || null })
+      .eq("id", id).select("id,title,created_by").maybeSingle();
+    if (updateError) throw updateError;
+    if (!data) return error(c, rid, 404, "NOT_FOUND", "Тест не найден");
+    return c.json(ok({ test: data }, rid));
+  } catch (writeError) {
+    console.error("[teacher:tests:owner]", writeError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось назначить автора теста");
   }
 });
 

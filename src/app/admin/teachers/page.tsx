@@ -17,6 +17,7 @@ import {
   teacherCreateAssignment,
   teacherRemoveAssignment,
   teacherSetSubjects,
+  teacherSetTestOwner,
   teacherSetTestVisibility,
   teacherSubjects,
   teacherTests,
@@ -181,6 +182,21 @@ export default function AdminTeachersPage() {
       rows.map((row) => (row.id === test.id ? { ...row, teacher_visible: next } : row)),
     );
     setNote(next ? "Тест открыт преподавателям" : "Тест скрыт от преподавателей");
+  }
+
+  async function setTestOwner(test: TeacherTestItem, teacherId: string) {
+    setBusy(true);
+    setNote("");
+    const result = await teacherSetTestOwner(test.id, teacherId || null);
+    setBusy(false);
+    if (!result.ok) {
+      setNote(describeApiError(result.error));
+      return;
+    }
+    setTests((rows) =>
+      rows.map((row) => (row.id === test.id ? { ...row, created_by: teacherId || null } : row)),
+    );
+    setNote(teacherId ? "Автор теста назначен" : "Автор теста снят");
   }
 
   const visibleSubjects = subjectCatalog.filter((subject) =>
@@ -449,21 +465,37 @@ export default function AdminTeachersPage() {
           style={{ borderColor: "var(--border)" }}
         >
           {visibleTests.slice(0, 200).map((test) => (
-            <label key={test.id} className="flex items-start gap-2 rounded px-1 py-1 text-sm">
+            <div key={test.id} className="flex items-start gap-2 rounded px-1 py-1 text-sm">
               <input
                 type="checkbox"
                 className="mt-1"
                 checked={test.teacher_visible}
                 disabled={busy}
                 onChange={() => void toggleTestVisibility(test)}
+                aria-label={`Показывать тест «${test.title}» преподавателям`}
               />
-              <span className="min-w-0">
-                <span className="block truncate">{test.title}</span>
-                <span className="block text-xs" style={{ color: "var(--muted)" }}>
+              <div className="min-w-0 flex-1">
+                <div className="truncate">{test.title}</div>
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
                   {test.subject_name || "Без предмета"} · {test.is_published ? "опубликован" : "черновик"}
-                </span>
-              </span>
-            </label>
+                </div>
+              </div>
+              <select
+                value={test.created_by || ""}
+                disabled={busy}
+                onChange={(event) => void setTestOwner(test, event.target.value)}
+                aria-label={`Автор теста «${test.title}»`}
+                className="max-w-[190px] rounded-lg border bg-transparent px-2 py-1 text-xs"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <option value="">— без автора —</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           ))}
           {visibleTests.length === 0 ? (
             <div className="p-2 text-xs" style={{ color: "var(--muted)" }}>

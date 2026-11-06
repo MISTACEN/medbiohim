@@ -85,6 +85,7 @@ export type TeacherTestItem = {
   teacher_visible: boolean;
   /** Тест создан этим преподавателем/администратором. */
   is_mine: boolean;
+  created_by: string | null;
   created_at: string | null;
 };
 
@@ -146,6 +147,14 @@ export function teacherSetSubjects(teacherId: string, subjectIds: string[]) {
     method: "PUT",
     body: JSON.stringify({ teacher_id: teacherId, subject_ids: subjectIds }),
   });
+}
+
+/** Назначить автора теста: он увидит его в «Моих тестах», включая черновик. */
+export function teacherSetTestOwner(id: string, teacherId: string | null) {
+  return api<{ test: { id: string; title: string; created_by: string | null } }>(
+    endpoints.teacher.testOwner(id),
+    { method: "PATCH", body: JSON.stringify({ teacher_id: teacherId }) },
+  );
 }
 
 /** Разрешить/запретить показ теста преподавателям (только админ). */
