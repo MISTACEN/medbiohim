@@ -60,13 +60,14 @@ export const HOME_WIDGET_HINTS: Record<HomeWidgetId, string> = {
   note: "Свободный текст: что не забыть сегодня",
 };
 
-// Адаптивная сетка: одна колонка на телефоне, две на планшете (sm),
-// шесть на десктопе (lg+). Половина на планшете — во всю ширину,
-// чтобы карточки не сжимались в нечитаемую полосу.
+// Адаптивная сетка: одна колонка на телефоне, две на планшете и ноутбуке
+// (sm–lg), шесть только с 1280px (xl). На 1024–1279px шесть колонок давали
+// карточки шириной ~160px, поэтому ноутбуки остаются в двух колонках.
+// Половина на узких экранах — во всю ширину, чтобы текст не рвался.
 export const HOME_SPAN_CLASS: Record<HomeSpan, string> = {
-  third: "sm:col-span-1 lg:col-span-2",
-  half: "sm:col-span-2 lg:col-span-3",
-  full: "sm:col-span-2 lg:col-span-6",
+  third: "sm:col-span-1 xl:col-span-2",
+  half: "sm:col-span-2 xl:col-span-3",
+  full: "sm:col-span-2 xl:col-span-6",
 };
 
 export const HOME_SPAN_LABELS: Record<HomeSpan, string> = {

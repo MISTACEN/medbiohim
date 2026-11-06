@@ -79,6 +79,12 @@ type DashboardBundle = {
   examWindows: ExamWindow[];
 };
 
+// Стабильные пустые значения: `?? []` и `?? {}` создавали новый объект на
+// каждый рендер и делали зависимости useMemo нестабильными.
+const EMPTY_SUBJECTS: SubjectCard[] = [];
+const EMPTY_CATALOG: Record<string, CatalogRow> = {};
+const EMPTY_EXAM_WINDOWS: ExamWindow[] = [];
+
 const EMPTY_BUNDLE: DashboardBundle = {
   dash: null,
   dashError: null,
@@ -111,6 +117,24 @@ function datePlusDays(parts: { year: number; month: number; day: number }, days:
 
 function homeworkStatus(row: DashRow): string {
   return str(row, "my_status", "submission_status", "status").toLowerCase();
+}
+
+const HOMEWORK_STATUS_LABELS: Record<string, string> = {
+  open: "не сдано",
+  assigned: "не сдано",
+  pending: "не сдано",
+  submitted: "сдано",
+  graded: "оценено",
+  done: "выполнено",
+  overdue: "просрочено",
+  rework: "на доработку",
+};
+
+/** Статус задания по-русски: в карточке не должно быть сырого «open». */
+function homeworkStatusLabel(row: DashRow): string {
+  const status = homeworkStatus(row);
+  if (!status) return "";
+  return HOMEWORK_STATUS_LABELS[status] || status;
 }
 
 function homeworkPending(row: DashRow): boolean {
@@ -305,7 +329,7 @@ export default function DashboardPage() {
   const error = loadError ?? bundle?.dashError ?? null;
   const academic = generatedAcademic ?? bundle?.academic ?? null;
   const academicError = academicErrorOverride ?? bundle?.academicError ?? null;
-  const subjects = bundle?.subjects ?? [];
+  const subjects = bundle?.subjects ?? EMPTY_SUBJECTS;
   const subjectsError = bundle?.subjectsError ?? null;
 
   useEffect(() => {
@@ -392,13 +416,14 @@ export default function DashboardPage() {
       return { date: nextDate, rows: scheduleSorted.filter((row) => str(row, "date") === nextDate), isToday: false };
     }
     // Расписание кончилось: держим завтра с пустым списком, виджет честно скажет.
-    return { date: tomorrowDate, rows: [] as typeof todayRows, isToday: false };
+    // Расписания дальше нет: показываем сегодня с его парами, а не пустое «завтра».
+    return { date: kh.date, rows: todayRows, isToday: true };
   }, [todayRows, todayAllOver, tomorrowRows, tomorrowDate, scheduleSorted, kh.date]);
   const summaryIsTomorrow = !summary.isToday && summary.date === tomorrowDate;
 
   // --- Предметы с аттестацией сверху ----------------------------------------
-  const catalogById = bundle?.catalog ?? {};
-  const examWindows = bundle?.examWindows ?? [];
+  const catalogById = bundle?.catalog ?? EMPTY_CATALOG;
+  const examWindows = bundle?.examWindows ?? EMPTY_EXAM_WINDOWS;
   const subjectsView = useMemo(() => {
     const today = new Date(`${kh.date}T00:00:00`);
     const enriched = subjects.map((subject) => {
@@ -426,7 +451,7 @@ export default function DashboardPage() {
     const rest = enriched.filter((x) => !x.control);
     return [...withExam, ...controlOnly, ...rest];
     // kh.date — строка YYYY-MM-DD, меняется раз в сутки; сам nowParts в deps не нужен.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [subjects, catalogById, examWindows, kh.date]);
 
   const metrics = academic?.metrics;
@@ -570,7 +595,7 @@ export default function DashboardPage() {
         ) : subjects.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Предметы курса появятся после загрузки каталога. Демо-список не подставляется.</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             {subjectsView.slice(0, 8).map(({ subject, control, examDate }) => {
               const dateLabel = examDate
                 ? examDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })
@@ -581,7 +606,7 @@ export default function DashboardPage() {
                   href={`/subjects/${encodeURIComponent(subject.id)}`}
                   className="flex min-w-0 flex-col rounded-xl border border-slate-100 bg-slate-50/80 p-3 hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10"
                 >
-                  <div className="break-words font-medium text-slate-900 dark:text-slate-100">{subject.name}</div>
+                  <div className="line-clamp-2 break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100" title={subject.name}>{subject.name}</div>
                   {control ? (
                     <span
                       className={`mt-1.5 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -636,7 +661,7 @@ export default function DashboardPage() {
                   <div className="break-words font-medium text-slate-900 dark:text-slate-100">{str(hw, "title") || "Задание"}</div>
                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {str(hw, "due_at") ? `до ${str(hw, "due_at").slice(0, 10)}` : ""}
-                    {homeworkStatus(hw) ? ` · ${homeworkStatus(hw)}` : ""}
+                    {homeworkStatusLabel(hw) ? ` · ${homeworkStatusLabel(hw)}` : ""}
                   </div>
                 </Link>
               </li>

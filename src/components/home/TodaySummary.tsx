@@ -252,7 +252,7 @@ export function TodaySummary({ date, isToday, isTomorrow, lessons, homeworks, ev
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400">
             <CalendarDays className="h-4 w-4 shrink-0" />
-            Учебный день
+            {hasLessons ? "Учебный день" : "Свободный день"}
           </span>
           <span
             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -274,7 +274,7 @@ export function TodaySummary({ date, isToday, isTomorrow, lessons, homeworks, ev
 
       {!hasLessons ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Занятий на этот день нет — следующий учебный день появится в расписании.
+          {isToday ? "На сегодня занятий нет." : "На этот день занятий нет."} Если это ошибка — проверьте учебную группу и расписание: пары появятся здесь автоматически.
         </p>
       ) : (
         <div className={`grid gap-2 ${lessonsGridClass}`}>

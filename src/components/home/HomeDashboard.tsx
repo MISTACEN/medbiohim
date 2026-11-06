@@ -160,17 +160,19 @@ export function HomeDashboard({ layout, note, sync, widgets, onChange, onReset }
           </button>
         </div>
       ) : (
-        // Сетка главной: 1 колонка на телефоне, 2 на планшете, 6 на десктопе.
-        // Ширины блоков задаёт HOME_SPAN_CLASS (sm:*/lg:*) — пустых дыр нет,
-        // потому что полные блоки занимают обе планшетные колонки.
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        // Сетка главной: 1 колонка на телефоне, 2 на планшете и ноутбуке,
+        // 6 только с 1280px. Ширины блоков задаёт HOME_SPAN_CLASS (sm:*/xl:*).
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
           {layout.map((widget) => {
             const node = widgets[widget.id];
             if (!node) return null;
             return (
               <div
                 key={widget.id}
-                className={`${HOME_SPAN_CLASS[widget.span]} ${
+                // min-w-0 не даёт длинному содержимому распирать колонку, а
+                // fallback спасает раскладки со старой/битой шириной: без класса
+                // блок занимал одну колонку из шести и выглядел обрезанным.
+                className={`min-w-0 ${HOME_SPAN_CLASS[widget.span] ?? HOME_SPAN_CLASS.half} ${
                   overId === widget.id ? "ring-2 ring-indigo-300" : ""
                 } ${editing ? "rounded-2xl border border-dashed border-indigo-200 bg-white/60" : ""}`}
                 onDragOver={(event) => {
