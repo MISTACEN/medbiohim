@@ -77,6 +77,28 @@ export function isWithinTeachingScope(scope: TeacherScope, target: ScopedObject)
   return false;
 }
 
+/**
+ * Предметы преподавателя (`teacher_subjects`). До миграции таблицы нет —
+ * возвращаем пустой список: кабинет работает по опубликованному каталогу.
+ */
+export async function loadTeacherSubjectIds(db: any, teacherId: string): Promise<string[]> {
+  if (!teacherId) return [];
+  const { data, error } = await db
+    .from("teacher_subjects")
+    .select("subject_id")
+    .eq("teacher_id", teacherId)
+    .limit(200);
+  if (error) {
+    const code = String((error as { code?: unknown }).code || "");
+    if (MISSING_TABLE.has(code)) return [];
+    throw error;
+  }
+  const ids: string[] = (data || [])
+    .map((row: { subject_id?: unknown }) => String(row.subject_id || ""))
+    .filter((value: string): value is string => Boolean(value));
+  return [...new Set(ids)];
+}
+
 /** Краткое описание области для интерфейса кабинета. */
 export function describeScope(scope: TeacherScope): {
   groups: number;

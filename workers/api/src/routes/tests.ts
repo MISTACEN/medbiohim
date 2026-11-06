@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
-import { requireTeachingCapability } from "../lib/permissions";
+import { callerRoles, canAdminister, requireTeachingCapability } from "../lib/permissions";
 import { normalizeQuestion, publicOptions } from "../../../../integrations/cloudflare-api/src/question-format.js";
 
 const tests = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -393,8 +393,8 @@ tests.get("/preview/:id", requireAuth, async (c) => {
   if (!(await requireTeachingCapability(c, "teacher.content.manage"))) return c.res;
   try {
     const { data, error } = await db.from("tests")
-      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index,subjects(name,slug)")
-      .eq("id", id).eq("is_published", true).is("archived_at", null).maybeSingle();
+      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_by,created_at,source_key,order_index,subjects(name,slug)")
+      .eq("id", id).is("archived_at", null).maybeSingle();
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Тест недоступен", 503, rid);
       return c.json(body, status as 503);
@@ -402,6 +402,16 @@ tests.get("/preview/:id", requireAuth, async (c) => {
     if (!data) {
       const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
       return c.json(body, status as 404);
+    }
+    // Автор видит собственный черновик, администратор — любой тест;
+    // остальным преподавателям доступно только опубликованное.
+    if ((data as any).is_published !== true) {
+      const isAuthor = String((data as any).created_by || "") === c.get("user").id;
+      const roles = isAuthor ? [] : await callerRoles(db, c.get("user").id);
+      if (!isAuthor && !canAdminister(roles)) {
+        const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
+        return c.json(body, status as 404);
+      }
     }
     const { data: links, error: linkError } = await db.from("test_questions")
       .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,archived_at,topic:topics(title))")

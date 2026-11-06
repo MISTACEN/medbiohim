@@ -237,6 +237,8 @@ export const endpoints = {
     assignments: (): string => "/teacher/assignments",
     assignment: (id: string): string => `/teacher/assignments/${enc(id)}`,
     candidates: (query?: string): string => withQuery("/teacher/candidates", query),
+    subjects: (query?: string): string => withQuery("/teacher/subjects", query),
+    testVisibility: (id: string): string => `/teacher/tests/${enc(id)}/visibility`,
   },
 
   /** Админ-панель. */

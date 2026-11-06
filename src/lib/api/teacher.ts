@@ -38,6 +38,7 @@ export type TeacherSubmission = {
 export type TeacherOverview = {
   is_admin: boolean;
   scope: TeacherScopeSummary;
+  subjects: TeacherSubject[];
   groups: TeacherGroup[];
   homeworks: Array<{
     id: string;
@@ -77,10 +78,17 @@ export type TeacherCandidate = { id: string; name: string; email: string | null 
 export type TeacherTestItem = {
   id: string;
   title: string;
+  subject_id: string | null;
   subject_name: string | null;
   question_count: number;
+  is_published: boolean;
+  teacher_visible: boolean;
+  /** Тест создан этим преподавателем/администратором. */
+  is_mine: boolean;
   created_at: string | null;
 };
+
+export type TeacherSubject = { id: string; name: string };
 
 export type PreviewQuestion = {
   id: string;
@@ -114,7 +122,38 @@ export type TestPreview = {
 };
 
 export function teacherTests(query?: string) {
-  return api<{ items: TeacherTestItem[]; total: number }>(endpoints.teacher.tests(query));
+  return api<{
+    items: TeacherTestItem[];
+    total: number;
+    is_admin: boolean;
+    my_subjects: TeacherSubject[];
+  }>(endpoints.teacher.tests(query));
+}
+
+/** Предметы преподавателя. Админ читает любые через teacher_id и получает каталог. */
+export function teacherSubjects(teacherId?: string) {
+  return api<{
+    items: TeacherSubject[];
+    catalog: TeacherSubject[];
+    is_admin: boolean;
+    teacher_id: string;
+  }>(endpoints.teacher.subjects(teacherId ? `teacher_id=${encodeURIComponent(teacherId)}` : undefined));
+}
+
+/** Полная замена набора предметов преподавателя (только админ). */
+export function teacherSetSubjects(teacherId: string, subjectIds: string[]) {
+  return api<{ items: TeacherSubject[] }>(endpoints.teacher.subjects(), {
+    method: "PUT",
+    body: JSON.stringify({ teacher_id: teacherId, subject_ids: subjectIds }),
+  });
+}
+
+/** Разрешить/запретить показ теста преподавателям (только админ). */
+export function teacherSetTestVisibility(id: string, teacherVisible: boolean) {
+  return api<{ test: { id: string; title: string; teacher_visible: boolean } }>(
+    endpoints.teacher.testVisibility(id),
+    { method: "PATCH", body: JSON.stringify({ teacher_visible: teacherVisible }) },
+  );
 }
 
 /** Предпросмотр теста: вопросы с эталонами. Попытка на сервере не создаётся. */

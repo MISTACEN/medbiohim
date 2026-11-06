@@ -206,6 +206,21 @@ export default function TeacherPage() {
         </section>
       ) : null}
 
+      {overview?.subjects?.length ? (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+            Мои предметы
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {overview.subjects.map((subject) => (
+              <span key={subject.id} className="rounded-full border px-3 py-1 text-xs" style={{ borderColor: "var(--border)" }}>
+                {subject.name}
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
