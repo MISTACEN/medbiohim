@@ -36,6 +36,9 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
   const [result, setResult] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionNote, setActionNote] = useState<string | null>(null);
+  // Зависимость намеренная: переход к следующей карточке должен начинать
+  // отсчёт заново, хотя сам Date.now() аргумент не читает.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const startedAt = useMemo(() => Date.now(), [index]);
 
   const { data: feed, loading } = useApiRequest<{ slug: string; cards: TrainerFeedCard[]; note: string | null }>(async () => {

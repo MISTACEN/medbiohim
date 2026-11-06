@@ -67,7 +67,6 @@ academic.get("/state", requireAuth, async (c) => {
         topic_name: topic?.title || "", subject_id: topicModule?.subject_id ?? null, subject_name: subject?.name || "" };
     });
     const debts = states.filter((s: any) => ["failed", "retake_required"].includes(String(s.academic_status)));
-    const pending = states.filter((s: any) => s.academic_status === "pending");
     const inProgress = states.filter((s: any) => s.learning_status === "in_progress").length;
     const notStarted = states.filter((s: any) => s.learning_status === "not_started").length;
     const closed = states.filter((s: any) => s.learning_status === "completed" || s.academic_status === "passed").length;

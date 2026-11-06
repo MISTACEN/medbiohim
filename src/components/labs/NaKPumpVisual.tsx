@@ -190,7 +190,7 @@ export function NaKPumpVisual({ steps }: Props) {
           );
         })}
         {/* Ионы калия: 2 шт. */}
-        {potassium.map((ion, index) => {
+        {potassium.map((ion) => {
           const point = ion.path[step];
           const x = point.x;
           const y = point.y;

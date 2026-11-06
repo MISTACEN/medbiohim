@@ -7,7 +7,6 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
-const repoRoot = path.resolve(root, "..", "..");
 
 test("сплиттер не режет DO-блоки, строки и комментарии", async () => {
   const { splitSqlStatements } = await import("../src/lib/migration-sql.ts");

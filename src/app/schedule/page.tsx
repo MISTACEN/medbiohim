@@ -35,8 +35,6 @@ function HomeworkGrade({ homework }: { homework: any }) {
   );
 }
 
-const TZ = "Asia/Vladivostok";
-
 /**
  * Диапазон семестра берётся из календарных периодов (schedule meta, type=theoretical),
  * а не зашит в код. Константа ниже — fallback, если в БД периодов ещё нет.
@@ -383,7 +381,7 @@ export default function SchedulePage() {
     const saved = Number(sessionStorage.getItem(dayScrollKey) || 0);
     const element = dayScrollRef.current;
     if (saved > 0 && element) element.scrollTop = saved;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
   function rememberDayScroll() {
     const top = dayScrollRef.current?.scrollTop || 0;

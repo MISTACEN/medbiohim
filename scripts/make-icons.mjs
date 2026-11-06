@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
-const require = createRequire(import.meta.url);
+// require нужен только производный: sharp ставится в workers/api.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requireFromWorkers = createRequire(path.join(root, "workers", "api", "package.json"));
 const sharp = requireFromWorkers("sharp");

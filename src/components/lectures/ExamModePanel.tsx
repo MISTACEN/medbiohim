@@ -22,7 +22,7 @@ import type {
   SelfWorkKeyPoint,
   SelfWorkTopic,
 } from "@/lib/histology/selfWorkTypes";
-import { checkSelfWorkAnswer, checkSelfWorkLabels, selfWorkResultLabel, SELF_WORK_PASS_RATIO } from "@/lib/histology/openAnswerCheck";
+import { checkSelfWorkAnswer, selfWorkResultLabel, SELF_WORK_PASS_RATIO } from "@/lib/histology/openAnswerCheck";
 import { computeExamGrade, examGradeLabel, type ExamGradeResult } from "@/lib/histology/examGrade";
 import { selfWorkTopicForLecture } from "@/lib/histology/selfWorkTopics";
 import { CheckResultPanel, RESULT_TONES } from "@/components/questions/CheckResultPanel";

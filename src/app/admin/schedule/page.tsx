@@ -5,7 +5,7 @@
  * Источник истины = PostgreSQL/Supabase (policy=db_primary_no_merge).
  * Local JSON — только аварийный fallback.
  */
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   adminListSchedule,

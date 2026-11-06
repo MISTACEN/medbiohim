@@ -16,7 +16,7 @@ function notifyApiLoading(type: "start" | "end") {
   try { window.dispatchEvent(new CustomEvent(type === "start" ? "mbh:api-start" : "mbh:api-end")); } catch {}
 }
 
-async function request<T>(path: string, options: RequestInit = {}, tokenOverride?: string): Promise<{ res: Response; text: string }> {
+async function request(path: string, options: RequestInit = {}, tokenOverride?: string): Promise<{ res: Response; text: string }> {
   const headers: Record<string, string> = { Accept: "application/json", ...(options.headers as Record<string, string> | undefined) };
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (options.body && !isForm && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
@@ -103,10 +103,10 @@ async function request<T>(path: string, options: RequestInit = {}, tokenOverride
 
 async function requestOnce<T>(path: string, options: RequestInit): Promise<ApiResult<T>> {
   try {
-    let { res, text } = await request<T>(path, options);
+    let { res, text } = await request(path, options);
     if (res.status === 401 && path !== "/auth/refresh") {
       const access = await refreshAccessToken();
-      if (access) ({ res, text } = await request<T>(path, options, access));
+      if (access) ({ res, text } = await request(path, options, access));
     }
     try {
       return JSON.parse(text) as ApiResult<T>;

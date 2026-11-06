@@ -16,7 +16,7 @@
  * Заметки, закладки и позиция хранятся локально с ключом на пользователя.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BookmarkPlus, ChevronLeft, ChevronRight, Expand, Loader2, Maximize2, Minus,

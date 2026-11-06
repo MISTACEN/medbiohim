@@ -212,7 +212,6 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
   const current = answers[active];
   const answered = answers.filter((x) => x.user_answer != null || x.is_skipped).length;
-  const wrong = answers.filter((x) => x.is_correct === false);
   // Атлас «под рукой» открывается на теме текущего препарата.
   const currentLesson = current ? lessonKeyOf((current.question_snapshot || {}) as never) : "";
 

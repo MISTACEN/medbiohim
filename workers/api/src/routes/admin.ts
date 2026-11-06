@@ -1225,7 +1225,7 @@ admin.put("/schedule", requireAuth, async (c) => {
 });
 
 admin.post("/schedule/import", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase");
+  const rid = requestId();
   if (!await gate(c, STRICT_ADMINS)) return;
   let groupId = "";
   let semester: number | null = null;

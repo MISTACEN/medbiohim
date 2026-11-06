@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { statSync } from "node:fs";
 
 /**
  * G3 (база): целостность навигации — каждый пункт сайдбара и мобильной
@@ -10,21 +11,6 @@ import path from "node:path";
  * браузер в CI) — следующий шаг: требует установки браузеров в runner.
  */
 const APP = path.resolve(import.meta.dirname, "../src/app");
-
-function routeExists(href) {
-  const clean = href.split("?")[0].replace(/\/$/, "") || "/";
-  const dir = path.join(APP, clean === "/" ? "" : clean);
-  try {
-    const st = statSync(dir);
-    if (!st.isDirectory()) return false;
-  } catch {
-    return false;
-  }
-  return true;
-}
-
-// statSync через sync-обёртку для простоты
-import { statSync } from "node:fs";
 
 async function extractHrefs(file) {
   const src = await readFile(file, "utf8");
@@ -45,9 +31,8 @@ test("каждый пункт навигации ведёт на существ�
   const problems = [];
   for (const rel of navFiles) {
     const file = path.resolve(import.meta.dirname, rel);
-    let src;
     try {
-      src = await readFile(file, "utf8");
+      await readFile(file, "utf8");
     } catch {
       continue; // MobileNav может отсутствовать
     }

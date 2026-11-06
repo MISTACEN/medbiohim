@@ -6,7 +6,7 @@ import { LectureLearningEditor } from "@/components/editor/LectureLearningEditor
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { splitLectureBlocks } from "@/lib/lectureProgress";
 import Link from "next/link";
-import { Save, Eye, EyeOff, X, ExternalLink, Sparkles } from "lucide-react";
+import { Save, Sparkles } from "lucide-react";
 import {
   adminDeleteLecture, adminGenerateLecture, adminListLectures, adminPublishLecture,
   adminRejectLecture, adminUpdateLecture, listSubjectsCatalog, getSubjectPlan,

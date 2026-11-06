@@ -19,8 +19,6 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 
 const lessonPlan = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-const relation = (value: unknown) => (Array.isArray(value) ? value[0] : value);
-
 lessonPlan.get("/", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");

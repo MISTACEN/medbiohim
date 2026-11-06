@@ -69,7 +69,7 @@ export async function adminDbDelete(table: string, id: string): Promise<any> { r
 export async function adminDbDeleteByKey(table: string, key: Record<string, unknown>): Promise<any> { return adminDbDelete(table, String(key.id || "")); }
 export async function adminDbInsert(table: string, row: Record<string, unknown>): Promise<any> { return api(endpoints.admin.databaseRows(ADMIN_DB_ID, table), { method: "POST", body: JSON.stringify(row) }) as any; }
 export async function adminDbList(table: string, limit = 200): Promise<any> { return api(endpoints.admin.databaseRows(ADMIN_DB_ID, table, `limit=${encodeURIComponent(String(limit))}`)) as any; }
-export async function adminDbMeta(..._args: any[]): Promise<any> { return api(endpoints.admin.databaseTables(ADMIN_DB_ID)) as any; }
+export async function adminDbMeta(): Promise<any> { return api(endpoints.admin.databaseTables(ADMIN_DB_ID)) as any; }
 export async function adminDbUpdate(table: string, id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.databaseRows(ADMIN_DB_ID, table), { method: "PATCH", body: JSON.stringify({ id, patch: payload }) }) as any; }
 export async function adminDbUpdateByKey(table: string, key: Record<string, unknown>, payload: Record<string, unknown>): Promise<any> { return adminDbUpdate(table, String(key.id || ""), payload); }
 // MA10: атомарная сборка одного теста или нескольких вариантов одним запросом.

@@ -28,9 +28,7 @@ import {
   isExpired,
   resolveAccess,
   type EffectiveAccess,
-  type GrantMode,
   type GrantRow,
-  type ModuleMode,
   type ModuleRow,
 } from "./module-access-rules";
 

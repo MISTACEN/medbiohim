@@ -62,7 +62,7 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
   const [index, setIndex] = useState<PhysiologyIndex | null>(null);
   const [manual, setManual] = useState<PhysiologyManual | null>(null);
   const [view, setView] = useState<View>({ kind: "hub" });
-  const [tab, setTab] = useState<LessonTab>("questions");
+  const [, setTab] = useState<LessonTab>("questions");
   const [group, setGroup] = useState<PhysiologyTestGroup | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -254,14 +254,6 @@ export default function PhysiologyPractice({ backHref, backLabel }: { backHref?:
   if (!manual) return null;
 
   if (lesson) {
-    const tabs: { id: LessonTab; label: string; count?: number }[] = [
-      { id: "questions", label: "Вопросы", count: lesson.questions.length },
-      { id: "practice", label: "Практика", count: lesson.practical.length },
-      { id: "situational", label: "Задачи", count: lesson.situational.length },
-      { id: "tests", label: "Тесты", count: lesson.tests.reduce((sum, item) => sum + item.questions.length, 0) },
-      { id: "notes", label: "Конспект", count: lesson.notes.length },
-    ];
-
     return (
       <div className="space-y-5">
         <button

@@ -33,7 +33,7 @@ export async function listQuestions(params: Record<string, unknown> = {}): Promi
   if (!q.has("include_answer")) q.set("include_answer", "1");
   return api(endpoints.content.questions(q.toString())) as any;
 }
-export async function listQuestionSubjects(..._args: any[]): Promise<any> { return api(endpoints.content.questionsSubjects()) as any; }
+export async function listQuestionSubjects(): Promise<any> { return api(endpoints.content.questionsSubjects()) as any; }
 export async function listQuestionTopics(subjectId: string): Promise<any> { return api(endpoints.content.questionTopics(`subject_id=${encodeURIComponent(subjectId)}`)) as any; }
 export async function getQuestion(id: string): Promise<any> { return api(endpoints.content.question(id)) as any; }
 export async function reportQuestion(questionId: string, category: string, message = ""): Promise<any> { return api(endpoints.content.questionReport(questionId), { method: "POST", body: JSON.stringify({ category, message }) }) as any; }

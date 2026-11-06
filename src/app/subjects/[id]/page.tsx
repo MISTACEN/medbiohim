@@ -407,8 +407,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
       setResourceErrors((current) => ({ ...current, topicProgress: describeApiError(res.error) }));
     } else {
       setResourceErrors((current) => {
-        const { topicProgress: _drop, ...rest } = current;
-        return rest;
+        const next = { ...current };
+        delete next.topicProgress;
+        return next;
       });
     }
     setTopicBusy(null);

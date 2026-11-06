@@ -121,12 +121,6 @@ function trainerImageCandidateKeys(card: {
   return keys;
 }
 
-/** Strict single-key helper kept for has_image mapping. */
-function histologyObjectKey(preparation: Record<string, unknown> | null | undefined): string | null {
-  const keys = trainerImageCandidateKeys({ preparation, mode_set: null }, null);
-  return keys.find((k) => k.startsWith("histology/")) || keys[0] || null;
-}
-
 function mapTrainerCard(row: TrainerRow, orderIndex: number) {
   const preparation = row.preparation || {};
   const question = (row.question || {}) as { prompt?: unknown; mode?: unknown; options?: unknown };

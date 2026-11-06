@@ -21,7 +21,6 @@ import test from "node:test";
 const ANALYZER = new URL("../browser-extension/src/content/analyzer.js", import.meta.url);
 const SOURCES = new URL("../browser-extension/src/content/sources.json", import.meta.url);
 const FIXTURES = new URL("./fixtures/fesmu/", import.meta.url);
-const NEW_URL = "https://www.fesmu.ru/press-center/news/";
 
 /* ------------------------------------------------------------------ *
  * Tiny HTML parser + selector engine (only what the analyzer uses)
@@ -250,7 +249,7 @@ function runAnalyzer(html, { hostname = "www.fesmu.ru", title = "Новости"
     addEventListener() {},
     dispatchEvent() {},
   };
-  // eslint-disable-next-line no-new-func
+   
   new Function("window", "document", "chrome", "sourcesConfig", `${source}
 `)(window, document, chrome, sourcesConfig);
   assert.equal(typeof listeners[0], "function", "analyzer must register a message listener");

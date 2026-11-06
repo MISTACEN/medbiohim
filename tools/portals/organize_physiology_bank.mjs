@@ -31,7 +31,6 @@ function collect() {
     const manual = JSON.parse(fs.readFileSync(path.join(REPO, "public", manualMeta.file), "utf8"));
     const moduleTitle = manual.title || manualMeta.title;
     for (const lesson of manual.lessons || []) {
-      const topicNote = `${manual.title} · ${lesson.title}`;
       for (const group of lesson.tests || []) {
         for (const q of group.questions || []) {
           const text = String(q.text || "").trim();
@@ -46,7 +45,7 @@ function collect() {
           });
         }
       }
-      const pushOpen = (arr, label) => {
+      const pushOpen = (arr) => {
         for (const item of arr || []) {
           const text = String(item).trim();
           if (text.length < 8) continue;

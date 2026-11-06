@@ -55,7 +55,7 @@ function ConvertInner() {
           setQuestions(seeded);
         } else setError(describeApiError(d.error));
         if (s.ok) setSubjects(s.data?.items || s.data || []);
-      } catch (e) {
+      } catch {
         setError("Не удалось загрузить черновик.");
       }
     })();

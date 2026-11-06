@@ -5,7 +5,6 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 import {
   normalizeQuestion,
   publicOptions,
-  gradeClosedAnswer,
 } from "../../../../integrations/cloudflare-api/src/question-format.js";
 
 const questions = new Hono<{ Bindings: Env; Variables: AuthVariables }>();

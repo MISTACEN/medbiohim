@@ -48,7 +48,12 @@ export function VseprView({ molecule }: { molecule: ChemicalMolecule }) {
     };
   }, [smiles]);
 
-  const atoms = state.status === "ready" ? state.report.atoms : [];
+  // Пустой массив не должен создаваться заново: он уходил в зависимости
+  // useMemo и заставлял пересчитывать подсветку на каждом рендере.
+  const atoms = useMemo(
+    () => (state.status === "ready" ? state.report.atoms : []),
+    [state],
+  );
   const highlighted = useMemo(
     () => (selected == null ? [] : atoms.filter((atom) => atom.index === selected).map((atom) => atom.index)),
     [atoms, selected],

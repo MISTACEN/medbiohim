@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, ClipboardList, Loader2, Lock, Send, Settings2, Users, X } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
 import {
   staffCapabilities, staffCreateRequest, staffGroupManage, staffReviewJoinRequest,
@@ -17,7 +16,6 @@ import {
 import { moderateWorkshopItem } from "@/lib/api/workshop";
 
 export default function GroupManagePage() {
-  const { user } = useAuth();
   const [capabilities, setCapabilities] = useState<any>(null);
   const [groupId, setGroupId] = useState("");
   const [data, setData] = useState<any>(null);
@@ -49,7 +47,7 @@ export default function GroupManagePage() {
     setLoading(false);
   }, [groupId]);
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load();   }, []);
 
   async function saveGroup() {
     setBusy("group");
