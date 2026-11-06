@@ -84,6 +84,11 @@ export default function AdminAttestationsPage() {
   const [editorBaseline, setEditorBaseline] = useState<string | null>(null);
   const [draftOffer, setDraftOffer] = useState<{ savedAt: string; data: { item: Attestation; isNew: boolean } } | null>(null);
   const attestationDraftKey = `admin:attestation:${draft?.subject_slug || "none"}:${draft?.slug || "new"}`;
+  // Эффект ниже следит только за сменой аттестации, а не за каждым нажатием
+  // клавиши: сравниваем примитивы вместо самого объекта draft.
+  const hasDraft = Boolean(draft);
+  const draftSlug = draft?.slug;
+  const draftSubjectSlug = draft?.subject_slug;
   const editorDirty = Boolean(draft) && editorBaseline !== null && JSON.stringify(draft) !== editorBaseline;
   useUnsavedChanges(editorDirty);
 
@@ -95,10 +100,13 @@ export default function AdminAttestationsPage() {
   }, [editorDirty, draft, isNew, attestationDraftKey]);
 
   useEffect(() => {
-    if (!draft) return setDraftOffer(null);
+    if (!hasDraft) {
+      setDraftOffer(null);
+      return;
+    }
     const stored = readDraft<{ item: Attestation; isNew: boolean }>(attestationDraftKey);
     setDraftOffer(stored?.data?.item ? { savedAt: stored.savedAt, data: stored.data } : null);
-  }, [attestationDraftKey, draft?.slug, draft?.subject_slug]);
+  }, [attestationDraftKey, hasDraft, draftSlug, draftSubjectSlug]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 

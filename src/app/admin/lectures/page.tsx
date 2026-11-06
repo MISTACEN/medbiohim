@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { RichLectureEditor } from "@/components/editor/RichLectureEditor";
 import { LectureLearningEditor } from "@/components/editor/LectureLearningEditor";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -89,8 +89,8 @@ export default function AdminLecturesPage() {
   const [editLearning,setEditLearning]=useState<any>({methodics:[],files:[],preparations:[],electronograms:[]});
   const currentSubject=useMemo(()=>subjects.find(s=>s.slug===slug)||null,[subjects,slug]);
 
-  async function reload(st=status){const r:any=await adminListLectures(st==="all"?undefined:st, subjectFilter || undefined);if(r.ok)setItems((r.data.items||[]) as Lecture[]);else setMsg(String(r.error?.message||"Ошибка"));}
-  useEffect(()=>{void reload();},[status,subjectFilter]);
+  const reload = useCallback(async (st=status)=>{const r:any=await adminListLectures(st==="all"?undefined:st, subjectFilter || undefined);if(r.ok)setItems((r.data.items||[]) as Lecture[]);else setMsg(String(r.error?.message||"Ошибка"));},[status,subjectFilter]);
+  useEffect(()=>{void reload();},[reload]);
   useEffect(()=>{
     let alive=true;
     void listSubjectsCatalog().then((r:any)=>{

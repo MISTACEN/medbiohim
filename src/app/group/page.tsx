@@ -47,7 +47,7 @@ export default function GroupManagePage() {
     setLoading(false);
   }, [groupId]);
 
-  useEffect(() => { void load();   }, []);
+  useEffect(() => { void load(); }, [load]);
 
   async function saveGroup() {
     setBusy("group");

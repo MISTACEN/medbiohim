@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArchiveRestore,
@@ -62,9 +62,9 @@ export default function AdminAcademicPage() {
   const [membersBusy, setMembersBusy] = useState<string | null>(null);
   const [addEmail, setAddEmail] = useState<Record<string, string>>({});
 
-  function msg(err = "", good = "") { setError(err); setOk(good); }
+  const msg = useCallback((err = "", good = "") => { setError(err); setOk(good); }, []);
 
-  async function load() {
+  const load = useCallback(async () => {
     // Справочники тянем вместе с архивом: иначе «удалено» нельзя ни проверить,
     // ни отменить — строка просто исчезала из выдачи.
     const [g, s] = await Promise.all([listGroups(true), listSubjectsAdmin()]);
@@ -72,7 +72,7 @@ export default function AdminAcademicPage() {
     else msg(describeApiError(g.error));
     if (s.ok) setSubjects((s.data.items || []) as Subject[]);
     else msg(describeApiError(s.error));
-  }
+  }, [msg]);
 
   async function loadMembers(groupId: string) {
     setMembersBusy(groupId);
@@ -88,7 +88,7 @@ export default function AdminAcademicPage() {
     if (!members[groupId]) await loadMembers(groupId);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const activeGroups = useMemo(() => groups.filter(isActive), [groups]);
   const archivedGroups = useMemo(() => groups.filter((g) => !isActive(g)), [groups]);

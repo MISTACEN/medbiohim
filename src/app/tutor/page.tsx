@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiConversation, type AiMessage, type AiProvider } from "@/lib/features-api";
 import { listSubjectsCatalog } from "@/lib/api";
 import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
@@ -24,7 +24,7 @@ export default function TutorPage() {
   const bottomRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLTextAreaElement>(null);
 
-  async function loadConversation(id:string){
+  const loadConversation = useCallback(async (id:string)=>{
     setLoading(true); setError(null);
     const r=await aiGetConversation(id);
     setLoading(false);
@@ -34,7 +34,7 @@ export default function TutorPage() {
     setSubjectSlug(r.data.conversation.subject_slug||"");
     setMessages(r.data.messages.filter(m=>m.role!=="system"));
     setMobileList(false);
-  }
+  }, []);
 
   // «Спросить тьютора» из поиска кладёт вопрос в sessionStorage — раньше он не читался.
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function TutorPage() {
     inputRef.current?.focus();
   }, [booting]);
 
-  async function boot(){
+  const boot = useCallback(async ()=>{
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
     if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available}); setPsRegionHint(ps.data.region==="ru" && !!ps.data.providers.gemini?.reason); }
@@ -73,9 +73,9 @@ export default function TutorPage() {
       else setError(describeApiError(created.error));
     }
     setBooting(false);
-  }
+  }, [loadConversation]);
 
-  useEffect(()=>{void boot();},[]);
+  useEffect(()=>{void boot();},[boot]);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[messages,loading]);
 
   async function newChat(){

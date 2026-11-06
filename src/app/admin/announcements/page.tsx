@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { adminCreateAnnouncement, adminDeleteAnnouncement, adminListAnnouncements, adminOverview, adminUpdateAnnouncement, adminUpdateSite, hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
@@ -30,7 +30,7 @@ export default function AdminAnnouncementsPage() {
   const [draft, setDraft] = useState<{ id: string; title: string; body: string } | null>(null);
   const { confirm, dialog } = useConfirm();
 
-  function msg(err = "", good = "") { setError(err); setOk(good); }
+  const msg = useCallback((err = "", good = "") => { setError(err); setOk(good); }, []);
 
   async function saveDraft() {
     if (!draft) return;
@@ -55,7 +55,7 @@ export default function AdminAnnouncementsPage() {
     await load();
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     const [o, a] = await Promise.all([adminOverview(), adminListAnnouncements()]);
     if (o.ok) {
       if (o.data.site) {
@@ -70,9 +70,9 @@ export default function AdminAnnouncementsPage() {
     } else msg(describeApiError(o.error));
     if (a.ok) setAnnouncements(a.data.items || []);
     else msg(describeApiError(a.error));
-  }
+  }, [msg]);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   if (!hasToken()) {
     return (

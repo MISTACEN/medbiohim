@@ -165,6 +165,13 @@ export function ImageLightbox({
     setPan(clampPan(nextPan, nextZoom));
   };
 
+  // Слушатели подписываются один раз и читают свежие функции через ref:
+  // иначе массив зависимостей пересоздавал бы их на каждом рендере.
+  const clampPanRef = useRef(clampPan);
+  clampPanRef.current = clampPan;
+  const handlersRef = useRef({ close, changeZoom });
+  handlersRef.current = { close, changeZoom };
+
   useEffect(() => {
     if (!open) return;
 
@@ -190,17 +197,17 @@ export function ImageLightbox({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        close();
+        handlersRef.current.close();
         return;
       }
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
-        changeZoom(zoom + ZOOM_STEP);
+        handlersRef.current.changeZoom(zoom + ZOOM_STEP);
         return;
       }
       if (event.key === "-" || event.key === "_") {
         event.preventDefault();
-        changeZoom(zoom - ZOOM_STEP);
+        handlersRef.current.changeZoom(zoom - ZOOM_STEP);
         return;
       }
       if (event.key === "0") {
@@ -227,7 +234,7 @@ export function ImageLightbox({
       window.scrollTo(0, lockedScrollY);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, zoom]);
 
   useEffect(() => {
     if (openOnMount) setOpen(true);
@@ -236,7 +243,7 @@ export function ImageLightbox({
   useEffect(() => {
     if (!open || !stageRef.current) return;
 
-    const onResize = () => setPan((value) => clampPan(value));
+    const onResize = () => setPan((value) => clampPanRef.current(value));
     window.addEventListener("resize", onResize);
 
     return () => window.removeEventListener("resize", onResize);

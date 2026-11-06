@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Save, Trash2, Ticket, Database } from "lucide-react";
 import {
@@ -41,7 +41,7 @@ export default function AdminQuestionsPage() {
   const selectedSubject = useMemo(() => SUBJECTS.find(([slug]) => slug === subjectSlug)?.[1] || "", [subjectSlug]);
   const slugForBank = (subject: string) => SUBJECTS.find(([, name]) => name === subject)?.[0] || "";
 
-  async function reload() {
+  const reload = useCallback(async () => {
     setLoading(true);
     const [questions, bankRes] = await Promise.all([
       adminListQuestions({ q: q || undefined, subject_slug: subjectSlug || undefined, kind: "ticket", limit: 100 }),
@@ -54,9 +54,9 @@ export default function AdminQuestionsPage() {
       setNote(null);
     } else setNote(describeApiError(questions.error));
     if (bankRes.ok) setBanks(bankRes.data.items);
-  }
+  }, [q, subjectSlug]);
 
-  useEffect(() => { void reload(); }, []);
+  useEffect(() => { void reload(); }, [reload]);
 
   async function save() {
     if (!edit?.text?.trim()) { setNote("Текст билета обязателен"); return; }

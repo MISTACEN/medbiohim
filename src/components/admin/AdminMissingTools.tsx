@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   adminCreateHomework, adminDeleteCommunity, adminDeleteHomework, adminDeleteMaterial,
   adminListCommunity, adminListHomeworks, adminListMaterials, adminUpdateCommunity,
@@ -24,12 +24,12 @@ export function AdminMissingTools({ onMessage }: Props) {
   const [subjectId, setSubjectId] = useState(""); const [groupId, setGroupId] = useState(""); const [dueAt, setDueAt] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function reload(kind = section) {
+  const reload = useCallback(async (kind = section) => {
     if (kind === "homework") { const r = await adminListHomeworks(); if (r.ok) setHomeworks(r.data.items || []); }
     if (kind === "materials") { const r = await adminListMaterials(); if (r.ok) setMaterials(r.data.items || []); }
     if (kind === "community") { const r = await adminListCommunity(); if (r.ok) setPosts(r.data.items || []); }
-  }
-  useEffect(() => { void reload(section); void (async()=>{ const [g,s]=await Promise.all([listGroups(),listSubjects()]); if(g.ok)setGroups(g.data.items as AdminRow[]); if(s.ok)setSubjects(s.data.items as AdminRow[]); })(); }, [section]);
+  }, [section]);
+  useEffect(() => { void reload(section); void (async()=>{ const [g,s]=await Promise.all([listGroups(),listSubjects()]); if(g.ok)setGroups(g.data.items as AdminRow[]); if(s.ok)setSubjects(s.data.items as AdminRow[]); })(); }, [section, reload]);
 
   async function createHomework() {
     if (!title.trim()) return onMessage?.("Укажите название ДЗ", true); setBusy(true);

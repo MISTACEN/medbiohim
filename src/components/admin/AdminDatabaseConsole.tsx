@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { clearDraft, formatDraftTime, readDraft, saveDraft, useUnsavedChanges } from "@/lib/unsaved-changes";
 
@@ -203,14 +203,27 @@ export default function AdminDatabaseConsole() {
     setColumns((result.data.columns || []) as Column[]);
   }
 
+  // Эффекты ниже должны срабатывать только на смену таблицы/режима/страницы:
+  // функции загрузки читают свежие page/query, поэтому обращаемся к ним через
+  // ref, а не тащим их в зависимости и не вызываем цикл перезагрузок.
+  const loadersRef = useRef({
+    loadConnections,
+    loadTables,
+    loadTableData,
+    loadSchema,
+  });
+  loadersRef.current = { loadConnections, loadTables, loadTableData, loadSchema };
+  const contextRef = useRef({ mode, selectedId, table });
+  contextRef.current = { mode, selectedId, table };
+
   useEffect(() => {
-    void loadConnections();
+    void loadersRef.current.loadConnections();
   }, []);
 
   useEffect(() => {
     if (!selectedId) return;
     setMode("data");
-    void loadTables(selectedId);
+    void loadersRef.current.loadTables(selectedId);
     const connection = connections.find((item) => item.id === selectedId);
     if (connection && !connection.builtin) {
       setDraft({
@@ -254,12 +267,17 @@ export default function AdminDatabaseConsole() {
 
   useEffect(() => {
     setPage(1);
-    if (selectedId && table && mode === "data") void loadTableData(selectedId, table);
-    if (selectedId && table && mode === "schema") void loadSchema(selectedId, table);
+    if (selectedId && table && mode === "data") void loadersRef.current.loadTableData(selectedId, table);
+    if (selectedId && table && mode === "schema") void loadersRef.current.loadSchema(selectedId, table);
   }, [table, selectedId, mode]);
 
   useEffect(() => {
-    if (mode === "data" && selectedId && table) void loadTableData(selectedId, table);
+    // Смена страницы не должна сбрасывать выбор: берём актуальные значения
+    // из ref, чтобы эффект зависел только от page.
+    const current = contextRef.current;
+    if (current.mode === "data" && current.selectedId && current.table) {
+      void loadersRef.current.loadTableData(current.selectedId, current.table);
+    }
   }, [page]);
 
   const currentConnection = connections.find((item) => item.id === selectedId) || null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createCommunityPost, getAvatarUrl, listCommunityPosts, me } from "@/lib/api";
 import { Loader2, MessageSquare, Send } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
@@ -51,7 +51,7 @@ export default function CommunityPage() {
   const [groups, setGroups] = useState<any[]>([]);
   const [groupId, setGroupId] = useState("");
 
-  async function reload() {
+  const reload = useCallback(async () => {
     setLoading(true);
     try {
       const res = await listCommunityPosts(groupId || undefined);
@@ -66,7 +66,7 @@ export default function CommunityPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [groupId]);
 
   useEffect(() => {
     (async () => {
@@ -79,7 +79,7 @@ export default function CommunityPage() {
     })();
   }, []);
 
-  useEffect(() => { if (groupId) reload(); }, [groupId]);
+  useEffect(() => { if (groupId) void reload(); }, [groupId, reload]);
 
   async function submitPost(e: React.FormEvent) {
     e.preventDefault();
