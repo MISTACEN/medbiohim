@@ -82,7 +82,7 @@
 
 ## Мутные места (честно)
 
-1. **`chem/` vs `chemistry/`** — два компонентных каталога (историческое); химию ищи в обоих.
+1. ~~`chem/` vs `chemistry/`~~ — ✅ UI химии перенесён в `src/modules/subjects/submodules/chemistry/` (этап A2); `components/chem` — легаси-плана предмета, остаётся до следующего этапа.
 2. **`builder/` vs `constructor/`-наследие vs `editor/`** — конструктор контента и редактор лекций — разные вещи.
 3. **`tests/` vs `tickets/` vs `practice/` vs `cards/`** — три входа в один тестовый движок (подготовка/билеты/практика).
 4. **Права в двух местах**: `src/lib/admin/access.ts` (легаси-проверка Admin UI) и `src/shared/permissions` (новая модель) — клиентские дубли, сервер один (`permissions.ts` воркера).
