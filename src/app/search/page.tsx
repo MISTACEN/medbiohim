@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen,
+  ClipboardCheck,
   FileQuestion,
   FileText,
   GraduationCap,
@@ -35,6 +36,7 @@ const TYPE_OPTIONS = [
   { value: "preparations", label: "Препараты" },
   { value: "materials", label: "Учебники и материалы" },
   { value: "subjects", label: "Предметы" },
+  { value: "tests", label: "Тесты" },
   { value: "questions", label: "Вопросы" },
   { value: "tickets", label: "Билеты" },
   { value: "lectures", label: "Лекции" },
@@ -47,6 +49,7 @@ const TYPE_LABEL: Record<string, string> = {
   question: "Вопрос",
   ticket: "Билет",
   lecture: "Лекция",
+  test: "Тест",
 };
 
 const TYPE_ICON: Record<string, typeof BookOpen> = {
@@ -56,6 +59,7 @@ const TYPE_ICON: Record<string, typeof BookOpen> = {
   question: FileQuestion,
   ticket: GraduationCap,
   lecture: BookOpen,
+  test: ClipboardCheck,
 };
 
 const OPEN_LABEL: Record<string, string> = {
@@ -65,6 +69,7 @@ const OPEN_LABEL: Record<string, string> = {
   lecture: "Открыть лекции →",
   question: "Открыть вопросы →",
   ticket: "Открыть билеты →",
+  test: "Открыть тест →",
 };
 
 const DEFAULT_EXAMPLES = [
@@ -81,6 +86,8 @@ const TYPE_ALIASES: Record<string, string> = {
   questions: "questions",
   ticket: "tickets",
   tickets: "tickets",
+  test: "tests",
+  tests: "tests",
   lecture: "lectures",
   lectures: "lectures",
   material: "materials",

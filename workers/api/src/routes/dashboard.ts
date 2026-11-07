@@ -51,15 +51,28 @@ dashboard.get("/", requireAuth, async (c) => {
       if (scheduleError) throw scheduleError;
       const ids = (sch || []).map((s: any) => s.id);
       if (ids.length) {
+        // ВАЖНО: у schedule_entries нет колонки subject_slug — она берётся из связи subjects.
+        // Прямой select("subject_slug") ломает запрос и уводит блок в degraded.
         const { data: entries, error: entriesError } = await db.from("schedule_entries")
-          .select("id,date,start_time,end_time,subject_id,subject_name,subject_slug,type,building,room,is_cancelled,is_makeup")
+          .select("id,date,start_time,end_time,subject_id,subject_name,type,building,room,is_cancelled,is_makeup,subjects(id,name,slug,color_hex)")
           .in("schedule_id", ids).gte("date", from).lte("date", to)
           .order("date", { ascending: true }).order("start_time", { ascending: true }).limit(300);
         if (entriesError) throw entriesError;
-        schedule = (entries || []).map((e: any) => ({ ...e, start_time: String(e.start_time || "").slice(0, 5), end_time: String(e.end_time || "").slice(0, 5) }));
+        schedule = (entries || []).map((e: any) => {
+          const subject = rel(e.subjects);
+          return {
+            ...e,
+            start_time: String(e.start_time || "").slice(0, 5),
+            end_time: String(e.end_time || "").slice(0, 5),
+            subject_id: e.subject_id ?? subject?.id ?? null,
+            subject_name: e.subject_name || subject?.name || null,
+            subject_slug: subject?.slug ?? null,
+            color_hex: subject?.color_hex ?? null,
+          };
+        });
       }
     }
-  } catch { degraded.push("schedule"); }
+  } catch (e: any) { console.error("[dashboard:schedule]", e?.message || e); degraded.push("schedule"); }
 
   try {
     let q = db.from("homeworks").select("id,title,description,due_at,due_date,subject_id,group_id,status,subjects(name,slug)").order("due_date", { ascending: true }).limit(150);

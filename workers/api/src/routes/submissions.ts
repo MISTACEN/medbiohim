@@ -103,13 +103,13 @@ submissions.post("/:id/grade", requireAuth, async (c) => {
       const { body, status } = fail("FORBIDDEN", "Эта работа вне вашей области проверки", 403, rid);
       return c.json(body, status as 403);
     }
+    // У homework_submissions нет колонок graded_at/graded_by — их нельзя ни
+    // записывать, ни выбирать, иначе PostgREST отклоняет запрос целиком.
     const { data, error } = await db.from("homework_submissions").update({
       grade,
       teacher_comment: comment,
       status: "graded",
-      graded_at: new Date().toISOString(),
-      graded_by: user.id,
-    }).eq("id", id).select("id,homework_id,user_id,status,grade,teacher_comment,submitted_at,graded_at,graded_by").maybeSingle();
+    }).eq("id", id).select("id,homework_id,user_id,status,grade,teacher_comment,submitted_at,updated_at").maybeSingle();
     if (error) throw error;
     if (!data) {
       const { body, status } = fail("GRADE_FAILED", "Работа не обновлена; проверьте права доступа к записи", 403, rid);
@@ -164,12 +164,11 @@ submissions.post("/:id/return", requireAuth, async (c) => {
       const { body, status } = fail("FORBIDDEN", "Эта работа вне вашей области проверки", 403, rid);
       return c.json(body, status as 403);
     }
+    // graded_at/graded_by отсутствуют в таблице — см. комментарий в grade выше.
     const { data, error } = await db.from("homework_submissions").update({
       teacher_comment: comment,
       status: "returned",
-      graded_at: new Date().toISOString(),
-      graded_by: user.id,
-    }).eq("id", id).select("id,homework_id,user_id,status,grade,teacher_comment,submitted_at,graded_at,graded_by").maybeSingle();
+    }).eq("id", id).select("id,homework_id,user_id,status,grade,teacher_comment,submitted_at,updated_at").maybeSingle();
     if (error) throw error;
     if (!data) {
       const { body, status } = fail("GRADE_FAILED", "Не удалось вернуть работу на доработку", 403, rid);

@@ -63,7 +63,9 @@ planner.get("/", requireAuth, async (c) => {
     let submissionRows: any[] = [];
     if (hwIds.length) {
       const [progressResult, submissionsResult] = await Promise.all([
-        db.from("homework_progress").select("homework_id,completed,submitted_at,status").eq("user_id", user.id).in("homework_id", hwIds).limit(500),
+        // ВАЖНО: у homework_progress нет колонки status — запрашивать её нельзя,
+        // иначе PostgREST возвращает ошибку и весь planner уходит в 503.
+        db.from("homework_progress").select("homework_id,completed,submitted_at").eq("user_id", user.id).in("homework_id", hwIds).limit(500),
         db.from("homework_submissions").select("id,homework_id,status,grade,teacher_comment,submitted_at").eq("user_id", user.id).in("homework_id", hwIds).order("submitted_at", { ascending: false }).limit(500),
       ]);
       if (progressResult.error) throw progressResult.error;

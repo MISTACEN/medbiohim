@@ -15,7 +15,8 @@ export type SearchIntentKind =
   | "subjects"
   | "lectures"
   | "tickets"
-  | "questions";
+  | "questions"
+  | "tests";
 
 export type SearchIntent = {
   /** Тип, если пользователь явно назвал его первым словом. */
@@ -50,8 +51,9 @@ const META_TYPE_WORDS: Record<string, SearchIntentKind> = {
   вопрос: "questions",
   вопросы: "questions",
   вопросов: "questions",
-  тест: "questions",
-  тесты: "questions",
+  тест: "tests",
+  тесты: "tests",
+  тестов: "tests",
   предмет: "subjects",
   предметы: "subjects",
   предметов: "subjects",
@@ -198,6 +200,7 @@ export function parseSearchIntent(raw: string): SearchIntent {
     lectures: "ищем лекцию",
     tickets: "ищем билет",
     questions: "ищем вопрос",
+    tests: "ищем тест",
   };
   return {
     query,

@@ -54,6 +54,9 @@ const VIEWS: Array<{ id: View; label: string; Icon: typeof ClipboardCheck }> = [
 function TestsPageInner() {
   const searchParams = useSearchParams();
   const requestedView = searchParams.get("view");
+  // Deep-ссылка с главной (/tests?open=<id>): TestsHub подсветит карточку теста.
+  // Параметр из URL не удаляем, чтобы подсветка работала и после обновления страницы.
+  const openTestId = (searchParams.get("open") || "").trim();
   const { user, loading: authLoading } = useAuth();
   const [view, setView] = useState<View>("tests");
   const [chemistryPage, setChemistryPage] = useState(1);
@@ -176,7 +179,7 @@ function TestsPageInner() {
         })}
       </nav>
 
-      {view === "tests" && <TestsHub />}
+      {view === "tests" && <TestsHub highlightTestId={openTestId} />}
 
       {view === "chemistry" && (
         <section className="space-y-4">

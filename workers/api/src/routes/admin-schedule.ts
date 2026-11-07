@@ -363,25 +363,28 @@ adminSchedule.get("/schedule/analytics/:scheduleId", requireAuth, async (c) => {
   try {
     // PostgREST does not expose GROUP BY through supabase-js, so aggregate the
     // rows for this schedule in the Worker instead of calling a missing method.
+    // У schedule_entries нет колонок status/teacher_id: статус выводим из
+    // is_cancelled/event_kind, преподавателя берём из текстовой колонки teacher.
     const { data: entries, error } = await db
       .from("schedule_entries")
-      .select("status,subject_id,teacher_id")
+      .select("id,subject_id,teacher,is_cancelled,event_kind")
       .eq("schedule_id", scheduleId);
-    
+
     if (error) throw error;
-    
+
     const statusCounts: Record<string, number> = {};
     const subjects = new Set<string>();
     const teachers = new Map<string, number>();
     for (const entry of entries || []) {
-      const status = String((entry as any).status || "unknown");
+      const raw = entry as any;
+      const status = raw.is_cancelled === true ? "cancelled" : String(raw.event_kind || "scheduled");
       statusCounts[status] = (statusCounts[status] || 0) + 1;
-      const subjectId = String((entry as any).subject_id || "");
+      const subjectId = String(raw.subject_id || "");
       if (subjectId) subjects.add(subjectId);
-      const teacherId = String((entry as any).teacher_id || "");
-      if (teacherId) teachers.set(teacherId, (teachers.get(teacherId) || 0) + 1);
+      const teacher = String(raw.teacher || "").trim();
+      if (teacher) teachers.set(teacher, (teachers.get(teacher) || 0) + 1);
     }
-    
+
     return c.json(ok({
       status_counts: statusCounts,
       total_unique_subjects: subjects.size,

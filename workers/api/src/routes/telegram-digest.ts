@@ -114,7 +114,8 @@ telegramDigest.get("/internal/digest", async (c) => {
     // 1. Активные чаты с привязанной группой.
     const { data: chats, error: chatsError } = await supabase
       .from("telegram_bot_chats")
-      .select("chat_id,group_id,is_active")
+      // Колонка называется telegram_chat_id, а не chat_id.
+      .select("telegram_chat_id,group_id,is_active")
       .eq("is_active", true)
       .not("group_id", "is", null)
       .limit(200);
@@ -169,9 +170,9 @@ telegramDigest.get("/internal/digest", async (c) => {
     const tomorrow = new Date(Date.parse(`${date}T00:00:00Z`) + 2 * 86400000).toISOString().slice(0, 10);
     const { data: homeworkRows, error: homeworkError } = await supabase
       .from("homeworks")
-      .select("id,group_id,title,subject_name,due_date,is_active")
+      // У homeworks нет колонок subject_name/is_active: предмет берём из связи subjects.
+      .select("id,group_id,title,due_date,subjects(name)")
       .in("group_id", groupIds)
-      .eq("is_active", true)
       .gte("due_date", new Date(Date.parse(`${date}T00:00:00Z`) - 14 * 86400000).toISOString().slice(0, 10))
       .lte("due_date", tomorrow)
       .limit(300);
@@ -201,9 +202,13 @@ telegramDigest.get("/internal/digest", async (c) => {
         is_cancelled: entry.is_cancelled === true,
       }));
       const homework = homeworkByGroup.get(groupId) || { overdue: [], today: [], tomorrow: [] };
-      const slim = (rows: any[]) => rows.map((row) => ({ title: row.title, subject_name: row.subject_name || null, due_date: row.due_date || null }));
+      const subjectOf = (row: any) => {
+        const s = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
+        return s?.name ?? null;
+      };
+      const slim = (rows: any[]) => rows.map((row) => ({ title: row.title, subject_name: subjectOf(row), due_date: row.due_date || null }));
       return {
-        chat_id: chat.chat_id,
+        chat_id: chat.telegram_chat_id,
         group_id: groupId,
         group_name: groupNameById.get(groupId) || null,
         date,

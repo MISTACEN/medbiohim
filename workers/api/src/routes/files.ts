@@ -143,12 +143,17 @@ files.post("/upload", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось проверить членство в группе", 503, rid);
       return c.json(body, status as 503);
     }
-    const { data: profile, error: profileError } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
+    // У users нет колонки role — роли живут в user_roles → roles.code.
+    const { data: roleRows, error: profileError } = await supabase.from("user_roles")
+      .select("roles(code)").eq("user_id", user.id);
     if (profileError) {
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось проверить роль пользователя", 503, rid);
       return c.json(body, status as 503);
     }
-    const isStaff = ["teacher", "moderator", "admin"].includes(String(profile?.role || ""));
+    const isStaff = (roleRows || []).some((row: any) => {
+      const role = Array.isArray(row?.roles) ? row.roles[0] : row?.roles;
+      return ["teacher", "moderator", "admin"].includes(String(role?.code || role || "").toLowerCase());
+    });
     if (!membership && !isStaff) {
       const { body, status } = fail("FORBIDDEN", "Вы не состоите в указанной учебной группе", 403, rid);
       return c.json(body, status as 403);

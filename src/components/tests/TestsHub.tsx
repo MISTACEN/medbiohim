@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpenCheck,
+  Clock,
   ClipboardCheck,
   FlaskConical,
   Loader2,
+  Microscope,
   Play,
+  Repeat,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -68,6 +71,8 @@ type TestItem = {
   questionCount: number;
   source: string;
   orderIndex: number;
+  timeLimitSec: number | null;
+  maxAttempts: number | null;
 };
 
 type TopicGroup = {
@@ -191,6 +196,7 @@ export function TestsHub({
   embedded = false,
   initialTopicId = "",
   autoStart = false,
+  highlightTestId = "",
 }: {
   subjectId?: string;
   subjectSlug?: string;
@@ -202,6 +208,8 @@ export function TestsHub({
   initialTopicId?: string;
   /** Сразу открыть тренировку первой темы (переход из карточки модуля). */
   autoStart?: boolean;
+  /** Тест из deep-ссылки (?open=): карточка подсвечивается и скроллится в вид. */
+  highlightTestId?: string;
 }) {
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
@@ -212,6 +220,7 @@ export function TestsHub({
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [focusTopic, setFocusTopic] = useState(initialTopicId.trim());
+  const [highlight, setHighlight] = useState("");
   const router = useRouter();
   const startedRef = useRef(false);
 
@@ -258,6 +267,8 @@ export function TestsHub({
             questionCount: Number(raw?.questions_count ?? raw?.question_count ?? 0),
             source: String(raw?.source_file_name || raw?.source_key || "база тестов"),
             orderIndex: Number(raw?.order_index ?? index),
+            timeLimitSec: raw?.time_limit_sec != null && Number(raw.time_limit_sec) > 0 ? Number(raw.time_limit_sec) : null,
+            maxAttempts: raw?.max_attempts != null && Number(raw.max_attempts) > 0 ? Number(raw.max_attempts) : null,
           };
         }).filter((item) => item.id);
         return {
@@ -285,6 +296,22 @@ export function TestsHub({
 
   const loading = testsLoading || !testsLoad?.ready;
   const error = testsError ?? "";
+
+  // Deep-ссылка ?open=<id> с главной: как только меню тестов загрузилось,
+  // подсвечиваем карточку на несколько секунд и скроллим к ней.
+  useEffect(() => {
+    const target = highlightTestId.trim();
+    if (!target || loading) return;
+    setHighlight(target);
+    const timer = setTimeout(() => setHighlight(""), 5000);
+    return () => clearTimeout(timer);
+  }, [highlightTestId, loading]);
+
+  useEffect(() => {
+    if (!highlight) return;
+    const element = document.querySelector(`[data-test-card="${highlight}"]`);
+    if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlight]);
 
   const topicMeta = useMemo(() => {
     const map = new Map<string, { moduleId: string; topicId: string; moduleTitle: string; topicTitle: string; plannedDate: string | null; isExtra: boolean; moduleOrder: number; topicOrder: number }>();
@@ -727,7 +754,13 @@ export function TestsHub({
                 {group.tests.map((test) => (
                   <article
                     key={test.id}
-                    className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-white p-3 transition hover:border-indigo-200 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                    data-test-card={test.id}
+                    className={
+                      "flex flex-col gap-3 rounded-xl border bg-white p-3 transition sm:flex-row sm:items-center sm:justify-between sm:p-4 " +
+                      (highlight === test.id
+                        ? "border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-300"
+                        : "border-[var(--border)] hover:border-indigo-200")
+                    }
                   >
                     <div className="min-w-0">
                       <h3 className="font-bold leading-snug text-slate-900">
@@ -737,6 +770,18 @@ export function TestsHub({
                       </h3>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
                         <span>{test.questionCount} {plural(test.questionCount, "вопрос", "вопроса", "вопросов")}</span>
+                        {test.timeLimitSec != null && (
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {Math.round(test.timeLimitSec / 60)} мин
+                          </span>
+                        )}
+                        {test.maxAttempts != null && (
+                          <span className="inline-flex items-center gap-1">
+                            <Repeat className="h-3.5 w-3.5" />
+                            до {test.maxAttempts} {plural(test.maxAttempts, "попытки", "попыток", "попыток")}
+                          </span>
+                        )}
                         <span>Источник: {test.source}</span>
                         {!scoped && <span>{subjectLabel(test.subjectSlug, test.subjectName)}</span>}
                       </div>
@@ -792,6 +837,34 @@ export function TestsHub({
               <span className="block font-extrabold text-slate-900">База вопросов</span>
               <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">
                 Посмотреть вопросы и эталоны без запуска теста, сохранить заметки и избранное.
+              </span>
+            </span>
+          </Link>
+          <Link
+            href="/trainers"
+            className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+              <BookOpenCheck className="h-5 w-5" />
+            </span>
+            <span>
+              <span className="block font-extrabold text-slate-900">Тренажёры</span>
+              <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">
+                Гистология в формате карточек: препарат за препаратом, со статистикой прогресса.
+              </span>
+            </span>
+          </Link>
+          <Link
+            href="/atlas"
+            className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]">
+              <Microscope className="h-5 w-5" />
+            </span>
+            <span>
+              <span className="block font-extrabold text-slate-900">Атлас микропрепаратов</span>
+              <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">
+                Все препараты и электронограммы с фильтрами — база перед тренировкой.
               </span>
             </span>
           </Link>

@@ -182,7 +182,8 @@ async function notifyGroupNewHomework(env: Env, executionCtx: { waitUntil(promis
     if (!notifyUrl || !secret || !homework.group_id) return;
     const { data: chats } = await db
       .from("telegram_bot_chats")
-      .select("chat_id")
+      // Колонка называется telegram_chat_id, а не chat_id.
+      .select("telegram_chat_id")
       .eq("group_id", homework.group_id)
       .eq("is_active", true)
       .limit(20);
@@ -208,7 +209,7 @@ async function notifyGroupNewHomework(env: Env, executionCtx: { waitUntil(promis
         doFetch(notifyUrl, {
           method: "POST",
           headers: { "content-type": "application/json", "x-medbiohim-internal": secret },
-          body: JSON.stringify({ chat_id: chat.chat_id, html }),
+          body: JSON.stringify({ chat_id: chat.telegram_chat_id, html }),
         }).then((response) => {
           if (!response.ok) console.error("[homework:notify]", response.status);
         }).catch((error) => {
@@ -352,7 +353,8 @@ homework.get("/:id/submissions", requireAuth, async (c) => {
       }
     }
     let query = db.from("homework_submissions")
-      .select("id,homework_id,user_id,text_answer,file_id,status,grade,teacher_comment,submitted_at,graded_at,graded_by,created_at")
+      // У homework_submissions нет колонок graded_at/graded_by.
+      .select("id,homework_id,user_id,text_answer,file_id,status,grade,teacher_comment,submitted_at,created_at")
       .eq("homework_id", id).order("submitted_at", { ascending: false }).limit(500);
     // Студент видит только свои сдачи; проверяющий — работы своей области.
     if (!isModeratorLike && !isTeacher) query = query.eq("user_id", user.id);

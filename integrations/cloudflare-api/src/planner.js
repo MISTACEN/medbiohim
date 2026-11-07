@@ -1,6 +1,6 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { createB2DownloadUrls } from "./b2-download.js";
-import { normalizeQuestion, publicOptions, gradeClosedAnswer, gradeOpenAnswer } from "./question-format.js";
+import { normalizeQuestion, publicOptions, gradeClosedAnswer, gradeOpenAnswer, shuffleQuestionOptions } from "./question-format.js";
 
 const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, message, ...extra });
 const uuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ""));
@@ -818,12 +818,15 @@ export async function startSupabasePreparation(request, env, testId, input = {},
       // Снимок хранит уже нормализованные варианты: у них есть key/label/correct.
       // Благодаря этому старые сессии и новые одинаково понимают ответ «2», «В»
       // и читаемый эталон «Верный ответ: 2) …».
-      const normalized = normalizeQuestion({
+      // shuffleQuestionOptions перемешивает варианты в самом снимке: порядок
+      // фиксирован на попытку (сервинг и грейдинг читают один и тот же снимок),
+      // а у каждого нового запуска он свой — даже если составитель не перемешал.
+      const normalized = shuffleQuestionOptions(normalizeQuestion({
         type: q.type ?? "open",
         text: q.text ?? "",
         answer: q.answer ?? null,
         options: parsePreparationJson(q.options, []),
-      }, { extractTextOptions: true });
+      }, { extractTextOptions: true }));
       return {
         id,
         subject_id: q.subject_id ?? null,

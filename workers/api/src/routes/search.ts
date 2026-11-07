@@ -40,6 +40,7 @@ const TYPE_LABEL: Record<string, string> = {
   lecture: "Лекция",
   question: "Вопрос",
   ticket: "Билет",
+  test: "Тест",
 };
 
 /** При равном счёте важнее предмет и препарат, чем вопрос из практики. */
@@ -47,6 +48,7 @@ const TYPE_PRIORITY: Record<string, number> = {
   subject: 6,
   preparation: 5,
   material: 4,
+  test: 3,
   lecture: 3,
   ticket: 2,
   question: 1,
@@ -80,6 +82,8 @@ const KIND_ALIASES: Record<string, SearchKind> = {
   preparations: "preparations",
   subject: "subjects",
   subjects: "subjects",
+  test: "tests",
+  tests: "tests",
 };
 
 function materialHintLabel(title: string, type: string): string {
@@ -185,6 +189,7 @@ async function collect(c: any, options: CollectOptions) {
       .select("id,subject_slug,preparation,mode_set,tags,is_published")
       .eq("subject_slug", "histology")
       .eq("is_published", true)
+      .order("created_at", { ascending: false })
       .limit(1000);
     if (cardError) throw cardError;
 
@@ -235,13 +240,17 @@ async function collect(c: any, options: CollectOptions) {
   }
 
   if (include("materials") && allowed("materials")) {
+    // created_at desc: новые материалы всегда попадают в LIMIT-окно, а не
+    // вытесняются старыми строками (раньше окно было без сортировки).
     const { data: materialRows, error: materialError } = await db
       .from("materials")
       .select("id,title,type,subject_id,subjects(name,slug)")
       .eq("is_published", true)
+      .order("created_at", { ascending: false })
       .limit(500);
     if (materialError) throw materialError;
 
+    const materialHitIds = new Set<string>();
     for (const raw of (materialRows || []) as Array<Record<string, any>>) {
       const subject = relation<{ name?: string; slug?: string }>(raw.subjects);
       const slug = subject?.slug ? String(subject.slug) : null;
@@ -259,6 +268,7 @@ async function collect(c: any, options: CollectOptions) {
       if (query ? !baseScore : !hintMatch) continue;
       if (materialHint && !hintMatch) continue;
       const score = baseScore ? baseScore + (hintMatch ? 50 : 0) : 70;
+      materialHitIds.add(String(raw.id));
       results.push({
         type: "material",
         type_label: TYPE_LABEL.material,
@@ -274,6 +284,46 @@ async function collect(c: any, options: CollectOptions) {
         score,
       });
     }
+
+    // Поиск по содержимому материала (content_html), а не только по заголовку:
+    // тяжёлый HTML не тянем в воркер — сравниваем по id с уже найденными по
+    // заголовку и добавляем только новые попадания (ниже заголовочных по счёту).
+    if (term) {
+      const { data: contentRows, error: contentError } = await db
+        .from("materials")
+        .select("id,title,type,subject_id,subjects(name,slug)")
+        .eq("is_published", true)
+        .ilike("content_html", `%${term}%`)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (contentError) throw contentError;
+      for (const raw of (contentRows || []) as Array<Record<string, any>>) {
+        const id = String(raw.id);
+        if (materialHitIds.has(id)) continue;
+        const subject = relation<{ name?: string; slug?: string }>(raw.subjects);
+        const slug = subject?.slug ? String(subject.slug) : null;
+        if (subjectSlug && slug !== subjectSlug) continue;
+        const title = String(raw.title || "");
+        const type = String(raw.type || "");
+        const hint = materialHintLabel(title, type);
+        if (materialHint && !matchesMaterialHint([title, type, hint], materialHint)) continue;
+        materialHitIds.add(id);
+        results.push({
+          type: "material",
+          type_label: TYPE_LABEL.material,
+          id,
+          title,
+          subject: subject?.name || "",
+          subject_slug: slug,
+          topic: hint,
+          snippet: [hint, subject?.name, "совпадение в содержимом"].filter(Boolean).join(" · "),
+          hint,
+          has_answer: false,
+          href: `/materials?q=${encodeURIComponent(title)}${slug ? `&subject_slug=${encodeURIComponent(slug)}` : ""}`,
+          score: 40,
+        });
+      }
+    }
   }
 
   if (include("lectures") && allowed("lectures")) {
@@ -281,6 +331,7 @@ async function collect(c: any, options: CollectOptions) {
       .from("histology_lectures")
       .select("id,title,description_algorithm_ref,body_markdown,subject_slug")
       .eq("is_published", true)
+      .order("created_at", { ascending: false })
       .limit(300);
     if (lectureError) throw lectureError;
 
@@ -315,6 +366,7 @@ async function collect(c: any, options: CollectOptions) {
       .from("questions")
       .select("id,text,answer,subject_id,topic_id,subjects(name,slug),topics(title)")
       .eq("is_published", true)
+      .order("created_at", { ascending: false })
       .limit(80);
     if (subjectSlug) {
       const ids = subjects.filter((row) => row.slug === subjectSlug).map((row) => row.id);
@@ -356,6 +408,7 @@ async function collect(c: any, options: CollectOptions) {
       .from("exam_questions")
       .select("id,text,answer,subject_slug,type")
       .eq("is_published", true)
+      .order("created_at", { ascending: false })
       .limit(80);
     if (subjectSlug) queryBuilder = queryBuilder.eq("subject_slug", subjectSlug);
     else if (matchedSlugs.length) queryBuilder = queryBuilder.in("subject_slug", matchedSlugs);
@@ -382,6 +435,44 @@ async function collect(c: any, options: CollectOptions) {
         has_answer: Boolean(String(raw.answer || "").trim()),
         answer: raw.answer || undefined,
         href: "/tickets",
+        score,
+      });
+    }
+  }
+
+  if (include("tests") && allowed("tests")) {
+    // Тесты как самостоятельный тип результата: «тест по эмбриологии» должен
+    // находить сам тест, а не только вопросы его банка.
+    const { data: testRows, error: testError } = await db
+      .from("tests")
+      .select("id,title,time_limit_sec,subject_id,subjects(name,slug)")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (testError) throw testError;
+
+    for (const raw of (testRows || []) as Array<Record<string, any>>) {
+      const subject = relation<{ name?: string; slug?: string }>(raw.subjects);
+      const slug = subject?.slug ? String(subject.slug) : null;
+      if (subjectSlug && slug !== subjectSlug) continue;
+      const title = String(raw.title || "");
+      const subjectName = subject?.name || "";
+      const score = scoreFields([title, subjectName, slug], query);
+      if (!score) continue;
+      const minutes = raw.time_limit_sec ? Math.round(Number(raw.time_limit_sec) / 60) : null;
+      const hint = [minutes ? `${minutes} мин` : null, "тест"].filter(Boolean).join(" · ");
+      results.push({
+        type: "test",
+        type_label: TYPE_LABEL.test,
+        id: String(raw.id),
+        title,
+        subject: subjectName,
+        subject_slug: slug,
+        topic: "",
+        snippet: [subjectName, minutes ? `время: ${minutes} мин` : null].filter(Boolean).join(" · "),
+        hint: hint || "тест",
+        has_answer: false,
+        href: `/tests?open=${encodeURIComponent(String(raw.id))}`,
         score,
       });
     }
@@ -499,7 +590,7 @@ search.get("/suggest", requireAuth, async (c) => {
       kind: intent.kind,
       limit,
       materialHint: intent.materialHint,
-      kinds: ["subjects", "preparations", "materials"],
+      kinds: ["subjects", "preparations", "materials", "tests"],
     });
     return c.json(ok({
       items: collected.items.map((item) => ({

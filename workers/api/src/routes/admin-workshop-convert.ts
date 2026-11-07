@@ -38,8 +38,10 @@ async function isModerator(c: any): Promise<boolean> {
 
 async function loadConvertibleItem(c: any, itemId: string) {
   const db = c.get("supabase");
+  // У workshop_items нет колонки metadata — выбирать её нельзя, иначе весь
+  // запрос (и черновик конвертации) падает с ошибкой PostgREST.
   const [{ data: item }, { data: files }, { data: questions }] = await Promise.all([
-    db.from("workshop_items").select("id,title,kind,status,metadata,author_id,question_conversion_status,question_conversion_note").eq("id", itemId).maybeSingle(),
+    db.from("workshop_items").select("id,title,kind,status,author_id,question_conversion_status,question_conversion_note").eq("id", itemId).maybeSingle(),
     db.from("workshop_item_files").select("id,file_id,original_name,mime_type").eq("item_id", itemId).order("position", { ascending: true }),
     db.from("workshop_item_questions").select("id,text,topic,position").eq("item_id", itemId).order("position", { ascending: true }),
   ]);
@@ -58,8 +60,9 @@ adminConvert.get("/workshop-questions/:itemId/draft", requireAuth, async (c) => 
     return c.json(fail("VALIDATION_ERROR", "Конвертировать можно только элементы с типом «Вопросы теста»", 422, rid), 422 as const);
   }
 
-  // OCR-текст мог лежать в metadata (unpdf/parsed) — сеем черновик из него тоже.
-  const metadata = (item.metadata && typeof item.metadata === "object") ? item.metadata : {};
+  // OCR-текст раньше искали в metadata, но такой колонки в workshop_items нет —
+  // сеем черновик только из сохранённых вопросов.
+  const metadata = {};
   const ocrText = String((metadata as any).ocr_text ?? (metadata as any).pdf_text ?? (metadata as any).text ?? "");
 
   return c.json(ok({

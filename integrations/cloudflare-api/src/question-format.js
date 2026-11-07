@@ -478,6 +478,39 @@ export function publicOptions(question, reveal = true) {
   });
 }
 
+/**
+ * Перемешивает варианты закрытого вопроса (Fisher–Yates) и переназначает
+ * ключи по новой позиции — защита от составителей, забывших перемешать
+ * варианты вручную. Флаг correct едет вместе с вариантом, поэтому эталон
+ * остаётся верным: все пути (выдача и проверка) пересчитывают correct/ключи
+ * из одного и того же снимка через parseOptions → options.correct.
+ *
+ * Вопросы на порядок (requires_order/sequence) не трогаем — там порядок и
+ * есть ответ. Вызов должен происходить в момент построения снимка сессии,
+ * чтобы порядок был фиксированным на всю попытку.
+ * @param {{options?: Array<{key?:string,label:string,correct?:boolean,id?:string}>, is_closed?:boolean, requires_order?:boolean, order_indexes?:number[]}|null} question
+ */
+export function shuffleQuestionOptions(question) {
+  if (!question || !Array.isArray(question.options) || question.options.length < 2) return question;
+  if (question.is_closed === false) return question;
+  if (question.requires_order || (Array.isArray(question.order_indexes) && question.order_indexes.length)) return question;
+  const shuffled = [...question.options];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  // Ключи по новой позиции: цифры, если у автора была цифровая нумерация,
+  // иначе буквы (LETTER_KEYS). Так бейджи на экране идут по порядку, а не «В, А, Б».
+  const numeric = shuffled.every((option) => /^[0-9]+$/.test(String(option?.key ?? "")));
+  return {
+    ...question,
+    options: shuffled.map((option, index) => ({
+      ...option,
+      key: numeric ? String(index + 1) : (LETTER_KEYS[index] || String(index + 1)),
+    })),
+  };
+}
+
 function optionIndexForToken(question, token) {
   const options = Array.isArray(question?.options) ? question.options : [];
   const value = String(token ?? "").trim();

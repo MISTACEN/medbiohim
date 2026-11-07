@@ -1,0 +1,13 @@
+-- user_roles: у роли authenticated отсутствовали табличные привилегии
+-- INSERT/UPDATE/DELETE (был только SELECT). Из-за этого админ-эндпоинт
+-- POST /admin/users/roles (назначение/снятие ролей в /admin/users) падал
+-- с ROLE_WRITE_FAILED: PostgREST отклонял INSERT до оценки RLS.
+--
+-- RLS-политики user_roles_insert_admin_v1 / user_roles_delete_admin_v1
+-- (см. 20260918_rls_policy_and_rpc_hardening.sql) уже ограничивают запись
+-- ролью admin через private.has_app_role — грант только снимает табличный
+-- запрет, доступ по-прежнему имеют только администраторы.
+--
+-- Применена в production 2026-11-07 (см. supabase_migrations:
+-- grant_user_roles_dml_to_authenticated).
+grant insert, update, delete on table public.user_roles to authenticated;
