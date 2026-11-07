@@ -179,10 +179,16 @@ export function MyQuestionBank() {
                   </div>
                   <ChemRichText text={question.text} className="font-medium" />
                   {question.kind !== "open" && (
-                    <div className="mt-1 text-sm text-[var(--status-ok-fg)]">Эталон: {question.answer}</div>
+                    <div className="mt-1 text-sm text-[var(--status-ok-fg)]">
+                      <span className="font-semibold">Эталон: </span>
+                      <ChemRichText text={question.answer} className="inline" />
+                    </div>
                   )}
                   {question.explanation && (
-                    <div className="mt-1 text-xs text-[var(--muted)]">Пояснение: {question.explanation}</div>
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      <span className="font-semibold">Пояснение: </span>
+                      <ChemRichText text={question.explanation} className="inline" />
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -250,8 +256,6 @@ export function MyQuestionBank() {
             className="min-h-28 w-full rounded-xl border p-3 text-sm outline-none focus:border-indigo-400"
             placeholder="Текст вопроса. Химические формулы: H2SO4 → H₂SO₄ отображаются у студента."
           />
-          <ChemRichText text={draft.text} className="rounded-xl bg-slate-50 p-3 text-sm" />
-
           {draft.kind !== "open" && (
             <div className="space-y-2">
               {draft.options.map((option, index) => (
@@ -309,6 +313,29 @@ export function MyQuestionBank() {
             className="min-h-16 w-full rounded-xl border p-3 text-sm outline-none focus:border-indigo-400"
             placeholder="Пояснение к ответу (необязательно)"
           />
+
+          <div className="space-y-2 rounded-xl border border-dashed border-slate-300 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Предпросмотр у студента</div>
+            <ChemRichText text={draft.text} className="text-sm font-medium" />
+            {draft.options.filter((option) => option.trim()).map((option, index) => (
+              <div key={index} className="flex items-start gap-2 text-sm">
+                <span className="text-slate-400">{String.fromCharCode(65 + index)}.</span>
+                <ChemRichText text={option} />
+              </div>
+            ))}
+            {draft.answer.trim() && (
+              <div className="text-sm text-[var(--status-ok-fg)]">
+                <span className="font-semibold">Эталон: </span>
+                <ChemRichText text={draft.answer} className="inline" />
+              </div>
+            )}
+            {draft.explanation.trim() && (
+              <div className="text-xs text-[var(--muted)]">
+                <span className="font-semibold">Пояснение: </span>
+                <ChemRichText text={draft.explanation} className="inline" />
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-2">
             <button type="button" disabled={busy === "save"} onClick={() => void save()} className="btn-primary">
