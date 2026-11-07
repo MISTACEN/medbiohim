@@ -74,7 +74,9 @@ async function withTransportDiagnostics(req: NextRequest, response: Response, so
 
 function requestInit(req: NextRequest, bodyBuffer: ArrayBuffer | null, timeoutMs: number): RequestInit {
   const headers = new Headers();
-  for (const h of ["content-type", "authorization", "accept", "x-request-id"]) {
+  // x-bootstrap-secret: одноразовый маршрут применения миграций, сам защищён
+  // секретом на воркере — прокси лишь не должен его глотать.
+  for (const h of ["content-type", "authorization", "accept", "x-request-id", "x-bootstrap-secret"]) {
     const v = req.headers.get(h);
     if (v) headers.set(h, v);
   }
