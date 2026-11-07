@@ -1,43 +1,26 @@
 # Документация MEDBIOHIM
 
-**Обновлено: 5 ноября 2026 года.** Начинайте с [единого текущего состояния](CURRENT-STATE-2026-11-03.md) — это датированный срез архитектуры, фактов, ограничений и приоритетов. Перед изменениями обязательно сверяйте актуальный `main`.
+**Обновлено: 7 ноября 2026 года.** Документация консолидирована до трёх главных документов + технических контрактов. Старые аудиты, статусы и планы — в [archive/](archive/) или удалены.
+
+## Три главных документа
+
+1. **[../PROJECT-MAP.md](../PROJECT-MAP.md)** — где что лежит: структура по слоям, спорные и требующие решения места, монолиты-кандидаты.
+2. **[../ROADMAP.md](../ROADMAP.md)** — единый план: все задачи из всех списков в 14 этапах со статусами (✅/🟡/❌/🔍), Задача A (монолиты), Задача B (движок v2), порядок дальнейшей работы.
+3. **[HISTORY.md](HISTORY.md)** — сжатая история работ по датам.
+
+## Технические контракты (живые)
+
+- [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md) — топология воркеров (LOCKED): medbiohim-api = прод, shadow = fallback, telegram = бот.
+- [COOKIES-RFC-E1.md](COOKIES-RFC-E1.md) — cookie-транспорт авторизации (упомянут в коде прокси).
+- [ARCHITECTURE.md](ARCHITECTURE.md) — схема приложения и API.
+- [architecture/SHARED-COMPONENT-REGISTRY.md](architecture/SHARED-COMPONENT-REGISTRY.md) + [architecture/registry/](architecture/registry/) — реестр общих компонентов (контракт, проверяется тестом).
 
 ## Инструкции ИИ-агентов
 
-- [AGENTS.md](../AGENTS.md) — корневые правила.
-- [AGENT-ARCHITECTURE.md](../AGENT-ARCHITECTURE.md) — координатор, независимые агенты и subagents.
-- [AGENT-OWNERSHIP.md](../AGENT-OWNERSHIP.md) — матрица владения файлами.
-- [AGENT-TASK-PROTOCOL.md](../AGENT-TASK-PROTOCOL.md) — задания, изоляция, patch и интеграция.
-- [API-CONTRACTS.md](../API-CONTRACTS.md) — межслойные контракты.
-- [.agents/](../.agents/README.md) — инструкции координатора и специализированных ролей.
-
-## Текущие источники
-
-- [CURRENT-STATE-2026-11-03.md](CURRENT-STATE-2026-11-03.md) — единый статус проекта на указанную дату.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — актуальная схема приложения и API.
-- [architecture/MODULE_ARCHITECTURE.md](architecture/MODULE_ARCHITECTURE.md) — целевая модульная архитектура, общая библиотека (shared-слой) и реестр компонентов.
-- [architecture/SHARED-COMPONENT-REGISTRY.md](architecture/SHARED-COMPONENT-REGISTRY.md) — контракт реестра общих компонентов: схема, версии, совместимость, права, процедура.
-- [architecture/SHARED-LAYER-AUDIT-2026-11-05.md](architecture/SHARED-LAYER-AUDIT-2026-11-05.md) — аудит общего слоя: что переиспользовать, что выделить, что оставить в модулях.
-- [WORKERS-TOPOLOGY.md](WORKERS-TOPOLOGY.md) — роли Cloudflare Workers.
-- [STATUS.md](archive/STATUS.md) — исторический снимок октября, не текущий статус.
-- [UNFINISHED-REGISTRY.md](UNFINISHED-REGISTRY.md) — накопленный список задач; каждую старую запись проверять по main.
-- [TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md](TELEGRAM-BOT-GAP-AUDIT-2026-11-03.md) — что бот умеет и что осталось.
-- [PYRAMID-AND-CHEMISTRY-ROADMAP.md](PYRAMID-AND-CHEMISTRY-ROADMAP.md) — «пирамида знаний» и химия.
-- [DOCS-AUDIT-2026-11-03.md](DOCS-AUDIT-2026-11-03.md) — проверка документации: ссылки, устаревшее, выводы.
-
-## Корневые рабочие документы
-
-- [ROADMAP.md](../ROADMAP.md) — продуктовые направления.
-- [PHASES_STATUS.md](../PHASES_STATUS.md) — фазы и контрольные точки.
-- [SYNC_STAMP.md](../SYNC_STAMP.md) — датированные выкладки/проверки.
-- [CICD-SETUP.md](../CICD-SETUP.md) — CI/CD; исторические инструкции требуют сверки с текущими workflow.
-- [MOGRATION-STATUS.md](../MOGRATION-STATUS.md) — исторический migration snapshot, не показатель текущего процента готовности.
+- [../AGENTS.md](../AGENTS.md) — корневые правила.
+- [../AGENT-ARCHITECTURE.md](../AGENT-ARCHITECTURE.md), [../AGENT-OWNERSHIP.md](../AGENT-OWNERSHIP.md), [../AGENT-TASK-PROTOCOL.md](../AGENT-TASK-PROTOCOL.md) — роли, владение файлами, протокол задач.
+- [../API-CONTRACTS.md](../API-CONTRACTS.md) — межслойные контракты.
 
 ## Архив
 
-Датированные аудиты, pass-отчёты и handoff (2026-10 и ранее) перенесены в `docs/archive/`.
-Они остаются историческим доказательством, но не описывают текущий `main`.
-
-## Как читать аудиты
-
-Документы с датой в имени — снимки на соответствующую дату. Более поздний аудит может закрывать или заменять прежнее наблюдение. Не удаляйте старые отчёты: фиксируйте итоговый статус и ссылку на доказательство. Наличие кода не доказывает deployment; deployment не доказывает runtime acceptance.
+[archive/](archive/) — датированные аудиты, статусы, планы и гайды (перенесены 2026-11-07). Историческая ценность есть, актуальности — нет: сверять с main обязательно.
