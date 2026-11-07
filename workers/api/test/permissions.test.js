@@ -85,12 +85,15 @@ test("workshop: преподаватель не получает capability и �
   assert.match(teacherBlock, /"teacher\.content\.manage"/);
 
   const gate = await source("../src/lib/module-access.ts");
-  assert.match(gate, /const STUDENT_ONLY_MODULE_KEYS = new Set\(\["workshop"\]\)/);
+  // Директива владельца 2026-11-07: учитель НЕ обходит студенческие разделы —
+  // единственное исключение: авторский preview теста (/tests/preview/).
   assert.match(gate, /if \(roles\.includes\("teacher"\)\) \{/);
-  assert.match(gate, /if \(!STUDENT_ONLY_MODULE_KEYS\.has\(moduleKey\)\) return next\(\)/);
-  // Явный отказ, а не «провалился дальше и раздел с open его пустил».
-  assert.match(gate, /Раздел доступен только студентам/);
+  assert.match(gate, /isAuthorPreview/);
+  assert.match(gate, /moduleKey === "subjects"/);
+  assert.match(gate, /tests\/preview/);
+  assert.match(gate, /Кабинет преподавателя ограничен: студенческие разделы недоступны/);
   assert.match(gate, /MODULE_FORBIDDEN/);
+  assert.doesNotMatch(gate, /STUDENT_ONLY_MODULE_KEYS/);
 });
 
 test("admin: общий банк вопросов правит только admin и moderator", async () => {

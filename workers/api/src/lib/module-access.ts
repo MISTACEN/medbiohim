@@ -39,8 +39,6 @@ export type { GrantMode, GrantRow, ModuleMode, ModuleRow, EffectiveAccess } from
  * Разделы, закрытые для преподавателя даже при обходе студенческой навигации.
  * Workshop — peer-sharing студентов; роль teacher в него не допускается (план §40).
  */
-const STUDENT_ONLY_MODULE_KEYS = new Set(["workshop"]);
-
 function groupByModule(rows: GrantRow[]): Record<string, GrantRow[]> {
   const map: Record<string, GrantRow[]> = {};
   for (const row of rows) {
@@ -152,8 +150,10 @@ type GateContext = Context<{ Bindings: Env; Variables: AuthVariables }>;
 
 /**
  * Промежуточный слой маршрута: пропускает только тех, кому открыт раздел.
- * Ставится после requireAuth. teacher обходит разделы студента: его границы
- * задают capability и область, а не студенческая навигация.
+ * Ставится после requireAuth. teacher проходит ТОЛЬКО в авторский preview
+ * теста; все студенческие разделы для него закрыты (директива владельца:
+ * платформа для студентов, кабинет учителя — временная замена официального
+ * портала с ограниченным сценарием).
  */
 export function moduleGate(
   moduleKey: string,
@@ -173,18 +173,22 @@ export function moduleGate(
         String((Array.isArray(row.roles) ? row.roles[0] : row.roles)?.code || "").toLowerCase(),
       ).filter(Boolean);
       if (roles.includes("admin")) return next();
-      // Преподаватель обходит студенческую навигацию (его границы задают
-      // capability и область), но студенческие peer-пространства закрыты
-      // явным отказом: иначе раздел с default_mode=open его бы пропустил.
+      // Директива владельца 2026-11-07: кабинет преподавателя — временная
+      // замена официального портала с жёстко ограниченным сценарием (свой
+      // тест: создать/пройти/проверить/статистика группы). Студенческие
+      // разделы ему закрыты — единственное исключение: авторский preview
+      // теста (/tests/preview/:id), чтобы проверить тест глазами студента.
       if (roles.includes("teacher")) {
-        if (!STUDENT_ONLY_MODULE_KEYS.has(moduleKey)) return next();
-        const { body: deniedBody, status: deniedStatus } = fail(
+        const isAuthorPreview =
+          moduleKey === "subjects" && /\/tests\/preview\//.test(c.req.path);
+        if (isAuthorPreview) return next();
+        const { body, status } = fail(
           "MODULE_FORBIDDEN",
-          "Раздел доступен только студентам: это пространство взаимопомощи.",
+          "Кабинет преподавателя ограничен: студенческие разделы недоступны.",
           403,
           rid,
         );
-        return c.json(deniedBody, deniedStatus as 403);
+        return c.json(body, status as 403);
       }
       const access = await effectiveModuleAccess(c.env, c.get("user").id, roles);
       if (access.allowed.has("*") || access.allowed.has(moduleKey)) return next();
