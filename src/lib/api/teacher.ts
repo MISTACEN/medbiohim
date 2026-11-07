@@ -170,6 +170,52 @@ export function testPreview(id: string) {
   return api<TestPreview>(endpoints.tests.preview(id));
 }
 
+export type TeacherTestAssignment = {
+  id: string;
+  test_id: string;
+  test_title: string | null;
+  group_id: string | null;
+  group_name: string | null;
+  individual: boolean;
+  students_targeted: number;
+  due_at: string | null;
+  time_limit_sec: number | null;
+  max_attempts: number | null;
+  question_count: number | null;
+  instructions: string | null;
+  created_at: string;
+  completed: number;
+  pending: number;
+  avg_percent: number | null;
+};
+
+export function teacherTestAssignments() {
+  return api<{ items: TeacherTestAssignment[]; total: number; is_admin: boolean }>(
+    endpoints.teacher.testAssignments(),
+  );
+}
+
+export function createTestAssignment(payload: {
+  test_id: string;
+  group_ids?: string[];
+  student_ids?: string[];
+  due_at?: string | null;
+  time_limit_sec?: number | null;
+  max_attempts?: number | null;
+  question_count?: number | null;
+  topic_ids?: string[];
+  instructions?: string | null;
+}) {
+  return api<{ assignments: Array<{ id: string }>; test_title: string }>(
+    endpoints.teacher.testAssignments(),
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export function deleteTestAssignment(id: string) {
+  return api<{ removed: boolean }>(endpoints.teacher.testAssignment(id), { method: "DELETE" });
+}
+
 export function teacherOverview() {
   return api<TeacherOverview>(endpoints.teacher.overview());
 }

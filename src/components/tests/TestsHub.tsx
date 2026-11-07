@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { AssignedTests } from "@/components/tests/AssignedTests";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
 
@@ -502,6 +503,7 @@ export function TestsHub({
 
   return (
     <section className="space-y-4">
+      {!embedded && <AssignedTests />}
       {!embedded && (
         <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

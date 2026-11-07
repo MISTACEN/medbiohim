@@ -13,6 +13,7 @@ import {
   loadTeacherScope,
   loadTeacherSubjectIds,
 } from "../lib/teacher-scope";
+import { createServiceClient } from "../lib/supabase";
 
 /**
  * Кабинет преподавателя (план §9–§10, этап H).
@@ -435,6 +436,242 @@ teacher.delete("/assignments/:id", requireAuth, async (c) => {
   } catch (deleteFailure) {
     console.error("[teacher:unassign]", deleteFailure);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось снять назначение");
+  }
+});
+
+/**
+ * Назначения тестов (кабинет 8.20–8.24): преподаватель назначает
+ * опубликованный тест своим группам/студентам с дедлайном, лимитом времени,
+ * числом попыток и выборкой вопросов. Вопросы не копируются: назначение
+ * ссылается на существующий тест и существующий движок попыток — второй
+ * системы результатов не появляется.
+ */
+teacher.post("/test-assignments", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.content.manage"))) return c.res;
+  const db = c.get("supabase") as any;
+  const userId = c.get("user").id;
+  let input: any = {};
+  try { input = await c.req.json(); } catch {
+    return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
+  }
+  const testId = String(input?.test_id || "");
+  const groupIds = uniqueIds(Array.isArray(input?.group_ids) ? input.group_ids : []);
+  const studentIds = uniqueIds(Array.isArray(input?.student_ids) ? input.student_ids : []);
+  const instructions = input?.instructions ? String(input.instructions).slice(0, 1000) : null;
+  const dueAt = input?.due_at ? String(input.due_at) : null;
+  const timeLimitSec = input?.time_limit_sec != null ? Number(input.time_limit_sec) : null;
+  const maxAttempts = input?.max_attempts != null ? Number(input.max_attempts) : null;
+  const questionCount = input?.question_count != null ? Number(input.question_count) : null;
+  const topicIds = Array.isArray(input?.topic_ids)
+    ? uniqueIds(input.topic_ids).slice(0, 20)
+    : null;
+  if (!UUID.test(testId)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный test_id");
+  if (!groupIds.length && !studentIds.length) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "Нужна хотя бы одна группа или студент");
+  }
+  if (dueAt && !Number.isFinite(Date.parse(dueAt))) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный дедлайн");
+  }
+  for (const [value, label] of [[maxAttempts, "max_attempts"], [questionCount, "question_count"]] as const) {
+    if (value != null && (!Number.isInteger(value) || value < 1 || value > 500)) {
+      return error(c, rid, 422, "VALIDATION_ERROR", `${label}: целое 1..500`);
+    }
+  }
+  if (timeLimitSec != null && (!Number.isInteger(timeLimitSec) || timeLimitSec < 30 || timeLimitSec > 24 * 3600)) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "time_limit_sec: от 30 секунд до суток");
+  }
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  try {
+    const { data: test, error: testError } = await service
+      .from("tests").select("id,title,is_published,archived_at")
+      .eq("id", testId).is("archived_at", null).maybeSingle();
+    if (testError) throw testError;
+    if (!test || test.is_published !== true) {
+      return error(c, rid, 404, "NOT_FOUND", "Тест не найден или не опубликован");
+    }
+    const roles = await callerRoles(service, userId);
+    const isAdmin = canAdminister(roles);
+    const scope = await loadTeacherScope(service, userId);
+    if (!isAdmin) {
+      const outsideGroups = groupIds.filter((id) => !scope.groups.includes(id));
+      if (outsideGroups.length) {
+        return error(c, rid, 403, "FORBIDDEN", "Часть групп не входит в вашу область");
+      }
+      if (studentIds.length) {
+        const { data: members, error: membersError } = await service
+          .from("group_memberships")
+          .select("user_id")
+          .in("group_id", scope.groups as string[]).eq("is_active", true).limit(5000);
+        if (membersError) throw membersError;
+        const known = new Set<string>(scope.students);
+        for (const row of members || []) known.add(String((row as any).user_id));
+        const outsideStudents = studentIds.filter((id) => !known.has(id));
+        if (outsideStudents.length) {
+          return error(c, rid, 403, "FORBIDDEN", "Часть студентов не входит в вашу область");
+        }
+      }
+    }
+    const created: any[] = [];
+    for (const groupId of groupIds) {
+      const { data, error: insertError } = await service
+        .from("test_assignments")
+        .insert({
+          test_id: testId,
+          teacher_id: userId,
+          group_id: groupId,
+          due_at: dueAt,
+          time_limit_sec: timeLimitSec,
+          max_attempts: maxAttempts,
+          question_count: questionCount,
+          topic_ids: topicIds && topicIds.length ? topicIds : null,
+          instructions,
+          created_by: userId,
+        })
+        .select("id,test_id,group_id,due_at,max_attempts,question_count")
+        .maybeSingle();
+      if (insertError) throw insertError;
+      created.push(data);
+    }
+    if (studentIds.length) {
+      const { data: personal, error: personalError } = await service
+        .from("test_assignments")
+        .insert({
+          test_id: testId,
+          teacher_id: userId,
+          group_id: null,
+          due_at: dueAt,
+          time_limit_sec: timeLimitSec,
+          max_attempts: maxAttempts,
+          question_count: questionCount,
+          topic_ids: topicIds && topicIds.length ? topicIds : null,
+          instructions,
+          created_by: userId,
+        })
+        .select("id,test_id,group_id,due_at,max_attempts,question_count")
+        .maybeSingle();
+      if (personalError) throw personalError;
+      if (!personal) return error(c, rid, 503, "DB_ERROR", "Назначение не сохранилось");
+      created.push(personal);
+      const studentRows = studentIds.map((studentId) => ({
+        assignment_id: String(personal.id),
+        student_id: studentId,
+      }));
+      const { error: studentsError } = await service
+        .from("test_assignment_students").insert(studentRows);
+      if (studentsError) throw studentsError;
+    }
+    return c.json(ok({ assignments: created, test_title: test.title }, rid), 201);
+  } catch (assignError) {
+    console.error("[teacher:assign-test]", assignError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось создать назначение");
+  }
+});
+
+/** Список назначений преподавателя со сводкой: кто прошёл, средний процент. */
+teacher.get("/test-assignments", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.results.view"))) return c.res;
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  const userId = c.get("user").id;
+  try {
+    const roles = await callerRoles(service, userId);
+    const isAdmin = canAdminister(roles);
+    let query = service
+      .from("test_assignments")
+      .select("id,test_id,teacher_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests(title),groups(name,code),test_assignment_students(student_id)")
+      .order("created_at", { ascending: false }).limit(200);
+    if (!isAdmin) query = query.eq("teacher_id", userId);
+    const { data, error: readError } = await query;
+    if (readError) throw readError;
+    const rows = (data || []) as any[];
+    const testIds = uniqueIds(rows.map((row) => row.test_id));
+    const groupIds = uniqueIds(rows.map((row) => row.group_id));
+    const [attempts, members] = await Promise.all([
+      testIds.length
+        ? service.from("test_attempts")
+            .select("test_id,group_id,user_id,percent,status,finished_at")
+            .in("test_id", testIds as string[]).order("finished_at", { ascending: false }).limit(5000)
+        : Promise.resolve({ data: [], error: null }),
+      groupIds.length
+        ? service.from("group_memberships")
+            .select("group_id,user_id").in("group_id", groupIds as string[])
+            .eq("is_active", true).limit(5000)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (attempts.error) throw attempts.error;
+    if (members.error) throw members.error;
+    const attemptRows = (attempts.data || []) as any[];
+    const membersByGroup = new Map<string, Set<string>>();
+    for (const row of (members.data || []) as any[]) {
+      const key = String(row.group_id);
+      if (!membersByGroup.has(key)) membersByGroup.set(key, new Set());
+      membersByGroup.get(key)!.add(String(row.user_id));
+    }
+    const items = rows.map((row) => {
+      const targets = new Set<string>(
+        (row.test_assignment_students || []).map((s: any) => String(s.student_id)),
+      );
+      if (row.group_id) {
+        const group = membersByGroup.get(String(row.group_id));
+        if (group) for (const member of group) targets.add(member);
+      }
+      const relevant = attemptRows.filter((a) =>
+        String(a.test_id) === String(row.test_id) && targets.has(String(a.user_id)),
+      );
+      const finished = relevant.filter((a) => a.finished_at);
+      const percents = finished
+        .map((a) => Number(a.percent))
+        .filter((value) => Number.isFinite(value));
+      return {
+        id: row.id,
+        test_id: row.test_id,
+        test_title: (Array.isArray(row.tests) ? row.tests[0] : row.tests)?.title || null,
+        group_id: row.group_id,
+        group_name: (Array.isArray(row.groups) ? row.groups[0] : row.groups)?.name || null,
+        individual: !row.group_id,
+        students_targeted: targets.size,
+        due_at: row.due_at,
+        time_limit_sec: row.time_limit_sec,
+        max_attempts: row.max_attempts,
+        question_count: row.question_count,
+        instructions: row.instructions,
+        created_at: row.created_at,
+        completed: finished.length,
+        pending: Math.max(0, targets.size - finished.length),
+        avg_percent: percents.length
+          ? Math.round(percents.reduce((sum, value) => sum + value, 0) / percents.length)
+          : null,
+      };
+    });
+    return c.json(ok({ items, total: items.length, is_admin: isAdmin }, rid));
+  } catch (readError) {
+    console.error("[teacher:test-assignments]", readError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Назначения тестов недоступны");
+  }
+});
+
+/** Отменить назначение: только автор или администратор. */
+teacher.delete("/test-assignments/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.content.manage"))) return c.res;
+  const id = c.req.param("id") || "";
+  if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор");
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  try {
+    const roles = await callerRoles(service, c.get("user").id);
+    let query = service.from("test_assignments").delete().eq("id", id);
+    if (!canAdminister(roles)) query = query.eq("teacher_id", c.get("user").id);
+    const { data, error: deleteError } = await query.select("id").maybeSingle();
+    if (deleteError) throw deleteError;
+    if (!data) return error(c, rid, 404, "NOT_FOUND", "Назначение не найдено");
+    return c.json(ok({ removed: true, id }, rid));
+  } catch (deleteFailure) {
+    console.error("[teacher:unassign-test]", deleteFailure);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось отменить назначение");
   }
 });
 

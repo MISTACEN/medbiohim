@@ -10,6 +10,7 @@ const root = process.cwd();
 const files = {
   TEACHER_ASSIGNMENTS_SQL: "supabase/migrations/20261105090000_teacher_assignments.sql",
   MODULE_ACCESS_SQL: "supabase/migrations/20261106100000_module_access.sql",
+  TEST_ASSIGNMENTS_SQL: "supabase/migrations/20261107090000_test_assignments.sql",
 };
 const escape = (s) => s.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 

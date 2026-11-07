@@ -39,6 +39,23 @@ export async function getTestBank(id: string, groupId?: string) {
   if (groupId) q.set("group_id", groupId);
   return api<any>(endpoints.tests.detail(id, q.toString()));
 }
+export type AssignedTest = {
+  id: string;
+  test_id: string;
+  title: string | null;
+  due_at: string | null;
+  time_limit_sec: number | null;
+  max_attempts: number | null;
+  question_count: number | null;
+  instructions: string | null;
+  teacher_name: string | null;
+  created_at: string;
+};
+
+/** Тесты, назначенные преподавателем (группа или персонально). */
+export async function listAssignedTests() {
+  return api<{ items: AssignedTest[] }>(endpoints.tests.assignments());
+}
 export async function listMyAttempts(subjectId?: string, groupId?: string, options: RequestInit = {}) {
   const q = new URLSearchParams();
   if (subjectId) q.set("subject_id", subjectId);

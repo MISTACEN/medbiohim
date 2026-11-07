@@ -25,6 +25,7 @@ import { describeApiError } from "@/lib/errors";
 import { MyLectures } from "@/components/teacher/MyLectures";
 import { MyQuestionBank } from "@/components/teacher/MyQuestionBank";
 import { MyTests } from "@/components/teacher/MyTests";
+import { TestAssignments } from "@/components/teacher/TestAssignments";
 import {
   gradeSubmission,
   returnSubmission,
@@ -336,6 +337,7 @@ export default function TeacherPage() {
           в едином научном редакторе и личный банк вопросов. Всё хранится в
           области автора и не смешивается со студенческой статистикой. */}
       <MyTests />
+      <TestAssignments />
       <MyLectures />
       <MyQuestionBank />
     </div>

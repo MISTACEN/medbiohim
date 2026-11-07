@@ -387,6 +387,53 @@ tests.get("/:id/bank-progress", requireAuth, async (c) => {
  * ключи, объяснения и порядок вариантов до публикации. Доступно только
  * teacher/admin через capability teacher.content.manage; студент получает 403.
  */
+/**
+ * Назначенные студенту тесты (кабинет 8.20): назначения его активных групп
+ * и персональные. Ссылки на существующий тест — без копирования вопросов.
+ */
+tests.get("/assignments", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user");
+  try {
+    const { data: memberships, error: membersError } = await db
+      .from("group_memberships")
+      .select("group_id")
+      .eq("user_id", user.id).eq("is_active", true).limit(50);
+    if (membersError) throw membersError;
+    const groupIds = [...new Set((memberships || []).map((row: any) => String(row.group_id)).filter(Boolean))];
+    let query = db
+      .from("test_assignments")
+      .select("id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at),users(full_name,display_name)")
+      .eq("tests.is_published", true).is("tests.archived_at", null)
+      .order("created_at", { ascending: false }).limit(50);
+    query = groupIds.length
+      ? query.or(`group_id.in.(${groupIds.join(",")}),test_assignment_students.student_id.eq.${user.id}`)
+      : query.eq("test_assignment_students.student_id", user.id);
+    const { data, error: readError } = await query;
+    if (readError) throw readError;
+    const items = (data || []).map((row: any) => {
+      const teacher = Array.isArray(row.users) ? row.users[0] : row.users;
+      const test = Array.isArray(row.tests) ? row.tests[0] : row.tests;
+      return {
+        id: row.id,
+        test_id: row.test_id,
+        title: test?.title || null,
+        due_at: row.due_at,
+        time_limit_sec: row.time_limit_sec,
+        max_attempts: row.max_attempts,
+        question_count: row.question_count,
+        instructions: row.instructions,
+        teacher_name: teacher ? String(teacher.display_name || teacher.full_name || "Преподаватель") : null,
+        created_at: row.created_at,
+      };
+    });
+    return c.json(ok({ items }, rid));
+  } catch (assignmentsError) {
+    console.error("[tests:assignments]", assignmentsError);
+    const { body, status } = fail("DB_UNAVAILABLE", "Назначения временно недоступны", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 tests.get("/preview/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID теста");
