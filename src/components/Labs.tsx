@@ -34,15 +34,18 @@ export default function Labs({ sessionId, subject }: LabsProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
   const loadTemplates = useCallback(async () => {
     setLoading(true);
     setError(null);
     const query = subject ? `?subject=${encodeURIComponent(subject)}` : "";
-    const result = await api<{ items: LabTemplate[] }>(`/labs/templates${query}`);
+    const result = await api<{ items: LabTemplate[]; available?: boolean; note?: string }>(`/labs/templates${query}`);
     setLoading(false);
-    if (result.ok) setTemplates(result.data.items || []);
-    else setError(errorMessage(result.error));
+    if (result.ok) {
+      setTemplates(result.data.items || []);
+      setNote(result.data.available === false ? result.data.note || null : null);
+    } else setError(errorMessage(result.error));
   }, [subject]);
 
   const loadSession = useCallback(async (id: string) => {
@@ -189,6 +192,9 @@ export default function Labs({ sessionId, subject }: LabsProps) {
 
       <main className="labs-content">
         <div className="lab-cards">
+          {note ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{note}</div>
+          ) : null}
           {templates.length === 0 ? (
             <p>Доступных лабораторных работ пока нет.</p>
           ) : (
