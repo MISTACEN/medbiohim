@@ -848,7 +848,20 @@ export async function startSupabasePreparation(request, env, testId, input = {},
       test_id: "eq." + testId, status: "eq.in_progress", order: "started_at.desc.nullslast", limit: "1" });
     const existing = existingRows[0];
     if (existing && existing.group_id && String(existing.group_id) !== groupId) return fail(409, "CONTEXT_CHANGED", "Сессия подготовки относится к другой учебной группе");
+    // Продолжаем только сессию с реальным прогрессом. Если студент не ответил
+    // ни на один вопрос, каждый запуск создаёт новый снимок — с другим
+    // порядком вопросов и перемешанными вариантами (shuffleQuestionOptions).
+    // Иначе повторный заход на тот же тест выглядел как «рандомизация не работает».
+    let resumeReady = false;
     if (existing && String(existing.mode || "") === mode) {
+      if (Number(existing.current_index) > 0) {
+        resumeReady = true;
+      } else {
+        const progress = await c.rows("test_preparation_results", { select: "id", session_id: "eq." + String(existing.id), limit: "1" });
+        resumeReady = progress.length > 0;
+      }
+    }
+    if (resumeReady) {
       const safe = { ...existing, question_ids: parsePreparationIds(existing.question_ids) };
       delete safe.question_snapshot;
       return { ok: true, data: { session: safe, resumed: true } };

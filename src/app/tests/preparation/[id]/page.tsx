@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { QuestionReport } from "@/components/QuestionReport";
 import { LoadingBar } from "@/components/ui/LoadingBar";
@@ -128,6 +129,7 @@ export default function PreparationPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [idx, setIdx] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [checking, setChecking] = useState<Record<string, boolean>>({});
   const [grading, setGrading] = useState<Record<string, any>>({});
   const [stats, setStats] = useState<any>(null);
   const [marked, setMarked] = useState<Record<string, boolean>>({});
@@ -287,19 +289,20 @@ export default function PreparationPage() {
   }, [timeExpired]);
 
   function answer(v: string) {
-    if (!q || !session || checked[q.id] || timeExpired) return;
+    if (!q || !session || checked[q.id] || checking[q.id] || timeExpired) return;
     const questionId = q.id;
 
-    // Не заставляем интерфейс ждать SpaceWeb/Vercel round-trip:
-    // ответ и результат проверки отображаются сразу, сохранение идёт в фоне.
+    // Промежуточное состояние: ответ принят, но сервер ещё не сравнил его
+    // с эталоном. Пока идёт проверка, интерфейс не показывает ни «верно»,
+    // ни «неверно» — раньше до ответа сервера всё выглядело как ошибка.
     setAnswers((a) => ({ ...a, [questionId]: v }));
-    setChecked((a) => ({ ...a, [questionId]: true }));
+    setChecking((a) => ({ ...a, [questionId]: true }));
     setError("");
 
     void queueSave(
       { current_index: idx, question_id: questionId, answer_text: v, reveal: experience === "prepare" },
       (message) => {
-        setChecked((a) => {
+        setChecking((a) => {
           const next = { ...a };
           delete next[questionId];
           return next;
@@ -307,8 +310,14 @@ export default function PreparationPage() {
         setError("Не удалось сохранить ответ: " + message);
       },
     ).then((r) => {
+      setChecking((a) => {
+        const next = { ...a };
+        delete next[questionId];
+        return next;
+      });
       if (r.ok) {
         if (r.data?.grading) setGrading((g) => ({ ...g, [questionId]: r.data.grading }));
+        setChecked((a) => ({ ...a, [questionId]: true }));
         refreshSequentialProgressOptimistic();
       }
     });
@@ -552,6 +561,9 @@ export default function PreparationPage() {
 
   const options: QuestionOption[] = Array.isArray(q.options) ? q.options : [];
   const serverGrading = grading[q.id];
+  // Ответ отправлен, но сервер ещё не сравнил его с эталоном: показываем
+  // нейтральное «Проверяем…» вместо мгновенного «неверно».
+  const isChecking = !!checking[q.id];
   // Пропуски: ответ «a|b|c» → по инпуту на каждый пропуск.
   const isCloze = q.type === "cloze" || q.type === "fill_blanks" || q.type === "fill-blanks";
   const clozeBlanks = isCloze
@@ -595,7 +607,7 @@ export default function PreparationPage() {
   const reference = etalonDisplay(q, serverGrading);
 
   function toggleOption(key: string) {
-    if (checked[q.id]) return;
+    if (checked[q.id] || isChecking) return;
     setAnswers((prev) => {
       const current = selectedKeys(q, prev[q.id]);
       const next = isMulti
@@ -737,7 +749,7 @@ export default function PreparationPage() {
                     <span className="w-16 text-xs font-semibold text-slate-500">Пропуск {blank + 1}</span>
                     <input
                       value={parts[blank] || ""}
-                      disabled={!!checked[q.id]}
+                      disabled={!!checked[q.id] || isChecking}
                       onChange={(e) => {
                         const nextParts = [...parts];
                         while (nextParts.length < clozeBlanks) nextParts.push("");
@@ -752,11 +764,11 @@ export default function PreparationPage() {
               })}
             </div>
             <button
-              disabled={!!checked[q.id] || !(answers[q.id] || "").trim()}
+              disabled={!!checked[q.id] || isChecking || !(answers[q.id] || "").trim()}
               onClick={() => void answer(answers[q.id] || "")}
               className="btn-primary"
             >
-              {experience === "prepare" ? "Проверить ответ" : "Сохранить ответ"}
+              {isChecking ? "Проверяем…" : experience === "prepare" ? "Проверить ответ" : "Сохранить ответ"}
             </button>
           </>
         ) : isMatch ? (
@@ -777,7 +789,7 @@ export default function PreparationPage() {
                     </span>
                     <select
                       value={selected}
-                      disabled={!!checked[q.id]}
+                      disabled={!!checked[q.id] || isChecking}
                       onChange={(e) => {
                         try {
                           const parsed = JSON.parse(answers[q.id] || "[]");
@@ -799,28 +811,28 @@ export default function PreparationPage() {
               })}
             </div>
             <button
-              disabled={!!checked[q.id] || !(answers[q.id] || "").trim() || answers[q.id] === "[]"}
+              disabled={!!checked[q.id] || isChecking || !(answers[q.id] || "").trim() || answers[q.id] === "[]"}
               onClick={() => void answer(answers[q.id] || "")}
               className="btn-primary"
             >
-              {experience === "prepare" ? "Проверить соответствие" : "Сохранить ответ"}
+              {isChecking ? "Проверяем…" : experience === "prepare" ? "Проверить соответствие" : "Сохранить ответ"}
             </button>
           </>
         ) : isOpen ? (
           <>
             <textarea
               value={answers[q.id] || ""}
-              disabled={!!checked[q.id]}
+              disabled={!!checked[q.id] || isChecking}
               onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
               placeholder="Введите свой ответ…"
               className="min-h-40 w-full rounded-xl border p-4 text-sm outline-none focus:border-indigo-400"
             />
             <button
-              disabled={!!checked[q.id] || !(answers[q.id] || "").trim()}
+              disabled={!!checked[q.id] || isChecking || !(answers[q.id] || "").trim()}
               onClick={() => void answer(answers[q.id] || "")}
               className="btn-primary"
             >
-              {experience === "prepare" ? "Проверить ответ" : "Сохранить ответ"}
+              {isChecking ? "Проверяем…" : experience === "prepare" ? "Проверить ответ" : "Сохранить ответ"}
             </button>
           </>
         ) : (
@@ -859,7 +871,7 @@ export default function PreparationPage() {
                       type={isMulti ? "checkbox" : "radio"}
                       name={"q-" + q.id}
                       checked={selected}
-                      disabled={!!checked[q.id]}
+                      disabled={!!checked[q.id] || isChecking}
                       onChange={() => toggleOption(key)}
                       className="mt-1"
                     />
@@ -877,17 +889,19 @@ export default function PreparationPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                disabled={!!checked[q.id] || selectedOptionKeys.length === 0}
+                disabled={!!checked[q.id] || isChecking || selectedOptionKeys.length === 0}
                 onClick={() => void answer(JSON.stringify(selectedOptionKeys))}
                 className="btn-primary"
               >
-                {experience === "prepare"
-                  ? isMulti
-                    ? "Проверить выбор"
-                    : "Проверить ответ"
-                  : isMulti
-                    ? "Сохранить выбор"
-                    : "Сохранить ответ"}
+                {isChecking
+                  ? "Проверяем…"
+                  : experience === "prepare"
+                    ? isMulti
+                      ? "Проверить выбор"
+                      : "Проверить ответ"
+                    : isMulti
+                      ? "Сохранить выбор"
+                      : "Сохранить ответ"}
               </button>
               {q.requires_order && (
                 <span className="text-xs text-[var(--muted)]">Нажимайте варианты в нужной последовательности: номер выбора появится в квадрате.</span>
@@ -897,6 +911,16 @@ export default function PreparationPage() {
         )}
 
         <QuestionReport questionId={q.id} />
+
+        {isChecking && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-900">
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Проверяем ответ…
+            </span>
+            <div className="mt-1 text-xs font-normal opacity-70">Ответ сравнивается с эталоном на сервере.</div>
+          </div>
+        )}
 
         {checked[q.id] && experience === "prepare" && (
           <div className={unresolved ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : correct ? "rounded-xl bg-[var(--status-ok-bg)] p-4 text-[var(--status-ok-fg)]" : "rounded-xl bg-[var(--status-critical-bg)] p-4 text-[var(--status-critical-fg)]"}>
