@@ -49,8 +49,36 @@ bootstrap.get("/migrate", async (c) => {
       { name: "20261106120000_teacher_catalog", bytes: TEACHER_CATALOG_SQL.length },
       { name: "20261107130000_result_detail_levels", bytes: RESULT_DETAIL_SQL.length },
     ],
-    note: "POST /bootstrap/migrate с X-Bootstrap-Secret применит миграции.",
+    note: "POST /bootstrap/migrate с X-Bootstrap-Secret применит миграции. POST /bootstrap/sql — SELECT-диагностика.",
   }, rid));
+});
+
+/**
+ * SELECT-диагностика прод-базы (только чтение, только один оператор).
+ * Используется агентом для расследования багов на живых данных; запись
+ * через этот маршрут невозможна — запрос обязан начинаться с SELECT/WITH.
+ */
+bootstrap.post("/sql", async (c) => {
+  const rid = requestId();
+  if (!authorized(c)) return error(c, rid, 404, "NOT_FOUND", "Not found");
+  let input: any = {};
+  try { input = await c.req.json(); } catch {}
+  const sql = String(input?.sql || "").trim();
+  if (!sql) return error(c, rid, 422, "VALIDATION_ERROR", "sql required");
+  if (!/^(select|with)\b/i.test(sql)) {
+    return error(c, rid, 422, "SELECT_ONLY", "Разрешены только SELECT/WITH запросы");
+  }
+  if (sql.length > 20000) return error(c, rid, 422, "VALIDATION_ERROR", "sql too large");
+  const svc = createServiceClient(c.env);
+  if (!svc) return error(c, rid, 503, "SERVICE_ROLE_REQUIRED", "Сервисный ключ не сконфигурирован");
+  try {
+    const { data, error: rpcError } = await svc.rpc("admin_exec_sql", { query: sql });
+    if (rpcError) return error(c, rid, 500, "SQL_FAILED", rpcError.message);
+    return c.json(ok({ result: data }, rid));
+  } catch (sqlError) {
+    console.error("[bootstrap:sql]", sqlError);
+    return error(c, rid, 503, "BOOTSTRAP_FAILED", String((sqlError as Error).message || sqlError));
+  }
 });
 
 bootstrap.post("/migrate", async (c) => {
