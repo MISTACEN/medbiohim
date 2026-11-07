@@ -76,6 +76,14 @@ test("контент преподавателя: чужое не редакти�
   assert.match(attestations, /gate\(c, \["admin"\]\)/);
 });
 
+test("homework: teacher правит и удаляет только задания своей области", async () => {
+  const route = await read("src/routes/homework.ts");
+  // Раньше teacher проходил проверку наравне с админом и мог менять ДЗ любой группы.
+  assert.doesNotMatch(route, /isAdminOrTeacher/);
+  assert.match(route, /isWithinTeachingScope\(scope, \{/);
+  assert.match(route, /вне вашей области преподавания/);
+});
+
 test("область без назначений работает fail-closed", async () => {
   const scope = await read("src/lib/teacher-scope.ts");
   assert.match(scope, /fail closed/);

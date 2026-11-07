@@ -430,11 +430,12 @@ homework.patch("/:id", requireAuth, async (c) => {
   
   try {
     const roles = await callerRoles(db, user.id);
-    const isAdminOrTeacher = ["teacher", "moderator", "admin"].some(r => roles.includes(r));
+    const isManager = roles.includes("admin") || roles.includes("moderator");
+    const isTeacher = roles.includes("teacher");
     
     // Verify homework exists and check ownership
     const { data: task, error: taskError } = await db.from("homeworks")
-      .select("id,created_by,status,group_id").eq("id", id).maybeSingle();
+      .select("id,created_by,status,group_id,assigned_teacher").eq("id", id).maybeSingle();
       
     if (taskError) throw taskError;
     if (!task) {
@@ -447,10 +448,24 @@ homework.patch("/:id", requireAuth, async (c) => {
       return c.json(body, status as 403);
     }
     
-    // Non-staff can only edit their own non-group homework
-    if (!isAdminOrTeacher && task.group_id && String(task.created_by || "") !== user.id) {
-      const { body, status } = fail("FORBIDDEN", "Нельзя редактировать чужие групповые задания", 403, rid);
-      return c.json(body, status as 403);
+    // Роль teacher не даёт прав на чужие группы: область складывается из
+    // авторства, явного проверяющего и назначенных групп/студентов (§10).
+    if (!isManager) {
+      if (isTeacher) {
+        const scope = await loadTeacherScope(db, user.id);
+        const inScope = isWithinTeachingScope(scope, {
+          createdBy: (task as { created_by?: unknown }).created_by,
+          assignedTeacher: (task as { assigned_teacher?: unknown }).assigned_teacher,
+          groupIds: [(task as { group_id?: unknown }).group_id as string | null | undefined],
+        });
+        if (!inScope) {
+          const { body, status } = fail("FORBIDDEN", "Это задание вне вашей области преподавания", 403, rid);
+          return c.json(body, status as 403);
+        }
+      } else if (task.group_id && String(task.created_by || "") !== user.id) {
+        const { body, status } = fail("FORBIDDEN", "Нельзя редактировать чужие групповые задания", 403, rid);
+        return c.json(body, status as 403);
+      }
     }
     
     const { data, error } = await db.from("homeworks")
@@ -493,11 +508,12 @@ homework.delete("/:id", requireAuth, async (c) => {
   
   try {
     const roles = await callerRoles(db, user.id);
-    const isAdminOrTeacher = ["teacher", "moderator", "admin"].some(r => roles.includes(r));
+    const isManager = roles.includes("admin") || roles.includes("moderator");
+    const isTeacher = roles.includes("teacher");
     
     // Get current homework state
     const { data: task, error: taskError } = await db.from("homeworks")
-      .select("id,group_id,created_by,status").eq("id", id).maybeSingle();
+      .select("id,group_id,created_by,assigned_teacher,status").eq("id", id).maybeSingle();
       
     if (taskError) throw taskError;
     if (!task) {
@@ -510,9 +526,20 @@ homework.delete("/:id", requireAuth, async (c) => {
       return c.json(body, status as 403);
     }
     
-    // Permission checks
-    if (isAdminOrTeacher) {
-      // Staff can delete any homework
+    // Permission checks: модератор/админ — всё, teacher — только своя область.
+    if (isManager) {
+      // Managers can delete any homework
+    } else if (isTeacher) {
+      const scope = await loadTeacherScope(db, user.id);
+      const inScope = isWithinTeachingScope(scope, {
+        createdBy: (task as { created_by?: unknown }).created_by,
+        assignedTeacher: (task as { assigned_teacher?: unknown }).assigned_teacher,
+        groupIds: [(task as { group_id?: unknown }).group_id as string | null | undefined],
+      });
+      if (!inScope) {
+        const { body, status } = fail("FORBIDDEN", "Это задание вне вашей области преподавания", 403, rid);
+        return c.json(body, status as 403);
+      }
     } else if (task.group_id) {
       // Student can only delete their own group homework
       if (String(task.created_by || "") !== user.id) {
