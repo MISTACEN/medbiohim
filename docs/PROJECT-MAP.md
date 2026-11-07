@@ -65,7 +65,7 @@
 | `src/lib/teacher-scope.ts` | Область преподавателя (teacher_assignments + assigned_teacher) |
 | `src/lib/content-access.ts` | Владение контентом (teacher правит только своё) |
 | `src/lib/module-access.ts` + `module-access-rules.ts` | Access Control разделов (deny > allow, сроки, fail-open без миграции) |
-| `src/routes/teacher.ts` | Кабинет: обзор, работы, свои тесты, назначения, студенты, аналитика, CSV |
+| `src/routes/teacher/` | Кабинет — каталог: `core.ts` (обзор/работы/кандидаты/предметы), `tests.ts` (свои тесты), `assignments.ts` (области+детализация), `assigned-tests.ts` (назначения тестов/аналитика/CSV), `students.ts` (ростер/карточки), `_shared.ts` (хелперы); сборка в `index.ts` |
 | `src/routes/tests.ts`, `preparation.ts` | Тестовый движок: попытки, сессии подготовки, preview, назначения студентам |
 | `src/routes/access.ts` | /access/my-modules + админ-CRUD доступов + журнал |
 | `src/routes/admin*.ts` | Админ-поверхности (users, content, parity, schedule, attestations…) |
@@ -84,4 +84,5 @@
 3. **`tests/` vs `tickets/` vs `practice/` vs `cards/`** — три входа в один тестовый движок (подготовка/билеты/практика).
 4. **Права в двух местах**: `src/lib/admin/access.ts` (легаси-проверка Admin UI) и `src/shared/permissions` (новая модель) — клиентские дубли, сервер один (`permissions.ts` воркера).
 5. **`src/core/` не выделен физически** — auth в components, права в shared, api-клиент в lib. Это осознанная цель, не сделана.
-6. **70 файлов роутов воркера без подпапок** — домен ищется по имени файла.
+6. **70 файлов роутов воркера** — кабинет уже в подпапке routes/teacher/ (образец разнесения); остальные домены ищутся по имени файла. Следующие кандидаты: admin.ts (1445 строк — telegram+lectures+questions+users+files в одном; сейчас в работе у второго агента), workshop.ts (787), admin-parity.ts (680).
+7. **Страницы-монолиты фронтенда**: schedule/page.tsx (1221), subjects/[id]/page.tsx (1084, 40 импортов), settings/page.tsx (869), page.tsx (836), practice/page.tsx (829) — при доработке этих разделов выносить крупные куски в src/components/<домен>/.
