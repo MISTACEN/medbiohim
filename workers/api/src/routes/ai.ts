@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { rateLimit } from "../lib/redis";
+import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
 import { generateAiCompletion, getAiProviderStatus } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
@@ -19,6 +20,22 @@ async function generate(env: Env, messages: ChatMessage[], requested?: string): 
     content: message.content.slice(0, 12000),
   })), requested || "auto");
   return { text: result.content, provider: result.provider, model: result.model };
+}
+
+/**
+ * Внешние провайдеры (Groq, GigaChat, Mistral) могут отказать все сразу —
+ * например, из-за сертификатов или исчерпанных ключей. Workers AI работает
+ * внутри Cloudflare без ключей, поэтому он последний фолбэк тьютора.
+ */
+async function generateWithFallback(env: Env, messages: ChatMessage[], requested?: string): Promise<ProviderResult> {
+  try {
+    return await generate(env, messages, requested);
+  } catch (error) {
+    if (!workersAiConfigured(env)) throw error;
+    console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
+    const result = await workersAiComplete(env, messages, { temperature: 0.25, maxTokens: 900 });
+    return { text: result.content, provider: result.provider, model: result.model };
+  }
 }
 
 function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gigachat" {
@@ -250,7 +267,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
 
   let generated: ProviderResult;
   try {
-    generated = await generate(c.env, messages, payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider));
+    generated = await generateWithFallback(c.env, messages, payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
     console.error("[ai:message-generation]", { reason });
@@ -338,7 +355,7 @@ ai.post("/chat", requireAuth, async (c) => {
     content: String(message.content || "").slice(0, 12000),
   }));
   try {
-    const result = await generate(c.env, messages, payload.provider);
+    const result = await generateWithFallback(c.env, messages, payload.provider);
     return c.json(ok({ message: { role: "assistant", content: result.text }, provider: result.provider, model: result.model }, rid));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
