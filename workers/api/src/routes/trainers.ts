@@ -268,7 +268,9 @@ trainers.get("/feed", requireAuth, async (c) => {
   }
 });
 
-trainers.get("/feed/:id", requireAuth, async (c) => {
+// `:id` ограничен UUID: иначе он перехватывает `/feed/stats` и статистика
+// тренажёра отвечала 404 «карточка не найдена».
+trainers.get("/feed/:id{[0-9a-fA-F-]{36}}", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   try {

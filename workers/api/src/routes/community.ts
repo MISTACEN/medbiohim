@@ -381,18 +381,29 @@ community.get("/admin/reports", requireAdmin, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   try {
+    // Без вложенных join: PostgREST не знает связи community_reports.reporter_user_id
+    // с public.users и отвечал ошибкой, из-за которой очередь всегда была 503.
     const { data, error } = await supabase
       .from("community_reports")
-      .select("id,post_id,reason,status,created_at,resolved_at,community_posts(title,author_id,group_id),users(full_name)")
+      .select("id,post_id,reporter_user_id,reason,status,created_at,resolved_at")
       .order("status", { ascending: false })
       .order("created_at", { ascending: true })
       .limit(200);
     if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Очередь жалоб недоступна", 503, rid); return c.json(body, status as 503); }
-    const items = (data || []).map((row: any) => ({
+    const rows = data || [];
+    const postIds = [...new Set(rows.map((row: any) => String(row.post_id || "")).filter(Boolean))];
+    const userIds = [...new Set(rows.map((row: any) => String(row.reporter_user_id || "")).filter(Boolean))];
+    const [posts, users] = await Promise.all([
+      postIds.length ? supabase.from("community_posts").select("id,title").in("id", postIds) : Promise.resolve({ data: [] as any[] }),
+      userIds.length ? supabase.from("users").select("id,full_name").in("id", userIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const postTitles = new Map((posts?.data || []).map((row: any) => [String(row.id), row.title || null]));
+    const userNames = new Map((users?.data || []).map((row: any) => [String(row.id), row.full_name || null]));
+    const items = rows.map((row: any) => ({
       id: row.id,
       post_id: row.post_id,
-      post_title: (Array.isArray(row.community_posts) ? row.community_posts[0]?.title : row.community_posts?.title) || null,
-      reporter_name: (Array.isArray(row.users) ? row.users[0]?.full_name : row.users?.full_name) || null,
+      post_title: postTitles.get(String(row.post_id)) ?? null,
+      reporter_name: userNames.get(String(row.reporter_user_id)) ?? null,
       reason: row.reason,
       status: row.status,
       created_at: row.created_at,
