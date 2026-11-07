@@ -66,7 +66,10 @@ access.get("/my-modules", requireAuth, async (c) => {
       const service = createServiceClient(c.env);
       if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
       const registry = await loadModuleRegistry(service);
-      source = registry.modules;
+      // Мастерская — студенческое пространство: преподавателю она не показывается.
+      source = isTeacher
+        ? registry.modules.filter((item) => item.key !== "workshop")
+        : registry.modules;
     } else {
       const accessResult = await effectiveModuleAccess(c.env, userId, roles);
       source = accessResult.resolved === false

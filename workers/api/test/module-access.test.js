@@ -108,7 +108,7 @@ test("gate подключён к маршрутам разделов и fail-ope
     ["community", 'gatedModule("community", community)'],
     ["search", 'gatedModule("search", search)'],
     ["library", 'gatedModule("library", materials)'],
-    ["workshop", 'gatedModule("workshop", workshop)'],
+    ["workshop", 'gatedModule("workshop", workshop, { denyRoles: ["teacher"] })'],
     ["academic", 'gatedModule("academic", academic)'],
     ["assignments", 'gatedModule("assignments", assignments)'],
     ["calculators", 'gatedModule("calculators", calculators)'],
@@ -119,6 +119,8 @@ test("gate подключён к маршрутам разделов и fail-ope
   }
   assert.match(index, /v1\.route\("\/access", access\)/);
   assert.match(index, /gated\.use\("\*", requireAuth\)/);
+  // Мастерская — студенческое пространство: преподавателю закрыта технически.
+  assert.match(index, /gatedModule\("workshop", workshop, \{ denyRoles: \["teacher"\] \}\)/);
 
   const lib = await read("src/lib/module-access.ts");
   assert.match(lib, /app_modules is not migrated yet; fail-open/);

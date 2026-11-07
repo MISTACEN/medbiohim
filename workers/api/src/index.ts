@@ -88,10 +88,14 @@ import { requireAuth, type AuthVariables } from "./middleware/auth";
  * повторная аутентификация безопасна; moduleGate после неё проверяет,
  * открыт ли раздел пользователю (admin/teacher проходят всегда).
  */
-function gatedModule(moduleKey: string, router: Hono<{ Bindings: Env; Variables: AuthVariables }>) {
+function gatedModule(
+  moduleKey: string,
+  router: Hono<{ Bindings: Env; Variables: AuthVariables }>,
+  options: { denyRoles?: readonly string[] } = {},
+) {
   const gated = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
   gated.use("*", requireAuth);
-  gated.use("*", moduleGate(moduleKey));
+  gated.use("*", moduleGate(moduleKey, options));
   gated.route("/", router);
   return gated;
 }
@@ -203,7 +207,7 @@ v1.route("/telegram", telegramTrainer);
 v1.route("/telegram", telegram);
 v1.route("/presence", presence);
 v1.route("/community", gatedModule("community", community));
-v1.route("/workshop", gatedModule("workshop", workshop));
+v1.route("/workshop", gatedModule("workshop", workshop, { denyRoles: ["teacher"] }));
 v1.route("/staff", gatedModule("group", staff));
 // Кабинет преподавателя: область назначений, работы и проверка.
 v1.route("/teacher", teacher);
