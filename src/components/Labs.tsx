@@ -193,7 +193,7 @@ export default function Labs({ sessionId, subject }: LabsProps) {
       <main className="labs-content">
         <div className="lab-cards">
           {note ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{note}</div>
+            <div className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm text-[var(--status-warn-fg)]">{note}</div>
           ) : null}
           {templates.length === 0 ? (
             <p>Доступных лабораторных работ пока нет.</p>

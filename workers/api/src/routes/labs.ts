@@ -35,7 +35,7 @@ async function labsQuery(c: any, build: (db: any) => any): Promise<{ data: any; 
  * List available lab templates
  */
 labs.get("/templates", requireAuth, async (c) => {
-  const rid = requestId(), db = c.get("supabase");
+  const rid = requestId();
   
   try {
     const subject = c.req.query("subject");
