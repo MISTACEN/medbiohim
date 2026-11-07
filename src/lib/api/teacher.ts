@@ -239,12 +239,40 @@ export function setAssignmentDetailLevel(id: string, detailLevel: number) {
   );
 }
 
+export type OpenAnswerItem = {
+  id: string;
+  test_id: string;
+  test_title: string | null;
+  question_text: string;
+  question_type: string | null;
+  etalon: string;
+  student_answer: string;
+  grading_status: string | null;
+  grading_feedback: string | null;
+  student_name: string;
+  answered_at: string | null;
+};
+
+/** Очередь ручной проверки открытых ответов. */
+export function teacherGradingQueue(query?: string) {
+  return api<{ items: OpenAnswerItem[]; total: number }>(endpoints.teacher.gradingQueue(query));
+}
+
+/** Вердикт учителя по открытому ответу (только свой/подключённый тест). */
+export function gradeOpenAnswer(id: string, isCorrect: boolean, feedback?: string | null) {
+  return api<{ answer: { id: string; is_correct: boolean; score: number } }>(
+    endpoints.teacher.gradingAnswer(id),
+    { method: "POST", body: JSON.stringify({ is_correct: isCorrect, feedback }) },
+  );
+}
+
 export type QuestionAnalyticsItem = {
   question_id: string;
   order: number;
   text: string;
   answered: number;
   correct: number;
+  low_sample?: boolean;
   correct_percent: number | null;
 };
 
@@ -288,6 +316,7 @@ export type TeacherTestAssignment = {
   group_id: string | null;
   group_name: string | null;
   individual: boolean;
+  analytics_allowed?: boolean;
   students_targeted: number;
   due_at: string | null;
   time_limit_sec: number | null;

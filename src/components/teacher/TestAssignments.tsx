@@ -243,7 +243,8 @@ export function TestAssignments() {
                   </Link>
                   <button
                     type="button"
-                    disabled={busy === "analytics-" + item.id}
+                    disabled={busy === "analytics-" + item.id || item.analytics_allowed === false}
+                    title={item.analytics_allowed === false ? "Аналитика — только для своих тестов или подключённых админом" : undefined}
                     onClick={() => void toggleAnalytics(item.id)}
                     className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
                   >
@@ -293,7 +294,11 @@ export function TestAssignments() {
                                   : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")
                           }
                         >
-                          {question.correct_percent == null ? "нет данных" : `${question.correct_percent}%`}
+                          {question.correct_percent == null
+                            ? question.low_sample
+                              ? "мало данных (<5)"
+                              : "нет данных"
+                            : `${question.correct_percent}%`}
                         </span>
                         <span className="w-16 text-right text-xs text-[var(--muted)]">{question.correct}/{question.answered}</span>
                       </li>

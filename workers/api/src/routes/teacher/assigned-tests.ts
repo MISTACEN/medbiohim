@@ -15,13 +15,16 @@ import { describeScope, loadTeacherScope, loadTeacherSubjectIds } from "../../li
 import { createServiceClient } from "../../lib/supabase";
 import {
   ASSIGNMENT_ROLES,
+  MIN_SAMPLE_SIZE,
   UUID,
+  canSeeTestResults,
   error,
   scopedHomeworks,
   scopedSubmissions,
   studentDirectory,
   teacherSubjects,
   uniqueIds,
+  visibleResultTestIds,
   type TeacherEnv,
 } from "./_shared";
 
@@ -192,6 +195,8 @@ teacher.get("/test-assignments", requireAuth, async (c) => {
     if (attempts.error) throw attempts.error;
     if (members.error) throw members.error;
     const attemptRows = (attempts.data || []) as any[];
+    // Видимость результатов по тестам (решение владельца): свои или teacher_visible.
+    const visibleTests = await visibleResultTestIds(service, roles, userId, testIds);
     const membersByGroup = new Map<string, Set<string>>();
     for (const row of (members.data || []) as any[]) {
       const key = String(row.group_id);
@@ -220,6 +225,7 @@ teacher.get("/test-assignments", requireAuth, async (c) => {
         group_id: row.group_id,
         group_name: (Array.isArray(row.groups) ? row.groups[0] : row.groups)?.name || null,
         individual: !row.group_id,
+        analytics_allowed: visibleTests.has(String(row.test_id)),
         students_targeted: targets.size,
         due_at: row.due_at,
         time_limit_sec: row.time_limit_sec,
@@ -290,6 +296,12 @@ teacher.get("/test-assignments/:id/analytics", requireAuth, async (c) => {
     const testId = String(assignment.test_id);
     const testTitle = (Array.isArray(assignment.tests) ? assignment.tests[0] : assignment.tests)?.title || null;
 
+    // Решение владельца: аналитика — только на своих тестах или подключённых
+    // админом (teacher_visible). Чужие тесты без галочки — 403.
+    if (!(await canSeeTestResults(service, roles, userId, testId))) {
+      return error(c, rid, 403, "FORBIDDEN", "Аналитика доступна только для своих тестов или подключённых админом");
+    }
+
     const { data: links, error: linksError } = await service
       .from("test_questions")
       .select("order_index,question:questions(id,text)")
@@ -327,13 +339,18 @@ teacher.get("/test-assignments/:id/analytics", requireAuth, async (c) => {
     }
     const items = questions.map((question: any, index: number) => {
       const stat = perQuestion.get(String(question.id)) || { answered: 0, correct: 0 };
+      // Порог малой выборки N=5 (решение владельца): меньше — «мало данных».
+      const lowSample = stat.answered < MIN_SAMPLE_SIZE;
       return {
         question_id: String(question.id),
         order: index + 1,
         text: String(question.text || "").slice(0, 300),
         answered: stat.answered,
         correct: stat.correct,
-        correct_percent: stat.answered ? Math.round((stat.correct / stat.answered) * 100) : null,
+        low_sample: lowSample,
+        correct_percent: stat.answered && !lowSample
+          ? Math.round((stat.correct / stat.answered) * 100)
+          : null,
       };
     }).sort((a: any, b: any) => (a.correct_percent ?? 101) - (b.correct_percent ?? 101));
     return c.json(ok({
@@ -368,6 +385,11 @@ teacher.get("/test-assignments/:id/export", requireAuth, async (c) => {
     if (assignmentError) throw assignmentError;
     if (!assignment) return error(c, rid, 404, "NOT_FOUND", "Назначение не найдено");
     const testId = String(assignment.test_id);
+
+    // Экспорт — уровень 4: тоже только свои/подключённые тесты.
+    if (!(await canSeeTestResults(service, roles, userId, testId))) {
+      return error(c, rid, 403, "FORBIDDEN", "Ведомость доступна только для своих тестов или подключённых админом");
+    }
 
     // Целевая аудитория: группа или персональный список.
     const targets = new Map<string, string>();

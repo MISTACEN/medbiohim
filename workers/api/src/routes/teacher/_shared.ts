@@ -144,3 +144,59 @@ export async function studentDirectory(db: any, studentIds: readonly string[]) {
 }
 
 export type { Env, AuthVariables };
+
+/**
+ * Виден ли учителю результат по тесту (аналитика/ведомость/ручная проверка):
+ * только свои тесты (created_by) или подключённые админом (teacher_visible).
+ * Директива владельца 2026-11-07: аналитика и ФИО — только на таких тестах.
+ */
+export async function canSeeTestResults(
+  service: any,
+  roles: readonly string[],
+  userId: string,
+  testId: string,
+): Promise<boolean> {
+  if (roles.includes("admin")) return true;
+  const { data, error } = await service
+    .from("tests")
+    .select("id,created_by,teacher_visible")
+    .eq("id", testId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return false;
+  return (
+    String((data as any).created_by || "") === userId ||
+    (data as any).teacher_visible === true
+  );
+}
+
+/** ID тестов, результаты которых видны учителю (батч-вариант для списков). */
+export async function visibleResultTestIds(
+  service: any,
+  roles: readonly string[],
+  userId: string,
+  testIds: readonly string[],
+): Promise<Set<string>> {
+  if (roles.includes("admin")) return new Set(testIds.map(String));
+  const unique = [...new Set(testIds.map(String))].filter(Boolean);
+  if (!unique.length) return new Set();
+  const { data, error } = await service
+    .from("tests")
+    .select("id,created_by,teacher_visible")
+    .in("id", unique as string[])
+    .limit(500);
+  if (error) throw error;
+  const allowed = new Set<string>();
+  for (const row of data || []) {
+    if (
+      String((row as any).created_by || "") === userId ||
+      (row as any).teacher_visible === true
+    ) {
+      allowed.add(String((row as any).id));
+    }
+  }
+  return allowed;
+}
+
+/** Порог малой выборки для агрегатов (решение владельца: N=5). */
+export const MIN_SAMPLE_SIZE = 5;

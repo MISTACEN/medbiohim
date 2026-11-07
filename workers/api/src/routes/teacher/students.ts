@@ -145,11 +145,19 @@ teacher.get("/students/:id/attempts", requireAuth, async (c) => {
         return error(c, rid, 403, "FORBIDDEN", "Студент вне вашей области");
       }
     }
-    let testsQuery = service.from("tests").select("id").is("archived_at", null).limit(2000);
+    let testsQuery = service.from("tests")
+      .select("id,created_by,teacher_visible")
+      .is("archived_at", null).limit(2000);
     if (!isAdmin) testsQuery = testsQuery.eq("created_by", userId);
     const { data: ownTests, error: ownTestsError } = await testsQuery;
     if (ownTestsError) throw ownTestsError;
-    const ownTestIds = (ownTests || []).map((row: any) => String(row.id));
+    // Директива владельца: результаты — по своим тестам и подключённым админом.
+    const ownTestIds = (ownTests || [])
+      .filter((row: any) =>
+        isAdmin ||
+        String(row.created_by || "") === userId ||
+        row.teacher_visible === true)
+      .map((row: any) => String(row.id));
     if (!ownTestIds.length) return c.json(ok({ items: [], student_id: studentId, detail_level: 4 }, rid));
     // Максимум из уровней детализации по назначениям преподавателя, накрывающим
     // группы студента; у админа — полный уровень.
