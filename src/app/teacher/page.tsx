@@ -26,7 +26,6 @@ import { MyLectures } from "@/components/teacher/MyLectures";
 import { MyQuestionBank } from "@/components/teacher/MyQuestionBank";
 import { MyTests } from "@/components/teacher/MyTests";
 import { MyStudents } from "@/components/teacher/MyStudents";
-import { OpenAnswerGrading } from "@/components/teacher/OpenAnswerGrading";
 import { TestAssignments } from "@/components/teacher/TestAssignments";
 import {
   gradeSubmission,
@@ -340,7 +339,6 @@ export default function TeacherPage() {
           области автора и не смешивается со студенческой статистикой. */}
       <MyTests />
       <MyStudents />
-      <OpenAnswerGrading />
       <TestAssignments />
       <MyLectures />
       <MyQuestionBank />

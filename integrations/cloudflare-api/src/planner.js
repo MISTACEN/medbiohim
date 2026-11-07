@@ -1056,6 +1056,43 @@ export async function finishSupabasePreparation(request, env, sessionId, fetcher
   }
 }
 
+/**
+ * Семантическая проверка открытого ответа нейросетью — последняя инстанция
+ * (решение владельца 2026-11-07: спорных ситуаций для учителя нет, AI
+ * выносит финальный вердикт). Правила жёсткие: синонимы и опечатки допустимы,
+ * фактически неверный ответ не засчитывается. Любая ошибка AI → вопрос
+ * остаётся pending (не выдумываем вердикт).
+ */
+async function aiFinalGradeOpenAnswer(env, question, studentAnswer) {
+  try {
+    if (!env?.AI || typeof env.AI.run !== "function") return null;
+    const model = String(env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct-fp8").trim();
+    const messages = [
+      { role: "system", content: "Ты — строгая система проверки учебных ответов. Сравни ответ студента с эталоном ПО СМЫСЛУ. Синонимы, другой порядок слов и мелкие опечатки допустимы. Фактически неверный, неполный или пустой ответ — incorrect. Ответь строго JSON: {\"correct\": true|false}. Без пояснений." },
+      { role: "user", content: "Вопрос: " + String(question.text || "").slice(0, 2000) + "\nЭталон: " + String(question.answer || "").slice(0, 1000) + "\nОтвет студента: " + String(studentAnswer || "").slice(0, 2000) },
+    ];
+    const response = await Promise.race([
+      env.AI.run(model, { messages, temperature: 0, max_tokens: 64, stream: false }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("ai-timeout")), 25000)),
+    ]);
+    const content = typeof response === "string" ? response : String(response?.response || "");
+    const match = /"correct"\s*:\s*(true|false)/i.exec(content);
+    if (!match) return null;
+    return {
+      is_correct: match[1].toLowerCase() === "true",
+      grading_source: "ai",
+      grading_model: model,
+      confidence: 0.8,
+      feedback: (match[1].toLowerCase() === "true"
+        ? "Смысл ответа подтверждён нейросетью."
+        : "Нейросеть не подтвердила смысл ответа по эталону."),
+    };
+  } catch {
+    /* Любая ошибка AI → вопрос остаётся pending, вердикт не выдумываем. */
+  }
+  return null;
+}
+
 export async function retrySupabasePreparationGrading(request, env, sessionId, questionId = "", fetcher = fetch) {
   const c = await client(request, env, fetcher);
   if (!c.ok) return c;
@@ -1074,12 +1111,30 @@ export async function retrySupabasePreparationGrading(request, env, sessionId, q
       const q = byId.get(String(row.question_id));
       if (!q) continue;
       const grade = gradePreparationAnswer(q, row.answer_text);
+      let finalGrade = grade;
+      // Нейросеть — последняя инстанция: правила не смогли → AI финальный вердикт.
+      if (grade.is_correct === null && !q.is_closed) {
+        const aiVerdict = await aiFinalGradeOpenAnswer(env, q, row.answer_text);
+        if (aiVerdict) {
+          finalGrade = {
+            ...grade,
+            is_correct: aiVerdict.is_correct,
+            score: aiVerdict.is_correct ? 100 : 0,
+            grading_source: aiVerdict.grading_source,
+            grading_status: "deterministic",
+            confidence: aiVerdict.confidence,
+            feedback: aiVerdict.feedback,
+            model: aiVerdict.grading_model,
+            graded_at: new Date().toISOString(),
+          };
+        }
+      }
       const updated = await c.rows("test_preparation_results", {
         session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id,
         question_id: "eq." + String(row.question_id), select: "*",
-      }, { method: "PATCH", body: JSON.stringify({ is_correct: grade.is_correct, score: grade.score,
-        grading_status: grade.grading_status, grading_source: grade.grading_source, grading_confidence: grade.confidence,
-        grading_feedback: grade.feedback, grading_model: grade.model, graded_at: grade.graded_at }) });
+      }, { method: "PATCH", body: JSON.stringify({ is_correct: finalGrade.is_correct, score: finalGrade.score,
+        grading_status: finalGrade.grading_status, grading_source: finalGrade.grading_source, grading_confidence: finalGrade.confidence,
+        grading_feedback: finalGrade.feedback, grading_model: finalGrade.model, graded_at: finalGrade.graded_at }) });
       if (updated[0]) items.push(updated[0]);
     }
     return { ok: true, data: { items, retried: items.length } };
