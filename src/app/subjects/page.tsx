@@ -11,6 +11,7 @@ import { listSubjects, listSubjectsCatalog } from "@/lib/api";
 import { getScheduleMeta } from "@/lib/api/schedule";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { subjectCategory } from "@/lib/subjectCategories";
 
 type Item = {
   id: string;
@@ -148,7 +149,7 @@ export default function SubjectsPage() {
             const meta = byName.get((s.name || "").toLowerCase());
             return {
               ...s,
-              category: meta?.category || "Другое",
+              category: meta?.category || subjectCategory(s.name, s.slug),
               icon: meta?.icon,
               blurb: meta?.blurb,
               slug: s.slug || meta?.slug || s.id,
