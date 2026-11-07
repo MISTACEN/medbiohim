@@ -191,7 +191,13 @@ export default function SubjectsPage() {
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(s);
     }
-    return CATEGORY_ORDER.filter((c) => map.has(c)).map((c) => ({ category: c, items: map.get(c)! }));
+    const order = [...CATEGORY_ORDER];
+    // Категории вне CATEGORY_ORDER раньше молча пропадали со страницы.
+    for (const cat of map.keys()) if (!order.includes(cat)) order.push(cat);
+    const byName = (a: Item, b: Item) => a.name.localeCompare(b.name, "ru", { numeric: true, sensitivity: "base" });
+    return order
+      .filter((c) => map.has(c))
+      .map((c) => ({ category: c, items: map.get(c)!.slice().sort(byName) }));
   }, [filtered]);
 
   const sems = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];

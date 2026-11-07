@@ -148,7 +148,7 @@ export default function MaterialsPage() {
   }, [initialSubjectSlug, initialQuery]);
 
   const visible = items.filter((m) => filter === "all" || String(m.subject_name || "") === filter);
-  const subjectNames = Array.from(new Set(items.map((m) => String(m.subject_name || "")).filter(Boolean))).sort();
+  const subjectNames = Array.from(new Set(items.map((m) => String(m.subject_name || "")).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru", { numeric: true, sensitivity: "base" }));
 
   return (
     <div className="space-y-6">
