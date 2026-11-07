@@ -12,6 +12,7 @@ import { describeApiError } from "@/lib/errors";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { FilePreview } from "@/shared/file-engine/viewers";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { compareRu } from "@/lib/collation";
 
 function FileIcon({ type }: { type?: string | null }) {
   const t = String(type || "").toLowerCase();
@@ -148,7 +149,7 @@ export default function MaterialsPage() {
   }, [initialSubjectSlug, initialQuery]);
 
   const visible = items.filter((m) => filter === "all" || String(m.subject_name || "") === filter);
-  const subjectNames = Array.from(new Set(items.map((m) => String(m.subject_name || "")).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru", { numeric: true, sensitivity: "base" }));
+  const subjectNames = Array.from(new Set(items.map((m) => String(m.subject_name || "")).filter(Boolean))).sort(compareRu);
 
   return (
     <div className="space-y-6">

@@ -13,6 +13,7 @@ import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import { describeApiError } from "@/lib/errors";
+import { compareRu } from "@/lib/collation";
 
 type Bank = {
   id: string;
@@ -47,7 +48,7 @@ function TicketsPageInner() {
         return;
       }
       const items = (res.data.items || []) as Bank[];
-      setBanks(items);
+      setBanks([...items].sort((a, b) => compareRu(String(a.title || ""), String(b.title || ""))));
       if (fromSubject) {
         const hit = items.find((b) => subjectSlugMatches(b.subject_slug, fromSubject));
         if (hit) {

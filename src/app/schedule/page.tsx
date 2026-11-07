@@ -14,6 +14,7 @@ import { SkeletonCards, SkeletonText } from "@/components/ui/Skeleton";
 import IcalImportCard from "@/components/schedule/IcalImportCard";
 import { describeApiError } from "@/lib/errors";
 import { homeworkPrepStatus } from "@/lib/learning/statuses";
+import { compareRu } from "@/lib/collation";
 
 /**
  * Оценка и отзыв преподавателя по этой работе. Бэкенд их возвращал, но в интерфейсе
@@ -527,7 +528,7 @@ export default function SchedulePage() {
 
   // Планировщик: единый список ДЗ с поиском, фильтрами и переносом сроков.
   const hwSubjects = useMemo(
-    () => Array.from(new Set(homeworks.map((h: any) => String(h.subject_name || "")).filter(Boolean))).sort(),
+    () => Array.from(new Set(homeworks.map((h: any) => String(h.subject_name || "")).filter(Boolean))).sort(compareRu),
     [homeworks]
   );
   const filteredHomeworks = useMemo(() => {

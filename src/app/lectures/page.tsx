@@ -10,6 +10,7 @@ import { useLectureProgress } from "@/hooks/useLectureProgress";
 import { lectureSolvedCount, lectureTaskTotal } from "@/lib/lectureProgress";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCards } from "@/components/ui/Skeleton";
+import { compareRu } from "@/lib/collation";
 
 type LectureRow = {
   id: string;
@@ -71,7 +72,7 @@ export default function LecturesPage() {
 
   const subjects = useMemo(() => {
     const s = new Set(items.map((x) => x.subject || x.subject_slug).filter(Boolean) as string[]);
-    return Array.from(s).sort();
+    return Array.from(s).sort(compareRu);
   }, [items]);
 
   return (

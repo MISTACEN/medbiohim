@@ -17,6 +17,7 @@ import { HistologyAtlas } from "@/components/trainers/HistologyAtlas";
 import { groupAtlasCards } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import { compareRu } from "@/lib/collation";
 
 type AnswerRow = {
   id: string;
@@ -64,7 +65,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
       if (cancelled) return;
       if (feed.ok) {
         setFeedItems(feed.data.items || []);
-        setTopics(Array.from(new Set(feed.data.items.flatMap((x: any) => Array.isArray(x.tags) ? x.tags : []))).sort());
+        setTopics(Array.from(new Set(feed.data.items.flatMap((x: any) => Array.isArray(x.tags) ? x.tags : []))).sort(compareRu));
       } else {
         setError(feed.error?.message || "Не удалось загрузить микропрепараты.");
       }

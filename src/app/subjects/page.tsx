@@ -12,6 +12,7 @@ import { getScheduleMeta } from "@/lib/api/schedule";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { subjectCategory } from "@/lib/subjectCategories";
+import { compareRu } from "@/lib/collation";
 
 type Item = {
   id: string;
@@ -195,7 +196,7 @@ export default function SubjectsPage() {
     const order = [...CATEGORY_ORDER];
     // Категории вне CATEGORY_ORDER раньше молча пропадали со страницы.
     for (const cat of map.keys()) if (!order.includes(cat)) order.push(cat);
-    const byName = (a: Item, b: Item) => a.name.localeCompare(b.name, "ru", { numeric: true, sensitivity: "base" });
+    const byName = (a: Item, b: Item) => compareRu(a.name, b.name);
     return order
       .filter((c) => map.has(c))
       .map((c) => ({ category: c, items: map.get(c)!.slice().sort(byName) }));
