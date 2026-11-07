@@ -7,7 +7,10 @@ import { requireAdmin } from "../lib/permissions";
 
 const groups = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MANAGERS = ["admin", "moderator", "teacher"];
+// Справочник групп для селекторов — admin и moderator. Преподаватель видит
+// только НАЗНАЧЕННЫЕ ему группы через Teacher Workspace (teacher_assignments),
+// а не каталог платформы со всеми группами и размерами (план §6.8, §38.2).
+const MANAGERS = ["admin", "moderator"];
 
 async function roleCodes(c: any): Promise<string[]> {
   const user = c.get("user");

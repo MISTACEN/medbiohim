@@ -157,7 +157,10 @@ admin.get("/content/validate", requireAuth, async (c) => {
 // Questions: preserve the legacy exam_questions contract used by the admin editor.
 admin.get("/questions", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
-  if (!await gate(c)) return;
+  // Банк экзаменационных вопросов — платформенный контент: читают и правят
+  // только admin и moderator. Преподаватель работает со СВОИМИ вопросами через
+  // /my-questions, чужие через админку ему не открываются (план §10).
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   const subjectSlug = (c.req.query("subject_slug") || "").trim();
   const subject = (c.req.query("subject") || "").trim();
   const kind = (c.req.query("kind") || "ticket").trim();
@@ -213,9 +216,10 @@ admin.delete("/questions/:id", requireAuth, async (c) => {
 
 admin.put("/question-bank/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? ""), input = await bodyJson(c);
-  // Банк вопросов — общий редактор staff (контракт MA8); личные вопросы автор
-  // ведёт через /my-questions, поэтому владение здесь не различается.
-  if (!await gate(c)) return;
+  // Банк вопросов — общий контент платформы, а не «своё» преподавателя.
+  // Его правят только администратор и модератор; преподаватель ведёт ЛИЧНЫЕ
+  // вопросы через /my-questions и чужие не меняет (контракт MA8, план §10).
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный ID вопроса");
   const type = String(input?.type || "");
   const text = String(input?.text || "").trim();
@@ -295,7 +299,10 @@ function variantBuilderMessage(rawMessage: string): string {
 
 admin.post("/tests/build-variants", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user"), input = await bodyJson(c);
-  if (!await gate(c)) return;
+  // Сборка вариантов из платформенного пула — задача admin и moderator.
+  // Преподаватель получит создание СВОИХ тестов через teacher-маршрут, когда
+  // такой флоу появится; RPC уже пишет p_actor_id как автора (план §10).
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   const title = String(input?.title || "").trim();
   const subjectId = String(input?.subject_id || "");
   const questionIds = Array.isArray(input?.question_ids) ? [...new Set((input.question_ids as unknown[]).map((id) => String(id)))] : [];
@@ -373,7 +380,9 @@ async function writeLectures(db: any, old: any, items: any[]) {
 }
 admin.get("/lectures", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
-  if (!await gate(c)) return;
+  // Редактор платформенных лекций — admin и moderator. На фронте он связан
+  // только с админ-страницей /admin/lectures (план §8, §12).
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   const status = c.req.query("status") || "", subject = c.req.query("subject") || "";
   try {
     const store = await readLectures(db);
@@ -386,7 +395,9 @@ admin.get("/lectures", requireAuth, async (c) => {
 });
 admin.post("/lectures/generate", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user"), input = await bodyJson(c);
-  if (!await gate(c)) return;
+  // AI-генерация лекций — платный внешний вызов: только admin и moderator.
+  // Преподаватель не расходует платформенную квоту на чужой каталог.
+  if (!await gate(c, CONTENT_MODERATORS)) return;
   const subjectSlug = String(input?.subject_slug || "").trim();
   const topic = String(input?.topic || "").trim();
   const notes = String(input?.notes || "").trim().slice(0, 12000);
@@ -1134,7 +1145,10 @@ admin.post("/files/:id/process-image", requireAuth, async (c) => {
 // --- Admin schedule read/write ---
 admin.get("/schedule", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase");
-  if (!await gate(c)) return;
+  // Консоль расписания — структура платформы: только администратор.
+  // Студенты и преподаватели читают своё расписание через /schedule, а не
+  // через админскую выборку по group_id (план §21).
+  if (!await gate(c, STRICT_ADMINS)) return;
   const groupId = String(c.req.query("group_id") || "").trim();
   const semester = Number(c.req.query("semester") || 0) || null;
   if (!UUID.test(groupId)) return error(c, rid, 422, "VALIDATION_ERROR", "group_id обязателен (UUID)");
@@ -1358,7 +1372,9 @@ admin.delete("/announcements/:id", requireAuth, async (c) => {
 // `POST /presence/heartbeat`; this endpoint reports everyone seen recently.
 admin.get("/presence", requireAuth, async (c) => {
   const rid = requestId();
-  if (!(await gate(c, MANAGERS))) return c.res;
+  // «Кто сейчас онлайн» — персональные данные студентов: только администратор.
+  // Раньше гейт включал преподавателя — тот видел активность всех (план §37-38).
+  if (!(await gate(c, STRICT_ADMINS))) return c.res;
   const within = Math.max(60, Math.min(900, Number(c.req.query("within") || 180) || 180));
   const redis = getRedis(c.env);
   if (!redis) return c.json(ok({ items: [], count: 0, within_sec: within, source: "unconfigured" }, rid));

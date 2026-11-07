@@ -305,7 +305,11 @@ test("test variant builder is a single atomic server-side transaction (MA10)", a
   const routeStart = admin.indexOf('admin.post("/tests/build-variants"');
   assert.ok(routeStart >= 0, "build-variants route exists");
   const route = admin.slice(routeStart, admin.indexOf("// Lectures are stored"));
-  assert.match(route, /await gate\(c\)/, "build-variants is not staff-gated");
+  assert.match(
+    route,
+    /await gate\(c, CONTENT_MODERATORS\)/,
+    "build-variants must be admin+moderator only",
+  );
   assert.match(route, /medbiohim_build_test_variants/);
   assert.match(route, /VALIDATION_ERROR/);
   assert.doesNotMatch(route, /\.from\("tests"\)/);
@@ -355,7 +359,13 @@ test("admin test-question editor covers text, options, answer and type via the s
   const routeStart = admin.indexOf('admin.put("/question-bank/:id"');
   assert.ok(routeStart >= 0, "question-bank route exists");
   const route = admin.slice(routeStart, admin.indexOf('admin.post("/tests/build-variants"'));
-  assert.match(route, /await gate\(c\)/, "question-bank PUT is not staff-gated");
+  // Общий банк вопросов — контент платформы: правят admin и moderator.
+  // Преподаватель работает со своими вопросами через /my-questions.
+  assert.match(
+    route,
+    /await gate\(c, CONTENT_MODERATORS\)/,
+    "question-bank PUT must be admin+moderator only",
+  );
   // type/text/answer/options заменяются целиком, is_published/difficulty и
   // учебная привязка — опционально.
   assert.match(route, /\{ type, text, answer, options: options \|\| \[\], updated_at/);

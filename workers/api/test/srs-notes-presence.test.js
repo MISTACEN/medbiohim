@@ -45,7 +45,9 @@ test("Notes are owner-scoped and mounted on the canonical API", async () => {
 test("Admin presence is gated and reads heartbeat timestamps", async () => {
   const admin = await source("../src/routes/admin.ts");
   assert.match(admin, /admin\.get\("\/presence", requireAuth/);
-  assert.match(admin, /gate\(c, MANAGERS\)/);
+  // Присутствие — персональные данные («кто сейчас онлайн»): только admin,
+  // иначе преподаватель видел бы активность всех студентов.
+  assert.match(admin, /gate\(c, STRICT_ADMINS\)/);
   assert.match(admin, /presence:/);
   assert.match(admin, /seconds_ago/);
 });

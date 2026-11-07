@@ -4,11 +4,13 @@ import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
 import { requireContentOwnership } from "../lib/content-access";
+import { loadTeacherScope } from "../lib/teacher-scope";
 
 const parity = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MANAGERS = ["admin", "moderator", "teacher"];
 const ADMIN_ONLY = ["admin"];
+const CONTENT_MODERATORS = ["admin", "moderator"];
 const VERSION_FIELDS: Record<string, string[]> = {
   questions: ["subject_id", "module_id", "topic_id", "type", "text", "answer", "options", "difficulty", "is_published", "archived_at", "source_key"],
   tests: ["subject_id", "module_id", "topic_id", "title", "time_limit_sec", "max_attempts", "is_published", "archived_at", "source_key", "order_index"],
@@ -142,7 +144,10 @@ parity.delete("/community/:id", requireAuth, async (c) => {
 // Admin homework panel. Deletion is blocked when student submissions/progress/attachments exist.
 parity.get("/homeworks", requireAuth, async (c) => {
   const rid = requestId();
-  if (!(await gate(c, MANAGERS))) return c.res;
+  // Панель собирает ДЗ и сдачи ВСЕХ групп вместе с ФИО и почтами студентов —
+  // это админская сводка. Преподаватель читает сдачи только своей области
+  // через /teacher/submissions (план §38.2-38.3).
+  if (!(await gate(c, CONTENT_MODERATORS))) return c.res;
   const db = dbFor(c);
   try {
     const { data: homeworks, error } = await db.from("homeworks")
@@ -196,6 +201,9 @@ parity.get("/homeworks", requireAuth, async (c) => {
 
 parity.post("/homeworks", requireAuth, async (c) => {
   const rid = requestId();
+  // Создание ДЗ преподавателем сохранено, но только в НАЗНАЧЕННЫХ ему группах:
+  // без проверки области панель позволяла задать задание любой группе или
+  // вообще без группы (план §6.8, §13.2).
   if (!(await gate(c, MANAGERS))) return c.res;
   const input = await jsonBody(c);
   if (!input || !validText(input.title, 300)) return responseError(c, rid, 422, "VALIDATION_ERROR", "Укажите название домашнего задания");
@@ -211,6 +219,19 @@ parity.post("/homeworks", requireAuth, async (c) => {
   }
   const db = dbFor(c), user = c.get("user");
   try {
+    const roles = await roleCodes(c);
+    // Не admin/moderator? Значит teacher: группа обязательна и обязана быть
+    // в его области (teacher_assignments). Таблицы назначений нет — fail-closed.
+    if (!roles.includes("admin") && !roles.includes("moderator")) {
+      const requestedGroupId = groupId ? String(groupId) : null;
+      if (!requestedGroupId) {
+        return responseError(c, rid, 403, "FORBIDDEN", "Домашнее задание преподавателя создаётся для назначенной группы");
+      }
+      const scope = await loadTeacherScope(c.get("supabase"), user.id);
+      if (!scope.groups.includes(String(requestedGroupId))) {
+        return responseError(c, rid, 403, "FORBIDDEN", "Группа не входит в вашу область преподавания");
+      }
+    }
     if (subjectId) {
       const { data, error } = await db.from("subjects").select("id").eq("id", subjectId).maybeSingle();
       if (error) throw error;
@@ -221,7 +242,6 @@ parity.post("/homeworks", requireAuth, async (c) => {
       if (error) throw error;
       if (!data || data.is_active === false) return responseError(c, rid, 422, "GROUP_NOT_FOUND", "Активная группа не найдена");
     }
-    const roles = await roleCodes(c);
     const row: any = {
       title: input.title.trim(), description: String(input.description || "").slice(0, 20000),
       subject_id: subjectId, group_id: groupId, due_at: dueAt,

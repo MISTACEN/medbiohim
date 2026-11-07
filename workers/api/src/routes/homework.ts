@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { smartPasteParse } from "../lib/smart-paste";
+import { loadTeacherScope, isWithinTeachingScope } from "../lib/teacher-scope";
 
 const homework = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -21,7 +22,6 @@ async function callerRoles(db: any, userId: string): Promise<string[]> {
   }
   return [...new Set(codes)];
 }
-const STAFF_ROLES = new Set(["teacher", "moderator", "admin"]);
 
 /**
  * §8 «Умный импорт» (Smart Paste): староста вставляет текст из чата,
@@ -320,8 +320,24 @@ homework.get("/:id/submissions", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
     const roles = await callerRoles(db, user.id);
-    const isStaff = roles.some((role) => STAFF_ROLES.has(role));
-    if (!isStaff) {
+    // Администратор и модератор действуют в рамках своих полномочий.
+    const isModeratorLike = roles.includes("admin") || roles.includes("moderator");
+    const isTeacher = roles.includes("teacher");
+    // Преподаватель — ограниченный инструмент, а не «staff с полным доступом»:
+    // он видит сдачи только по СВОИМ заданиям и в НАЗНАЧЕННЫХ ему группах
+    // (teacher_assignments). Чужое задание или чужая группа — 403.
+    if (!isModeratorLike && isTeacher) {
+      const scope = await loadTeacherScope(db, user.id);
+      const inScope = isWithinTeachingScope(scope, {
+        createdBy: task.created_by,
+        groupIds: [task.group_id],
+      });
+      if (!inScope) {
+        const { body, status } = fail("FORBIDDEN", "Задание вне вашей области проверки", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    if (!isModeratorLike && !isTeacher) {
       if (task.group_id) {
         const { data: membership, error: membershipError } = await db.from("group_memberships")
           .select("group_id").eq("user_id", user.id).eq("group_id", task.group_id).eq("is_active", true).limit(1);
@@ -338,10 +354,11 @@ homework.get("/:id/submissions", requireAuth, async (c) => {
     let query = db.from("homework_submissions")
       .select("id,homework_id,user_id,text_answer,file_id,status,grade,teacher_comment,submitted_at,graded_at,graded_by,created_at")
       .eq("homework_id", id).order("submitted_at", { ascending: false }).limit(500);
-    if (!isStaff) query = query.eq("user_id", user.id);
+    // Студент видит только свои сдачи; проверяющий — работы своей области.
+    if (!isModeratorLike && !isTeacher) query = query.eq("user_id", user.id);
     const { data, error } = await query;
     if (error) throw error;
-    return c.json(ok({ items: data || [], can_grade: isStaff }, rid));
+    return c.json(ok({ items: data || [], can_grade: isModeratorLike || isTeacher }, rid));
   } catch (error) {
     console.error("[homework:submissions]", error);
     const { body, status } = fail("SUBMISSIONS_UNAVAILABLE", "Не удалось загрузить сданные работы", 503, rid);

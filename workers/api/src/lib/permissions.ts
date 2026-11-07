@@ -50,7 +50,8 @@ const TEACHER_CAPABILITIES: readonly Capability[] = [
   "teacher.tests.publish",
   "teacher.results.view",
   "teacher.submissions.grade",
-  "workshop.publish",
+  // Workshop — студенческое peer-sharing пространство (план §40). Преподаватель
+  // в нём не участвует: не публикует и не модерирует чужие материалы.
   "personal.homework.manage",
 ];
 
