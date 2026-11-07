@@ -239,7 +239,7 @@ export function TestAssignments() {
                     href={`/teacher/preview/${item.test_id}`}
                     className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
                   >
-                    Пройти как автор
+                    Проверить глазами студента
                   </Link>
                   <button
                     type="button"

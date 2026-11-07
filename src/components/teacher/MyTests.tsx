@@ -45,9 +45,9 @@ function TestRow({ test }: { test: TeacherTestItem }) {
       <Link
         href={`/teacher/preview/${test.id}`}
         className="btn-secondary inline-flex items-center gap-1.5 text-sm"
-        title="Пройти тест как студент, без записи попытки и статистики"
+        title="Открыть тест так, как его увидит студент: без записи попытки и статистики"
       >
-        <FlaskConical className="h-4 w-4" /> Пройти как автор
+        <FlaskConical className="h-4 w-4" /> Проверить глазами студента
       </Link>
     </div>
   );
