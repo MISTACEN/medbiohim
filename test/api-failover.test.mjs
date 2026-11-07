@@ -19,6 +19,8 @@ test("Cloudflare API proxy returns a clear upstream failure without legacy fallb
 
 test("Cloudflare proxy preserves caller request context and uses a bounded timeout", () => {
   assert.match(route, /const init = requestInit\(req, bodyBuffer, 18000\)/);
-  assert.match(route, /\["content-type", "authorization", "accept", "x-request-id"\]/);
+  // x-bootstrap-secret пробрасывается сознательно: одноразовый маршрут
+  // миграций сам проверяет секрет на воркере.
+  assert.match(route, /\["content-type", "authorization", "accept", "x-request-id", "x-bootstrap-secret"\]/);
   assert.match(route, /export const maxDuration = 30/);
 });

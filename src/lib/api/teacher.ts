@@ -131,6 +131,71 @@ export function teacherTests(query?: string) {
   }>(endpoints.teacher.tests(query));
 }
 
+export type TeacherStudent = {
+  id: string;
+  name: string;
+  group: string | null;
+  group_id: string;
+  attempts: number;
+  finished: number;
+  avg_percent: number | null;
+};
+
+export type StudentAttempt = {
+  id: string;
+  test_title: string | null;
+  percent: number | null;
+  score: number | null;
+  max_score: number | null;
+  status: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
+/** Ростер студентов области преподавателя. */
+export function teacherStudents() {
+  return api<{ items: TeacherStudent[]; total: number; is_admin: boolean }>(
+    endpoints.teacher.students(),
+  );
+}
+
+/** Карточка студента: попытки по тестам преподавателя. */
+export function teacherStudentAttempts(studentId: string) {
+  return api<{ items: StudentAttempt[]; student_id: string }>(
+    endpoints.teacher.studentAttempts(studentId),
+  );
+}
+
+/** Создать свой тест из вопросов личного банка. */
+export function createTeacherTest(payload: {
+  title: string;
+  subject_id: string;
+  question_ids: string[];
+  time_limit_sec?: number | null;
+  max_attempts?: number | null;
+  is_published?: boolean;
+}) {
+  return api<{ test: { id: string; title: string; is_published: boolean }; question_count: number }>(
+    endpoints.teacher.testsCreate(),
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+/** Правка своего теста. */
+export function updateTeacherTest(
+  id: string,
+  patch: { title?: string; is_published?: boolean; time_limit_sec?: number | null; max_attempts?: number | null },
+) {
+  return api<{ test: { id: string; title: string; is_published: boolean } }>(
+    endpoints.teacher.test(id),
+    { method: "PATCH", body: JSON.stringify(patch) },
+  );
+}
+
+export function deleteTeacherTest(id: string) {
+  return api<{ removed: boolean }>(endpoints.teacher.test(id), { method: "DELETE" });
+}
+
 /** Предметы преподавателя. Админ читает любые через teacher_id и получает каталог. */
 export function teacherSubjects(teacherId?: string) {
   return api<{

@@ -16,9 +16,11 @@ import {
   createTestAssignment,
   deleteTestAssignment,
   teacherOverview,
+  teacherStudents,
   teacherTestAssignments,
   teacherTests,
   type TeacherOverview,
+  type TeacherStudent,
   type TeacherTestAssignment,
   type TeacherTestItem,
 } from "@/lib/api/teacher";
@@ -34,6 +36,9 @@ export function TestAssignments() {
   const [creating, setCreating] = useState(false);
   const [testId, setTestId] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [target, setTarget] = useState<"groups" | "students">("groups");
+  const [students, setStudents] = useState<TeacherStudent[]>([]);
+  const [studentIds, setStudentIds] = useState<string[]>([]);
   const [dueAt, setDueAt] = useState("");
   const [timeLimitMin, setTimeLimitMin] = useState("");
   const [maxAttempts, setMaxAttempts] = useState("");
@@ -55,6 +60,10 @@ export function TestAssignments() {
       if (!testId && catalog.data.items.length) setTestId(catalog.data.items[0].id);
     }
     if (summary.ok) setOverview(summary.data);
+    if (summary.ok) {
+      const roster = await teacherStudents();
+      if (roster.ok) setStudents(roster.data.items);
+    }
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -70,15 +79,17 @@ export function TestAssignments() {
   }
 
   async function submit() {
-    if (!testId || !groupIds.length) {
-      setNote("Выберите тест и хотя бы одну группу");
+    const targets = target === "groups" ? groupIds : studentIds;
+    if (!testId || !targets.length) {
+      setNote(target === "groups" ? "Выберите тест и хотя бы одну группу" : "Выберите тест и хотя бы одного студента");
       return;
     }
     setBusy("create");
     setNote("");
     const result = await createTestAssignment({
       test_id: testId,
-      group_ids: groupIds,
+      group_ids: target === "groups" ? groupIds : undefined,
+      student_ids: target === "students" ? studentIds : undefined,
       due_at: dueAt || null,
       time_limit_sec: timeLimitMin ? Number(timeLimitMin) * 60 : null,
       max_attempts: maxAttempts ? Number(maxAttempts) : null,
@@ -90,6 +101,7 @@ export function TestAssignments() {
       setNote(`Назначено: ${result.data.test_title}`);
       setCreating(false);
       setGroupIds([]);
+      setStudentIds([]);
       setDueAt("");
       setTimeLimitMin("");
       setMaxAttempts("");
@@ -230,6 +242,49 @@ export function TestAssignments() {
               placeholder="Дедлайн"
             />
           </div>
+          <div className="flex gap-2">
+            {(["groups", "students"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTarget(value)}
+                className={
+                  "rounded-xl px-3 py-1.5 text-sm font-semibold " +
+                  (target === value ? "btn-primary" : "rounded-xl border")
+                }
+              >
+                {value === "groups" ? "Группам" : "Отдельным студентам"}
+              </button>
+            ))}
+          </div>
+          {target === "students" ? (
+            <div>
+              <div className="mb-1 text-xs font-semibold text-slate-600">Студенты вашей области</div>
+              {students.length === 0 ? (
+                <div className="rounded-xl bg-slate-50 p-3 text-sm text-[var(--muted)]">Студентов пока нет.</div>
+              ) : (
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border p-2">
+                  {students.map((student) => (
+                    <label key={student.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={studentIds.includes(student.id)}
+                        onChange={() =>
+                          setStudentIds((current) =>
+                            current.includes(student.id)
+                              ? current.filter((x) => x !== student.id)
+                              : [...current, student.id],
+                          )
+                        }
+                      />
+                      <span className="flex-1">{student.name}</span>
+                      {student.group && <span className="text-xs text-[var(--muted)]">{student.group}</span>}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
           <div>
             <div className="mb-1 text-xs font-semibold text-slate-600">Группы (только назначенные вам)</div>
             {(overview?.groups?.length ?? 0) === 0 ? (
@@ -256,6 +311,7 @@ export function TestAssignments() {
               </div>
             )}
           </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="text-sm">
               <span className="block text-xs font-semibold text-slate-600">Лимит времени, мин</span>
@@ -303,7 +359,7 @@ export function TestAssignments() {
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={busy === "create" || !overview?.groups?.length}
+              disabled={busy === "create" || (target === "groups" ? !overview?.groups?.length : !students.length)}
               onClick={() => void submit()}
               className="btn-primary inline-flex items-center gap-1.5"
             >

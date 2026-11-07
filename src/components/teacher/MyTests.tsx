@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, FlaskConical, Loader2, Search } from "lucide-react";
 import { teacherTests, type TeacherTestItem } from "@/lib/api/teacher";
+import { CreateTestButton } from "@/components/teacher/CreateTest";
 import { describeApiError } from "@/lib/errors";
 
 function TestRow({ test }: { test: TeacherTestItem }) {
@@ -106,6 +107,7 @@ export function MyTests() {
           >
             Найти
           </button>
+          <CreateTestButton onCreated={() => void load(query.trim())} />
         </div>
       </div>
 
