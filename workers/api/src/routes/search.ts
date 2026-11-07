@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
 import {
   SEARCH_EXAMPLES,
   histologyTagLabel,
@@ -129,7 +130,10 @@ type CollectOptions = {
 };
 
 async function collect(c: any, options: CollectOptions) {
-  const db = c.get("supabase");
+  // Контентные таблицы (trainer_feed_cards и др.) отдают данные только
+  // серверному клиенту: у authenticated гранты отозваны, и пользовательский
+  // клиент ронял весь поиск в 503. Фильтры is_published/is_active остаются.
+  const db = createServiceClient(c.env) || c.get("supabase");
   const { query, subjectSlug, limit, materialHint } = options;
   const include = (kind: SearchKind) => !options.kind || options.kind === kind;
   const allowed = (kind: SearchKind) => !options.kinds || options.kinds.includes(kind);
