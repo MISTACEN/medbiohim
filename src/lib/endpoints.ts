@@ -201,8 +201,8 @@ export const endpoints = {
     fixes: (): string => "/staff/fixes",
     fixRevert: (id: string): string => `/staff/fixes/${enc(id)}/revert`,
     topicsMerge: (): string => "/staff/topics/merge",
-    notifications: (): string => "/staff/notifications",
-    notificationsRead: (): string => "/staff/notifications/read",
+    notifications: (): string => "/notifications",
+    notificationsRead: (): string => "/notifications/read",
   },
 
   /** Файлы, аватары, blob-отдача. */

@@ -43,6 +43,7 @@ import my from "./routes/my";
 import questions from "./routes/questions";
 import favorites from "./routes/favorites";
 import notes from "./routes/notes";
+import notifications from "./routes/notifications";
 import search from "./routes/search";
 import trainings from "./routes/trainings";
 import trainers from "./routes/trainers";
@@ -214,6 +215,8 @@ v1.route("/progress", gatedModule("progress", progress));
 v1.route("/srs", gatedModule("subjects", srs));
 v1.route("/sessions", studentOnly(sessions));
 v1.route("/settings", settings);
+// Уведомления — личные и не привязаны к модулю: без гейта "group".
+v1.route("/notifications", notifications);
 // SA6: экспорт данных аккаунта и удаление с grace-периодом (/account/export, /account/deletion).
 v1.route("/account", accountData);
 v1.route("/telegram", telegramIngest);
