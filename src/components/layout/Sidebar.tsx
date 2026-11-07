@@ -85,10 +85,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Разделы, выданные администратором (Access Control). keys = null — ответа
   // ещё нет или доступ не вычислен: показываем всё, сервер проверит сам.
   const { keys } = useModuleAccess(Boolean(user));
+  // Директива владельца: учитель работает только в кабинете — студенческие
+  // разделы из меню убираем полностью, «Главной» для него становится /teacher.
+  const teacherWorkspace = user?.role === "teacher";
   const byAccess = <T extends { moduleKey?: string }>(items: readonly T[]): T[] =>
     keys ? items.filter((item) => !item.moduleKey || keys.has(item.moduleKey)) : [...items];
-  const visibleNavItems = byAccess(navItems);
-  const visibleMoreItems = byAccess(moreItems);
+  const visibleNavItems = teacherWorkspace
+    ? [{ href: "/teacher", label: "Кабинет преподавателя", icon: ClipboardList }]
+    : byAccess(navItems);
+  const visibleMoreItems = teacherWorkspace ? [] : byAccess(moreItems);
   const displayName = user?.name || "Гость";
   const roleLabel =
     user?.role === "teacher"

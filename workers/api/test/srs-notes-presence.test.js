@@ -35,7 +35,9 @@ test("Notes are owner-scoped and mounted on the canonical API", async () => {
   const index = await source("../src/index.ts");
   const notes = await source("../src/routes/notes.ts");
   assert.match(index, /import notes from "\.\/routes\/notes"/);
-  assert.match(index, /v1\.route\("\/notes", notes\)/);
+  // Канонический монтаж: напрямую или через studentOnly() (блок teacher,
+  // директива владельца 2026-11-07 — студентам доступ не меняется).
+  assert.match(index, /v1\.route\("\/notes", (?:studentOnly\()?notes\)?\)/);
   assert.match(notes, /notes\.get\("\/", requireAuth/);
   assert.match(notes, /notes\.post\("\/", requireAuth/);
   assert.match(notes, /\.eq\("user_id", user\.id\)/);

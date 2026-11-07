@@ -22,10 +22,18 @@ export function MobileNav() {
   const pathname = usePathname();
   const { user } = useAuth();
   const { keys } = useModuleAccess(Boolean(user));
+  // Директива владельца: учитель видит только рабочее место и профиль —
+  // студенческая нижняя навигация для него скрыта полностью.
+  const teacherWorkspace = user?.role === "teacher";
   // keys = null — доступ ещё вычисляется: показываем всё, как раньше.
-  const visible = keys
-    ? items.filter((item) => !item.moduleKey || keys.has(item.moduleKey))
-    : items;
+  const visible = teacherWorkspace
+    ? [
+        { href: "/teacher", label: "Кабинет", icon: ClipboardList },
+        { href: "/settings", label: "Профиль", icon: UserRound },
+      ]
+    : keys
+      ? items.filter((item) => !item.moduleKey || keys.has(item.moduleKey))
+      : items;
 
   return (
     <nav

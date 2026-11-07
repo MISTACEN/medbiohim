@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { nowParts as sharedNowParts, lessonStartMinutes } from "@/lib/now-parts";
 import Link from "next/link";
 import {
@@ -158,6 +159,12 @@ function controlInfo(raw: unknown): { label: string; isExam: boolean } | null {
 
 export default function DashboardPage() {
   const { user, loading: authLoading, refresh } = useAuth();
+  const router = useRouter();
+  // Директива владельца: учитель после входа попадает сразу на рабочее место —
+  // студенческую главную он не видит вообще.
+  useEffect(() => {
+    if (!authLoading && user?.role === "teacher") router.replace("/teacher");
+  }, [authLoading, user?.role, router]);
   // D9: ручной useEffect с cancelled-флагом заменён на useApiRequest —
   // запросы отменяются через AbortSignal при unmount и смене зависимостей.
   const { data: bundle, loading, error: loadError } = useApiRequest<DashboardBundle>(

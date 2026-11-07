@@ -206,3 +206,40 @@ export function moduleGate(
     }
   };
 }
+
+/**
+ * Жёсткий блок студенческих разделов для teacher (не admin). Отличие от
+ * moduleGate: не трогает доступ студентов/модераторов вообще — только
+ * пересчитывает роли и запрещает учителю студенческий контент. Навешивается
+ * на маршруты, которые остались без gatedModule (dashboard, ДЗ, планировщик и
+ * т.д.): директива владельца — «преподаватель работает только в кабинете и
+ * ничего студенческого не видит».
+ */
+export function teacherBlock() {
+  return async (c: GateContext, next: Next) => {
+    const rid = requestId();
+    const db = c.get("supabase");
+    try {
+      const { data, error } = await db
+        .from("user_roles")
+        .select("roles(code)")
+        .eq("user_id", c.get("user").id)
+        .limit(25);
+      if (error) throw error;
+      const roles = (data || []).map((row: any) =>
+        String((Array.isArray(row.roles) ? row.roles[0] : row.roles)?.code || "").toLowerCase(),
+      ).filter(Boolean);
+      if (roles.includes("admin") || !roles.includes("teacher")) return next();
+      const { body, status } = fail(
+        "TEACHER_STUDENT_AREA",
+        "Рабочее место преподавателя: студенческие разделы недоступны.",
+        403,
+        rid,
+      );
+      return c.json(body, status as 403);
+    } catch (blockError) {
+      console.error("[module-access:teacher-block]", blockError);
+      return next();
+    }
+  };
+}

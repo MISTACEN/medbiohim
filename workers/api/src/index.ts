@@ -79,8 +79,23 @@ import staff from "./routes/staff";
 import teacher from "./routes/teacher/index";
 import access from "./routes/access";
 import bootstrapMigrate from "./routes/bootstrap-migrate";
-import { moduleGate } from "./lib/module-access";
+import { moduleGate, teacherBlock } from "./lib/module-access";
 import { requireAuth, type AuthVariables } from "./middleware/auth";
+
+/**
+ * Студенческий маршрут с блокировкой teacher (директива владельца: преподаватель
+ * работает только в кабинете и ничего студенческого не видит). Доступ студентов
+ * и модераторов не меняется — teacherBlock запрещает только роль teacher.
+ */
+function studentOnly(
+  router: Hono<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const wrapped = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+  wrapped.use("*", requireAuth);
+  wrapped.use("*", teacherBlock());
+  wrapped.route("/", router);
+  return wrapped;
+}
 
 /**
  * Маршруты раздела под централизованным доступом (Access Control).
@@ -158,46 +173,46 @@ v1.post("/files/upload", (c) =>
 
 v1.route("/auth", auth);
 v1.route("/me", me);
-v1.route("/dashboard", dashboard);
+v1.route("/dashboard", studentOnly(dashboard));
 v1.route("/subjects", gatedModule("subjects", subjects));
-v1.route("/groups", groups);
+v1.route("/groups", studentOnly(groups));
 v1.route("/schedule", gatedModule("schedule", schedule));
 v1.route("/schedule", gatedModule("schedule", scheduleIcal));
 v1.route("/schedule", gatedModule("schedule", scheduleFeed));
-v1.route("/lesson-plan", lessonPlan);
-v1.route("/curriculum", curriculum);
+v1.route("/lesson-plan", studentOnly(lessonPlan));
+v1.route("/curriculum", studentOnly(curriculum));
 // Alias: some clients call /plans — map to curriculum (avoid 501)
 v1.get("/plans", (c) => curriculum.fetch(rewriteRequest(c.req.raw, "/"), c.env));
-v1.route("/homeworks", homework);
+v1.route("/homeworks", studentOnly(homework));
 v1.route("/assignments", gatedModule("assignments", assignments));
-v1.route("/topics", topics);
-v1.route("/homework", homework);
-v1.route("/submissions", submissions);
-v1.route("/planner", planner);
+v1.route("/topics", studentOnly(topics));
+v1.route("/homework", studentOnly(homework));
+v1.route("/submissions", studentOnly(submissions));
+v1.route("/planner", studentOnly(planner));
 v1.route("/academic", gatedModule("academic", academic));
-v1.route("/attendance", attendance);
+v1.route("/attendance", studentOnly(attendance));
 v1.route("/lectures", gatedModule("subjects", lectures));
 // Авторские занятия: пользователь видит и публикует только свои лекции.
-v1.route("/my-lectures", myLectures);
+v1.route("/my-lectures", studentOnly(myLectures));
 // Импорт документов (PDF) и OCR-шлюз для авторских лекций.
-v1.route("/my-tools", myTools);
+v1.route("/my-tools", studentOnly(myTools));
 // Личный банк вопросов автора.
-v1.route("/my-questions", myQuestions);
+v1.route("/my-questions", studentOnly(myQuestions));
 v1.route("/materials", gatedModule("library", materials));
 v1.route("/tests", gatedModule("subjects", preparation));
 v1.route("/tests", gatedModule("subjects", tests));
 v1.route("/tickets", gatedModule("subjects", tickets));
 v1.route("/exam-questions", gatedModule("subjects", examQuestions));
-v1.route("/my", my);
+v1.route("/my", studentOnly(my));
 v1.route("/questions", gatedModule("subjects", questions));
-v1.route("/favorites", favorites);
-v1.route("/notes", notes);
+v1.route("/favorites", studentOnly(favorites));
+v1.route("/notes", studentOnly(notes));
 v1.route("/search", gatedModule("search", search));
 v1.route("/trainings", gatedModule("subjects", trainings));
 v1.route("/trainers", gatedModule("subjects", trainers));
 v1.route("/progress", gatedModule("progress", progress));
 v1.route("/srs", gatedModule("subjects", srs));
-v1.route("/sessions", sessions);
+v1.route("/sessions", studentOnly(sessions));
 v1.route("/settings", settings);
 // SA6: экспорт данных аккаунта и удаление с grace-периодом (/account/export, /account/deletion).
 v1.route("/account", accountData);
