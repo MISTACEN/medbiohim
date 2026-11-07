@@ -271,7 +271,10 @@ teacher.patch("/tests/:id/owner", requireAuth, async (c) => {
   if (!(await requireAdmin(c))) return c.res;
   const id = c.req.param("id") || "";
   if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор теста");
-  const db = c.get("supabase") as any;
+  // Запись в `tests` идёт service-клиентом: под JWT пользователя RLS на UPDATE
+  // возвращает 0 строк, и маршрут отвечал ложным 404. Права проверены выше.
+  const db = createServiceClient(c.env) as any;
+  if (!db) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
   let input: any = {};
   try { input = await c.req.json(); } catch {
     return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
@@ -305,7 +308,8 @@ teacher.patch("/tests/:id/visibility", requireAuth, async (c) => {
   if (!(await requireAdmin(c))) return c.res;
   const id = c.req.param("id") || "";
   if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор теста");
-  const db = c.get("supabase") as any;
+  const db = createServiceClient(c.env) as any;
+  if (!db) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
   let input: any = {};
   try { input = await c.req.json(); } catch {
     return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
