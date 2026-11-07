@@ -16,11 +16,14 @@ type LoadedSession = {
   checkpoints: Checkpoint[];
 };
 
-function errorMessage(error: { code: string; message: string }) {
+function errorMessage(error?: { code?: string; message?: string } | null) {
+  // Ошибка может прийти без тела (сеть, 5xx без JSON): не роняем весь экран
+  // на `undefined.code`, а показываем понятный текст.
+  if (!error) return "Лабораторные временно недоступны. Попробуйте позже.";
   if (error.code === "ROUTE_NOT_MIGRATED" || error.code === "ROUTE_NOT_IMPLEMENTED") {
     return "Раздел лабораторных пока недоступен: серверная часть ещё не развёрнута.";
   }
-  return error.message;
+  return error.message || "Лабораторные временно недоступны. Попробуйте позже.";
 }
 
 export default function Labs({ sessionId, subject }: LabsProps) {

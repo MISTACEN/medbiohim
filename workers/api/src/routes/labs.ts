@@ -7,10 +7,28 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
 
 const labs = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LAB_TYPES = ["physiology", "biochemistry", "histology", "anatomy", "pharmacology"];
+const MISSING_RELATION = new Set(["42P01", "PGRST205", "PGRST106"]);
+
+/**
+ * Таблицы лабораторных созданы в схеме `labs` (database/migrations/001).
+ * PostgREST может её не отдавать, а у authenticated нет грантов — поэтому
+ * сначала пробуем `labs` серверным клиентом, при отсутствии схемы/таблицы
+ * откатываемся на public. Раньше запрос шёл только в public и вся страница
+ * лабораторных отдавала 503.
+ */
+async function labsQuery(c: any, build: (db: any) => any): Promise<{ data: any; error: any }> {
+  const db = createServiceClient(c.env) || c.get("supabase");
+  const run = (schema: "labs" | "public") => build(schema === "labs" ? db.schema("labs") : db);
+  let result = await run("labs");
+  const code = String((result as any)?.error?.code || "");
+  if ((result as any)?.error && MISSING_RELATION.has(code)) result = await run("public");
+  return result;
+}
 
 /**
  * GET /labs/templates
@@ -23,23 +41,16 @@ labs.get("/templates", requireAuth, async (c) => {
     const subject = c.req.query("subject");
     const difficulty = c.req.query("difficulty");
     
-    let query = db.from("lab_templates")
-      .select("*")
-      .eq("is_published", true);
-    
-    if (subject) {
-      query = query.eq("subject_area", subject);
+    if (difficulty && !['beginner', 'intermediate', 'advanced'].includes(difficulty)) {
+      return c.json(fail("VALIDATION_ERROR", "Некорректный уровень сложности", 422, rid), 422);
     }
     
-    if (difficulty) {
-      const validLevels = ['beginner', 'intermediate', 'advanced'];
-      if (!validLevels.includes(difficulty)) {
-        return c.json(fail("VALIDATION_ERROR", "Некорректный уровень сложности", 422, rid), 422);
-      }
-      query = query.eq("difficulty_level", difficulty);
-    }
-    
-    const { data, error } = await query.order("created_at", { ascending: false }).limit(50);
+    const { data, error } = await labsQuery(c, (client) => {
+      let query = client.from("lab_templates").select("*").eq("is_published", true);
+      if (subject) query = query.eq("subject_area", subject);
+      if (difficulty) query = query.eq("difficulty_level", difficulty);
+      return query.order("created_at", { ascending: false }).limit(50);
+    });
     
     if (error) {
       console.error("[labs:templates]", error);
@@ -90,11 +101,11 @@ labs.post("/start", requireAuth, async (c) => {
     };
     
     if (templateId) {
-      const { data: template } = await db
+      const { data: template } = await labsQuery(c, (client) => client
         .from("lab_templates")
         .select("title,subject_area")
         .eq("id", templateId)
-        .maybeSingle();
+        .maybeSingle());
       if (!template) {
         return c.json(fail("NOT_FOUND", "Шаблон лабораторной не найден", 404, rid), 404);
       }
@@ -134,11 +145,11 @@ labs.get("/:sessionId", requireAuth, async (c) => {
   }
   
   try {
-    const { data: session, error: sessionError } = await db
+    const { data: session, error: sessionError } = await labsQuery(c, (client) => client
       .from("lab_sessions")
       .select("*")
       .eq("id", sessionId)
-      .maybeSingle();
+      .maybeSingle());
     
     if (sessionError || !session) {
       return c.json(fail("NOT_FOUND", "Сессия лабораторной не найдена", 404, rid), 404);
@@ -154,11 +165,11 @@ labs.get("/:sessionId", requireAuth, async (c) => {
     }
     
     // Get all checkpoints for this session
-    const { data: checkpoints, error: cpError } = await db
+    const { data: checkpoints, error: cpError } = await labsQuery(c, (client) => client
       .from("laboratory_checkpoints")
       .select("*")
       .eq("session_id", sessionId)
-      .order("checkpoint_order", { ascending: true });
+      .order("checkpoint_order", { ascending: true }));
     
     if (cpError) {
       console.error("[labs:details]", cpError);
@@ -166,14 +177,14 @@ labs.get("/:sessionId", requireAuth, async (c) => {
     }
     
     // Get existing results for each checkpoint
-    const checkpointIds = checkpoints?.map(c => c.id) || [];
-    let existingResults = [];
+    const checkpointIds = (checkpoints as any[] | null)?.map((item: any) => item.id) || [];
+    let existingResults: any[] = [];
     if (checkpointIds.length) {
-      const { data: results, error: resultError } = await db
+      const { data: results, error: resultError } = await labsQuery(c, (client) => client
         .from("laboratory_results")
         .select("*")
         .in("checkpoint_id", checkpointIds)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id));
       
       if (!resultError) {
         existingResults = results || [];
@@ -181,7 +192,7 @@ labs.get("/:sessionId", requireAuth, async (c) => {
     }
     
     const checkpointsWithResults = checkpoints?.map((cp: any) => {
-      const result = existingResults.find(r => r.checkpoint_id === cp.id);
+      const result = existingResults.find((row: any) => row.checkpoint_id === cp.id);
       return {
         ...cp,
         has_result: !!result,
@@ -195,7 +206,7 @@ labs.get("/:sessionId", requireAuth, async (c) => {
       checkpoints: checkpointsWithResults,
       summary: {
         total: checkpointsWithResults.length,
-        completed: checkpointsWithResults.filter(c => c.has_result).length,
+        completed: checkpointsWithResults.filter((row: any) => row.has_result).length,
         progress_pct: session.progress_pct
       }
     }, rid));
