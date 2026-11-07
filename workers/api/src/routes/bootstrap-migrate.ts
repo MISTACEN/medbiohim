@@ -61,23 +61,40 @@ bootstrap.post("/migrate", async (c) => {
     { name: "20261106100000_module_access", sql: MODULE_ACCESS_SQL },
     { name: "20261107090000_test_assignments", sql: TEST_ASSIGNMENTS_SQL },
   ];
-  const applied: Array<{ statement: number; ok: true }> = [];
+  let input: any = {};
+  try { input = await c.req.json(); } catch {}
+  // Лимит subrequests на одну инвокацию (~50): за раз исполняем батч,
+  // продолжение — следующим вызовом с курсором from.
+  const requestedFile = String(input?.file || "");
+  const startIndex = Math.max(0, Number(input?.from) || 0);
+  const batch = Math.min(Math.max(Number(input?.batch) || 25, 1), 40);
+  const fileIndex = Math.max(0, files.findIndex((file) => file.name === requestedFile));
+  const file = files[fileIndex];
+  if (requestedFile && !file) return error(c, rid, 422, "VALIDATION_ERROR", "Неизвестное имя миграции");
+  const statements = splitSqlStatements(file.sql);
+  const applied: number[] = [];
   try {
-    for (const file of files) {
-      const statements = splitSqlStatements(file.sql);
-      for (let index = 0; index < statements.length; index += 1) {
-        const statement = statements[index];
-        const { error: rpcError } = await svc.rpc("admin_exec_sql", { query: statement });
-        if (rpcError) {
-          return error(c, rid, 500, "MIGRATION_FAILED",
-            `${file.name} @ statement ${index + 1}: ${rpcError.message}`);
-        }
-        applied.push({ statement: index + 1, ok: true });
+    let index = startIndex;
+    for (; index < statements.length && applied.length < batch; index += 1) {
+      const { error: rpcError } = await svc.rpc("admin_exec_sql", { query: statements[index] });
+      if (rpcError) {
+        return error(c, rid, 500, "MIGRATION_FAILED",
+          `${file.name} @ statement ${index + 1}: ${rpcError.message}`);
       }
+      applied.push(index + 1);
     }
+    const done = index >= statements.length;
+    const nextFile = done && fileIndex + 1 < files.length ? files[fileIndex + 1].name : null;
     return c.json(ok({
-      applied_files: files.map((file) => file.name),
-      applied_statements: applied.length,
+      file: file.name,
+      applied: applied.length,
+      statements: applied,
+      next_from: done ? 0 : index,
+      done,
+      next_file: nextFile,
+      hint: done
+        ? (nextFile ? `POST { "file": "${nextFile}", "from": 0 }` : "Все миграции применены")
+        : `POST { "file": "${file.name}", "from": ${index} }`,
     }, rid), 200);
   } catch (bootstrapError) {
     console.error("[bootstrap:migrate]", bootstrapError);
