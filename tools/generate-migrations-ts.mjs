@@ -11,6 +11,7 @@ const files = {
   TEACHER_ASSIGNMENTS_SQL: "supabase/migrations/20261105090000_teacher_assignments.sql",
   MODULE_ACCESS_SQL: "supabase/migrations/20261106100000_module_access.sql",
   TEST_ASSIGNMENTS_SQL: "supabase/migrations/20261107090000_test_assignments.sql",
+  TEACHER_CATALOG_SQL: "supabase/migrations/20261106120000_teacher_catalog.sql",
 };
 const escape = (s) => s.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 

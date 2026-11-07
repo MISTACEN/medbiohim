@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { createServiceClient } from "../lib/supabase";
-import { MODULE_ACCESS_SQL, TEACHER_ASSIGNMENTS_SQL, TEST_ASSIGNMENTS_SQL } from "../generated/migrations";
+import { MODULE_ACCESS_SQL, TEACHER_ASSIGNMENTS_SQL, TEACHER_CATALOG_SQL, TEST_ASSIGNMENTS_SQL } from "../generated/migrations";
 import { splitSqlStatements } from "../lib/migration-sql";
 
 /**
@@ -46,6 +46,7 @@ bootstrap.get("/migrate", async (c) => {
       { name: "20261105090000_teacher_assignments", bytes: TEACHER_ASSIGNMENTS_SQL.length },
       { name: "20261106100000_module_access", bytes: MODULE_ACCESS_SQL.length },
       { name: "20261107090000_test_assignments", bytes: TEST_ASSIGNMENTS_SQL.length },
+      { name: "20261106120000_teacher_catalog", bytes: TEACHER_CATALOG_SQL.length },
     ],
     note: "POST /bootstrap/migrate с X-Bootstrap-Secret применит миграции.",
   }, rid));
@@ -60,6 +61,7 @@ bootstrap.post("/migrate", async (c) => {
     { name: "20261105090000_teacher_assignments", sql: TEACHER_ASSIGNMENTS_SQL },
     { name: "20261106100000_module_access", sql: MODULE_ACCESS_SQL },
     { name: "20261107090000_test_assignments", sql: TEST_ASSIGNMENTS_SQL },
+    { name: "20261106120000_teacher_catalog", sql: TEACHER_CATALOG_SQL },
   ];
   let input: any = {};
   try { input = await c.req.json(); } catch {}
