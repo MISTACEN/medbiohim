@@ -10,7 +10,7 @@
 export type QuestionKind = "closed" | "open" | "unsupported";
 
 /** Что можно проверить детерминированно. */
-export type GradingPolicy = "closed" | "open" | "none";
+export type GradingPolicy = "closed" | "open" | "cloze" | "none";
 
 export type QuestionTypeId =
   | "single_choice"
@@ -21,6 +21,7 @@ export type QuestionTypeId =
   | "formula"
   | "ordering"
   | "matching"
+  | "cloze"
   | "open_text"
   | "image_hotspot"
   | "clinical_case"

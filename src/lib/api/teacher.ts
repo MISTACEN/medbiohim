@@ -67,6 +67,7 @@ export type TeacherAssignment = {
   student_id: string | null;
   subject_id: string | null;
   role: string;
+  detail_level?: number | null;
   created_at: string;
   teacher_name?: string | null;
   group_name?: string | null;
@@ -228,6 +229,51 @@ export function teacherSetTestVisibility(id: string, teacherVisible: boolean) {
     endpoints.teacher.testVisibility(id),
     { method: "PATCH", body: JSON.stringify({ teacher_visible: teacherVisible }) },
   );
+}
+
+/** Уровень детализации результатов назначения (1–4, только админ). */
+export function setAssignmentDetailLevel(id: string, detailLevel: number) {
+  return api<{ assignment: { id: string; detail_level: number } }>(
+    endpoints.teacher.assignmentDetail(id),
+    { method: "PATCH", body: JSON.stringify({ detail_level: detailLevel }) },
+  );
+}
+
+export type QuestionAnalyticsItem = {
+  question_id: string;
+  order: number;
+  text: string;
+  answered: number;
+  correct: number;
+  correct_percent: number | null;
+};
+
+/** Аналитика по вопросам назначения: какой вопрос группа завалила. */
+export function testAssignmentAnalytics(id: string) {
+  return api<{
+    test_title: string | null;
+    items: QuestionAnalyticsItem[];
+    unique_students: number;
+  }>(endpoints.teacher.testAssignmentAnalytics(id));
+}
+
+/** Ведомость назначения как CSV-файл (скачивание через blob). */
+export async function downloadAssignmentCsv(id: string, fileName: string) {
+  const { getAccessToken } = await import("@/lib/auth/session");
+  const token = getAccessToken();
+  const result = await fetch(endpoints.teacher.testAssignmentExport(id), {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!result.ok) throw new Error("Не удалось скачать ведомость");
+  const blob = await result.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Предпросмотр теста: вопросы с эталонами. Попытка на сервере не создаётся. */

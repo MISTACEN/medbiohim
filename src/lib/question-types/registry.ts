@@ -37,7 +37,7 @@ export const QUESTION_TYPES: readonly QuestionTypeDescriptor[] = [
     shortLabel: "Верно/неверно",
     kind: "closed",
     grading: "closed",
-    aliases: ["true_false", "truefalse", "true-false", "tf", "boolean"],
+    aliases: ["true_false", "truefalse", "true-false", "tf", "boolean", "yes_no"],
     inActivityModel: true,
   },
   {
@@ -84,6 +84,15 @@ export const QUESTION_TYPES: readonly QuestionTypeDescriptor[] = [
     grading: "closed",
     aliases: ["matching", "match"],
     inActivityModel: true,
+  },
+  {
+    id: "cloze",
+    label: "Заполнение пропусков",
+    shortLabel: "Пропуски",
+    kind: "closed",
+    grading: "closed",
+    aliases: ["cloze", "fill_blanks", "fill-blanks", "fill-in-the-blanks"],
+    inActivityModel: false,
   },
   {
     id: "open_text",

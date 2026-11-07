@@ -130,6 +130,7 @@ export default function PreparationPage() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [grading, setGrading] = useState<Record<string, any>>({});
   const [stats, setStats] = useState<any>(null);
+  const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [ai, setAi] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -147,12 +148,14 @@ export default function PreparationPage() {
     const raw = search.get("return") || "";
     return raw.startsWith("/") && !raw.startsWith("//") ? raw : "";
   }, [search]);
-  const [experience, setExperience] = useState<"prepare" | "solve" | "exam">(
+  const [experience, setExperience] = useState<"prepare" | "solve" | "exam" | "control">(
     (search.get("mode") as any) === "exam"
       ? "exam"
-      : (search.get("mode") as any) === "solve"
-        ? "solve"
-        : "prepare"
+      : (search.get("mode") as any) === "control"
+        ? "control"
+        : (search.get("mode") as any) === "solve"
+          ? "solve"
+          : "prepare"
   );
 
   async function begin(m: "full" | "count" | "sequential", n?: number) {
@@ -206,7 +209,15 @@ export default function PreparationPage() {
     if ((!requested && flow !== "sequential") || mode !== null) return;
     const n = Math.max(1, Number(search.get("count") || limit));
     setLimit(n);
-    setExperience(requested === "exam" ? "exam" : requested === "solve" ? "solve" : "prepare");
+    setExperience(
+      requested === "exam"
+        ? "exam"
+        : requested === "control"
+          ? "control"
+          : requested === "solve"
+            ? "solve"
+            : "prepare",
+    );
     void begin(flow === "sequential" ? "sequential" : "count", flow === "sequential" ? undefined : n);
     // The URL is the only trigger for auto-start; `begin` is intentionally not a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,7 +376,7 @@ export default function PreparationPage() {
     router.push(returnHref || "/tests");
   }
 
-  function startExperience(next: "prepare" | "solve" | "exam", startMode: "full" | "count" | "sequential" = "count") {
+  function startExperience(next: "prepare" | "solve" | "exam" | "control", startMode: "full" | "count" | "sequential" = "count") {
     setExperience(next);
     void begin(startMode, startMode === "count" ? limit : undefined);
   }
@@ -388,9 +399,10 @@ export default function PreparationPage() {
         {error && <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">{error}</div>}
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            { id: "prepare" as const, title: "Подготовка", desc: "Проверка сразу после каждого ответа" },
-            { id: "solve" as const, title: "Решение", desc: "Проверка после завершения" },
-            { id: "exam" as const, title: "Экзамен", desc: "Без эталонов до конца" },
+            { id: "prepare" as const, title: "Тренировка", desc: "Проверка сразу после каждого ответа" },
+            { id: "solve" as const, title: "Самопроверка", desc: "Проверка после завершения" },
+            { id: "control" as const, title: "Контрольный", desc: "Как экзамен: без подсказок и эталонов" },
+            { id: "exam" as const, title: "Экзамен", desc: "Строго, с учётом времени и лимитов" },
           ].map((option) => (
             <button
               key={option.id}
@@ -539,17 +551,32 @@ export default function PreparationPage() {
     );
 
   const options: QuestionOption[] = Array.isArray(q.options) ? q.options : [];
+  const serverGrading = grading[q.id];
+  // Пропуски: ответ «a|b|c» → по инпуту на каждый пропуск.
+  const isCloze = q.type === "cloze" || q.type === "fill_blanks" || q.type === "fill-blanks";
+  const clozeBlanks = isCloze
+    ? String(q.answer || serverGrading?.answer_display || "").split("|").map((part) => part.trim()).filter(Boolean).length || 1
+    : 0;
+  // Соответствие: варианты — левые части, ответ — правые в том же порядке.
+  const isMatch = q.type === "match" || q.type === "matching";
+  const matchRights = isMatch
+    ? [...new Set(
+        String(q.answer || serverGrading?.answer_display || "")
+          .split("|")
+          .map((part) => part.trim())
+          .filter(Boolean),
+      )]
+    : [];
   // is_closed приходит с сервера; старые ответы API без него разбираем по типу.
   // Если закрытый вопрос остался без вариантов, даём текстовое поле, чтобы
   // вопрос вообще можно было ответить (и отправить на ручную проверку).
-  const isOpen = q.is_closed == null
+  const isOpen = (q.is_closed == null
     ? q.type === "open" ||
       q.type === "problem" ||
       q.type === "theory" ||
       q.type === "practical" ||
       options.length === 0
-    : !q.is_closed || options.length === 0;
-  const serverGrading = grading[q.id];
+    : !q.is_closed || options.length === 0) && !isCloze && !isMatch;
   const correctOptionKeys = new Set(correctKeys(q, serverGrading));
   const isMulti = !isOpen && (q.allow_multiple === true || q.requires_order === true || correctOptionKeys.size > 1);
   const selectedOptionKeys = selectedKeys(q, answers[q.id]);
@@ -557,7 +584,14 @@ export default function PreparationPage() {
   const unresolved = serverGrading && serverGrading.is_correct == null;
   const answeredCount = Object.keys(checked).length;
   const isLast = idx === questions.length - 1;
-  const experienceLabel = experience === "exam" ? "Экзамен" : experience === "solve" ? "Решение" : "Подготовка";
+  const experienceLabel =
+    experience === "exam"
+      ? "Экзамен"
+      : experience === "control"
+        ? "Контрольный"
+        : experience === "solve"
+          ? "Самопроверка"
+          : "Тренировка";
   const reference = etalonDisplay(q, serverGrading);
 
   function toggleOption(key: string) {
@@ -641,6 +675,46 @@ export default function PreparationPage() {
         <div className="h-2 rounded bg-indigo-500" style={{ width: ((idx + 1) / questions.length) * 100 + "%" }} />
       </div>
 
+      {/* Навигатор по вопросам: отвечено / помечено / текущий. */}
+      <div className="card flex flex-wrap items-center gap-1.5 p-3">
+        {questions.map((item, index) => {
+          const answeredItem = Boolean(checked[item.id]);
+          const markedItem = Boolean(marked[item.id]);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setIdx(index)}
+              aria-label={"Вопрос " + (index + 1) + (markedItem ? " (помечен)" : answeredItem ? " (отвечен)" : "")}
+              className={
+                "h-8 min-w-8 rounded-lg px-1.5 text-xs font-bold transition " +
+                (index === idx
+                  ? "bg-indigo-600 text-white"
+                  : markedItem
+                    ? "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
+                    : answeredItem
+                      ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
+                      : "bg-slate-100 text-slate-500")
+              }
+            >
+              {index + 1}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setMarked((m) => ({ ...m, [q.id]: !m[q.id] }))}
+          className={
+            "ml-2 rounded-lg px-3 py-1.5 text-xs font-bold " +
+            (marked[q.id]
+              ? "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
+              : "border text-slate-600")
+          }
+        >
+          {marked[q.id] ? "Снять пометку" : "Пометить для возврата"}
+        </button>
+      </div>
+
       <div className="test-question-card card space-y-4 sm:space-y-5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-indigo-600 px-2 text-sm font-extrabold text-white">
@@ -653,7 +727,86 @@ export default function PreparationPage() {
         </div>
         <ChemRichText text={String(q.text || q.body || "")} className="text-lg font-semibold" />
 
-        {isOpen ? (
+        {isCloze ? (
+          <>
+            <div className="space-y-2">
+              {Array.from({ length: clozeBlanks }, (_, blank) => {
+                const parts = (answers[q.id] || "").split(";");
+                return (
+                  <div key={blank} className="flex items-center gap-2">
+                    <span className="w-16 text-xs font-semibold text-slate-500">Пропуск {blank + 1}</span>
+                    <input
+                      value={parts[blank] || ""}
+                      disabled={!!checked[q.id]}
+                      onChange={(e) => {
+                        const nextParts = [...parts];
+                        while (nextParts.length < clozeBlanks) nextParts.push("");
+                        nextParts[blank] = e.target.value;
+                        setAnswers((a) => ({ ...a, [q.id]: nextParts.join(";") }));
+                      }}
+                      className="flex-1 rounded-xl border p-2.5 text-sm outline-none focus:border-indigo-400"
+                      placeholder={"Ответ " + (blank + 1)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              disabled={!!checked[q.id] || !(answers[q.id] || "").trim()}
+              onClick={() => void answer(answers[q.id] || "")}
+              className="btn-primary"
+            >
+              {experience === "prepare" ? "Проверить ответ" : "Сохранить ответ"}
+            </button>
+          </>
+        ) : isMatch ? (
+          <>
+            <div className="space-y-2">
+              {options.map((option, index) => {
+                const key = optionKey(option, index);
+                const selected = (() => {
+                  try {
+                    const parsed = JSON.parse(answers[q.id] || "[]");
+                    return Array.isArray(parsed) ? String(parsed[index] ?? "") : "";
+                  } catch { return ""; }
+                })();
+                return (
+                  <div key={key} className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-40 flex-1 text-sm font-medium">
+                      <ChemRichText text={optionLabel(option)} className="inline" />
+                    </span>
+                    <select
+                      value={selected}
+                      disabled={!!checked[q.id]}
+                      onChange={(e) => {
+                        try {
+                          const parsed = JSON.parse(answers[q.id] || "[]");
+                          const next = Array.isArray(parsed) ? [...parsed] : options.map(() => "");
+                          while (next.length < options.length) next.push("");
+                          next[index] = e.target.value;
+                          setAnswers((a) => ({ ...a, [q.id]: JSON.stringify(next) }));
+                        } catch {}
+                      }}
+                      className="min-w-48 rounded-xl border p-2 text-sm"
+                    >
+                      <option value="">— выберите —</option>
+                      {matchRights.map((right) => (
+                        <option key={right} value={right}>{right}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              disabled={!!checked[q.id] || !(answers[q.id] || "").trim() || answers[q.id] === "[]"}
+              onClick={() => void answer(answers[q.id] || "")}
+              className="btn-primary"
+            >
+              {experience === "prepare" ? "Проверить соответствие" : "Сохранить ответ"}
+            </button>
+          </>
+        ) : isOpen ? (
           <>
             <textarea
               value={answers[q.id] || ""}

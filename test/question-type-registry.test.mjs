@@ -30,6 +30,7 @@ const QUESTION_TYPE_IDS = new Set([
   "formula",
   "ordering",
   "matching",
+  "cloze",
   "open_text",
   "image_hotspot",
   "clinical_case",

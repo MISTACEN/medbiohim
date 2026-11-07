@@ -333,7 +333,7 @@ teacher.get("/assignments", requireAuth, async (c) => {
     const roles = await callerRoles(db, userId);
     const isAdmin = canAdminister(roles);
     let query = db.from("teacher_assignments")
-      .select("id,teacher_id,group_id,student_id,subject_id,role,created_by,created_at")
+      .select("id,teacher_id,group_id,student_id,subject_id,role,detail_level,created_by,created_at")
       .order("created_at", { ascending: false }).limit(500);
     if (!isAdmin) query = query.eq("teacher_id", userId);
     const { data, error: readError } = await query;
@@ -436,6 +436,41 @@ teacher.delete("/assignments/:id", requireAuth, async (c) => {
   } catch (deleteFailure) {
     console.error("[teacher:unassign]", deleteFailure);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось снять назначение");
+  }
+});
+
+/**
+ * Уровень детализации результатов (1–4) на назначение — меняет только админ:
+ *   1 статистика · 2 + ответы · 3 + разбор и эталоны · 4 + история, аналитика, экспорт.
+ */
+teacher.patch("/assignments/:id/detail", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireAdmin(c))) return c.res;
+  const id = c.req.param("id") || "";
+  if (!UUID.test(id)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор");
+  let input: any = {};
+  try { input = await c.req.json(); } catch {
+    return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
+  }
+  const detailLevel = Number(input?.detail_level);
+  if (!Number.isInteger(detailLevel) || detailLevel < 1 || detailLevel > 4) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "detail_level: целое 1..4");
+  }
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  try {
+    const { data, error: updateError } = await service
+      .from("teacher_assignments")
+      .update({ detail_level: detailLevel })
+      .eq("id", id)
+      .select("id,teacher_id,group_id,detail_level")
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (!data) return error(c, rid, 404, "NOT_FOUND", "Назначение не найдено");
+    return c.json(ok({ assignment: data }, rid));
+  } catch (detailError) {
+    console.error("[teacher:detail-level]", detailError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось изменить уровень детализации");
   }
 });
 
@@ -968,7 +1003,32 @@ teacher.get("/students/:id/attempts", requireAuth, async (c) => {
     const { data: ownTests, error: ownTestsError } = await testsQuery;
     if (ownTestsError) throw ownTestsError;
     const ownTestIds = (ownTests || []).map((row: any) => String(row.id));
-    if (!ownTestIds.length) return c.json(ok({ items: [], student_id: studentId }, rid));
+    if (!ownTestIds.length) return c.json(ok({ items: [], student_id: studentId, detail_level: 4 }, rid));
+    // Максимум из уровней детализации по назначениям преподавателя, накрывающим
+    // группы студента; у админа — полный уровень.
+    let detailLevel = 4;
+    if (!isAdmin) {
+      const scope = await loadTeacherScope(service, userId);
+      const { data: studentGroups, error: studentGroupsError } = await service
+        .from("group_memberships")
+        .select("group_id")
+        .eq("user_id", studentId).eq("is_active", true).limit(50);
+      if (studentGroupsError) throw studentGroupsError;
+      const coveringGroupIds = (studentGroups || [])
+        .map((row: any) => String(row.group_id))
+        .filter((groupId: string) => scope.groups.includes(groupId));
+      if (coveringGroupIds.length) {
+        const { data: assignments, error: assignmentsError } = await service
+          .from("teacher_assignments")
+          .select("detail_level")
+          .eq("teacher_id", userId)
+          .in("group_id", coveringGroupIds as string[])
+          .limit(100);
+        if (assignmentsError) throw assignmentsError;
+        const levels = (assignments || []).map((row: any) => Number(row.detail_level) || 4);
+        detailLevel = levels.length ? Math.max(...levels) : 4;
+      }
+    }
     const { data: attempts, error: attemptsError } = await service
       .from("test_attempts")
       .select("id,test_id,user_id,percent,status,score,max_score,started_at,finished_at,tests(title)")
@@ -988,10 +1048,183 @@ teacher.get("/students/:id/attempts", requireAuth, async (c) => {
         finished_at: row.finished_at || null,
       };
     });
-    return c.json(ok({ items, student_id: studentId }, rid));
+    return c.json(ok({ items, student_id: studentId, detail_level: detailLevel }, rid));
   } catch (cardError) {
     console.error("[teacher:student-card]", cardError);
     return error(c, rid, 503, "DB_UNAVAILABLE", "Карточка студента недоступна");
+  }
+});
+
+/**
+ * Аналитика по вопросам (кабинет «Аналитика»): какой вопрос группа завалила.
+ * Источник — существующие результаты подготовки (test_preparation_results):
+ * на каждый вопрос — долю верных ответов. Второй таблицы статистики нет.
+ */
+teacher.get("/test-assignments/:id/analytics", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.results.view"))) return c.res;
+  const assignmentId = c.req.param("id") || "";
+  if (!UUID.test(assignmentId)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор");
+  const userId = c.get("user").id;
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  try {
+    const roles = await callerRoles(service, userId);
+    const isAdmin = canAdminister(roles);
+    let assignmentQuery = service
+      .from("test_assignments")
+      .select("id,test_id,group_id,teacher_id,tests(title)")
+      .eq("id", assignmentId);
+    if (!isAdmin) assignmentQuery = assignmentQuery.eq("teacher_id", userId);
+    const { data: assignment, error: assignmentError } = await assignmentQuery.maybeSingle();
+    if (assignmentError) throw assignmentError;
+    if (!assignment) return error(c, rid, 404, "NOT_FOUND", "Назначение не найдено");
+    const testId = String(assignment.test_id);
+    const testTitle = (Array.isArray(assignment.tests) ? assignment.tests[0] : assignment.tests)?.title || null;
+
+    const { data: links, error: linksError } = await service
+      .from("test_questions")
+      .select("order_index,question:questions(id,text)")
+      .eq("test_id", testId)
+      .order("order_index", { ascending: true });
+    if (linksError) throw linksError;
+    const questions = (links || [])
+      .map((link: any) => (Array.isArray(link.question) ? link.question[0] : link.question))
+      .filter(Boolean);
+    if (!questions.length) {
+      return c.json(ok({ test_title: testTitle, items: [] }, rid));
+    }
+    const questionIds = questions.map((q: any) => String(q.id));
+    const { data: results, error: resultsError } = await service
+      .from("test_preparation_results")
+      .select("question_id,user_id,is_correct,answered_at")
+      .eq("test_id", testId)
+      .in("question_id", questionIds as string[])
+      .not("answered_at", "is", null)
+      .limit(20000);
+    if (resultsError) throw resultsError;
+    // Последний ответ каждого пользователя на каждый вопрос — как в банке прогресса.
+    const latest = new Map<string, any>();
+    for (const row of results || []) {
+      const key = `${row.question_id}:${row.user_id}`;
+      if (!latest.has(key)) latest.set(key, row);
+    }
+    const perQuestion = new Map<string, { answered: number; correct: number }>();
+    for (const row of latest.values()) {
+      const key = String(row.question_id);
+      const entry = perQuestion.get(key) || { answered: 0, correct: 0 };
+      entry.answered += 1;
+      if (row.is_correct === true) entry.correct += 1;
+      perQuestion.set(key, entry);
+    }
+    const items = questions.map((question: any, index: number) => {
+      const stat = perQuestion.get(String(question.id)) || { answered: 0, correct: 0 };
+      return {
+        question_id: String(question.id),
+        order: index + 1,
+        text: String(question.text || "").slice(0, 300),
+        answered: stat.answered,
+        correct: stat.correct,
+        correct_percent: stat.answered ? Math.round((stat.correct / stat.answered) * 100) : null,
+      };
+    }).sort((a: any, b: any) => (a.correct_percent ?? 101) - (b.correct_percent ?? 101));
+    return c.json(ok({
+      test_title: testTitle,
+      items,
+      unique_students: new Set([...latest.values()].map((row: any) => String(row.user_id))).size,
+    }, rid));
+  } catch (analyticsError) {
+    console.error("[teacher:analytics]", analyticsError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Аналитика временно недоступна");
+  }
+});
+
+/** Ведомость по назначению в CSV (Excel-совместимо: ; и BOM). */
+teacher.get("/test-assignments/:id/export", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.results.view"))) return c.res;
+  const assignmentId = c.req.param("id") || "";
+  if (!UUID.test(assignmentId)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный идентификатор");
+  const userId = c.get("user").id;
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  try {
+    const roles = await callerRoles(service, userId);
+    const isAdmin = canAdminister(roles);
+    let assignmentQuery = service
+      .from("test_assignments")
+      .select("id,test_id,group_id,teacher_id,tests(title),groups(name,code),test_assignment_students(student_id)")
+      .eq("id", assignmentId);
+    if (!isAdmin) assignmentQuery = assignmentQuery.eq("teacher_id", userId);
+    const { data: assignment, error: assignmentError } = await assignmentQuery.maybeSingle();
+    if (assignmentError) throw assignmentError;
+    if (!assignment) return error(c, rid, 404, "NOT_FOUND", "Назначение не найдено");
+    const testId = String(assignment.test_id);
+
+    // Целевая аудитория: группа или персональный список.
+    const targets = new Map<string, string>();
+    const group = Array.isArray(assignment.groups) ? assignment.groups[0] : assignment.groups;
+    const groupName = group ? String(group.name || group.code || "") : "";
+    if (assignment.group_id) {
+      const { data: members, error: membersError } = await service
+        .from("group_memberships")
+        .select("user_id").eq("group_id", assignment.group_id).eq("is_active", true).limit(2000);
+      if (membersError) throw membersError;
+      for (const row of members || []) targets.set(String((row as any).user_id), groupName);
+    }
+    for (const link of assignment.test_assignment_students || []) {
+      targets.set(String((link as any).student_id), groupName || "персонально");
+    }
+    if (!targets.size) return error(c, rid, 404, "NOT_FOUND", "У назначения нет получателей");
+    const studentIds = [...targets.keys()];
+    const { data: people, error: peopleError } = await service
+      .from("users").select("id,full_name,display_name,email").in("id", studentIds as string[]).limit(2000);
+    if (peopleError) throw peopleError;
+    const names = new Map<string, string>();
+    for (const person of people || []) {
+      names.set(String(person.id), String(person.display_name || person.full_name || person.email || "Студент"));
+    }
+    const { data: attempts, error: attemptsError } = await service
+      .from("test_attempts")
+      .select("user_id,percent,status,finished_at")
+      .eq("test_id", testId).in("user_id", studentIds as string[])
+      .order("finished_at", { ascending: false }).limit(20000);
+    if (attemptsError) throw attemptsError;
+    const perStudent = new Map<string, { attempts: number; best: number | null; last: string | null }>();
+    for (const row of attempts || []) {
+      const studentId = String((row as any).user_id);
+      const entry = perStudent.get(studentId) || { attempts: 0, best: null, last: null };
+      entry.attempts += 1;
+      const percent = Number((row as any).percent);
+      if (Number.isFinite(percent) && (entry.best == null || percent > entry.best)) entry.best = percent;
+      if ((row as any).finished_at && !entry.last) entry.last = String((row as any).finished_at);
+      perStudent.set(studentId, entry);
+    }
+    const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const lines = ["ФИО;Группа;Попыток;Лучший результат %;Последняя сдача"];
+    for (const studentId of studentIds) {
+      const stat = perStudent.get(studentId);
+      lines.push([
+        escape(names.get(studentId) || studentId),
+        escape(targets.get(studentId) || ""),
+        String(stat?.attempts || 0),
+        stat?.best != null ? String(stat.best) : "—",
+        stat?.last ? new Date(stat.last).toLocaleString("ru-RU") : "—",
+      ].join(";"));
+    }
+    const csv = "\uFEFF" + lines.join("\r\n");
+    const testTitle = (Array.isArray(assignment.tests) ? assignment.tests[0] : assignment.tests)?.title || "vedomost";
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="vedomost-${String(testTitle).slice(0, 40).replace(/[^a-zA-Zа-яА-Я0-9-_/]/g, "")}.csv"`,
+        "x-request-id": rid,
+      },
+    });
+  } catch (exportError) {
+    console.error("[teacher:export]", exportError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Экспорт временно недоступен");
   }
 });
 

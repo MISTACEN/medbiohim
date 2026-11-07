@@ -16,6 +16,7 @@ import {
   teacherCandidates,
   teacherCreateAssignment,
   teacherRemoveAssignment,
+  setAssignmentDetailLevel,
   teacherSetSubjects,
   teacherSetTestOwner,
   teacherSetTestVisibility,
@@ -344,6 +345,29 @@ export default function AdminTeachersPage() {
                       : `Студент: ${assignment.student_name || assignment.student_id}`}
                     {" · "}
                     {assignment.role}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs">
+                    <span style={{ color: "var(--muted)" }}>Детализация:</span>
+                    <select
+                      value={assignment.detail_level ?? 4}
+                      disabled={busy}
+                      onChange={async (event) => {
+                        const result = await setAssignmentDetailLevel(assignment.id, Number(event.target.value));
+                        if (result.ok) {
+                          setAssignments((rows) => rows.map((row) =>
+                            row.id === assignment.id ? { ...row, detail_level: Number(event.target.value) } : row,
+                          ));
+                        }
+                      }}
+                      className="rounded-lg border bg-transparent px-1.5 py-1 text-xs"
+                      style={{ borderColor: "var(--border)" }}
+                      aria-label="Уровень детализации результатов"
+                    >
+                      <option value={1}>1 · только статистика</option>
+                      <option value={2}>2 · + ответы</option>
+                      <option value={3}>3 · + разбор</option>
+                      <option value={4}>4 · полный отчёт</option>
+                    </select>
                   </div>
                 </div>
                 <button

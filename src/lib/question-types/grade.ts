@@ -115,6 +115,42 @@ export function gradeQuestion(question: NormalizedQuestion, given: GivenAnswer):
     return { isCorrect: result.correct, selectedKeys: [], correctKeys: [String(target)], policy, reason: "graded" };
   }
 
+  // Пропуски: эталон «a|b|c», ответ «x; y; z» — сравнение по пропускам.
+  const descriptorId = resolveQuestionType(question.type)?.id ?? resolveQuestionType(question.rawType)?.id;
+  if (descriptorId === "cloze") {
+    const expected = question.answer
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!expected.length) return emptyOutcome(policy, "no-answer");
+    const givenParts = String(Array.isArray(given) ? given.join(";") : given ?? "")
+      .split(/[;,|]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const norm = (value: string) => value.trim().toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ");
+    const isCorrect =
+      givenParts.length === expected.length &&
+      expected.every((part, index) => norm(part) === norm(givenParts[index] || ""));
+    return { isCorrect, selectedKeys: givenParts, correctKeys: expected, policy, reason: "graded" };
+  }
+
+  // Соответствие: эталон «правая1|правая2|…» в порядке левых вариантов.
+  if (descriptorId === "matching") {
+    const expected = question.answer
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!expected.length) return emptyOutcome(policy, "no-answer");
+    const givenParts = (Array.isArray(given) ? given : String(given ?? "").split(/[;|]/))
+      .map((part) => String(part ?? "").trim())
+      .filter(Boolean);
+    const norm = (value: string) => value.trim().toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ");
+    const isCorrect =
+      givenParts.length === expected.length &&
+      expected.every((part, index) => norm(part) === norm(givenParts[index] || ""));
+    return { isCorrect, selectedKeys: givenParts, correctKeys: expected, policy, reason: "graded" };
+  }
+
   // Последовательность: порядок важен, сравнение по элементам.
   if (question.requiresOrder && question.orderIndexes.length) {
     const expectedOrder = question.orderIndexes;

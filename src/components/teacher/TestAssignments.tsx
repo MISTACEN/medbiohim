@@ -9,16 +9,19 @@
  * Вне области (чужие группы) сервер не даст создать назначение.
  */
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, ClipboardList, Loader2, Plus, Trash2 } from "lucide-react";
+import { BarChart3, CalendarClock, ClipboardList, Download, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { describeApiError } from "@/lib/errors";
 import {
   createTestAssignment,
   deleteTestAssignment,
+  downloadAssignmentCsv,
+  testAssignmentAnalytics,
   teacherOverview,
   teacherStudents,
   teacherTestAssignments,
   teacherTests,
+  type QuestionAnalyticsItem,
   type TeacherOverview,
   type TeacherStudent,
   type TeacherTestAssignment,
@@ -44,6 +47,36 @@ export function TestAssignments() {
   const [maxAttempts, setMaxAttempts] = useState("");
   const [questionCount, setQuestionCount] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [analytics, setAnalytics] = useState<{ id: string; items: QuestionAnalyticsItem[]; unique_students: number } | null>(null);
+  const [exporting, setExporting] = useState("");
+
+  async function toggleAnalytics(id: string) {
+    if (analytics?.id === id) {
+      setAnalytics(null);
+      return;
+    }
+    setBusy("analytics-" + id);
+    const result = await testAssignmentAnalytics(id);
+    setBusy("");
+    if (result.ok) {
+      setAnalytics({ id, items: result.data.items, unique_students: result.data.unique_students });
+    } else {
+      setNote(describeApiError(result.error));
+    }
+  }
+
+  async function exportCsv(item: TeacherTestAssignment) {
+    setExporting(item.id);
+    try {
+      await downloadAssignmentCsv(
+        item.id,
+        "vedomost-" + (item.test_title || item.id).slice(0, 40).replace(/[^a-zA-Zа-яА-Я0-9 -]/g, "") + ".csv",
+      );
+    } catch {
+      setNote("Не удалось скачать ведомость");
+    }
+    setExporting("");
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,13 +234,29 @@ export function TestAssignments() {
                     <p className="mt-1 text-xs text-[var(--muted)]">{item.instructions}</p>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Link
                     href={`/teacher/preview/${item.test_id}`}
                     className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
                   >
                     Пройти как автор
                   </Link>
+                  <button
+                    type="button"
+                    disabled={busy === "analytics-" + item.id}
+                    onClick={() => void toggleAnalytics(item.id)}
+                    className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" /> Аналитика
+                  </button>
+                  <button
+                    type="button"
+                    disabled={exporting === item.id}
+                    onClick={() => void exportCsv(item)}
+                    className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                  >
+                    <Download className="h-3.5 w-3.5" /> {exporting === item.id ? "…" : "CSV"}
+                  </button>
                   <button
                     type="button"
                     disabled={busy === "revoke-" + item.id}
@@ -219,6 +268,39 @@ export function TestAssignments() {
                   </button>
                 </div>
               </div>
+{analytics?.id === item.id && (
+              <div className="rounded-xl border border-[var(--border)] bg-slate-50 p-3 text-sm">
+                <div className="mb-1.5 text-xs font-semibold text-slate-600">
+                  Вопросы от худшего к лучшему · отвечали {analytics.unique_students} чел.
+                </div>
+                {analytics.items.length === 0 ? (
+                  <div className="text-[var(--muted)]">Попыток с ответами пока нет.</div>
+                ) : (
+                  <ul className="space-y-1">
+                    {analytics.items.map((question) => (
+                      <li key={question.question_id} className="flex items-center gap-2">
+                        <span className="w-6 text-xs text-slate-400">{question.order}.</span>
+                        <span className="min-w-0 flex-1 truncate">{question.text || "—"}</span>
+                        <span
+                          className={
+                            "rounded-full px-2 py-0.5 text-xs font-bold " +
+                            (question.correct_percent == null
+                              ? "bg-slate-100 text-slate-500"
+                              : question.correct_percent >= 70
+                                ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
+                                : question.correct_percent >= 40
+                                  ? "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
+                                  : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")
+                          }
+                        >
+                          {question.correct_percent == null ? "нет данных" : `${question.correct_percent}%`}
+                        </span>
+                        <span className="w-16 text-right text-xs text-[var(--muted)]">{question.correct}/{question.answered}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>)}
             </div>
           ))}
         </div>

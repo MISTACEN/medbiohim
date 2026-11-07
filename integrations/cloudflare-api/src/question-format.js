@@ -26,8 +26,14 @@ const OPEN_TYPES = new Set([
 const CLOSED_TYPES = new Set([
   "mcq", "mc", "multiple", "multi", "multi_choice", "multi-choice",
   "single", "single_choice", "single-choice", "closed", "choice", "test",
-  "quiz", "ordering",
+  "quiz", "ordering", "true_false", "true-false", "boolean", "yes_no",
+  "match", "matching", "cloze", "fill_blanks", "fill-blanks",
 ]);
+
+// Вопросы, где ответ — не выбор ключей, а текст по пропускам.
+const CLOZE_TYPES = new Set(["cloze", "fill_blanks", "fill-blanks"]);
+// Соответствие: answer — «правая1|правая2|…» в порядке левых вариантов.
+const MATCH_TYPES = new Set(["match", "matching"]);
 
 const LETTER_KEYS = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ".split("");
 
@@ -389,10 +395,19 @@ export function extractOptionsFromText(text) {
  * @param {{extractTextOptions?:boolean}} [settings]
  */
 export function normalizeQuestion(input, settings = {}) {
-  const type = String(input?.type || "open").toLowerCase();
+  let type = String(input?.type || "open").toLowerCase();
   let text = String(input?.text ?? input?.body ?? "");
   const answer = input?.answer == null ? "" : String(input.answer);
   let options = withKeys(parseOptions(input?.options));
+
+  // Верно/неверно: два фиксированных варианта, если автор их не заполнил.
+  if ((type === "true_false" || type === "true-false" || type === "boolean" || type === "yes_no") && options.length < 2) {
+    options = withKeys(parseOptions([
+      { label: "Верно", correct: /^(\s*(верно|true|да|1)\s*[,;]?\s*)?$/i.test(answer) || answer.trim().toLowerCase() === "верно" || answer.trim().toLowerCase() === "true" || answer.trim().toLowerCase() === "да" },
+      { label: "Неверно", correct: !( /^(\s*(верно|true|да|1)\s*[,;]?\s*)?$/i.test(answer) || answer.trim().toLowerCase() === "верно" || answer.trim().toLowerCase() === "true" || answer.trim().toLowerCase() === "да" ) },
+    ]));
+    type = "true_false";
+  }
 
   // Закрытый вопрос без массива options, но с вариантами в тексте.
   if (
@@ -513,6 +528,55 @@ function parseGiven(given) {
 export function gradeClosedAnswer(question, given) {
   const options = Array.isArray(question?.options) ? question.options : [];
   const tokens = parseGiven(given);
+
+  // Пропуски: эталон «a|b|c», ответ студента «x; y; z» (или JSON-массив).
+  // Сравниваем по пропускам: регистр, ё/е и лишние пробелы не влияют.
+  if (CLOZE_TYPES.has(question?.type)) {
+    const expected = String(question?.answer || "")
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!expected.length) {
+      return { is_correct: null, selected_keys: tokens, correct_keys: [] };
+    }
+    const givenParts = String(
+      Array.isArray(given) ? given.join(";") : given ?? "",
+    )
+      .split(/[;,|]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const isCorrect =
+      givenParts.length === expected.length &&
+      expected.every((part, index) => normalizedAnswer(part) === normalizedAnswer(givenParts[index] || ""));
+    return {
+      is_correct: isCorrect,
+      selected_keys: givenParts,
+      correct_keys: expected,
+    };
+  }
+
+  // Соответствие: эталон «правая1|правая2|…» в порядке левых вариантов,
+  // ответ — выбранные правые в том же порядке.
+  if (MATCH_TYPES.has(question?.type)) {
+    const expected = String(question?.answer || "")
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (!expected.length) {
+      return { is_correct: null, selected_keys: tokens, correct_keys: [] };
+    }
+    const givenParts = (Array.isArray(given) ? given : String(given ?? "").split(/[;|]/))
+      .map((part) => String(part ?? "").trim())
+      .filter(Boolean);
+    const isCorrect =
+      givenParts.length === expected.length &&
+      expected.every((part, index) => normalizedAnswer(part) === normalizedAnswer(givenParts[index] || ""));
+    return {
+      is_correct: isCorrect,
+      selected_keys: givenParts,
+      correct_keys: expected,
+    };
+  }
 
   // Последовательность: «132» или «1,3,2».
   if (question?.order_indexes?.length) {
