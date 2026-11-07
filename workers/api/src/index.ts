@@ -76,7 +76,7 @@ import questionComments from "./routes/question-comments";
 import workshop from "./routes/workshop";
 import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import staff from "./routes/staff";
-import teacher from "./routes/teacher";
+import teacher from "./routes/teacher/index";
 import access from "./routes/access";
 import bootstrapMigrate from "./routes/bootstrap-migrate";
 import { moduleGate } from "./lib/module-access";

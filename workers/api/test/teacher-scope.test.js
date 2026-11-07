@@ -39,11 +39,13 @@ test("кабинет преподавателя смонтирован и наз
   const index = await read("src/index.ts");
   assert.match(index, /v1\.route\("\/teacher", teacher\)/);
 
-  const route = await read("src/routes/teacher.ts");
+  const route = await read("src/routes/teacher/core.ts");
   assert.match(route, /requireTeachingCapability\(c, "teacher\.results\.view"\)/);
-  assert.match(route, /teacher\.post\("\/assignments", requireAuth, async \(c\) => \{\s*const rid = requestId\(\);\s*if \(!\(await requireAdmin\(c\)\)\) return c\.res;/);
-  assert.match(route, /teacher\.delete\("\/assignments\/:id", requireAuth, async \(c\) => \{\s*const rid = requestId\(\);\s*if \(!\(await requireAdmin\(c\)\)\) return c\.res;/);
-  assert.doesNotMatch(route, /MANAGERS/);
+  // Назначения выделены в доменный файл routes/teacher/assignments.ts.
+  const assignments = await read("src/routes/teacher/assignments.ts");
+  assert.match(assignments, /teacher\.post\("\/assignments", requireAuth, async \(c\) => \{\s*const rid = requestId\(\);\s*if \(!\(await requireAdmin\(c\)\)\) return c\.res;/);
+  assert.match(assignments, /teacher\.delete\("\/assignments\/:id", requireAuth, async \(c\) => \{\s*const rid = requestId\(\);\s*if \(!\(await requireAdmin\(c\)\)\) return c\.res;/);
+  assert.doesNotMatch(assignments, /MANAGERS/);
 });
 
 test("проверка работы учитывает назначения, автора и студента", async () => {

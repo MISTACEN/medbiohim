@@ -40,7 +40,7 @@ test("миграция test_assignments: таблицы, RLS, настройки
 });
 
 test("преподаватель назначает только в своей области и по capability", async () => {
-  const route = await read("src/routes/teacher.ts");
+  const route = await read("src/routes/teacher/assigned-tests.ts");
   const post = route.match(/teacher\.post\("\/test-assignments"[\s\S]*?\n\}\);/);
   assert.ok(post, "POST /teacher/test-assignments существует");
   assert.match(post[0], /requireTeachingCapability\(c, "teacher\.content\.manage"\)/);
@@ -53,7 +53,7 @@ test("преподаватель назначает только в своей �
 });
 
 test("сводка по назначениям — чтение по results.view, удаление только своего", async () => {
-  const route = await read("src/routes/teacher.ts");
+  const route = await read("src/routes/teacher/assigned-tests.ts");
   const list = route.match(/teacher\.get\("\/test-assignments"[\s\S]*?\n\}\);\n\n\/\*\* Отменить/);
   assert.ok(list, "GET /teacher/test-assignments существует");
   assert.match(list[0], /requireTeachingCapability\(c, "teacher\.results\.view"\)/);

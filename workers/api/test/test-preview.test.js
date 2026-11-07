@@ -38,7 +38,7 @@ test("предпросмотр теста защищён capability и не со
 });
 
 test("список тестов для предпросмотра — чтение только для teacher/admin", async () => {
-  const route = await read("src/routes/teacher.ts");
+  const route = await read("src/routes/teacher/tests.ts");
   const match = route.match(/teacher\.get\("\/tests"[\s\S]*?\n\}\);/);
   assert.ok(match, "маршрут GET /teacher/tests существует");
   assert.match(match[0], /requireTeachingCapability\(c, "teacher\.content\.manage"\)/);
