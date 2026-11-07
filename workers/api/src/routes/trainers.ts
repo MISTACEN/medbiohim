@@ -308,13 +308,25 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
     return c.json(body, status as 400);
   }
   try {
-    const { data, error } = await supabase.rpc("trainer_feed_submit_answer", {
+    // Штатный путь — SECURITY DEFINER-функция: она сама считает is_correct и
+    // не доверяет клиенту. Прямого доступа к таблицам у пользователя нет.
+    const { data, error } = await supabase.rpc("submit_trainer_feed_answer", {
       p_card_id: payload.card_id,
-      p_answer: payload.answer ?? null,
+      p_option_id: payload.option_id ?? null,
+      p_answer_text: payload.answer_text ?? payload.answer ?? null,
+      p_is_skipped: payload.is_skipped === true,
+      p_time_ms: Number.isFinite(payload.time_ms) ? Math.max(0, Math.min(3600000, Number(payload.time_ms))) : null,
     });
     if (!error && data) return c.json(ok(data, rid));
+    if (error) console.error("[trainers:answer:rpc]", error.message);
 
-    const { data: card, error: cardError } = await supabase
+    // Резервный серверный путь для ответов старого формата.
+    const service = createServiceClient(c.env);
+    if (!service) {
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить ответ", 503, rid);
+      return c.json(body, status as 503);
+    }
+    const { data: card, error: cardError } = await service
       .from("trainer_feed_cards")
       .select("question")
       .eq("id", payload.card_id)
@@ -331,7 +343,7 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
       String(option.id ?? "") === answerValue || String(option.label ?? "").trim().toLocaleLowerCase() === answerValue.toLocaleLowerCase()
     );
     const isSkipped = payload.is_skipped === true || !answerValue;
-    const { data: inserted, error: insErr } = await supabase
+    const { data: inserted, error: insErr } = await service
       .from("trainer_feed_answers")
       .insert({
         card_id: payload.card_id,
@@ -364,7 +376,13 @@ trainers.post("/feed/answer", requireAuth, async (c) => {
 trainers.get("/feed/stats", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
-  const supabase = c.get("supabase");
+  // Права на `trainer_feed_answers` отозваны у authenticated: читать историю
+  // может только серверный клиент, иначе статистика всегда была 503.
+  const supabase = createServiceClient(c.env);
+  if (!supabase) {
+    const { body, status } = fail("DB_UNAVAILABLE", "Статистика тренажёра недоступна", 503, rid);
+    return c.json(body, status as 503);
+  }
   try {
     const { data: answers, error } = await supabase
       .from("trainer_feed_answers")

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
 
 const progress = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 progress.get("/", requireAuth, async (c) => {
@@ -54,6 +55,9 @@ progress.get("/summary", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
   const supabase = c.get("supabase");
+  // У authenticated отозваны права на trainer_feed_answers: историю тренажёра
+  // читает серверный клиент, иначе вклад ответов в сводку молча терялся.
+  const trainerDb = createServiceClient(c.env) ?? supabase;
   try {
     const [attemptsRes, answersRes, attendanceRes, srsRes] = await Promise.all([
       supabase.from("test_attempts")
@@ -62,7 +66,7 @@ progress.get("/summary", requireAuth, async (c) => {
         .eq("status", "submitted")
         .gte("started_at", new Date(Date.now() - 90 * 86400000).toISOString())
         .limit(1000),
-      supabase.from("trainer_feed_answers")
+      trainerDb.from("trainer_feed_answers")
         .select("card_id,is_correct,is_skipped,created_at")
         .eq("user_id", user.id)
         .gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString())
