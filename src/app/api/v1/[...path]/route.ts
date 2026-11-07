@@ -139,10 +139,15 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   }
 
   const out = new NextResponse(buf, { status: upstream.status, statusText: upstream.statusText });
-  for (const h of ["content-type", "location", "content-disposition", "cache-control", "etag", "last-modified", "x-request-id"]) {
+  for (const h of ["content-type", "location", "content-disposition", "etag", "last-modified", "x-request-id"]) {
     const value = upstream.headers.get(h);
     if (value) out.headers.set(h, value);
   }
+  // Ответы API персональные (сессия, ДЗ, тесты, админ-данные), поэтому общий
+  // кеш запрещён: без явного заголовка Vercel отдавал public, max-age=0,
+  // и 401/личные данные могли переиспользоваться промежуточными кешами.
+  out.headers.set("cache-control", "private, no-store");
+  out.headers.set("vary", "Authorization, Cookie");
   out.headers.set("x-medbiohim-proxy", "cloudflare-only");
   return withTransportDiagnostics(req, out, source);
 }
