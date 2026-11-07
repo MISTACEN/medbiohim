@@ -239,8 +239,8 @@ export const endpoints = {
     test: (id: string): string => `/teacher/tests/${enc(id)}`,
     students: (query?: string): string => withQuery("/teacher/students", query),
     studentAttempts: (id: string): string => `/teacher/students/${enc(id)}/attempts`,
-    gradingQueue: (query?: string): string => withQuery("/teacher/open-answers", query),
-    gradingAnswer: (id: string): string => `/teacher/open-answers/${enc(id)}`,
+    studentTestAnswers: (id: string, testId: string): string =>
+      `/teacher/students/${enc(id)}/test/${enc(testId)}/answers`,
     testAssignments: (query?: string): string => withQuery("/teacher/test-assignments", query),
     testAssignment: (id: string): string => `/teacher/test-assignments/${enc(id)}`,
     testAssignmentAnalytics: (id: string): string => `/teacher/test-assignments/${enc(id)}/analytics`,

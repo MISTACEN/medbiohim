@@ -144,6 +144,7 @@ export type TeacherStudent = {
 
 export type StudentAttempt = {
   id: string;
+  test_id: string;
   test_title: string | null;
   percent: number | null;
   score: number | null;
@@ -152,6 +153,29 @@ export type StudentAttempt = {
   started_at: string | null;
   finished_at: string | null;
 };
+
+export type StudentAnswerRow = {
+  question_id: string;
+  text: string;
+  student_answer: string | null;
+  etalon?: string | null;
+  is_correct: boolean | null;
+  score: number | null;
+  grading_source: string | null;
+  grading_feedback: string | null;
+  answered_at: string | null;
+};
+
+/** По-вопросный разбор: ответы студента по конкретному тесту (8.31). */
+export function teacherStudentTestAnswers(studentId: string, testId: string) {
+  return api<{
+    items: StudentAnswerRow[];
+    student_id: string;
+    test_id: string;
+    test_title: string | null;
+    detail_level: number;
+  }>(endpoints.teacher.studentTestAnswers(studentId, testId));
+}
 
 /** Ростер студентов области преподавателя. */
 export function teacherStudents() {
@@ -239,33 +263,7 @@ export function setAssignmentDetailLevel(id: string, detailLevel: number) {
   );
 }
 
-export type OpenAnswerItem = {
-  id: string;
-  test_id: string;
-  test_title: string | null;
-  question_text: string;
-  question_type: string | null;
-  etalon: string;
-  student_answer: string;
-  grading_status: string | null;
-  grading_feedback: string | null;
-  student_name: string;
-  answered_at: string | null;
-};
-
 /** Очередь ручной проверки открытых ответов. */
-export function teacherGradingQueue(query?: string) {
-  return api<{ items: OpenAnswerItem[]; total: number }>(endpoints.teacher.gradingQueue(query));
-}
-
-/** Вердикт учителя по открытому ответу (только свой/подключённый тест). */
-export function gradeOpenAnswer(id: string, isCorrect: boolean, feedback?: string | null) {
-  return api<{ answer: { id: string; is_correct: boolean; score: number } }>(
-    endpoints.teacher.gradingAnswer(id),
-    { method: "POST", body: JSON.stringify({ is_correct: isCorrect, feedback }) },
-  );
-}
-
 export type QuestionAnalyticsItem = {
   question_id: string;
   order: number;

@@ -21,6 +21,7 @@ export function CreateTestButton({ onCreated }: { onCreated?: () => void }) {
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [search, setSearch] = useState("");
+  const [timeLimitMin, setTimeLimitMin] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState("");
@@ -71,6 +72,7 @@ export function CreateTestButton({ onCreated }: { onCreated?: () => void }) {
       title: title.trim(),
       subject_id: subjectId,
       question_ids: [...selected],
+      time_limit_sec: timeLimitMin ? Number(timeLimitMin) * 60 : null,
       is_published: true,
     });
     setBusy(false);
@@ -107,7 +109,7 @@ export function CreateTestButton({ onCreated }: { onCreated?: () => void }) {
             )}
             {!loading && (
               <div className="mt-3 space-y-3">
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -119,6 +121,15 @@ export function CreateTestButton({ onCreated }: { onCreated?: () => void }) {
                       <option key={subject.id} value={subject.id}>{subject.name}</option>
                     ))}
                   </select>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={timeLimitMin}
+                    onChange={(e) => setTimeLimitMin(e.target.value)}
+                    className="rounded-xl border p-2 text-sm"
+                    placeholder="Время, мин (без лимита)"
+                  />
                 </div>
                 <input
                   value={search}

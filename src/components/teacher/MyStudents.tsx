@@ -10,7 +10,9 @@ import { ChevronDown, ChevronUp, Loader2, Users } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 import {
   teacherStudentAttempts,
+  teacherStudentTestAnswers,
   teacherStudents,
+  type StudentAnswerRow,
   type StudentAttempt,
   type TeacherStudent,
 } from "@/lib/api/teacher";
@@ -22,9 +24,80 @@ function percentTone(percent: number | null): string {
   return "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]";
 }
 
+function AttemptBreakdown({ studentId, attempt }: { studentId: string; attempt: StudentAttempt }) {
+  const [rows, setRows] = useState<StudentAnswerRow[] | null>(null);
+  const [error, setError] = useState("");
+  const [detailLevel, setDetailLevel] = useState(4);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await teacherStudentTestAnswers(studentId, attempt.test_id);
+      if (cancelled) return;
+      if (result.ok) {
+        setRows(result.data.items);
+        setDetailLevel(result.data.detail_level);
+      } else setError(describeApiError(result.error));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId, attempt.test_id]);
+
+  if (error) return <div className="text-[var(--status-critical-fg)]">{error}</div>;
+  if (rows === null)
+    return (
+      <div className="flex items-center gap-2 text-slate-500">
+        <Loader2 className="h-4 w-4 animate-spin" /> Загрузка разбора…
+      </div>
+    );
+  if (rows.length === 0) return <div className="text-[var(--muted)]">Ответов в этой сессии нет.</div>;
+
+  return (
+    <div className="space-y-1.5">
+      {detailLevel < 2 && (
+        <div className="rounded-lg bg-[var(--status-warn-bg)] p-2 text-xs text-[var(--status-warn-fg)]">
+          Уровень детализации {detailLevel}: ответы студентов скрыты (админ может поднять до 2+).
+        </div>
+      )}
+      {rows.map((row) => (
+        <div key={row.question_id} className="rounded-lg bg-white p-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <span className="min-w-0 flex-1">{row.text || "—"}</span>
+            {row.is_correct != null && (
+              <span
+                className={
+                  "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold " +
+                  (row.is_correct
+                    ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
+                    : "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]")
+                }
+              >
+                {row.is_correct ? "верно" : "неверно"}
+              </span>
+            )}
+          </div>
+          {detailLevel >= 2 && (
+            <div className="mt-1 text-xs text-slate-600">
+              Ответ: <span className="whitespace-pre-wrap">{row.student_answer || "—"}</span>
+            </div>
+          )}
+          {detailLevel >= 3 && row.etalon && (
+            <div className="mt-1 text-xs text-[var(--status-ok-fg)]">Эталон: {row.etalon}</div>
+          )}
+          {detailLevel >= 3 && row.grading_feedback && (
+            <div className="mt-0.5 text-xs text-[var(--muted)]">Комментарий: {row.grading_feedback}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function StudentCard({ student }: { student: TeacherStudent }) {
   const [open, setOpen] = useState(false);
   const [attempts, setAttempts] = useState<StudentAttempt[] | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   async function toggle() {

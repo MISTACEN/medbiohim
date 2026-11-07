@@ -211,3 +211,130 @@ teacher.get("/students/:id/attempts", requireAuth, async (c) => {
 });
 
 export default teacher;
+
+/**
+ * По-вопросный разбор попытки (кабинет 8.31): ответы студента по конкретному
+ * тесту из test_preparation_results — студент отвечал через «Начать»,
+ * результаты уже лежат там. Эталоны и ответы выдаются согласно уровню
+ * детализации (detail_level 1–4), который назначил администратор.
+ */
+teacher.get("/students/:id/test/:testId/answers", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireTeachingCapability(c, "teacher.results.view"))) return c.res;
+  const userId = c.get("user").id;
+  const studentId = c.req.param("id") || "";
+  const testId = c.req.param("testId") || "";
+  if (!UUID.test(studentId) || !UUID.test(testId)) {
+    return error(c, rid, 422, "VALIDATION_ERROR", "Некорректные идентификаторы");
+  }
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
+  try {
+    const roles = await callerRoles(service, userId);
+    const isAdmin = canAdminister(roles);
+    // Тест должен быть виден учителю: свой или подключённый админом.
+    const { data: test, error: testError } = await service
+      .from("tests")
+      .select("id,created_by,teacher_visible,title")
+      .eq("id", testId).maybeSingle();
+    if (testError) throw testError;
+    if (!test) return error(c, rid, 404, "NOT_FOUND", "Тест не найден");
+    if (!isAdmin) {
+      const ownsTest = String((test as any).created_by || "") === userId;
+      const adminConnected = (test as any).teacher_visible === true;
+      if (!ownsTest && !adminConnected) {
+        return error(c, rid, 403, "FORBIDDEN", "Этот тест не ваш и не подключён админом");
+      }
+      const scope = await loadTeacherScope(service, userId);
+      const { data: membership, error: membershipError } = await service
+        .from("group_memberships")
+        .select("group_id")
+        .eq("user_id", studentId).in("group_id", scope.groups as string[])
+        .eq("is_active", true).limit(1);
+      if (membershipError) throw membershipError;
+      const inScope = Boolean(membership?.length) || scope.students.includes(studentId);
+      if (!inScope) return error(c, rid, 403, "FORBIDDEN", "Студент вне вашей области");
+    }
+
+    // Уровень детализации: максимум по назначениям, накрывающим группы студента.
+    let detailLevel = 4;
+    if (!isAdmin) {
+      const scope = await loadTeacherScope(service, userId);
+      const { data: studentGroups, error: studentGroupsError } = await service
+        .from("group_memberships")
+        .select("group_id")
+        .eq("user_id", studentId).eq("is_active", true).limit(50);
+      if (studentGroupsError) throw studentGroupsError;
+      const coveringGroupIds = (studentGroups || [])
+        .map((row: any) => String(row.group_id))
+        .filter((groupId: string) => scope.groups.includes(groupId));
+      if (coveringGroupIds.length) {
+        const { data: assignments, error: assignmentsError } = await service
+          .from("teacher_assignments")
+          .select("detail_level")
+          .eq("teacher_id", userId)
+          .in("group_id", coveringGroupIds as string[])
+          .limit(100);
+        if (assignmentsError) throw assignmentsError;
+        const levels = (assignments || []).map((row: any) => Number(row.detail_level) || 4);
+        detailLevel = levels.length ? Math.max(...levels) : 4;
+      }
+    }
+
+    const { data: answers, error: answersError } = await service
+      .from("test_preparation_results")
+      .select("question_id,answer_text,is_correct,score,grading_status,grading_source,grading_feedback,answered_at")
+      .eq("user_id", studentId).eq("test_id", testId)
+      .not("answered_at", "is", null)
+      .order("answered_at", { ascending: true })
+      .limit(1000);
+    if (answersError) throw answersError;
+    const rows = (answers || []) as any[];
+    const questionIds = [...new Set(rows.map((row) => String(row.question_id)))];
+    const { data: questions, error: questionsError } = await service
+      .from("questions")
+      .select("id,text,answer")
+      .in("id", questionIds as string[])
+      .limit(1000);
+    if (questionsError) throw questionsError;
+    const questionTexts = new Map<string, { text: string; etalon: string }>();
+    for (const question of questions || []) {
+      questionTexts.set(String(question.id), {
+        text: String((question as any).text || "").slice(0, 500),
+        etalon: String((question as any).answer || "").slice(0, 500),
+      });
+    }
+    const seen = new Set<string>();
+    const items: any[] = [];
+    for (const row of [...rows].reverse()) {
+      const key = String(row.question_id);
+      if (seen.has(key)) continue; // последний ответ на вопрос — как в прогрессе банка
+      seen.add(key);
+      const meta = questionTexts.get(key);
+      const isCorrect = row.is_correct === true;
+      const item: Record<string, unknown> = {
+        question_id: key,
+        text: meta?.text || "—",
+        student_answer: detailLevel >= 2 ? String(row.answer_text || "").slice(0, 1000) : null,
+        is_correct: row.is_correct,
+        score: row.score ?? null,
+        grading_source: row.grading_source || null,
+        grading_feedback: detailLevel >= 3 ? String(row.grading_feedback || "").slice(0, 500) || null : null,
+        answered_at: row.answered_at || null,
+      };
+      // Эталон — уровень 3+: иначе студент узнает правильные ответы через учителя.
+      if (detailLevel >= 3) item.etalon = meta?.etalon || null;
+      items.push(item);
+    }
+    return c.json(ok({
+      student_id: studentId,
+      test_id: testId,
+      test_title: (test as any).title || null,
+      detail_level: detailLevel,
+      items,
+    }, rid));
+  } catch (breakdownError) {
+    console.error("[teacher:student-breakdown]", breakdownError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Разбор попытки недоступен");
+  }
+});
