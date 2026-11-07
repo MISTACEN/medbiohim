@@ -392,13 +392,15 @@ export function TestsHub({
     });
   }, [enriched]);
 
+  // Фильтр по предмету действует и на общей /tests (пилюли «Гистология 23…»),
+  // а не только внутри страницы предмета — раньше он игнорировался без scoped.
   const bySubject = useMemo(() => {
-    if (!scoped || subjectFilter === "all") return scopedTests;
+    if (subjectFilter === "all") return scopedTests;
     return scopedTests.filter((test) => {
       const key = test.subjectId || test.subjectSlug || test.subjectName || "other";
       return key === subjectFilter;
     });
-  }, [scopedTests, scoped, subjectFilter]);
+  }, [scopedTests, subjectFilter]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -508,7 +510,7 @@ export function TestsHub({
   function resetFilters() {
     setSearch("");
     setModuleFilter("all");
-    if (!scoped) setSubjectFilter("all");
+    if (subjects.length > 0) setSubjectFilter("all");
   }
 
   if (authLoading || loading) {
