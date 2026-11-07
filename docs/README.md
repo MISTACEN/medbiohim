@@ -14,6 +14,7 @@
 - [COOKIES-RFC-E1.md](COOKIES-RFC-E1.md) — cookie-транспорт авторизации (упомянут в коде прокси).
 - [ARCHITECTURE.md](ARCHITECTURE.md) — схема приложения и API.
 - [architecture/SHARED-COMPONENT-REGISTRY.md](architecture/SHARED-COMPONENT-REGISTRY.md) + [architecture/registry/](architecture/registry/) — реестр общих компонентов (контракт, проверяется тестом).
+- [architecture/MODULE-ARCHITECTURE.md](architecture/MODULE-ARCHITECTURE.md) — модульная схема: реестр модулей, «предметы вместо химии», правила общей папки, этапы и оценка в токенах.
 
 ## Инструкции ИИ-агентов
 
