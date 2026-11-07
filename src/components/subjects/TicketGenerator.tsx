@@ -6,7 +6,7 @@ import { Eye, GraduationCap, Loader2, RefreshCw } from "lucide-react";
 import { generateTicket, listTicketBanks } from "@/lib/api";
 import { ticketBankAvailable } from "@/lib/subjectSlug";
 import { loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { describeApiError } from "@/lib/errors";

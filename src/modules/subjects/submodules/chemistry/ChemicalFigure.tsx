@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { ChemicalFigureSpec, ChemicalMolecule, ChemicalRepresentation } from "@/lib/chemistry/types";
-import { StructureView } from "@/components/chemistry/StructureView";
+import { StructureView } from "./StructureView";
 import { readChemistryResolve } from "@/lib/chemistry/resolve";
-import { ProjectionView } from "@/components/chemistry/ProjectionView";
+import { ProjectionView } from "./ProjectionView";
 import type { ProjectionKind } from "@/lib/chemistry/projections";
 
 const PROJECTIONS = new Set<string>(["fischer", "haworth", "newman", "sawhorse", "chair"]);

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft, FlaskConical, Loader2 } from "lucide-react";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import {
   gradeQuestion,

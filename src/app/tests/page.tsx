@@ -15,7 +15,7 @@ import {
   hasToken,
   listMyAttempts,
 } from "@/lib/api";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard, SkeletonList } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";

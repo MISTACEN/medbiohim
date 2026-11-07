@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { HelpCircle, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import {
   createMyQuestion,
   deleteMyQuestion,

@@ -56,7 +56,8 @@
 | `src/lib/auth/` | Сессия, токен, refresh |
 | `src/hooks/` | `useModuleAccess`, `useApiRequest` и др. |
 | `src/components/editor/RichLectureEditor.tsx` | **Единый научный редактор** (формулы, chem, таблицы, индексы, вложения) |
-| `src/components/chemistry/`, `src/lib/chemistry/` | Химический рендер (ChemRichText), формулы |
+| `src/modules/subjects/submodules/chemistry/` | Химия как подмодуль предметов: таблица, лаборатория, практика, инструменты, ChemRichText (границы проверяет `test/module-boundaries.test.mjs`) |
+| `src/lib/chemistry/` | Модель химии: формулы, решения, pH, структуры (осталась на месте) |
 
 ## Сервер: `workers/api/`
 

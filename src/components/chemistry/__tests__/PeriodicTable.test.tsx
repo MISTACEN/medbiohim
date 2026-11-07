@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { PeriodicTable } from "@/components/chemistry/PeriodicTable";
+import { PeriodicTable } from "@/modules/subjects/submodules/chemistry";
 
 /**
  * Дымовые UI-тесты интерактивной таблицы: ячейки строятся из данных,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PeriodicTable } from "@/components/chemistry/PeriodicTable";
+import { PeriodicTable } from "@/modules/subjects/submodules/chemistry";
 
 export const metadata: Metadata = {
   title: "Периодическая таблица элементов",

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import AttestationRunner from "@/components/attestations/AttestationRunner";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import type { Attestation } from "@/types/attestations";
 
 const PHOTO = "https://example.com/ethanol.png";

@@ -59,7 +59,7 @@ test("a non-JSON body does not leak undefined or object wording into the UI", ()
 
 test("ChemicalFigure reads the envelope through the shared parser", async () => {
   const figure = await fs.readFile(
-    new URL("../src/components/chemistry/ChemicalFigure.tsx", import.meta.url),
+    new URL("../src/modules/subjects/submodules/chemistry/ChemicalFigure.tsx", import.meta.url),
     "utf8"
   );
   assert.match(figure, /readChemistryResolve\(res\.ok, payload\)/);

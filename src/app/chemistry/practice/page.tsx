@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { PracticeRunner } from "@/components/chemistry/PracticeRunner";
+import { PracticeRunner } from "@/modules/subjects/submodules/chemistry";
 import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
 
 export const metadata: Metadata = {

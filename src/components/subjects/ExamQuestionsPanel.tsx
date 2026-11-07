@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ListChecks, Loader2, Search } from "lucide-react";
 import { listExamQuestions } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { describeApiError } from "@/lib/errors";
 
 type ExamQuestion = {

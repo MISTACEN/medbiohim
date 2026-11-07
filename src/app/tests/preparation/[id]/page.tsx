@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { QuestionReport } from "@/components/QuestionReport";
 import { LoadingBar } from "@/components/ui/LoadingBar";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import {
   startPreparation,

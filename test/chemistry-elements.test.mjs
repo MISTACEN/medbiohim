@@ -14,7 +14,7 @@ const readJson = (relative) => JSON.parse(read(relative));
 const dataset = readJson("src/data/chemical-elements.json");
 const elements = dataset.elements;
 const libSource = read("src/lib/elements.ts");
-const tableSource = read("src/components/chemistry/PeriodicTable.tsx");
+const tableSource = read("src/modules/subjects/submodules/chemistry/PeriodicTable.tsx");
 const pageSource = read("src/app/chemistry/elements/page.tsx");
 const chemistryIndexSource = read("src/app/chemistry/page.tsx");
 
@@ -123,7 +123,7 @@ test("компонент таблицы строится из данных би�
 
 test("страница /chemistry/elements отдаёт таблицу, а /chemistry ссылается на неё", () => {
   assert.ok(existsSync(new URL("src/app/chemistry/elements/page.tsx", ROOT)), "маршрут таблицы существует");
-  assert.match(pageSource, /from "@\/components\/chemistry\/PeriodicTable"/);
+  assert.ok(pageSource.includes('from "@/modules/subjects/submodules/chemistry"'), "таблица берётся из модуля химии");
   assert.match(pageSource, /<PeriodicTable/);
   assert.match(chemistryIndexSource, /href="\/chemistry\/elements"/, "вход в таблицу есть со страницы химии");
 });

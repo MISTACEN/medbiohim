@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
+import { ChemicalFigure } from "./ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import type { ChemicalFigureSpec } from "@/lib/chemistry/types";
 

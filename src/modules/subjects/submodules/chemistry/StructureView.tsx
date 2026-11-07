@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ChemicalMolecule, StructureImage } from "@/lib/chemistry/types";
 import { pickStructureImage } from "@/lib/chemistry/structureImages";
 import { smilesToSvg } from "@/lib/chemistry/rdkitClient";
-import { Mol3DView } from "@/components/chemistry/Mol3DView";
+import { Mol3DView } from "./Mol3DView";
 
 type Props = {
   molecule: ChemicalMolecule;

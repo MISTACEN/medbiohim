@@ -10,7 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { generateTicket, listTicketBanks, type BankQuestion } from "@/lib/api";
 import { Loader2, RefreshCw, Eye, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import { describeApiError } from "@/lib/errors";
 

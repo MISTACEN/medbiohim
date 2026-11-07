@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, FlaskConical, Loader2, PencilRuler, Search } from "lucide-react";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import {
   loadHobaPractical,
   loadHobaTasks,

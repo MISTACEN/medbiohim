@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChemicalFigure } from "@/components/chemistry/ChemicalFigure";
+import { ChemicalFigure } from "@/modules/subjects/submodules/chemistry";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";

@@ -52,7 +52,7 @@ test("no English failure wording is left in the student-facing dialogs", async (
     "../src/app/materials/page.tsx",
     "../src/app/register/page.tsx",
     "../src/app/auth/callback/page.tsx",
-    "../src/components/chemistry/ChemicalFigure.tsx",
+    "../src/modules/subjects/submodules/chemistry/ChemicalFigure.tsx",
   ];
   for (const file of files) {
     const source = await fs.readFile(new URL(file, import.meta.url), "utf8");

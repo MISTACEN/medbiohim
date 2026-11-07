@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, BookOpenCheck, Check, ListChecks, Pencil, Play, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { adminUpdateBankQuestion, getBankProgress, getTestBank, hasToken, me, type ApiTest } from "@/lib/api";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";

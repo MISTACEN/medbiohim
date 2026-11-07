@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Beaker, FlaskConical, ListChecks } from "lucide-react";
-import { ChemistryWorkbench } from "@/components/chemistry/ChemistryWorkbench";
+import { ChemistryWorkbench } from "@/modules/subjects/submodules/chemistry";
 import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
 import { moduleById, moduleHref, subjectAreaName, type SubjectAreaKey } from "@/lib/learning/modules";
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Archive, ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, MessageSquare, Search, Sparkles } from "lucide-react";
 import { listQuestionTopics, listQuestions } from "@/lib/api";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import QuestionComments from "@/components/questions/QuestionComments";
 import { loadTicketBank, type PortalTicketBank } from "@/lib/portalContent";
 

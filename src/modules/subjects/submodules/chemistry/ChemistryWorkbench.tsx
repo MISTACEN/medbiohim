@@ -3,10 +3,10 @@
 import { FormEvent, useState } from "react";
 import type { ChemicalMolecule } from "@/lib/chemistry/types";
 import type { ProjectionKind } from "@/lib/chemistry/projections";
-import { StructureView } from "@/components/chemistry/StructureView";
-import { ProjectionView } from "@/components/chemistry/ProjectionView";
-import { MechanismView } from "@/components/chemistry/MechanismView";
-import { VseprView } from "@/components/chemistry/VseprView";
+import { StructureView } from "./StructureView";
+import { ProjectionView } from "./ProjectionView";
+import { MechanismView } from "./MechanismView";
+import { VseprView } from "./VseprView";
 import { mechanismDemos } from "@/lib/chemistry/mechanism";
 
 const structureTabs = [

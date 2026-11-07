@@ -16,7 +16,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import type { Attestation, AttestationItem, AttestationType } from "@/types/attestations";
 import { ATTESTATION_TYPE_LABELS } from "@/types/attestations";
 

@@ -28,7 +28,7 @@ import {
   upsertNote,
   type BankQuestion,
 } from "@/lib/api";
-import { ChemRichText } from "@/components/chemistry/ChemRichText";
+import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { QuestionReport } from "@/components/QuestionReport";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { resolveSubjectSlug, subjectDisplayName } from "@/lib/subjectSlug";
