@@ -30,6 +30,30 @@ async function readPreferences(c: any) {
   }
 }
 
+// В продукте остаются только почта, Google и Telegram. Устаревшие
+// идентичности (VK, Яндекс, GitHub, Discord, телефон) не показываем.
+const ALLOWED_IDENTITY_PROVIDERS = new Set(["email", "google", "custom:telegram"]);
+
+/** Привязанные способы входа — один источник для /settings/account и /settings/identities. */
+function linkedIdentitiesOf(user: any): any[] {
+  const identities = (Array.isArray(user.identities) ? user.identities : [])
+    .filter((identity: any) => ALLOWED_IDENTITY_PROVIDERS.has(String(identity.provider || "")));
+  const labels: Record<string, string> = { email: "Почта", google: "Google", "custom:telegram": "Telegram" };
+  return identities.map((identity: any) => {
+    const provider = String(identity.provider || "unknown");
+    const identityData = identity.identity_data && typeof identity.identity_data === "object" ? identity.identity_data : {};
+    return {
+      id: String(identity.identity_id || identity.id || ""),
+      provider,
+      provider_label: labels[provider] || provider,
+      email: identityData.email || identity.email || null,
+      name: identityData.full_name || identityData.name || identityData.preferred_username || null,
+      can_unlink: identities.length > 1,
+      last_sign_in_at: identity.last_sign_in_at || null,
+    };
+  });
+}
+
 async function readAccount(c: any) {
   const rid = requestId();
   const user = c.get("user");
@@ -42,25 +66,7 @@ async function readAccount(c: any) {
     if (profileError) throw profileError;
     if (prefError) throw prefError;
 
-    // В продукте остаются только почта, Google и Telegram. Устаревшие
-    // идентичности (VK, Яндекс, GitHub, Discord, телефон) не показываем.
-    const allowedProviders = new Set(["email", "google", "custom:telegram"]);
-    const identities = (Array.isArray(user.identities) ? user.identities : [])
-      .filter((identity: any) => allowedProviders.has(String(identity.provider || "")));
-    const linkedIdentities = identities.map((identity: any) => {
-      const provider = String(identity.provider || "unknown");
-      const identityData = identity.identity_data && typeof identity.identity_data === "object" ? identity.identity_data : {};
-      const labels: Record<string, string> = { email: "Почта", google: "Google", "custom:telegram": "Telegram" };
-      return {
-        id: String(identity.identity_id || identity.id || ""),
-        provider,
-        provider_label: labels[provider] || provider,
-        email: identityData.email || identity.email || null,
-        name: identityData.full_name || identityData.name || identityData.preferred_username || null,
-        can_unlink: identities.length > 1,
-        last_sign_in_at: identity.last_sign_in_at || null,
-      };
-    });
+    const linkedIdentities = linkedIdentitiesOf(user);
     const metadata = user.user_metadata && typeof user.user_metadata === "object" ? user.user_metadata : {};
     // Смена почты в Supabase двухшаговая: письмо уходит на новый адрес, а
     // user.email меняется только после подтверждения. Показываем это явно,
@@ -543,6 +549,18 @@ settings.get("/", requireAuth, readPreferences);
 settings.get("/preferences", requireAuth, readPreferences);
 settings.patch("/", requireAuth, savePreferences); // Backward-compatible settings endpoint.
 settings.get("/account", requireAuth, readAccount);
+// GET /settings/identities: путь отдавал 501, хотя именно его зовут старые клиенты.
+settings.get("/identities", requireAuth, async (c) => {
+  const rid = requestId();
+  try {
+    const items = linkedIdentitiesOf(c.get("user"));
+    return c.json(ok({ items, count: items.length }, rid));
+  } catch (error) {
+    console.error("[settings:identities]", { error: String(error), requestId: rid });
+    const { body, status } = fail("SETTINGS_ERROR", "Способы входа временно недоступны", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
 settings.get("/telegram/status", requireAuth, readTelegramStatus);
 settings.post("/telegram/link-start", requireAuth, startTelegramLink);
 settings.post("/telegram/unlink", requireAuth, unlinkTelegramAccount);

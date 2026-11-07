@@ -44,6 +44,7 @@ import questions from "./routes/questions";
 import favorites from "./routes/favorites";
 import notes from "./routes/notes";
 import notifications from "./routes/notifications";
+import announcements from "./routes/announcements";
 import search from "./routes/search";
 import trainings from "./routes/trainings";
 import trainers from "./routes/trainers";
@@ -207,6 +208,9 @@ v1.route("/exam-questions", gatedModule("subjects", examQuestions));
 v1.route("/my", studentOnly(my));
 v1.route("/questions", gatedModule("subjects", questions));
 v1.route("/favorites", studentOnly(favorites));
+// Совместимость: старые клиенты и страница закладок зовут /bookmarks.
+v1.get("/bookmarks", (c) => favorites.fetch(rewriteRequest(c.req.raw, "/"), c.env));
+v1.post("/bookmarks/toggle", (c) => favorites.fetch(rewriteRequest(c.req.raw, "/toggle"), c.env));
 v1.route("/notes", studentOnly(notes));
 v1.route("/search", gatedModule("search", search));
 v1.route("/trainings", gatedModule("subjects", trainings));
@@ -217,6 +221,7 @@ v1.route("/sessions", studentOnly(sessions));
 v1.route("/settings", settings);
 // Уведомления — личные и не привязаны к модулю: без гейта "group".
 v1.route("/notifications", notifications);
+v1.route("/announcements", announcements);
 // SA6: экспорт данных аккаунта и удаление с grace-периодом (/account/export, /account/deletion).
 v1.route("/account", accountData);
 v1.route("/telegram", telegramIngest);
