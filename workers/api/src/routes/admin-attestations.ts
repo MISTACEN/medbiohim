@@ -6,7 +6,8 @@ import { createServiceClient } from "../lib/supabase";
 import { attestationKey, normalizeAttestation, summarizeAttestation, type Attestation } from "../lib/attestation";
 
 const adminAttestations = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
-const MANAGERS = ["admin", "moderator", "teacher"];
+// Аттестации — общий контент: преподаватель не управляет ими через админку.
+const MANAGERS = ["admin", "moderator"];
 
 function error(c: any, rid: string, status: number, code: string, message: string) {
   const { body, status: responseStatus } = fail(code, message, status, rid);

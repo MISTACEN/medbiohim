@@ -56,7 +56,8 @@ test("public attestation routes expose only published, available documents", () 
 });
 
 test("admin attestation routes are role-gated and write through site_content", () => {
-  assert.ok(adminRoute.includes('const MANAGERS = ["admin", "moderator", "teacher"]'));
+  assert.ok(adminRoute.includes('const MANAGERS = ["admin", "moderator"]'));
+  assert.doesNotMatch(adminRoute, /MANAGERS = \[[^\]]*"teacher"/);
   assert.ok(adminRoute.includes('from("user_roles")'));
   assert.ok(adminRoute.includes('adminAttestations.put("/attestations/:subject/:slug"'));
   assert.ok(adminRoute.includes('adminAttestations.delete("/attestations/:subject/:slug"'));

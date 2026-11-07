@@ -8,7 +8,8 @@ import { loadTeacherScope } from "../lib/teacher-scope";
 
 const parity = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MANAGERS = ["admin", "moderator", "teacher"];
+// teacher исключён намеренно: админские CMS-операции — только admin/moderator.
+const MANAGERS = ["admin", "moderator"];
 const ADMIN_ONLY = ["admin"];
 const CONTENT_MODERATORS = ["admin", "moderator"];
 const VERSION_FIELDS: Record<string, string[]> = {

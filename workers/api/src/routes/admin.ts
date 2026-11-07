@@ -16,7 +16,9 @@ import { requireContentOwnership } from "../lib/content-access";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MANAGERS = ["admin", "moderator", "teacher"];
+// Преподаватель не получает админские инструменты: его рабочее место —
+// /teacher/*. Общие контентные операции остаются за админом и модератором.
+const MANAGERS = ["admin", "moderator"];
 const STRICT_ADMINS = ["admin"];
 // Банк экзаменационных вопросов и банк вопросов — общий контент: преподаватель
 // ведёт личные вопросы через /my-questions, а не через админский редактор.
