@@ -2,7 +2,6 @@
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import * as XLSX from "xlsx";
 import { CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { adminContentImport, adminDbList, adminImportCurriculumXlsx, hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
@@ -17,11 +16,13 @@ const headers={
 };
 
 function downloadTemplate(){
-  const wb=XLSX.utils.book_new();
-  for(const [name,cols] of Object.entries(headers)){
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cols]),name);
-  }
-  XLSX.writeFile(wb,"medbiohim-content-template.xlsx");
+  void import("xlsx").then(XLSX=>{
+    const wb=XLSX.utils.book_new();
+    for(const [name,cols] of Object.entries(headers)){
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cols]),name);
+    }
+    XLSX.writeFile(wb,"medbiohim-content-template.xlsx");
+  });
 }
 function normalize(v:unknown):unknown{
   if(v===undefined||v===null)return "";
@@ -33,6 +34,7 @@ function normalize(v:unknown):unknown{
   return s;
 }
 async function readWorkbook(file:File){
+  const XLSX=await import("xlsx");
   const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
   const result:{tests:Row[];questions:Row[];test_questions:Row[]}={tests:[],questions:[],test_questions:[]};
   for(const key of Object.keys(result)){
