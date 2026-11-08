@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BarChart3, CalendarClock, ClipboardList, Download, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { describeApiError } from "@/lib/errors";
+import { listQuestionTopics } from "@/lib/api/content";
 import {
   createTestAssignment,
   deleteTestAssignment,
@@ -47,6 +48,9 @@ export function TestAssignments() {
   const [maxAttempts, setMaxAttempts] = useState("");
   const [questionCount, setQuestionCount] = useState("");
   const [instructions, setInstructions] = useState("");
+  // Ограничение банка назначаемого теста темами (API: topic_ids, до 20).
+  const [topics, setTopics] = useState<Array<{ id: string; title: string }>>([]);
+  const [topicIds, setTopicIds] = useState<string[]>([]);
   const [analytics, setAnalytics] = useState<{ id: string; items: QuestionAnalyticsItem[]; unique_students: number } | null>(null);
   const [exporting, setExporting] = useState("");
 
@@ -105,6 +109,45 @@ export function TestAssignments() {
     void load();
   }, [load]);
 
+  // Темы подтягиваются под предмет выбранного теста; смена теста сбрасывает выбор.
+  useEffect(() => {
+    if (!creating || !testId) {
+      setTopics([]);
+      return;
+    }
+    const subjectId = tests.find((test) => test.id === testId)?.subject_id;
+    if (!subjectId) {
+      setTopics([]);
+      return;
+    }
+    let cancelled = false;
+    void listQuestionTopics(subjectId).then((result: any) => {
+      if (cancelled || !result?.ok) {
+        if (!cancelled) setTopics([]);
+        return;
+      }
+      const items: any[] = Array.isArray(result.data?.items) ? result.data.items : [];
+      setTopics(
+        items.flatMap((module) =>
+          (Array.isArray(module.topics) ? module.topics : []).map((topic: any) => ({
+            id: String(topic.id),
+            title: String(topic.title || ""),
+          })),
+        ),
+      );
+    });
+    setTopicIds([]);
+    return () => {
+      cancelled = true;
+    };
+  }, [creating, testId, tests]);
+
+  function toggleTopic(id: string) {
+    setTopicIds((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+    );
+  }
+
   function toggleGroup(id: string) {
     setGroupIds((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
@@ -127,6 +170,7 @@ export function TestAssignments() {
       time_limit_sec: timeLimitMin ? Number(timeLimitMin) * 60 : null,
       max_attempts: maxAttempts ? Number(maxAttempts) : null,
       question_count: questionCount ? Number(questionCount) : null,
+      topic_ids: topicIds.length ? topicIds : undefined,
       instructions: instructions || null,
     });
     setBusy("");
@@ -134,6 +178,7 @@ export function TestAssignments() {
       setNote(`Назначено: ${result.data.test_title}`);
       setCreating(false);
       setGroupIds([]);
+      setTopicIds([]);
       setStudentIds([]);
       setDueAt("");
       setTimeLimitMin("");
@@ -398,6 +443,30 @@ export function TestAssignments() {
               </div>
             )}
           </div>
+          )}
+          {topics.length > 0 && (
+            <div>
+              <div className="mb-1 text-xs font-semibold text-slate-600">
+                Темы (необязательно · не выбрано — весь банк теста)
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {topics.map((topic) => (
+                  <button
+                    key={topic.id}
+                    type="button"
+                    onClick={() => toggleTopic(topic.id)}
+                    className={
+                      "rounded-xl px-3 py-1.5 text-sm font-semibold " +
+                      (topicIds.includes(topic.id)
+                        ? "bg-indigo-600 text-white"
+                        : "border border-[var(--border)]")
+                    }
+                  >
+                    {topic.title}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="text-sm">
