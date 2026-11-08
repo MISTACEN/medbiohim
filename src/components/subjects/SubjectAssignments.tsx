@@ -79,7 +79,7 @@ export function SubjectAssignments({ subjectId }: { subjectId: string }) {
                   <BookOpen className="h-4 w-4" /> Подготовка
                 </Link>
                 <Link
-                  href={`/tests/preparation/${item.test_id}?mode=solve&count=${count}`}
+                  href={`/tests/attempt/${item.test_id}`}
                   className="btn-primary inline-flex items-center gap-1 text-sm"
                   title="Полное тестирование — результат уйдёт преподавателю"
                 >

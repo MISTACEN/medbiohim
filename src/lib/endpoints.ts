@@ -66,6 +66,7 @@ export const endpoints = {
     start: (id: string, query?: string): string => withQuery(`/tests/${enc(id)}/start`, query),
     bankProgress: (id: string, query?: string): string => withQuery(`/tests/${enc(id)}/bank-progress`, query),
     preparationStart: (id: string): string => `/tests/${enc(id)}/preparation/start`,
+    attemptStart: (id: string): string => `/tests/${enc(id)}/attempts`,
     attemptsAnswers: (attemptId: string): string => `/tests/attempts/${enc(attemptId)}/answers`,
     attemptsAnswerRegrade: (attemptId: string, questionId: string): string =>
       `/tests/attempts/${enc(attemptId)}/answers/${enc(questionId)}/regrade`,

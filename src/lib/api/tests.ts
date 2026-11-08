@@ -63,8 +63,7 @@ export async function listMyAttempts(subjectId?: string, groupId?: string, optio
   return api<any>(endpoints.tests.myAttempts(q.toString() || undefined), options);
 }
 export async function startTestAttempt(id: string, groupId?: string) {
-  const q = groupId ? `group_id=${encodeURIComponent(groupId)}` : "";
-  return api<any>(endpoints.tests.start(id, q || undefined), { method: "POST", body: "{}" });
+  return api<any>(endpoints.tests.attemptStart(id), { method: "POST", body: JSON.stringify(groupId ? { group_id: groupId } : {}) });
 }
 export async function saveTestAnswer(attemptId: string, questionId: string, answerText: string | null) {
   return api<any>(endpoints.tests.attemptsAnswers(attemptId), { method: "POST", body: JSON.stringify({ question_id: questionId, answer_text: answerText }) });
