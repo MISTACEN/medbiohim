@@ -170,7 +170,7 @@ tests.get("/", requireAuth, async (c) => {
       subjectId = String(subjects[0].id);
     }
     let q = db.from("tests")
-      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index,subjects(name,slug,course_number,semester)")
+      .select("id,title,subject_id,module_id,topic_id,time_limit_sec,max_attempts,is_published,created_at,source_key,order_index,subjects(name,slug,course_number,semester),topics(knowledge_level)")
       .eq("is_published", true).is("archived_at", null)
       .order("order_index", { ascending: true }).order("created_at", { ascending: false }).limit(200);
     if (subjectId) q = q.eq("subject_id", subjectId);
