@@ -45,7 +45,12 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
       try {
         // 1) Запуск попытки (RPC создаёт snapshot и возвращает attempt)
         const start = await api<any>(endpoints.tests.attemptStart(testId), { method: "POST", body: JSON.stringify(user?.groupId ? { group_id: user.groupId } : {}) });
-        if (!start.ok) { setError(describeApiError(start.error)); setLoading(false); return; }
+        if (!start.ok) {
+          // Attempt-движок требует предмет из курса группы (INVALID_SUBJECT_CONTEXT).
+          // Fallback: prep-движок с mode=solve — результат также попадает в ведомость.
+          window.location.href = `/tests/preparation/${testId}?mode=solve&count=30`;
+          return;
+        }
         const attempt = start.data?.attempt;
         if (!attempt?.id) { setError("Попытка не создана"); setLoading(false); return; }
         // 2) Вопросы теста через обычный GET (используется раннером подготовки)
