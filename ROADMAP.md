@@ -127,7 +127,7 @@
 | A2 | routes/admin.ts → routes/admin/ (telegram/lectures/questions/users/files/content) | 1445 | ⏸️ после завершения второго агента |
 | A3 | lib/university/fesmu.ts → lib/university/fesmu/* (7 модулей + barrel; контрактные тесты читают каталог) | 1440 | ✅ выпущено |
 | A4 | app/schedule/page.tsx → components/schedule/ (ScheduleCard, HomeworkBits, utils) | 1221 | ✅ выпущено (страница 1221→904) |
-| A5 | app/subjects/[id]/page.tsx → components/subjects/ | 1084 | 🟡 начато: шаги 1–2 ✅: tabs-config.ts + MaterialsTab.tsx (вкладка «Материалы»); страница 1084→976; дальше — план/lectures по табам |
+| A5 | app/subjects/[id]/page.tsx → components/subjects/ | 1084 | 🟡 начато: шаги 1–3 ✅: tabs-config.ts + MaterialsTab.tsx + PlanTab.tsx; страница 1084→887; остаток — lectures по табам |
 | A6 | app/settings/page.tsx → components/settings/ | 869 | ❌ |
 | A7 | app/page.tsx (главная) → components/home/ | 836 | 🟡 частично (components/home есть) |
 | A8 | app/practice/page.tsx → components/practice/ | 829 | ❌ |
