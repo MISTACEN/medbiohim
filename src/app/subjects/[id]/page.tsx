@@ -11,6 +11,7 @@ import { resolveSubjectSlug } from "@/lib/subjectSlug";
 import { platformsForSubject } from "@/data/external-platforms";
 import { LIBRARY_FILES } from "@/lib/library";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
+import { SubjectAssignments } from "@/components/subjects/SubjectAssignments";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import TestsHub from "@/components/tests/TestsHub";
@@ -790,6 +791,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           </div>
         )}
 
+        {tab === "tests" && (
+          <SubjectAssignments subjectId={subject?.id || subjectId} />
+        )}
         {tab === "tests" && (
           <TestsHub
             subjectId={subject?.id || subjectId}
