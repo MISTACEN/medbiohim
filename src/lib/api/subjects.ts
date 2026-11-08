@@ -62,5 +62,5 @@ export async function deleteSubject(id: string): Promise<any> { return api(endpo
 
 /** Пирамида знаний: установка уровня темы (1/2/3/null) — только админ. */
 export async function setTopicPyramid(topicId: string, level: number | null): Promise<any> {
-  return api(endpoints.topics.pyramid(topicId), { method: 'PATCH', body: JSON.stringify({ knowledge_level: level }) }) as any;
+  return api(endpoints.subjects.pyramid(topicId), { method: 'PATCH', body: JSON.stringify({ knowledge_level: level }) }) as any;
 }
