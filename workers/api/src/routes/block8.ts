@@ -359,7 +359,7 @@ block8.get("/admin/sos", requireAuth, requireAdmin, async (c) => {
   try {
     const { data, error: readError } = await service
       .from("sos_reports")
-      .select("id,user_id,message,page_url,status,created_at,users(full_name,display_name,email)")
+      .select("id,user_id,message,page_url,status,created_at,users!sos_reports_user_id_fkey(full_name,display_name,email)")
       .order("created_at", { ascending: false }).limit(200);
     if (readError) throw readError;
     const items = (data || []).map((row: any) => {
