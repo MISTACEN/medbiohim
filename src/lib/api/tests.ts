@@ -73,8 +73,8 @@ export async function finishAttempt(id: string) { return api<any>(endpoints.test
 export async function retryTestAnswerGrading(attemptId: string, questionId: string) {
   return api<any>(endpoints.tests.attemptsAnswerRegrade(attemptId, questionId), { method: "POST", body: "{}" });
 }
-export async function startPreparation(testId: string, mode: "full" | "count" | "sequential" = "full", questionLimit?: number, groupId?: string): Promise<any> {
-  return api(endpoints.tests.preparationStart(testId), { method: "POST", body: JSON.stringify({ mode, question_limit: questionLimit, group_id: groupId }) }) as any;
+export async function startPreparation(testId: string, mode: "full" | "count" | "sequential" = "full", questionLimit?: number, groupId?: string, experience?: "prepare" | "solve" | "exam" | "control"): Promise<any> {
+  return api(endpoints.tests.preparationStart(testId), { method: "POST", body: JSON.stringify({ mode, question_limit: questionLimit, group_id: groupId, experience }) }) as any;
 }
 export async function getPreparation(sessionId: string): Promise<any> { return api(endpoints.tests.preparation(sessionId)) as any; }
 export async function savePreparation(sessionId: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.tests.preparation(sessionId), { method: "PATCH", body: JSON.stringify(payload) }) as any; }

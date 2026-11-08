@@ -434,6 +434,48 @@ teacher.get("/test-assignments/:id/export", requireAuth, async (c) => {
       if ((row as any).finished_at && !entry.last) entry.last = String((row as any).finished_at);
       perStudent.set(studentId, entry);
     }
+    // Директива владельца 2026-11-08: «подготовка» (проверка сразу) не считается,
+    // главный результат — полное тестирование (solve/exam/control). Полные
+    // тестирования из движка подготовки попадают в ведомость наравне с попытками.
+    const { data: fullPrep, error: fullPrepError } = await service
+      .from("test_preparation_results")
+      .select("user_id,is_correct,answered_at,session_id,test_preparation_sessions!inner(experience)")
+      .eq("test_id", testId).in("user_id", studentIds as string[])
+      .in("test_preparation_sessions.experience", ["solve", "exam", "control"])
+      .not("answered_at", "is", null).limit(20000);
+    if (fullPrepError) throw fullPrepError;
+    const prepBySession = new Map<string, Map<string, { correct: number; total: number; user: string; last: string | null }>>();
+    for (const row of fullPrep || []) {
+      const sessionId = String((row as any).session_id);
+      const bucket = prepBySession.get(sessionId) || new Map();
+      prepBySession.set(sessionId, bucket);
+      const questionKey = String((row as any).question_id);
+      const entry = bucket.get(questionKey) || { correct: 0, total: 0, user: String((row as any).user_id), last: null as string | null };
+      entry.total += 1;
+      if ((row as any).is_correct === true) entry.correct += 1;
+      const answered = String((row as any).answered_at || "");
+      if (answered && (!entry.last || answered > entry.last)) entry.last = answered;
+      bucket.set(questionKey, entry);
+    }
+    for (const bucket of prepBySession.values()) {
+      let correct = 0;
+      let total = 0;
+      let last: string | null = null;
+      let user = "";
+      for (const q of bucket.values()) {
+        user = q.user;
+        correct += q.correct;
+        total += 1;
+        if (q.last && (!last || q.last > last)) last = q.last;
+      }
+      if (!user || total === 0) continue;
+      const percent = Math.round((correct / total) * 100);
+      const entry = perStudent.get(user) || { attempts: 0, best: null, last: null };
+      entry.attempts += 1;
+      if (entry.best == null || percent > entry.best) entry.best = percent;
+      if (last && (!entry.last || last > entry.last)) entry.last = last;
+      perStudent.set(user, entry);
+    }
     const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
     const lines = ["ФИО;Группа;Попыток;Лучший результат %;Последняя сдача"];
     for (const studentId of studentIds) {

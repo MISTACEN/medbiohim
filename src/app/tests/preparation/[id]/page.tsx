@@ -165,7 +165,7 @@ export default function PreparationPage() {
     setMode(m);
     setLoading(true);
     setError("");
-    const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined, user?.groupId);
+    const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined, user?.groupId, experience);
     if (!s.ok) {
       setError(describeApiError(s.error));
       setLoading(false);

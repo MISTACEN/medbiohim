@@ -65,7 +65,7 @@ export function AssignedTests() {
                 {item.instructions && <p className="mt-1 text-xs text-slate-500">{item.instructions}</p>}
               </div>
               <Link
-                href={`/tests/preparation/${item.test_id}?mode=prepare&count=${item.question_count || 10}`}
+                href={`/tests/preparation/${item.test_id}?mode=solve&count=${item.question_count || 10}`}
                 className="btn-primary text-sm"
               >
                 Пройти назначение

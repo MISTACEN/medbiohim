@@ -886,6 +886,7 @@ export async function startSupabasePreparation(request, env, testId, input = {},
     const created = await c.rows("test_preparation_sessions", { select: "*" }, { method: "POST", body: JSON.stringify({
       user_id: c.identity.id, test_id: testId, mode, question_limit: questionLimit, question_ids: ids,
       current_index: 0, status: "in_progress", started_at: now, last_saved_at: now, group_id: groupId, question_snapshot: snapshot,
+      experience: ["prepare", "solve", "exam", "control"].includes(String(body.experience)) ? String(body.experience) : "prepare",
     }) });
     if (!created[0]) return fail(503, "PREPARATION_ERROR", "Не удалось создать сессию подготовки");
     const safe = { ...created[0], question_ids: parsePreparationIds(created[0].question_ids) };
