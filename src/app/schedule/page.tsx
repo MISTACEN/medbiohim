@@ -12,6 +12,37 @@ import { nowParts as sharedNowParts } from "@/lib/now-parts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCards, SkeletonText } from "@/components/ui/Skeleton";
 import IcalImportCard from "@/components/schedule/IcalImportCard";
+import ScheduleCard from "@/components/schedule/ScheduleCard";
+import { HomeworkGrade, HomeworkText } from "@/components/schedule/HomeworkBits";
+import type { ScheduleBundle } from "@/components/schedule/ScheduleCard";
+import {
+  FALLBACK_SEMESTER,
+  addDaysYmd,
+  addMonthsYmd,
+  attendanceLabel,
+  dateLabelRu,
+  dayDateRu,
+  deriveSemesterRange,
+  formatMinutes,
+  layoutDayColumns,
+  monthGridDays,
+  monthStartYmd,
+  monthTitle,
+  nowParts,
+  parseYmd,
+  shortDateRu,
+  startOfWeekYmd,
+  subjectColor,
+  subjectColorKey,
+  timeToMinutes,
+  TYPE_LABELS,
+  GRID_START_MIN,
+  PX_PER_MIN,
+  SLOTS,
+  weekdayShortRu,
+  weekTitle,
+  type SemesterRange,
+} from "@/components/schedule/utils";
 import { describeApiError } from "@/lib/errors";
 import { homeworkPrepStatus } from "@/lib/learning/statuses";
 import { compareRu } from "@/lib/collation";
@@ -20,355 +51,6 @@ import { compareRu } from "@/lib/collation";
  * Оценка и отзыв преподавателя по этой работе. Бэкенд их возвращал, но в интерфейсе
  * студент не видел их нигде — ни в расписании, ни в карточке ДЗ.
  */
-function HomeworkGrade({ homework }: { homework: any }) {
-  const grade = homework?.grade;
-  const comment = homework?.teacher_comment;
-  const gradedAt = homework?.graded_at ? String(homework.graded_at).slice(0, 10).split("-").reverse().join(".") : "";
-  if ((grade == null || grade === "") && !comment) return null;
-  return (
-    <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs" role="status">
-      <div className="font-semibold" style={{ color: "var(--text)" }}>
-        Оценка преподавателя{grade != null && grade !== "" ? `: ${grade}` : ""}
-        {gradedAt ? <span className="ml-2 opacity-70">· {gradedAt}</span> : null}
-      </div>
-      {comment ? <p className="mt-1 whitespace-pre-wrap opacity-80">{String(comment)}</p> : null}
-    </div>
-  );
-}
-
-/**
- * Диапазон семестра берётся из календарных периодов (schedule meta, type=theoretical),
- * а не зашит в код. Константа ниже — fallback, если в БД периодов ещё нет.
- */
-type SemesterRange = { from: string; to: string };
-const FALLBACK_SEMESTER: SemesterRange = { from: "2026-09-01", to: "2027-01-31" };
-function deriveSemesterRange(meta: any): SemesterRange {
-  const periods = Array.isArray(meta?.periods) ? meta.periods : [];
-  const theoretical = periods.filter((p: any) =>
-    p?.type === "theoretical" && typeof p?.start_date === "string" && p.start_date.length >= 10
-  );
-  if (!theoretical.length) return FALLBACK_SEMESTER;
-  const from = theoretical.map((p: any) => String(p.start_date).slice(0, 10)).sort()[0];
-  const ends = theoretical.map((p: any) => String(p.end_date || p.start_date).slice(0, 10)).sort();
-  const to = ends[ends.length - 1];
-  return to > from ? { from, to } : FALLBACK_SEMESTER;
-}
-
-/** Длинное ДЗ показываем коротким превью: полный текст раскрывается по клику. */
-function HomeworkText({ text }: { text: string }) {
-  const clean = String(text || "").trim();
-  if (!clean) return null;
-  if (clean.length <= 170) {
-    return <p className="mt-2 whitespace-pre-wrap text-sm opacity-80">{clean}</p>;
-  }
-  const preview = clean.slice(0, 150).replace(/\s+\S*$/, "") + "…";
-  return (
-    <details className="mt-2">
-      <summary className="cursor-pointer list-none">
-        <span className="whitespace-pre-wrap text-sm opacity-80">{preview}</span>
-        <span className="ml-1 whitespace-nowrap text-xs font-semibold text-indigo-600">показать полностью</span>
-      </summary>
-      <p className="mt-1 whitespace-pre-wrap text-sm opacity-80">{clean}</p>
-    </details>
-  );
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  lecture: "Лекция", practice: "Практика", laboratory: "Лабораторная",
-  seminar: "Семинар", exam: "Экзамен", credit: "Зачёт",
-  consultation: "Консультация", other: "Занятие",
-};
-const TYPE_CLASS: Record<string, string> = {
-  lecture: "schedule-lecture", practice: "schedule-practice", laboratory: "schedule-lab",
-  seminar: "schedule-seminar", exam: "schedule-exam", credit: "schedule-credit",
-  consultation: "schedule-consultation", other: "schedule-other",
-};
-const SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
-const GRID_START_MIN = 8 * 60;
-const PX_PER_MIN = 1.05;
-const SUBJECT_PALETTE = ["#2563eb","#7c3aed","#059669","#ea580c","#db2777","#0891b2","#65a30d","#9333ea","#0284c7","#ca8a04","#e11d48","#0f766e"];
-const TYPE_COLORS: Record<string,string> = {
-  lecture:"#6366f1", practice:"#10b981", laboratory:"#f59e0b", seminar:"#06b6d4",
-  exam:"#f43f5e", credit:"#8b5cf6", consultation:"#3b82f6", other:"#64748b",
-};
-function subjectColor(item:any): string {
-  if (typeof item?.color_hex === "string" && /^#[0-9a-fA-F]{6}$/.test(item.color_hex)) return item.color_hex;
-  const raw=String(item?.subject_slug||item?.subject_name||"subject");
-  let h=0; for(let i=0;i<raw.length;i++) h=((h<<5)-h+raw.charCodeAt(i))|0;
-  return SUBJECT_PALETTE[Math.abs(h)%SUBJECT_PALETTE.length];
-}
-function attendanceLabel(status?: string | null){return status==="present"?"Был":status==="excused"?"Уважительная":status==="sick"?"Болезнь":status==="unexcused"?"Пропуск":"";}
-
-// FD8: общая реализация с дашбордом — src/lib/now-parts.ts
-const nowParts = () => sharedNowParts();
-function parseYmd(ymd: string) { const [y,m,d]=ymd.split("-").map(Number); return {y,m,d}; }
-function addDaysYmd(ymd: string, days: number): string {
-  const {y,m,d}=parseYmd(ymd); const utc=new Date(Date.UTC(y,m-1,d+days));
-  return `${utc.getUTCFullYear()}-${String(utc.getUTCMonth()+1).padStart(2,"0")}-${String(utc.getUTCDate()).padStart(2,"0")}`;
-}
-function startOfWeekYmd(ymd: string): string {
-  const {y,m,d}=parseYmd(ymd); const utc=new Date(Date.UTC(y,m-1,d)); const dow=utc.getUTCDay();
-  return addDaysYmd(ymd, dow===0?-6:1-dow);
-}
-function weekdayShortRu(ymd: string): string {
-  const {y,m,d}=parseYmd(ymd); const dt=new Date(Date.UTC(y,m-1,d,12));
-  return new Intl.DateTimeFormat("ru-RU",{weekday:"short",timeZone:"UTC"}).format(dt).replace(".","");
-}
-function dayDateRu(ymd: string): string {
-  const {y,m,d}=parseYmd(ymd); const dt=new Date(Date.UTC(y,m-1,d,12));
-  return new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"2-digit",timeZone:"UTC"}).format(dt);
-}
-function weekTitle(startYmd: string): string {
-  const endYmd=addDaysYmd(startYmd,6); const a=parseYmd(startYmd); const b=parseYmd(endYmd);
-  const start=new Date(Date.UTC(a.y,a.m-1,a.d,12)); const end=new Date(Date.UTC(b.y,b.m-1,b.d,12));
-  const fmt=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",timeZone:"UTC"});
-  const fmtEnd=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
-  return `${fmt.format(start)} — ${fmtEnd.format(end)} · Хабаровск`;
-}
-function monthStartYmd(ymd: string): string {
-  const {y,m}=parseYmd(ymd);
-  return `${y}-${String(m).padStart(2,"0")}-01`;
-}
-function addMonthsYmd(ymd: string, delta: number): string {
-  const {y,m}=parseYmd(ymd);
-  const d=new Date(Date.UTC(y,m-1+delta,1,12));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-01`;
-}
-function monthTitle(ymd: string): string {
-  const {y,m}=parseYmd(ymd);
-  return new Intl.DateTimeFormat("ru-RU",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,1,12)));
-}
-function monthGridDays(ymd: string): string[] {
-  const first=monthStartYmd(ymd);
-  const monday=startOfWeekYmd(first);
-  return Array.from({length:42},(_,i)=>addDaysYmd(monday,i));
-}
-function dateLabelRu(ymd: string): string {
-  const {y,m,d}=parseYmd(ymd);
-  return new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,d,12)));
-}
-function shortDateRu(ymd: string): string {
-  const {y,m,d}=parseYmd(ymd);
-  return new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"2-digit",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,d,12)));
-}
-function subjectColorKey(type?: string | null): string {
-  if (type==="practice") return "practice";
-  if (type==="laboratory") return "lab";
-  if (type==="exam" || type==="credit") return "exam";
-  if (type==="seminar") return "seminar";
-  return "lecture";
-}
-
-function formatMinutes(minutes: number) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-}
-function timeToMinutes(v: string) { const [h,m]=v.slice(0,5).split(":").map(Number); return h*60+m; }
-function breakRange(value: string): { start: number; end: number } | null {
-  const m = String(value || "").match(/(\d{1,2}:\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}:\d{2})/i);
-  if (!m) return null;
-  const start = timeToMinutes(m[1]);
-  const end = timeToMinutes(m[2]);
-  return end > start ? { start, end } : null;
-}
-
-/** Pack overlapping events into side-by-side columns (classic calendar layout). */
-function layoutDayColumns(items: ScheduleItem[]): Array<{ item: ScheduleItem; col: number; cols: number }> {
-  const sorted = [...items].sort((a, b) => {
-    const s = a.start_time.localeCompare(b.start_time);
-    return s !== 0 ? s : a.end_time.localeCompare(b.end_time);
-  });
-  const seen = new Set<string>();
-  const unique: ScheduleItem[] = [];
-  for (const it of sorted) {
-    const k = `${it.date}|${it.start_time}|${it.end_time}|${it.subject_name}|${it.type}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    unique.push(it);
-  }
-  type Node = { item: ScheduleItem; start: number; end: number; col: number };
-  const nodes: Node[] = [];
-  const colEnds: number[] = [];
-  for (const item of unique) {
-    const start = timeToMinutes(item.start_time);
-    const end = timeToMinutes(item.end_time);
-    let col = colEnds.findIndex((e) => e <= start);
-    if (col < 0) {
-      col = colEnds.length;
-      colEnds.push(end);
-    } else {
-      colEnds[col] = end;
-    }
-    nodes.push({ item, start, end, col });
-  }
-  const result: Array<{ item: ScheduleItem; col: number; cols: number }> = [];
-  let i = 0;
-  while (i < nodes.length) {
-    let clusterEnd = nodes[i].end;
-    let j = i + 1;
-    while (j < nodes.length && nodes[j].start < clusterEnd) {
-      clusterEnd = Math.max(clusterEnd, nodes[j].end);
-      j++;
-    }
-    const cluster = nodes.slice(i, j);
-    const cols = Math.max(1, ...cluster.map((n) => n.col + 1));
-    for (const n of cluster) result.push({ item: n.item, col: n.col, cols });
-    i = j;
-  }
-  return result;
-}
-
-function ScheduleCard({
-  item, onOpen, col = 0, cols = 1,
-}: {
-  item: ScheduleItem;
-  onOpen: (item: ScheduleItem) => void;
-  col?: number;
-  cols?: number;
-}) {
-  const start = timeToMinutes(item.start_time);
-  const end = timeToMinutes(item.end_time);
-  const top = Math.max(0, (start - GRID_START_MIN) * PX_PER_MIN);
-  const height = Math.max(66, (end - start) * PX_PER_MIN);
-  const type = TYPE_CLASS[item.type || ""] || TYPE_CLASS.other;
-  const subject = item.subject_name || "Занятие";
-  const location = [item.building, item.room].filter(Boolean).join(", ");
-  const typeLabel = TYPE_LABELS[item.type || ""] || "Занятие";
-  const accent = subjectColor(item);
-  const typeColor = TYPE_COLORS[item.type || ""] || TYPE_COLORS.other;
-  const attendance = item.attendance_status as string | undefined;
-  const parityLabel =
-    item.week_parity === "numerator" ? "числитель" :
-    item.week_parity === "denominator" ? "знаменатель" :
-    item.week_parity === "all" ? "каждую неделю" : null;
-  const gap = 3;
-  const widthPct = 100 / cols;
-  const leftPct = col * widthPct;
-
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(item)}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(item); }}
-      className={`schedule-card absolute cursor-pointer overflow-hidden rounded-xl border p-2 shadow-sm transition hover:z-20 hover:-translate-y-0.5 hover:shadow-md ${type} ${item.is_cancelled ? "schedule-cancelled" : ""} ${item.is_makeup ? "opacity-60" : ""}`}
-      style={{
-        background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 24%, var(--card)), color-mix(in srgb, ${accent} 10%, var(--card)))`,
-        border: `1px solid color-mix(in srgb, ${typeColor} 42%, var(--border))`,
-        borderLeft: `4px ${item.is_makeup ? "dashed" : "solid"} ${accent}`,
-        boxShadow: `inset 0 3px 0 ${typeColor}66, 0 1px 3px rgba(15,23,42,.08)`,
-        top,
-        height,
-        minHeight: height,
-        left: `calc(${leftPct}% + ${gap}px)`,
-        width: `calc(${widthPct}% - ${gap * 2}px)`,
-        zIndex: 4 + col,
-      }}
-      title={[
-        subject,
-        `${formatMinutes(start)}–${formatMinutes(end)}`,
-        typeLabel,
-        item.academic_hours ? `${item.academic_hours} ак. ч.` : null,
-        parityLabel,
-        item.notes,
-        location,
-      ].filter(Boolean).join(" · ")}
-    >
-      {(() => {
-        const breaks = (item.breaks || [])
-          .map((value: string) => breakRange(value))
-          .filter(Boolean) as Array<{start:number;end:number}>;
-        const points = [start, ...breaks.flatMap((b) => [b.start, b.end]), end].sort((a,b) => a-b);
-        const segments: Array<{start:number;end:number;isBreak:boolean}> = [];
-        for (let i = 0; i < points.length - 1; i++) {
-          const a = points[i], b = points[i + 1];
-          if (b <= a) continue;
-          const isBreak = breaks.some((br) => br.start === a && br.end === b);
-          segments.push({start:a,end:b,isBreak});
-        }
-
-        let lessonPart = 0;
-        return segments.map((seg, index) => {
-          const topPct = ((seg.start - start) / Math.max(1, end - start)) * 100;
-          const heightPct = ((seg.end - seg.start) / Math.max(1, end - start)) * 100;
-
-          if (seg.isBreak) {
-            return (
-              <div
-                key={"segment-break-" + index}
-                className="absolute left-0 right-0 z-10 flex items-center justify-center border-y border-dashed border-slate-400/50 bg-slate-100/90 text-[9px] font-bold text-slate-600"
-                style={{top: topPct + "%", height: heightPct + "%"}}
-              >
-                Перерыв · {formatMinutes(seg.start)}–{formatMinutes(seg.end)}
-              </div>
-            );
-          }
-
-          lessonPart++;
-          const label = lessonPart > 1 ? `${subject} · продолжение` : subject;
-
-          return (
-            <div
-              key={"segment-lesson-" + index}
-              className="absolute left-0 right-0 overflow-hidden px-2 py-1.5"
-              style={{top: topPct + "%", height: heightPct + "%"}}
-            >
-              <div className={`line-clamp-2 text-[12px] font-bold leading-tight sm:text-[13px] ${item.is_cancelled ? "line-through" : ""}`}>
-                {label}
-              </div>
-
-              <div className="mt-0.5 text-[10px] font-semibold opacity-75">
-                {formatMinutes(seg.start)}–{formatMinutes(seg.end)}
-              </div>
-
-              {lessonPart === 1 && (
-                <div className="mt-1 space-y-0.5 text-[9px] font-semibold leading-tight opacity-75">
-                  <div className="truncate">
-                    {item.is_makeup ? "ОТРАБОТКА" : typeLabel}
-                    {!item.is_makeup ? "" : ` · ${typeLabel}`}
-                    {item.academic_hours ? ` · ${item.academic_hours} ак. ч.` : ""}
-                    {parityLabel ? ` · ${parityLabel}` : ""}
-                  </div>
-                  {item.notes && height >= 130 && (
-                    <div className="line-clamp-2 font-medium">
-                      {item.notes}
-                    </div>
-                  )}
-                  {location && cols === 1 && height >= 120 && (
-                    <div className="truncate">
-                      <MapPin className="mr-0.5 inline h-2.5 w-2.5" />
-                      {location}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        });
-      })()}
-
-      {item.is_makeup && <div className="absolute right-2 top-1 z-20 rounded bg-white/80 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide" style={{color:accent}}>Отработка</div>}
-      {attendance && <div className="absolute bottom-1 right-1 z-20 rounded-full bg-white/85 px-1.5 py-0.5 text-[8px] font-bold">{attendanceLabel(attendance)}</div>}
-      {item.is_cancelled && <div className="absolute right-2 top-1 z-20 text-[9px] font-bold">ОТМЕНЕНО</div>}
-    </article>
-  );
-}
-
-/**
- * D9: совокупный результат загрузки страницы расписания — расписание, мета
- * (периоды) и planner (ДЗ/проработка) одним объектом.
- */
-type ScheduleBundle = {
-  items: ScheduleItem[];
-  source: string;
-  meta: ScheduleMeta;
-  homeworks: any[];
-  recovery: any[];
-  message: string | null;
-  range: SemesterRange;
-};
-
 export default function SchedulePage() {
   const { user } = useAuth();
   const [now, setNow] = useState(() => nowParts());
