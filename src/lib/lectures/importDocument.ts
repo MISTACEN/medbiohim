@@ -8,8 +8,8 @@
  * Worker (unpdf), фото страницы распознаёт OCR-шлюз. Дальше текст проходит ту
  * же авторазметку, что и кнопка «Разметить текст»: абзацы и разделы.
  */
-import JSZip from "jszip";
 import { extractPdfText, ocrImage } from "@/lib/api";
+import { readDocxText } from "@/lib/documents/docx";
 import { structureLectureMarkdown } from "./structureMarkdown";
 
 export type ImportedDocument = {
@@ -36,37 +36,6 @@ async function fileToBase64(file: File): Promise<string> {
     binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
   }
   return btoa(binary);
-}
-
-function decodeEntities(value: string): string {
-  return value
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_all, code: string) => String.fromCharCode(Number(code)))
-    .replace(/&amp;/g, "&");
-}
-
-/** XML Word → текст: абзацы через пустую строку, табы и переносы сохраняются. */
-export function docxXmlToText(xml: string): string {
-  return decodeEntities(
-    String(xml || "")
-      .replace(/<w:tab\/>/g, "\t")
-      .replace(/<w:br\/>/g, "\n")
-      .replace(/<\/w:p>/g, "\n\n")
-      .replace(/<[^>]+>/g, "")
-  )
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-export async function readDocxText(file: File): Promise<string> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const entry = zip.file("word/document.xml");
-  if (!entry) throw new Error("В .docx не найден word/document.xml — пересохраните файл в Word");
-  return docxXmlToText(await entry.async("string"));
 }
 
 export async function importDocument(file: File): Promise<ImportedDocument> {

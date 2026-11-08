@@ -16,6 +16,7 @@ import {
   BookOpen,
   CheckCircle2,
   ClipboardList,
+  FileUp,
   FlaskConical,
   Loader2,
   RotateCcw,
@@ -25,6 +26,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { canUseTeacherWorkspace } from "@/shared/permissions";
 import { hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
+import { ImportTest } from "@/components/teacher/ImportTest";
 import { MyLectures } from "@/components/teacher/MyLectures";
 import { MyQuestionBank } from "@/components/teacher/MyQuestionBank";
 import { MyTests } from "@/components/teacher/MyTests";
@@ -44,12 +46,13 @@ import {
 } from "@/lib/api/teacher";
 
 type Draft = { grade: string; comment: string };
-type Tab = "roster" | "queue" | "tests" | "publications";
+type Tab = "roster" | "queue" | "tests" | "create" | "publications";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof UsersRound }> = [
   { id: "roster", label: "Группы и студенты", icon: UsersRound },
   { id: "queue", label: "Работы на проверку", icon: ClipboardList },
   { id: "tests", label: "Тесты и назначения", icon: FlaskConical },
+  { id: "create", label: "Создать тест", icon: FileUp },
   { id: "publications", label: "Публикации и редактор", icon: BookOpen },
 ];
 
@@ -255,6 +258,7 @@ export default function TeacherPage() {
     roster: counts?.students ? String(counts.students) : "",
     queue: String(counts?.pending ?? items.length),
     tests: String(assignments.length),
+    create: "",
     publications: "",
   };
 
@@ -309,8 +313,8 @@ export default function TeacherPage() {
             <button type="button" className="btn-secondary inline-flex items-center gap-1.5 text-sm" onClick={() => setTab("publications")}>
               <BookOpen className="h-4 w-4" /> Опубликовать материал
             </button>
-            <button type="button" className="btn-primary inline-flex items-center gap-1.5 text-sm" onClick={() => setTab("tests")}>
-              <FlaskConical className="h-4 w-4" /> Создать тест
+            <button type="button" className="btn-primary inline-flex items-center gap-1.5 text-sm" onClick={() => setTab("create")}>
+              <FileUp className="h-4 w-4" /> Создать тест
             </button>
           </div>
         </div>
@@ -522,6 +526,12 @@ export default function TeacherPage() {
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {tab === "create" ? (
+        <div className="space-y-6" role="tabpanel">
+          <ImportTest onCreated={() => void load()} />
+        </div>
       ) : null}
 
       {tab === "tests" ? (
