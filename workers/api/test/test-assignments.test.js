@@ -54,7 +54,8 @@ test("преподаватель назначает только в своей �
 
 test("сводка по назначениям — чтение по results.view, удаление только своего", async () => {
   const route = await read("src/routes/teacher/assigned-tests.ts");
-  const list = route.match(/teacher\.get\("\/test-assignments"[\s\S]*?\n\}\);\n\n\/\*\* Отменить/);
+  // \r?\n — рабочая копия на Windows имеет CRLF, регэксп не должен зависеть от autocrlf.
+  const list = route.match(/teacher\.get\("\/test-assignments"[\s\S]*?\n\}\);\r?\n\r?\n\/\*\* Отменить/);
   assert.ok(list, "GET /teacher/test-assignments существует");
   assert.match(list[0], /requireTeachingCapability\(c, "teacher\.results\.view"\)/);
   assert.match(list[0], /avg_percent/);
