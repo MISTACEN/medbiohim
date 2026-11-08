@@ -60,13 +60,25 @@ teacher.get("/tests", requireAuth, async (c) => {
     });
     const testIds = uniqueIds(rows.map((row) => row.id));
     const counts = new Map<string, number>();
+    // Связей test_questions в сумме заметно больше 5000: один запрос с
+    // .limit(5000) молча терял хвост, и тесты за его пределами получали
+    // question_count: 0. Считаем чанками тестов с пагинацией до конца.
+    const COUNT_CHUNK = 20;
     if (testIds.length) {
-      const { data: links, error: linksError } = await db.from("test_questions")
-        .select("test_id").in("test_id", testIds as string[]).limit(5000);
-      if (linksError) throw linksError;
-      for (const link of links || []) {
-        const key = String((link as any).test_id || "");
-        counts.set(key, (counts.get(key) || 0) + 1);
+      for (let i = 0; i < testIds.length; i += COUNT_CHUNK) {
+        const chunk = testIds.slice(i, i + COUNT_CHUNK) as string[];
+        let from = 0;
+        for (;;) {
+          const { data: links, error: linksError } = await db.from("test_questions")
+            .select("test_id").in("test_id", chunk).range(from, from + 999);
+          if (linksError) throw linksError;
+          for (const link of links || []) {
+            const key = String((link as any).test_id || "");
+            counts.set(key, (counts.get(key) || 0) + 1);
+          }
+          if (!links || links.length < 1000) break;
+          from += 1000;
+        }
       }
     }
     return c.json(ok({
