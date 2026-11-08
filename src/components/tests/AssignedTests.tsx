@@ -37,6 +37,9 @@ export function AssignedTests() {
       <h2 className="flex items-center gap-2 text-base font-extrabold text-[var(--status-warn-fg)]">
         <CalendarClock className="h-5 w-5" /> Назначено преподавателем
       </h2>
+      <p className="mt-1 text-xs text-[var(--status-warn-fg)]">
+        Это контролируемое тестирование: результат автоматически попадёт в ведомость преподавателя.
+      </p>
       <div className="mt-3 space-y-2">
         {items.map((item) => {
           const overdue = item.due_at ? Date.parse(item.due_at) < Date.now() : false;
@@ -65,7 +68,7 @@ export function AssignedTests() {
                 href={`/tests/preparation/${item.test_id}?mode=prepare&count=${item.question_count || 10}`}
                 className="btn-primary text-sm"
               >
-                Начать
+                Пройти назначение
               </Link>
             </div>
           );

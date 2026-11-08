@@ -415,6 +415,21 @@ export function TestAssignments() {
                   ))}
                 </div>
               )}
+              <div
+                className={
+                  "rounded-xl px-3 py-2 text-sm font-semibold " +
+                  (studentIds.length
+                    ? "bg-indigo-50 text-indigo-800"
+                    : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")
+                }
+              >
+                {studentIds.length
+                  ? `Выбрано студентов: ${studentIds.length} — ${students
+                      .filter((s) => studentIds.includes(s.id))
+                      .map((s) => s.name)
+                      .join(", ")}`
+                  : "Студент не выбран — отметьте хотя бы одного студента выше."}
+              </div>
             </div>
           ) : (
           <div>
@@ -424,23 +439,42 @@ export function TestAssignments() {
                 Вам не назначено ни одной группы — попросите администратора в разделе «Преподаватели».
               </div>
             ) : (
+              <>
               <div className="flex flex-wrap gap-2">
                 {overview?.groups.map((group) => (
                   <button
                     key={group.id}
                     type="button"
                     onClick={() => toggleGroup(group.id)}
+                    aria-pressed={groupIds.includes(group.id)}
                     className={
                       "rounded-xl px-3 py-1.5 text-sm font-semibold " +
                       (groupIds.includes(group.id)
-                        ? "bg-indigo-600 text-white"
-                        : "border border-[var(--border)]")
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "border border-[var(--border)] opacity-80 hover:opacity-100")
                     }
                   >
+                    {groupIds.includes(group.id) ? "✓ " : ""}
                     {group.name || group.code || "Группа"}
                   </button>
                 ))}
               </div>
+              <div
+                className={
+                  "rounded-xl px-3 py-2 text-sm font-semibold " +
+                  (groupIds.length
+                    ? "bg-indigo-50 text-indigo-800"
+                    : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")
+                }
+              >
+                {groupIds.length
+                  ? `Выбрано групп: ${groupIds.length} — ${overview?.groups
+                      .filter((g) => groupIds.includes(g.id))
+                      .map((g) => g.name || g.code || "Группа")
+                      .join(", ")}`
+                  : "Группа не выбрана — отметьте хотя бы одну группу выше."}
+              </div>
+              </>
             )}
           </div>
           )}
@@ -519,7 +553,12 @@ export function TestAssignments() {
               onClick={() => void submit()}
               className="btn-primary inline-flex items-center gap-1.5"
             >
-              <ClipboardList className="h-4 w-4" /> {busy === "create" ? "Назначаю…" : "Назначить"}
+              <ClipboardList className="h-4 w-4" />{" "}
+              {busy === "create"
+                ? "Назначаю…"
+                : target === "groups"
+                  ? `Назначить группам (${groupIds.length})`
+                  : `Назначить студентам (${studentIds.length})`}
             </button>
             <button type="button" onClick={() => setCreating(false)} className="rounded-xl border px-4 py-2.5 text-sm font-semibold">
               Отмена

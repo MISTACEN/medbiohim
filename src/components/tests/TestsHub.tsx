@@ -639,7 +639,7 @@ export function TestsHub({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-[var(--muted)]" />
-            <span className="text-sm font-semibold text-slate-700">Режим:</span>
+            <span className="text-sm font-semibold text-slate-700">Свободная подготовка · режим:</span>
             {MODES.map((item) => (
               <button
                 key={item.id}
@@ -671,7 +671,10 @@ export function TestsHub({
               onChange={(event) => setCount(Math.max(1, Math.min(200, Number(event.target.value) || 1)))}
               className="w-24 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400"
             />
-            <span>случайных вопросов из банка; если вопросов меньше — будут использованы все.</span>
+            <span>случайных вопросов из банка; если вопросов меньше — будут использованы все. <span className="mt-1 block text-xs font-medium text-indigo-700">
+              Это свободная подготовка: результат остаётся у вас и не отправляется преподавателю.
+              Тесты, назначенные преподавателем, — отдельным блоком выше, и они всегда уходят в его ведомость.
+            </span></span>
           </label>
         )}
 
