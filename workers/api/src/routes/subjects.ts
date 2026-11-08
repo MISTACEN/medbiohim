@@ -149,7 +149,7 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
   if (moduleIds.length) {
     const { data, error: topicsError } = await db
       .from("topics")
-      .select("id,module_id,title,order_index,is_published")
+      .select("id,module_id,title,order_index,is_published,knowledge_level")
       .in("module_id", moduleIds)
       .order("order_index", { ascending: true })
       .limit(1000);
@@ -249,6 +249,7 @@ subjects.get("/:id/plan-progress", requireAuth, async (c) => {
       grade: progress?.grade ?? null,
       note: progress?.note ?? null,
       attempts: progress?.attempts ?? 0,
+      knowledge_level: t.knowledge_level ?? null,
       tests_count: testsCount.get(String(t.id)) || 0,
       exam_questions_count: examCount.get(String(t.id)) || 0,
       schedule_dates: scheduleByTopic.get(String(t.id)) || [],

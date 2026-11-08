@@ -83,6 +83,7 @@ type SubjectCoreLoad =
       slug: string;
       subject: Subject;
       modules: Module[];
+      topicItems: any[];
       plan: SubjectPlan | null;
       tests: ApiTest[];
       resourceErrors: Record<string, string>;
@@ -96,6 +97,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const { user, loading: authLoading } = useAuth();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
+  const [topicItems, setTopicItems] = useState<any[]>([]);
   const [plan, setPlan] = useState<SubjectPlan | null>(null);
   const [gradebook, setGradebook] = useState<any[]>([]);
   const [tests, setTests] = useState<ApiTest[]>([]);
@@ -220,7 +222,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           if (!tt.ok) resourceErrors.tests = tt.error?.message || "Не удалось загрузить тесты.";
           else tests = tt.data.items || [];
         }
-        return { ready: true, subjectId: routeId, slug, subject, modules, plan, tests, resourceErrors };
+        return { ready: true, subjectId: routeId, slug, subject, modules, topicItems: responseData?.items || [], plan, tests, resourceErrors };
       } catch (cause) {
         throw new Error(cause instanceof Error && cause.message ? cause.message : "Не удалось загрузить предмет");
       }
@@ -234,6 +236,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
     setSubjectId(coreLoad.subjectId);
     setSubject(coreLoad.subject);
     setModules(coreLoad.modules);
+    // Темы с уровнями пирамиды знаний и прогрессом (ЭТАП 6).
+    setTopicItems(coreLoad.topicItems || []);
     setPlan(coreLoad.plan);
     setTests(coreLoad.tests);
     setResourceErrors(coreLoad.resourceErrors);
@@ -631,6 +635,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             planSessions={planSessions || []}
             planSummary={planSummary}
             modules={modules}
+            topicItems={topicItems}
             topicProgressById={topicProgressById}
             topicBusy={topicBusy}
             cycleTopicStatus={cycleTopicStatus}

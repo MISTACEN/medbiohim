@@ -29,6 +29,7 @@ type Props = {
   planSessions: any[];
   planSummary?: { total: number; passed: number; in_progress: number; failed_or_retake: number; unopened_materials?: number } | null;
   modules: any[];
+  topicItems: any[];
   topicProgressById: Map<string, any>;
   topicBusy: string | null;
   cycleTopicStatus: (topicId: string, status: string) => void;
@@ -37,13 +38,14 @@ type Props = {
   onOpenLecture: (id: string) => void;
 };
 
-export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modules, topicProgressById, topicBusy, cycleTopicStatus, openTopicMaterial, onSelectTab, onOpenLecture }: Props) {
+export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modules, topicItems, topicProgressById, topicBusy, cycleTopicStatus, openTopicMaterial, onSelectTab, onOpenLecture }: Props) {
   return (
     <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
             <p className="mt-1 text-sm text-slate-500">
               {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : resourceErrors.plan || "План ещё не загружен."}
             </p>
+            <PyramidPanel topicItems={topicItems} />
             {plan?.weeks?.length ? (
               // Единая лента плана: ближайшее занятие крупно сверху, предстоящие
               // списком, прошедшие — свёрнуты. Связки переключают вкладки предмета.
@@ -142,5 +144,51 @@ export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modul
               </div>
             ) : null}
           </section>
+  );
+}
+
+
+/** Уровни пирамиды знаний: 1 — База, 2 — Понимание, 3 — Применение. */
+const PYRAMID = [
+  { level: 1, label: "База", color: "var(--status-ok-fg)", bg: "var(--status-ok-bg)" },
+  { level: 2, label: "Понимание", color: "var(--primary)", bg: "var(--primary-soft, #eef2ff)" },
+  { level: 3, label: "Применение", color: "var(--status-warn-fg)", bg: "var(--status-warn-bg)" },
+] as const;
+
+/**
+ * Пирамида знаний (ЭТАП 6): индикатор готовности по уровням. База — первый
+ * приоритет: пока она не закрыта, к занятию идти рано. Считается по темам
+ * предмета: сдано/всего на каждом уровне.
+ */
+function PyramidPanel({ topicItems }: { topicItems: any[] }) {
+  if (!topicItems.length) return null;
+  const levels = PYRAMID.map(({ level, label, color, bg }) => {
+    const rows = topicItems.filter((t) => t.knowledge_level === level);
+    const done = rows.filter((t) => t.status === "passed").length;
+    return { level, label, color, bg, total: rows.length, done };
+  }).filter((l) => l.total > 0);
+  if (!levels.length) return null;
+  const base = levels.find((l) => l.level === 1);
+  const basePct = base && base.total ? Math.round((base.done / base.total) * 100) : 0;
+  const ready = !base || basePct >= 100;
+  return (
+    <div className="mt-3 space-y-2">
+      {base && (
+        <div
+          className={"rounded-xl px-4 py-2.5 text-sm font-bold " + (ready ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")}
+        >
+          {ready
+            ? "База закрыта — можно идти к следующему занятию"
+            : `Готовность к занятию: ${basePct}% базы сдано (${base.done}/${base.total})`}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {levels.map((l) => (
+          <span key={l.level} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: l.bg, color: l.color }}>
+            {l.label}: {l.done}/{l.total}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
