@@ -405,9 +405,16 @@ tests.get("/assignments", requireAuth, async (c) => {
     // и сливаем в JS — образец scopedSubmissions в routes/teacher/_shared.ts.
     const select = "id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name))";
     const baseFilters = (q: any) => q.eq("tests.is_published", true).is("tests.archived_at", null).order("created_at", { ascending: false }).limit(50);
-    const queries: Array<PromiseLike<{ data: any[] | null; error: any }>> = [
-      baseFilters(db.from("test_assignments").select(select)).eq("test_assignment_students.student_id", user.id),
-    ];
+    // Персональные назначения: сначала ID из связи, потом сами назначения
+    // (embedded-фильтр test_assignment_students.student_id без select падал PGRST108).
+    const { data: personalLinks, error: personalError } = await db
+      .from("test_assignment_students").select("assignment_id").eq("student_id", user.id).limit(100);
+    if (personalError) throw personalError;
+    const personalIds = [...new Set((personalLinks || []).map((row: any) => String(row.assignment_id)).filter((v) => /^[0-9a-f-]{36}$/i.test(v)))];
+    const queries: Array<PromiseLike<{ data: any[] | null; error: any }>> = [];
+    if (personalIds.length) {
+      queries.push(baseFilters(db.from("test_assignments").select(select)).in("id", personalIds as string[]));
+    }
     if (groupIds.length) {
       queries.push(baseFilters(db.from("test_assignments").select(select)).in("group_id", groupIds as string[]));
     }
