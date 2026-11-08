@@ -167,7 +167,10 @@ teacher.post("/tests", requireAuth, async (c) => {
     });
     const { data: insertedQuestions, error: questionsError } = await service
       .from("questions").insert(questionRows).select("id");
-    if (questionsError) throw questionsError;
+    if (questionsError) {
+      console.error("[teacher:create-test:questions]", questionsError.code, questionsError.message);
+      return error(c, rid, 503, "DB_QUESTIONS", "Вопросы не сохранились в каталог");
+    }
     const insertedIds = (insertedQuestions || []).map((row: any) => String(row.id));
     const { data: test, error: testError } = await service
       .from("tests")
@@ -182,7 +185,10 @@ teacher.post("/tests", requireAuth, async (c) => {
       })
       .select("id,title,is_published,created_by")
       .maybeSingle();
-    if (testError) throw testError;
+    if (testError) {
+      console.error("[teacher:create-test:test]", testError.code, testError.message);
+      return error(c, rid, 503, "DB_TEST", "Тест не сохранился");
+    }
     if (!test) return error(c, rid, 503, "DB_ERROR", "Тест не сохранился");
     const links = insertedIds.map((questionId, index) => ({
       test_id: String(test.id),
@@ -190,7 +196,10 @@ teacher.post("/tests", requireAuth, async (c) => {
       order_index: index,
     }));
     const { error: linksError } = await service.from("test_questions").insert(links);
-    if (linksError) throw linksError;
+    if (linksError) {
+      console.error("[teacher:create-test:links]", linksError.code, linksError.message);
+      return error(c, rid, 503, "DB_LINKS", "Вопросы не привязались к тесту");
+    }
     return c.json(ok({ test, question_count: insertedIds.length }, rid), 201);
   } catch (createError) {
     console.error("[teacher:create-test]", createError);
