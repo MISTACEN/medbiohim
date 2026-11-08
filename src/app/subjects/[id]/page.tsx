@@ -13,6 +13,7 @@ import { LIBRARY_FILES } from "@/lib/library";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import { SubjectAssignments } from "@/components/subjects/SubjectAssignments";
 import { MaterialsTab } from "@/components/subjects/MaterialsTab";
+import { PlanTab } from "@/components/subjects/PlanTab";
 import {
   TAB_IDS,
   GROUP_OF,
@@ -623,109 +624,19 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         )}
         {tab === "plan" && SUBJECT_STATIC_PLANS[slug] && <ChemPlan planFile={SUBJECT_STATIC_PLANS[slug]} subjectSlug={slug} />}
         {tab === "plan" && !SUBJECT_STATIC_PLANS[slug] && (
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">Учебный план</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : resourceErrors.plan || "План ещё не загружен."}
-            </p>
-            {plan?.weeks?.length ? (
-              // Единая лента плана: ближайшее занятие крупно сверху, предстоящие
-              // списком, прошедшие — свёрнуты. Связки переключают вкладки предмета.
-              <div className="mt-4">
-                <PlanTimeline
-                  sessions={planSessions}
-                  links={{ onOpenTab: (t) => selectTab(t as TabId), onOpenLecture: openLectureById }}
-                  emptyLabel="В плане пока нет занятий."
-                />
-              </div>
-            ) : modules.length ? (
-              <div className="mt-4 space-y-2">
-                {planSummary && planSummary.total > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-4 py-2 text-sm">
-                    <b>Мой прогресс:</b>
-                    <span className="rounded-full bg-[var(--status-ok-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-ok-fg)]">
-                      сдано {planSummary.passed} из {planSummary.total}
-                    </span>
-                    {planSummary.in_progress > 0 && (
-                      <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs text-[var(--status-warn-fg)]">в процессе {planSummary.in_progress}</span>
-                    )}
-                    {planSummary.failed_or_retake > 0 && (
-                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-800">отработка {planSummary.failed_or_retake}</span>
-                    )}
-                    {Number(planSummary.unopened_materials || 0) > 0 && (
-                      <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs text-[var(--status-warn-fg)]">не открыто материалов: {planSummary.unopened_materials}</span>
-                    )}
-                    <span className="text-xs text-slate-500">отметка видна только вам</span>
-                  </div>
-                )}
-                {resourceErrors.topicProgress && (
-                  <div className="rounded-xl bg-[var(--status-critical-bg)] px-4 py-2 text-sm text-[var(--status-critical-fg)]">{resourceErrors.topicProgress}</div>
-                )}
-                {modules.map((m, i) => (
-                  <details key={m.id || i} className="rounded-xl border" open={i === 0}>
-                    <summary className="cursor-pointer px-4 py-3 font-semibold">{m.title || "Модуль " + (i + 1)}</summary>
-                    <div className="border-t px-4 py-2 text-sm">
-                      {(m.topics || []).map((tp, j) => {
-                        const item = topicProgressById.get(String(tp.id));
-                        const status = item?.status || "pending";
-                        const nextDate = (item?.schedule_dates || [])[0];
-                        return (
-                          <div key={tp.id || j} className="border-b py-2 last:border-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                disabled={topicBusy === String(tp.id)}
-                                onClick={() => cycleTopicStatus(String(tp.id), status)}
-                                title="Клик меняет статус: не начато → в процессе → сдано → не сдано → отработка. Отметка видна только вам."
-                                className={"rounded-full px-2 py-0.5 text-xs font-semibold disabled:opacity-50 " + (TOPIC_STATUS_CLASS[status] || TOPIC_STATUS_CLASS.pending)}
-                              >
-                                {TOPIC_STATUS_LABEL[status] || TOPIC_STATUS_LABEL.pending}
-                              </button>
-                              <span className="flex-1">{tp.title}</span>
-                              {(item?.tests_count || 0) > 0 && (
-                                <button type="button" onClick={() => selectTab("tests")} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-100">
-                                  📝 тестов: {item.tests_count}
-                                </button>
-                              )}
-                              {(item?.exam_questions_count || 0) > 0 && (
-                                <button type="button" onClick={() => selectTab("exam")} className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100">
-                                  ❓ вопросов: {item.exam_questions_count}
-                                </button>
-                              )}
-                              {(item?.materials || []).map((material: any) => (
-                                <button
-                                  key={material.id}
-                                  type="button"
-                                  onClick={() => void openTopicMaterial(String(tp.id), material)}
-                                  title={material.opened ? "Материал уже открыт" : "Ещё не открыт — откроется и отметится"}
-                                  className={"max-w-[220px] truncate rounded-full px-2 py-0.5 text-xs " + (material.opened ? "bg-slate-100 text-slate-500" : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)] hover:opacity-80")}
-                                >
-                                  {material.opened ? "✓ " : "• "}{material.title}
-                                </button>
-                              ))}
-                              {(item?.unopened_materials_count || 0) > 0 && (
-                                <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--status-warn-fg)]">
-                                  не открыто: {item.unopened_materials_count}
-                                </span>
-                              )}
-                              {nextDate?.date && (
-                                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700" title="Занятие по расписанию, привязанное к теме">
-                                  📅 {nextDate.date.slice(5)}{nextDate.type ? " · " + nextDate.type : ""}
-                                </span>
-                              )}
-                            </div>
-                            {item?.grade ? (
-                              <div className="mt-1 text-xs text-slate-500">Оценка: {item.grade}</div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            ) : null}
-          </section>
+          <PlanTab
+            plan={plan}
+            resourceErrors={resourceErrors}
+            planSessions={planSessions || []}
+            planSummary={planSummary}
+            modules={modules}
+            topicProgressById={topicProgressById}
+            topicBusy={topicBusy}
+            cycleTopicStatus={cycleTopicStatus}
+            openTopicMaterial={openTopicMaterial}
+            onSelectTab={(t) => selectTab(t as TabId)}
+            onOpenLecture={openLectureById}
+          />
         )}
 
         {/* Объединённая вкладка «Экзамен / Билеты»: всё содержимое билетного
