@@ -400,16 +400,27 @@ tests.get("/assignments", requireAuth, async (c) => {
       .eq("user_id", user.id).eq("is_active", true).limit(50);
     if (membersError) throw membersError;
     const groupIds = [...new Set((memberships || []).map((row: any) => String(row.group_id)).filter(Boolean))];
-    let query = db
-      .from("test_assignments")
-      .select("id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name))")
-      .eq("tests.is_published", true).is("tests.archived_at", null)
-      .order("created_at", { ascending: false }).limit(50);
-    query = groupIds.length
-      ? query.or(`group_id.in.(${groupIds.join(",")}),test_assignment_students.student_id.eq.${user.id}`)
-      : query.eq("test_assignment_students.student_id", user.id);
-    const { data, error: readError } = await query;
-    if (readError) throw readError;
+    // or-фильтр с embedded test_assignment_students валил запрос с PGRST100/PGRST201
+    // (неоднозначные FK test_assignments→users). Разбираем на два простых запроса
+    // и сливаем в JS — образец scopedSubmissions в routes/teacher/_shared.ts.
+    const select = "id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name))";
+    const baseFilters = (q: any) => q.eq("tests.is_published", true).is("tests.archived_at", null).order("created_at", { ascending: false }).limit(50);
+    const queries: Array<PromiseLike<{ data: any[] | null; error: any }>> = [
+      baseFilters(db.from("test_assignments").select(select)).eq("test_assignment_students.student_id", user.id),
+    ];
+    if (groupIds.length) {
+      queries.push(baseFilters(db.from("test_assignments").select(select)).in("group_id", groupIds as string[]));
+    }
+    const responses = await Promise.all(queries);
+    const byId = new Map<string, any>();
+    for (const response of responses) {
+      if (response.error) throw response.error;
+      for (const row of response.data || []) {
+        const key = String(row.id);
+        if (key && !byId.has(key)) byId.set(key, row);
+      }
+    }
+    const data = [...byId.values()];
     // Имена преподавателей вторым запросом: embed users неоднозначен
     // (created_by + вторая FK) и валил весь список с PGRST201.
     const teacherIds = [...new Set((data || []).map((row: any) => String(row.tests?.created_by || (Array.isArray(row.tests) ? row.tests[0]?.created_by : null) || "")).filter(Boolean))];
