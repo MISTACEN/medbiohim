@@ -12,6 +12,7 @@ import { Loader2, RefreshCw, Eye, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug, subjectSlugMatches } from "@/lib/subjectSlug";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { displayOptionEntries } from "@/components/questions/optionOrder";
 import { describeApiError } from "@/lib/errors";
 import { compareRu } from "@/lib/collation";
 
@@ -168,14 +169,15 @@ function TicketsPageInner() {
             </div>
             {Array.isArray(qq.options) && qq.options.length > 0 && (
               <div className="mt-3 space-y-2">
-                {qq.options.map((option: any, optionIndex: number) => {
-                  const key = option?.key != null && String(option.key).trim()
+                {displayOptionEntries(qq, qq.options as any[], (option: any, optionIndex: number) =>
+                  option?.key != null && String(option.key).trim()
                     ? String(option.key)
-                    : String.fromCharCode(65 + optionIndex);
+                    : String.fromCharCode(65 + optionIndex),
+                ).map(({ option, key, index }) => {
                   const isCorrect = mode === "practice" && reveal[qq.id] && option?.correct === true;
                   return (
                     <AnswerOption
-                      key={key + "-" + optionIndex}
+                      key={key + "-" + index}
                       variant="row"
                       badge={key}
                       badgeVariant="square"

@@ -8,6 +8,7 @@ import { QuestionReport } from "@/components/QuestionReport";
 import { LoadingBar } from "@/components/ui/LoadingBar";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { displayOptionEntries } from "@/components/questions/optionOrder";
 import {
   startPreparation,
   getPreparation,
@@ -560,6 +561,9 @@ export default function PreparationPage() {
     );
 
   const options: QuestionOption[] = Array.isArray(q.options) ? q.options : [];
+  // Показ вариантов перемешан (детерминированно для вопроса); ключи — из
+  // исходного порядка, поэтому сохранённые ответы и грейдинг не меняются.
+  const displayEntries = displayOptionEntries(q, options, optionKey);
   const serverGrading = grading[q.id];
   // Ответ отправлен, но сервер ещё не сравнил его с эталоном: показываем
   // нейтральное «Проверяем…» вместо мгновенного «неверно».
@@ -842,15 +846,14 @@ export default function PreparationPage() {
                 Это закрытый вопрос, но варианты ответа не заполнены в банке. Ответ можно дать текстом — он уйдёт на ручную проверку.
               </div>
             )}
-            {options.map((o, i) => {
-              const key = optionKey(o, i);
+            {displayEntries.map(({ option: o, key, index }) => {
               const label = optionLabel(o);
               const selected = selectedOptionKeys.includes(key);
               const isCorrectOption = checked[q.id] && correctOptionKeys.has(key);
               const position = q.requires_order && selected ? selectedOptionKeys.indexOf(key) + 1 : null;
               return (
                 <AnswerOption
-                  key={key + "-" + i}
+                  key={key + "-" + index}
                   as="label"
                   variant="choice"
                   state={

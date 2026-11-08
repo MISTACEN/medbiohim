@@ -35,6 +35,7 @@ import { resolveSubjectSlug, subjectDisplayName } from "@/lib/subjectSlug";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { questionTypeLabel } from "@/lib/question-types";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { displayOptionEntries } from "@/components/questions/optionOrder";
 
 type SubjectOption = {
   id: string;
@@ -753,12 +754,12 @@ function PracticePageInner() {
 
               {isChoiceQuestion(selected) ? (
                 <div className="space-y-2">
-                  {selected.options.map((option: any, index: number) => {
+                  {displayOptionEntries(selected, selected.options as any[], optionKey).map(({ option, key, index }) => {
                     const isSelected = draft === String(index);
                     const isCorrect = correctOptionIndexes(selected).includes(index);
                     return (
                       <AnswerOption
-                        key={index}
+                        key={key + "-" + index}
                         variant="button"
                         state={
                           showAnswer && isCorrect
@@ -770,7 +771,7 @@ function PracticePageInner() {
                                 : "idle"
                         }
                         onSelect={() => setDraft(String(index))}
-                        badge={optionKey(option, index)}
+                        badge={key}
                         trailing={
                           showAnswer && isCorrect ? (
                             <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />
