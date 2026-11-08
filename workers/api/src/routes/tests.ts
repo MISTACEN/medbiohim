@@ -402,7 +402,7 @@ tests.get("/assignments", requireAuth, async (c) => {
     const groupIds = [...new Set((memberships || []).map((row: any) => String(row.group_id)).filter(Boolean))];
     let query = db
       .from("test_assignments")
-      .select("id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name)),users(full_name,display_name)")
+      .select("id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name)),users!test_assignments_created_by_fkey(full_name,display_name)")
       .eq("tests.is_published", true).is("tests.archived_at", null)
       .order("created_at", { ascending: false }).limit(50);
     query = groupIds.length
