@@ -110,7 +110,8 @@ review.get("/review/open-answers", requireAuth, async (c) => {
       .in("test_attempts.test_id", testIds as string[])
       .is("is_correct", null).not("answer_text", "is", null)
       .in("grading_status", ["pending", "error"])
-      .eq("test_attempts.status", "completed")
+      // enum attempt_status: abandoned|in_progress|submitted — 'completed' нет.
+      .eq("test_attempts.status", "submitted")
       .limit(200);
 
     const [prepRes, attemptRes] = await Promise.all([prepQuery, attemptQuery]);
