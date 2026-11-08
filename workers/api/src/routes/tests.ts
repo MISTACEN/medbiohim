@@ -455,7 +455,9 @@ tests.get("/assignments", requireAuth, async (c) => {
     return c.json(ok({ items }, rid));
   } catch (assignmentsError) {
     console.error("[tests:assignments]", assignmentsError);
-    const { body, status } = fail("DB_UNAVAILABLE", "Назначения временно недоступны", 503, rid);
+    // ВРЕМЕННАЯ диагностика (удалить после починки): код/сообщение ошибки БД в ответе.
+    const detail = `${(assignmentsError as any)?.code || ""} ${(assignmentsError as any)?.message || String(assignmentsError)}`.slice(0, 200);
+    const { body, status } = fail("DB_UNAVAILABLE", "Назначения временно недоступны: " + detail, 503, rid);
     return c.json(body, status as 503);
   }
 });
