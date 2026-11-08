@@ -76,7 +76,7 @@ teacher.post("/test-assignments", requireAuth, async (c) => {
   if (!service) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
   try {
     const { data: test, error: testError } = await service
-      .from("tests").select("id,title,is_published,archived_at")
+      .from("tests").select("id,title,is_published,archived_at,created_by")
       .eq("id", testId).is("archived_at", null).maybeSingle();
     if (testError) throw testError;
     if (!test || test.is_published !== true) {
@@ -86,6 +86,10 @@ teacher.post("/test-assignments", requireAuth, async (c) => {
     const isAdmin = canAdminister(roles);
     const scope = await loadTeacherScope(service, userId);
     if (!isAdmin) {
+      // Директива владельца 2026-11-08: назначать можно только свои тесты.
+      if (String((test as any).created_by || "") !== userId) {
+        return error(c, rid, 403, "FORBIDDEN", "Назначать можно только свои тесты");
+      }
       const outsideGroups = groupIds.filter((id) => !scope.groups.includes(id));
       if (outsideGroups.length) {
         return error(c, rid, 403, "FORBIDDEN", "Часть групп не входит в вашу область");
@@ -195,7 +199,7 @@ teacher.get("/test-assignments", requireAuth, async (c) => {
     if (attempts.error) throw attempts.error;
     if (members.error) throw members.error;
     const attemptRows = (attempts.data || []) as any[];
-    // Видимость результатов по тестам (решение владельца): свои или teacher_visible.
+    // Видимость результатов по тестам (директива владельца 2026-11-08): только свои.
     const visibleTests = await visibleResultTestIds(service, roles, userId, testIds);
     const membersByGroup = new Map<string, Set<string>>();
     for (const row of (members.data || []) as any[]) {

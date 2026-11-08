@@ -450,15 +450,12 @@ tests.get("/preview/:id", requireAuth, async (c) => {
       const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
       return c.json(body, status as 404);
     }
-    // Автор видит собственный черновик, администратор — любой тест;
-    // остальным преподавателям доступно только опубликованное.
-    if ((data as any).is_published !== true) {
-      const isAuthor = String((data as any).created_by || "") === c.get("user").id;
-      const roles = isAuthor ? [] : await callerRoles(db, c.get("user").id);
-      if (!isAuthor && !canAdminister(roles)) {
-        const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
-        return c.json(body, status as 404);
-      }
+    // Директива владельца 2026-11-08: превью — только автор теста или админ;
+    // чужие тесты (в т.ч. каталогные) преподавателю больше не отдаются.
+    const roles = await callerRoles(db, c.get("user").id);
+    if (!canAdminister(roles) && String((data as any).created_by || "") !== c.get("user").id) {
+      const { body, status } = fail("NOT_FOUND", "Тест не найден или не опубликован", 404, rid);
+      return c.json(body, status as 404);
     }
     const { data: links, error: linkError } = await db.from("test_questions")
       .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,archived_at,topic:topics(title))")

@@ -78,7 +78,6 @@ export function MyTests() {
   }, [load]);
 
   const mine = items.filter((test) => test.is_mine);
-  const catalog = items.filter((test) => !test.is_mine);
 
   return (
     <section className="space-y-3">
@@ -136,19 +135,6 @@ export function MyTests() {
                 {isAdmin
                   ? "Ваших тестов нет: все загруженные тесты созданы до появления авторства или импортированы без владельца."
                   : "Вы ещё не создавали тестов. Черновик появится здесь сразу после сохранения — публикация для этого не нужна."}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-              Доступные из каталога
-            </h3>
-            {catalog.length ? (
-              catalog.map((test) => <TestRow key={test.id} test={test} />)
-            ) : (
-              <div className="card p-4 text-sm text-[var(--muted)]">
-                Каталог пуст: администратор ещё не открыл тесты преподавателям.
               </div>
             )}
           </div>

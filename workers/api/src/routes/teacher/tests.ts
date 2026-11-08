@@ -45,19 +45,12 @@ teacher.get("/tests", requireAuth, async (c) => {
       .is("archived_at", null)
       .order("created_at", { ascending: false }).limit(300);
     if (q) query = query.ilike("title", `%${q}%`);
+    // Директива владельца 2026-11-08: преподаватель видит только свои тесты;
+    // чужие (в т.ч. каталогные teacher_visible) больше не отдаются.
+    if (!isAdmin) query = query.eq("created_by", user.id);
     const { data, error: readError } = await query;
     if (readError) throw readError;
-    // Свой тест виден всегда (включая черновик), чужой — если опубликован,
-    // разрешён администратором и относится к предмету преподавателя.
-    const subjectIds = isAdmin ? [] : await loadTeacherSubjectIds(db, user.id);
-    const rows = ((data || []) as any[]).filter((row) => {
-      if (isAdmin) return true;
-      if (String(row.created_by || "") === user.id) return true;
-      if (row.is_published !== true) return false;
-      if (row.teacher_visible === false) return false;
-      if (!subjectIds.length) return true;
-      return !row.subject_id || subjectIds.includes(String(row.subject_id));
-    });
+    const rows = ((data || []) as any[]).filter((row) => isAdmin || String(row.created_by || "") === user.id);
     const testIds = uniqueIds(rows.map((row) => row.id));
     const counts = new Map<string, number>();
     // Связей test_questions в сумме заметно больше 5000: один запрос с

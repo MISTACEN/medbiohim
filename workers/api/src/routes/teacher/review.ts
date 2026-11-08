@@ -21,19 +21,19 @@ import { error, UUID, type TeacherEnv } from "./_shared";
 
 const review = new Hono<TeacherEnv>();
 
-/** Тесты, доступные преподавателю для проверки: свои или подключённые админом. */
+/** Тесты, доступные преподавателю для проверки: только свои (директива 2026-11-08). */
 async function visibleTestIds(
   service: any,
   isAdmin: boolean,
   userId: string,
 ): Promise<Set<string>> {
-  let query = service.from("tests").select("id,created_by,teacher_visible").is("archived_at", null).limit(2000);
+  let query = service.from("tests").select("id,created_by").is("archived_at", null).limit(2000);
   if (!isAdmin) query = query.eq("created_by", userId);
   const { data, error: readError } = await query;
   if (readError) throw readError;
   return new Set(
     (data || [])
-      .filter((row: any) => isAdmin || String(row.created_by || "") === userId || row.teacher_visible === true)
+      .filter((row: any) => isAdmin || String(row.created_by || "") === userId)
       .map((row: any) => String(row.id)),
   );
 }

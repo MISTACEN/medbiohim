@@ -16,6 +16,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, FlaskConical, Loader2 } from "lucide-react";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { displayOptionEntries } from "@/components/questions/optionOrder";
 import {
   gradeQuestion,
   normalizeQuestion,
@@ -280,14 +281,14 @@ export default function TeacherPreviewPage() {
 
         {q.is_closed ? (
           <div className="space-y-2">
-            {q.options.map((option, i) => {
-              const key = optionKey(option, i);
+            {/* Показ перемешан как у студента; ключи — из исходного порядка. */}
+            {displayOptionEntries(q, q.options, optionKey).map(({ option, key, index }) => {
               const selected = selectedKeys.includes(key);
               const isCorrectOption = isRevealed && correctKeys.has(key);
               const position = q.requires_order && selected ? selectedKeys.indexOf(key) + 1 : null;
               return (
                 <AnswerOption
-                  key={key + "-" + i}
+                  key={key + "-" + index}
                   as="label"
                   variant="choice"
                   state={

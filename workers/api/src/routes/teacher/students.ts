@@ -146,17 +146,14 @@ teacher.get("/students/:id/attempts", requireAuth, async (c) => {
       }
     }
     let testsQuery = service.from("tests")
-      .select("id,created_by,teacher_visible")
+      .select("id,created_by")
       .is("archived_at", null).limit(2000);
     if (!isAdmin) testsQuery = testsQuery.eq("created_by", userId);
     const { data: ownTests, error: ownTestsError } = await testsQuery;
     if (ownTestsError) throw ownTestsError;
-    // Директива владельца: результаты — по своим тестам и подключённым админом.
+    // Директива владельца 2026-11-08: результаты — только по своим тестам.
     const ownTestIds = (ownTests || [])
-      .filter((row: any) =>
-        isAdmin ||
-        String(row.created_by || "") === userId ||
-        row.teacher_visible === true)
+      .filter((row: any) => isAdmin || String(row.created_by || "") === userId)
       .map((row: any) => String(row.id));
     if (!ownTestIds.length) return c.json(ok({ items: [], student_id: studentId, detail_level: 4 }, rid));
     // Максимум из уровней детализации по назначениям преподавателя, накрывающим
@@ -235,15 +232,14 @@ teacher.get("/students/:id/test/:testId/answers", requireAuth, async (c) => {
     // Тест должен быть виден учителю: свой или подключённый админом.
     const { data: test, error: testError } = await service
       .from("tests")
-      .select("id,created_by,teacher_visible,title")
+      .select("id,created_by,title")
       .eq("id", testId).maybeSingle();
     if (testError) throw testError;
     if (!test) return error(c, rid, 404, "NOT_FOUND", "Тест не найден");
     if (!isAdmin) {
       const ownsTest = String((test as any).created_by || "") === userId;
-      const adminConnected = (test as any).teacher_visible === true;
-      if (!ownsTest && !adminConnected) {
-        return error(c, rid, 403, "FORBIDDEN", "Этот тест не ваш и не подключён админом");
+      if (!ownsTest) {
+        return error(c, rid, 403, "FORBIDDEN", "Разбор доступен только по вашим тестам");
       }
       const scope = await loadTeacherScope(service, userId);
       const { data: membership, error: membershipError } = await service
