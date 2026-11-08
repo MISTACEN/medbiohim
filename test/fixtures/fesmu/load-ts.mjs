@@ -106,8 +106,14 @@ function install() {
   register("./ts-hook.mjs", import.meta.url);
 }
 
-/** Transpile+import one adapter module (`fesmu.ts`, `portals.ts`, `types.ts`). */
+/** Transpile+import one adapter module (`fesmu.ts` → каталог `fesmu/`, `portals.ts`, `types.ts`). */
 export async function loadUniversityTs(file = "fesmu.ts") {
   install();
-  return import(new URL(file, SRC_DIR).href);
+  let target = new URL(file, SRC_DIR);
+  // ЗАДАЧА A3: монолит fesmu.ts разнесён в каталог fesmu/ с index.ts.
+  if (!existsSync(target) && file.endsWith(".ts")) {
+    const dirIndex = new URL(file.replace(/\.ts$/, "/index.ts"), SRC_DIR);
+    if (existsSync(dirIndex)) target = dirIndex;
+  }
+  return import(target.href);
 }

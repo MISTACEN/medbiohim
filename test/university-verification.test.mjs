@@ -19,7 +19,7 @@
  */
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 import test, { mock } from "node:test";
@@ -179,7 +179,10 @@ function stripComments(source) {
 }
 
 test("§1.1 NODE_TLS_REJECT_UNAUTHORIZED is never set and the relaxed branch is the only one", () => {
-  const source = readFileSync(new URL("../src/lib/university/fesmu.ts", import.meta.url), "utf8");
+  const fesmuDir = new URL("../src/lib/university/fesmu/", import.meta.url);
+  const sources = readdirSync(fesmuDir).filter((name) => name.endsWith(".ts")).sort()
+    .map((name) => readFileSync(new URL(name, fesmuDir), "utf8"));
+  const source = sources.join("\n");
   const code = stripComments(source);
   assert.equal(/NODE_TLS_REJECT_UNAUTHORIZED\s*=[^=]/.test(code), false, "the process-wide TLS kill switch must not be assigned");
   assert.equal(/process\.env\.NODE_TLS_REJECT_UNAUTHORIZED/.test(code), false, "the process-wide TLS kill switch must not be read");
@@ -1095,7 +1098,13 @@ test("§2 routes declare the Node runtime and force-dynamic rendering", async ()
 
 test("§4 no university I/O module touches credentials, cookies or ЕИОС auth", () => {
   const files = [
-    "../src/lib/university/fesmu.ts",
+    "../src/lib/university/fesmu/_shared.ts",
+    "../src/lib/university/fesmu/cache.ts",
+    "../src/lib/university/fesmu/feed.ts",
+    "../src/lib/university/fesmu/documents.ts",
+    "../src/lib/university/fesmu/load.ts",
+    "../src/lib/university/fesmu/status.ts",
+    "../src/lib/university/fesmu/schedule.ts",
     "../src/lib/university/http.ts",
     "../src/app/api/university/route.ts",
     "../src/app/api/university/status/route.ts",

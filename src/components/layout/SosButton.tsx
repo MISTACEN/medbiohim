@@ -42,7 +42,8 @@ export function SosButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-amber-200 transition-all hover:bg-white/10"
+        className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all hover:bg-white/10"
+        style={{ color: "var(--status-warn-fg)" }}
         title="Срочно сообщить администратору"
       >
         <Siren className="h-5 w-5 shrink-0" strokeWidth={2} />
@@ -54,7 +55,7 @@ export function SosButton() {
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-[var(--card)] p-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold">
-                <Siren className="h-5 w-5 text-amber-500" /> Тревожная кнопка
+                <Siren className="h-5 w-5" style={{ color: "var(--status-warn-fg)" }} /> Тревожная кнопка
               </h2>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1 hover:bg-slate-100" aria-label="Закрыть">
                 <X className="h-5 w-5" />
