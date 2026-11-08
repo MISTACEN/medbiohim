@@ -20,7 +20,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
-          include: ["src/lib/__tests__/**/*.test.ts"],
+          include: ["src/lib/__tests__/**/*.test.ts", "src/lib/documents/__tests__/**/*.test.ts"],
           exclude: ["src/lib/__tests__/api.test.ts", "src/lib/__tests__/session.test.ts"],
         },
       },

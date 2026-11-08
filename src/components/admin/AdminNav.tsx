@@ -80,7 +80,8 @@ export const ADMIN_SECTIONS: NavSection[] = [
   {
     title: "Импорт",
     items: [
-      { href: "/admin/content-import", label: "Импорт тестов", icon: FileUp, short: "Тесты", strictAdmin: true, desc: "Excel → тесты, вопросы и порядок." },
+      { href: "/admin/test-import", label: "DOCX → Тест", icon: FileUp, short: "DOCX тест", strictAdmin: true, desc: "Быстрая загрузка теста из Word с предпросмотром." },
+      { href: "/admin/content-import", label: "Импорт тестов", icon: FileSpreadsheet, short: "Excel тесты", strictAdmin: true, desc: "Excel → тесты, вопросы и порядок." },
       { href: "/admin/content-package", label: "Импорт контента", icon: UploadCloud, short: "Контент", strictAdmin: true, desc: "Пакет документов, материалов и препаратов." },
       { href: "/admin/telegram", label: "Telegram → ДЗ", icon: Bot, short: "Telegram", strictAdmin: true, desc: "Привязка чатов групп и проверка webhook." },
     ],
