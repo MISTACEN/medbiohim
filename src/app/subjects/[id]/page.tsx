@@ -640,6 +640,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             topicBusy={topicBusy}
             cycleTopicStatus={cycleTopicStatus}
             openTopicMaterial={openTopicMaterial}
+            isAdmin={user?.role === "admin"}
             onSelectTab={(t) => selectTab(t as TabId)}
             onOpenLecture={openLectureById}
           />

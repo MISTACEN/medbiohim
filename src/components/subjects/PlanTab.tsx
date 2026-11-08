@@ -1,6 +1,9 @@
 import type { TabId } from "./tabs-config";
+import { setTopicPyramid } from "@/lib/api/subjects";
 
 "use client";
+
+import { useState } from "react";
 
 /**
  * Вкладка «Учебный план» предмета (ЗАДАЧА A5 шаг 3): лента PlanTimeline
@@ -36,16 +39,17 @@ type Props = {
   openTopicMaterial: (topicId: string, material: any) => void;
   onSelectTab: (tab: string | TabId) => void;
   onOpenLecture: (id: string) => void;
+  isAdmin: boolean;
 };
 
-export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modules, topicItems, topicProgressById, topicBusy, cycleTopicStatus, openTopicMaterial, onSelectTab, onOpenLecture }: Props) {
+export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modules, topicItems, topicProgressById, topicBusy, cycleTopicStatus, openTopicMaterial, onSelectTab, onOpenLecture, isAdmin }: Props) {
   return (
     <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
             <p className="mt-1 text-sm text-slate-500">
               {plan ? (plan.control || "Контроль не указан") + " · " + (plan.weeks || []).length + " занятий" : resourceErrors.plan || "План ещё не загружен."}
             </p>
-            <PyramidPanel topicItems={topicItems} />
+            <PyramidPanel topicItems={topicItems} isAdmin={isAdmin} />
             {plan?.weeks?.length ? (
               // Единая лента плана: ближайшее занятие крупно сверху, предстоящие
               // списком, прошедшие — свёрнуты. Связки переключают вкладки предмета.
@@ -160,26 +164,29 @@ const PYRAMID = [
  * приоритет: пока она не закрыта, к занятию идти рано. Считается по темам
  * предмета: сдано/всего на каждом уровне.
  */
-function PyramidPanel({ topicItems }: { topicItems: any[] }) {
+function PyramidPanel({ topicItems, isAdmin }: { topicItems: any[]; isAdmin: boolean }) {
+  const [busy, setBusy] = useState("");
   if (!topicItems.length) return null;
   const levels = PYRAMID.map(({ level, label, color, bg }) => {
     const rows = topicItems.filter((t) => t.knowledge_level === level);
     const done = rows.filter((t) => t.status === "passed").length;
     return { level, label, color, bg, total: rows.length, done };
   }).filter((l) => l.total > 0);
-  if (!levels.length) return null;
+  const unassigned = topicItems.filter((t) => t.knowledge_level == null);
   const base = levels.find((l) => l.level === 1);
   const basePct = base && base.total ? Math.round((base.done / base.total) * 100) : 0;
   const ready = !base || basePct >= 100;
+  async function setLevel(topicId: string, level: number | null) {
+    setBusy(topicId);
+    await setTopicPyramid(topicId, level);
+    setBusy("");
+    window.location.reload();
+  }
   return (
     <div className="mt-3 space-y-2">
       {base && (
-        <div
-          className={"rounded-xl px-4 py-2.5 text-sm font-bold " + (ready ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")}
-        >
-          {ready
-            ? "База закрыта — можно идти к следующему занятию"
-            : `Готовность к занятию: ${basePct}% базы сдано (${base.done}/${base.total})`}
+        <div className={"rounded-xl px-4 py-2.5 text-sm font-bold " + (ready ? "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]")}>
+          {ready ? "База закрыта — можно идти к следующему занятию" : `Готовность к занятию: ${basePct}% базы сдано (${base.done}/${base.total})`}
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -189,6 +196,27 @@ function PyramidPanel({ topicItems }: { topicItems: any[] }) {
           </span>
         ))}
       </div>
+      {isAdmin && unassigned.length > 0 && (
+        <details className="rounded-xl border p-3 text-sm">
+          <summary className="cursor-pointer font-semibold text-[var(--muted)]">
+            Разметить уровни ({unassigned.length} тем без уровня) — админ
+          </summary>
+          <div className="mt-2 space-y-1">
+            {unassigned.slice(0, 20).map((t) => (
+              <div key={t.topic_id} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                {[1, 2, 3].map((l) => (
+                  <button key={l} type="button" disabled={busy === t.topic_id}
+                    onClick={() => void setLevel(t.topic_id, l)}
+                    className="rounded-lg border px-2 py-0.5 text-[11px] font-bold hover:bg-indigo-50">
+                    {l === 1 ? "База" : l === 2 ? "Поним." : "Примен."}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
