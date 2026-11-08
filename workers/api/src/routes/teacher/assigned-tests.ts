@@ -446,6 +446,11 @@ teacher.get("/test-assignments/:id/export", requireAuth, async (c) => {
         stat?.last ? new Date(stat.last).toLocaleString("ru-RU") : "—",
       ].join(";"));
     }
+    // Водяной знак (Блок 8): кто и когда выгрузил ведомость — первая строка CSV.
+    const downloader = (await service.from("users").select("full_name,display_name,email").eq("id", userId).maybeSingle()).data as any;
+    const who = downloader ? String(downloader.full_name || downloader.display_name || downloader.email || userId) : userId;
+    const watermark = escape(`Выгрузил: ${who} · ${new Date().toLocaleString("ru-RU")} · MEDBIOHIM`);
+    lines.unshift(watermark);
     const csv = "\uFEFF" + lines.join("\r\n");
     const testTitle = (Array.isArray(assignment.tests) ? assignment.tests[0] : assignment.tests)?.title || "vedomost";
     return new Response(csv, {

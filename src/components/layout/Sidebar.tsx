@@ -5,6 +5,7 @@
  * Лекции, билеты, практика, материалы, SRS — внутри страницы предмета.
  */
 import Link from "next/link";
+import { SosButton } from "./SosButton";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
@@ -246,6 +247,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               );
             })}
         </ul>
+        {user ? <SosButton /> : null}
         <div className="mt-3 rounded-xl bg-white/5 px-3 py-2.5">
           <div className="truncate text-sm font-semibold">{displayName}</div>
           <div className="text-[11px] opacity-60">{roleLabel}</div>

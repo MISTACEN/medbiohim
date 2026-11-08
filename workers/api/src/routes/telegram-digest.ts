@@ -50,6 +50,7 @@ function formatDigestHtml(chat: {
   date: string;
   lessons: Array<{ subject_name: string | null; start_time: string | null; end_time: string | null; room: string | null; building: string | null; is_cancelled: boolean }>;
   homework: { overdue: Array<{ title: string; subject_name: string | null }>; today: Array<{ title: string; subject_name: string | null }>; tomorrow: Array<{ title: string; subject_name: string | null }> };
+  tests?: { today: Array<{ title: string }>; tomorrow: Array<{ title: string }> };
 }): string {
   const parts: string[] = [];
   const dateLabel = new Date(Date.parse(`${chat.date}T00:00:00Z`)).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
@@ -82,6 +83,15 @@ function formatDigestHtml(chat: {
     for (const item of chat.homework.tomorrow) homeworkSection.push(`• ${escapeHtml(item.title)}${item.subject_name ? ` — ${escapeHtml(item.subject_name)}` : ""}`);
   }
   if (homeworkSection.length) parts.push(homeworkSection.join("\n"));
+
+  // Дедлайны назначенных тестов: сдать сегодня / завтра.
+  const testSection: string[] = [];
+  if (chat.tests?.today?.length || chat.tests?.tomorrow?.length) {
+    testSection.push("<b>🧪 Назначенные тесты:</b>");
+    for (const item of chat.tests?.today || []) testSection.push(`• ${escapeHtml(item.title)} — <i>дедлайн сегодня</i>`);
+    for (const item of chat.tests?.tomorrow || []) testSection.push(`• ${escapeHtml(item.title)} — <i>дедлайн завтра</i>`);
+  }
+  if (testSection.length) parts.push(testSection.join("\n"));
 
   return parts.join("\n\n");
 }
@@ -188,7 +198,32 @@ telegramDigest.get("/internal/digest", async (c) => {
       homeworkByGroup.set(key, bucket);
     }
 
-    // 5. Сборка per-chat ответа: бот отправляет по одному сообщению на чат.
+    // 5. Дедлайны назначенных тестов групп: due_at сегодня/завтра (UTC-дата).
+    const { data: testAssignments, error: testAssignmentsError } = await supabase
+      .from("test_assignments")
+      .select("group_id,due_at,tests(title)")
+      .in("group_id", groupIds)
+      .not("due_at", "is", null)
+      .gte("due_at", new Date(Date.parse(`${date}T00:00:00Z`) - 2 * 86400000).toISOString())
+      .lte("due_at", new Date(Date.parse(`${tomorrow}T23:59:59Z`)).toISOString())
+      .limit(300);
+    if (testAssignmentsError) throw testAssignmentsError;
+    const todayIso = `${date}T00:00:00Z`;
+    const tomorrowIso = `${tomorrow}T00:00:00Z`;
+    const dayAfterIso = new Date(Date.parse(`${tomorrow}T00:00:00Z`) + 86400000).toISOString();
+    const testsByGroup = new Map<string, { today: Array<{ title: string }>; tomorrow: Array<{ title: string }> }>();
+    for (const row of testAssignments || []) {
+      const due = String((row as any).due_at || "");
+      if (!due) continue;
+      const test = Array.isArray(row.tests) ? row.tests[0] : row.tests;
+      const title = String(test?.title || "Тест");
+      const bucket = testsByGroup.get(String(row.group_id)) || { today: [], tomorrow: [] };
+      if (due >= todayIso && due < tomorrowIso) bucket.today.push({ title });
+      else if (due >= tomorrowIso && due < dayAfterIso) bucket.tomorrow.push({ title });
+      testsByGroup.set(String(row.group_id), bucket);
+    }
+
+    // 6. Сборка per-chat ответа: бот отправляет по одному сообщению на чат.
     const digestChats = activeChats.map((chat) => {
       const groupId = String(chat.group_id);
       const scheduleIdList = scheduleByGroup.get(groupId) || [];
@@ -218,11 +253,13 @@ telegramDigest.get("/internal/digest", async (c) => {
           today: slim(homework.today),
           tomorrow: slim(homework.tomorrow),
         },
+        tests: testsByGroup.get(groupId) || { today: [], tomorrow: [] },
         html: formatDigestHtml({
           group_name: groupNameById.get(groupId) || null,
           date,
           lessons,
           homework: homeworkByGroup.get(groupId) || { overdue: [], today: [], tomorrow: [] },
+          tests: testsByGroup.get(groupId) || { today: [], tomorrow: [] },
         }),
       };
     });

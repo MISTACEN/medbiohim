@@ -9,6 +9,7 @@
  * MANAGERS); роль назначает staff. Фронт только скрывает кнопки.
  */
 import { useCallback, useEffect, useState } from "react";
+import { GroupInvites } from "@/components/admin/GroupInvites";
 import Link from "next/link";
 import { Loader2, Plus, UserMinus, UserCheck } from "lucide-react";
 import {
@@ -246,6 +247,7 @@ export default function AdminGroupsPage() {
         </div>
       )}
       {dialog}
+      {selected ? <GroupInvites groupId={selected.id} /> : null}
     </div>
   );
 }

@@ -376,6 +376,17 @@ export const endpoints = {
     accountDeletion: (): string => "/account/deletion",
   },
 
+  block8: {
+    sos: (): string => "/sos",
+    inviteInfo: (token: string): string => `/invites/${encodeURIComponent(token)}`,
+    inviteJoin: (token: string): string => `/invites/${encodeURIComponent(token)}/join`,
+    groupJoinRequests: (): string => "/groups/join-requests",
+    groupJoinDecide: (id: string): string => `/groups/join-requests/${encodeURIComponent(id)}/decide`,
+    groupInvites: (groupId: string): string => `/admin/groups/${encodeURIComponent(groupId)}/invites`,
+    groupInviteRevoke: (inviteId: string): string => `/admin/groups/invites/${encodeURIComponent(inviteId)}`,
+    adminSos: (): string => "/admin/sos",
+    adminSosClose: (id: string): string => `/admin/sos/${encodeURIComponent(id)}/close`,
+  },
   /**
    * Университетские интеграции — это Next.js-роуты `src/app/api/university/*`,
    * а не `/api/v1`-прокси; здесь только для единообразия (клиенты портала).

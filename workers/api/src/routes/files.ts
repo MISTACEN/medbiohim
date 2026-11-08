@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { rateLimit } from "../lib/redis";
 
 const files = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
@@ -202,6 +203,13 @@ files.post("/upload", requireAuth, async (c) => {
 
 files.get("/:id/download", requireAuth, async (c) => {
   const rid = requestId();
+  // Лимит скачивания (Блок 8): 300 файлов в сутки на пользователя; при
+  // недоступном Redis fail-open, как у остальных rate-limit'ов платформы.
+  const downloadLimit = await rateLimit(c.env, `dl:${c.get("user").id}`, 300, 86400);
+  if (!downloadLimit.allowed) {
+    const { body, status } = fail("DOWNLOAD_LIMIT", "Суточный лимит скачиваний исчерпан — попробуйте завтра", 429, rid);
+    return c.json(body, status as any);
+  }
   const access = await readAccessibleFile(c, c.req.param("id") || "");
   if (access.response) return access.response;
   const file = access.file;

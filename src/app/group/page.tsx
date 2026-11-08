@@ -14,6 +14,7 @@ import {
   staffUpdateGroup, staffUpdateGroupMember, staffUpdateHomework,
 } from "@/lib/api/staff";
 import { moderateWorkshopItem } from "@/lib/api/workshop";
+import { JoinRequests } from "@/components/group/JoinRequests";
 
 export default function GroupManagePage() {
   const [capabilities, setCapabilities] = useState<any>(null);
@@ -158,6 +159,8 @@ export default function GroupManagePage() {
           <Link href="/workshop" className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold">Мастерская</Link>
         </div>
       </header>
+
+      <JoinRequests />
 
       {note && <div className="rounded-xl bg-[var(--status-ok-bg)] p-3 text-sm text-[var(--status-ok-fg)]">{note}</div>}
       {error && <div className="rounded-xl bg-[var(--status-critical-bg)] p-3 text-sm text-[var(--status-critical-fg)]">{error}</div>}

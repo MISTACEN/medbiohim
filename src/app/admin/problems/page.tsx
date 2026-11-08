@@ -8,13 +8,15 @@ import { describeApiError } from "@/lib/errors";
 const labels:Record<string,string>={wrong_answer:"Неверный ответ",wording:"Ошибка формулировки",multiple_correct:"Несколько правильных",no_correct:"Нет правильного",typo:"Опечатка",other:"Другое"};
 
 export default function ProblemCenter(){
- const [problems,setProblems]=useState<any[]>([]),[works,setWorks]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[draft,setDraft]=useState<any>(null),[tab,setTab]=useState("problems"),[msg,setMsg]=useState("");
+ const [sos,setSos]=useState<any[]>([]),[problems,setProblems]=useState<any[]>([]),[works,setWorks]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[draft,setDraft]=useState<any>(null),[tab,setTab]=useState("problems"),[msg,setMsg]=useState("");
  const [query,setQuery]=useState(""),[checked,setChecked]=useState<Set<string>>(new Set()),[batchBusy,setBatchBusy]=useState(false);
  const [reports,setReports]=useState<any[]>([]);
  async function load(){const r=await adminProblemCenter();if(r.ok){setProblems(r.data.problems||[]);setWorks(r.data.works||[])}else setMsg(describeApiError(r.error))}
  async function loadReports(){const r=await adminCommunityReports();if(r.ok)setReports(r.data.items||[]);else setMsg(describeApiError(r.error))}
  useEffect(()=>{if(hasToken())void load()},[]);
  useEffect(()=>{if(hasToken()&&tab==="reports")void loadReports()},[tab]);
+ useEffect(()=>{if(hasToken()&&tab==="sos")void fetch("/api/v1/admin/sos").then(r=>r.json()).then(j=>{if(j.ok)setSos(j.data.items)}).catch(()=>{})},[tab]);
+ async function closeSos(id:string){const r=await fetch(`/api/v1/admin/sos/${id}/close`,{method:"POST"});if(r.ok)setSos((cur:any[])=>cur.filter((x:any)=>x.id!==id))}
  async function closeReport(id:string,status:string){const r=await adminUpdateCommunityReport(id,status);if(r.ok){setMsg("Жалоба закрыта.");await loadReports()}else setMsg(describeApiError(r.error))}
  useEffect(()=>setDraft(selected?.question?{...selected.question}:null),[selected]);
  async function save(){if(!draft?.id)return;const r=await adminUpdateBankQuestion(draft.id,{text:draft.text,answer:draft.answer,options:draft.options});if(r.ok){setMsg("Вопрос исправлен.");setDraft(r.data.question);await load()}else setMsg(describeApiError(r.error))}
@@ -62,5 +64,6 @@ export default function ProblemCenter(){
    <div className="min-w-0 flex-1"><b className="block truncate">{r.post_title||"Пост"}</b><span className="text-xs text-slate-500">{r.reason} · {r.reporter_name||"студент"} · {(r.created_at||"").slice(0,10)}{r.status!=="open"?" · "+(r.status==="resolved"?"закрыта":"отклонена"):""}</span></div>
    {r.status==="open"&&<><button onClick={()=>void closeReport(r.id,"resolved")} className="rounded-xl border px-3 py-1.5 text-sm text-[var(--status-ok-fg)]">Закрыть</button><button onClick={()=>void closeReport(r.id,"dismissed")} className="rounded-xl border px-3 py-1.5 text-sm">Отклонить</button></>}
  </div>)}</div>}
+ {tab==="sos"&&<div className="card divide-y p-0">{sos.filter((x:any)=>x.status==="open").length===0?<div className="p-8 text-center text-slate-500">Открытых обращений нет.</div>:sos.filter((x:any)=>x.status==="open").map(x=><div key={x.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><div className="text-sm font-semibold">{x.user_name}</div><div className="whitespace-pre-wrap text-sm">{x.message}</div><div className="mt-1 text-xs text-slate-400">{x.page_url} · {new Date(x.created_at).toLocaleString("ru-RU")}</div></div><button onClick={()=>void closeSos(x.id)} className="btn-secondary text-xs">Закрыть</button></div>)}</div>}
  </div>
 }

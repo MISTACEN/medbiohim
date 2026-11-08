@@ -80,6 +80,7 @@ import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import staff from "./routes/staff";
 import teacher from "./routes/teacher/index";
 import access from "./routes/access";
+import block8 from "./routes/block8";
 import bootstrapMigrate from "./routes/bootstrap-migrate";
 import { moduleGate, teacherBlock } from "./lib/module-access";
 import { requireAuth, type AuthVariables } from "./middleware/auth";
@@ -256,6 +257,8 @@ v1.route("/attestations", gatedModule("attestations", attestations));
 v1.route("/integrations", integrations);
 v1.route("/external-platforms", externalPlatforms);
 v1.route("/questions", gatedModule("subjects", questionComments));
+// Блок 8: инвайт-ссылки в группы (с подтверждением старосты) + тревожная кнопка.
+v1.route("/", block8);
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)
