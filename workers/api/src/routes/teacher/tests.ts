@@ -169,7 +169,11 @@ teacher.post("/tests", requireAuth, async (c) => {
       .from("questions").insert(questionRows).select("id");
     if (questionsError) {
       console.error("[teacher:create-test:questions]", questionsError.code, questionsError.message);
-      return error(c, rid, 503, "DB_QUESTIONS", "Вопросы не сохранились в каталог");
+      const { body, status } = fail("DB_QUESTIONS", "Вопросы не сохранились в каталог", 503, rid, {
+        dbCode: questionsError.code,
+        dbMessage: questionsError.message,
+      });
+      return c.json(body, status as any);
     }
     const insertedIds = (insertedQuestions || []).map((row: any) => String(row.id));
     const { data: test, error: testError } = await service
