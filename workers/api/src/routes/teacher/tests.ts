@@ -162,18 +162,13 @@ teacher.post("/tests", requireAuth, async (c) => {
           : null,
         difficulty: null,
         is_published: true,
-        is_active: true,
       };
     });
     const { data: insertedQuestions, error: questionsError } = await service
       .from("questions").insert(questionRows).select("id");
     if (questionsError) {
       console.error("[teacher:create-test:questions]", questionsError.code, questionsError.message);
-      const { body, status } = fail("DB_QUESTIONS", "Вопросы не сохранились в каталог", 503, rid, {
-        dbCode: questionsError.code,
-        dbMessage: questionsError.message,
-      });
-      return c.json(body, status as any);
+      return error(c, rid, 503, "DB_QUESTIONS", "Вопросы не сохранились в каталог");
     }
     const insertedIds = (insertedQuestions || []).map((row: any) => String(row.id));
     const { data: test, error: testError } = await service
