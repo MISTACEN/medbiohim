@@ -105,8 +105,8 @@ test("дыхательная цепь: гипоксия уменьшает си�
 
 // ————— Контракт и предметные связи —————
 
-test("биохимические модели: 10 симуляций, биохимия видит все три новые", () => {
-  assert.equal(SIMULATIONS.length, 10);
+test("биохимические модели: 21 симуляция, биохимия видит все три новые", () => {
+  assert.equal(SIMULATIONS.length, 21);
   for (const slug of ["glycolysis", "krebs-cycle", "respiratory-chain"]) {
     const record = moduleById(`sim.${slug}`);
     assert.ok(record, `${slug} должен быть в реестре`);

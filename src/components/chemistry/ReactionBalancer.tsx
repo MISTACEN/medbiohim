@@ -167,7 +167,7 @@ export function ReactionBalancer() {
             </div>
 
             <p className="flex items-start gap-2 rounded-xl border border-[var(--border)] p-3 text-xs text-[var(--muted)]">
-              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-warn-fg)]" />
               <span>
                 Балансировка проверяет только сохранение атомов и заряда. Формально уравненная запись{" "}
                 <strong>не доказывает, что реакция реально протекает</strong>: направление и скорость определяют

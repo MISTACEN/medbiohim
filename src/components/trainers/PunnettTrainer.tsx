@@ -116,7 +116,7 @@ export function PunnettTrainer() {
       </div>
 
       {!result.ok ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+        <div className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm font-semibold text-[var(--status-warn-fg)]">
           {result.error}
         </div>
       ) : (
@@ -146,7 +146,7 @@ export function PunnettTrainer() {
               {result.gametesB.map((gamete) => (
                 <span
                   key={`b-${gamete}`}
-                  className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700"
+                  className="rounded-full bg-[var(--status-ok-bg)] px-3 py-1 text-[var(--status-ok-fg)]"
                 >
                   {gamete}
                 </span>
@@ -172,7 +172,7 @@ export function PunnettTrainer() {
                     {result.gametesB.map((gamete) => (
                       <th
                         key={`col-${gamete}`}
-                        className="border border-slate-200 bg-emerald-50 px-3 py-2 font-bold text-emerald-700"
+                        className="border border-slate-200 bg-[var(--status-ok-bg)] px-3 py-2 font-bold text-[var(--status-ok-fg)]"
                       >
                         {gamete}
                       </th>
