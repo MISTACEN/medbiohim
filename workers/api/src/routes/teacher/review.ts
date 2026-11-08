@@ -74,7 +74,8 @@ function shapeAnswer(
     student_answer: String(row.answer_text || "").slice(0, 2000),
     grading_status: row.grading_status || null,
     grading_feedback: row.grading_feedback || null,
-    answered_at: row.answered_at || null,
+    // У попыток answered_at нет — показываем graded_at (у pending он пуст).
+    answered_at: row.answered_at || row.graded_at || null,
   };
 }
 
@@ -101,14 +102,16 @@ review.get("/review/open-answers", requireAuth, async (c) => {
       .in("grading_status", ["pending", "error"])
       .order("answered_at", { ascending: false }).limit(200);
     // Попытки назначенных тестов: тот же фильтр, попытка должна быть завершена.
+    // В test_answers нет answered_at (он же graded_at) — не фильтруем и не
+    // сортируем по нему, иначе PostgREST отдаёт 42703 и очередь падает.
     const attemptQuery = service
       .from("test_answers")
-      .select("id,attempt_id,question_id,answer_text,grading_status,grading_feedback,answered_at,test_attempts!inner(user_id,test_id,status,tests(title))")
+      .select("id,attempt_id,question_id,answer_text,grading_status,grading_feedback,graded_at,test_attempts!inner(user_id,test_id,status,tests(title))")
       .in("test_attempts.test_id", testIds as string[])
-      .is("is_correct", null).not("answer_text", "is", null).not("answered_at", "is", null)
+      .is("is_correct", null).not("answer_text", "is", null)
       .in("grading_status", ["pending", "error"])
       .eq("test_attempts.status", "completed")
-      .order("answered_at", { ascending: false }).limit(200);
+      .limit(200);
 
     const [prepRes, attemptRes] = await Promise.all([prepQuery, attemptQuery]);
     if (prepRes.error) throw prepRes.error;
