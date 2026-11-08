@@ -290,7 +290,30 @@ teacher.get("/students/:id/test/:testId/answers", requireAuth, async (c) => {
       .limit(1000);
     if (answersError) throw answersError;
     const rows = (answers || []) as any[];
-    const questionIds = [...new Set(rows.map((row) => String(row.question_id)))];
+    // 8.31: ответы из попыток назначенных тестов (test_answers) — раньше разбор
+    // видел только сессии подготовки, и попытки назначений выпадали из разбора.
+    const { data: attemptAnswers, error: attemptAnswersError } = await service
+      .from("test_answers")
+      .select("question_id,answer_text,is_correct,score,grading_status,grading_source,grading_feedback,graded_at,test_attempts!inner(user_id,test_id,status)")
+      .eq("test_attempts.user_id", studentId)
+      .eq("test_attempts.test_id", testId)
+      .eq("test_attempts.status", "submitted")
+      .limit(1000);
+    if (attemptAnswersError) throw attemptAnswersError;
+    const attemptRows = ((attemptAnswers || []) as any[]).map((row) => ({
+      question_id: row.question_id,
+      answer_text: row.answer_text,
+      is_correct: row.is_correct,
+      score: row.score,
+      grading_status: row.grading_status,
+      grading_source: row.grading_source,
+      grading_feedback: row.grading_feedback,
+      // В test_answers нет answered_at — используем graded_at (может быть null).
+      answered_at: row.graded_at,
+      source: "attempt",
+    }));
+    const allRows = [...rows.map((row) => ({ ...row, source: "preparation" })), ...attemptRows];
+    const questionIds = [...new Set(allRows.map((row) => String(row.question_id)))];
     const { data: questions, error: questionsError } = await service
       .from("questions")
       .select("id,text,answer")
@@ -306,7 +329,7 @@ teacher.get("/students/:id/test/:testId/answers", requireAuth, async (c) => {
     }
     const seen = new Set<string>();
     const items: any[] = [];
-    for (const row of [...rows].reverse()) {
+    for (const row of [...allRows].reverse()) {
       const key = String(row.question_id);
       if (seen.has(key)) continue; // последний ответ на вопрос — как в прогрессе банка
       seen.add(key);
@@ -321,6 +344,7 @@ teacher.get("/students/:id/test/:testId/answers", requireAuth, async (c) => {
         grading_source: row.grading_source || null,
         grading_feedback: detailLevel >= 3 ? String(row.grading_feedback || "").slice(0, 500) || null : null,
         answered_at: row.answered_at || null,
+        source: row.source,
       };
       // Эталон — уровень 3+: иначе студент узнает правильные ответы через учителя.
       if (detailLevel >= 3) item.etalon = meta?.etalon || null;
