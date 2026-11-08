@@ -143,20 +143,26 @@ teacher.post("/tests", requireAuth, async (c) => {
       return error(c, rid, 403, "FORBIDDEN", "Часть вопросов не найдена в вашем личном банке");
     }
     const questionRows = picked.map((item: any) => {
-      const options = Array.isArray(item.options) ? item.options : [];
+      const options = (Array.isArray(item.options) ? item.options : [])
+        .map((label: unknown) => String(label ?? "").trim())
+        .filter(Boolean);
       return {
         subject_id: subjectId,
-        type: String(item.kind || "single"),
+        // questions.type — enum базы: mcq для закрытого вопроса с вариантами
+        // и open для ответа-эталона. Значения банка (single/multiple/open)
+        // сюда не подходят.
+        type: options.length ? "mcq" : "open",
         text: String(item.text || "").slice(0, 4000),
         answer: String(item.answer || "").slice(0, 500),
-        options: JSON.stringify(
-          options.map((label: string, index: number) => ({
-            key: String.fromCharCode(65 + index),
-            label: String(label),
-          })),
-        ),
+        options: options.length
+          ? options.map((label: string, index: number) => ({
+              key: String.fromCharCode(65 + index),
+              label,
+            }))
+          : null,
         difficulty: null,
         is_published: true,
+        is_active: true,
       };
     });
     const { data: insertedQuestions, error: questionsError } = await service
