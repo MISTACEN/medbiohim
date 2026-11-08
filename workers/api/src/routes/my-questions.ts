@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
 
 /**
  * Личный банк вопросов автора.
@@ -9,6 +10,11 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
  * Хранится в site_content:user_questions (payload.items) — как лекции, без
  * миграций. Каждый видит и правит только свои вопросы; в общий банк тестов
  * вопрос автоматически не уходит (это отдельная модерация).
+ *
+ * Чтение и запись идут сервисным клиентом: ключ `user_questions` один на
+ * платформу, и RLS-политика на запись к нему открыла бы любому студенту
+ * перезапись чужих вопросов. Поэтому авторизация живёт здесь — `requireAuth`
+ * плюс фильтр `author_id` на сервере, а клиент вообще не выбирает данные.
  */
 const myQuestions = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -83,8 +89,9 @@ function own(item: any, userId: string) {
 
 myQuestions.get("/", requireAuth, async (c) => {
   const rid = requestId();
-  const db = c.get("supabase");
+  const db = createServiceClient(c.env);
   const user = c.get("user");
+  if (!db) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Банк вопросов сейчас недоступен");
   try {
     const store = await readStore(db);
     const items = store.items
@@ -100,8 +107,9 @@ myQuestions.get("/", requireAuth, async (c) => {
 
 myQuestions.post("/", requireAuth, async (c) => {
   const rid = requestId();
-  const db = c.get("supabase");
+  const db = createServiceClient(c.env);
   const user = c.get("user");
+  if (!db) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Не удалось сохранить вопрос");
   const input = await bodyJson(c);
   if (!input) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректное тело запроса");
   const problem = validate(input);
@@ -132,8 +140,9 @@ myQuestions.post("/", requireAuth, async (c) => {
 
 myQuestions.patch("/:id", requireAuth, async (c) => {
   const rid = requestId();
-  const db = c.get("supabase");
+  const db = createServiceClient(c.env);
   const user = c.get("user");
+  if (!db) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Не удалось сохранить вопрос");
   const id = c.req.param("id") || "";
   const input = await bodyJson(c);
   if (!input) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректное тело запроса");
@@ -157,8 +166,9 @@ myQuestions.patch("/:id", requireAuth, async (c) => {
 
 myQuestions.delete("/:id", requireAuth, async (c) => {
   const rid = requestId();
-  const db = c.get("supabase");
+  const db = createServiceClient(c.env);
   const user = c.get("user");
+  if (!db) return error(c, rid, 503, "SERVICE_UNAVAILABLE", "Не удалось удалить вопрос");
   const id = c.req.param("id") || "";
   try {
     const store = await readStore(db);
