@@ -402,7 +402,7 @@ tests.get("/assignments", requireAuth, async (c) => {
     const groupIds = [...new Set((memberships || []).map((row: any) => String(row.group_id)).filter(Boolean))];
     let query = db
       .from("test_assignments")
-      .select("id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name)),users!test_assignments_created_by_fkey(full_name,display_name)")
+      .select("id,test_id,group_id,due_at,time_limit_sec,max_attempts,question_count,instructions,created_at,tests!inner(id,title,is_published,archived_at,subject_id,subjects(name))")
       .eq("tests.is_published", true).is("tests.archived_at", null)
       .order("created_at", { ascending: false }).limit(50);
     query = groupIds.length
@@ -410,8 +410,14 @@ tests.get("/assignments", requireAuth, async (c) => {
       : query.eq("test_assignment_students.student_id", user.id);
     const { data, error: readError } = await query;
     if (readError) throw readError;
+    // Имена преподавателей вторым запросом: embed users неоднозначен
+    // (created_by + вторая FK) и валил весь список с PGRST201.
+    const teacherIds = [...new Set((data || []).map((row: any) => String(row.tests?.created_by || (Array.isArray(row.tests) ? row.tests[0]?.created_by : null) || "")).filter(Boolean))];
+    const { data: teachers } = teacherIds.length
+      ? await db.from("users").select("id,full_name,display_name").in("id", teacherIds).limit(200)
+      : { data: [] };
+    const teacherNames = new Map((teachers || []).map((t: any) => [String(t.id), String(t.display_name || t.full_name || "Преподаватель")]));
     const items = (data || []).map((row: any) => {
-      const teacher = Array.isArray(row.users) ? row.users[0] : row.users;
       const test = Array.isArray(row.tests) ? row.tests[0] : row.tests;
       return {
         id: row.id,
@@ -424,7 +430,7 @@ tests.get("/assignments", requireAuth, async (c) => {
         max_attempts: row.max_attempts,
         question_count: row.question_count,
         instructions: row.instructions,
-        teacher_name: teacher ? String(teacher.display_name || teacher.full_name || "Преподаватель") : null,
+        teacher_name: teacherNames.get(String(test?.created_by || "")) || null,
         created_at: row.created_at,
       };
     });
