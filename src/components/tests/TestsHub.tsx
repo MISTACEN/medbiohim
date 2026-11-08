@@ -64,6 +64,7 @@ type TestItem = {
   moduleTitle: string;
   topicId: string;
   topicTitle: string;
+  knowledgeLevel?: number | null;
   moduleKey: string;
   topicKey: string;
   moduleRank: number;
@@ -219,6 +220,7 @@ export function TestsHub({
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [moduleFilter, setModuleFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState<number | null>(null);
   const [focusTopic, setFocusTopic] = useState(initialTopicId.trim());
   const [highlight, setHighlight] = useState("");
   const router = useRouter();
@@ -419,12 +421,18 @@ export function TestsHub({
     return filtered.filter((test) => test.topicId === focusTopic);
   }, [filtered, focusTopic]);
 
+  // Пирамида знаний: фильтр по уровню (ЭТАП 6).
+  const levelFiltered = useMemo(() => {
+    if (levelFilter == null) return topicFiltered;
+    return topicFiltered.filter((test) => test.knowledgeLevel === levelFilter);
+  }, [topicFiltered, levelFilter]);
+
   // Автозапуск тренировки: первая тема открывает свой банк сразу. `return`
   // несёт текущий адрес предмета без `start`, чтобы после завершения
   // вернуться именно туда, откуда пришли.
   useEffect(() => {
     if (!autoStart || startedRef.current || !focusTopic) return;
-    const first = topicFiltered[0];
+    const first = levelFiltered[0];
     if (!first) return;
     startedRef.current = true;
     const url = new URL(window.location.href);
@@ -435,11 +443,11 @@ export function TestsHub({
     router.replace(
       `/tests/preparation/${encodeURIComponent(first.id)}?mode=prepare&count=${count}&subject=${subject}&return=${encodeURIComponent(returnTo)}`,
     );
-  }, [autoStart, focusTopic, topicFiltered, router, subjectName, resolvedSlug]);
+  }, [autoStart, focusTopic, levelFiltered, router, subjectName, resolvedSlug]);
 
   const modules = useMemo<ModuleGroup[]>(() => {
     const map = new Map<string, ModuleGroup>();
-    for (const test of topicFiltered) {
+    for (const test of levelFiltered) {
       const key = test.moduleKey;
       const current = map.get(key);
       if (current) current.count += 1;
@@ -456,7 +464,7 @@ export function TestsHub({
       if (a.order !== b.order) return a.order - b.order;
       return a.title.localeCompare(b.title, "ru");
     });
-  }, [topicFiltered]);
+  }, [levelFiltered]);
 
   useEffect(() => {
     if (moduleFilter === "all") return;
@@ -465,7 +473,7 @@ export function TestsHub({
 
   const groups = useMemo<TopicGroup[]>(() => {
     const map = new Map<string, TopicGroup>();
-    for (const test of topicFiltered) {
+    for (const test of levelFiltered) {
       if (moduleFilter !== "all" && test.moduleKey !== moduleFilter) continue;
       const key = test.topicKey;
       const meta = topicMeta.get(test.topicId);
@@ -500,9 +508,9 @@ export function TestsHub({
         if (a.topicOrder !== b.topicOrder) return a.topicOrder - b.topicOrder;
         return a.title.localeCompare(b.title, "ru");
       });
-  }, [topicFiltered, moduleFilter, topicMeta]);
+  }, [levelFiltered, moduleFilter, topicMeta]);
 
-  const totalQuestions = topicFiltered.reduce((sum, test) => sum + test.questionCount, 0);
+  const totalQuestions = levelFiltered.reduce((sum, test) => sum + test.questionCount, 0);
   const selectedMode = MODES.find((item) => item.id === mode) || MODES[0];
   const showModuleFilter = modules.length > 1 && modules.some((module) => !module.fallback);
   const hasActiveFilters = Boolean(search.trim()) || moduleFilter !== "all" || (!scoped && subjectFilter !== "all");
@@ -554,7 +562,7 @@ export function TestsHub({
             </div>
             <div className="flex shrink-0 flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
-                {topicFiltered.length} {plural(topicFiltered.length, "банк", "банка", "банков")}
+                {levelFiltered.length} {plural(levelFiltered.length, "банк", "банка", "банков")}
               </span>
               <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
                 {totalQuestions} {plural(totalQuestions, "вопрос", "вопроса", "вопросов")}
@@ -655,6 +663,15 @@ export function TestsHub({
               >
                 {item.label}
                 <span className="ml-1 hidden font-normal text-[var(--muted)] sm:inline">· {item.short}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Пирамида:</span>
+            {[null, 1, 2, 3].map((lv) => (
+              <button key={String(lv)} type="button" onClick={() => setLevelFilter(lv)}
+                className={"rounded-lg px-2.5 py-1 text-xs font-bold " + (levelFilter === lv ? "bg-indigo-600 text-white" : "border border-[var(--border)] text-slate-600 hover:border-indigo-300")}>
+                {lv === null ? "Все" : lv === 1 ? "База" : lv === 2 ? "Понимание" : "Применение"}
               </button>
             ))}
           </div>
