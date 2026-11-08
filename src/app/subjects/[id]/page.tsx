@@ -12,6 +12,19 @@ import { platformsForSubject } from "@/data/external-platforms";
 import { LIBRARY_FILES } from "@/lib/library";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
 import { SubjectAssignments } from "@/components/subjects/SubjectAssignments";
+import {
+  TAB_IDS,
+  GROUP_OF,
+  GROUP_DEFAULT,
+  normalizeTab,
+  isTabId,
+  materialTypeLabel,
+  stripHtml,
+  slugNames,
+  semester,
+  type TabId,
+  type GroupId,
+} from "@/components/subjects/tabs-config";
 import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
 import TestsHub from "@/components/tests/TestsHub";
@@ -72,73 +85,7 @@ type SubjectCoreLoad =
       resourceErrors: Record<string, string>;
     };
 
-type TabId = "plan" | "lessons" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin";
-type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
 
-const TAB_IDS: TabId[] = ["plan", "lessons", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "exam", "progress", "colloquium", "portal", "chem", "latin"];
-
-// Вкладки сгруппированы: верхний ряд — крупные разделы, внутри — точные режимы.
-// «Билеты» и «Вопросы к экзамену» объединены во вкладку exam («Экзамен / Билеты»):
-// билеты и есть вопросы к экзамену. Старые адреса ?tab=tickets продолжают
-// работать через алиас в normalizeTab — внешние ссылки из планов кафедр и
-// sitemap не должны попасть в 404.
-const GROUP_OF: Record<TabId, GroupId> = {
-  plan: "plan",
-  lessons: "lessons",
-  tests: "tests",
-  practice: "tests",
-  lectures: "materials",
-  materials: "materials",
-  trainer: "practice",
-  trainers: "practice",
-  labs: "practice",
-  attestations: "attestations",
-  exam: "attestations",
-  colloquium: "attestations",
-  portal: "portal",
-  progress: "progress",
-  chem: "practice",
-  latin: "practice",
-};
-
-const GROUP_DEFAULT: Record<GroupId, TabId> = {
-  plan: "plan",
-  lessons: "lessons",
-  tests: "tests",
-  materials: "lectures",
-  practice: "trainers",
-  attestations: "exam",
-  portal: "portal",
-  progress: "progress",
-};
-
-function normalizeTab(v: string) {
-  // Алиасы старых адресов: билеты теперь живут во вкладке «Экзамен / Билеты».
-  if (v === "tickets") return "exam" as TabId;
-  if (v === "cards") return "trainers" as TabId;
-  return v as TabId;
-}
-
-const slugNames: Record<string, string> = {
-  "гистология, цитология": "histology",
-  гистология: "histology",
-  физиология: "physiology",
-  "органическая и физическая химия": "chemistry_organic_physical",
-};
-const semester = (n: number) => (n % 2 ? "Осенний" : "Весенний");
-
-function isTabId(v: string): v is TabId {
-  return (TAB_IDS as string[]).includes(v);
-}
-
-function materialTypeLabel(type?: string | null) {
-  const map: Record<string, string> = { lecture: "Лекция", pdf: "PDF", pptx: "Презентация", docx: "Word", lab: "Лабораторная", table: "Таблица", html: "Страница", video: "Видео", other: "Материал" };
-  return map[String(type || "")] || String(type || "Материал");
-}
-
-function stripHtml(html?: string | null) {
-  return String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
 
 function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
   const searchParams = useSearchParams();
