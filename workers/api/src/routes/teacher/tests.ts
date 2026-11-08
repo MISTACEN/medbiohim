@@ -171,7 +171,7 @@ teacher.post("/tests", requireAuth, async (c) => {
               key: String.fromCharCode(65 + index),
               label,
             }))
-          : null,
+          : [], // options NOT NULL в базе: null ломает вставку открытых вопросов
         difficulty: null,
         is_published: true,
       };

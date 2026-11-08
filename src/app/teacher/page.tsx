@@ -31,6 +31,7 @@ import { MyLectures } from "@/components/teacher/MyLectures";
 import { MyQuestionBank } from "@/components/teacher/MyQuestionBank";
 import { MyTests } from "@/components/teacher/MyTests";
 import { MyStudents } from "@/components/teacher/MyStudents";
+import { OpenAnswersReview } from "@/components/teacher/OpenAnswersReview";
 import { TestAssignments } from "@/components/teacher/TestAssignments";
 import {
   gradeSubmission,
@@ -525,6 +526,9 @@ export default function TeacherPage() {
               </ul>
             </div>
           ) : null}
+
+          {/* 8.39–8.42: очередь открытых ответов тестов (попытки + сессии подготовки). */}
+          <OpenAnswersReview />
         </section>
       ) : null}
 

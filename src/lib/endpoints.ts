@@ -243,6 +243,7 @@ export const endpoints = {
       `/teacher/students/${enc(id)}/test/${enc(testId)}/answers`,
     testAssignments: (query?: string): string => withQuery("/teacher/test-assignments", query),
     testAssignment: (id: string): string => `/teacher/test-assignments/${enc(id)}`,
+    reviewOpenAnswers: (): string => "/teacher/review/open-answers",
     testAssignmentAnalytics: (id: string): string => `/teacher/test-assignments/${enc(id)}/analytics`,
     testAssignmentExport: (id: string): string => `/teacher/test-assignments/${enc(id)}/export`,
     assignmentDetail: (id: string): string => `/teacher/assignments/${enc(id)}/detail`,

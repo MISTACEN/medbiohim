@@ -10,6 +10,7 @@ import tests from "./tests";
 import assignments from "./assignments";
 import testAssignments from "./assigned-tests";
 import students from "./students";
+import review from "./review";
 
 const teacher = new Hono<TeacherEnv>();
 
@@ -18,5 +19,6 @@ teacher.route("/", tests);
 teacher.route("/", assignments);
 teacher.route("/", testAssignments);
 teacher.route("/", students);
+teacher.route("/", review);
 
 export default teacher;

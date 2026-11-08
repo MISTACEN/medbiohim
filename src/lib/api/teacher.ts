@@ -406,3 +406,37 @@ export function returnSubmission(id: string, comment: string) {
     body: JSON.stringify({ comment }),
   });
 }
+
+/** 8.39–8.42: очередь открытых ответов тестов, ожидающих ручной проверки. */
+export type OpenAnswerItem = {
+  kind: "attempt" | "preparation";
+  id: string;
+  user_id: string;
+  user_name: string;
+  test_id: string;
+  test_title: string | null;
+  question_id: string;
+  question_text: string;
+  etalon: string | null;
+  student_answer: string;
+  grading_status: string | null;
+  grading_feedback: string | null;
+  answered_at: string | null;
+};
+
+export function listOpenAnswers() {
+  return api<{ items: OpenAnswerItem[]; is_admin: boolean }>(endpoints.teacher.reviewOpenAnswers());
+}
+
+/** Вердикт преподавателя по открытому ответу; для попытки пересчитывается балл. */
+export function reviewOpenAnswer(payload: {
+  kind: "attempt" | "preparation";
+  id: string;
+  is_correct: boolean;
+  feedback?: string;
+}) {
+  return api<{ answer: { id: string; is_correct: boolean | null; score: number | null; grading_status: string | null }; attempt: { id: string; score: number; max_score: number; percent: number } | null }>(
+    endpoints.teacher.reviewOpenAnswers(),
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
