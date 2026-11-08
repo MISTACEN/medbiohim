@@ -1,7 +1,7 @@
+"use client";
 import type { TabId } from "./tabs-config";
 import { setTopicPyramid } from "@/lib/api/subjects";
 
-"use client";
 
 import { useState } from "react";
 
