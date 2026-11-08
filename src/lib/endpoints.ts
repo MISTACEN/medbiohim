@@ -49,6 +49,7 @@ export const endpoints = {
     gradebook: (id: string): string => `/subjects/${enc(id)}/gradebook`,
     catalog: (): string => "/subjects-catalog",
     subjectPlan: (slug: string, query?: string): string => withQuery(`/subject-plans/${enc(slug)}`, query),
+    pyramid: (topicId: string): string => `/topics/${enc(topicId)}/pyramid`,
     topicProgress: (topicId: string): string => `/topics/${enc(topicId)}/progress`,
     curriculum: (): string => "/curriculum",
     groups: (query?: string): string => withQuery("/groups", query),

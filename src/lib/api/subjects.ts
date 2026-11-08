@@ -59,3 +59,8 @@ export async function updateGroup(id: string, payload: Record<string, unknown>):
 export async function updateSubject(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.subjects.detail(id), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
 export async function deleteGroup(id: string): Promise<any> { return api(endpoints.subjects.groupDetail(id), { method: "DELETE" }) as any; }
 export async function deleteSubject(id: string): Promise<any> { return api(endpoints.subjects.detail(id), { method: "DELETE" }) as any; }
+
+/** Пирамида знаний: установка уровня темы (1/2/3/null) — только админ. */
+export async function setTopicPyramid(topicId: string, level: number | null): Promise<any> {
+  return api(endpoints.topics.pyramid(topicId), { method: 'PATCH', body: JSON.stringify({ knowledge_level: level }) }) as any;
+}
