@@ -505,7 +505,9 @@ export function PeriodicTable() {
             aria-modal="true"
             aria-labelledby="element-dialog-title"
             className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl border p-5 shadow-xl sm:rounded-2xl sm:p-6"
-            style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--text)" }}
+            // Непрозрачный фон: в темах с полупрозрачным --card сквозь карточку
+            // элемента просвечивала таблица и оверлей.
+            style={{ borderColor: "var(--border)", background: "var(--background)", color: "var(--text)" }}
           >
             <div className="flex items-start gap-4">
               <div

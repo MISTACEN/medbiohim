@@ -28,6 +28,8 @@ export type PlanSession = {
   num: number | null;
   /** Лекция занятия. */
   lecture?: { num?: number | null; title: string; lectureId?: string | null; topics?: string[]; note?: string | null } | null;
+  /** Тест занятия, подписанный в плане кафедры (`test_id`). */
+  testId?: string | null;
   /** Лабораторное занятие (тема + работа). */
   lab?: { title: string; topics?: string[] } | null;
   /** Текст практической части (планы из API). */
@@ -39,6 +41,8 @@ export type PlanSession = {
   hasElectronograms?: boolean;
   /** Домашнее задание к занятию. */
   homework?: { summary?: string; items?: string[]; text?: string } | null;
+  /** Лабораторная работа занятия (практикум из плана кафедры). */
+  laboratory?: string[];
   /** Контрольное мероприятие в этот день (контрольная, коллоквиум…). */
   control?: string | null;
   /** Заголовок для плоских форматов («Лекция 3», «Лабораторное занятие 5»…). */
@@ -140,7 +144,9 @@ function normalizePreparations(value: unknown): PlanSession["preparations"] {
     if (!rec) return;
     const name = String(rec.name || rec.title || "").trim();
     if (!name) return;
-    list.push({ n: rec.n != null ? (rec.n as number | string) : index + 1, name });
+    // Планы гистологии хранят номер препарата в поле number, остальные — в n.
+    const num = rec.n ?? rec.number;
+    list.push({ n: num != null ? (num as number | string) : index + 1, name });
   });
   return list.length ? list : undefined;
 }
@@ -184,6 +190,13 @@ export function sessionsFromApiPlanWeeks(weeks: unknown): PlanSession[] {
         : String(week.practice || metadata.practice || "").trim();
       const electro = normalizeElectronograms(week.electronograms ?? metadata.electronograms);
       const lectureId = week.lecture_id ? String(week.lecture_id) : metadata.lecture_id ? String(metadata.lecture_id) : null;
+      // Явная привязка теста к занятию: без неё страница темы угадывала тест
+      // по словам в названии.
+      const testId = week.test_id ? String(week.test_id) : metadata.test_id ? String(metadata.test_id) : null;
+      // Практикум химии хранится отдельным полем laboratory — без него
+      // вкладка «План» показывает тему занятия без самих опытов.
+      const laboratoryRaw = week.laboratory ?? metadata.laboratory;
+      const laboratory = Array.isArray(laboratoryRaw) ? laboratoryRaw.map(String).filter(Boolean) : [];
       const session: PlanSession = {
         key: String(week.id || week.topic_id || `api-week-${index}`),
         kind: "week",
@@ -191,12 +204,14 @@ export function sessionsFromApiPlanWeeks(weeks: unknown): PlanSession[] {
         num: toNumberOrNull(week.week ?? metadata.week ?? metadata.calendar_week),
         week: toNumberOrNull(week.week ?? metadata.week ?? metadata.calendar_week),
         lecture: lectureTitle ? { title: lectureTitle, lectureId } : null,
+        testId,
         practice: practiceTitle || null,
         preparations: normalizePreparations(week.preparations ?? metadata.preparations),
         electronograms: electro.list,
         hasElectronograms: electro.flag,
         homework: apiWeekHomework(week),
-        control: week.control ? String(week.control) : null,
+        laboratory: laboratory.length ? laboratory : undefined,
+        control: typeof week.control === "string" && week.control.trim() ? week.control : null,
         description: week.description ? String(week.description) : null,
         topicId: week.topic_id ? String(week.topic_id) : null,
       };
@@ -234,6 +249,7 @@ export function normalizeStaticPlan(raw: unknown): NormalizedSubjectPlan {
               note: lectureRec.note ? String(lectureRec.note) : null,
             }
           : null,
+        testId: lectureRec?.test_id ? String(lectureRec.test_id) : week.test_id ? String(week.test_id) : null,
         lab: labRec
           ? {
               title: String(labRec.title || ""),
@@ -245,7 +261,7 @@ export function normalizeStaticPlan(raw: unknown): NormalizedSubjectPlan {
         electronograms: electro.list,
         hasElectronograms: electro.flag,
         homework: normalizeHomework(week.homework),
-        control: week.control ? String(week.control) : null,
+        control: typeof week.control === "string" && week.control.trim() ? week.control : null,
       });
     });
   }
@@ -267,6 +283,7 @@ export function normalizeStaticPlan(raw: unknown): NormalizedSubjectPlan {
           title,
           lectureId: lecture.lecture_id ? String(lecture.lecture_id) : null,
         },
+        testId: lecture.test_id ? String(lecture.test_id) : null,
       });
     });
   }
@@ -297,8 +314,11 @@ export function normalizeStaticPlan(raw: unknown): NormalizedSubjectPlan {
         title: title,
         lab: { title, topics: Array.isArray(lab.topics) ? lab.topics.map(String) : undefined },
         homework: normalizeHomework(lab.lab && !Array.isArray(lab.lab) ? lab.lab : undefined),
-        control: lab.control ? String(lab.control) : null,
+        // В статическом плане control — флаг (true), а не название работы:
+        // иначе на странице появляется строка «true».
+        control: typeof lab.control === "string" && lab.control.trim() ? lab.control : null,
         // Работы лабораторного практикума храним как preparations-подобный список.
+        ...(work ? { laboratory: work } : {}),
         ...(work ? { description: work.map((item, i) => `${i + 1}. ${item}`).join("\n") } : {}),
       });
     });

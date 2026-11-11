@@ -908,6 +908,41 @@ button {
   .app-sidebar, nav, header { display: none !important; }
   main { padding: 0 !important; max-width: none !important; }
   .card { box-shadow: none !important; break-inside: avoid; }
+
+  /* Печать из панели химического модуля (кнопка «Печать / PDF» в разделах
+     «Практика» и «Лаборатория»): на лист идёт только содержимое панели,
+     лекция под оверлеем не печатается. */
+  html[data-print-scope="chem-panel"] body > *:not([data-chem-print-root]) { display: none !important; }
+  html[data-print-scope="chem-panel"] [data-chem-print-root] {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    height: auto !important;
+    z-index: auto !important;
+  }
+  html[data-print-scope="chem-panel"] .chem-panel {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  /* Внутри панели своя прокрутка: для печати её надо раскрыть целиком,
+     иначе на лист попадёт только видимая часть. */
+  html[data-print-scope="chem-panel"] .chem-panel-scroll {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  html[data-print-scope="chem-panel"] .chem-panel-backdrop,
+  html[data-print-scope="chem-panel"] .chem-panel-chrome { display: none !important; }
+  /* Глобальное правило выше прячет все <header>, чтобы не печатать шапку сайта.
+     Внутри панели <header> — это заголовки секций модуля, их скрывать нельзя. */
+  html[data-print-scope="chem-panel"] [data-chem-print-root] header { display: block !important; }
 }
 
 

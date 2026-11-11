@@ -34,9 +34,18 @@ export type PhysiologyLesson = {
   tests: PhysiologyTestGroup[];
 };
 
+export type PhysiologySubsection = {
+  title: string;
+  /** Границы включительно по номеру вопроса внутри банка. */
+  from: number;
+  to: number;
+};
+
 export type PhysiologyBank = {
   title: string;
   questions: PhysiologyQuestion[];
+  /** Необязательные подразделы: каждый можно пройти отдельно. */
+  subsections?: PhysiologySubsection[];
 };
 
 export type PhysiologyManual = {
@@ -50,6 +59,8 @@ export type PhysiologyManual = {
   sections: { number: number; title: string; lesson_ids: string[] }[];
   lessons: PhysiologyLesson[];
   banks: PhysiologyBank[];
+  /** Занятие-коллоквиум: выносится отдельным блоком и собирает тесты всей методички. */
+  final_lesson_id?: string;
   stats: { lessons: number; groups: number; questions: number; answered: number };
 };
 
@@ -72,7 +83,9 @@ export type PhysiologyIndex = {
 const cache = new Map<string, PhysiologyManual>();
 
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "force-cache" });
+  // no-cache: контент обновляется вместе с деплоем, но браузер не должен
+  // годами держать старую копию JSON. Ревалидация дешёвая (304).
+  const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Не удалось загрузить материал (${response.status})`);
   return (await response.json()) as T;
 }

@@ -63,9 +63,52 @@ export function downloadCsv(filename: string, csv: string): boolean {
   return true;
 }
 
+/*
+ * Печать из выдвижной панели химического модуля.
+ *
+ * Панель — это portal поверх лекции, поэтому обычная печать выводила бы ещё и
+ * текст лекции под ней. Помечаем <html> атрибутом, по которому print-стили
+ * (globals.css) оставляют на листе только содержимое панели: всё остальное
+ * в body скрывается, а сама панель из фиксированной рамки со скроллом
+ * превращается в обычный блок на всю ширину — иначе напечаталась бы только
+ * видимая часть с прокруткой.
+ */
+const PRINT_SCOPE_ATTR = "data-print-scope";
+const PRINT_SCOPE_PANEL = "chem-panel";
+
+/** Снять ограничение печати (например, панель закрыли). */
+export function resetPrintScope(): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.removeAttribute(PRINT_SCOPE_ATTR);
+}
+
 /** PDF-этап 1: печать текущего представления с print-стилями. */
 export function printCurrentView(): boolean {
   if (typeof window === "undefined" || typeof window.print !== "function") return false;
+  const panel = typeof document !== "undefined" ? document.querySelector("[data-chem-print-root]") : null;
+  if (!panel) {
+    window.print();
+    return true;
+  }
+
+  const root = document.documentElement;
+  const previous = root.getAttribute(PRINT_SCOPE_ATTR);
+  root.setAttribute(PRINT_SCOPE_ATTR, PRINT_SCOPE_PANEL);
+
+  let restored = false;
+  const restore = () => {
+    if (restored) return;
+    restored = true;
+    if (previous === null) root.removeAttribute(PRINT_SCOPE_ATTR);
+    else root.setAttribute(PRINT_SCOPE_ATTR, previous);
+    window.removeEventListener("afterprint", restore);
+    window.removeEventListener("focus", restore);
+  };
+  // afterprint в части браузеров не приходит; focus срабатывает при возврате
+  // в окно после закрытия диалога печати — этого достаточно, чтобы не оставить
+  // ограничение висеть на следующих печатях.
+  window.addEventListener("afterprint", restore);
+  window.addEventListener("focus", restore);
   window.print();
   return true;
 }

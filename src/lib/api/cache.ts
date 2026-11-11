@@ -14,6 +14,9 @@ const API_CACHE_TTL = 60_000;
 
 function isCacheableGet(path: string, options: RequestInit) {
   if ((options.method || "GET").toUpperCase() !== "GET") return false;
+  // Явный no-store/reload от вызывающего кода важнее общего кеша: так страница
+  // получает свежие данные сразу после правки контента, а не через TTL.
+  if (options.cache === "no-store" || options.cache === "reload") return false;
   if (typeof window === "undefined") return false;
   return cacheableGetPrefixes.some((prefix) => path === prefix || path.startsWith(prefix));
 }

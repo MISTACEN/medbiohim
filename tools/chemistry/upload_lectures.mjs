@@ -1,0 +1,143 @@
+// Загрузка лекций по органической химии из public/content/lectures/chemistry/*.md
+// в site_content(key=lectures) и зеркало в histology_lectures — тот же путь,
+// которым лекции попадают в /lectures и на вкладку «Лекции» предмета.
+//
+// Формат файла: frontmatter (id, title, topic, summary, status) + markdown-тело.
+// Идемпотентно: запись ищется по id и заменяется.
+//
+// Запуск: node tools/chemistry/upload_lectures.mjs [--dry] [--only=<подстрока>]
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const DIR = path.join(REPO, "public", "content", "lectures", "chemistry");
+/** Slug предмета на сайте (маршрут /subjects/organic_chemistry). */
+const SUBJECT_SLUG = "organic_chemistry";
+const DRY = process.argv.includes("--dry");
+const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice("--only=".length);
+
+function loadEnv() {
+  for (const line of fs.readFileSync(path.join(REPO, ".env.local"), "utf8").split("\n")) {
+    const m = /^([A-Za-z_0-9]+)=(.*)$/.exec(line.trim());
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+}
+
+function parse(file) {
+  const raw = fs.readFileSync(path.join(DIR, file), "utf8").replace(/\r\n/g, "\n");
+  const m = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(raw);
+  if (!m) throw new Error(`нет frontmatter: ${file}`);
+  const meta = {};
+  for (const line of m[1].split("\n")) {
+    const kv = /^([a-z_]+):\s*(.*)$/.exec(line.trim());
+    if (kv) meta[kv[1]] = kv[2];
+  }
+  return { meta, body: m[2].trim() };
+}
+
+function toLecture(meta, body) {
+  return {
+    id: meta.id,
+    media: [],
+    title: meta.title,
+    topic: meta.topic,
+    status: meta.status || "published",
+    body_md: body,
+    subject: SUBJECT_SLUG,
+    summary: meta.summary || "",
+    body_html: "",
+    attachments: [],
+    lesson_type: "lecture",
+    subject_slug: SUBJECT_SLUG,
+    related_learning: { files: [], methodics: [], preparations: [], electronograms: [] },
+  };
+}
+
+(async () => {
+  loadEnv();
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) throw new Error("нет SUPABASE_URL / SUPABASE_SERVICE_KEY в .env.local");
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+
+  const files = fs.readdirSync(DIR).filter((f) => f.endsWith(".md") && (!ONLY || f.includes(ONLY))).sort();
+  const fresh = files.map((f) => {
+    const { meta, body } = parse(f);
+    return toLecture(meta, body);
+  });
+
+  const res = await fetch(`${url}/rest/v1/site_content?key=eq.lectures&select=payload`, { headers });
+  if (!res.ok) throw new Error(`select ${res.status}: ${await res.text()}`);
+  const rows = await res.json();
+  const payload = rows[0]?.payload;
+  const items = Array.isArray(payload) ? payload : payload?.items || [];
+  const byId = new Map(items.map((x) => [String(x.id), x]));
+
+  let added = 0;
+  for (const lecture of fresh) {
+    const existing = byId.get(lecture.id);
+    if (!existing) added += 1;
+    byId.set(lecture.id, {
+      ...(existing || {}),
+      ...lecture,
+      created_at: existing?.created_at || new Date().toISOString(),
+      created_by: existing?.created_by || null,
+      reviewed_by: existing?.reviewed_by || null,
+      published_at: existing?.published_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  // Порядок в ответе API = порядок в payload: группируем по модулю и теме,
+  // чтобы лекции химии стояли рядом, а не липли в конец общего списка.
+  const merged = [...byId.values()].sort((a, b) => {
+    const key = (x) => [String(x.subject_slug || x.subject || ""), String(x.topic || ""), String(x.title || "")];
+    const [ka, kb] = [key(a), key(b)];
+    for (let i = 0; i < ka.length; i += 1) {
+      const cmp = ka[i].localeCompare(kb[i], "ru");
+      if (cmp !== 0) return cmp;
+    }
+    return 0;
+  });
+  for (const l of fresh) {
+    const blocks = (l.body_md.match(/^### /gm) || []).length;
+    const quizzes = (l.body_md.match(/^```quiz/gm) || []).length;
+    console.log(`${l.id} | ${blocks} блоков | ${quizzes} мини-тестов | ${l.body_md.length} знаков | ${l.title.slice(0, 70)}`);
+  }
+  console.log(`файлов: ${fresh.length}, новых: ${added}, всего лекций: ${merged.length}`);
+
+  if (DRY) return;
+  const body = JSON.stringify({ payload: Array.isArray(payload) ? merged : { ...payload, items: merged } });
+  const patch = await fetch(`${url}/rest/v1/site_content?key=eq.lectures`, {
+    method: "PATCH",
+    headers: { ...headers, Prefer: "return=minimal" },
+    body,
+  });
+  if (!patch.ok) throw new Error(`patch ${patch.status}: ${await patch.text()}`);
+  console.log("записано в site_content");
+
+  // Студентам лекции отдаёт публичный API из histology_lectures,
+  // поэтому дублируем запись туда — иначе новые занятия не видны в /lectures.
+  const mirrorRows = fresh.map((l) => ({
+    id: l.id,
+    subject_slug: SUBJECT_SLUG,
+    specialty_scope: ["mbh"],
+    title: l.title,
+    kind: "written_lecture",
+    prep_names: [],
+    linked_prep_ids: [],
+    body_markdown: l.body_md,
+    description_algorithm_ref: null,
+    is_published: l.status === "published",
+    updated_at: new Date().toISOString(),
+  }));
+  const mirrorRes = await fetch(`${url}/rest/v1/histology_lectures?on_conflict=id`, {
+    method: "POST",
+    headers: { ...headers, Prefer: "return=minimal,resolution=merge-duplicates" },
+    body: JSON.stringify(mirrorRows),
+  });
+  if (!mirrorRes.ok) throw new Error(`histology_lectures ${mirrorRes.status}: ${await mirrorRes.text()}`);
+  console.log(`продублировано в histology_lectures: ${mirrorRows.length}`);
+})();

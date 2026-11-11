@@ -14,7 +14,9 @@ export const SUBJECT_STATIC_PLANS: Record<string, string> = {
 
 /** Загружает JSON плана кафедры из public/content (отмена через AbortSignal). */
 export async function fetchStaticPlan(file: string, signal?: AbortSignal): Promise<unknown> {
-  const res = await fetch(`/content/${file}`, { cache: "force-cache", signal });
+  // no-cache = условная проверка: без изменений браузер получает 304, а после
+  // правки плана студент видит новый файл сразу, а не старую копию из кеша.
+  const res = await fetch(`/content/${file}`, { cache: "no-cache", signal });
   if (!res.ok) throw new Error(`План кафедры недоступен (${res.status})`);
   return res.json();
 }

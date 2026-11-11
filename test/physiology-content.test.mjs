@@ -67,4 +67,32 @@ for (const summary of index.manuals) {
     }
     assert.equal(total, manual.stats.questions, `${summary.slug}: stats mismatch`);
   });
+
+  test(`${summary.slug}: bank subsections cover every question once`, () => {
+    for (const bank of manual.banks) {
+      if (!bank.subsections || bank.subsections.length === 0) continue;
+      const seen = new Set();
+      for (const subsection of bank.subsections) {
+        const questions = bank.questions.filter(
+          (question) => question.number >= subsection.from && question.number <= subsection.to
+        );
+        assert.ok(questions.length > 0, `${summary.slug}: empty subsection ${subsection.title}`);
+        for (const question of questions) {
+          assert.ok(!seen.has(question.number), `${summary.slug}: question ${question.number} in two subsections`);
+          seen.add(question.number);
+        }
+      }
+      assert.equal(seen.size, bank.questions.length, `${summary.slug}: subsections do not cover the bank`);
+    }
+  });
+
+  test(`${summary.slug}: final colloquium is wired and has a mixed test`, () => {
+    assert.ok(manual.final_lesson_id, `${summary.slug}: final_lesson_id missing`);
+    const final = manual.lessons.find((lesson) => lesson.id === manual.final_lesson_id);
+    assert.ok(final, `${summary.slug}: final lesson ${manual.final_lesson_id} not found`);
+    const pool = [...manual.banks, ...manual.lessons.flatMap((lesson) => lesson.tests)].flatMap(
+      (group) => group.questions
+    );
+    assert.ok(pool.length > 0, `${summary.slug}: no tests for the mixed final`);
+  });
 }

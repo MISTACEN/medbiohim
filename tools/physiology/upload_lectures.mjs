@@ -4,7 +4,8 @@
 // Формат файла: frontmatter (id, title, topic, summary, order) + markdown-тело.
 // Идемпотентно: запись ищется по id и заменяется.
 //
-// Запуск: node tools/physiology/upload_lectures.mjs [--dry]
+// Запуск: node tools/physiology/upload_lectures.mjs [--dry] [--only=digest-]
+// --only=<подстрока> — загрузить только файлы, чьё имя содержит подстроку.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -13,6 +14,7 @@ import { fileURLToPath } from "node:url";
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DIR = path.join(REPO, "public", "content", "lectures", "physiology");
 const DRY = process.argv.includes("--dry");
+const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice("--only=".length);
 
 function loadEnv() {
   for (const line of fs.readFileSync(path.join(REPO, ".env.local"), "utf8").split("\n")) {
@@ -58,7 +60,7 @@ function toLecture(meta, body) {
   if (!url || !key) throw new Error("нет SUPABASE_URL / SUPABASE_SERVICE_KEY в .env.local");
   const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
 
-  const files = fs.readdirSync(DIR).filter((f) => f.endsWith(".md")).sort();
+  const files = fs.readdirSync(DIR).filter((f) => f.endsWith(".md") && (!ONLY || f.includes(ONLY))).sort();
   const fresh = files.map((f) => {
     const { meta, body } = parse(f);
     return toLecture(meta, body);

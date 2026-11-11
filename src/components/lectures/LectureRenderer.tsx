@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChemicalFigure } from "@/modules/subjects/submodules/chemistry";
+import { ChemicalFigure, ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
+import { chemicalFormulaInHtml } from "@/lib/chemistry/formula";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
@@ -159,7 +160,9 @@ function mdToHtml(md: string): string {
       return `<p>${block.replace(/\n/g, " ")}</p>`;
     })
     .join("\n");
-  return `<div>${html}</div>`;
+  // Формулы в тексте лекции: H2SO4 → H₂SO₄, Fe^3+ → Fe³⁺. Без этого
+  // набранные «по-простому» формулы выглядели как черновик.
+  return chemicalFormulaInHtml(`<div>${html}</div>`);
 }
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
@@ -519,7 +522,7 @@ function MiniQuizBlock({ raw, lectureId }: { raw: string; lectureId?: string }) 
         <div><div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Мини-тест после блока</div><h3 className="mt-1 text-base font-extrabold text-slate-900">{spec.title || "Проверь себя"}</h3></div>
         <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">{index + 1}/{questions.length}</div>
       </div>
-      <p className="mt-4 text-sm font-semibold leading-6 text-slate-900">{question.text}</p>
+      <ChemRichText text={question.text} className="mt-4 text-sm font-semibold leading-6 text-slate-900" />
       <p className="mt-1 text-xs font-semibold text-slate-500">{multiple ? "Выберите все верные варианты" : "Выберите один вариант"}</p>
       {ordering ? (
         <div className="mt-3 rounded-xl bg-[var(--status-warn-bg)] px-3 py-2 text-xs font-semibold text-[var(--status-warn-fg)]">
@@ -536,7 +539,7 @@ function MiniQuizBlock({ raw, lectureId }: { raw: string; lectureId?: string }) 
             onSelect={() => pick(option.index)}
             className="hover:border-indigo-200"
           >
-            {option.label}
+            <ChemRichText text={option.label} className="inline" />
           </AnswerOption>
         ))}
       </div>
@@ -665,6 +668,13 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
   }, [ready, parts, safeHtml]);
 
   const [allOpen, setAllOpen] = useState(false);
+  // На телефоне лекция должна читаться без танцев с аккордеонами: раскрываем
+  // блоки сразу. На десктопе оставляем компактный список, как было.
+  useEffect(() => {
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches) {
+      setAllOpen(true);
+    }
+  }, []);
   // Поток групп: подряд идущие md-секции + спец-блоки (квиз/картинка/видео) прикрепляются к текущей секции,
   // поэтому пер-блочный тест рендерится ВНУТРИ своего аккордеона.
   const stream = useMemo(() => {
@@ -878,7 +888,21 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
         .lecture-body img { max-width: 100%; height: auto; border-radius: 12px; }
         .lecture-body p::after { content: ""; display: block; clear: both; }
         .dark .lecture-body hr { border-top-color: #475569; }
+        .lec-fold summary { min-height: 44px; display: flex; align-items: center; }
         .lec-fold summary:hover { background: rgba(99,102,241,0.06); }
+        @media (max-width: 640px) {
+          .lecture-body { font-size: 16px; }
+          .lecture-body .prose { font-size: 1rem; line-height: 1.72; padding-inline: 0; }
+          .lecture-body h1 { font-size: 1.28rem; }
+          .lecture-body h2 { font-size: 1.14rem; }
+          .lecture-body h3 { font-size: 1.02rem; }
+          .lecture-body ul, .lecture-body ol { padding-left: 1.2rem; }
+          .lec-fold > summary { padding: 0.8rem 0.85rem; font-size: 0.95rem; }
+          .lec-fold > div { padding-inline: 0.85rem; }
+          .lec-table-wrap { margin-inline: -0.35rem; }
+          .lec-table th, .lec-table td { padding: 0.4rem 0.5rem; font-size: 0.8rem; }
+          .lecture-body .lec-math { font-size: 0.95rem; }
+        }
         .lec-fold[open] > summary .chev { transform: rotate(90deg); }
         .lec-fold .prose > div:last-child { margin-bottom: 0.2rem; }\n        .lecture-rich-html img,.lecture-rich-html video{max-width:100%;height:auto;border-radius:14px;margin:1rem auto}.lecture-rich-html iframe{width:100%;min-height:420px;border:1px solid var(--border);border-radius:14px;margin:1rem 0}.lecture-rich-html a{color:var(--primary);text-decoration:underline}
       `}</style>

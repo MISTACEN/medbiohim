@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { ChemicalFigure } from "./ChemicalFigure";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
+import { chemicalFormulaHtml } from "@/lib/chemistry/formula";
 import type { ChemicalFigureSpec } from "@/lib/chemistry/types";
 
 type Segment =
@@ -27,19 +28,15 @@ export function ChemRichText({
         if (seg.kind === "chem") {
           return <ChemicalFigure key={i} spec={{ ...seg.spec, size: seg.spec.size || "compact" }} />;
         }
-        if (asHtml) {
-          return (
-            <div
-              key={i}
-              className="whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: seg.html }}
-            />
-          );
-        }
+        // Формулы в банке вопросов набраны ASCII-строкой (H2SO4, Fe^3+,
+        // Ca(OH)2): на экране они должны стать индексами и зарядами, иначе
+        // тест выглядит как черновик. asHtml — текст уже готовая разметка.
         return (
-          <div key={i} className="whitespace-pre-wrap">
-            {seg.html}
-          </div>
+          <div
+            key={i}
+            className="whitespace-pre-wrap"
+            dangerouslySetInnerHTML={{ __html: asHtml ? seg.html : chemicalFormulaHtml(seg.html) }}
+          />
         );
       })}
     </div>

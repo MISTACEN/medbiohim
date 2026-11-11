@@ -40,9 +40,11 @@ type Props = {
   onSelectTab: (tab: string | TabId) => void;
   onOpenLecture: (id: string) => void;
   isAdmin: boolean;
+  /** База ссылок предмета — для чипса «Лекция + тест по теме». */
+  subjectHref?: string;
 };
 
-export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modules, topicItems, topicProgressById, topicBusy, cycleTopicStatus, openTopicMaterial, onSelectTab, onOpenLecture, isAdmin }: Props) {
+export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modules, topicItems, topicProgressById, topicBusy, cycleTopicStatus, openTopicMaterial, onSelectTab, onOpenLecture, isAdmin, subjectHref }: Props) {
   return (
     <section className="card p-5">
             <h2 className="text-lg font-bold">Учебный план</h2>
@@ -56,7 +58,7 @@ export function PlanTab({ plan, resourceErrors, planSessions, planSummary, modul
               <div className="mt-4">
                 <PlanTimeline
                   sessions={planSessions}
-                  links={{ onOpenTab: (t) => onSelectTab(t), onOpenLecture: onOpenLecture }}
+                  links={{ onOpenTab: (t) => onSelectTab(t), onOpenLecture: onOpenLecture, subjectHref }}
                   emptyLabel="В плане пока нет занятий."
                 />
               </div>

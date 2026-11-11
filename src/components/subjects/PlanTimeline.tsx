@@ -109,6 +109,28 @@ function HomeworkBlock({ session, links }: { session: PlanSession; links: PlanTi
   );
 }
 
+function LaboratoryBlock({ session }: { session: PlanSession }) {
+  const items = session.laboratory || [];
+  if (!items.length) return null;
+  return (
+    <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+      <details open>
+        <summary className="cursor-pointer select-none text-xs font-bold uppercase tracking-wide" style={{ color: "var(--status-ok-fg)" }}>
+          Лабораторная работа
+          <span className="ml-1 font-normal normal-case tracking-normal" style={{ color: "var(--muted)" }}>
+            — {items.length} опытов
+          </span>
+        </summary>
+        <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-sm leading-relaxed" style={{ color: "var(--text)" }}>
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ol>
+      </details>
+    </div>
+  );
+}
+
 function PreparationsBlock({ session, links }: { session: PlanSession; links: PlanTimelineLinks }) {
   const preparations = session.preparations || [];
   const electro = session.electronograms || [];
@@ -171,6 +193,19 @@ function SessionBody({ session, links }: { session: PlanSession; links: PlanTime
             />
           )}
           <TabLink chip={{ label: "Материалы предмета", tab: "materials", Icon: BookOpen, tone: TONES.indigo }} links={links} />
+
+          {links.subjectHref && session.num ? (
+            // Одна страница темы: лекция и тест занятия рядом.
+            <TabLink
+              chip={{
+                label: "Лекция + тест по теме",
+                Icon: BookOpen,
+                tone: TONES.emerald,
+                href: links.subjectHref + "/lesson/" + session.num,
+              }}
+              links={links}
+            />
+          ) : null}
         </div>
       )}
 
@@ -215,6 +250,7 @@ function SessionBody({ session, links }: { session: PlanSession; links: PlanTime
       )}
 
       <PreparationsBlock session={session} links={links} />
+      <LaboratoryBlock session={session} />
       <HomeworkBlock session={session} links={links} />
 
       {/* Привязанные тесты и вопросы к экзамену — счётчики из topic_progress. */}

@@ -106,7 +106,7 @@ export function LectureBlocksNav({
             <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
               Блок {activeIndex + 1} из {blocks.length}
             </span>
-            <span className="mt-0.5 block truncate text-sm font-bold">{active?.title || "Содержание"}</span>
+            <span className="mt-0.5 block text-sm font-bold leading-snug">{active?.title || "Содержание"}</span>
           </span>
           <ChevronDown className={"size-4 shrink-0 text-[var(--muted)] transition " + (open ? "rotate-180" : "")} />
         </summary>

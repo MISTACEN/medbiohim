@@ -29,7 +29,13 @@ HDR_RE = re.compile(r"Эталоны ответов к тестовым зада
 
 
 def antiword(doc: Path) -> str:
-    return subprocess.run(["antiword", str(doc)], capture_output=True).stdout.decode("utf-8", "ignore")
+    raw = subprocess.run(["antiword", str(doc)], capture_output=True).stdout
+    for enc in ("utf-8", "cp1251"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("cp1251", "ignore")
 
 
 def extract_answers(text: str) -> tuple[list[str], int]:
@@ -102,8 +108,7 @@ def main() -> None:
             json.dumps(manual, ensure_ascii=False, indent=1)
         )
         print(f"  JSON: обновлено эталонов {updated}")
-        with io.open(REPO / ".tmp-answer-updates.tsv", "a", encoding="utf-8", newline="
-") as f:
+        with io.open(REPO / ".tmp-answer-updates.tsv", "a", encoding="utf-8", newline="\n") as f:
             for src, answer in db_updates:
                 f.write(f"{src}\t{answer}\n")
 

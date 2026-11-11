@@ -60,11 +60,11 @@ const ARCHIVED = [
 ];
 
 /** Полная серия занятий: её содержимое — канон, синк не вправе её скрывать. */
-const FULL_SERIES = /^hist-0\d/;
+const FULL_SERIES = /^hist-\d{2}/;
 /** Нижняя граница «это полноценная лекция, а не конспект». */
 const FULL_LECTURE_MIN_CHARS = 20000;
 
-/** Недели, у которых канон — полная лекция серии hist-0X (короткий конспект влит в неё). */
+/** Недели, у которых канон — полная лекция серии hist-XX (короткий конспект влит в неё). */
 const FULL_LECTURE_BY_WEEK = {
   1: "hist-00-gistotekhnika",
   2: "hist-01-citologiya-organelly",
@@ -74,6 +74,16 @@ const FULL_LECTURE_BY_WEEK = {
   6: "hist-06-sobstvenno-st",
   7: "hist-07-hryaschevye-kostnye",
   8: "hist-08-myishechnye-tkani",
+  9: "hist-09-nervnaya-tkan",
+  10: "hist-10-nervnaya-sistema",
+  11: "hist-11-kora-mozzhechok-vns",
+  12: "hist-12-zrenie-obonyanie",
+  13: "hist-13-sluh-vkus",
+  14: "hist-14-serdechno-sosudistaya",
+  15: "hist-15-endokrinnaya",
+  16: "hist-16-krovetvorenie",
+  17: "hist-17-limfoidnye-organy",
+  18: "hist-18-pishchevaritelnyy-kanal",
 };
 /** Привязка недели к лекции: канон важнее order_index из плановых записей. */
 function lectureIdForWeek(n) {
@@ -188,8 +198,9 @@ for (const l of histCurrent) {
   if (Number.isFinite(order)) histByOrder.set(order, l.id);
 }
 histByOrderRef = histByOrder;
-// Недели, которые плановая лекция закрывает вместе с соседней: слух/равновесие
-// (12–13) и лимфоидное кроветворение (16–17).
+// Недели 12–13 и 16–17: с выпуском hist-12/hist-13 и hist-16/hist-17 каждая
+// неделя имеет собственный канон (см. FULL_LECTURE_BY_WEEK), fallback по
+// соседней неделе оставлен на случай отсутствия новой лекции в выдаче.
 histByOrder.set(13, histByOrder.get(12));
 histByOrder.set(17, histByOrder.get(16));
 

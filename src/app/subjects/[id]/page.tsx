@@ -38,6 +38,8 @@ import TicketGenerator from "@/components/subjects/TicketGenerator";
 import { PlanTimeline } from "@/components/subjects/PlanTimeline";
 import TabFallback from "@/components/subjects/TabFallback";
 import PhysiologyPractice from "@/components/physiology/PhysiologyPractice";
+import PhysiologyTests from "@/components/physiology/PhysiologyTests";
+import HistologyTests from "@/components/histology/HistologyTests";
 import Colloquium from "@/components/physiology/Colloquium";
 import SubjectQuestionBank from "@/components/questions/SubjectQuestionBank";
 import HobaPortal from "@/components/portals/HobaPortal";
@@ -471,7 +473,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         ]
       : group === "materials"
         ? [
-            { id: "lectures", label: "Лекции" },
+            // У физиологии лекции живут внутри занятий, отдельная вкладка не нужна.
+            ...(slug === "physiology" ? [] : [{ id: "lectures" as TabId, label: "Лекции" }]),
             { id: "materials", label: "Материалы" },
           ]
         : group === "practice"
@@ -643,6 +646,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             isAdmin={user?.role === "admin"}
             onSelectTab={(t) => selectTab(t as TabId)}
             onOpenLecture={openLectureById}
+            subjectHref={`/subjects/${encodeURIComponent(slug)}`}
           />
         )}
 
@@ -657,6 +661,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           </div>
         )}
 
+        {tab === "tests" && slug === "physiology" && <PhysiologyTests />}
+        {tab === "tests" && slug === "histology" && <HistologyTests />}
         {tab === "tests" && (
           <SubjectAssignments subjectId={subject?.id || subjectId} />
         )}

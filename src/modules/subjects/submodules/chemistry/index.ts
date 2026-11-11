@@ -5,6 +5,7 @@
 export { ChemicalFigure } from "./ChemicalFigure";
 export { ChemRichText } from "./ChemRichText";
 export { default as ChemTools } from "./ChemTools";
+export { ChemistryModule, type ChemistrySection } from "./ChemistryModule";
 export { ChemistryWorkbench } from "./ChemistryWorkbench";
 export { LabBench } from "./LabBench";
 export { MechanismView } from "./MechanismView";
