@@ -11,12 +11,15 @@ import type { ApiResult } from "./types";
 
 export { API_URL };
 
+/** RequestInit plus an optional per-call timeout (AI generation needs longer than 20 s). */
+export type ApiRequestInit = RequestInit & { timeoutMs?: number };
+
 function notifyApiLoading(type: "start" | "end") {
   if (typeof window === "undefined") return;
   try { window.dispatchEvent(new CustomEvent(type === "start" ? "mbh:api-start" : "mbh:api-end")); } catch {}
 }
 
-async function request(path: string, options: RequestInit = {}, tokenOverride?: string): Promise<{ res: Response; text: string }> {
+async function request(path: string, options: ApiRequestInit = {}, tokenOverride?: string): Promise<{ res: Response; text: string }> {
   const headers: Record<string, string> = { Accept: "application/json", ...(options.headers as Record<string, string> | undefined) };
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (options.body && !isForm && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
@@ -43,7 +46,10 @@ async function request(path: string, options: RequestInit = {}, tokenOverride?: 
     if (externalSignal.aborted) controller.abort();
     else externalSignal.addEventListener("abort", abortFromCaller, { once: true });
   }
-  const timeout = setTimeout(() => controller.abort(), (options.method || "GET").toUpperCase() === "GET" ? 12000 : 20000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? ((options.method || "GET").toUpperCase() === "GET" ? 12000 : 20000),
+  );
   const startedAt = Date.now();
   const method = (options.method || "GET").toUpperCase();
   try {
@@ -101,7 +107,7 @@ async function request(path: string, options: RequestInit = {}, tokenOverride?: 
   }
 }
 
-async function requestOnce<T>(path: string, options: RequestInit): Promise<ApiResult<T>> {
+async function requestOnce<T>(path: string, options: ApiRequestInit): Promise<ApiResult<T>> {
   try {
     let { res, text } = await request(path, options);
     if (res.status === 401 && path !== "/auth/refresh") {
@@ -122,7 +128,7 @@ async function requestOnce<T>(path: string, options: RequestInit): Promise<ApiRe
   }
 }
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+export async function api<T>(path: string, options: ApiRequestInit = {}): Promise<ApiResult<T>> {
   notifyApiLoading("start");
   try {
     const method = (options.method || "GET").toUpperCase();
