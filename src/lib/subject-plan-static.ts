@@ -17,11 +17,17 @@ export const SUBJECT_STATIC_PLANS: Record<string, string> = {
  * плана берёт их из API /subject-plans/:slug, а статический JSON остаётся
  * только фолбэком. Правка такого плана в БД применяется без деплоя.
  *
- * Остальные слаги пока читаются из статики: их payload в site_content не
- * содержит части полей (лабораторные, контрольные), поэтому переключение
- * обеднило бы вкладку «План».
+ * Все планы в БД дополнены лабораторными и контрольными (см.
+ * tools/content/sync_plan_extras.mjs), поэтому переключение не обедняет вкладку.
  */
-export const DB_FIRST_PLAN_SLUGS = new Set(["optics", "probability", "informatics"]);
+export const DB_FIRST_PLAN_SLUGS = new Set([
+  "histology",
+  "physiology",
+  "organic_chemistry",
+  "optics",
+  "probability",
+  "informatics",
+]);
 
 /** Загружает JSON плана кафедры из public/content (отмена через AbortSignal). */
 export async function fetchStaticPlan(file: string, signal?: AbortSignal): Promise<unknown> {

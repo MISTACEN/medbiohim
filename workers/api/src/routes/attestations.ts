@@ -26,9 +26,10 @@ function reader(c: any) {
  * GET /attestations?subject_slug=histology&type=colloquium
  * Published attestations as compact summaries.
  */
-attestations.get("/", requireAuth, async (c) => {
+/** Список опубликованных аттестаций: общий и по предмету в пути. */
+async function listAttestations(c: any, subjectOverride?: string) {
   const rid = requestId();
-  const subject = (c.req.query("subject_slug") || "").trim();
+  const subject = (subjectOverride ?? c.req.query("subject_slug") ?? "").trim();
   const type = (c.req.query("type") || "").trim();
   if (subject && !/^[a-z0-9][a-z0-9-]{0,63}$/.test(subject)) {
     return c.json(fail("VALIDATION_ERROR", "Некорректный subject_slug", 422, rid), 422);
@@ -65,7 +66,15 @@ attestations.get("/", requireAuth, async (c) => {
     console.error("[attestations:list]", error);
     return c.json(fail("DB_UNAVAILABLE", "Аттестации временно недоступны", 503, rid), 503);
   }
-});
+}
+
+attestations.get("/", requireAuth, (c) => listAttestations(c));
+
+/**
+ * GET /attestations/:subject — тот же список, но предмет в пути.
+ * Без маршрута запрос проваливался в 501 ROUTE_NOT_MIGRATED и шумел в консоли.
+ */
+attestations.get("/:subject", requireAuth, (c) => listAttestations(c, c.req.param("subject")));
 
 /**
  * GET /attestations/:subject/:slug — full published document.
