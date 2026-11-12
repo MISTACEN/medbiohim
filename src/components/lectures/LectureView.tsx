@@ -172,21 +172,58 @@ export function LectureView({
   // скроллить сразу, её схлопывание сдвигает текст и экран «прыгает». Поэтому
   // ждём кадр после перерисовки и ведём плавно к заголовку выбранного блока,
   // а не к началу карточки лекции.
+  /** Высота липкой шапки: заголовок блока должен встать под неё, а не за ней. */
+  const stickyHeaderOffset = () => {
+    const header = document.querySelector<HTMLElement>("header");
+    if (!header) return 8;
+    const style = window.getComputedStyle(header);
+    if (style.position !== "sticky" && style.position !== "fixed") return 8;
+    return header.getBoundingClientRect().height + 8;
+  };
+
+  /**
+   * Нативный smooth на длинной лекции пробегает 10–20 тыс. px за те же ~300 мс —
+   * блоки мелькают. Своя длительность зависит от расстояния: 260–700 мс.
+   */
+  const smoothScrollTo = (top: number) => {
+    const hasMatchMedia = typeof window.matchMedia === "function";
+    if (hasMatchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      window.scrollTo(0, top);
+      return;
+    }
+    const start = window.scrollY;
+    const distance = top - start;
+    if (Math.abs(distance) < 4) {
+      window.scrollTo(0, top);
+      return;
+    }
+    const duration = Math.min(700, Math.max(260, Math.abs(distance) * 0.35));
+    const startedAt = performance.now();
+    const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      window.scrollTo(0, start + distance * ease(progress));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+
   const scrollToBlock = (next: number) => {
     const hasMatchMedia = typeof window.matchMedia === "function";
-    const reduced = hasMatchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const behavior: ScrollBehavior = reduced ? "auto" : "smooth";
     if (hasMatchMedia && window.matchMedia("(max-width: 640px)").matches) {
       const title = blocks[next]?.title;
       const nodes = contentRef.current?.querySelectorAll<HTMLElement>("[data-lec-title]") ?? [];
       const node = title ? Array.from(nodes).find((el) => el.dataset.lecTitle === title) : null;
       const target = node ?? contentRef.current;
       if (!target) return;
-      const top = target.getBoundingClientRect().top + window.scrollY - 8;
-      window.scrollTo({ top: Math.max(0, top), behavior });
+      const top = target.getBoundingClientRect().top + window.scrollY - stickyHeaderOffset();
+      smoothScrollTo(Math.max(0, top));
       return;
     }
-    contentRef.current?.scrollIntoView({ behavior, block: "start" });
+    if (!contentRef.current) return;
+    // 96px = scroll-mt-24, прежний отступ десктопной раскладки.
+    const top = contentRef.current.getBoundingClientRect().top + window.scrollY - 96;
+    smoothScrollTo(Math.max(0, top));
   };
 
   const changeBlock = (next: number) => {
