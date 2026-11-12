@@ -1,0 +1,14 @@
+.env
+.env.local
+.env*.local
+node_modules/
+.next/
+.vercel/
+.git/
+test-results/
+.tmp*
+*.pid
+*.log
+/*.png
+/_plan_dump.txt
+/x_tmp.txt

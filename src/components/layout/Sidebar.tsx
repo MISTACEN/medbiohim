@@ -56,6 +56,7 @@ const moreItems = [
   { href: "/atlas", label: "Атлас", icon: Microscope, moduleKey: "atlas" },
   { href: "/workshop", label: "Мастерская", icon: Layers, moduleKey: "workshop" },
   { href: "/academic", label: "Учебный план", icon: ClipboardList, moduleKey: "academic" },
+  { href: "/study", label: "План подготовки", icon: Sparkles },
   { href: "/assignments", label: "Отработки", icon: ListChecks, moduleKey: "assignments" },
   { href: "/calculators", label: "Калькуляторы", icon: Calculator, moduleKey: "calculators" },
   { href: "/attestations", label: "Аттестации", icon: ClipboardList, moduleKey: "attestations" },

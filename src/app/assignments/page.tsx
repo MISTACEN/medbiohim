@@ -303,6 +303,9 @@ export default function AssignmentsPage() {
         <Link href="/homework" className="text-sm font-semibold text-indigo-600 hover:underline">
           Задания группы →
         </Link>
+        <Link href="/study" className="text-sm font-semibold text-indigo-600 hover:underline">
+          План подготовки →
+        </Link>
       </header>
 
       <div className="grid gap-2 sm:grid-cols-4">
